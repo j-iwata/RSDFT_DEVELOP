@@ -1,6 +1,7 @@
 include make.inc
 
-MODS1 = watch_module.o \
+MODS1 = simc_module.o\
+        watch_module.o \
         modified_bessel_module.o \
         parallel_module.o \
         bcast_module.o \
@@ -48,7 +49,6 @@ MODS1 = watch_module.o \
         ps_nloc2_mol_module.o\
         bc_mol_module.o\
         eion_mol_module.o\
-        simc_module.o\
         ps_local_mol_module.o\
         hamiltonian_module.o\
         ewald_module_test.o\

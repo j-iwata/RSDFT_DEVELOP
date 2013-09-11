@@ -20,7 +20,7 @@ CONTAINS
 
   SUBROUTINE init_ps_local_mol(qcut)
     use pseudopot_module
-    use maskfunction_module
+    use maskf_module
     use simc_module
     real(8),intent(IN) :: qcut
     integer :: i,ik,j,m,mm,m0,m1,m2,NRc,MMr,MKI

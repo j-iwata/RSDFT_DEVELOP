@@ -1,4 +1,4 @@
-MODULE maskfunction_module
+MODULE maskf_module
 
   implicit none
 
@@ -55,4 +55,4 @@ CONTAINS
     return
   END SUBROUTINE makemaskf
 
-END MODULE maskfunction_module
+END MODULE maskf_module

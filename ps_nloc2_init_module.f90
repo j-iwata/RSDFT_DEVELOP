@@ -59,7 +59,7 @@ CONTAINS
 
   SUBROUTINE ps_nloc2_init(qcut)
     use atom_module, only: Nelement,Natom,ki_atom
-    use maskfunction_module
+    use maskf_module
     implicit none
     real(8),intent(IN) :: qcut
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
