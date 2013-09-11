@@ -27,8 +27,6 @@ PROGRAM Real_Space_Solid
 
   use ps_gth_module
 
-  use atomopt_module
-
   use bcast_module
 
   implicit none
@@ -70,15 +68,7 @@ PROGRAM Real_Space_Solid
 
   if (DISP_SWITCH) write(*,'(a60," read_param")') repeat("-",60)
 
-  if ( myrank == 0 ) then
-     call read_parameters
-  end if
-
-  if (DISP_SWITCH) write(*,'(a60," send_param")') repeat("-",60)
-
-  call send_parameters
-
-  call read_parameters_2
+  call read_parameters
 
 ! --- initial preparetaion ---
 
@@ -244,7 +234,7 @@ PROGRAM Real_Space_Solid
      call destruct_strfac !----- structure factor
 
      if ( pselect /= 4 ) then
-        call init_ps_nloc2(Gcut)
+        call ps_nloc2_init(Gcut)
      end if
      call prep_ps_nloc2
 
@@ -252,7 +242,7 @@ PROGRAM Real_Space_Solid
 
   else if ( SYStype == 3 ) then
 
-     call init_ps_nloc2(Gcut)
+     call ps_nloc2_init(Gcut)
      call prep_ps_nloc2_esm
 
      call init_ps_local_rs
@@ -288,7 +278,7 @@ PROGRAM Real_Space_Solid
      call construct_ps_initrho_mol
      call normalize_density
 
-     call init_ps_nloc2(Gcut)
+     call ps_nloc2_init(Gcut)
      call prep_ps_nloc2_mol
 
      call construct_boundary_rgrid_mol(Md)
@@ -590,7 +580,7 @@ PROGRAM Real_Space_Solid
 ! --- force calculation ---
 
   if ( pselect /= 4 ) then
-     call init_derivative_ps_nloc2
+     call ps_nloc2_init_derivative
   end if
 
   if ( iswitch_opt == -1 ) then

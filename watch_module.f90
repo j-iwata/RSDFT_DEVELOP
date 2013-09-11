@@ -3,7 +3,7 @@ MODULE watch_module
   implicit none
 
   PRIVATE
-  PUBLIC :: watch,watcht,read_watch,send_watch,global_watch
+  PUBLIC :: watch,watcht,read_watch,global_watch
 
   real(8) :: ct0=0.d0, ctt=0.d0
   real(8) :: ett=0.d0
@@ -16,13 +16,35 @@ MODULE watch_module
 
 CONTAINS
 
-  SUBROUTINE read_watch(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) etime_limit
-    write(*,*) "etime_limit=",etime_limit
+  SUBROUTINE read_watch(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(7) :: cbuf,ckey
+    etime_limit = 1.d100
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:7) == "ETLIMIT" ) then
+             backspace(unit)
+             read(unit,*) cbuf,etime_limit
+          end if
+       end do
+999    continue
+       write(*,*) "etime_limit=",etime_limit
+    end if
+    call send_watch(0)
   END SUBROUTINE read_watch
+!  SUBROUTINE read_watch(unit)
+!    integer,intent(IN) :: unit
+!    read(unit,*) etime_limit
+!    write(*,*) "etime_limit=",etime_limit
+!  END SUBROUTINE read_watch
 
   SUBROUTINE send_watch(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'

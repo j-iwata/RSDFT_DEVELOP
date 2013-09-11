@@ -32,13 +32,37 @@ CONTAINS
   SUBROUTINE read_atomopt(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
+    integer :: i
+    character(8) :: cbuf,ckey
+    ncycl     = 0
+    most      = 6
+    nrfr      = 5
+    diter_opt = 50
+    okatom    = 0.5d0
+    eeps      = 1.d-10
+    feps      = 5.d-4
+    decr      = 1.d-1
     if ( rank == 0 ) then
-       read(unit,*) ncycl,most,nrfr,diter_opt
-       read(unit,*) okatom,eeps,feps,decr
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:8) == "ATOMOPT1" ) then
+             backspace(unit)
+             read(unit,*) cbuf,ncycl,most,nrfr
+          else if ( ckey(1:8) == "ATOMOPT2" ) then
+             backspace(unit)
+             read(unit,*) cbuf,okatom,eeps,feps,decr
+          else if ( ckey(1:8) == "ATOMOPT3" ) then
+             backspace(unit)
+             read(unit,*) cbuf,diter_opt
+          end if
+       end do
+999    continue
        write(*,*) "ncycl, most, nrfr =",ncycl,most,nrfr
-       write(*,*) "diter_opt         =",diter_opt
        write(*,*) "okatom, eeps      =",okatom,eeps
        write(*,*) "feps, decr        =",feps,decr
+       write(*,*) "diter_opt         =",diter_opt
        if ( diter_opt <= 0 ) then
           diter_opt=50
           write(*,*) "diter_opt         =",diter_opt

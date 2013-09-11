@@ -9,7 +9,7 @@ MODULE electron_module
   PRIVATE
   PUBLIC :: Nband,Nspin,Nelectron,Next_electron,occ &
            ,Ndspin,Nfixed,init_occ_electron &
-           ,read_electron,count_electron,init_occupation,send_electron
+           ,read_electron,count_electron,init_occupation
 
   integer :: Nband, Nspin, Nfixed
   real(8) :: Nelectron,Next_electron,Ndspin
@@ -18,21 +18,49 @@ MODULE electron_module
 
 CONTAINS
 
-  SUBROUTINE read_electron(unit)
-    integer,intent(IN) :: unit
+  SUBROUTINE read_electron(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(6) :: cbuf,ckey
     Nband=0
-    Nspin=0
-    read(unit,*) Nband, Nspin
-    read(unit,*) Next_electron, Ndspin, Nfixed
-    write(*,*) "Nband=",Nband
-    write(*,*) "Nspin=",Nspin
-    write(*,*) "Next_electron=",Next_electron
-    write(*,*) "Ndspin=",Ndspin
-    write(*,*) "Nfixed=",Nfixed
-    if ( Nspin == 1 .and. Ndspin /= 0.d0 ) then
-       Ndspin=0.d0
-       write(*,*) "Ndspin is replaced to 0.0: Ndspin=",Ndspin
+    Nspin=1
+    Nfixed=0
+    Next_electron=0.d0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:5) == "NBAND" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Nband
+          else if ( ckey(1:5) == "NSPIN" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Nspin
+          else if ( ckey(1:6) == "NDSPIN" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ndspin
+          else if ( ckey(1:6) == "NFIXED" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Nfixed
+          else if ( ckey(1:6) == "NEXTE" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Next_electron
+          end if
+       end do
+999    continue
+       write(*,*) "Nband=",Nband
+       write(*,*) "Nspin=",Nspin
+       write(*,*) "Ndspin=",Ndspin
+       write(*,*) "Nfixed=",Nfixed
+       write(*,*) "Next_electron=",Next_electron
+       if ( Nspin == 1 .and. Ndspin /= 0.d0 ) then
+          Ndspin=0.d0
+          write(*,*) "Ndspin is replaced to 0.0: Ndspin=",Ndspin
+       end if
     end if
+    call send_electron(0)
   END SUBROUTINE read_electron
 
 

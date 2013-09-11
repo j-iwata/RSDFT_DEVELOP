@@ -3,8 +3,7 @@ MODULE bz_module
   implicit none
 
   PRIVATE
-  PUBLIC :: nk,mmm,Nbzsm,kbb,weight_bz &
-           ,read_kgrid_bz,send_kgrid_bz,generate_bz
+  PUBLIC :: nk,mmm,Nbzsm,kbb,weight_bz,read_kgrid_bz,generate_bz
 
   integer :: nk,mmm(3,2)
   integer :: Nbzsm
@@ -19,19 +18,56 @@ MODULE bz_module
 
 CONTAINS
 
-  SUBROUTINE read_kgrid_bz(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) nk,ndata_read_k,kbb0(1:3)
-    read(unit,*) mmm(1:3,1)
-    read(unit,*) mmm(1:3,2)
-    write(*,*) "nk =",nk
-    write(*,*) "mmm1 =",mmm(:,1)
-    write(*,*) "mmm2 =",mmm(:,2)
-    write(*,*) "ndata_read_k=",ndata_read_k
-    write(*,*) "kbb0=",kbb0(1:3)
+  SUBROUTINE read_kgrid_bz(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(6) :: cbuf,ckey
+    nk=2
+    mmm(1:3,1)=(/ 2,2,2 /)
+    mmm(1:3,2)=(/ 2,2,2 /)
+    ndata_read_k=0
+    kbb0(1:3)=0.d0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:2) == "NK" ) then
+             backspace(unit)
+             read(unit,*) cbuf,nk
+          else if ( ckey(1:4) == "MMM1" ) then
+             backspace(unit)
+             read(unit,*) cbuf,mmm(1:3,1)
+          else if ( ckey(1:4) == "MMM2" ) then
+             backspace(unit)
+             read(unit,*) cbuf,mmm(1:3,2)
+          end if
+       end do
+999    continue
+       write(*,*) "nk =",nk
+       write(*,*) "mmm1 =",mmm(:,1)
+       write(*,*) "mmm2 =",mmm(:,2)
+!       write(*,*) "ndata_read_k=",ndata_read_k
+!       write(*,*) "kbb0=",kbb0(1:3)
+    end if
+    call send_kgrid_bz(0)
   END SUBROUTINE read_kgrid_bz
 
+!  SUBROUTINE read_kgrid_bz(unit)
+!    integer,intent(IN) :: unit
+!    read(unit,*) nk,ndata_read_k,kbb0(1:3)
+!    read(unit,*) mmm(1:3,1)
+!    read(unit,*) mmm(1:3,2)
+!    write(*,*) "nk =",nk
+!    write(*,*) "mmm1 =",mmm(:,1)
+!    write(*,*) "mmm2 =",mmm(:,2)
+!    write(*,*) "ndata_read_k=",ndata_read_k
+!    write(*,*) "kbb0=",kbb0(1:3)
+!  END SUBROUTINE read_kgrid_bz
+
   SUBROUTINE send_kgrid_bz(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'

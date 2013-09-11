@@ -8,7 +8,7 @@ MODULE kinetic_module
 
   PRIVATE
   PUBLIC :: Md, ggg, get_ggg_kinetic, get_coef_kinetic &
-           ,read_kinetic, send_kinetic, op_kinetic &
+           ,read_kinetic, op_kinetic &
            ,coef_lap0,coef_lap,SYStype,coef_nab,a2x_nab,a2y_nab,a2z_nab
 
   integer :: Md
@@ -23,15 +23,43 @@ MODULE kinetic_module
 
 CONTAINS
 
-  SUBROUTINE read_kinetic(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) Md, SYStype
-    write(*,*) "Md =",Md
-    write(*,*) "SYStype =",SYStype
+  SUBROUTINE read_kinetic(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(7) :: cbuf,ckey
+    Md = 6
+    SYStype = 0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:2) == "MD" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Md
+          else if ( ckey(1:7) == "SYSTYPE" ) then
+             backspace(unit)
+             read(unit,*) cbuf,SYStype
+          end if
+       end do
+999    continue
+       write(*,*) "Md =",Md
+       write(*,*) "SYStype =",SYStype
+    end if
+    call send_kinetic(0)
   END SUBROUTINE read_kinetic
+
+!  SUBROUTINE read_kinetic(unit)
+!    integer,intent(IN) :: unit
+!    read(unit,*) Md, SYStype
+!    write(*,*) "Md =",Md
+!    write(*,*) "SYStype =",SYStype
+!  END SUBROUTINE read_kinetic
 
 
   SUBROUTINE send_kinetic(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'
@@ -41,6 +69,7 @@ CONTAINS
 
 
   SUBROUTINE get_ggg_kinetic(aa,bb)
+    implicit none
     real(8),intent(IN) :: aa(3,3),bb(3,3)
     real(8) :: const,a1,a2,a3
     const=1.d0/(4.d0*acos(-1.d0)**2)
@@ -58,6 +87,7 @@ CONTAINS
 
   SUBROUTINE get_coef_kinetic(aa,bb,MBZ,kbb,disp_switch,SYStype_in)
     use fd_module
+    implicit none
     real(8),intent(IN) :: aa(3,3),bb(3,3)
     integer,intent(IN) :: MBZ
     real(8),intent(IN) :: kbb(3,MBZ)
@@ -191,6 +221,7 @@ CONTAINS
 
 
   SUBROUTINE op_kinetic(k,tpsi,htpsi,n1,n2,ib1,ib2)
+    implicit none
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
@@ -213,6 +244,7 @@ CONTAINS
   SUBROUTINE op_kinetic_sol(k,tpsi,htpsi,n1,n2,ib1,ib2)
     use bc_module, only: www,bcset
 !$  use omp_lib
+    implicit none
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)

@@ -10,7 +10,7 @@ MODULE xc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: XCtype,calc_xc,read_xc,send_xc,Vxc,Exc,E_exchange,E_correlation
+  PUBLIC :: XCtype,calc_xc,read_xc,Vxc,Exc,E_exchange,E_correlation
 
   character(8) :: XCtype
   real(8),allocatable :: Vxc(:,:)
@@ -19,13 +19,37 @@ MODULE xc_module
 CONTAINS
 
 
-  SUBROUTINE read_xc(unit)
+  SUBROUTINE read_xc(rank,unit)
     implicit none
-    integer,intent(IN) :: unit
-    XCtype=""
-    read(unit,*) XCtype
-    write(*,*) "XCtype= ",XCtype
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(6) :: cbuf,ckey
+    if ( rank == 0 ) then
+       XCtype = "LDAPZ81"
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey == "XCTYPE" ) then
+             backspace(unit)
+             read(unit,*) cbuf,XCtype
+             exit
+          end if
+       end do
+999    continue
+       write(*,*) "XCtype= ",XCtype
+    end if
+    call send_xc(0)
   END SUBROUTINE read_xc
+
+
+!  SUBROUTINE read_xc(unit)
+!    implicit none
+!    integer,intent(IN) :: unit
+!    XCtype=""
+!    read(unit,*) XCtype
+!    write(*,*) "XCtype= ",XCtype
+!  END SUBROUTINE read_xc
 
 
   SUBROUTINE send_xc(rank)

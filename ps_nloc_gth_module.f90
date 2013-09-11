@@ -116,14 +116,14 @@ CONTAINS
 
           end do ! i ( 1 - M_grid_ion )
 
-          MMJJ = max(MMJJ,j)
-          if ( nzlma == lma+2*L+1 ) then
-             do m=1,2*L+1
-                lma=lma+1
-                icheck_tmp3(a,iorb,m)=lma
-             end do
+!          MMJJ = max(MMJJ,j)
+!          if ( nzlma == lma+2*L+1 ) then
+!             do m=1,2*L+1
+!                lma=lma+1
+!                icheck_tmp3(a,iorb,m)=lma
+!             end do
              MJJ_tmp(iorb,a)=j
-          end if
+!          end if
 
        end do ! iorb
     end do ! a

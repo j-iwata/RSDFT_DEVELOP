@@ -8,7 +8,7 @@ MODULE gram_schmidt_t_module
   implicit none
 
   PRIVATE
-  PUBLIC :: gram_schmidt_t, read_gram_schmidt_t, send_gram_schmidt_t
+  PUBLIC :: gram_schmidt_t, read_gram_schmidt_t
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN = MPI_REAL8
@@ -29,14 +29,41 @@ MODULE gram_schmidt_t_module
 CONTAINS
 
 
-  SUBROUTINE read_gram_schmidt_t(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) NBLK,NBLK1
-    write(*,*) "NBLK,NBLK1=",NBLK,NBLK1
+  SUBROUTINE read_gram_schmidt_t(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(5) :: cbuf,ckey
+    NBLK=0
+    NBLK1=0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:4) == "NBLK" ) then
+             backspace(unit)
+             read(unit,*) cbuf,NBLK
+          else if ( ckey(1:5) == "NBLK1" ) then
+             backspace(unit)
+             read(unit,*) cbuf,NBLK1
+          end if
+       end do
+999    continue
+       write(*,*) "NBLK =",NBLK
+       write(*,*) "NBLK1=",NBLK1
+    end if
+    call send_gram_schmidt_t(0)
   END SUBROUTINE read_gram_schmidt_t
+!  SUBROUTINE read_gram_schmidt_t(unit)
+!    integer,intent(IN) :: unit
+!    read(unit,*) NBLK,NBLK1
+!    write(*,*) "NBLK,NBLK1=",NBLK,NBLK1
+!  END SUBROUTINE read_gram_schmidt_t
 
 
   SUBROUTINE send_gram_schmidt_t(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'
@@ -46,6 +73,7 @@ CONTAINS
 
 
   SUBROUTINE gram_schmidt_t(n0,n1,k,s)
+    implicit none
     integer,intent(IN) :: n0,n1,k,s
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
@@ -114,6 +142,7 @@ CONTAINS
 
 
   RECURSIVE SUBROUTINE gram_schmidt_sub(mm1,mm2,nn1,nn2,MBLK,k,s)
+    implicit none
     integer,intent(IN) :: mm1,mm2,nn1,nn2,MBLK,k,s
     integer :: n,ns,ne,m,ms,me,m1,m2,mm,nn,MBLKH,ierr,ML0,i
     real(8) :: c,d

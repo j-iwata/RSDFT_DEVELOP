@@ -38,7 +38,7 @@ MODS1 = watch_module.o \
         ps_nloc1_module.o \
         maskf_module.o \
         minimal_box_module.o \
-        init_ps_nloc2_module.o \
+        ps_nloc2_init_module.o \
         ps_nloc2_variables.o \
         ps_nloc2_module.o \
         localpot_module.o \
@@ -58,8 +58,8 @@ MODS1 = watch_module.o \
         xc_module.o \
         subspace_diag_module.o \
         cgpc_module.o \
-        dtcg.o \
-        fermi_mp_module.o\
+        cg_module.o \
+        fermi_module.o\
         total_energy_module.o \
         mixing_module_test.o \
         esp_gather_module.o \
@@ -77,7 +77,7 @@ DIAGSL_MOD = scalapack_module.o\
              subspace_rotv_sl_module.o subspace_rotv_sl_0_module.o\
              subspace_diag_sl_module.o 
 
-MODS2 = global_variables.o scf_module.o atomopt_module.o parameters_module.o
+MODS2 = scf_module.o atomopt_module.o global_variables.o parameters_module.o
 MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
 MODS4 = momentum_module.o band_module.o
 
@@ -97,7 +97,8 @@ EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/p4sn.o \
           $(DIR2)/ylm.o \
           $(DIR2)/dotp.o \
-          $(DIR2)/spline.o
+          $(DIR2)/spline.o\
+          $(DIR2)/convert_capital.o\
 
 DIR3 = sub_dummy
 DIR3 = mdsource

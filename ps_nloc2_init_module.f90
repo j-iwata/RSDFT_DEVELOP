@@ -1,12 +1,12 @@
-MODULE init_ps_nloc2_module
+MODULE ps_nloc2_init_module
 
   use pseudopot_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: rad1,dviod,read_ps_nloc2,send_ps_nloc2 &
-           ,init_ps_nloc2,init_derivative_ps_nloc2
+  PUBLIC :: rad1,dviod,read_ps_nloc2_init &
+           ,ps_nloc2_init,ps_nloc2_init_derivative
 
   real(8),allocatable :: rad1(:,:),dviod(:,:,:)
   real(8) :: rcfac,qcfac,etafac
@@ -14,27 +14,53 @@ MODULE init_ps_nloc2_module
 CONTAINS
 
 
-  SUBROUTINE read_ps_nloc2(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) rcfac,qcfac,etafac
-    write(*,*) "rcfac, qcfac =",rcfac,qcfac
-    write(*,*) "etafac       =",etafac
-  END SUBROUTINE read_ps_nloc2
+  SUBROUTINE read_ps_nloc2_init(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(3) :: cbuf,ckey
+    rcfac =1.5d0
+    qcfac =1.0d0
+    etafac=8.0d0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:3) == "NL2" ) then
+             read(unit,*) cbuf,rcfac,qcfac,etafac
+          end if
+       end do
+999    continue
+       write(*,*) "rcfac =",rcfac
+       write(*,*) "qcfac =",qcfac
+       write(*,*) "etafac=",etafac
+    end if
+    call send_ps_nloc2_init(0)
+  END SUBROUTINE read_ps_nloc2_init
+!  SUBROUTINE read_ps_nloc2(unit)
+!    integer,intent(IN) :: unit
+!    read(unit,*) rcfac,qcfac,etafac
+!    write(*,*) "rcfac, qcfac =",rcfac,qcfac
+!    write(*,*) "etafac       =",etafac
+!  END SUBROUTINE read_ps_nloc2
 
 
-  SUBROUTINE send_ps_nloc2(rank)
+  SUBROUTINE send_ps_nloc2_init(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'
     call mpi_bcast(rcfac  ,1,mpi_real8,rank,mpi_comm_world,ierr)
     call mpi_bcast(qcfac  ,1,mpi_real8,rank,mpi_comm_world,ierr)
     call mpi_bcast(etafac ,1,mpi_real8,rank,mpi_comm_world,ierr)
-  END SUBROUTINE send_ps_nloc2
+  END SUBROUTINE send_ps_nloc2_init
 
 
-  SUBROUTINE init_ps_nloc2(qcut)
+  SUBROUTINE ps_nloc2_init(qcut)
     use atom_module, only: Nelement,Natom,ki_atom
     use maskfunction_module
+    implicit none
     real(8),intent(IN) :: qcut
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
     integer,allocatable :: NRps0(:,:)
@@ -260,11 +286,12 @@ CONTAINS
     deallocate( NRps0 )
     deallocate( wm )
 
-  END SUBROUTINE init_ps_nloc2
+  END SUBROUTINE ps_nloc2_init
 
 
-  SUBROUTINE init_derivative_ps_nloc2
+  SUBROUTINE ps_nloc2_init_derivative
     use atom_module, only: Nelement
+    implicit none
     integer :: ik,L,NRc,J,iorb,i,m,m1,m2,lm
     real(8) :: maxerr,y,dy,y0,dy0
     real(8) :: pi4,const
@@ -345,10 +372,11 @@ CONTAINS
 
     deallocate( dvrad )
 
-  END SUBROUTINE init_derivative_ps_nloc2
+  END SUBROUTINE ps_nloc2_init_derivative
 
 
   SUBROUTINE simp(f,s,n,m)
+    implicit none
     integer,intent(IN)  :: n,m
     real(8),intent(IN)  :: f(n)
     real(8),intent(OUT) :: s
@@ -387,4 +415,4 @@ CONTAINS
   END SUBROUTINE simp
 
 
-END MODULE init_ps_nloc2_module
+END MODULE ps_nloc2_init_module

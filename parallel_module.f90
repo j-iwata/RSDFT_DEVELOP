@@ -5,6 +5,7 @@ MODULE parallel_module
   include 'mpif.h'
 
 !  PRIVATE
+  PRIVATE :: send_parallel
   PUBLIC :: node_partition &
            ,comm_grid, comm_band, comm_bzsm, comm_spin &
            ,myrank,myrank_g,myrank_b,myrank_k,myrank_s &
@@ -13,7 +14,7 @@ MODULE parallel_module
            ,id_class,ircnt,idisp,ir_spin,id_spin &
            ,ir_band,id_band,ir_grid,id_grid,ir_bzsm,id_bzsm &
            ,pinfo_grid,MB_d &
-           ,read_parallel,send_parallel,init_parallel &
+           ,read_parallel,init_parallel &
            ,start_mpi_parallel,end_mpi_parallel &
            ,disp_switch_parallel
 
@@ -49,17 +50,44 @@ CONTAINS
   END SUBROUTINE end_mpi_parallel
 
 
-  SUBROUTINE read_parallel(unit)
-    integer,intent(IN) :: unit
+  SUBROUTINE read_parallel(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(5) :: cbuf,ckey
     node_partition(:)=1
-    read(unit,*) node_partition(1:max_parallel)
-    read(unit,*) MB_d
-    write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
-    write(*,*) "MB_d=",MB_d
+    MB_d = 0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:5) == "PROCS" ) then
+             backspace(unit)
+             read(unit,*) cbuf,node_partition(1:max_parallel)
+          else if ( ckey(1:3) == "MBD" ) then
+             backspace(unit)
+             read(unit,*) cbuf,MB_d
+          end if
+       end do
+999    continue
+       write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
+       write(*,*) "MB_d=",MB_d
+    end if
+    call send_parallel(0)
   END SUBROUTINE read_parallel
+!  SUBROUTINE read_parallel(unit)
+!    integer,intent(IN) :: unit
+!    node_partition(:)=1
+!    read(unit,*) node_partition(1:max_parallel)
+!    read(unit,*) MB_d
+!    write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
+!    write(*,*) "MB_d=",MB_d
+!  END SUBROUTINE read_parallel
 
 
   SUBROUTINE send_parallel(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     call mpi_bcast(node_partition,max_parallel,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
@@ -68,6 +96,7 @@ CONTAINS
 
 
   SUBROUTINE init_parallel(disp_switch,Ngrid,Nband,Nbzsm,Nspin)
+    implicit none
     logical,intent(IN) :: disp_switch
     integer,intent(IN) :: Ngrid(3),Nband,Nspin,Nbzsm
     integer :: m,n,ierr,irank,jrank,itags,itagr,nreq

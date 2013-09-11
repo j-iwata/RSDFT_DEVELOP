@@ -13,6 +13,7 @@ MODULE global_variables
   use ps_pcc_module
   use ps_initrho_module
   use ps_nloc1_module
+  use ps_nloc2_init_module
   use ps_nloc2_module
   use bc_module
   use electron_module
@@ -44,6 +45,7 @@ MODULE global_variables
   use watch_module
   use io_module
   use array_bound_module
+  use atomopt_module
 
   implicit none
 

@@ -6,7 +6,7 @@ MODULE mixing_module
 
   PRIVATE
   PUBLIC :: imix, mmix, beta, sqerr_out &
-       , init_mixing, read_mixing, send_mixing, perform_mixing
+       , init_mixing, read_mixing, perform_mixing
 
   integer :: imix,mmix
   real(8) :: beta,scf_conv,sqerr_out(2)
@@ -20,20 +20,62 @@ MODULE mixing_module
 
 CONTAINS
 
-  SUBROUTINE read_mixing(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) imix, mmix, beta, scf_conv
-    write(*,*) "imix, mmix =",imix,mmix
-    if ( mmix < 1 ) then
-       mmix=1
-       write(*,*) "mmix is replaced to 1 : mmix=",mmix
+  SUBROUTINE read_mixing(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(7) :: cbuf,ckey
+    imix=0
+    mmix=4
+    beta=1.d0
+    scf_conv=1.d-15
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:4) == "IMIX" ) then
+             backspace(unit)
+             read(unit,*) cbuf,imix
+          else if ( ckey(1:4) == "MMIX" ) then
+             backspace(unit)
+             read(unit,*) cbuf,mmix
+          else if ( ckey(1:4) == "BETA" ) then
+             backspace(unit)
+             read(unit,*) cbuf,beta
+          else if ( ckey(1:7) == "SCFCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,scf_conv
+          end if
+       end do
+999    continue
+       write(*,*) "imix    =",imix
+       write(*,*) "mmix    =",mmix
+       if ( mmix < 1 ) then
+          mmix=1
+          write(*,*) "mmix is replaced to 1 : mmix=",mmix
+       end if
+       write(*,*) "beta    =",beta
+       write(*,*) "scf_conv=",scf_conv
     end if
-    write(*,*) "beta =",beta
-    write(*,*) "scf_conv=",scf_conv
+    call send_mixing(0)
   END SUBROUTINE read_mixing
+!  SUBROUTINE read_mixing(unit)
+!    implicit none
+!    integer,intent(IN) :: unit
+!    read(unit,*) imix, mmix, beta, scf_conv
+!    write(*,*) "imix, mmix =",imix,mmix
+!    if ( mmix < 1 ) then
+!       mmix=1
+!       write(*,*) "mmix is replaced to 1 : mmix=",mmix
+!    end if
+!    write(*,*) "beta =",beta
+!    write(*,*) "scf_conv=",scf_conv
+!  END SUBROUTINE read_mixing
 
 
   SUBROUTINE send_mixing(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'
@@ -45,6 +87,7 @@ CONTAINS
 
 
   SUBROUTINE init_mixing(m,n,f)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(IN) :: f(m,n)
     beta0      = 1.d0-beta
@@ -62,6 +105,7 @@ CONTAINS
 
 
   SUBROUTINE perform_mixing(m,n,f,flag_conv,disp_switch)
+    implicit none
     integer,intent(IN)    :: m,n
     real(8),intent(INOUT) :: f(m,n)
     logical,intent(OUT)   :: flag_conv
@@ -172,6 +216,7 @@ CONTAINS
 
 
   SUBROUTINE calc_sqerr(m,n,f,g,err)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(IN) :: f(m,n),g(m,n)
     real(8),intent(OUT) :: err(n)
@@ -185,6 +230,7 @@ CONTAINS
 
 
   SUBROUTINE simple_mixing(m,n,f,err)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(INOUT) :: f(m,n)
     real(8),intent(OUT) :: err(n)
@@ -194,6 +240,7 @@ CONTAINS
 
 
   SUBROUTINE pulay_r_mixing(m,n,f,err)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(INOUT) :: f(m,n)
     real(8),intent(OUT) :: err(n)

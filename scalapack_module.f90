@@ -23,10 +23,24 @@ MODULE scalapack_module
 CONTAINS
 
   SUBROUTINE read_scalapack(rank,unit)
+    implicit none
     integer,intent(IN) :: rank,unit
-    integer :: ierr
+    integer :: ierr,i
+    character(3) :: cbuf,ckey
+    NPROW=0
+    NPCOL=0
     if ( rank == 0 ) then
-       read(unit,*) NPROW,NPCOL
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:3) == "SCL" ) then
+             backspace(unit)
+             read(unit,*) cbuf,NPROW,NPCOL
+          end if
+       end do
+999    continue
+       write(*,*) "NPROW,NPCOL=",NPROW,NPCOL
     end if
     call mpi_bcast(NPROW,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(NPCOL,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)

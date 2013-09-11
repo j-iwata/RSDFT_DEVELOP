@@ -3,7 +3,7 @@ MODULE fermi_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_fermi,send_fermi,ekbt,calc_fermi &
+  PUBLIC :: read_fermi,ekbt,calc_fermi &
            ,efermi, Eentropy
 
   real(8) :: ekbt, efermi, Eentropy
@@ -12,14 +12,30 @@ MODULE fermi_module
 CONTAINS
 
 
-  SUBROUTINE read_fermi(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) ekbt
-    write(*,*) "ekbt=",ekbt
+  SUBROUTINE read_fermi(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(4) :: cbuf,ckey
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:4) == "EKBT" ) then
+             backspace(unit)
+             read(unit,*) cbuf,ekbt
+          end if
+       end do
+999    continue
+       write(*,*) "ekbt=",ekbt
+    end if
+    call send_fermi(0)
   END SUBROUTINE read_fermi
 
 
   SUBROUTINE send_fermi(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'

@@ -5,8 +5,8 @@ MODULE pseudopot_module
   PRIVATE
   PUBLIC :: pselect,ippform,file_ps,inorm,NRps,norb,Npseudopot &
            ,Mr,lo,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
-           ,read_ppname_pseudopot,read_pseudopot,send_pseudopot &
-           ,read_param_pseudopot,send_param_pseudopot
+           ,read_ppname_pseudopot,read_pseudopot &
+           ,read_param_pseudopot
 
   integer :: pselect,Npseudopot
   integer,allocatable :: ippform(:)
@@ -14,34 +14,118 @@ MODULE pseudopot_module
   integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:)
   real(8),allocatable :: vql(:,:),cdd(:,:),cdc(:,:),rad(:,:),parloc(:,:)
   real(8),allocatable :: anorm(:,:),viod(:,:,:),Rps(:,:),Zps(:),rab(:,:)
-  integer :: unit_ps,ielm,Nelement
+  integer :: unit_ps,ielm,Nelement_PP
   integer :: max_psgrd=0, max_psorb=0
 
 CONTAINS
 
 
-  SUBROUTINE read_ppname_pseudopot(MKI,unit)
+  SUBROUTINE read_ppname_pseudopot(rank,unit)
     implicit none
-    integer,intent(IN) :: MKI,unit
-    integer :: i
-    Nelement=MKI
-    allocate( ippform(Nelement),file_ps(Nelement) )
-    do i=1,Nelement
-       read(unit,*) ippform(i),file_ps(i)
+    integer,intent(IN) :: rank,unit
+    integer :: i,j,ierr
+    character(2) :: cbuf,ckey
+    Nelement_PP=0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=990) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:2) == "PP" ) Nelement_PP=Nelement_PP+1
+       end do
+990    continue
+    end if
+    call send_ppname_1(0)
+    Npseudopot = Nelement_PP
+    allocate( ippform(Nelement_PP),file_ps(Nelement_PP) )
+    ippform(:)=0
+    file_ps(:)=""
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          do j=1,Nelement_PP
+             read(unit,*,END=999) cbuf
+             call convert_capital(cbuf,ckey)
+             if ( ckey(1:2) == "PP" ) then
+                backspace(unit)
+                read(unit,*) cbuf,ippform(j),file_ps(j)
+             end if
+          end do ! j
+       end do
+999    continue
+       write(*,*) "Nelement_PP,Npseudopot=",Nelement_PP,Npseudopot
+       do i=1,Nelement_PP
+          write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
+               ippform(i),file_ps(i)
+       end do
+    end if
+    call send_ppname_2(0)
+    ierr=0
+    do i=1,Nelement_PP
+       if ( ippform(i) <= 0 .or. file_ps(i)=="" ) ierr=-1
     end do
-    do i=1,Nelement
-       write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
-            ippform(i),file_ps(i)
-    end do
+    if ( ierr == -1 ) stop "stop@read_ppname_pseudopot"
   END SUBROUTINE read_ppname_pseudopot
+!  SUBROUTINE read_ppname_pseudopot(MKI,unit)
+!    implicit none
+!    integer,intent(IN) :: MKI,unit
+!    integer :: i
+!    Nelement_PP=MKI
+!    allocate( ippform(Nelement_PP),file_ps(Nelement_PP) )
+!    do i=1,Nelement_PP
+!       read(unit,*) ippform(i),file_ps(i)
+!    end do
+!    do i=1,Nelement_PP
+!       write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
+!            ippform(i),file_ps(i)
+!    end do
+!  END SUBROUTINE read_ppname_pseudopot
 
-
-  SUBROUTINE read_param_pseudopot(unit)
+  SUBROUTINE send_ppname_1(rank)
     implicit none
-    integer,intent(IN) :: unit
-    read(unit,*) pselect
-    write(*,*) "pselect=",pselect
+    integer,intent(IN) :: rank
+    integer :: ierr
+    include 'mpif.h'
+    call mpi_bcast(Nelement_PP,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)    
+  END SUBROUTINE send_ppname_1
+
+  SUBROUTINE send_ppname_2(rank)
+    implicit none
+    integer,intent(IN) :: rank
+    integer :: ierr
+    include 'mpif.h'
+    call mpi_bcast(file_ps,30*Nelement_PP,MPI_CHARACTER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(ippform,Nelement_PP,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE send_ppname_2
+
+
+  SUBROUTINE read_param_pseudopot(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    character(7) :: cbuf,ckey
+    integer :: i
+    pselect=2
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:7) == "PSELECT" ) then
+             backspace(unit)
+             read(unit,*) cbuf,pselect
+          end if
+       end do
+999    continue
+       write(*,*) "pslect=",pselect
+    end if
+    call send_param_pseudopot(0)
   END SUBROUTINE read_param_pseudopot
+!  SUBROUTINE read_param_pseudopot(unit)
+!    implicit none
+!    integer,intent(IN) :: unit
+!    read(unit,*) pselect
+!    write(*,*) "pselect=",pselect
+!  END SUBROUTINE read_param_pseudopot
 
 
   SUBROUTINE send_param_pseudopot(rank)
@@ -50,13 +134,6 @@ CONTAINS
     integer :: ierr
     include 'mpif.h'
     call mpi_bcast(pselect,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Nelement,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)    
-    if ( .not.allocated(ippform) ) then
-       allocate( ippform(Nelement),file_ps(Nelement) )
-    end if
-    call mpi_bcast(file_ps,30*Nelement,MPI_CHARACTER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(ippform,Nelement,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    Npseudopot = Nelement
   END SUBROUTINE send_param_pseudopot
 
 
@@ -66,7 +143,7 @@ CONTAINS
     if ( rank == 0 ) then
        max_psgrd=0
        max_psorb=0
-       do ielm=1,Nelement
+       do ielm=1,Nelement_PP
           unit_ps=33+ielm
           select case(ippform(ielm))
           case(1)
@@ -93,25 +170,25 @@ CONTAINS
     n=max_psorb
     call mpi_bcast(m,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(n,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Nelement,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Nelement_PP,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     if ( myrank /= 0 ) then
        call ps_allocate(m,n)
     end if
-    call mpi_bcast(Mr    ,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(norb  ,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Zps   ,Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(parloc,4*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(anorm ,n*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(inorm ,n*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Rps   ,n*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(NRps  ,n*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(lo    ,n*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(vql   ,m*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(cdd   ,m*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(cdc   ,m*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(rad   ,m*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(rab   ,m*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(viod  ,m*n*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Mr    ,Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(norb  ,Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Zps   ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(parloc,4*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(anorm ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(inorm ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Rps   ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(NRps  ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(lo    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(vql   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(cdd   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(cdc   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(rad   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(rab   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(viod  ,m*n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_pseudopot
 
 
@@ -413,21 +490,21 @@ CONTAINS
     real(8),allocatable :: anorm_tmp(:,:),Rps_tmp(:,:),rab_tmp(:,:)
     integer,allocatable :: inorm_tmp(:,:),lo_tmp(:,:),NRps_tmp(:,:)
     if ( max_psgrd==0 .or. max_psorb==0 ) then
-       allocate( Mr(Nelement)   ) ; Mr=0
-       allocate( norb(Nelement) ) ; norb=0
-       allocate( Zps(Nelement)  ) ; Zps=0.d0
-       allocate( parloc(4,Nelement)    ) ; parloc=0.d0
-       allocate( anorm(n_orb,Nelement) ) ; anorm=0.d0
-       allocate( inorm(n_orb,Nelement) ) ; inorm=0
-       allocate( Rps(n_orb,Nelement)   ) ; Rps=0.d0
-       allocate( NRps(n_orb,Nelement)  ) ; NRps=0
-       allocate( lo(n_orb,Nelement)    ) ; lo=0
-       allocate( vql(n_grd,Nelement)   ) ; vql=0.d0
-       allocate( cdd(n_grd,Nelement)   ) ; cdd=0.d0
-       allocate( cdc(n_grd,Nelement)   ) ; cdc=0.d0
-       allocate( rad(n_grd,Nelement)   ) ; rad=0.d0
-       allocate( rab(n_grd,Nelement)   ) ; rab=0.d0
-       allocate( viod(n_grd,n_orb,Nelement) ) ; viod=0.d0
+       allocate( Mr(Nelement_PP)   ) ; Mr=0
+       allocate( norb(Nelement_PP) ) ; norb=0
+       allocate( Zps(Nelement_PP)  ) ; Zps=0.d0
+       allocate( parloc(4,Nelement_PP)    ) ; parloc=0.d0
+       allocate( anorm(n_orb,Nelement_PP) ) ; anorm=0.d0
+       allocate( inorm(n_orb,Nelement_PP) ) ; inorm=0
+       allocate( Rps(n_orb,Nelement_PP)   ) ; Rps=0.d0
+       allocate( NRps(n_orb,Nelement_PP)  ) ; NRps=0
+       allocate( lo(n_orb,Nelement_PP)    ) ; lo=0
+       allocate( vql(n_grd,Nelement_PP)   ) ; vql=0.d0
+       allocate( cdd(n_grd,Nelement_PP)   ) ; cdd=0.d0
+       allocate( cdc(n_grd,Nelement_PP)   ) ; cdc=0.d0
+       allocate( rad(n_grd,Nelement_PP)   ) ; rad=0.d0
+       allocate( rab(n_grd,Nelement_PP)   ) ; rab=0.d0
+       allocate( viod(n_grd,n_orb,Nelement_PP) ) ; viod=0.d0
        max_psgrd=n_grd
        max_psorb=n_orb
        return
@@ -435,26 +512,26 @@ CONTAINS
     mg = max( max_psgrd, n_grd )
     mo = max( max_psorb, n_orb )
     if ( max_psgrd < mg ) then
-       allocate( vql_tmp(mg,Nelement) )
-       allocate( cdd_tmp(mg,Nelement) )
-       allocate( rad_tmp(mg,Nelement) )
-       allocate( rab_tmp(mg,Nelement) )
-       allocate( cdc_tmp(mg,Nelement) )
-       vql_tmp(1:max_psgrd,1:Nelement) = vql(1:max_psgrd,1:Nelement)
-       cdd_tmp(1:max_psgrd,1:Nelement) = cdd(1:max_psgrd,1:Nelement)
-       rad_tmp(1:max_psgrd,1:Nelement) = rad(1:max_psgrd,1:Nelement)
-       rab_tmp(1:max_psgrd,1:Nelement) = rab(1:max_psgrd,1:Nelement)
-       cdc_tmp(1:max_psgrd,1:Nelement) = cdc(1:max_psgrd,1:Nelement)
+       allocate( vql_tmp(mg,Nelement_PP) )
+       allocate( cdd_tmp(mg,Nelement_PP) )
+       allocate( rad_tmp(mg,Nelement_PP) )
+       allocate( rab_tmp(mg,Nelement_PP) )
+       allocate( cdc_tmp(mg,Nelement_PP) )
+       vql_tmp(1:max_psgrd,1:Nelement_PP) = vql(1:max_psgrd,1:Nelement_PP)
+       cdd_tmp(1:max_psgrd,1:Nelement_PP) = cdd(1:max_psgrd,1:Nelement_PP)
+       rad_tmp(1:max_psgrd,1:Nelement_PP) = rad(1:max_psgrd,1:Nelement_PP)
+       rab_tmp(1:max_psgrd,1:Nelement_PP) = rab(1:max_psgrd,1:Nelement_PP)
+       cdc_tmp(1:max_psgrd,1:Nelement_PP) = cdc(1:max_psgrd,1:Nelement_PP)
        deallocate( cdc )
        deallocate( rab )
        deallocate( rad )
        deallocate( cdd )
        deallocate( vql )
-       allocate( vql(mg,Nelement) ) ; vql=0.d0
-       allocate( cdd(mg,Nelement) ) ; cdd=0.d0
-       allocate( rad(mg,Nelement) ) ; rad=0.d0
-       allocate( rab(mg,Nelement) ) ; rab=0.d0
-       allocate( cdc(mg,Nelement) ) ; cdc=0.d0
+       allocate( vql(mg,Nelement_PP) ) ; vql=0.d0
+       allocate( cdd(mg,Nelement_PP) ) ; cdd=0.d0
+       allocate( rad(mg,Nelement_PP) ) ; rad=0.d0
+       allocate( rab(mg,Nelement_PP) ) ; rab=0.d0
+       allocate( cdc(mg,Nelement_PP) ) ; cdc=0.d0
        vql(:,:)=vql_tmp(:,:)
        cdd(:,:)=cdd_tmp(:,:)
        rad(:,:)=rad_tmp(:,:)
@@ -465,35 +542,35 @@ CONTAINS
        deallocate( rad_tmp )
        deallocate( cdd_tmp )
        deallocate( vql_tmp )
-       allocate( viod_tmp(mg,mo,Nelement) )
-       viod_tmp(1:max_psgrd,1:max_psorb,1:Nelement) &
-            = viod(1:max_psgrd,1:max_psorb,1:Nelement)
+       allocate( viod_tmp(mg,mo,Nelement_PP) )
+       viod_tmp(1:max_psgrd,1:max_psorb,1:Nelement_PP) &
+            = viod(1:max_psgrd,1:max_psorb,1:Nelement_PP)
        deallocate( viod )
-       allocate( viod(mg,mo,Nelement) ) ; viod=0.d0
+       allocate( viod(mg,mo,Nelement_PP) ) ; viod=0.d0
        viod(:,:,:)=viod_tmp(:,:,:)
        deallocate( viod_tmp )
     end if
     if ( max_psorb < mo ) then
-       allocate( anorm_tmp(mo,Nelement) )
-       allocate( inorm_tmp(mo,Nelement) )
-       allocate( lo_tmp(mo,Nelement) )
-       allocate( Rps_tmp(mo,Nelement) )
-       allocate( NRps_tmp(mo,Nelement) )
-       anorm_tmp(1:max_psorb,1:Nelement) = anorm(1:max_psorb,1:Nelement)
-       inorm_tmp(1:max_psorb,1:Nelement) = inorm(1:max_psorb,1:Nelement)
-       lo_tmp(1:max_psorb,1:Nelement) = lo(1:max_psorb,1:Nelement)
-       Rps_tmp(1:max_psorb,1:Nelement) = Rps(1:max_psorb,1:Nelement)
-       NRps_tmp(1:max_psorb,1:Nelement) = NRps(1:max_psorb,1:Nelement)
+       allocate( anorm_tmp(mo,Nelement_PP) )
+       allocate( inorm_tmp(mo,Nelement_PP) )
+       allocate( lo_tmp(mo,Nelement_PP) )
+       allocate( Rps_tmp(mo,Nelement_PP) )
+       allocate( NRps_tmp(mo,Nelement_PP) )
+       anorm_tmp(1:max_psorb,1:Nelement_PP) = anorm(1:max_psorb,1:Nelement_PP)
+       inorm_tmp(1:max_psorb,1:Nelement_PP) = inorm(1:max_psorb,1:Nelement_PP)
+       lo_tmp(1:max_psorb,1:Nelement_PP) = lo(1:max_psorb,1:Nelement_PP)
+       Rps_tmp(1:max_psorb,1:Nelement_PP) = Rps(1:max_psorb,1:Nelement_PP)
+       NRps_tmp(1:max_psorb,1:Nelement_PP) = NRps(1:max_psorb,1:Nelement_PP)
        deallocate( NRps )
        deallocate( Rps )
        deallocate( lo )
        deallocate( inorm )
        deallocate( anorm )
-       allocate( anorm(mo,Nelement) ) ; anorm=0.d0
-       allocate( inorm(mo,Nelement) ) ; inorm=0
-       allocate( lo(mo,Nelement)    ) ; lo=0
-       allocate( Rps(mo,Nelement)   ) ; Rps=0.d0
-       allocate( NRps(mo,Nelement)  ) ; NRps=0
+       allocate( anorm(mo,Nelement_PP) ) ; anorm=0.d0
+       allocate( inorm(mo,Nelement_PP) ) ; inorm=0
+       allocate( lo(mo,Nelement_PP)    ) ; lo=0
+       allocate( Rps(mo,Nelement_PP)   ) ; Rps=0.d0
+       allocate( NRps(mo,Nelement_PP)  ) ; NRps=0
        anorm(:,:) = anorm_tmp(:,:)
        inorm(:,:) = inorm_tmp(:,:)
        lo(:,:) = lo_tmp(:,:)
@@ -505,11 +582,11 @@ CONTAINS
        deallocate( inorm_tmp )
        deallocate( anorm_tmp )
        if ( max_psgrd >= mg ) then
-          allocate( viod_tmp(mg,mo,Nelement) )
-          viod_tmp(1:max_psgrd,1:max_psorb,1:Nelement) &
-               = viod(1:max_psgrd,1:max_psorb,1:Nelement)
+          allocate( viod_tmp(mg,mo,Nelement_PP) )
+          viod_tmp(1:max_psgrd,1:max_psorb,1:Nelement_PP) &
+               = viod(1:max_psgrd,1:max_psorb,1:Nelement_PP)
           deallocate( viod )
-          allocate( viod(mg,mo,Nelement) ) ; viod=0.d0
+          allocate( viod(mg,mo,Nelement_PP) ) ; viod=0.d0
           viod(:,:,:)=viod_tmp(:,:,:)
           deallocate( viod_tmp )
        end if

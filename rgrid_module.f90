@@ -4,7 +4,7 @@ MODULE rgrid_module
 
   PRIVATE
   PUBLIC :: Ngrid,Hgrid,dV,zdV,Igrid &
-           ,read_rgrid,construct_rgrid,send_rgrid &
+           ,read_rgrid,construct_rgrid &
            ,parallel_rgrid
 
   integer :: Ngrid(0:3),Igrid(2,0:3)
@@ -18,15 +18,47 @@ MODULE rgrid_module
 
 CONTAINS
 
-  SUBROUTINE read_rgrid(unit)
-    integer,intent(IN) :: unit
+  SUBROUTINE read_rgrid(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(5) :: cbuf,ckey
     Ngrid(:)=0
-    read(unit,*) Ngrid(1:3)
-    write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:5) == "NGRID" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ngrid(1:3)
+          end if
+       end do
+999    continue
+       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
+    end if
+    call send_rgrid(0)
   END SUBROUTINE read_rgrid
+
+!  SUBROUTINE read_rgrid(unit)
+!    integer,intent(IN) :: unit
+!    Ngrid(:)=0
+!    read(unit,*) Ngrid(1:3)
+!    write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
+!  END SUBROUTINE read_rgrid
+
+
+  SUBROUTINE send_rgrid(rank)
+    implicit none
+    integer,intent(IN) :: rank
+    integer :: ierr
+    include 'mpif.h'
+    call mpi_bcast(Ngrid(1),3,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE send_rgrid
 
 
   SUBROUTINE construct_rgrid(aa)
+    implicit none
     real(8),intent(IN) :: aa(3,3)
     real(8) :: Vaa
     Vaa = aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
@@ -47,15 +79,8 @@ CONTAINS
   END SUBROUTINE construct_rgrid
 
 
-  SUBROUTINE send_rgrid(rank)
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(Ngrid(1),3,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_rgrid
-
-
   SUBROUTINE parallel_rgrid(np_grid,myrank)
+    implicit none
     integer,intent(IN) :: np_grid(3),myrank
     integer :: i,j,n,i1,i2,i3
     integer,allocatable :: np1(:),np2(:),np3(:)

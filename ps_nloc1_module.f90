@@ -5,7 +5,7 @@ MODULE ps_nloc1_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Ndense,Nintp,read_ps_nloc1,send_ps_nloc1
+  PUBLIC :: Ndense,Nintp,read_ps_nloc1
 
   integer :: Ndense, Nintp
   real(8),allocatable :: rad1(:,:)
@@ -21,14 +21,32 @@ MODULE ps_nloc1_module
 CONTAINS
 
 
-  SUBROUTINE read_ps_nloc1(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) Ndense, Nintp
-    write(*,*) "Ndense, Nintp =",Ndense,Nintp
+  SUBROUTINE read_ps_nloc1(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(3) :: cbuf,ckey
+    Ndense=1
+    Nintp =0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:3) == "NL1" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ndense,Nintp
+          end if
+       end do
+999    continue
+       write(*,*) "Ndense, Nintp =",Ndense,Nintp
+    end if
+    call send_ps_nloc1(0)
   END SUBROUTINE read_ps_nloc1
 
 
   SUBROUTINE send_ps_nloc1(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'

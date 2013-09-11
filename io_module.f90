@@ -17,7 +17,7 @@ MODULE io_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_io, send_io, write_data, read_data
+  PUBLIC :: read_io, write_data, read_data
 
   integer :: IO_ctrl=0
   integer :: IC,OC,OC2
@@ -48,11 +48,42 @@ MODULE io_module
 
 CONTAINS
 
-  SUBROUTINE read_io(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) IC,OC,OC2
-    write(*,*) "IC,OC,OC2=",IC,OC,OC2
+  SUBROUTINE read_io(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(3) :: cbuf,ckey
+    IC  = 0
+    OC  = 100
+    OC2 = 3
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:2) == "IC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,IC
+          else if ( ckey(1:3) == "OC2" ) then
+             backspace(unit)
+             read(unit,*) cbuf,OC2
+          else if ( ckey(1:2) == "OC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,OC
+          end if
+       end do
+999    continue
+       write(*,*) "IC =",IC
+       write(*,*) "OC =",OC
+       write(*,*) "OC2=",OC2
+    end if
+    call send_io(0)
   END SUBROUTINE read_io
+!  SUBROUTINE read_io(unit)
+!    integer,intent(IN) :: unit
+!    read(unit,*) IC,OC,OC2
+!    write(*,*) "IC,OC,OC2=",IC,OC,OC2
+!  END SUBROUTINE read_io
 
   SUBROUTINE send_io(rank)
     integer,intent(IN) :: rank

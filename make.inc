@@ -4,9 +4,7 @@
 #####   $(FC) $(LFLAGS) <OBJ> $(LAPACK_L)                          #####
 ##### PLEASE CHECK COMPLETE OPTIONS BY YOURSELF                    #####
 ########################################################################
-##### DO NOT TOUCH                                                 #####
 FC = mpif90
-#FC = openmpif90
 FFLAGS =
 LFLAGS =
 LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
@@ -15,33 +13,27 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
            $(DIR1)/ext_sub_lapack_u.o \
            $(DIR1)/ext_sub_lapack_c16_2.o \
            $(DIR1)/ext_sub_lapack_aux.o
+FFLAGS1 = -I../
+#FFLAGS1 = -D_DRSDFT_ -I../
+#FFLAGS1 = -D_SPLINE_ -I../
+#FFLAGS1 = -D_DRSDFT_ -D_SPLINE -I../
 ########################################################################
 ########################################################################
 ##### INTEL                                                        #####
-#FFLAGS = -fbounds-check -fopenmp -cpp -DOMP
-#LFLAGS = -fopenmp
-#LAPACK_L = -llapack -lblas
-#FFLAGS = -fast -xAVX -openmp -cpp -D_DRSDFT_
+#FFLAGS = -fast -xHost -cpp
+#FFLAGS = -fast -xHost -openmp -cpp
 #FFLAGS = -fast -xAVX -openmp -cpp
-#FFLAGS = -C -openmp -cppi -I../
-#FFLAGS = -C -cpp -I../
-#FFLAGS = -C -cpp -D_DRSDFT_ -I../
-#FFLAGS = -cpp -I../
-FFLAGS = -cpp -D_DRSDFT_ -I../
-#FFLAGS = -openmp -cpp -D_DRSDFT_ -I../
-#FFLAGS = -fast -xHost -cpp -I../
-#FFLAGS = -fast -xHost -cpp -D_DRSDFT_ -I../
-#FFLAGS = -fast -xHost -openmp -cpp -D_SSEIG_ -I../
-#FFLAGS = -C -openmp -cpp -I../
-#FFLAGS = -C -openmp -cpp -D_DRSDFT_ -I../
-#FFLAGS = -C -cpp -I../
-#LFLAGS = -openmp
-#FFLAGS = -C -parallel -cpp
-#LFLAGS = -parallel
-#LFLAGS = -O2 -shared-intel -shared-libgcc
-#FFLAGS = -O3 -ipo -no-prec-div -xSSE4.2 -openmp -cpp -DOMP
-#LFLAGS = -ipo -openmp -i-dynamic
-#LAPACK_L = -llapack -lblas
+#FFLAGS = -C -openmp -cpp
+FFLAGS0 = -C -cpp
+LFLAGS = -openmp
+#LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
+           -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
+           -lguide -lpthread
+LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
+           -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
+           -lpthread
+#LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
+           -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 ########################################################################
 ##### PGF                                                          #####
 #FFLAGS = -O3
@@ -215,22 +207,10 @@ FFLAGS = -cpp -D_DRSDFT_ -I../
 #LFLAGS = ${FFLAGS} -SSL2BLAMP -SCALAPACK -Ntl_trt
 #LAPACK_L =
 ########################################################################
-#####  CACIQUE                                                     #####
-#LAPACK_L = /mnt/home/iwata/GotoBLAS/libgoto.a -lpthread
-#LAPACK_L = -llapack -lblas -lpthread
-#LAPACK_L = -llapack /mnt/home/iwata/GotoBLAS/libgoto.a -lpthread
 ########################################################################
-#####  Oshiyama Grp.                                               #####
-#LAPACK_L = -lacml
-#LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
-           -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
-           -lguide -lpthread
-#LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
-           -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
-           -lpthread
-LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
-           -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
-########################################################################
+#
+FFLAGS = $(FFLAGS0) $(FFLAGS1)
+#
 ########################################################################
 .SUFFIXES:
 .SUFFIXES: .o .f .f90

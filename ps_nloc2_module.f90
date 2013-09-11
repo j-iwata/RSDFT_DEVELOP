@@ -6,15 +6,15 @@ MODULE ps_nloc2_module
   use parallel_module
   use array_bound_module
   use pseudopot_module
-  use init_ps_nloc2_module
+  use ps_nloc2_init_module
   use ps_nloc2_variables
   use ps_nloc_gth_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_ps_nloc2,read_ps_nloc2,send_ps_nloc2,prep_ps_nloc2 &
-           ,op_ps_nloc2,init_derivative_ps_nloc2,calc_force_ps_nloc2 &
+  PUBLIC :: prep_ps_nloc2 &
+           ,op_ps_nloc2,calc_force_ps_nloc2 &
            ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
            ,prep_ps_nloc2_esm
 
@@ -71,7 +71,7 @@ CONTAINS
        end do
     end do
 
-    if ( .not.allocated(y2a) ) then
+    if ( .not.allocated(y2a) .and. pselect /=4 ) then
        NRc=maxval(NRps)
        n=maxval(norb)
        allocate( y2a(NRc,n,Nelement) )
@@ -291,6 +291,8 @@ CONTAINS
     deallocate( irad )
 #endif
 
+    end if ! pselect
+
     lma=0
     do a=1,Natom
        ik=ki_atom(a)
@@ -326,9 +328,6 @@ CONTAINS
     end do
     call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical &
                       ,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
-
-
-    end if ! pselect
 
     call watch(ctt(1),ett(1))
 
@@ -1256,7 +1255,7 @@ CONTAINS
        end do
     end if
 
-    if ( .not.allocated(y2b) ) then
+    if ( .not.allocated(y2b) .and. pselect /= 4 ) then
        lm1=maxval(ilm1)
        NRc=maxval(NRps)
        allocate( y2b(NRc,lm1,Nelement) )

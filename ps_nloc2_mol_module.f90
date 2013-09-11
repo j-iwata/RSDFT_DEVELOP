@@ -7,7 +7,7 @@ MODULE ps_nloc2_mol_module
   use parallel_module
 
   use pseudopot_module
-  use init_ps_nloc2_module
+  use ps_nloc2_init_module
   use ps_nloc2_variables
 
   implicit none
