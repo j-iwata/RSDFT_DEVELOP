@@ -1,5 +1,6 @@
 ########################################################################
 ##### COMPILE & LINK WILL BE:                                      #####
+#####   FFLAGS = FFLAGS0 FFLAGS1                                   #####
 #####   $(FC) -c $(FFLAGS) <SRC>                                   #####
 #####   $(FC) $(LFLAGS) <OBJ> $(LAPACK_L)                          #####
 ##### PLEASE CHECK COMPLETE OPTIONS BY YOURSELF                    #####
@@ -13,17 +14,20 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
            $(DIR1)/ext_sub_lapack_u.o \
            $(DIR1)/ext_sub_lapack_c16_2.o \
            $(DIR1)/ext_sub_lapack_aux.o
+#################### Generate COMPLEX16 code #####
 FFLAGS1 = -I../
+#################### Generate REAL8 code #####
 #FFLAGS1 = -D_DRSDFT_ -I../
+#################### SPLINE interpolation is used in prep_ps #####
 #FFLAGS1 = -D_SPLINE_ -I../
 #FFLAGS1 = -D_DRSDFT_ -D_SPLINE -I../
 ########################################################################
 ########################################################################
 ##### INTEL                                                        #####
-#FFLAGS = -fast -xHost -cpp
-#FFLAGS = -fast -xHost -openmp -cpp
-#FFLAGS = -fast -xAVX -openmp -cpp
-#FFLAGS = -C -openmp -cpp
+#FFLAGS0 = -fast -xHost -cpp
+#FFLAGS0 = -fast -xHost -openmp -cpp
+#FFLAGS0 = -fast -xAVX -openmp -cpp
+#FFLAGS0 = -C -openmp -cpp
 FFLAGS0 = -C -cpp
 LFLAGS = -openmp
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
@@ -36,20 +40,20 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 ########################################################################
 ##### PGF                                                          #####
-#FFLAGS = -O3
-#FFLAGS = -fastsse
-#FFLAGS = -C
-#FFLAGS = -fastsse -mp -Mpreprocess -DOMP
-#FFLAGS = -C -mp -Mpreprocess -DOMP -DPAPI
-#FFLAGS = -C -Mchkfpstk -Mchkptr -Mchkstk -Minform=inform -mp \
+#FFLAGS0 = -O3
+#FFLAGS0 = -fastsse
+#FFLAGS0 = -C
+#FFLAGS0 = -fastsse -mp -Mpreprocess -DOMP
+#FFLAGS0 = -C -mp -Mpreprocess -DOMP -DPAPI
+#FFLAGS0 = -C -Mchkfpstk -Mchkptr -Mchkstk -Minform=inform -mp \
          -Mpreprocess -DOMP
 #LFLAGS = -mp
-#FFLAGS = -C -Mconcur -cpp
+#FFLAGS0 = -C -Mconcur -cpp
 #LFLAGS = -Mconcur
-#FFLAGS = -fastsse -O3 -tp amd64 -mp -Mpreprocess -DOMP
-#FFLAGS = -fastsse -O3 -tp amd64e -mp -Mpreprocess -DOMP
-#FFLAGS = -fastsse -O3 -tp barcelona-64 -mp -Mpreprocess -DOMP
-#FFLAGS = -fastsse -O3 -tp shanghai-64 -mp -Mpreprocess -DOMP
+#FFLAGS0 = -fastsse -O3 -tp amd64 -mp -Mpreprocess -DOMP
+#FFLAGS0 = -fastsse -O3 -tp amd64e -mp -Mpreprocess -DOMP
+#FFLAGS0 = -fastsse -O3 -tp barcelona-64 -mp -Mpreprocess -DOMP
+#FFLAGS0 = -fastsse -O3 -tp shanghai-64 -mp -Mpreprocess -DOMP
 #LFLAGS = -mp
 ########################################################################
 ##### PACS-CS @ Tsukuba                                            #####
@@ -58,57 +62,57 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
 ########################################################################
 ##### Fujitsu PrimeQuest @ IMS                                     #####
 #FC = mpifrt
-#FFLAGS = -Am -X9 -Fixed -Kfast -Kparallel -Kpmsg -Qp
+#FFLAGS0 = -Am -X9 -Fixed -Kfast -Kparallel -Kpmsg -Qp
 #LFLAGS =
 #LAPACK_L = -SCALAPACK -KOMP -SSL2BLAMP
 ########################################################################
 ##### Hitachi SR16000 @ IMS                                        #####
 #FC = mpif90
-#FFLAGS = -Oss -nolimit -64 -noparallel
+#FFLAGS0 = -Oss -nolimit -64 -noparallel
 #LFLAGS = -64 -noparallel
-#FFLAGS = -Oss -nolimit -64 -omp -parallel -cpp
+#FFLAGS0 = -Oss -nolimit -64 -omp -parallel -cpp
 #LFLAGS = -64 -omp -parallel
 #LAPACK_L = -lscalapack -lblacs -lblacsF77init -llapack -lblas
 #LAPACK_L = -lf90s -lscalapack -lblacs -lblacsF77init -llapack -lblas
 ########################################################################
 ##### Fujitsu FX1 @ Nagoya                                         #####
 #FC = mpifrt
-#FFLAGS = -KOMP -Cpp -DOMP -DDRSDFT -DRSMOL
-#FFLAGS = -KOMP -Cpp -DOMP
-#FFLAGS = -KOMP -Cpp -DOMP -Kfast,noeval
-#FFLAGS = -Hefosux -KOMP -Cpp -DOMP
-#FFLAGS = -KOMP -Cpp -DOMP -Kparallel
-#FFLAGS = -Kfast
-#FFLAGS = -Kfast,noeval
-#FFLAGS = -Ha
-#FFLAGS = -Hefosux
+#FFLAGS0 = -KOMP -Cpp -DOMP -DDRSDFT -DRSMOL
+#FFLAGS0 = -KOMP -Cpp -DOMP
+#FFLAGS0 = -KOMP -Cpp -DOMP -Kfast,noeval
+#FFLAGS0 = -Hefosux -KOMP -Cpp -DOMP
+#FFLAGS0 = -KOMP -Cpp -DOMP -Kparallel
+#FFLAGS0 = -Kfast
+#FFLAGS0 = -Kfast,noeval
+#FFLAGS0 = -Ha
+#FFLAGS0 = -Hefosux
 #LFLAGS = -KOMP
 #LAPACK_L = -SSL2 -SCALAPACK
 #LAPACK_L = -SSL2BLAMP -SCALAPACK
 ########################################################################
 ##### NEC TX7 @ Tohoku                                             #####
-#FFLAGS = -O3 -openmp
+#FFLAGS0 = -O3 -openmp
 #LFLAGS = -O3 -openmp
 #LAPACK_L = -L/opt/MathKeisan/lib -lscalapack -lblacsF90init -lblacs \
            -lblacsF90init -llapack -lblas -lmpi
 ########################################################################
 ##### NEC SX-9 @ Tohoku                                            #####
 #FC = sxmpif90
-#FFLAGS = -Ep -Chopt -pi -Wf"-pvctl vwork=stack"
+#FFLAGS0 = -Ep -Chopt -pi -Wf"-pvctl vwork=stack"
 #LFLAGS =
 #LAPACK_L = -lscalapack -lblacsF90init -lblacs -lblacsF90init -llapack \
            -lblas -lmpi
 ########################################################################
 ##### NEC SX-9 @ Osaka                                             #####
 #FC = sxmpif90
-#FFLAGS = -Ep -Chopt -pi -Wf"-pvctl vwork=stack" -cfsx9
+#FFLAGS0 = -Ep -Chopt -pi -Wf"-pvctl vwork=stack" -cfsx9
 #LFLAGS = -cfsx9
 #LAPACK_L = -lscalapack -lblacsF90init -lblacs -lblacsF90init -llapack \
            -lblas -lmpi
 ########################################################################
 ##### NEC SX-9 @ ISSP                                              #####
 #FC = sxmpif90
-#FFLAGS = -Ep -Chopt -pi -Wf"-pvctl vwork=stack"
+#FFLAGS0 = -Ep -Chopt -pi -Wf"-pvctl vwork=stack"
 #LFLAGS =
 #LAPACK_L = -lscalapack -lblacsF90init -lblacs -lblacsF90init -llapack \
            -lblas -lmpi
@@ -117,8 +121,8 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
 ########################################################################
 ##### SGI Altix ICE 8400EX @ ISSP                                  #####
 #FC = ifort
-#FFLAGS = -openmp -cpp -DOMP
-#FFLAGS = -fast -xSSE4.2 -openmp -cpp -DOMP
+#FFLAGS0 = -openmp -cpp -DOMP
+#FFLAGS0 = -fast -xSSE4.2 -openmp -cpp -DOMP
 #LFLAGS = -openmp
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_sgimpt_lp64 -lmkl_lapack \
            -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmpi
@@ -127,16 +131,16 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
 ########################################################################
 ##### T2K-Tsukuba (INTEL)                                          #####
 #FC = mpif90
-#FFLAGS = -CB
-#FFLAGS = -CB -static
-#FFLAGS = -O3 -cpp
-#FFLAGS = -O4
-#FFLAGS = -tpp7
-#FFLAGS = -axW
-#FFLAGS = -C -openmp -cpp -DOMP -DPAPI
-#FFLAGS = -C -openmp -cpp -DOMP
+#FFLAGS0 = -CB
+#FFLAGS0 = -CB -static
+#FFLAGS0 = -O3 -cpp
+#FFLAGS0 = -O4
+#FFLAGS0 = -tpp7
+#FFLAGS0 = -axW
+#FFLAGS0 = -C -openmp -cpp -DOMP -DPAPI
+#FFLAGS0 = -C -openmp -cpp -DOMP
 #LFLAGS = -openmp
-#FFLAGS = -C -parallel -cpp
+#FFLAGS0 = -C -parallel -cpp
 #LFLAGS = -parallel
 #LAPACK_L = -L/opt/intel/mkl/10.0.1.014/lib/em64t -lmkl_scalapack \
            -lmkl_blacs_lp64 -lmkl_em64t -lguide
@@ -152,16 +156,16 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
 ########################################################################
 ##### T2K-Tsukuba (PGF)                                            #####
 #FC = mpif90
-#FFLAGS = -O3
-#FFLAGS = -fastsse
-#FFLAGS = -C
-#FFLAGS = -O3 -Mpreprocess -DDRSDFT -DRSMOL
-#FFLAGS = -fastsse -mp -Mpreprocess -DOMP
-#FFLAGS = -C -mp -Mpreprocess -DOMP -DPAPI
-#FFLAGS = -C -Mchkfpstk -Mchkptr -Mchkstk -Minform=inform -mp \
+#FFLAGS0 = -O3
+#FFLAGS0 = -fastsse
+#FFLAGS0 = -C
+#FFLAGS0 = -O3 -Mpreprocess -DDRSDFT -DRSMOL
+#FFLAGS0 = -fastsse -mp -Mpreprocess -DOMP
+#FFLAGS0 = -C -mp -Mpreprocess -DOMP -DPAPI
+#FFLAGS0 = -C -Mchkfpstk -Mchkptr -Mchkstk -Minform=inform -mp \
          -Mpreprocess -DOMP
 #LFLAGS = -mp
-#FFLAGS = -C -Mconcur -cpp
+#FFLAGS0 = -C -Mconcur -cpp
 #LFLAGS = -Mconcur
 #LDIR = /opt/pgi/linux86-64/7.2/mpi/mvapich/lib
 #LDIR = /global/usr/mpi/mvapich2-1.2-10-01/pgi/lib
@@ -178,11 +182,11 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
 ########################################################################
 ##### T2K-Tokyo                                                    #####
 #FC = mpif90
-#FFLAGS = -Oss -noparallel -autoinline -hf90
+#FFLAGS0 = -Oss -noparallel -autoinline -hf90
 #LFLAGS =
-#FFLAGS = -O3 -ipo -xP
+#FFLAGS0 = -O3 -ipo -xP
 #LFLAGS = -ipo
-#FFLAGS = -fastsse -O3 -tp barcelona-64
+#FFLAGS0 = -fastsse -O3 -tp barcelona-64
 #LFLAGS = -fastsse -O3
 #LAPACK_L = -llapack_sc -lblas_sc
 #LAPACK_L = -L/opt/intel/mkl/10.1.0.015/lib/em64t -lmkl_scalapack_lp64 \
@@ -192,19 +196,19 @@ LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
 ########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx
-#FFLAGS = -Hs -g -Kvisimpact,array_private,auto,ilfunc,ocl,NOFLTLD \
+#FFLAGS0 = -Hs -g -Kvisimpact,array_private,auto,ilfunc,ocl,NOFLTLD \
          -Kopenmp -Am -X9 -V -Ec -Qa,d,i,p,t,x -Koptmsg=2 -V \
          -Cpp -Ccpp -DOMP -D_FPCOLL_
-#FFLAGS = -Kfast,array_private,auto,ilfunc,ocl,NOFLTLD,region_extension\
+#FFLAGS0 = -Kfast,array_private,auto,ilfunc,ocl,NOFLTLD,region_extension\
          -Kopenmp -Am -X9 -V -Ec -Qa,d,i,p,t,x -Koptmsg=2 -V \
          -Cpp -Ccpp -DOMP -D_FPCOLL_
-#FFLAGS = -Kvisimpact,array_private,auto,ilfunc,ocl,NOFLTLD \
+#FFLAGS0 = -Kvisimpact,array_private,auto,ilfunc,ocl,NOFLTLD \
          -Kopenmp -Am -X9 -V -Ec -Qa,d,i,p,t,x -Koptmsg=2 -V \
          -Cpp -Ccpp -DOMP -D_FPCOLL_
-#FFLAGS = -Kvisimpact,preex,array_private,auto,ocl,NOFLTLD \
+#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl,NOFLTLD \
         -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
         -X9 -V -Ec -Qa,d,i,p,t,x -Cpp -Ccpp
-#LFLAGS = ${FFLAGS} -SSL2BLAMP -SCALAPACK -Ntl_trt
+#LFLAGS = ${FFLAGS0} -SSL2BLAMP -SCALAPACK -Ntl_trt
 #LAPACK_L =
 ########################################################################
 ########################################################################
