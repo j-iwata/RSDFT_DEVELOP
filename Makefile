@@ -59,7 +59,7 @@ MODS1 = simc_module.o\
         subspace_diag_module.o \
         cgpc_module.o \
         cg_module.o \
-        fermi_module.o\
+        fermi_mp_module.o\
         total_energy_module.o \
         mixing_module_test.o \
         esp_gather_module.o \
