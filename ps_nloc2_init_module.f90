@@ -28,6 +28,7 @@ CONTAINS
           read(unit,*,END=999) cbuf
           call convert_capital(cbuf,ckey)
           if ( ckey(1:3) == "NL2" ) then
+             backspace(unit)
              read(unit,*) cbuf,rcfac,qcfac,etafac
           end if
        end do
