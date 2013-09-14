@@ -92,7 +92,6 @@ MINPACOBJ  = $(DIR1)/ext_sub_minpac.o
 DIR2 = ext2
 EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/indexx.o \
-          $(DIR2)/simc.o \
           $(DIR2)/bberf.o \
           $(DIR2)/p4sn.o \
           $(DIR2)/ylm.o \

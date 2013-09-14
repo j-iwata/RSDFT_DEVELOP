@@ -29,8 +29,6 @@ CONTAINS
     common /parusc/ rads,vins,zvs,wgt
     real*8 rads(maxnum),vins(maxnum),zvs,wgt(maxnum)
 
-    external uscfit
-
     real(8) :: lambda = 3.5d0
     real(8) :: pi
 
