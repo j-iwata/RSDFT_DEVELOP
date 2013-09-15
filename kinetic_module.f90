@@ -50,12 +50,6 @@ CONTAINS
     call send_kinetic(0)
   END SUBROUTINE read_kinetic
 
-!  SUBROUTINE read_kinetic(unit)
-!    integer,intent(IN) :: unit
-!    read(unit,*) Md, SYStype
-!    write(*,*) "Md =",Md
-!    write(*,*) "SYStype =",SYStype
-!  END SUBROUTINE read_kinetic
 
 
   SUBROUTINE send_kinetic(rank)

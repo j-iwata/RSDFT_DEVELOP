@@ -490,7 +490,7 @@ end subroutine scaling_velo
 !---------------set Nose-Hoover parameters for ION  KK-----------
 subroutine nosepa(delt_elec)
 !        use global_variables
-  use cpmd_variables
+  use cpmd_variables, only: omegan,dtsuz,dsettemp,Mi,nch,gkt,qnospc,etap1,pi,etap1dot
   use atom_module, only: Natom
   implicit none
   real(8) :: w_yosh7_1,w_yosh7_2,w_yosh7_3,w_yosh7_4,w_yosh7_0
@@ -585,6 +585,18 @@ subroutine mprand(seed,n,a)
   return
 end subroutine mprand
 
+function xranf()
+  implicit none
+  real*8 xranf
+  integer m,konst
+  data    m/100001/,konst/125/
+  save    m
+  m=m*konst
+  m=m-2796203*(m/2796203)
+  xranf=dble(m)/2796203.D0
+  return
+end function xranf
+
 !----------------------------------------------------------
 
 !----------------------------------------------------------
@@ -592,7 +604,7 @@ end subroutine mprand
 
 subroutine nose(step)
 !        use global_variables
-  use cpmd_variables
+  use cpmd_variables, only: dsettemp,Mi,gkt,fetapv,nch,qnospc,etap1dot,Velocity,etap1
   implicit none
   integer :: l,ipp
   real(8),parameter :: ry=13.60569193D0
@@ -682,18 +694,6 @@ subroutine nose(step)
   return
 end subroutine nose
 !----------------------------------------------------------------------------
-!----------------------------------------------------------------------------
-function xranf()
-  implicit none
-  real*8 xranf
-  integer m,konst
-  data    m/100001/,konst/125/
-  save    m
-  m=m*konst
-  m=m-2796203*(m/2796203)
-  xranf=dble(m)/2796203.D0
-  return
-end function xranf
 
 !---------------------------------------------------------------------------
 !---------------------calculate energy of bath for ION 9/25 KK   -----------

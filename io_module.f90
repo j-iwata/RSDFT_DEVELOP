@@ -52,10 +52,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     integer :: i
-    character(3) :: cbuf,ckey
+    character(6) :: cbuf,ckey
     IC  = 0
-    OC  = 100
-    OC2 = 3
+    OC  = 3
+    OC2 = 100
+    IO_ctrl = 0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -70,20 +71,19 @@ CONTAINS
           else if ( ckey(1:2) == "OC" ) then
              backspace(unit)
              read(unit,*) cbuf,OC
+          else if ( ckey(1:6) == "IOCTRL" ) then
+             backspace(unit)
+             read(unit,*) cbuf,IO_ctrl
           end if
        end do
 999    continue
        write(*,*) "IC =",IC
        write(*,*) "OC =",OC
        write(*,*) "OC2=",OC2
+       write(*,*) "IO_ctrl=",IO_ctrl
     end if
     call send_io(0)
   END SUBROUTINE read_io
-!  SUBROUTINE read_io(unit)
-!    integer,intent(IN) :: unit
-!    read(unit,*) IC,OC,OC2
-!    write(*,*) "IC,OC,OC2=",IC,OC,OC2
-!  END SUBROUTINE read_io
 
   SUBROUTINE send_io(rank)
     integer,intent(IN) :: rank
@@ -92,6 +92,7 @@ CONTAINS
     call mpi_bcast(IC ,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(OC ,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(OC2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(IO_ctrl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_io
 
   SUBROUTINE write_data(disp_switch,flag)
@@ -108,10 +109,10 @@ CONTAINS
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
 
-    if ( OC<1 .or. OC2<1 .or. OC2>5 ) return
+    if ( OC2<1 .or. OC<1 .or. OC>5 ) return
 
     icount=icount+1
-    if ( .not.(flag .or. icount==OC) ) return
+    if ( .not.(flag .or. icount==OC2) ) return
 
     if ( DISP_SWITCH ) then
        write(*,*)
@@ -169,7 +170,7 @@ CONTAINS
 ! --- density and potentials ---
 !
 
-    if ( OC2==2 .or. OC2==3 .or. OC2==5 ) then
+    if ( OC==2 .or. OC==3 .or. OC==5 ) then
 
        allocate( rtmp(ML) )
 
@@ -287,10 +288,10 @@ CONTAINS
 ! --- Wave function ---
 !
 
-    if ( OC2==1 .or. OC2==3 .or. OC2==4 .or. OC2==5 ) then
+    if ( OC==1 .or. OC==3 .or. OC==4 .or. OC==5 ) then
 
        if (DISP_SWITCH) then
-          select case(OC2)
+          select case(OC)
 #ifdef _DRSDFT_
           case default
              print*,'WF: real(8) -> real(8)'
@@ -307,7 +308,7 @@ CONTAINS
        end if
 
        allocate( utmp(ML) ) ; utmp=zero
-       if ( OC2==4 .or. OC2==5 ) then
+       if ( OC==4 .or. OC==5 ) then
           allocate( utmpSP(ML) )
           utmpSP=zero
        end if
@@ -375,7 +376,7 @@ CONTAINS
              end if
              if ( myrank==0 ) then
 #ifdef _DRSDFT_
-                select case(OC2)
+                select case(OC)
                 case default
                    write(1) utmp(:)
                 case(4,5)
@@ -383,7 +384,7 @@ CONTAINS
                    write(1) utmpSP(:)
                 end select
 #else
-                select case(OC2)
+                select case(OC)
                 case default
                    write(1) utmp(:)
                 case(4,5)
@@ -397,7 +398,7 @@ CONTAINS
 
              if ( flag_related ) then
 #ifdef _DRSDFT_
-                select case(OC2)
+                select case(OC)
                 case default
                    write(1) unk(n1:n2,n,k,s)
                 case(4,5)
@@ -405,7 +406,7 @@ CONTAINS
                    write(1) utmpSP(n1:n2)
                 end select
 #else
-                select case(OC2)
+                select case(OC)
                 case default
                    write(1) unk(n1:n2,n,k,s)
                 case(4,5)

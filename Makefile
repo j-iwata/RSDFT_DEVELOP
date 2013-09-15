@@ -51,7 +51,7 @@ MODS1 = simc_module.o\
         eion_mol_module.o\
         ps_local_mol_module.o\
         hamiltonian_module.o\
-        ewald_module_test.o\
+        ewald_module.o\
         gram_schmidt_module.o \
         gram_schmidt_t_module.o \
         xc_pw92_gth_module.o\
@@ -61,7 +61,7 @@ MODS1 = simc_module.o\
         cg_module.o \
         fermi_mp_module.o\
         total_energy_module.o \
-        mixing_module_test.o \
+        mixing_module.o \
         esp_gather_module.o \
         io_module.o \
         force_module.o \
@@ -99,7 +99,6 @@ EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/spline.o\
           $(DIR2)/convert_capital.o\
 
-DIR3 = sub_dummy
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o\
         $(DIR3)/active_band.o\

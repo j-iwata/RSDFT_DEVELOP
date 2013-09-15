@@ -22,23 +22,27 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     integer :: i,ierr
-    integer,parameter :: max_read=1000
-    character(7) :: label
+    integer,parameter :: max_read=10000
+    character(7) :: cbuf,ckey
     include 'mpif.h'
+    esp_conv_tol = 1.d-5
+    maxiter_band = 50
     if ( rank == 0 ) then
+       rewind unit
        do i=1,max_read
-          read(unit,'(a7)') label
-          if ( label == '# BAND' ) then
-             write(*,*) "label=",label
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:4) == 'BAND' ) then
+             backspace(unit)
+             read(unit,*) cbuf,nbk,mb_band,mb2_band,esp_conv_tol,maxiter_band
+             read(unit,*) ak(1,1:nbk+1)
+             read(unit,*) ak(2,1:nbk+1)
+             read(unit,*) ak(3,1:nbk+1)
+             read(unit,*) nfki(1:nbk)
              exit
           end if
-          if ( i == max_read ) stop "Label '# BAND' was not found."
        end do
-       read(unit,*) nbk,mb_band,mb2_band,esp_conv_tol,maxiter_band
-       read(unit,*) ak(1,1:nbk+1)
-       read(unit,*) ak(2,1:nbk+1)
-       read(unit,*) ak(3,1:nbk+1)
-       read(unit,*) nfki(1:nbk)
+999    continue
        write(*,*) "nbk     =",nbk
        write(*,*) "mb_band =",mb_band
        write(*,*) "mb2_band=",mb2_band
@@ -144,7 +148,7 @@ CONTAINS
   END SUBROUTINE band_sseig
 
 
-  SUBROUTINE band(Diter,disp_switch)
+  SUBROUTINE band(MBV_in,disp_switch)
 
     use parallel_module
     use rgrid_module
@@ -165,9 +169,9 @@ CONTAINS
 
     implicit none
 
-    integer,intent(IN) :: Diter
+    integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
-    integer :: nktrj,i,j,k,s,n,ierr,iktrj,iter,Diter_band
+    integer :: MBV,nktrj,i,j,k,s,n,ierr,iktrj,iter,Diter_band
     real(8) :: dak(3),pxyz(3,2),sum0,sum1,max_err
     real(8),allocatable :: ktrj(:,:),esp0(:,:,:)
     complex(8),allocatable :: unk0(:,:,:)
@@ -176,11 +180,11 @@ CONTAINS
     disp_switch_parallel_bak = disp_switch_parallel
 !    disp_switch_parallel = .false.
 
-    if ( Diter > 0 ) then
-       Diter_band = Diter
-    else
-       Diter_band = maxiter_band
-    end if
+    Diter_band = maxiter_band
+
+    MBV=MBV_in
+    if ( MBV < 1 .or. mb_band < MBV ) MBV=1
+    if ( disp_switch_parallel ) write(*,*) "MBV=",MBV
 
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1
@@ -220,6 +224,9 @@ CONTAINS
        open(unit_band_eigv,file="band_eigv")
        open(unit_band_ovlp,file="band_ovlp")
        open(unit_band_dedk,file="band_dedk")
+       write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,1)
+       write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,2)
+       write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,3)
     end if
 
     do iktrj=1,nktrj
@@ -231,7 +238,7 @@ CONTAINS
        esp0(:,:,:) = 1.d10
 
        if ( myrank == 0 ) then
-          write(unit_band_eigv,'(1x,2i6,3f20.12)') iktrj,mb2_band,kbb(1:3,k)
+          write(unit_band_eigv,'(1x,2i6,3f20.12,i8)') iktrj,mb2_band,kbb(1:3,k),MBV
           write(unit_band_ovlp,'(1x,2i6,3f20.12)') iktrj,MB,kbb(1:3,k)
           write(unit_band_dedk,'(1x,2i6,3f20.12)') iktrj,mb2_band,kbb(1:3,k)
        end if

@@ -13,6 +13,7 @@ CONTAINS
 
 
   SUBROUTINE subspace_solv_sl(k,s)
+    implicit none
     integer,intent(IN) :: k,s
     integer :: itmp(1),LWORK0,LRWORK0,LIWORK0,TRILWMIN,ierr,MB
     integer,save :: LWORK=0,LRWORK=0,LIWORK=0

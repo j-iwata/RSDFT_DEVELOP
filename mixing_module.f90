@@ -5,34 +5,77 @@ MODULE mixing_module
   implicit none
 
   PRIVATE
-  PUBLIC :: imix, mmix, beta &
-       , init_mixing, read_mixing, send_mixing, perform_mixing
+  PUBLIC :: imix, mmix, beta, sqerr_out &
+       , init_mixing, read_mixing, perform_mixing
 
   integer :: imix,mmix
-  real(8) :: beta,scf_conv
+  real(8) :: beta,scf_conv,sqerr_out(2)
   real(8),allocatable :: Xold(:,:,:)
 !  real(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
   real(8) :: beta0
   complex(8),parameter :: zero=(0.d0,0.d0)
   integer :: mmix_count=0
+  real(8) :: diff(2),dif0(2),dif1(2)
 
 CONTAINS
 
-  SUBROUTINE read_mixing(unit)
-    integer,intent(IN) :: unit
-    read(unit,*) imix, mmix, beta, scf_conv
-    write(*,*) "imix, mmix =",imix,mmix
-    if ( mmix < 1 ) then
-       mmix=1
-       write(*,*) "mmix is replaced to 1 : mmix=",mmix
+  SUBROUTINE read_mixing(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i
+    character(7) :: cbuf,ckey
+    imix=0
+    mmix=4
+    beta=1.d0
+    scf_conv=1.d-15
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:4) == "IMIX" ) then
+             backspace(unit)
+             read(unit,*) cbuf,imix
+          else if ( ckey(1:4) == "MMIX" ) then
+             backspace(unit)
+             read(unit,*) cbuf,mmix
+          else if ( ckey(1:4) == "BETA" ) then
+             backspace(unit)
+             read(unit,*) cbuf,beta
+          else if ( ckey(1:7) == "SCFCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,scf_conv
+          end if
+       end do
+999    continue
+       write(*,*) "imix    =",imix
+       write(*,*) "mmix    =",mmix
+       if ( mmix < 1 ) then
+          mmix=1
+          write(*,*) "mmix is replaced to 1 : mmix=",mmix
+       end if
+       write(*,*) "beta    =",beta
+       write(*,*) "scf_conv=",scf_conv
     end if
-    write(*,*) "beta =",beta
-    write(*,*) "scf_conv=",scf_conv
+    call send_mixing(0)
   END SUBROUTINE read_mixing
+!  SUBROUTINE read_mixing(unit)
+!    implicit none
+!    integer,intent(IN) :: unit
+!    read(unit,*) imix, mmix, beta, scf_conv
+!    write(*,*) "imix, mmix =",imix,mmix
+!    if ( mmix < 1 ) then
+!       mmix=1
+!       write(*,*) "mmix is replaced to 1 : mmix=",mmix
+!    end if
+!    write(*,*) "beta =",beta
+!    write(*,*) "scf_conv=",scf_conv
+!  END SUBROUTINE read_mixing
 
 
   SUBROUTINE send_mixing(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'
@@ -44,6 +87,7 @@ CONTAINS
 
 
   SUBROUTINE init_mixing(m,n,f)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(IN) :: f(m,n)
     beta0      = 1.d0-beta
@@ -56,16 +100,38 @@ CONTAINS
     allocate( Xou(m,n,mmix)  ) ; Xou=zero
     Xold(:,:,1)=f(:,:)
     Xin(:,:,mmix)=f(:,:)
+    dif0(:)=0.d0
   END SUBROUTINE init_mixing
 
 
   SUBROUTINE perform_mixing(m,n,f,flag_conv,disp_switch)
+    implicit none
     integer,intent(IN)    :: m,n
     real(8),intent(INOUT) :: f(m,n)
     logical,intent(OUT)   :: flag_conv
     logical,optional,intent(IN) :: disp_switch
-    real(8) :: err0(2),err(2)
-    integer :: nn,ierr
+    real(8) :: err0(2),err(2),sum0(2),beta_bak,beta_min,dif_min(2)
+    integer :: nn,ierr,loop,max_loop,mmix_count_bak,i
+    complex(8),allocatable :: Xou_bak(:,:,:),Xin_bak(:,:,:)
+    real(8),allocatable :: f_bak(:,:)
+
+    allocate( Xin_bak(m,n,mmix) )
+    allocate( Xou_bak(m,n,mmix) )
+    allocate( f_bak(m,n) )
+
+    Xin_bak(:,:,:) = Xin(:,:,:)
+    Xou_bak(:,:,:) = Xou(:,:,:)
+    f_bak(:,:) = f(:,:)
+    beta_bak = beta
+    mmix_count_bak=mmix_count
+
+    beta_min     = beta
+    dif_min(1:n) = 1.d10
+    max_loop     = 1
+    if ( beta >= 1.d0 ) max_loop = 11
+
+    do loop=1,max_loop
+
     select case(imix)
     case default
        call simple_mixing(m,n,f,err0)
@@ -75,6 +141,52 @@ CONTAINS
        write(*,*) "imix=",imix
        stop "this mixing is not available"
     end select
+
+    sum0(1) = sum( (f(:,1)-Xold(:,1,1))**2 )/m
+    sum0(n) = sum( (f(:,n)-Xold(:,n,1))**2 )/m
+    call mpi_allreduce(sum0,dif1,n,mpi_real8,mpi_sum,comm_grid,ierr)
+    if ( all(dif0(1:n)/=0.d0) ) then
+       diff(1:n)=dif1(1:n)/dif0(1:n)
+       if ( present(disp_switch) ) then
+          if ( disp_switch ) then
+             write(*,'(1x,"diff=",i4,2x,2(4g14.6,2x))') &
+                  loop,(diff(i),dif1(i),dif0(i),beta,i=1,n)
+             write(42,*) ( diff(i),i=1,n ),beta
+          end if
+       end if
+    end if
+
+    if ( all(dif1(1:n)<dif_min(1:n)) ) then
+       beta_min = beta
+       dif_min(1:n)=dif1(1:n)
+    end if
+
+    if ( loop < max_loop ) then
+       if ( any(diff(1:n)>0.5d0) ) then
+          Xin(:,:,:) = Xin_bak(:,:,:)
+          Xou(:,:,:) = Xou_bak(:,:,:)
+          f(:,:)     = f_bak(:,:)
+          mmix_count = mmix_count_bak
+          beta       = beta*0.5d0
+          beta0      = 1.d0 - beta
+       else
+          exit
+       end if
+       if ( loop == max_loop-1 ) then
+          beta  = beta_min
+          beta0 = 1.d0-beta
+       end if
+    end if
+
+    end do
+    beta = beta_bak
+    beta0 = 1.d0 - beta
+    dif0(1:n)=dif1(1:n)
+
+    deallocate( f_bak )
+    deallocate( Xou_bak )
+    deallocate( Xin_bak )
+
     call mpi_allgather(err0,n,mpi_real8,err,n,mpi_real8,comm_spin,ierr)
     flag_conv = .false.
     nn=n*np_spin
@@ -85,10 +197,26 @@ CONTAINS
           write(40,*) err(1:nn)
        end if
     end if
+
+    sqerr_out(:) = err(:)
+
+    if ( disp_switch_parallel ) then
+    if ( mod(imix,2)==0 .and. minval( f(:,:) ) < 0.d0 ) then
+    write(*,*) "NEGATIVECHR",( sum( f(:,nn),mask=(f(:,nn)<0.d0) ) ,nn=1,n )
+!    where( f < 0.d0 )
+!       f=0.d0
+!    end where
+    f=abs(f)
+    end if
+    end if
+
+    Xold(:,:,1) = f(:,:)
+
   END SUBROUTINE perform_mixing
 
 
   SUBROUTINE calc_sqerr(m,n,f,g,err)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(IN) :: f(m,n),g(m,n)
     real(8),intent(OUT) :: err(n)
@@ -102,16 +230,17 @@ CONTAINS
 
 
   SUBROUTINE simple_mixing(m,n,f,err)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(INOUT) :: f(m,n)
     real(8),intent(OUT) :: err(n)
     call calc_sqerr(m,n,f,Xold,err)
     f(:,:) = beta0*Xold(:,:,1) + beta*f(:,:)
-    Xold(:,:,1) = f(:,:)
   END SUBROUTINE simple_mixing
 
 
   SUBROUTINE pulay_r_mixing(m,n,f,err)
+    implicit none
     integer,intent(IN) :: m,n
     real(8),intent(INOUT) :: f(m,n)
     real(8),intent(OUT) :: err(n)

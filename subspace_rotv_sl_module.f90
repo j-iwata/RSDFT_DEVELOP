@@ -2,7 +2,6 @@ MODULE subspace_rotv_sl_module
 
   use rgrid_module, only: dV,zdV
   use wf_module, only: unk
-!  use electron_module
   use scalapack_module
   use parallel_module
   use subspace_diag_module
@@ -23,6 +22,7 @@ CONTAINS
 
 
   SUBROUTINE subspace_rotv_sl(k,s)
+    implicit none
     integer,intent(IN) :: k,s
     integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm
     integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB

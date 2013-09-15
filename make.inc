@@ -17,18 +17,18 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
 #################### Generate COMPLEX16 code #####
 #FFLAGS1 = -I../
 #################### Generate REAL8 code #####
-#FFLAGS1 = -D_DRSDFT_ -I../
+FFLAGS1 = -D_DRSDFT_ -I../
 #################### SPLINE interpolation is used in prep_ps #####
 #FFLAGS1 = -D_SPLINE_ -I../
-FFLAGS1 = -D_DRSDFT_ -D_SPLINE -I../
+#FFLAGS1 = -D_DRSDFT_ -D_SPLINE -I../
 ########################################################################
 ########################################################################
 ##### INTEL                                                        #####
 #FFLAGS0 = -fast -xHost -cpp
 #FFLAGS0 = -fast -xHost -openmp -cpp
 #FFLAGS0 = -fast -xAVX -openmp -cpp
-#FFLAGS0 = -C -openmp -cpp
-FFLAGS0 = -C -cpp
+FFLAGS0 = -openmp -cpp
+#FFLAGS0 = -C -cpp
 LFLAGS = -openmp
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \

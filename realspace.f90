@@ -621,9 +621,9 @@ PROGRAM Real_Space_Solid
         end do
      end if
 
-     call watch(ct0,et0) !     call watcht(disp_switch,"fnlc",0)
+     call watch(ct0,et0)
      call calc_force_ps_nloc2(Natom,force)
-     call watch(ct1,et1) ; if (disp_switch) write(*,*) "fnlc:",ct1-ct0,et1-et0 !     call watcht(disp_switch,"fnlc",1)
+     call watch(ct1,et1) ; if (disp_switch) write(*,*) "fnlc:",ct1-ct0,et1-et0
      forcet(:,:)=forcet(:,:)+force(:,:)
 
      if ( disp_switch ) then
@@ -645,7 +645,7 @@ PROGRAM Real_Space_Solid
 #ifndef _DRSDFT_
   if ( iswitch_band == 1 ) then
      call read_band(myrank,1)
-     call band(0,disp_switch)
+     call band(nint(Nelectron*0.5d0),disp_switch)
   end if
 #endif
 
@@ -656,6 +656,9 @@ PROGRAM Real_Space_Solid
 #ifdef _DRSDFT_
 ! --- CPMD ---
      call bomd
+#else
+     write(*,*) "RS-CPMD is not available for COMPLEX16"
+     write(*,*) "Please re-compile the program"
 #endif
   end select
 

@@ -16,15 +16,15 @@ CONTAINS
       integer :: n1,n2,ML0,n,k,i,ispin
       character(len=64) :: filename
 
-      write(filename,"('restart_',i5.5,'.dat0')") myrank
+      write(filename,"('restart_',i5.5,'.dat')") myrank
 
       open(1,file=filename,form="unformatted")
       n1  = idisp(myrank)+1
       n2  = idisp(myrank)+ircnt(myrank)
       ML0 = ircnt(myrank)
 
-      write(*,*) "MSP_0,MSP_1", MSP_0,MSP_1
-      write(*,*) "MBZ_0,MBZ_1",MBZ_0,MBZ_1
+!      write(*,*) "MSP_0,MSP_1", MSP_0,MSP_1
+!      write(*,*) "MBZ_0,MBZ_1",MBZ_0,MBZ_1
 
       do ispin=MSP_0,MSP_1
       do k=MBZ_0,MBZ_1

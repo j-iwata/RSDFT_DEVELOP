@@ -213,11 +213,15 @@ CONTAINS
 !--------1---------2---------3---------4---------5---------6---------7--
 
   SUBROUTINE calc_GGAPBE96
-#ifdef TEST
+    use aa_module
+    use bb_module
+    use bc_module
+    use kinetic_module, only: Md,SYStype
+    use fd_module
+    use electron_module, only: Nspin
     implicit none
-    integer,intent(IN) :: iflag
     real(8),parameter :: mu=0.21951d0,Kp=0.804d0
-    real(8),parameter :: ep=1.d-25
+    real(8),parameter :: zero_density=1.d-10
     real(8),parameter :: A00  =0.031091d0,A01  =0.015545d0,A02  =0.016887d0
     real(8),parameter :: alp10=0.21370d0 ,alp11=0.20548d0 ,alp12=0.11125d0
     real(8),parameter :: bt10 =7.5957d0  ,bt11 =1.41189d1 ,bt12 =1.0357d1
@@ -226,39 +230,109 @@ CONTAINS
     real(8),parameter :: bt40 =0.49294d0 ,bt41 =0.62517d0 ,bt42 =0.49671d0
     real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
     integer :: i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2,m,ispin,ierr,itmp
-    integer :: Mx,My,Mz
+    integer :: Mx,My,Mz,ML1,ML2,ML3,ML,a1b,b1b,a2b,b2b,a3b,b3b
+    integer :: l1,l2,l3,m1,m2,m3,irank
+    integer,allocatable :: LLL2(:,:,:),LL2(:,:)
     real(8),allocatable :: wtmp(:,:,:),wrho(:,:,:),rtmp(:),gx(:),gy(:),gz(:)
     real(8) :: ctime0,ctime1,etime0,etime1,mem,memax
-    real(8) :: g1,g2,g3,b(3,3),sbf(2),rbf(2)
+    real(8) :: g1,g2,g3,b(3,3),sbf(3),rbf(3),H1,H2,H3
     real(8) :: trho,s2,kf,ec_lda,ex_lda,vx_lda,T,Fx
-    real(8) :: Hs,A,dH_dT,dA_dn,dec_dn,dH_dA,rs,tmp,tmp1,tmp2
-    real(8) :: ec_U,ec_P,deU_dn,deP_dn,alpc,dac_dn,phi,dphi_dz
-    real(8) :: dH_dphi,fz,dfz_dz,dec_dz,const1,const2,srho(2),dz_dn(2)
-    real(8),allocatable :: rrrr(:,:),rho_tmp(:),zeta(:)
+    real(8) :: Hs,A,Ai,dH_dT,dA_dn,dec_dn,dH_dA,rs,tmp,tmp1,tmp2
+    real(8) :: ec_U,ec_P,deU_dn,deP_dn,alpc,dac_dn,phi,dphi_dz,pi
+    real(8) :: dH_dphi,fz,dfz_dz,dec_dz,const1,const2,srho(2),dz_dn(2),aaL(3)
+    real(8),allocatable :: rrrr(:,:),rho_tmp(:),zeta(:),nab(:)
     logical :: flag_alloc
+
+    n1=idisp(myrank)+1
+    n2=idisp(myrank)+ircnt(myrank)
+
+    pi=acos(-1.d0)
 
     E_exchange=0.d0
     E_correlation=0.d0
     Exc=0.d0
     Vxc(:,:)=0.d0
     flag_alloc=.false.
+
+    ML  = Ngrid(0)
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+
     Mx=ML1+Md
     My=ML2+Md
     Mz=ML3+Md
+
+    a1b=Igrid(1,1)
+    b1b=Igrid(2,1)
+    a2b=Igrid(1,2)
+    b2b=Igrid(2,2)
+    a3b=Igrid(1,3)
+    b3b=Igrid(2,3)
+
+    H1 = Hgrid(1)
+    H2 = Hgrid(2)
+    H3 = Hgrid(3)
+
+    aaL(1) = sqrt( sum(aa(1:3,1)**2) )
+    aaL(2) = sqrt( sum(aa(1:3,2)**2) )
+    aaL(3) = sqrt( sum(aa(1:3,3)**2) )
 
     b(:,:)=0.d0
     b(1:3,1)=aaL(1)*bb(1:3,1)/(2.d0*Pi)/H1
     b(1:3,2)=aaL(2)*bb(1:3,2)/(2.d0*Pi)/H2
     b(1:3,3)=aaL(3)*bb(1:3,3)/(2.d0*Pi)/H3
 
+    allocate( nab(-Md:Md) ) ; nab=0.d0
+    call get_coef_nabla_fd(Md,nab)
+
+! negative value check >>>>>>>>>>
+    sbf(:)=0.d0
+    do ispin=1,nspin
+       do i=n1,n2
+          if ( rho(i,ispin) < 0.d0 ) sbf(ispin)=sbf(ispin)+rho(i,ispin)
+       end do
+    end do
+    if ( flag_pcc_0 ) then
+       do i=n1,n2
+          if ( rhoc(i) < 0.d0 ) sbf(3)=sbf(3)+rhoc(i)
+       end do
+    end if
+    call mpi_allreduce(sbf,rbf,3,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    if ( disp_switch_parallel ) then
+       write(*,'(1x,"negative charge =",3g20.10)') rbf(1:3)*dV
+    end if
+! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
     select case(SYStype)
     case default
-       call Make_GridMap("allocate",mem,memax)
+       allocate( LLL2(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL2=0
+       i=0
+       irank=-1
+       do i3=1,node_partition(3)
+       do i2=1,node_partition(2)
+       do i1=1,node_partition(1)
+          irank=irank+1
+          l1=pinfo_grid(1,irank) ; m1=pinfo_grid(2,irank)+l1-1
+          l2=pinfo_grid(3,irank) ; m2=pinfo_grid(4,irank)+l2-1
+          l3=pinfo_grid(5,irank) ; m3=pinfo_grid(6,irank)+l3-1
+          do j3=l3,m3
+          do j2=l2,m2
+          do j1=l1,m1
+             i=i+1
+             LLL2(j1,j2,j3)=i
+          end do
+          end do
+          end do
+       end do
+       end do
+       end do
     case(1,2)
-       allocate( LL2(3,ML) ) ; LL2=0 ; mem=mem+bsintg*size(LL2) ; memax=max(mem,memax)
-       call Make_GridMap_1(LL2,1,ML)
-       allocate( LLL2(-Mx:Mx,-My:My,-Mz:Mz) ) ; LLL2=0 ; mem=mem+bsintg*size(LLL2) ; memax=max(mem,memax)
-       call Make_GridMap_3(LLL2,-Mx,Mx,-My,My,-Mz,Mz)
+       stop "stop@GGAPBE96,MOL"
+       allocate( LL2(3,ML) ) ; LL2=0
+!       call Make_GridMap_1(LL2,1,ML)
+       allocate( LLL2(-Mx:Mx,-My:My,-Mz:Mz) ) ; LLL2=0
+!       call Make_GridMap_3(LLL2,-Mx,Mx,-My,My,-Mz,Mz)
     end select
 
     allocate( rrrr(ML,3) ) ; rrrr=0.d0
@@ -270,9 +344,12 @@ CONTAINS
     do ispin=1,nspin
        rho_tmp(n1:n2)=rho_tmp(n1:n2)+rho(n1:n2,ispin)
     end do
-    if ( flag_pcc0 ) then
+    if ( flag_pcc_0 ) then
        rho_tmp(n1:n2)=rho_tmp(n1:n2)+rhoc(n1:n2)
     end if
+    where( rho_tmp < 0.d0 )
+       rho_tmp=0.d0
+    end where
     zeta(n1:n2)=rho(n1:n2,1)-rho(n1:n2,nspin)
     j=0
     do i=n1,n2
@@ -283,46 +360,54 @@ CONTAINS
        end if
        if ( zeta(i)>1.d0 .or. zeta(i)<-1.d0 ) then
           j=j+1
-          if(DISP_SWITCH)write(*,*) j,zeta(i),rho(i,1:nspin)
+          if ( disp_switch_parallel ) write(*,*) j,zeta(i),rho(i,1:nspin)
        end if
     end do
+    where( zeta >  1.d0 )
+       zeta= 1.d0
+    end where
+    where( zeta < -1.d0 )
+       zeta=-1.d0
+    end where
 
-    www(:,:,:,:)=zero
+    www(:,:,:,:)=0.d0
     select case(SYStype)
     case default
        i=n1-1
        do i3=a3b,b3b
-          do i2=a2b,b2b
-             do i1=a1b,b1b
-                i=i+1
-                www(i1,i2,i3,1)=rho_tmp(i)
-             end do
-          end do
+       do i2=a2b,b2b
+       do i1=a1b,b1b
+          i=i+1
+          www(i1,i2,i3,1)=rho_tmp(i)
+       end do
+       end do
        end do
     case(1,2)
        do i=n1,n2
           www(LL2(1,i),LL2(2,i),LL2(3,i),1)=rho_tmp(i)
        end do
     end select
-    call bcset_2d(1,1,Md,0)
+
+    call bcset(1,1,Md,0)
+
     select case(SYStype)
     case default
        i=n1-1
        do i3=a3b,b3b
-          do i2=a2b,b2b
-             do i1=a1b,b1b
-                i=i+1
-                g1=0.d0 ; g2=0.d0 ; g3=0.d0
-                do m=1,Md
-                   g1=g1-nab(m)*(www(i1-m,i2,i3,1)-www(i1+m,i2,i3,1))
-                   g2=g2-nab(m)*(www(i1,i2-m,i3,1)-www(i1,i2+m,i3,1))
-                   g3=g3-nab(m)*(www(i1,i2,i3-m,1)-www(i1,i2,i3+m,1))
-                end do
-                gx(i)=b(1,1)*g1+b(1,2)*g2+b(1,3)*g3
-                gy(i)=b(2,1)*g1+b(2,2)*g2+b(2,3)*g3
-                gz(i)=b(3,1)*g1+b(3,2)*g2+b(3,3)*g3
-             end do
+       do i2=a2b,b2b
+       do i1=a1b,b1b
+          i=i+1
+          g1=0.d0 ; g2=0.d0 ; g3=0.d0
+          do m=1,Md
+             g1=g1-nab(m)*(www(i1-m,i2,i3,1)-www(i1+m,i2,i3,1))
+             g2=g2-nab(m)*(www(i1,i2-m,i3,1)-www(i1,i2+m,i3,1))
+             g3=g3-nab(m)*(www(i1,i2,i3-m,1)-www(i1,i2,i3+m,1))
           end do
+          gx(i)=b(1,1)*g1+b(1,2)*g2+b(1,3)*g3
+          gy(i)=b(2,1)*g1+b(2,2)*g2+b(2,3)*g3
+          gz(i)=b(3,1)*g1+b(3,2)*g2+b(3,3)*g3
+       end do
+       end do
        end do
     case(1,2)
        do i=n1,n2
@@ -349,8 +434,8 @@ CONTAINS
 
           trho=dble(nspin)*rho(i,ispin) ; if (allocated(rhoc)) trho=trho+rhoc(i)
 
-          if ( trho==0.d0 ) cycle
-          !         if ( trho<=0.d0 ) cycle
+!          if ( trho==0.d0 ) cycle
+          if ( trho <= zero_density ) cycle
 
           kf=(3.d0*Pi*Pi*trho)**(1.d0/3.d0)
 
@@ -363,73 +448,70 @@ CONTAINS
 
           E_exchange=E_exchange+trho*ex_lda*Fx
 
-          if ( iflag>0 ) Vxc(i,ispin)=Vxc(i,ispin)+Fx*vx_lda+(24.d0*Pi*Kp*Kp*mu*trho**3*g2)/(4.d0*Kp*(trho*kf)**2+mu*g2)**2
+          Vxc(i,ispin)=Vxc(i,ispin)+Fx*vx_lda+(24.d0*Pi*Kp*Kp*mu*trho**3*g2)/(4.d0*Kp*(trho*kf)**2+mu*g2)**2
 
           rtmp(i)=-18.d0*Pi*Kp*Kp*mu*trho**4/(4.d0*Kp*(trho*kf)**2+mu*g2)**2
 
-       end do
+       end do ! i
 
-       if ( iflag>0 ) then
+       rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)
+       call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)
+       call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)
+       call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
-          rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)
-          call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-          rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)
-          call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-          rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)
-          call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-
-          select case(SYStype)
-          case default
-             do i3=0,ML3-1
-                do i2=0,ML2-1
-                   do i1=0,ML1-1
-                      i=LLL2(i1,i2,i3)
-                      do m=-Md,Md
-                         j1=i1+m
-                         k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
-                         j1=j1-k1*ML1
-                         j=LLL2(j1,i2,i3)
-                         if ( n1<=j .and. j<=n2 ) then
-                            Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
-                         end if
-                         j2=i2+m
-                         k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
-                         j2=j2-k2*ML2
-                         j=LLL2(i1,j2,i3)
-                         if ( n1<=j .and. j<=n2 ) then
-                            Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
-                         end if
-                         j3=i3+m
-                         k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
-                         j3=j3-k3*ML3
-                         j=LLL2(i1,i2,j3)
-                         if ( n1<=j .and. j<=n2 ) then
-                            Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
-                         end if
-                      end do
-                   end do
-                end do
+       select case(SYStype)
+       case default
+          do i3=0,ML3-1
+          do i2=0,ML2-1
+          do i1=0,ML1-1
+             i=LLL2(i1,i2,i3)
+             do m=-Md,Md
+                j1=i1+m
+                k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
+                j1=j1-k1*ML1
+                j=LLL2(j1,i2,i3)
+                if ( n1<=j .and. j<=n2 ) then
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
+                end if
+                j2=i2+m
+                k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
+                j2=j2-k2*ML2
+                j=LLL2(i1,j2,i3)
+                if ( n1<=j .and. j<=n2 ) then
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
+                end if
+                j3=i3+m
+                k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
+                j3=j3-k3*ML3
+                j=LLL2(i1,i2,j3)
+                if ( n1<=j .and. j<=n2 ) then
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
+                end if
              end do
-          case(1,2)
-             do i=1,ML
-                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
-                do m=-Md,Md
-                   j=LLL2(i1+m,i2,i3)
-                   if ( n1<=j .and. j<=n2 ) then
-                      Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
-                   end if
-                   j=LLL2(i1,i2+m,i3)
-                   if ( n1<=j .and. j<=n2 ) then
-                      Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
-                   end if
-                   j=LLL2(i1,i2,i3+m)
-                   if ( n1<=j .and. j<=n2 ) then
-                      Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
-                   end if
-                end do
+          end do
+          end do
+          end do
+       case(1,2)
+          do i=1,ML
+             i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+             do m=-Md,Md
+                j=LLL2(i1+m,i2,i3)
+                if ( n1<=j .and. j<=n2 ) then
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
+                end if
+                j=LLL2(i1,i2+m,i3)
+                if ( n1<=j .and. j<=n2 ) then
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
+                end if
+                j=LLL2(i1,i2,i3+m)
+                if ( n1<=j .and. j<=n2 ) then
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
+                end if
              end do
-          end select
-       end if
+          end do
+       end select
 
     end do ! ispin
 
@@ -441,17 +523,17 @@ CONTAINS
 
     do i=n1,n2
 
-!         trho=rho(i,ispin) ; if ( allocated(rhoc) ) trho=trho+rhoc(i)
+!       trho=rho(i,ispin) ; if ( allocated(rhoc) ) trho=trho+rhoc(i)
        trho=rho_tmp(i)
 
-       if ( trho==0.d0 ) cycle
-!         if ( trho<=0.d0 ) cycle
+!       if ( trho==0.d0 ) cycle
+       if ( trho <= zero_density ) cycle
 
        fz=( (1.d0+zeta(i))**(4.d0/3.d0)+(1.d0-zeta(i))**(4.d0/3.d0)-2.d0 )*const1
 
        kf=(3.d0*Pi*Pi*trho)**(1.d0/3.d0)
 
-!         rs=( 3.d0/(4.d0*Pi*trho) )**(1.d0/3.d0)
+!       rs=( 3.d0/(4.d0*Pi*trho) )**(1.d0/3.d0)
        rs=( 3.d0/(4.d0*Pi*abs(trho)) )**(1.d0/3.d0)
 
        ec_U=-2.d0*A00*(1.d0+alp10*rs)*log( 1.d0+1.d0/(2.d0*A00*(bt10*sqrt(rs)+bt20*rs+bt30*rs**(3.d0/2.d0)+bt40*rs*rs)) )
@@ -467,306 +549,170 @@ CONTAINS
           T=0.d0
           Hs=0.d0
        else
-          A=C1/(exp(-ec_lda/(C2*phi**3))-1.d0)
           T=(gx(i)*gx(i)+gy(i)*gy(i)+gz(i)*gz(i))*Pi/(16.d0*phi**2*kf*trho**2)
-          !            Hs=C2*phi**3*log( 1.d0+C1*(T+A*T*T)/(1.d0+A*T+A*A*T*T) )
-          tmp=exp(-ec_lda/(C2*phi**3))-1.d0
-          Hs=C2*phi**3*log( 1.d0+C1*(tmp*tmp/T+C1*tmp)/(tmp*tmp/(T*T)+C1*tmp/T+C1*C1) )
+!          A=C1/(exp(-ec_lda/(C2*phi**3))-1.d0)
+!          Hs=C2*phi**3*log( 1.d0+C1*(T+A*T*T)/(1.d0+A*T+A*A*T*T) )
+          Ai=( exp(-ec_lda/(C2*phi**3)) - 1.d0 )/C1
+          Hs=C2*phi**3*log( 1.d0+C1*( Ai*Ai*T + Ai*T*T )/( Ai*Ai + Ai*T + T*T ) )
+!          tmp=exp(-ec_lda/(C2*phi**3))-1.d0
+!          Hs=C2*phi**3*log( 1.d0+C1*(tmp*tmp/T+C1*tmp)/(tmp*tmp/(T*T)+C1*tmp/T+C1*C1) )
        end if
 
        E_correlation=E_correlation+trho*(ec_lda+Hs)
 
-!         write(*,'(1x,i6,9f15.8)') i,phi,fz,Hs,T,A,zeta(i),trho,rho(i,1:nspin)
+       deU_dn=-4.d0*Pi/9.d0*rs**4*alp10*ec_U/(1.d0+alp10*rs) &
+            -4.d0*Pi/9.d0*rs*rs*(1.d0+alp10*rs)*(0.5d0*bt10*sqrt(rs)+bt20*rs+1.5d0*bt30*rs*sqrt(rs)+2.d0*bt40*rs*rs) &
+            /(bt10+bt20*sqrt(rs)+bt30*rs+bt40*rs*sqrt(rs))**2 * exp(ec_U/(2.d0*A00*(1.d0+alp10*rs)))
+       deP_dn=-4.d0*Pi/9.d0*rs**4*alp11*ec_P/(1.d0+alp11*rs) &
+            -4.d0*Pi/9.d0*rs*rs*(1.d0+alp11*rs)*(0.5d0*bt11*sqrt(rs)+bt21*rs+1.5d0*bt31*rs*sqrt(rs)+2.d0*bt41*rs*rs) &
+            /(bt11+bt21*sqrt(rs)+bt31*rs+bt41*rs*sqrt(rs))**2 * exp(ec_P/(2.d0*A01*(1.d0+alp11*rs)))
+       dac_dn=-4.d0*Pi/9.d0*rs**4*alp12*alpc/(1.d0+alp12*rs) &
+            -4.d0*Pi/9.d0*rs*rs*(1.d0+alp12*rs)*(0.5d0*bt12*sqrt(rs)+bt22*rs+1.5d0*bt32*rs*sqrt(rs)+2.d0*bt42*rs*rs) &
+            /(bt12+bt22*sqrt(rs)+bt32*rs+bt42*rs*sqrt(rs))**2 * exp(alpc/(2.d0*A02*(1.d0+alp12*rs)))
 
-       if ( iflag>0 ) then
+       dfz_dz=4.d0/3.d0*( (1.d0+zeta(i))**(4.d0/3.d0)-(1.d0-zeta(i))**(4.d0/3.d0) )*const1
 
-          deU_dn=-4.d0*Pi/9.d0*rs**4*alp10*ec_U/(1.d0+alp10*rs) &
-&               -4.d0*Pi/9.d0*rs*rs*(1.d0+alp10*rs)*(0.5d0*bt10*sqrt(rs)+bt20*rs+1.5d0*bt30*rs*sqrt(rs)+2.d0*bt40*rs*rs) &
-&               /(bt10+bt20*sqrt(rs)+bt30*rs+bt40*rs*sqrt(rs))**2 * exp(ec_U/(2.d0*A00*(1.d0+alp10*rs)))
-          deP_dn=-4.d0*Pi/9.d0*rs**4*alp11*ec_P/(1.d0+alp11*rs) &
-               &               -4.d0*Pi/9.d0*rs*rs*(1.d0+alp11*rs)*(0.5d0*bt11*sqrt(rs)+bt21*rs+1.5d0*bt31*rs*sqrt(rs)+2.d0*bt41*rs*rs) &
-               &               /(bt11+bt21*sqrt(rs)+bt31*rs+bt41*rs*sqrt(rs))**2 * exp(ec_P/(2.d0*A01*(1.d0+alp11*rs)))
-          dac_dn=-4.d0*Pi/9.d0*rs**4*alp12*alpc/(1.d0+alp12*rs) &
-               &               -4.d0*Pi/9.d0*rs*rs*(1.d0+alp12*rs)*(0.5d0*bt12*sqrt(rs)+bt22*rs+1.5d0*bt32*rs*sqrt(rs)+2.d0*bt42*rs*rs) &
-               &               /(bt12+bt22*sqrt(rs)+bt32*rs+bt42*rs*sqrt(rs))**2 * exp(alpc/(2.d0*A02*(1.d0+alp12*rs)))
+       dec_dz=-alpc*dfz_dz*const2*(1.d0-zeta(i)**4)+4.d0*alpc*fz*const2*zeta(i)**3 &
+            +(ec_P-ec_U)*dfz_dz*zeta(i)**4+(ec_P-ec_U)*fz*4.d0*zeta(i)**3
 
-          dfz_dz=4.d0/3.d0*( (1.d0+zeta(i))**(4.d0/3.d0)-(1.d0-zeta(i))**(4.d0/3.d0) )*const1
-
-          dec_dz=-alpc*dfz_dz*const2*(1.d0-zeta(i)**4)+4.d0*alpc*fz*const2*zeta(i)**3 &
-               &               +(ec_P-ec_U)*dfz_dz*zeta(i)**4+(ec_P-ec_U)*fz*4.d0*zeta(i)**3
-
+       if ( zeta(i) == 1.d0 .or. zeta(i) == -1.d0 ) then
+          dphi_dz = 0.d0
+       else
           dphi_dz=( (1.d0+zeta(i))**(-1.d0/3.d0)-(1.d0-zeta(i))**(-1.d0/3.d0) )/3.d0
-
-!         tmp=1.d0+A*T+A*A*T*T
-!         dH_dA=-C1*C2*A*T**3*(2.d0+A*T)/( tmp*tmp+C1*T*(1.d0+A*T)*tmp )
-!         dH_dT=phi**3*C1*C2*(1.d0+2.d0*A*T)/(tmp*tmp+C1*T*(1.d0+A*T)*tmp)
-          if ( trho==0.d0 ) then
-             dH_dA=0.d0
-             dH_dT=0.d0
-          else
-             tmp1=(exp(-ec_lda/(C2*phi**3))-1.d0)/C1
-             tmp2=tmp1/T
-             dH_dA=-phi**3*C1*C2*tmp1*(2.d0*tmp2+1.d0)/((tmp2*tmp2+tmp2+1.d0)**2+C1*tmp1*(tmp2+1.d0)*(tmp2*tmp2+tmp2+1.d0))
-             dH_dT=phi**3*C1*C2*tmp2**3*(tmp2+2.d0)/((tmp2*tmp2+tmp2+1.d0)**2+tmp1*C1*(tmp2+1.d0)*(tmp2*tmp2+tmp2+1.d0))
-          end if
-
-          dH_dphi=3.d0*Hs/phi
-
-          srho(1)    =rho(i,1)     ; if ( flag_pcc0 ) srho(1)=srho(1)+rhoc(i)/dble(nspin)
-          srho(nspin)=rho(i,nspin) ; if ( flag_pcc0 ) srho(nspin)=srho(nspin)+rhoc(i)/dble(nspin)
-
-          dz_dn(1)    = 2.d0*srho(nspin)/trho
-          dz_dn(nspin)=-2.d0*srho(1)/trho
-
-          do ispin=MSP_0,MSP_1
-
-             dec_dn=deU_dn-dac_dn*fz*const2*(1.d0-zeta(i)**4)+(deP_dn-deU_dn)*fz*zeta(i)**4 + dec_dz*dz_dn(ispin)
-
-!         dA_dn=A*(C1+A)/(C1*C2*phi**3)*( dec_dn - 3.d0*ec_lda/phi*dphi_dz*dz_dn(ispin) )
-             tmp=exp(-ec_lda/(phi**3*C2))
-             dA_dn=tmp/(C1*C2*phi**3)*( dec_dn - 3.d0*ec_lda/phi*dphi_dz*dz_dn(ispin) )
-
-             Vxc(i,ispin)=Vxc(i,ispin) + ec_lda+Hs + trho*dec_dn + trho*dH_dA*dA_dn - 7.d0*T/3.d0*dH_dT &
-                  &                                  + trho*dH_dphi*dphi_dz*dz_dn(ispin)
-
-          end do
-
-          rtmp(i)=dH_dT*Pi/(8.d0*kf*trho)
-
        end if
 
-    end do
+       if ( trho==0.d0 ) then
+          dH_dA=0.d0
+          dH_dT=0.d0
+       else
+!          tmp   = 1.d0 + A*T + A*A*T*T
+!          dH_dA = -phi**3*C1*C2*A*T**3*(2.d0+A*T)/( tmp*tmp+C1*T*(1.d0+A*T)*tmp )
+!          dH_dT =  phi**3*C1*C2*(1.d0+2.d0*A*T)/( tmp*tmp + C1*T*(1.d0+A*T)*tmp )
+          tmp   = Ai*Ai + Ai*T + T*T
+          dH_dA = -phi**3*C1*C2*Ai*T**3*(2.d0*Ai+T)/( tmp*tmp + C1*T*(Ai*Ai+Ai*T)*tmp ) ! Ai**2 is canceld in dA_dn
+          dH_dT =  phi**3*C1*C2*Ai**3*(Ai+2.d0*T)/( tmp*tmp + C1*T*(Ai*Ai+Ai*T)*tmp )
+!          tmp1=(exp(-ec_lda/(C2*phi**3))-1.d0)/C1
+!          tmp2=tmp1/T
+!          dH_dA=-phi**3*C1*C2*tmp1*(2.d0*tmp2+1.d0)/((tmp2*tmp2+tmp2+1.d0)**2+C1*tmp1*(tmp2+1.d0)*(tmp2*tmp2+tmp2+1.d0))
+!          dH_dT=phi**3*C1*C2*tmp2**3*(tmp2+2.d0)/((tmp2*tmp2+tmp2+1.d0)**2+tmp1*C1*(tmp2+1.d0)*(tmp2*tmp2+tmp2+1.d0))
+       end if
 
-    if ( iflag>0 ) then
+       dH_dphi=3.d0*Hs/phi
 
-       rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)
-       call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-       rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)
-       call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-       rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)
-       call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       srho(1)    =rho(i,1)     ; if ( flag_pcc_0 ) srho(1)=srho(1)+rhoc(i)/dble(nspin)
+       srho(nspin)=rho(i,nspin) ; if ( flag_pcc_0 ) srho(nspin)=srho(nspin)+rhoc(i)/dble(nspin)
 
-       select case(SYStype)
-       case default
-          do i3=0,ML3-1
-             do i2=0,ML2-1
-                do i1=0,ML1-1
-                   i=LLL2(i1,i2,i3)
-                   do m=-Md,Md
-                      j1=i1+m
-                      k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
-                      j1=j1-k1*ML1
-                      j=LLL2(j1,i2,i3)
-                      if ( n1<=j .and. j<=n2 ) then
-                         do ispin=MSP_0,MSP_1
-                            Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
-                         end do
-                      end if
-                      j2=i2+m
-                      k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
-                      j2=j2-k2*ML2
-                      j=LLL2(i1,j2,i3)
-                      if ( n1<=j .and. j<=n2 ) then
-                         do ispin=MSP_0,MSP_1
-                            Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
-                         end do
-                      end if
-                      j3=i3+m
-                      k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
-                      j3=j3-k3*ML3
-                      j=LLL2(i1,i2,j3)
-                      if ( n1<=j .and. j<=n2 ) then
-                         do ispin=MSP_0,MSP_1
-                            Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
-                         end do
-                      end if
-                   end do
+       dz_dn(1)    = 2.d0*srho(nspin)/trho
+       dz_dn(nspin)=-2.d0*srho(1)/trho
+
+       do ispin=MSP_0,MSP_1
+
+          dec_dn=deU_dn-dac_dn*fz*const2*(1.d0-zeta(i)**4)+(deP_dn-deU_dn)*fz*zeta(i)**4 + dec_dz*dz_dn(ispin)
+
+!          dA_dn=A*(C1+A)/(C1*C2*phi**3)*( dec_dn - 3.d0*ec_lda/phi*dphi_dz*dz_dn(ispin) )
+          tmp=exp(-ec_lda/(phi**3*C2))
+          dA_dn=tmp/(C1*C2*phi**3)*( dec_dn - 3.d0*ec_lda/phi*dphi_dz*dz_dn(ispin) )
+
+          Vxc(i,ispin)=Vxc(i,ispin) + ec_lda+Hs + trho*dec_dn + trho*dH_dA*dA_dn - 7.d0*T/3.d0*dH_dT &
+               + trho*dH_dphi*dphi_dz*dz_dn(ispin)
+
+       end do ! ispin
+
+       rtmp(i)=dH_dT*Pi/(8.d0*kf*trho)
+
+    end do ! i
+
+    rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)
+    call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)
+    call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)
+    call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+
+    select case(SYStype)
+    case default
+       do i3=0,ML3-1
+       do i2=0,ML2-1
+       do i1=0,ML1-1
+          i=LLL2(i1,i2,i3)
+          do m=-Md,Md
+             j1=i1+m
+             k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
+             j1=j1-k1*ML1
+             j=LLL2(j1,i2,i3)
+             if ( n1<=j .and. j<=n2 ) then
+                do ispin=MSP_0,MSP_1
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
                 end do
-             end do
+             end if
+             j2=i2+m
+             k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
+             j2=j2-k2*ML2
+             j=LLL2(i1,j2,i3)
+             if ( n1<=j .and. j<=n2 ) then
+                do ispin=MSP_0,MSP_1
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
+                end do
+             end if
+             j3=i3+m
+             k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
+             j3=j3-k3*ML3
+             j=LLL2(i1,i2,j3)
+             if ( n1<=j .and. j<=n2 ) then
+                do ispin=MSP_0,MSP_1
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
+                end do
+             end if
           end do
-       case(1,2)
-          do i=1,ML
-             i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
-             do m=-Md,Md
-                j=LLL2(i1+m,i2,i3)
-                if ( n1<=j .and. j<=n2 ) then
-                   do ispin=1,MSP_0,MSP_1
-                      Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
-                   end do
-                end if
-                j=LLL2(i1,i2+m,i3)
-                if ( n1<=j .and. j<=n2 ) then
-                   do ispin=MSP_0,MSP_1
-                      Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
-                   end do
-                end if
-                j=LLL2(i1,i2,i3+m)
-                if ( n1<=j .and. j<=n2 ) then
-                   do ispin=MSP_0,MSP_1
-                      Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
-                   end do
-                  end if
-               end do
-            end do
-         end select
-      end if
+       end do
+       end do
+       end do
+    case(1,2)
+       do i=1,ML
+          i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+          do m=-Md,Md
+             j=LLL2(i1+m,i2,i3)
+             if ( n1<=j .and. j<=n2 ) then
+                do ispin=1,MSP_0,MSP_1
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,1)+rrrr(i,2)*b(2,1)+rrrr(i,3)*b(3,1) )
+                end do
+             end if
+             j=LLL2(i1,i2+m,i3)
+             if ( n1<=j .and. j<=n2 ) then
+                do ispin=MSP_0,MSP_1
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,2)+rrrr(i,2)*b(2,2)+rrrr(i,3)*b(3,2) )
+                end do
+             end if
+             j=LLL2(i1,i2,i3+m)
+             if ( n1<=j .and. j<=n2 ) then
+                do ispin=MSP_0,MSP_1
+                   Vxc(j,ispin)=Vxc(j,ispin)+nab(m)*sign(1,m)*( rrrr(i,1)*b(1,3)+rrrr(i,2)*b(2,3)+rrrr(i,3)*b(3,3) )
+                end do
+             end if
+          end do
+       end do
+    end select
 
-      sbf(1)=E_exchange*dV/dble(nspin)
-      sbf(2)=E_correlation*dV
-      call mpi_allreduce(sbf,rbf,2,mpi_real8,mpi_sum,comm_grid,ierr)
-      E_exchange=rbf(1)
-      E_correlation=rbf(2)
-      Exc=E_exchange+E_correlation
+    sbf(1)=E_exchange*dV/dble(nspin)
+    sbf(2)=E_correlation*dV
+    call mpi_allreduce(sbf,rbf,2,mpi_real8,mpi_sum,comm_grid,ierr)
+    E_exchange=rbf(1)
+    E_correlation=rbf(2)
+    Exc=E_exchange+E_correlation
 
-      mem=mem-bdreal*size(zeta) ; deallocate( zeta )
-      mem=mem-bdreal*size(rho_tmp) ; deallocate( rho_tmp )
-      mem=mem-bdreal*size(rtmp) ; deallocate( rtmp )
-      mem=mem-bdreal*( size(gx)+size(gy)+size(gz) ) ; deallocate( gz,gy,gx )
-      mem=mem-bdreal*size(rrrr) ; deallocate( rrrr )
-      select case(SYStype)
-      case default
-         call Make_GridMap("deallocate",mem,memax)
-      case(1,2)
-         mem=mem-bsintg*size(LLL2) ; deallocate(LLL2)
-         mem=mem-bsintg*size(LL2) ; deallocate(LL2)
-      end select
-#endif
-      return
-  END SUBROUTINE calc_GGAPBE96
-#ifdef TEST
-!===================================================== HF (Hartree-Fock)
-!--------1---------2---------3---------4---------5---------6---------7--
+    deallocate( zeta )
+    deallocate( rho_tmp )
+    deallocate( rtmp )
+    deallocate( gz,gy,gx )
+    deallocate( rrrr )
+    deallocate( LLL2 )
+    deallocate( nab )
+    select case(SYStype)
+    case(1,2)
+       deallocate(LL2)
+    end select
 
-  SUBROUTINE Exc_Cor_HF(iflag)
-      use global_variables
-      implicit none
-      integer,intent(IN) :: iflag
-      integer :: s,k,n,m,n1,n2,ML0,i,ierr,irank_b,mrnk,icount
-      integer,allocatable :: ir(:),id(:)
-      real(8) :: mem,memax,ctime0,etime0,ctime1,etime1
-      real(8) :: c,sum0,sum1
-      real(8),allocatable :: trho(:),tvht(:)
-      logical :: DISP_SWITCH_TMP
-
-
-      if ( iflag_hf==-1 ) then
-         call Exc_Cor_LDAPZ81(iflag)
-         return
-      endif
-
-!
-! --- HF ---
-!
-
-      call bwatch(ctime0,etime0)
-
-      n1=idisp(myrank)+1
-      n2=idisp(myrank)+ircnt(myrank)
-      ML0=n2-n1+1
-      mem=0.d0
-      memax=0.d0
-
-      DISP_SWITCH_TMP=DISP_SWITCH
-      DISP_SWITCH=.false.
-
-      Vxc=0.d0
-      E_exchange=0.d0
-      E_correlation=0.d0
-      Exc=0.d0
-
-      allocate( trho(n1:n2) ) ; trho=0.d0 ; mem=mem+bdreal*size(trho) ; memax=max(mem,memax)
-      allocate( tvht(n1:n2) ) ; tvht=0.d0 ; mem=mem+bdreal*size(tvht) ; memax=max(mem,memax)
-
-      VFunk(:,:,:,:)=zero
-
-      s=1
-      k=1
-
-!
-! -- only use the latest DM --
-!
-
-      if ( iflag_HF==1 ) then
-
-         allocate( id(0:np_band-1),ir(0:np_band-1) ) ; id=0 ; ir=0
-         mem=mem+bsintg*np_band*2 ; memax=max(memax,mem)
-
-         id(0:np_band-1) = id_band(0:np_band-1)*ML0
-         ir(0:np_band-1) = ir_band(0:np_band-1)*ML0
-         mrnk            = id_class(myrank,4)
-
-         call mpi_allgatherv(unk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN,unk(n1,1,k,s) &
-                             ,ir,id,TYPE_MAIN,comm_band,ierr)
-
-         mem=mem-bsintg*np_band*2 ; deallocate( id,ir )
-
-         icount=0
-
-         do n=1,MB
-
-            do m=1,n
-
-               icount=icount+1
-
-               irank_b=mod(icount-1,np_band)
-
-               if ( irank_b/=myrank_b ) cycle
-
-               do i=n1,n2
-                  trho(i)=unk(i,m,k,s)*unk(i,n,k,s)
-               end do
-
-               call Hartree_mol(n1,n2,trho,tvht,1.d-25,2000,0)
-
-               do i=n1,n2
-                  VFunk(i,n,k,s)=VFunk(i,n,k,s)-0.5d0*occ(m,k,s)*tvht(i)*unk(i,m,k,s)
-               end do
-
-               if ( m/=n ) then
-                  do i=n1,n2
-                     VFunk(i,m,k,s)=VFunk(i,m,k,s)-0.5d0*occ(n,k,s)*tvht(i)*unk(i,n,k,s)
-                  end do
-               end if
-
-            end do
-
-         end do ! n
-
-         unk_hf1(:,:,k,s)=VFunk(:,:,k,s)
-         call mpi_allreduce(unk_hf1(n1,1,k,s),VFunk(n1,1,k,s),ML0*MB,TYPE_MAIN &
-              ,mpi_sum,comm_band,ierr)
-
-! - energy -
-
-         sum0=0.d0
-         do n=MB_0,MB_1
-            if ( abs(occ(n,k,s))<1.d-10 ) cycle
-            c=0.5d0*occ(n,k,s)
-            do i=n1,n2
-               sum0=sum0+c*unk(i,n,k,s)*VFunk(i,n,k,s)
-            end do
-         end do
-         call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_grid,ierr)
-         call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_band,ierr)
-         E_exchange=sum0*dV
-         Exc=E_exchange
-
-      end if
-
-      mem=mem-bdmain*size(tvht) ; deallocate( tvht )
-      mem=mem-bdmain*size(trho) ; deallocate( trho )
-
-      DISP_SWITCH=DISP_SWITCH_TMP
-
-      call bwatch(ctime1,etime1)
-      if ( DISP_SWITCH ) then
-         write(*,*) "TIME(EXC_COR_HF)=",ctime1-ctime0,etime1-etime0
-         write(*,*) " MEM(MB)=",mem,memax*B2MB
-         write(*,*) " E_exchange,Exc=",E_exchange,Exc
-      end if
-
-      return
-  END SUBROUTINE Exc_Cor_HF
-#endif
+    return
+  END SUBROUTINE CALC_GGAPBE96
 
 END MODULE xc_module

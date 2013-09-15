@@ -5,469 +5,951 @@ MODULE ewald_module
   use atom_module
   use pseudopot_module, only: Zps
   use parallel_module
+  use watch_module
 
   implicit none
+
   PRIVATE
-  PUBLIC :: Eewald,calc_ewald,calc_force_ewald,test_ewald
+  PUBLIC :: Eewald,test_ewald,calc_ewald,calc_force_ewald,cal_ewald
 
   real(8) :: Eewald
-  real(8) :: eta=0.d0
-  real(8) :: qgb=0.d0
-  real(8) :: qrb=0.d0
+  real(8),allocatable :: zatom(:)
+  real(8) :: eta,Qtot,Qtot2,rrcut,ecut,Vcell
+  integer :: mg,mr
+  integer,allocatable :: LG(:,:),LR(:,:)
+  integer,allocatable :: id(:),ir(:)
 
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
+  integer :: mpair
+  integer,allocatable :: ipair(:,:)
+
+  real(8) :: ewldg_0=0.d0, g_0=0.d0
+  real(8) :: ewldr_0=0.d0, r_0=0.d0
 
 CONTAINS
 
+  SUBROUTINE cal_ewald(Ewld,disp_switch)
+    implicit none
+    real(8),intent(OUT) :: Ewld
+    logical,intent(IN) :: disp_switch
+    real(8) :: ewldg,ewldr,pi
+    pi=acos(-1.d0)
+    call calc_ewldg(mg,LG,ewldg)
+    ewldg=ewldg*4.d0*pi/Vcell
+    ewldg=ewldg-pi/(eta*Vcell)*Qtot**2
+    ewldg=ewldg-2.d0*sqrt(eta/pi)*Qtot2
+    call calc_ewldr(mr,LR,ewldr)
+    Ewld=0.5d0*(ewldg+ewldr)
+  END SUBROUTINE cal_ewald
+
   SUBROUTINE test_ewald(Ewld,disp_switch)
-    real(8),intent(IN) :: Ewld
-    logical,intent(IN)  :: disp_switch
-    if ( disp_switch ) write(*,*) "test_ewald(dummy routine)"
+    implicit none
+    real(8),intent(OUT) :: Ewld
+    logical,intent(IN) :: disp_switch
+    integer,parameter :: maxloop=50,max_loop_r=10,max_loop_g=10
+    integer :: loop_eta,loop_g,loop_r,mg0,mr0,i,m1,m2,m3,m,n,j
+    integer :: mg_tot_0,mr_tot_0,mr_tot,mg_tot,mr_tmp,mr_dif,ierr
+    integer,allocatable :: LR_tmp(:,:)
+    real(8),parameter :: epsg=1.d-12, epsr=1.d-12, ep=1.d-10
+    real(8),parameter :: factor=1.0d0
+    real(8) :: const,const1,ewldr,ewldr0,ewldg,ewldg0,eta_small,eta_big
+    real(8) :: r,r0,rr,alpha,g,g0,t,pi,max_bb,max_aa,eta_0,tt0,ttt,gg
+    real(8) :: ewldr_tmp,gmax
+    real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
+    logical :: flag_conv
+    integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
+
+    pi=acos(-1.d0)
+
+    Vcell = abs( aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
+                +aa(1,3)*aa(2,1)*aa(3,2)-aa(1,3)*aa(2,2)*aa(3,1) &
+                -aa(1,2)*aa(2,1)*aa(3,3)-aa(1,1)*aa(2,3)*aa(3,2) )
+
+    max_aa=0.d0
+    do i=1,3
+       t=sqrt( sum(aa(1:3,i)**2) )
+       max_aa=max(max_aa,t)
+    end do
+    max_bb=0.d0
+    do i=1,3
+       t=sqrt( sum(bb(1:3,i)**2) )
+       max_bb=max(max_bb,t)
+    end do
+
+    if ( .not.allocated(zatom) ) then
+       allocate( zatom(Natom) )
+       do i=1,Natom
+          zatom(i)=nint( Zps(ki_atom(i)) )
+       end do
+    end if
+
+    if ( .not.allocated(id) ) then
+       allocate( id(0:nprocs-1) )
+       allocate( ir(0:nprocs-1) )
+    end if
+
+    if ( .not.allocated(ipair) ) then
+       mpair = ( Natom*(Natom+1) )/2
+       call prep_parallel(mpair,nprocs,ir,id)
+       mpair = ir(myrank)
+       allocate( ipair(2,mpair) )
+       m=0
+       n=0
+       do j=1,Natom
+       do i=j,Natom
+          m=m+1
+          if ( m < id(myrank)+1 .or. id(myrank)+ir(myrank) < m ) cycle
+          n=n+1
+          ipair(1,n)=i
+          ipair(2,n)=j
+       end do
+       end do
+    end if
+
+    eta = pi/Vcell**(2.d0/3.d0)
+
+    eta_small = 0.d0
+    eta_big   = 0.d0
+    eta_0     = 0.d0
+    tt0       = 0.d0
+    mg_tot_0  = 0
+    mr_tot_0  = 0
+
+    Qtot =0.d0
+    Qtot2=0.d0
+    do i=1,Natom
+       Qtot =Qtot +zatom(i)
+       Qtot2=Qtot2+zatom(i)**2
+    end do
+
+    const1 = 4.d0*Pi/Vcell
+
+    do loop_eta=1,maxloop
+
+!--- G
+
+       const=1.d0/(4.d0*eta)
+!       do i=1,10000
+!          g=i
+!          t=const1*exp(-const*g*g)/(g*g)
+!          if ( t <= epsg ) exit
+!       end do
+       g=12.d0*sqrt(eta)
+
+       ewldg0 = 0.d0
+       flag_conv = .false.
+       do loop_g=1,max_loop_g
+
+          ecut=g*g
+
+          call search_grid(bb,ecut,m1,m2,m3,mg_tot)
+          call prep_parallel(mg_tot,nprocs,ir,id)
+          mg=ir(myrank)
+          if ( allocated(LG) ) deallocate( LG )
+          allocate( LG(3,mg) )
+          call construct_grid(bb,ecut,mg_tot,m1,m2,m3,mg,LG)
+
+          call watch(ct0,et0)
+          call calc_ewldg(mg,LG,ewldg)
+          ewldg=ewldg*4.d0*pi/Vcell
+          ewldg=ewldg-pi/(eta*Vcell)*Qtot**2
+          ewldg=ewldg-2.d0*sqrt(eta/pi)*Qtot2
+          call watch(ct1,et1) ; timg(1)=ct1-ct0 ; timg(2)=et1-et0
+
+          ir(myrank)=mg
+          call mpi_allgather &
+               (mg,1,mpi_integer,ir,1,mpi_integer,mpi_comm_world,ierr)
+
+          if ( disp_switch ) then
+             write(*,'(1x,2i4,2i8,2g26.15,2g12.5)') &
+                  loop_eta,loop_g,mg_tot,mg,ewldg,sqrt(ecut),timg(1:2)
+          end if
+
+          if ( abs((ewldg-ewldg0)/ewldg) < 1.d-15 ) then
+             flag_conv=.true.
+             ewldg=ewldg0
+             mg=mg0
+             g=g0
+             timg(:)=timg0(:)
+             exit
+          else
+             ewldg0=ewldg
+             mg0=mg
+             g0=g
+             g=(g+max_bb)*factor
+             timg0(:)=timg(:)
+          end if
+
+       end do ! loop_g
+
+       if ( flag_conv ) then
+          if ( mg <= 0 ) then
+             gg=0.d0
+          else
+             gg=( bb(1,1)*LG(1,mg)+bb(1,2)*LG(2,mg)+bb(1,3)*LG(3,mg) )**2 &
+               +( bb(2,1)*LG(1,mg)+bb(2,2)*LG(2,mg)+bb(2,3)*LG(3,mg) )**2 &
+               +( bb(3,1)*LG(1,mg)+bb(3,2)*LG(2,mg)+bb(3,3)*LG(3,mg) )**2
+          end if
+          call mpi_allreduce(gg,ecut,1,mpi_real8,mpi_max,mpi_comm_world,i)
+          call search_grid(bb,ecut,m1,m2,m3,mg_tot)
+          call prep_parallel(mg_tot,nprocs,ir,id)
+          mg=ir(myrank)
+          if ( allocated(LG) ) deallocate( LG )
+          allocate( LG(3,mg) )
+          call construct_grid(bb,ecut,mg_tot,m1,m2,m3,mg,LG)
+       else
+          stop "ewldg is not converged"
+       end if
+
+       if ( disp_switch ) then
+          write(*,'(1x,"ewald(G)=",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
+       end if
+
+!--- R
+
+       alpha = sqrt(eta)
+!       do i=1,1000
+!          r=i
+!          t=erfc(alpha*r)/r
+!          if ( t <= epsr ) exit
+!       end do
+       r=6.d0/sqrt(eta)
+
+       ewldr0    = 0.d0
+!       ewldr     = 0.d0
+       ewldr     = ewldg ; ewldg=0.d0
+       ewldr_tmp = ewldr
+       flag_conv = .false.
+       mr_tmp    = 0
+       timr(:)   = 0.d0
+       do loop_r=1,max_loop_r
+
+          rrcut=r*r
+
+          call watch(ct0,et0)
+
+          call search_grid(aa,rrcut,m1,m2,m3,mr_tot)
+!          call prep_parallel(mr_tot,nprocs,ir,id) ; mr=ir(myrank)
+          mr=mr_tot ; id(:)=0 ; ir(:)=mr
+
+          allocate( grd_chk(-m1:m1,-m2:m2,-m3:m3) ) ; grd_chk=0
+
+          if ( loop_r == 1 ) then
+          else
+             allocate( grd_chk0(-m1:m1,-m2:m2,-m3:m3) ) ; grd_chk0=0
+             mr_tmp = size(LR,2)
+             do i=1,mr_tmp
+                grd_chk0( LR(1,i),LR(2,i),LR(3,i) ) = 1
+             end do
+             m=size(grd_chk)
+             call mpi_allreduce(grd_chk0,grd_chk,m &
+                               ,mpi_integer,mpi_sum,mpi_comm_world,ierr)
+             deallocate( grd_chk0 )
+          end if
+
+          if ( allocated(LR) ) deallocate(LR)
+          allocate( LR(3,mr) )
+
+          call construct_grid(aa,rrcut,mr_tot,m1,m2,m3,mr,LR)
+
+          if ( allocated(LR_tmp) ) deallocate( LR_tmp )
+          allocate( LR_tmp(3,mr) ) ; LR_tmp=0
+
+          if ( loop_r == 1 ) then
+             m=mr
+             LR_tmp(1:3,1:mr) = LR(1:3,1:mr)
+          else
+             m=0
+             do i=1,mr
+                if ( grd_chk(LR(1,i),LR(2,i),LR(3,i)) == 0 ) then
+                   m=m+1
+                   LR_tmp(1:3,m) = LR(1:3,i)
+                end if
+             end do
+          end if
+
+          deallocate( grd_chk )
+
+          call watch(ct1,et1)
+!(1)
+!          call watch(ct0,et0)
+!          ewldr=ewldr_tmp
+!!          ewldr=0.d0
+!          call calc_ewldr(mr,LR,ewldr)
+!          call watch(ct1,et1)
+!          timr(1)=ct1-ct0 ; timr(2)=et1-et0
+!(2)
+          call watch(ct0,et0)
+          call calc_ewldr(m,LR_tmp,ewldr)
+          call watch(ct1,et1)
+          timr(1)=timr(1)+ct1-ct0 ; timr(2)=timr(2)+et1-et0
+
+          deallocate( LR_tmp )
+
+          if ( disp_switch ) then
+             write(*,'(1x,2i4,3i8,2g26.15,2g12.5)') &
+                  loop_eta,loop_r,mr_tot,mr,m,ewldr,sqrt(rrcut),timr(1:2)
+          end if
+
+          if ( abs((ewldr-ewldr0)/ewldr) < 1.d-15 ) then
+             flag_conv=.true.
+             ewldr=ewldr0
+             mr=mr0
+             r=r0
+             timr(:)=timr0(:)
+             exit
+          else
+             ewldr0=ewldr
+             mr0=mr
+             r0=r
+             r=(r+max_aa)*factor
+             timr0(:)=timr(:)
+          end if
+
+       end do ! loop_r
+
+       if ( flag_conv ) then
+          rr=( aa(1,1)*LR(1,mr)+aa(1,2)*LR(2,mr)+aa(1,3)*LR(3,mr) )**2 &
+            +( aa(2,1)*LR(1,mr)+aa(2,2)*LR(2,mr)+aa(2,3)*LR(3,mr) )**2 &
+            +( aa(3,1)*LR(1,mr)+aa(3,2)*LR(2,mr)+aa(3,3)*LR(3,mr) )**2
+          call mpi_allreduce(rr,rrcut,1,mpi_real8,mpi_max,mpi_comm_world,i)
+          call search_grid(aa,rrcut,m1,m2,m3,mr_tot)
+!          call prep_parallel(mr_tot,nprocs,ir,id) ; mr=ir(myrank)
+          mr=mr_tot ; id(:)=0 ; ir(:)=mr
+          if ( allocated(LR) ) deallocate( LR )
+          allocate( LR(3,mr) )
+          call construct_grid(aa,rrcut,mr_tot,m1,m2,m3,mr,LR)
+       else
+          stop "ewldr is not converged"
+       end if
+
+       if ( disp_switch ) then
+          write(*,'(1x,"ewald(R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
+       end if
+
+       Ewld=0.5d0*(ewldr+ewldg)
+
+       call mpi_allreduce(timg,timg0,2,mpi_real8,mpi_max,mpi_comm_world,i)
+       call mpi_allreduce(timr,timr0,2,mpi_real8,mpi_max,mpi_comm_world,i)
+
+       if ( disp_switch ) then
+          write(*,'(1x,i6,4x,"Ewld=",3g22.15,2i8,2x,3g12.5)') &
+               loop_eta,Ewld,eta,eta-eta_0,mg_tot,mr_tot &
+               ,timg0(2),timr0(2),timg0(2)+timr0(2)
+       end if
+
+       if ( abs(eta-eta_0) < ep ) exit
+       if ( mg_tot_0 == mg_tot .and. mr_tot_0 == mr_tot ) exit
+
+       mg_tot_0 = mg_tot
+       mr_tot_0 = mr_tot
+
+       ttt=timg0(2)+timr0(2)
+       if ( loop_eta == 1 ) then
+          eta_0 = eta
+          tt0 = ttt
+          eta = eta*2.d0
+       else
+          if ( eta_big == 0.d0 ) then
+             if ( ttt < tt0 ) then
+                eta_small = eta_0
+                eta_0 = eta
+                tt0 = ttt
+                eta = eta*2.d0
+             else
+                eta_big = eta
+                if ( mod(loop_eta,2) == 0 ) then
+                   eta=(eta_small+eta_0)/2
+                else
+                   eta=(eta_0+eta_big)/2
+                end if
+             end if
+          else
+             if ( mod(loop_eta,2) == 1 ) then
+                if ( ttt > tt0 ) then
+                   eta_small = eta
+                   eta = (eta_0+eta_big)/2
+                else
+                   eta_big = eta_0
+                   eta_0 = eta
+                   tt0 = ttt
+                   eta = (eta_0+eta_big)/2
+                end if
+             else
+                if ( ttt > tt0 ) then
+                   eta_big = eta
+                   eta = (eta_small+eta_0)/2
+                else
+                   eta_small = eta_0
+                   eta_0 = eta
+                   tt0 = ttt
+                   eta = (eta_small+eta_0)/2
+                end if
+             end if
+          end if
+       end if
+
+       if ( loop_eta == maxloop ) eta=eta_0
+
+    end do ! loop_eta
+
     return
   END SUBROUTINE test_ewald
 
-  SUBROUTINE calc_ewald(Ewld,disp_switch)
-    real(8),intent(OUT) :: Ewld
-    logical,intent(IN) :: disp_switch
-    integer,parameter :: maxloop=20
-    integer :: i,j,k,n,i1,i2,loop,ik1,ik2,a,b,ik,MREtmp,MGEtmp
-    integer :: MGE,MRE,mmg1,mmg2,mmg3,mmr1,mmr2,mmr3,mmg,mmr
-    integer :: ierr,i2_0,i2_1,MI_NP
-    integer,allocatable :: ER(:,:),EG(:,:),indx(:),iwork(:,:)
-    real(8),parameter :: ep=1.d-15
-    real(8) :: Ewldg,Ewldr,Ewldg0,Ewldr0,Ewld0,bbmax,aamax
-    real(8) :: x,y,z,ss,qqg,qqa,sum1,t,Qtot,Qtot2,sqeta,qgb0,qrb0
-    real(8) :: c1,c2,c3,a1,a2,a3,a1_1,a2_1,a3_1,a1_2,a2_2,a3_2
-    real(8) :: const,pi2,pi,Vcell,z1,z2
-    real(8),allocatable :: SSR(:),SSG(:),SG2(:),work(:)
+
+  SUBROUTINE search_grid(v,vvcut,m1,m2,m3,mv)
+    implicit none
+    real(8),intent(IN)  :: v(3,3),vvcut
+    integer,intent(OUT) :: m1,m2,m3,mv
+    integer :: i,m,i1,i2,i3
+    real(8) :: vx,vy,vz,vv
+    m1=1
+    m2=1
+    m3=1
+    mv=0
+    do i=1,100000
+       m=0
+       do i3=-m3,m3
+       do i2=-m2,m2
+       do i1=-m1,m1
+          vx=v(1,1)*i1+v(1,2)*i2+v(1,3)*i3
+          vy=v(2,1)*i1+v(2,2)*i2+v(2,3)*i3
+          vz=v(3,1)*i1+v(3,2)*i2+v(3,3)*i3
+          vv=vx*vx+vy*vy+vz*vz
+          if ( vv < vvcut + 1.d-8 ) then
+             m=m+1
+          end if
+       end do
+       end do
+       end do
+       if ( m == mv ) exit
+       mv=m
+       m1=m1+1
+       m2=m2+1
+       m3=m3+1
+    end do
+  END SUBROUTINE search_grid
+
+
+  SUBROUTINE prep_parallel(mv,nprocs,ir,id)
+    implicit none
+    integer,intent(IN) :: mv,nprocs
+    integer,intent(OUT) :: ir(0:nprocs-1),id(0:nprocs-1)
+    integer :: i,j
+    ir(:)=0
+    do i=1,mv
+       j=mod(i-1,nprocs)
+       ir(j)=ir(j)+1
+    end do
+    do j=0,nprocs-1
+       id(j)=sum(ir(0:j))-ir(j)
+    end do
+  END SUBROUTINE prep_parallel
+
+
+  SUBROUTINE construct_grid(v,vvcut,mt,m1,m2,m3,mv,LV)
+    implicit none
+    real(8),intent(IN)  :: v(3,3),vvcut
+    integer,intent(IN)  :: mt,m1,m2,m3,mv
+    integer,intent(OUT) :: LV(3,mv)
+    integer :: m,n,i1,i2,i3,i,j
+    integer,allocatable :: indx(:),LVtmp(:,:)
+    real(8) :: vx,vy,vz,vv
+    real(8),allocatable :: ll(:)
+    allocate( LVtmp(3,mt) ) ; LVtmp=0
+    m=0
+    n=0
+    do i3=-m3,m3
+    do i2=-m2,m2
+    do i1=-m1,m1
+       vx=v(1,1)*i1+v(1,2)*i2+v(1,3)*i3
+       vy=v(2,1)*i1+v(2,2)*i2+v(2,3)*i3
+       vz=v(3,1)*i1+v(3,2)*i2+v(3,3)*i3
+       vv=vx*vx+vy*vy+vz*vz
+       if ( vv < vvcut + 1.d-8 ) then
+          m=m+1
+          LVtmp(1,m)=i1
+          LVtmp(2,m)=i2
+          LVtmp(3,m)=i3
+          if ( m < id(myrank)+1 .or. id(myrank)+ir(myrank) < m ) cycle
+          n=n+1
+          LV(1,n)=i1
+          LV(2,n)=i2
+          LV(3,n)=i3
+       end if
+    end do
+    end do
+    end do
+    if ( n /= mv ) then
+       write(*,*) "n,m,mv,mt=",n,m,mv,mt,myrank
+       stop "stop at construct_grid(ewald1)"
+    end if
+    if ( m /= mt ) then
+       write(*,*) "n,m,mv,mt=",n,m,mv,mt,myrank
+       stop "stop at construct_grid(ewald2)"
+    end if
+
+    allocate( ll(m),indx(m) )
+    do i=1,m
+       i1=LVtmp(1,i)
+       i2=LVtmp(2,i)
+       i3=LVtmp(3,i)
+       vx=v(1,1)*i1+v(1,2)*i2+v(1,3)*i3
+       vy=v(2,1)*i1+v(2,2)*i2+v(2,3)*i3
+       vz=v(3,1)*i1+v(3,2)*i2+v(3,3)*i3
+       ll(i)=vx*vx+vy*vy+vz*vz
+    end do
+    call indexx(m,ll,indx)
+    if ( m == n ) then
+       do i=1,m
+          LV(1:3,i)=LVtmp(1:3,indx(i))
+       end do
+    else
+    n=0
+    do i=1,m
+       j=mod(i-1,nprocs)
+       if ( j == myrank ) then
+          n=n+1
+          LV(1:3,n)=LVtmp(1:3,indx(i))
+       end if
+    end do
+    end if
+    deallocate( indx,ll,LVtmp )
+
+  END SUBROUTINE construct_grid
+
+
+  SUBROUTINE calc_ewldg(mg,LG,ewldg)
+    implicit none
+    integer,intent(INOUT) :: mg
+    integer,intent(IN)    :: LG(3,mg)
+    real(8),intent(OUT) :: ewldg
+    integer :: i,a,m1
+    real(8) :: x,y,z,t,pi2,gx,gy,gz,gg,e0,e1,g1,const
     complex(8) :: sg
-
-    pi=acos(-1.d0)
-    pi2=2.d0*pi
-    Vcell=abs(Va)
-
-    if ( eta == 0.d0 ) eta=pi/Vcell**(2.d0/3.d0)
-    if ( qgb == 0.d0 ) qgb=12.d0*sqrt(eta)
-    if ( qrb == 0.d0 ) qrb=6.d0/sqrt(eta)
-
-    qgb0=qgb
-    qrb0=qrb
-    sqeta=sqrt(eta)
-    Ewld0 =1.d10
-    Ewldg0=1.d10
-    Ewldr0=1.d10
-
-    aamax=0.d0
-    do i=1,3
-       x=sum(aa(:,i)**2)
-       if( x > aamax ) aamax=x
-    end do
-    aamax=sqrt(aamax)+ep
-    bbmax=0.d0
-    do i=1,3
-       x=sum(bb(:,i)**2)
-       if( x > bbmax ) bbmax=x
-    end do
-    bbmax=sqrt(bbmax)+ep
-
-    do loop=1,maxloop
-
-       qqg=qgb*qgb
-       qqa=qrb*qrb
-
-       mmg1=int( sqrt(qqg/sum(bb(:,1)**2)) )+1
-       mmg2=int( sqrt(qqg/sum(bb(:,2)**2)) )+1
-       mmg3=int( sqrt(qqg/sum(bb(:,3)**2)) )+1
-       mmg=(2*mmg1+1)*(2*mmg2+1)*(2*mmg3+1)
-
-       mmr1=int( sqrt(qqa/sum(aa(:,1)**2)) )+1
-       mmr2=int( sqrt(qqa/sum(aa(:,2)**2)) )+1
-       mmr3=int( sqrt(qqa/sum(aa(:,3)**2)) )+1
-       mmr=(2*mmr1+1)*(2*mmr2+1)*(2*mmr3+1)
-
-       allocate( EG(3,mmg), SSG(mmg), ER(3,mmr), SSR(mmr) )
-
-       SSG=0.d0
-       SSR=0.d0
-
-       n=0
-       do k=-mmg3,mmg3
-       do j=-mmg2,mmg2
-       do i=-mmg1,mmg1
-          if( i==0 .and. j==0 .and. k==0 )cycle
-          x=i*bb(1,1)+j*bb(1,2)+k*bb(1,3)
-          y=i*bb(2,1)+j*bb(2,2)+k*bb(2,3)
-          z=i*bb(3,1)+j*bb(3,2)+k*bb(3,3)
-          ss=x*x+y*y+z*z
-          if ( ss<=qqg-ep ) then
-             n=n+1
-             EG(1,n)=i
-             EG(2,n)=j
-             EG(3,n)=k
-             SSG(n)=ss
-          end if
+    pi2=2.d0*acos(-1.d0)
+    const=1.d0/(4.d0*eta)
+    e0=0.d0
+    e1=0.d0
+    g1=0.d0
+    m1=0
+    do i=1,mg
+       x=pi2*LG(1,i)
+       y=pi2*LG(2,i)
+       z=pi2*LG(3,i)
+       if ( all( LG(1:3,i) == 0 ) ) cycle
+       sg=(0.d0,0.d0)
+!$OMP parallel do private( t ) reduction(+:sg)
+       do a=1,Natom
+          t=x*aa_atom(1,a)+y*aa_atom(2,a)+z*aa_atom(3,a)
+          sg=sg+zatom(a)*dcmplx(cos(t),-sin(t))
        end do
-       end do
-       end do
-       MGE=n
-
-       n=0
-       do k=-mmr3,mmr3
-       do j=-mmr2,mmr2
-       do i=-mmr1,mmr1
-          x=i*aa(1,1)+j*aa(1,2)+k*aa(1,3)
-          y=i*aa(2,1)+j*aa(2,2)+k*aa(2,3)
-          z=i*aa(3,1)+j*aa(3,2)+k*aa(3,3)
-          ss=x*x+y*y+z*z
-          if ( ss<=qqa-ep ) then
-             n=n+1
-             ER(1,n)=i
-             ER(2,n)=j
-             ER(3,n)=k
-             SSR(n)=ss
-          end if
-       end do
-       end do
-       end do
-       MRE=n
-
-! Sorting
-
-       n=max(MRE,MGE)
-       allocate( indx(n),iwork(3,n),work(n) )
-
-       call indexx(MGE,SSG(1),indx(1))
-       iwork(1,1:MGE)=EG(1,1:MGE)
-       iwork(2,1:MGE)=EG(2,1:MGE)
-       iwork(3,1:MGE)=EG(3,1:MGE)
-       work(1:MGE)=SSG(1:MGE)
-       do n=1,MGE
-          EG(1,n)=iwork(1,indx(n))
-          EG(2,n)=iwork(2,indx(n))
-          EG(3,n)=iwork(3,indx(n))
-          SSG(n)=work(indx(n))
-       end do
-       call indexx(MRE,SSR(1),indx(1))
-       iwork(1,1:MRE)=ER(1,1:MRE)
-       iwork(2,1:MRE)=ER(2,1:MRE)
-       iwork(3,1:MRE)=ER(3,1:MRE)
-       work(1:MRE)=SSR(1:MRE)
-       do n=1,MRE
-          ER(1,n)=iwork(1,indx(n))
-          ER(2,n)=iwork(2,indx(n))
-          ER(3,n)=iwork(3,indx(n))
-          SSR(n)=work(indx(n))
-       end do
-
-       deallocate( indx,iwork,work )
-
-       Qtot=0.d0
-       Qtot2=0.d0
-       do i=1,Natom
-          Qtot =Qtot +Zps(ki_atom(i))
-          Qtot2=Qtot2+Zps(ki_atom(i))**2
-       end do
-
-! Structure factor
-
-       allocate( SG2(MGE) ) ; SG2=0.d0
-
-       do i=1,MGE
-          sg=(0.d0,0.d0)
-          x=pi2*EG(1,i)
-          y=pi2*EG(2,i)
-          z=pi2*EG(3,i)
-          do a=1,Natom
-             t=x*aa_atom(1,a)+y*aa_atom(2,a)+z*aa_atom(3,a)
-             sg=sg+Zps(ki_atom(a))*dcmplx(cos(t),-sin(t))
-          end do
-          SG2(i)=abs(sg)**2
-       end do
-
-! G
-       Ewldg=0.d0
-       const=1.d0/(4.d0*eta)
-       do i=1,MGE
-          t=exp(-SSG(i)*const)/SSG(i)
-          if ( abs(t)<ep ) then
-             MGEtmp=i-1 ; exit
-          end if
-          Ewldg=Ewldg+SG2(i)*t
-          MGEtmp=i
-       end do
-       Ewldg=Ewldg*4.d0*pi/Vcell
-       Ewldg=Ewldg-pi/(eta*Vcell)*Qtot**2
-
-! R
-       MI_NP = Natom/nprocs
-       if ( MI_NP*nprocs < Natom ) MI_NP=MI_NP+1
-       i2_0  = myrank*MI_NP+1
-       i2_1  = min( i2_0+MI_NP-1, Natom )
-       Ewldr=0.d0
-       MREtmp=0
-       do i2=i2_0,i2_1
-          a1_2=aa_atom(1,i2)
-          a2_2=aa_atom(2,i2)
-          a3_2=aa_atom(3,i2)
-          z2=Zps(ki_atom(i2))
-       do i1=i2,Natom
-          a1_1=aa_atom(1,i1)
-          a2_1=aa_atom(2,i1)
-          a3_1=aa_atom(3,i1)
-          z1=Zps(ki_atom(i1))
-          sum1=0.d0
-          do i=1,MRE
-             a1=ER(1,i)+a1_1-a1_2
-             a2=ER(2,i)+a2_1-a2_2
-             a3=ER(3,i)+a3_1-a3_2
-             x=aa(1,1)*a1+aa(1,2)*a2+aa(1,3)*a3
-             y=aa(2,1)*a1+aa(2,2)*a2+aa(2,3)*a3
-             z=aa(3,1)*a1+aa(3,2)*a2+aa(3,3)*a3
-             ss=sqrt(x*x+y*y+z*z)
-             if ( ss==0.d0 ) cycle
-             t=(1.d0-bberf(sqeta*ss))/ss
-             if ( abs(t)==0.d0 ) cycle
-             sum1=sum1+t
-             MREtmp=max(MREtmp,i)
-          end do
-          if ( i1/=i2 ) sum1=sum1*2.d0
-          Ewldr=Ewldr+z1*z2*sum1
-       end do
-       end do
-
-       sum1=Ewldr
-       call mpi_allreduce(sum1,Ewldr,1,mpi_real8,mpi_sum,mpi_comm_world,ierr)
-       i=MREtmp
-       call mpi_allreduce(i,MREtmp,1,mpi_integer,mpi_max,mpi_comm_world,ierr)
-
-       Ewldr=Ewldr-2.d0*sqrt(eta/pi)*Qtot2
-
-       Ewld=0.5d0*(Ewldr+Ewldg)
-
-       qgb=sqrt(SSG(MGEtmp))
-       qrb=sqrt(SSR(MREtmp))
-
-       deallocate( SG2,ER,EG,SSG,SSR )
-
-! Check convergence
-
-       if ( disp_switch ) then
-          write(*,*) "MGE,MRE",MGEtmp,MGE,MREtmp,MRE
-          write(*,*) "qgb,qrb     =",qgb,qrb
-          write(*,*) "Ewldg,Ewldr =",Ewldg*0.5d0,Ewldr*0.5d0
-          write(*,*) "Ewld        =",Ewld
+!$OMP end parallel do
+       gx=bb(1,1)*LG(1,i)+bb(1,2)*LG(2,i)+bb(1,3)*LG(3,i)
+       gy=bb(2,1)*LG(1,i)+bb(2,2)*LG(2,i)+bb(2,3)*LG(3,i)
+       gz=bb(3,1)*LG(1,i)+bb(3,2)*LG(2,i)+bb(3,3)*LG(3,i)
+       gg=gx*gx+gy*gy+gz*gz
+       t = exp(-const*gg)/gg
+       e0 = e0 + abs(sg)**2*t
+!       write(*,'(1x,i6,4g16.8)') i,gg,t,abs(sg)**2,e0
+       if ( e0 /= e1 ) then
+          e1=e0
+          g1=gg
+          m1=i
        end if
-
-       if ( MGEtmp<MGE .and. MREtmp<MRE ) exit
-       if ( abs((Ewld -Ewld0)/Ewld)<ep ) then
-          qgb=qgb0
-          qrb=qrb0
-          exit
-       end if
-       qgb0=qgb
-       qrb0=qrb
-       if ( abs(Ewldg-Ewldg0)>ep ) qgb=qgb0+bbmax
-       if ( abs(Ewldr-Ewldr0)>ep ) qrb=qrb0+aamax
-       Ewld0=Ewld
-       Ewldg0=Ewldg
-       Ewldr0=Ewldr
-
     end do
+    call mpi_allreduce(e0,ewldg,1,mpi_real8,mpi_sum,mpi_comm_world,i)
+    mg=m1
+  END SUBROUTINE calc_ewldg
 
-    if ( loop>=maxloop ) then
-       write(*,*) "Ewald sum is not converged!"
-       stop
-    end if
 
-    if ( disp_switch ) then
-       write(*,*) "Ewald parameters"
-       write(*,*) "   eta      =",eta,sqrt(eta)
-       write(*,*) "   qgb, qrb =",qgb,qrb
-       write(*,*) "   Ewld     =",Ewld
-    end if
-
-    return
-
-  END SUBROUTINE calc_ewald
+  SUBROUTINE calc_ewldr(mr,LR,ewldr)
+    implicit none
+    integer,intent(IN) :: mr,LR(3,mr)
+    real(8),intent(INOUT) :: ewldr
+    integer :: i,i1,i2,i1i2
+    real(8) :: a1_2,a2_2,a3_2,a1_1,a2_1,a3_1,z1,z2
+    real(8) :: sum0,sum1,sum2,a1,a2,a3,x,y,z,r,t,alpha
+    alpha=sqrt(eta)
+!    ewldr=0.d0
+    sum2=0.d0
+    do i1i2=1,mpair
+       i1=ipair(1,i1i2)
+       i2=ipair(2,i1i2)
+       a1_2=aa_atom(1,i2)
+       a2_2=aa_atom(2,i2)
+       a3_2=aa_atom(3,i2)
+       z2=zatom(i2)
+       a1_1=aa_atom(1,i1)
+       a2_1=aa_atom(2,i1)
+       a3_1=aa_atom(3,i1)
+       z1=zatom(i1)
+       sum0=0.d0
+!$OMP parallel do private( a1,a2,a3,x,y,z,r,t ) reduction(+:sum0)
+       do i=1,mr
+          a1=LR(1,i)+a1_1-a1_2
+          a2=LR(2,i)+a2_1-a2_2
+          a3=LR(3,i)+a3_1-a3_2
+          x=aa(1,1)*a1+aa(1,2)*a2+aa(1,3)*a3
+          y=aa(2,1)*a1+aa(2,2)*a2+aa(2,3)*a3
+          z=aa(3,1)*a1+aa(3,2)*a2+aa(3,3)*a3
+          r=sqrt(x*x+y*y+z*z)
+          if ( r == 0.d0 ) cycle
+          t=erfc(alpha*r)/r
+          sum0=sum0+t
+       end do
+!$OMP end parallel do
+       if ( i1 /= i2 ) sum0=sum0*2.d0
+       sum2=sum2+z1*z2*sum0
+    end do
+    call mpi_allreduce(sum2,sum1,1,mpi_real8,mpi_sum,mpi_comm_world,i)
+    ewldr=ewldr+sum1
+  END SUBROUTINE calc_ewldr
 
 
   SUBROUTINE calc_force_ewald(MI,force3)
+    implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force3(3,MI)
-    real(8) :: qqg,qqa,sqeta,x,y,z,r,rr,ss,const,fewldg(3),fewldr(3)
+    real(8) :: sqeta,x,y,z,r,rr,ss,const,fewldg(3),fewldr(3)
     real(8) :: const1,const2,const3
     real(8) :: GR,c,c1,c2,sum0
     real(8) :: Vcell,pi,pi2
-    real(8) :: sum1,sum2,sum3
-    real(8),allocatable :: SSG(:),SSR(:),dsg2(:,:),work(:,:)
-    integer :: mmg1,mmg2,mmg3,mmg,mmr1,mmr2,mmr3,mmr,MGE,MRE
-    integer :: i,j,k,n,a,b,ierr
-    integer,allocatable :: EG(:,:),ER(:,:)
-    integer,allocatable :: id_i(:),ir_i(:)
+    real(8) :: sum1,sum2,sum3,sum_tmp(3)
+    integer :: i,j,k,n,a,b,ab,ierr
+    real(8) :: gg,gx,gy,gz
+    real(8),allocatable :: work(:,:)
 
     force3(:,:) = 0.d0
 
     pi    = acos(-1.d0)
     pi2   = 2.d0*pi
     Vcell = abs(Va)
-
-    allocate( id_i(0:nprocs-1),ir_i(0:nprocs-1) )
-    ir_i(0:nprocs-1)=MI/nprocs
-    n=MI-sum(ir_i)
-    do i=1,n
-       k=mod(i-1,nprocs)
-       ir_i(k)=ir_i(k)+1
-    end do
-    do k=0,nprocs-1
-       id_i(k)=sum(ir_i(0:k))-ir_i(k)
-    end do
-
-    qqg   = qgb*qgb
-    qqa   = qrb*qrb
     sqeta = sqrt(eta)
 
-    mmg1  = int( sqrt(qqg/sum(bb(:,1)**2)) )+1
-    mmg2  = int( sqrt(qqg/sum(bb(:,2)**2)) )+1
-    mmg3  = int( sqrt(qqg/sum(bb(:,3)**2)) )+1
-    mmg   = (2*mmg1+1)*(2*mmg2+1)*(2*mmg3+1)
-
-    mmr1  = int( sqrt(qqa/sum(aa(:,1)**2)) )+1
-    mmr2  = int( sqrt(qqa/sum(aa(:,2)**2)) )+1
-    mmr3  = int( sqrt(qqa/sum(aa(:,3)**2)) )+1
-    mmr   = (2*mmr1+1)*(2*mmr2+1)*(2*mmr3+1)
-
-    allocate( EG(3,mmg), SSG(mmg), ER(3,mmr), SSR(mmr) )
-
-    SSG=0.d0
-    SSR=0.d0
-
-    n=0
-    do k=-mmg3,mmg3
-    do j=-mmg2,mmg2
-    do i=-mmg1,mmg1
-       if( i==0 .and. j==0 .and. k==0 )cycle
-       x=i*bb(1,1)+j*bb(1,2)+k*bb(1,3)
-       y=i*bb(2,1)+j*bb(2,2)+k*bb(2,3)
-       z=i*bb(3,1)+j*bb(3,2)+k*bb(3,3)
-       ss=x*x+y*y+z*z
-       if( ss<=qqg )then
-          n=n+1
-          EG(1,n)=i
-          EG(2,n)=j
-          EG(3,n)=k
-          SSG(n)=ss
-       end if
-    end do
-    end do
-    end do
-    MGE=n
-
-    n=0
-    do k=-mmr3,mmr3
-    do j=-mmr2,mmr2
-    do i=-mmr1,mmr1
-       x=i*aa(1,1)+j*aa(1,2)+k*aa(1,3)
-       y=i*aa(2,1)+j*aa(2,2)+k*aa(2,3)
-       z=i*aa(3,1)+j*aa(3,2)+k*aa(3,3)
-       ss=x*x+y*y+z*z
-       if( ss<=qqa )then
-          n=n+1
-          ER(1,n)=i
-          ER(2,n)=j
-          ER(3,n)=k
-          SSR(n)=ss
-       end if
-    end do
-    end do
-    end do
-    MRE=n
-
-    allocate( dsg2(3,MGE) ) ; dsg2=0.d0
-
-    const1 = 2.d0*sqeta/sqrt(Pi)
+    const1 = 2.d0*sqrt(eta/pi)
     const2 = 4.d0*pi/Vcell
-    const3 = 0.25d0/eta
-
-    do b=id_i(myrank)+1,id_i(myrank)+ir_i(myrank)
-
-       c1=2.d0*Zps(ki_atom(b))
-
-       fewldg(1:3)=0.d0
-       do i=1,MGE
+    const3 = 1.d0/(4.d0*eta)
+!$OMP parallel do private( sum_tmp,GR,sum0,gx,gy,gz,gg,c,c1 )
+    do b=1,MI
+       sum_tmp(:)=0.d0
+       do i=1,mg
+          if ( all(LG(1:3,i)==0) ) cycle
           sum0=0.d0
-!$OMP parallel do reduction (+:sum0) private(GR)
           do a=1,Natom
-             GR=pi2*( EG(1,i)*(aa_atom(1,a)-aa_atom(1,b)) &
-                     +EG(2,i)*(aa_atom(2,a)-aa_atom(2,b)) &
-                     +EG(3,i)*(aa_atom(3,a)-aa_atom(3,b)) )
+             GR=pi2*( LG(1,i)*(aa_atom(1,a)-aa_atom(1,b)) &
+                     +LG(2,i)*(aa_atom(2,a)-aa_atom(2,b)) &
+                     +LG(3,i)*(aa_atom(3,a)-aa_atom(3,b)) )
              sum0=sum0+Zps(ki_atom(a))*sin(GR)
           end do
-!$OMP end parallel do
-          dsg2(1,i)=c1*sum(bb(1,1:3)*EG(1:3,i))*sum0
-          dsg2(2,i)=c1*sum(bb(2,1:3)*EG(1:3,i))*sum0
-          dsg2(3,i)=c1*sum(bb(3,1:3)*EG(1:3,i))*sum0
+          gx=bb(1,1)*LG(1,i)+bb(1,2)*LG(2,i)+bb(1,3)*LG(3,i)
+          gy=bb(2,1)*LG(1,i)+bb(2,2)*LG(2,i)+bb(2,3)*LG(3,i)
+          gz=bb(3,1)*LG(1,i)+bb(3,2)*LG(2,i)+bb(3,3)*LG(3,i)
+          gg=gx*gx+gy*gy+gz*gz
+          c=exp(-const3*gg)/gg
+          sum_tmp(1)=sum_tmp(1)+gx*sum0*c
+          sum_tmp(2)=sum_tmp(2)+gy*sum0*c
+          sum_tmp(3)=sum_tmp(3)+gz*sum0*c
        end do
-       sum1=0.d0
-       sum2=0.d0
-       sum3=0.d0
-!$OMP parallel do reduction(+:sum1,sum2,sum3) private(c)
-       do i=1,MGE
-          c=exp(-SSG(i)*const3)/SSG(i)
-          sum1=sum1+dsg2(1,i)*c
-          sum2=sum2+dsg2(2,i)*c
-          sum3=sum3+dsg2(3,i)*c
-       end do
+       c1=Zps(ki_atom(b))*const2
+       force3(1,b) = force3(1,b) - sum_tmp(1)*c1
+       force3(2,b) = force3(2,b) - sum_tmp(2)*c1
+       force3(3,b) = force3(3,b) - sum_tmp(3)*c1
+    end do ! b
 !$OMP end parallel do
-       fewldg(1)=sum1*const2
-       fewldg(2)=sum2*const2
-       fewldg(3)=sum3*const2
+!    allocate( work(3,MI) ) ; work=force3
+!    call mpi_allreduce(work,force3,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
+!    deallocate( work )
 
-       fewldr(1:3)=0.d0
+#ifdef TEST
+    do b=1,MI
        do a=1,MI
           if ( a==b ) cycle
-          c2=c1*Zps(ki_atom(a))
           sum1=0.d0
           sum2=0.d0
           sum3=0.d0
-!$OMP parallel do reduction(+:sum1,sum2,sum3) private(x,y,z,r,rr,c)
-          do i=1,MRE
-             x=sum( aa(1,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+ER(1:3,i)) )
-             y=sum( aa(2,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+ER(1:3,i)) )
-             z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+ER(1:3,i)) )
+          do i=1,mr
+             x=sum( aa(1,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
+             y=sum( aa(2,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
+             z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
              rr=x*x+y*y+z*z
              r=sqrt(rr)
-             c=-c2*( (1.d0-bberf(sqeta*r))+const1*exp(-eta*rr)*r )/(r*rr)
+             c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
              sum1=sum1+c*x
              sum2=sum2+c*y
              sum3=sum3+c*z
           end do
-!$OMP end parallel do
-          fewldr(1)=fewldr(1)+sum1
-          fewldr(2)=fewldr(2)+sum2
-          fewldr(3)=fewldr(3)+sum3
+          c2=2.d0*Zps(ki_atom(a))*Zps(ki_atom(b))
+          force3(1,b) = force3(1,b) - 0.5d0*sum1*c2
+          force3(2,b) = force3(2,b) - 0.5d0*sum2*c2
+          force3(3,b) = force3(3,b) - 0.5d0*sum3*c2
        end do
-
-       force3(1,b)=-0.5d0*( fewldg(1) + fewldr(1) )
-       force3(2,b)=-0.5d0*( fewldg(2) + fewldr(2) )
-       force3(3,b)=-0.5d0*( fewldg(3) + fewldr(3) )
-
     end do ! b
+#endif
+    do ab=1,mpair
+       a=ipair(1,ab)
+       b=ipair(2,ab)
+       if ( a == b ) cycle
+       c2=2.d0*Zps(ki_atom(a))*Zps(ki_atom(b))
+       sum1=0.d0
+       sum2=0.d0
+       sum3=0.d0
+!$OMP parallel do private( x,y,z,rr,r,c ) reduction(+:sum1,sum2,sum3)
+       do i=1,mr
+          x=sum( aa(1,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
+          y=sum( aa(2,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
+          z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
+          rr=x*x+y*y+z*z
+          r=sqrt(rr)
+          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+          sum1=sum1+c*x
+          sum2=sum2+c*y
+          sum3=sum3+c*z
+       end do
+!$OMP end parallel do
+       force3(1,b) = force3(1,b) - 0.5d0*sum1*c2
+       force3(2,b) = force3(2,b) - 0.5d0*sum2*c2
+       force3(3,b) = force3(3,b) - 0.5d0*sum3*c2
+       sum1=0.d0
+       sum2=0.d0
+       sum3=0.d0
+!$OMP parallel do private( x,y,z,rr,r,c ) reduction(+:sum1,sum2,sum3)
+       do i=1,mr
+          x=sum( aa(1,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
+          y=sum( aa(2,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
+          z=sum( aa(3,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
+          rr=x*x+y*y+z*z
+          r=sqrt(rr)
+          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+          sum1=sum1+c*x
+          sum2=sum2+c*y
+          sum3=sum3+c*z
+       end do
+!$OMP end parallel do
+       force3(1,a) = force3(1,a) - 0.5d0*sum1*c2
+       force3(2,a) = force3(2,a) - 0.5d0*sum2*c2
+       force3(3,a) = force3(3,a) - 0.5d0*sum3*c2
+    end do
 
-    allocate( work(3,MI) )
-    work(1:3,1:MI)=force3(1:3,1:MI)
+    allocate( work(3,MI) ) ; work=force3
     call mpi_allreduce(work,force3,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
     deallocate( work )
 
-    deallocate( dsg2 )
-    deallocate( SSR, ER, SSG, EG )
-
-    deallocate( ir_i, id_i )
-
   END SUBROUTINE calc_force_ewald
 
+
+  SUBROUTINE calc_ewald(Ewld,disp_switch)
+    implicit none
+    real(8),intent(OUT) :: Ewld
+    logical,intent(IN) :: disp_switch
+    integer,parameter :: maxloop=50,max_loop_r=10,max_loop_g=10
+    integer :: i,m1,m2,m3,m,n,j,loop_g,loop_r
+    integer :: mg_tot_0,mr_tot_0,mr_tot,mg_tot,mr_tmp,mr_dif,ierr
+    integer,allocatable :: LR_tmp(:,:)
+    real(8),parameter :: epsg=1.d-12, epsr=1.d-12, ep=1.d-10
+    real(8),parameter :: factor=1.0d0
+    real(8) :: const,const1,ewldr,ewldg
+    real(8) :: r,rr,alpha,g,t,pi,max_bb,max_aa,tt0,ttt,gg
+    real(8) :: ewldr_tmp,gmax
+    real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
+    integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
+
+    if ( disp_switch ) write(*,'(a60," cal_ewald")') repeat("-",60)
+
+    pi=acos(-1.d0)
+
+    Vcell = abs( aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
+                +aa(1,3)*aa(2,1)*aa(3,2)-aa(1,3)*aa(2,2)*aa(3,1) &
+                -aa(1,2)*aa(2,1)*aa(3,3)-aa(1,1)*aa(2,3)*aa(3,2) )
+
+    max_aa=0.d0
+    do i=1,3
+       t=sqrt( sum(aa(1:3,i)**2) )
+       max_aa=max(max_aa,t)
+    end do
+    max_bb=0.d0
+    do i=1,3
+       t=sqrt( sum(bb(1:3,i)**2) )
+       max_bb=max(max_bb,t)
+    end do
+
+    if ( .not.allocated(zatom) ) then
+       allocate( zatom(Natom) )
+       do i=1,Natom
+          zatom(i)=nint( Zps(ki_atom(i)) )
+       end do
+    end if
+
+    if ( .not.allocated(id) ) then
+       allocate( id(0:nprocs-1) )
+       allocate( ir(0:nprocs-1) )
+    end if
+
+    if ( .not.allocated(ipair) ) then
+       mpair = ( Natom*(Natom+1) )/2
+       call prep_parallel(mpair,nprocs,ir,id)
+       mpair = ir(myrank)
+       allocate( ipair(2,mpair) )
+       m=0
+       n=0
+       do j=1,Natom
+       do i=j,Natom
+          m=m+1
+          if ( m < id(myrank)+1 .or. id(myrank)+ir(myrank) < m ) cycle
+          n=n+1
+          ipair(1,n)=i
+          ipair(2,n)=j
+       end do
+       end do
+    end if
+
+    Qtot =0.d0
+    Qtot2=0.d0
+    do i=1,Natom
+       Qtot =Qtot +zatom(i)
+       Qtot2=Qtot2+zatom(i)**2
+    end do
+
+    const1 = 4.d0*Pi/Vcell
+
+    if ( eta == 0.d0 ) eta = pi/Vcell**(2.d0/3.d0)
+
+!--- G
+
+    const=1.d0/(4.d0*eta)
+    if ( g_0 == 0.d0 ) g_0=12.d0*sqrt(eta)
+    g=g_0
+
+    do loop_g=1,max_loop_g
+
+       ecut=g*g
+
+       call search_grid(bb,ecut,m1,m2,m3,mg_tot)
+       call prep_parallel(mg_tot,nprocs,ir,id)
+       mg=ir(myrank)
+       if ( allocated(LG) ) deallocate( LG )
+       allocate( LG(3,mg) )
+       call construct_grid(bb,ecut,mg_tot,m1,m2,m3,mg,LG)
+
+       call watch(ct0,et0)
+       call calc_ewldg(mg,LG,ewldg)
+       ewldg=ewldg*4.d0*pi/Vcell
+       ewldg=ewldg-pi/(eta*Vcell)*Qtot**2
+       ewldg=ewldg-2.d0*sqrt(eta/pi)*Qtot2
+       call watch(ct1,et1) ; timg(1)=ct1-ct0 ; timg(2)=et1-et0
+
+       ir(myrank)=mg
+       call mpi_allgather &
+            (mg,1,mpi_integer,ir,1,mpi_integer,mpi_comm_world,ierr)
+
+       if ( disp_switch ) then
+          write(*,'(1x,i4,2i8,2g26.15,2g12.5)') &
+               loop_g,mg_tot,mg,ewldg,sqrt(ecut),timg(1:2)
+       end if
+
+       if ( abs((ewldg-ewldg_0)/ewldg) < 1.d-15 ) then
+          ewldg=ewldg_0
+          exit
+       else
+          ewldg_0=ewldg
+          g_0=g
+          g=(g+max_bb)*factor
+       end if
+
+    end do ! loop_g
+
+    if ( disp_switch ) then
+       write(*,'(1x,"ewald(G)=",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
+    end if
+
+!--- R
+
+    alpha = sqrt(eta)
+    if ( r_0 == 0.d0 ) r_0=6.d0/sqrt(eta)
+    r=r_0
+
+    ewldr     = ewldg ; ewldg=0.d0
+    ewldr_tmp = ewldr
+    mr_tmp    = 0
+    timr(:)   = 0.d0
+    do loop_r=1,max_loop_r
+
+       rrcut=r*r
+
+       call watch(ct0,et0)
+
+       call search_grid(aa,rrcut,m1,m2,m3,mr_tot)
+       mr=mr_tot ; id(:)=0 ; ir(:)=mr
+
+       allocate( grd_chk(-m1:m1,-m2:m2,-m3:m3) ) ; grd_chk=0
+
+       if ( loop_r == 1 ) then
+       else
+          allocate( grd_chk0(-m1:m1,-m2:m2,-m3:m3) ) ; grd_chk0=0
+          mr_tmp = size(LR,2)
+          do i=1,mr_tmp
+             grd_chk0( LR(1,i),LR(2,i),LR(3,i) ) = 1
+          end do
+          m=size(grd_chk)
+          call mpi_allreduce(grd_chk0,grd_chk,m &
+               ,mpi_integer,mpi_sum,mpi_comm_world,ierr)
+          deallocate( grd_chk0 )
+       end if
+
+       if ( allocated(LR) ) deallocate(LR)
+       allocate( LR(3,mr) )
+
+       call construct_grid(aa,rrcut,mr_tot,m1,m2,m3,mr,LR)
+
+       if ( allocated(LR_tmp) ) deallocate( LR_tmp )
+       allocate( LR_tmp(3,mr) ) ; LR_tmp=0
+
+       if ( loop_r == 1 ) then
+          m=mr
+          LR_tmp(1:3,1:mr) = LR(1:3,1:mr)
+       else
+          m=0
+          do i=1,mr
+             if ( grd_chk(LR(1,i),LR(2,i),LR(3,i)) == 0 ) then
+                m=m+1
+                LR_tmp(1:3,m) = LR(1:3,i)
+             end if
+          end do
+       end if
+
+       deallocate( grd_chk )
+
+       call watch(ct1,et1)
+
+       call watch(ct0,et0)
+       call calc_ewldr(m,LR_tmp,ewldr)
+       call watch(ct1,et1)
+       timr(1)=timr(1)+ct1-ct0 ; timr(2)=timr(2)+et1-et0
+
+       deallocate( LR_tmp )
+
+       if ( disp_switch ) then
+          write(*,'(1x,i4,3i8,2g26.15,2g12.5)') &
+               loop_r,mr_tot,mr,m,ewldr,sqrt(rrcut),timr(1:2)
+       end if
+
+       if ( abs((ewldr-ewldr_0)/ewldr) < 1.d-15 ) then
+          ewldr=ewldr_0
+          exit
+       else
+          ewldr_0=ewldr
+          r_0=r
+          r=(r+max_aa)*factor
+       end if
+
+    end do ! loop_r
+
+    if ( disp_switch ) then
+       write(*,'(1x,"ewald(R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
+    end if
+
+    Ewld=0.5d0*(ewldr+ewldg)
+
+    return
+  END SUBROUTINE calc_ewald
 
 END MODULE ewald_module
