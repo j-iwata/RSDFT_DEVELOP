@@ -43,14 +43,15 @@ CONTAINS
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
-          do j=1,Nelement_PP
-             read(unit,*,END=999) cbuf
-             call convert_capital(cbuf,ckey)
-             if ( ckey(1:2) == "PP" ) then
-                backspace(unit)
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:2) == "PP" ) then
+             backspace(unit)
+             do j=1,Nelement_PP
                 read(unit,*) cbuf,ippform(j),file_ps(j)
-             end if
-          end do ! j
+             end do ! j
+             exit
+          end if
        end do
 999    continue
        write(*,*) "Nelement_PP,Npseudopot=",Nelement_PP,Npseudopot
