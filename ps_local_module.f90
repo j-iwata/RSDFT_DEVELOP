@@ -16,7 +16,8 @@ MODULE ps_local_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Vion,init_ps_local,construct_ps_local,calc_force_ps_local
+  PUBLIC :: Vion,init_ps_local,construct_ps_local,calc_force_ps_local &
+       ,construct_ps_local_ffte,calc_force_ps_local_ffte
 
   real(8),allocatable :: Rcloc(:),vqlg(:,:),vqlgl(:,:),vqls(:,:)
   integer,allocatable :: NRcloc(:)
@@ -766,4 +767,440 @@ CONTAINS
 
   END SUBROUTINE construct_ps_density_longloc3
 #endif
+
+  SUBROUTINE construct_ps_local_ffte
+
+    integer :: a,i,i1,i2,i3,ik,j,MG
+    integer :: ML1,ML2,ML3,ML,ML_0,ML_1
+    integer :: ifacx(30),ifacy(30),ifacz(30)
+    complex(8),allocatable :: zwork(:,:,:),vg(:)
+    complex(8),allocatable :: zwork1(:,:,:),zwork2(:,:,:)
+    real(8) :: ctt(0:3),ett(0:3)
+    integer :: a1b,b1b,a2b,b2b,a3b,b3b,np1,np2,np3
+    integer :: n1,n2,MG1,NG1,MG2,NG2,MG3,NG3
+    integer :: comm_fftx, npux, ix
+    integer :: comm_ffty, npuy, iy
+    integer :: comm_fftz, npuz, iz
+    integer :: icolor,ierr
+
+    MG  = NGgrid(0)
+    ML  = Ngrid(0)
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+    ML_0= Igrid(1,0)
+    ML_1= Igrid(2,0)
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+    np1=node_partition(1)
+    np2=node_partition(2)
+    np3=node_partition(3)
+    n1=ML_0
+    n2=ML_1
+    MG1=-ML1/2     ; MG2=-ML2/2     ; MG3=-ML3/2
+    NG1=(ML1-1)/2 ; NG2=(ML2-1)/2 ; NG3=(ML3-1)/2
+
+
+    ix=a1b/(ML1/np1); iy=a2b/(ML2/np2); iz=a3b/(ML3/np3);
+    icolor=iy+iz*np2
+    call mpi_comm_split(comm_grid,icolor, 0, comm_fftx, ierr)
+    icolor=iz+ix*nprocs
+    call mpi_comm_split(comm_grid,icolor, 0, comm_ffty, ierr)
+    icolor=iy+ix*nprocs
+    call mpi_comm_split(comm_grid,icolor, 0, comm_fftz, ierr)
+
+    call mpi_comm_size(comm_fftx, npux, ierr)
+    call mpi_comm_size(comm_ffty, npuy, ierr)
+    call mpi_comm_size(comm_fftz, npuz, ierr)
+
+    ctt(:)=0.d0
+    ett(:)=0.d0
+
+    call watch(ctt(0),ett(0))
+
+    if ( .not.allocated(Vion) ) then
+       allocate( Vion(ML_0:ML_1) )
+    end if
+
+    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
+    allocate( zwork1(0:ML1-1,a2b:b2b,a3b:b3b))
+    allocate( zwork2(0:ML1-1,a2b:b2b,a3b:b3b))
+
+    zwork1(:,:,:)=(0.d0,0.d0)
+    zwork2(:,:,:)=(0.d0,0.d0)
+
+    allocate( vg(MG) )
+
+    do i=MG_0,MG_1
+       j=MGL(i)
+       vg(i)=vqlg(j,1)*SGK(i,1)
+    end do
+    do ik=2,Nelement
+       do i=MG_0,MG_1
+          j=MGL(i)
+          vg(i)=vg(i)+vqlg(j,ik)*SGK(i,ik)
+       end do
+    end do
+    call allgatherv_Ggrid(vg)
+
+    call construct_Ggrid(2)
+
+    zwork(:,:,:)=(0.d0,0.d0)
+    do i=1,NGgrid(0)
+       zwork(LLG(1,i),LLG(2,i),LLG(3,i))=vg(i)
+       i3=LLG(3,i)
+       i2=LLG(2,i)
+       i1=LLG(1,i)
+       if(a2b<=i2 .and. i2<=b2b .and. a3b<=i3 .and. i3<=b3b) then
+          zwork1(i1,i2,i3)=zwork(i1,i2,i3)
+       endif
+    end do
+
+    call destruct_Ggrid
+
+    deallocate( vg )
+
+!    allocate( fftwork(ML) )
+!    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+!    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+
+!    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
+!         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call watch(ctt(1),ett(1))
+
+!    call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
+!         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call pzfft3dv(zwork1,zwork2,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,0)
+    call pzfft3dv(zwork1,zwork2,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,1)
+    zwork1=ML*zwork2
+
+    call watch(ctt(2),ett(2))
+
+    i=ML_0-1
+    do i3=Igrid(1,3),Igrid(2,3)
+    do i2=Igrid(1,2),Igrid(2,2)
+    do i1=Igrid(1,1),Igrid(2,1)
+       i=i+1
+       Vion(i)=real( zwork1(i1,i2,i3) )
+    end do
+    end do
+    end do
+
+!    deallocate( wsavez,wsavey,wsavex )
+!    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+!    deallocate( fftwork )
+    deallocate( zwork )
+    deallocate(zwork1,zwork2)
+
+    call mpi_comm_free(comm_fftx,ierr)
+    call mpi_comm_free(comm_ffty,ierr)
+    call mpi_comm_free(comm_fftz,ierr)
+
+    call watch(ctt(3),ett(3))
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "time(const_ps_loc_1)",ctt(1)-ctt(0),ett(1)-ett(0)
+       write(*,*) "time(const_ps_loc_2)",ctt(2)-ctt(1),ett(2)-ett(1)
+       write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+    end if
+
+  END SUBROUTINE construct_ps_local_ffte
+
+
+  SUBROUTINE calc_force_ps_local_ffte(MI,force)
+    integer,intent(IN) :: MI
+    real(8),intent(OUT) :: force(3,MI)
+    integer :: a,i,j,ik,ispin,irank,i1,i2,i3,n,l1,l2,l3,m1,m2,m3,j1,j2,j3
+    integer :: MI_0,MI_1,ML1,ML2,ML3,ML_0,ML_1,ML,MG,N_MI,ierr
+    integer,allocatable :: icnt(:),idis(:)
+    integer :: m
+    real(8) :: a1,a2,a3,pi2,Gr,Gx,Gy,Gz,Vcell,g2
+    real(8),allocatable :: work(:)
+    integer :: ifacx(30),ifacy(30),ifacz(30)
+!    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
+!    complex(8),allocatable :: fftwork(:)
+    complex(8),allocatable :: zrho3(:,:,:),zrho(:)
+!    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+    complex(8),parameter :: z0=(0.d0,0.d0)
+    complex(8),allocatable :: zwork1(:,:,:),zwork2(:,:,:),zwork3(:,:,:),w1(:),w2(:)
+    complex(8) :: zsum1,zsum2,zsum3,ztmp
+    integer :: comm_fftx, npux, ix
+    integer :: comm_ffty, npuy, iy
+    integer :: comm_fftz, npuz, iz
+    integer :: icolor
+    integer :: a1b,b1b,a2b,b2b,a3b,b3b,np1,np2,np3
+    integer :: MG1,NG1,MG2,NG2,MG3,NG3,n1,n2,MGmax
+
+
+    force(:,:)=0.d0
+
+    MG    = NGgrid(0)
+    ML    = Ngrid(0)
+    ML1   = Ngrid(1)
+    ML2   = Ngrid(2)
+    ML3   = Ngrid(3)
+    ML_0  = Igrid(1,0)
+    ML_1  = Igrid(2,0)
+    pi2   = 2.d0*acos(-1.d0)
+    Vcell = ML*dV
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+    np1=node_partition(1)
+    np2=node_partition(2)
+    np3=node_partition(3)
+    n1=ML_0
+    n2=ML_1
+    MG1=-ML1/2     ; MG2=-ML2/2     ; MG3=-ML3/2
+    NG1=(ML1-1)/2 ; NG2=(ML2-1)/2 ; NG3=(ML3-1)/2
+
+
+    ix=a1b/(ML1/np1); iy=a2b/(ML2/np2); iz=a3b/(ML3/np3);
+    icolor=iy+iz*np2
+    call mpi_comm_split(comm_grid,icolor, 0, comm_fftx, ierr)
+    icolor=iz+ix*nprocs
+    call mpi_comm_split(comm_grid,icolor, 0, comm_ffty, ierr)
+    icolor=iy+ix*nprocs
+    call mpi_comm_split(comm_grid,icolor, 0, comm_fftz, ierr)
+
+    call mpi_comm_size(comm_fftx, npux, ierr)
+    call mpi_comm_size(comm_ffty, npuy, ierr)
+    call mpi_comm_size(comm_fftz, npuz, ierr)
+
+    allocate( icnt(0:nprocs-1) )
+    allocate( idis(0:nprocs-1) )
+    N_MI = Natom/nprocs
+    icnt(0:nprocs-1) = N_MI
+    n = Natom - N_MI*nprocs
+    if ( n>0 ) then
+       do irank=0,n-1
+          icnt(irank)=icnt(irank)+1
+       end do
+    end if
+    do irank=0,nprocs-1
+       idis(irank) = sum( icnt(0:irank) ) - icnt(irank)
+    end do
+    MI_0 = idis(myrank)+1
+    MI_1 = idis(myrank)+icnt(myrank)
+    deallocate( idis, icnt )
+
+    allocate( zrho3(0:ML1-1,0:ML2-1,0:ML3-1) )
+
+    allocate( work(ML) )
+    work(1:ML)=0.d0
+    do ispin=1,Nspin
+       work(ML_0:ML_1)=work(ML_0:ML_1)+rho(ML_0:ML_1,ispin)
+    end do
+    call mpi_allgatherv(work(ML_0),ML_1-ML_0+1,mpi_real8,work &
+         ,ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+
+    i=0
+    irank=-1
+    do i3=1,node_partition(3)
+    do i2=1,node_partition(2)
+    do i1=1,node_partition(1)
+       irank=irank+1
+       l1=pinfo_grid(1,irank) ; m1=pinfo_grid(2,irank)+l1-1
+       l2=pinfo_grid(3,irank) ; m2=pinfo_grid(4,irank)+l2-1
+       l3=pinfo_grid(5,irank) ; m3=pinfo_grid(6,irank)+l3-1
+       do j3=l3,m3
+       do j2=l2,m2
+       do j1=l1,m1
+          i=i+1
+          zrho3(j1,j2,j3)=work(i)
+       end do
+       end do
+       end do
+    end do
+    end do
+    end do
+    deallocate( work )
+
+    allocate(zwork1(0:ML1-1,a2b:b2b,a3b:b3b))
+    allocate(zwork2(0:ML1-1,a2b:b2b,a3b:b3b))
+    zwork1(:,:,:)=z0
+    zwork2(:,:,:)=z0
+
+    do i3=a3b,b3b
+    do i2=a2b,b2b
+    do i1=a1b,b1b
+      zwork1(i1,i2,i3)=zrho3(i1,i2,i3)
+    end do
+    end do
+    end do
+
+    call mpi_allreduce(zwork1,zwork2,ML1*(b2b-a2b+1)*(b3b-a3b+1),mpi_complex16,mpi_sum,comm_fftx,ierr)
+
+!    allocate( fftwork(ML) )
+!    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+!    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+!
+!    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
+!         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!
+!    call fft3fx(ML1,ML2,ML3,ML,zrho3,fftwork,wsavex,wsavey,wsavez &
+!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+
+!----------------------------------
+      call pzfft3dv(zwork2,zwork1,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,0)
+      call pzfft3dv(zwork2,zwork1,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,-1)
+!----------------------------------
+
+    zwork1(:,:,:)=zwork1(:,:,:)/DCMPLX(ML1*ML2*ML3)
+
+    call construct_Ggrid(0)
+
+    allocate(w1(ML)) ; w1(:)=z0
+    allocate(w2(ML)) ; w2(:)=z0
+    allocate(zwork3(a1b:b1b,a2b:b2b,a3b:b3b))
+
+    m=0
+    do i3=MG3,NG3
+    do i2=MG2,NG2
+    do i1=MG1,NG1
+       if ( i1==0 .and. i2==0 .and. i3==0 ) cycle
+         m=m+1 
+    end do
+    end do
+    end do
+
+    MGmax = m
+
+
+    zwork3(:,:,:)=z0
+    do i3=MG3,NG3
+    do i2=MG2,NG2
+    do i1=MG1,NG1
+         g2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3)**2 &
+     &          +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3)**2 &
+     &          +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3)**2
+         if ( g2<=0.d0 .or. (MGmax/=MG .and. Ecut-1.d-14<=g2) ) cycle
+         j1=mod(i1+ML1,ML1)
+         j2=mod(i2+ML2,ML2)
+         j3=mod(i3+ML3,ML3)
+         if(a1b <= j1 .and. j1 <= b1b .and. a2b <= j2 .and. j2 <= b2b .and. a3b <= j3 .and. j3 <= b3b) then
+            zwork3(j1,j2,j3)=zwork1(j1,j2,j3)
+         endif
+    end do
+    end do
+    end do
+
+    i=n1-1
+    do i3=a3b,b3b
+    do i2=a2b,b2b
+    do i1=a1b,b1b
+      i=i+1
+      w1(i)=zwork3(i1,i2,i3)
+    enddo
+    enddo
+    enddo
+
+    call mpi_allreduce(w1,w2,ML,mpi_complex16,mpi_sum,comm_grid,ierr)
+
+    i=0
+    irank=-1
+    do i3=1,node_partition(3)
+    do i2=1,node_partition(2)
+    do i1=1,node_partition(1)
+       irank=irank+1
+       l1=pinfo_grid(1,irank) ; m1=pinfo_grid(2,irank)+l1-1
+       l2=pinfo_grid(3,irank) ; m2=pinfo_grid(4,irank)+l2-1
+       l3=pinfo_grid(5,irank) ; m3=pinfo_grid(6,irank)+l3-1
+       do j3=l3,m3
+       do j2=l2,m2
+       do j1=l1,m1
+          i=i+1
+          zrho3(j1,j2,j3)=w2(i)
+       end do
+       end do
+       end do
+    end do
+    end do
+    end do
+
+    allocate( zrho(MG) )
+
+    do i=1,NGgrid(0)
+       i1=mod(ML1+LLG(1,i),ML1)
+       i2=mod(ML2+LLG(2,i),ML2)
+       i3=mod(ML3+LLG(3,i),ML3)
+       zrho(i) = conjg( zrho3(i1,i2,i3) )
+    end do
+
+    do a=MI_0,MI_1
+
+       ik=ki_atom(a)
+       a1=pi2*aa_atom(1,a)
+       a2=pi2*aa_atom(2,a)
+       a3=pi2*aa_atom(3,a)
+
+       zsum1=z0
+       zsum2=z0
+       zsum3=z0
+       do i=1,NGgrid(0)
+          Gx=bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
+          Gy=bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
+          Gz=bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
+          Gr=a1*LLG(1,i)+a2*LLG(2,i)+a3*LLG(3,i)
+          j=MGL(i)
+          ztmp=-vqlg(j,ik)*dcmplx(sin(Gr),cos(Gr))*zrho(i)
+          zsum1=zsum1+Gx*ztmp
+          zsum2=zsum2+Gy*ztmp
+          zsum3=zsum3+Gz*ztmp
+       end do
+       force(1,a) = -zsum1*Vcell
+       force(2,a) = -zsum2*Vcell
+       force(3,a) = -zsum3*Vcell
+
+    end do ! a
+
+    call destruct_Ggrid
+
+!    deallocate( wsavez,wsavey,wsavex )
+!    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+!    deallocate( fftwork )
+    deallocate( zrho )
+    deallocate( zrho3 )
+    deallocate( zwork1,zwork2)
+    deallocate(w1,w2)
+    deallocate(zwork3)
+
+    allocate( work(3*Natom) )
+    n=0
+    do a=1,Natom
+       do i=1,3
+          n=n+1
+          work(n)=force(i,a)
+       end do
+    end do
+    call mpi_allreduce(work,force,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+
+!--------------------------------------------------------
+!    write(*,*) "LOCAL FORCE"
+!    do a=1,Natom
+!       do i=1,3
+!         write(999,*) force(i,a)
+!       enddo
+!    enddo
+!--------------------------------------------------------
+    deallocate( work )
+
+    call mpi_comm_free(comm_fftx,ierr)
+    call mpi_comm_free(comm_ffty,ierr)
+    call mpi_comm_free(comm_fftz,Ierr)
+
+
+  END SUBROUTINE calc_force_ps_local_ffte
+
+
 END MODULE ps_local_module

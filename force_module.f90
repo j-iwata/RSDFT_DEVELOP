@@ -29,7 +29,11 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
+#ifdef _FFTE_
+    call calc_force_ps_local_ffte(MI,work)
+#else
     call calc_force_ps_local(MI,work)
+#endif
     force = force + work
 
     if ( flag_pcc_0 ) then

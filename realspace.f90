@@ -62,6 +62,9 @@ PROGRAM Real_Space_Solid
 #ifdef _SPLINE_
      write(*,*) "SPLINE(ps_nloc2_module)"
 #endif
+#ifdef _FFTE_
+     write(*,*) "FFTE(ps_local,hartree)"
+#endif
   end if
      
 ! --- input parameters ---

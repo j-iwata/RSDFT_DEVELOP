@@ -38,7 +38,11 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   if ( ltime ) call watch(ctime_force(1),etime_force(1))
 
   call construct_strfac
+#ifdef _FFTE_
+  call construct_ps_local_ffte
+#else
   call construct_ps_local
+#endif
   call construct_ps_pcc
   call destruct_strfac
 

@@ -120,14 +120,19 @@ MDOBJ = $(DIR3)/cpmdio2_module.o\
         $(DIR3)/mnhc.o\
         $(DIR3)/cpmd_variables.o
 
+DIR4 = FFTE
+FFTOBJ = $(DIR4)/pzfft3dv.o \
+         $(DIR4)/fft235.o \
+         $(DIR4)/kernel.o
+
 ########################################################################
 ########################################################################
 
-all : lda0 lda1 lda2 lda3 lda
+all : lda0 lda1 lda2 lda3 lda4 lda
 	$(FC) $(LFLAGS) $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) \
                         $(MODS2) $(MODS3) $(MODS4) $(OBJ1) \
 	                $(EXTOBJ2) $(MINPACOBJ) \
-                        $(MDOBJ) $(LAPACK_L)
+                        $(MDOBJ) $(FFTOBJ) $(LAPACK_L)
 
 lda0 : $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) $(MODS2) $(MODS3) $(MODS4)
 
@@ -137,6 +142,8 @@ lda2 :
 	cd $(DIR2) ; $(MAKE)
 lda3 :
 	cd $(DIR3) ; $(MAKE)
+lda4 :
+	cd $(DIR4) ; $(MAKE)
 
 lda : $(OBJ1)
 
