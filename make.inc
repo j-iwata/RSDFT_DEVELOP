@@ -20,10 +20,10 @@ FFLAGS1 = -I../
 #FFLAGS1 = -D_DRSDFT_ -I../
 #################### SPLINE interpolation is used in prep_ps #####
 #FFLAGS1 = -D_SPLINE_ -I../
-#FFLAGS1 = -D_DRSDFT_ -D_SPLINE -I../
+#FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -I../
 #################### FFTES is used #####
 #FFLAGS1 = -D_FFTE_ -I../
-#FFLAGS1 = -D_DRSDFT_ -D_SPLINE -D_FFTE_ -I../
+#FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -D_FFTE_ -I../
 ########################################################################
 ########################################################################
 ##### INTEL                                                        #####
