@@ -26,7 +26,7 @@ SUBROUTINE bomd
   real(8) :: ctime0,ctime1,etime0,etime1
   real(8) :: ctime_cpmd(0:11),etime_cpmd(0:11)
   real(8),allocatable :: mu(:)
-  logical :: ltime
+  logical :: ltime,flag_etlimit
   real(8) :: sctot
   real(8) :: vcmio(4)
 !------parameter for new nose
@@ -51,6 +51,7 @@ SUBROUTINE bomd
   ltime       = .true.
   MB_0_SCF    = MB_0
   MB_1_SCF    = MB_1
+  flag_etlimit= .false.
 
   if ( myrank == 0 ) then
      if ( lcpmd ) then
@@ -397,7 +398,7 @@ SUBROUTINE bomd
            enddo
         endif
 !-------------------------------------------
-        write(*,'(a,x,f6.2,x,a,x,f15.8,x,a,x,f6.1,x,a,x,f15.8)') &
+        write(*,'(a,x,f8.2,x,a,x,f15.8,x,a,x,f6.1,x,a,x,f15.8)') &
              "t=",tott,"dif=",dif,"ltemp=",ltemp,"fke=",fke
         write(*,10) tott,tote,dif,Etot,kine,fke,bathe,ltemp,Sum(esp),enose
         write(*,*) Sum(occ), Sum(esp)
@@ -408,6 +409,12 @@ SUBROUTINE bomd
            write(16,'(i6,9f10.5)') itime,(etime_cpmd(k+1)-etime_cpmd(k),k=0,8)
         end if
      endif
+
+     call global_watch(flag_etlimit)
+     if ( flag_etlimit ) then
+        if ( myrank == 0 ) write(*,*) "elapsed time limit exceeded : flag_etlimit=",flag_etlimit
+        exit
+     end if
 
   enddo ! itime
 !
