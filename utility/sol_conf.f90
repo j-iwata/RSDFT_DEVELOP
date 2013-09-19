@@ -171,7 +171,7 @@
       do a=1,MI
          write(970,'(i4,3f15.10,i4)') Kion(a),asi(:,a)
       end do
-      write(u,'(i2,3i8,f8.3," /")') MB, 1
+      write(u,'(3i8,f8.3," /")') MB, 1
       write(u,'(3i2)') 2,2,2
       write(u,'(3i2)') 2,2,2
       write(u,'(3i5,6x,"/Diter,Diter1,Diter2")') 100,100,100
