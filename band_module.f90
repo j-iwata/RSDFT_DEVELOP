@@ -171,9 +171,12 @@ CONTAINS
 
     integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
-    integer :: MBV,nktrj,i,j,k,s,n,ierr,iktrj,iter,Diter_band
-    real(8) :: dak(3),pxyz(3,2),sum0,sum1,max_err
-    real(8),allocatable :: ktrj(:,:),esp0(:,:,:)
+    integer :: MBV,nktrj,i,j,k,s,n,ibz,ierr,iktrj,iter,Diter_band
+    integer :: iktrj_0,iktrj_1,iktrj_2,iktrj_00,iktrj_tmp
+    integer,allocatable :: ir_k(:),id_k(:)
+    real(8) :: dak(3),sum0,sum1,max_err
+    real(8),allocatable :: ktrj(:,:),esp0(:,:,:),pxyz(:,:,:,:)
+    real(8),allocatable :: kbb_tmp(:,:),esp_tmp(:,:,:),esp0_tmp(:,:,:)
     complex(8),allocatable :: unk0(:,:,:)
     logical :: disp_switch_parallel_bak
 
@@ -212,13 +215,39 @@ CONTAINS
        end do
     end if
 
-    call modify_mb
-    call modify_arraysize
+    allocate( ir_k(0:np_bzsm-1),id_k(0:np_bzsm-1) )
+    id_k(:)=0
+    ir_k(:)=0
+    do k=1,nktrj
+       i=mod(k-1,np_bzsm)
+       ir_k(i)=ir_k(i)+1
+    end do
+    i=maxval(ir_k)
+    ir_k(:)=i
+    do i=0,np_bzsm-1
+       id_k(i) = sum(ir_k(0:i)) - ir_k(i)
+    end do
+    if ( myrank == 0 ) then
+       write(*,'(1x,3a6)') "rank","id_k","ir_k"
+       do i=0,np_bzsm-1
+          write(*,'(1x,3i6)') i,id_k(i),ir_k(i)
+       end do
+       write(*,*) "sum(ir_k),nktrj=",sum(ir_k),nktrj
+    end if
 
-    allocate( esp0(MB,MBZ,MSP)   )
-    allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) )
+    if ( mb_band <= MB ) then
+       call modify_mb
+       call modify_arraysize
+    end if
 
-    k=1
+    allocate( esp0_tmp(MB,0:np_bzsm-1,MSP)   ) ; esp0_tmp=0.d0
+    allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
+    allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
+    allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
+    allocate( esp0(MB,MBZ,MSP)               ) ; esp0=0.d0
+    allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) ) ; unk0=0.d0
+
+    k=MBZ_0
 
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
@@ -229,31 +258,39 @@ CONTAINS
        write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,3)
     end if
 
-    do iktrj=1,nktrj
+    iktrj_0 = id_k(myrank_k)+1
+    iktrj_1 = id_k(myrank_k)+ir_k(myrank_k)
+    iktrj_2 = id_k(myrank_k)+maxval(ir_k)
 
-       kbb(1:3,k) = ktrj(1:3,iktrj)
+    do iktrj=iktrj_0,iktrj_2
+
+       iktrj_00 = id_k(0) + iktrj - iktrj_0 + 1
+
+       kbb(1:3,MBZ_0) = ktrj(1:3,min(iktrj,iktrj_1))
+       call mpi_allgather(kbb(1,MBZ_0),3,mpi_real8,kbb_tmp,3,mpi_real8,comm_bzsm,ierr)
+       if ( myrank == 0 ) then
+          write(*,*) "kbb_tmp"
+          do ibz=0,np_bzsm-1
+             write(*,'(1x,i8,3f10.5)') ibz,kbb_tmp(1:3,ibz)
+          end do
+       endif
+
        call get_coef_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
-       call prep_uvk_ps_nloc2(1,Nbzsm,kbb)
+       call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
 
        esp0(:,:,:) = 1.d10
-
-       if ( myrank == 0 ) then
-          write(unit_band_eigv,'(1x,2i6,3f20.12,i8)') iktrj,mb2_band,kbb(1:3,k),MBV
-          write(unit_band_ovlp,'(1x,2i6,3f20.12)') iktrj,MB,kbb(1:3,k)
-          write(unit_band_dedk,'(1x,2i6,3f20.12)') iktrj,mb2_band,kbb(1:3,k)
-       end if
 
        do iter=1,Diter_band
           if ( disp_switch ) write(*,'(a60,"band_iter=",i3)') repeat("-",60),iter
           do s=MSP_0,MSP_1
              call conjugate_gradient(ML_0,ML_1,MB,k,s,Ncg,iswitch_gs &
-                                    ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-             call gram_schmidt_t(1,MB,k,s)
-!            call subspace_diag_la(k,s)
-             call subspace_diag_sl(k,s,.false.)
+                  ,unk(ML_0,1,MBZ_0,s),esp(1,MBZ_0,s),res(1,MBZ_0,s))
+             call gram_schmidt_t(1,MB,MBZ_0,s)
+!            call subspace_diag_la(MBZ_0,s)
+             call subspace_diag_sl(MBZ_0,s,.false.)
           end do
-          call esp_gather(MB,Nbzsm,MSP,esp)
-          max_err = maxval( abs( esp(1:mb2_band,k,:)-esp0(1:mb2_band,k,:) ) )
+          max_err = maxval( abs(  esp(1:mb2_band,MBZ_0,MSP_0:MSP_1) &
+                                -esp0(1:mb2_band,MBZ_0,MSP_0:MSP_1) ) )
           if ( max_err < esp_conv_tol ) then
              if ( disp_switch ) write(*,*) "iktrj,max_err,iter=",iktrj,max_err,iter
              exit
@@ -261,40 +298,68 @@ CONTAINS
              stop "band is not converged"
           end if
           esp0(:,:,:)=esp(:,:,:)
-       end do
+       end do ! iter
+
+       call esp_gather(MB,Nbzsm,MSP,esp)
 
        call gather_wf
+
        do s=MSP_0,MSP_1
-          if ( iktrj > 1 ) then
+          if ( iktrj > 1 .and. np_bzsm == 1 ) then
 #ifndef _DRSDFT_
-             call calc_overlap(ML_0,ML_1,MB_0,MB_1,MB,unk(:,1,k,s),unk0(:,1,s))
+             call calc_overlap(ML_0,ML_1,MB_0,MB_1,MB,unk(:,1,MBZ_0,s),unk0(:,1,s))
 #endif
           end if
-          unk0(:,:,s) = unk(:,:,k,s)
+          unk0(:,:,s) = unk(:,:,MBZ_0,s)
        end do
 
-       call prep_rvk_ps_nloc2(1,Nbzsm,kbb)
+       call prep_rvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
 
+       pxyz(:,:,:,:)=0.d0
        do n=1,mb2_band
-          pxyz=0.d0
           do s=MSP_0,MSP_1
 #ifndef _DRSDFT_
-             call calc_expectval_momentum(1,ML_0,ML_1,1,1,unk(ML_0,n,1,1),pxyz(1,s))
+             call calc_expectval_momentum(MBZ_0,ML_0,ML_1,1,1,unk(ML_0,n,MBZ_0,1),pxyz(1,n,myrank_k,s))
 #endif
-          end do
-          call mpi_allgather(pxyz(1,MSP_0),3*(MSP_1-MSP_0+1),MPI_REAL8 &
-               ,pxyz,3*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
-          if ( disp_switch ) then
-             write(*  ,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
-                  ,( esp(n,k,s),abs(esp(n,k,s)-esp0(n,k,s)),s=1,MSP )
-          end if
-          if ( myrank == 0 ) then
-             write(unit_band_eigv,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
-                  ,( esp(n,k,s),abs(esp(n,k,s)-esp0(n,k,s)),s=1,MSP )
-             write(unit_band_dedk,'(1x,i5,2x,2(g22.12,1x,3g15.5))') n &
-                  ,( esp(n,k,s),pxyz(1:3,s),s=1,MSP )
-          end if
+          end do ! s
+       end do ! n
+
+       do s=MSP_0,MSP_1
+          call mpi_allgather(pxyz(1,1,myrank_k,s),3*MB,MPI_REAL8 &
+               ,pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
+       end do ! s
+       call mpi_allgather(pxyz(1,1,0,MSP_0),3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8 &
+            ,pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
+
+       do s=1,MSP
+          call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
+       do s=1,MSP
+          esp0_tmp(:,myrank_k,s)=esp0(:,MBZ_0,s)
+          call mpi_allgather(esp0_tmp(1,myrank_k,s),MB,mpi_real8,esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+       end do
+
+       do ibz=0,np_bzsm-1
+          iktrj_tmp = iktrj_00 + ibz
+          if ( iktrj_tmp > nktrj ) exit
+          if ( myrank == 0 ) then
+             write(unit_band_eigv,'(1x,2i6,3f20.12,i8)') iktrj_tmp,mb2_band,kbb_tmp(1:3,ibz),MBV
+             write(unit_band_ovlp,'(1x,2i6,3f20.12)') iktrj_tmp,MB,kbb_tmp(1:3,ibz)
+             write(unit_band_dedk,'(1x,2i6,3f20.12)') iktrj_tmp,mb2_band,kbb_tmp(1:3,ibz)
+          end if
+          do n=1,mb2_band
+             if ( disp_switch ) then
+                write(*,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
+                     ,( esp_tmp(n,ibz,s),abs(esp_tmp(n,ibz,s)-esp0_tmp(n,ibz,s)),s=1,MSP )
+             end if
+             if ( myrank == 0 ) then
+                write(unit_band_eigv,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
+                     ,( esp_tmp(n,ibz,s),abs(esp_tmp(n,ibz,s)-esp0_tmp(n,ibz,s)),s=1,MSP )
+                write(unit_band_dedk,'(1x,i5,2x,2(g22.12,1x,3g15.5))') n &
+                     ,( esp_tmp(n,ibz,s),pxyz(1:3,n,ibz,s),s=1,MSP )
+             end if
+          end do ! n
+       end do ! ibz
 
     end do ! iktrj
 
@@ -306,6 +371,12 @@ CONTAINS
 
     deallocate( unk0 )
     deallocate( esp0 )
+    deallocate( pxyz )
+    deallocate( kbb_tmp )
+    deallocate( esp_tmp )
+    deallocate( esp0_tmp )
+    deallocate( id_k )
+    deallocate( ir_k )
     deallocate( ktrj )
 
     disp_switch_parallel = disp_switch_parallel_bak

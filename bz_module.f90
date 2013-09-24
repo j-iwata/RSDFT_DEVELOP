@@ -10,7 +10,7 @@ MODULE bz_module
   real(8),allocatable :: kbb(:,:)
   real(8),allocatable :: weight_bz(:)
 
-  integer :: MMBZ
+  integer :: MMBZ,npbz
   real(8),allocatable :: wbz(:)
   integer :: ndata_read_k=0
   real(8) :: kbb0(3)
@@ -28,6 +28,7 @@ CONTAINS
     mmm(1:3,2)=(/ 2,2,2 /)
     ndata_read_k=0
     kbb0(1:3)=0.d0
+    npbz=0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -42,6 +43,9 @@ CONTAINS
           else if ( ckey(1:4) == "MMM2" ) then
              backspace(unit)
              read(unit,*) cbuf,mmm(1:3,2)
+          else if ( ckey(1:4) == "NPBZ" ) then
+             backspace(unit)
+             read(unit,*) cbuf,npbz
           end if
        end do
 999    continue
@@ -75,6 +79,7 @@ CONTAINS
     call mpi_bcast(mmm,6,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(ndata_read_k,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(kbb0,3,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(npbz,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_kgrid_bz
 
   SUBROUTINE generate_bz(disp_switch)
@@ -128,15 +133,16 @@ CONTAINS
     end do
 
     Nbzsm = k
+    if ( npbz > k ) Nbzsm=npbz
+
     MMBZ  = k1
 
-    allocate( weight_bz(Nbzsm) )
-    allocate( kbb(3,Nbzsm) )
+    allocate( weight_bz(Nbzsm) ) ; weight_bz=0.d0
+    allocate( kbb(3,Nbzsm)     ) ; kbb=0.d0
+    allocate( wbz(Nbzsm)       ) ; wbz=0.d0
 
-    allocate( wbz(Nbzsm) )
-
-    kbb(1:3,1:Nbzsm)=real(m(1:3,1:Nbzsm),8)/nk
-    weight_bz(1:Nbzsm)=real(w(1:Nbzsm),8)/MMBZ
+    kbb(1:3,1:k)=real(m(1:3,1:k),8)/nk
+    weight_bz(1:k)=real(w(1:k),8)/MMBZ
     wbz(1:Nbzsm) = weight_bz(1:Nbzsm)
 
     if ( Nbzsm == ndata_read_k ) then
