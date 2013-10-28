@@ -152,4 +152,5 @@ clean :
 	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean
 	cd $(DIR3) ; $(MAKE) clean
+	cd $(DIR4) ; $(MAKE) clean
 
