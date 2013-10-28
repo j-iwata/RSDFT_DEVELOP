@@ -8,11 +8,11 @@ MODULE apply_sseig_module
                   ,ssres,eigvec,eigval,n_rhs_set,n_rhs_set_local,my_rhs_set_id &
                   ,solver_timers_array,solver_info_array,sseig_timers_array,first_time &
                   ,my_ccurve_id,numeig,num_basis,current_sseig_timers,ccurve_id_rank &
-                  ,current_ccurve_local_id,eigval_merged,eigvec_merged,old_idx &
-                  ,eigvec_merged_old,unit_ss_band_cor,unit_ss_band_wf,cmyrank,file_ss_wf &
+                  ,current_ccurve_local_id,eigvec_merged,eigval_merged &
+                  ,unit_ss_band_cor,unit_ss_band_wf,cmyrank,file_ss_wf &
                   ,unit_ss_band_val,file_ss_wf_split,SS_IO,z_sseig_one_circle,opt &
                   ,disp_sseig_result, z_rayleigh_ritz,z_normalize_eigenvectors,z_eval_residual &
-                  ,opt_N,out_iter_max,out_iter_init
+                  ,opt_N,out_iter_max,out_iter_init,resval_merged
   use iter_lin_solvers, only: comm_rhs,comm_ccurve,nprocs_c,nprocs_r,myrank_c,myrank_r &
                              ,iterative_method_args,current_solver_info &
                              ,solver_timers,solver_info,solver &
@@ -25,27 +25,29 @@ MODULE apply_sseig_module
   PUBLIC :: apply_sseig,total_numeig
 
   integer :: total_numeig
+  integer,allocatable :: ir_c(:),id_c(:)
 
 CONTAINS
 
 
   SUBROUTINE apply_sseig(dk_bz)
+    implicit none
     real(8),intent(IN) :: dk_bz(3)
     integer :: ev_size,sscount
     integer :: i,j,k,m,n1,n2,ierr,count,i_cc,j_cc
     integer :: i_rhs,j_rhs,tmp_disp
     real(8) :: rannum,randd(2),eigrestol,left,right
     integer :: MB_d_tmp
-    real(8),allocatable :: tmp_mat_r(:,:), res_merged(:) &
-         , eigval_merged_tmp(:), res_merged_tmp(:)
+    real(8),allocatable :: tmp_mat_r(:,:),eigval_merged_tmp(:),resval_merged_tmp(:)
     complex(8),allocatable :: tmp_mat_c(:,:),dummy(:,:),eigvec_merged_tmp(:,:)
     integer :: istatus(mpi_status_size), out_iter
     type(solver_info),allocatable :: sinfo(:)
     type(solver_timers) :: stimer
     type(timer) :: apply_sseig_time, merge_time, write_wf_time
     type(timer) :: tot_time
-    integer :: a1,a2,a3,b1,b2,b3,l,n
-    integer :: k1,num_candidate,ntmp
+    integer :: a1,a2,a3,b1,b2,b3,l,n,irank_c
+    integer :: k1,ntmp,tot_num_states,tot_num_states_old
+    integer,allocatable :: num_states_ccurve(:)
     real(8),parameter :: restol_ji=1.d-2
     complex(8) :: ovlp1,ovlp2
     real(8) :: norm1,norm2,c 
@@ -71,9 +73,6 @@ CONTAINS
 
     opt%L   = L_fixed
     opt%N   = opt_N
-!    opt%N   = 32
-!    opt%N   = 64
-!    opt%N   = 128
     opt%M   = opt%N / 2
 
     ev_size = opt%M * opt%L
@@ -90,11 +89,11 @@ CONTAINS
 
     if ( .not.allocated(inputV) ) then
        allocate( inputV(n1:n2,opt%L,n_ccurve_local(myrank_c)) )
-       inputV=0.d0
+       inputV=(0.d0,0.d0)
     end if
     if ( .not.allocated(eigvec)  ) then
        allocate( eigvec(n1:n2,ev_size,n_ccurve_local(myrank_c)) )
-       eigvec=0.d0
+       eigvec=(0.d0,0.d0)
     end if
     if ( .not.allocated(eigval)  ) then
        allocate( eigval(ev_size,n_ccurve_local(myrank_c)) )
@@ -105,6 +104,7 @@ CONTAINS
        ssres=0.d0
     end if
 
+!--
     do i=0,nprocs_r-1
        n=(n_rhs_set-1)/nprocs_r+1
        n_rhs_set_local(i) = min( n*(i+1), opt%L ) - n*i
@@ -120,6 +120,7 @@ CONTAINS
           my_rhs_set_id(count) = i
        end if
     end do
+!--
 
     if ( allocated(current_solver_info) ) deallocate(current_solver_info)
     allocate( current_solver_info(opt%N) )
@@ -140,7 +141,12 @@ CONTAINS
     allocate( sseig_timers_array(n) )
 
 
-    num_candidate = 0
+    allocate( num_states_ccurve(n_ccurve) ) ; num_states_ccurve=0
+    tot_num_states=0
+    tot_num_states_old=-100000
+
+
+    total_numeig = 0
 
     call clear_timer(tot_time)
 
@@ -175,15 +181,6 @@ CONTAINS
                          randd = 2d0*randd - 1d0
                          inputV(m,k,j) = dcmplx( randd(1),randd(2) )
                       end do
-!                      do k1=1,k-1
-!                         ovlp1=sum( conjg(inputV(:,k1,j))*inputV(:,k,j) )
-!                         call mpi_allreduce(ovlp1,ovlp2,1,mpi_complex16,mpi_sum,comm_grid,ierr)
-!                         inputV(:,k,j)=inputV(:,k,j)-inputV(:,k1,j)*ovlp2
-!                      end do
-!                      norm1=sum(abs(inputV(:,k,j))**2)
-!                      call mpi_allreduce(norm1,norm2,1,mpi_real8,mpi_sum,comm_grid,ierr)
-!                      c=1.d0/sqrt(norm2)
-!                      inputV(:,k,j)=c*inputV(:,k,j)
                    end do ! k
 
                 else ! out_iter > out_iter_init
@@ -195,15 +192,16 @@ CONTAINS
                    iterative_method_args%epsmax = tol_iter(3)
                    iterative_method_args%epsmin = tol_iter(4)
                    inputV(:,:,j)=0.d0
-!tmp
+
                    do k=1,opt%L
-                      do m=1,num_basis(i)
+                      do m=1,num_basis(j)
                          call random_number(randd)
                          inputV(:,k,j)=inputV(:,k,j)+dcmplx(randd(1),randd(2))*eigvec(:,m,j)
                       end do
                    end do
                    cycle
-                   if ( num_candidate == 0 ) then
+
+                   if ( total_numeig == 0 ) then
                       do k = 1,opt%L
                          do m = n1,n2
                             call random_number(randd)
@@ -218,25 +216,20 @@ CONTAINS
                       end do ! k
                    else
                       do k = 1,opt%L
-!                         do m = n1,n2
-!                            call random_number(randd)
-!                            randd = 2d0*randd - 1d0
-!                            inputV(m,k,j) = dcmplx( randd(1),randd(2) )
-!                         end do
-                         do m=1,num_candidate
+                         do m = n1,n2
                             call random_number(randd)
-                            randd=2.d0*randd-1.d0
-                            inputV(:,k,j)=inputV(:,k,j)+dcmplx(randd(1),randd(2))*eigvec_merged(:,m)
+                            randd = 2d0*randd - 1d0
+                            inputV(m,k,j) = dcmplx( randd(1),randd(2) )
                          end do
-                      end do ! k
+                      end do
 !                      do k = 1,opt%L
-!                         do m = n1,n2
-!                            call random_number(rannum)
-!                            rannum = 2d0*rannum - 1d0
-!                            inputV(:,k,j) = rannum
+!                         do m=1,total_numeig
+!                            call random_number(randd)
+!                            randd=2.d0*randd-1.d0
+!                            inputV(:,k,j)=inputV(:,k,j)+dcmplx(randd(1),randd(2))*eigvec_merged(:,m)
 !                         end do
-!                      end do
-!                      call ortho_sub(n2-n1+1,opt%L,inputV(n1,1,j),num_candidate,eigvec_merged)
+!                      end do ! k
+                      call ortho_sub(n2-n1+1,opt%L,inputV(n1,1,j),total_numeig,eigvec_merged)
                    end if
 
                 end if
@@ -352,28 +345,37 @@ CONTAINS
           end do
        end if ! ( nprocs_r > 1 .or. nprocs_c > 1 )
 
+
        if ( myrank_c == 0 .and. myrank_r == 0 .and. myrank_g == 0 ) then
           do i=1,n_ccurve
-             write(*,*) 'numeig', i, numeig(i)
+             write(*,*) 'i,numeig(i)', i, numeig(i)
           end do
           call flush(6)
        end if
 
-       ntmp = num_candidate + sum( numeig(1:n_ccurve) )
+
+       ntmp = total_numeig + sum( numeig(1:n_ccurve) )
+
 
        if ( all(numeig(1:n_ccurve)==0) ) then
-          cycle
+          if ( disp_switch ) write(*,*) "No new vectors( numeig(:)==0 )"
+          exit
        end if
+
 
        allocate( eigvec_merged_tmp(n1:n2,ntmp) )
+       eigvec_merged_tmp(:,:)=(0.d0,0.d0)
 
-       if ( allocated(eigvec_merged) ) then
-          eigvec_merged_tmp(:,1:num_candidate) = eigvec_merged(:,:)
-          deallocate( eigvec_merged )
-          deallocate( eigval_merged )
-       end if
-       n=num_candidate
-       do i=1,n_ccurve
+       n=0
+       do irank_c=0,myrank_c-1
+          do i=1,n_ccurve
+             if ( ccurve_id_rank(i) == irank_c ) then
+                n=n+numeig(i)
+             end if
+          end do
+       end do
+
+       do i=1,n_ccurve_local(myrank_c)
           do m=1,num_basis(i)
              if ( ssres(m,i) < eigrestol ) then
                 n=n+1
@@ -381,7 +383,18 @@ CONTAINS
              end if
           end do
        end do
-       if ( n /= ntmp ) stop "stop@apply_sseig(1)"
+
+       n=sum(numeig)
+       call gather_sub(n2-n1+1,n,eigvec_merged_tmp)
+
+
+       if ( allocated(eigvec_merged) ) then
+          eigvec_merged_tmp(:,n+1:n+total_numeig) = eigvec_merged(:,:)
+          deallocate( eigvec_merged )
+          deallocate( eigval_merged )
+          deallocate( resval_merged )
+       end if
+
 
        allocate( dummy(ntmp,ntmp) )
 
@@ -389,23 +402,30 @@ CONTAINS
        call z_MGS_QR(eigvec_merged_tmp,dummy)
 
        deallocate( dummy )
+
        allocate( eigval_merged_tmp(ntmp) )
 
        call z_rayleigh_ritz(eigvec_merged_tmp,0d0,eigval_merged_tmp,n1,n2)
        call z_normalize_eigenvectors(eigvec_merged_tmp)
 
-       allocate( res_merged_tmp(ntmp) )
+       allocate( resval_merged_tmp(ntmp) )
 
-       call z_eval_residual(eigval_merged_tmp,eigvec_merged_tmp,res_merged_tmp,n1,n2)
+       call z_eval_residual(eigval_merged_tmp,eigvec_merged_tmp,resval_merged_tmp,n1,n2)
 
-       left=ssgamma(1)-ssrho(1)
-       right=ssgamma(1)+ssrho(1)
+       num_states_ccurve(:)=0
        m=0
        n=0
        do i=1,ntmp
-          if ( res_merged_tmp(i) < restol_ji ) then
+          if ( resval_merged_tmp(i) < restol_ji ) then
              n=n+1
-             if ( left <= eigval_merged_tmp(i) .and. eigval_merged_tmp(i) <= right ) m=m+1
+             do j=1,n_ccurve
+                left =ssgamma(j)-ssrho(j)
+                right=ssgamma(j)+ssrho(j)
+                if ( left <= eigval_merged_tmp(i) .and. eigval_merged_tmp(i) <= right ) then
+                   m=m+1
+                   num_states_ccurve(j)=num_states_ccurve(j)+1
+                end if
+             end do
           end if
        end do
 
@@ -415,178 +435,42 @@ CONTAINS
           write(*,'(1x,"m,n,ntmp=",3i6,2f15.10,4f10.3)') m,n,ntmp,left,right &
           ,current_sseig_timers%total_time%ct,current_sseig_timers%total_time%et &
           ,tot_time%ct,tot_time%et
+          write(*,'(1x,"num_states_ccurve:",50(i3,i5,2x))') ( j,num_states_ccurve(j),j=1,n_ccurve )
           call flush(6)
        end if
 
-       allocate( eigval_merged(n) )
-       allocate( eigvec_merged(n1:n2,n) )
-       num_candidate = n
+       allocate( resval_merged(n)       ) ; resval_merged=0.d0
+       allocate( eigval_merged(n)       ) ; eigval_merged=0.d0
+       allocate( eigvec_merged(n1:n2,n) ) ; eigvec_merged=0.d0
+       total_numeig = n
        n=0
        do i=1,ntmp
-          if ( res_merged_tmp(i) < restol_ji ) then
+          if ( resval_merged_tmp(i) < restol_ji ) then
              n=n+1
+             resval_merged(n) = resval_merged_tmp(i)
              eigval_merged(n) = eigval_merged_tmp(i)
              eigvec_merged(:,n) = eigvec_merged_tmp(:,i)
              if ( disp_switch ) then
-                write(*,*) i,eigval_merged_tmp(i),res_merged_tmp(i), "   ji"
+                write(*,*) n,i,eigval_merged_tmp(i),resval_merged_tmp(i), "   ji"
                 call flush(6)
              end if
           end if
        end do
-       if ( n /= num_candidate ) stop "stop@apply_sseig(2)"
+       if ( n /= total_numeig ) stop "stop@apply_sseig(2)"
 
-       deallocate( res_merged_tmp )
+       deallocate( resval_merged_tmp )
        deallocate( eigval_merged_tmp )
        deallocate( eigvec_merged_tmp )
-10     continue
+
+       tot_num_states = sum( num_states_ccurve(1:n_ccurve) )
+       if ( disp_switch ) write(*,*) "tot_num_states,old=",tot_num_states,tot_num_states_old
+       if ( tot_num_states <= tot_num_states_old ) then
+          exit
+       else
+          tot_num_states_old = tot_num_states
+       end if
 
     end do ! out_iter
-
-
-    stop
-
- !! merge eigenvectors from all closed curves
-
-    if ( disp_switch ) write(*,'(a40," merge eigenvectors from all closed curves")')
-
-    total_numeig = sum(numeig)
-    if ( disp_switch ) write(*,*) "total_numeig=",total_numeig
-    allocate( eigval_merged_tmp(total_numeig) )
-    allocate( eigvec_merged_tmp(n1:n2,total_numeig) )
- 
-    tmp_disp = 1
-    do i=1,n_ccurve
-       do j=1,n_ccurve_local(myrank_c)
-          if ( my_ccurve_id(j) == i ) then
-             count = 0
-             do m=1,num_basis(j)
-                if ( ssres(m,j) < eigrestol ) then
-                   eigval_merged_tmp(tmp_disp+count) = eigval(m,j)
-                   eigvec_merged_tmp(:,tmp_disp+count) = eigvec(:,m,j)
-                   count = count + 1
-                end if
-             end do
-             if ( myrank_c /= 0 ) then
-                call mpi_send(eigval_merged_tmp(tmp_disp),numeig(i) &
-                     ,mpi_real8,0,0,comm_ccurve,ierr)
-                call mpi_send(eigvec_merged_tmp(:,tmp_disp) &
-                     ,numeig(i)*(n2-n1+1),mpi_complex16,0,0,comm_ccurve,ierr)
-             end if
-          end if
-       end do
-       if ( myrank_c == 0 .and. ccurve_id_rank(i) /= 0 ) then
-          call mpi_recv(eigval_merged_tmp(tmp_disp),numeig(i) &
-               ,mpi_real8,ccurve_id_rank(i),mpi_any_tag,comm_ccurve,istatus,ierr)
-          call mpi_recv(eigvec_merged_tmp(:,tmp_disp),numeig(i)*(n2-n1+1) &
-               ,mpi_complex16,ccurve_id_rank(i),mpi_any_tag,comm_ccurve,istatus,ierr)
-       end if
-       tmp_disp = tmp_disp + numeig(i)
-    end do
-
-    call mpi_bcast(eigval_merged_tmp,total_numeig,mpi_real8,0,comm_ccurve,ierr)
-    call mpi_bcast(eigvec_merged_tmp,total_numeig*(n2-n1+1) &
-                  ,mpi_complex16,0,comm_ccurve,ierr)
-
-    if ( allocated(eigval_merged) ) deallocate(eigval_merged)
-    if ( allocated(eigvec_merged) ) deallocate(eigvec_merged)
-
-    if ( n_ccurve > 1 ) then
-       allocate( res_merged_tmp(total_numeig) )
-       allocate( dummy(total_numeig,total_numeig) )
-       call z_MGS_QR(eigvec_merged_tmp,dummy)
-       call z_MGS_QR(eigvec_merged_tmp,dummy)
-       call z_rayleigh_ritz(eigvec_merged_tmp,0d0,eigval_merged_tmp,n1,n2)
-       call z_normalize_eigenvectors(eigvec_merged_tmp)
-       call z_eval_residual(eigval_merged_tmp,eigvec_merged_tmp,res_merged_tmp,n1,n2)
-       count = 0
-       do m=1,total_numeig
-          if ( res_merged_tmp(m) < eigrestol ) then
-             count = count + 1
-          end if
-       end do
-       allocate( eigval_merged(count) )
-       allocate( eigvec_merged(n1:n2,count) )
-       allocate( res_merged(count) )
-       count = 0
-       do m=1,total_numeig
-          if ( res_merged_tmp(m) < eigrestol ) then
-             count = count + 1
-             eigval_merged(count) = eigval_merged_tmp(m)
-             eigvec_merged(:,count) = eigvec_merged_tmp(:,m)
-             res_merged(count) = res_merged_tmp(m)
-          end if
-       end do
-       total_numeig = count
-       if ( disp_switch ) write(*,*) "total_numeig(=count)=",count
-       deallocate( dummy )
-       deallocate( res_merged_tmp )
-    else ! n_ccurve==1
-       allocate( eigval_merged(total_numeig) )
-       allocate( eigvec_merged(n1:n2,total_numeig) )
-       allocate( res_merged(total_numeig) )
-       eigval_merged(:)   = eigval_merged_tmp(:)
-       eigvec_merged(:,:) = eigvec_merged_tmp(:,:)
-       res_merged(:) = 0.d0
-       count = 1
-       do m=1,num_basis(1)
-          if ( ssres(m,1) < eigrestol ) then
-             res_merged(count) = ssres(m,1)
-             count = count + 1
-          end if
-       end do
-       if ( disp_switch ) write(*,*) "numeig,count=",numeig(1),count
-    end if
-
-    deallocate( eigvec_merged_tmp )
-    deallocate( eigval_merged_tmp )
-
-!-- band connectivity check
-
-    if ( disp_switch ) write(*,'(1x,a40," band connetivity")')
-
-    if ( allocated(old_idx) ) deallocate(old_idx)
-    allocate( old_idx(total_numeig) )
-    old_idx(:) = 0
-
-    if ( first_time ) then
-       old_idx(:) = 0
-       first_time = .false.
-    else
-       m=size(eigvec_merged_old,2)
-       n=size(eigvec_merged,2)
-       allocate( tmp_mat_r(m,n), tmp_mat_c(m,n) )
-       call z_matmat_CN(eigvec_merged_old,eigvec_merged,tmp_mat_c)
-       tmp_mat_r(:,:) = abs( tmp_mat_c(:,:) )
-       do i=1,m
-          old_idx( maxloc(tmp_mat_r(i,:)) ) = i
-       end do
-       if ( myrank_g == 0 .and. myrank_c == 0 .and. myrank_r == 0 ) then
-          write(unit_ss_band_cor,'(I7,1x)',advance='no') (j,j=0,size(tmp_mat_r,2))
-          write(unit_ss_band_cor,*)
-          do i=1,size(tmp_mat_r,1)
-             write(unit_ss_band_cor,'(I8,1x)',advance='no') i
-             write(unit_ss_band_cor,'(1pe8.1,1x)',advance='no') &
-                  (tmp_mat_r(i,j),j=1,size(tmp_mat_r,2))
-             write(unit_ss_band_cor,*)
-          end do
-          call flush(unit_ss_band_cor)
-       end if
-       deallocate( tmp_mat_c, tmp_mat_r )
-    end if
-
-    if ( myrank_c == 0 .and. myrank_r == 0 .and. myrank_g == 0 ) then
-       write(*,*) 'merged_value'
-       write(*,'(1x,a5,2x,a25,3x,a14,3x,a9)') 'index','eigval','res','old_index'
-       write(unit_ss_band_val,'(1x,i6,3f20.12)') total_numeig,dk_bz(1:3)
-       count = 0
-       do m=1,total_numeig
-          write(*,'(1x,I4,3x,f25.15,3x,1pe14.7,3x,I4)') &
-               m,eigval_merged(m),res_merged(m),old_idx(m)
-          write(unit_ss_band_val,'(1x,I4,3x,f25.15,3x,1pe14.7,3x,I4)') &
-               m,eigval_merged(m),res_merged(m),old_idx(m)
-       end do
-       call flush(unit_ss_band_val)
-    end if
 
 
   ! SS_IO 0:no read no write, 1:write only, 2:read and write
@@ -606,12 +490,7 @@ CONTAINS
        close(unit_ss_band_wf)
     end if
 
-
-    if ( allocated(eigvec_merged_old) ) deallocate(eigvec_merged_old)
-
-    allocate( eigvec_merged_old(n1:n2,size(eigvec_merged,2)) )
-    eigvec_merged_old = eigvec_merged
-
+    deallocate(num_states_ccurve)
     deallocate(solver_timers_array)
     deallocate(solver_info_array)
     deallocate(sseig_timers_array)
@@ -643,5 +522,31 @@ CONTAINS
     deallocate( ba,ba0 )
   END SUBROUTINE ortho_sub
 
+  SUBROUTINE gather_sub(mm,nn,f)
+    implicit none
+    integer,intent(IN) :: mm,nn
+    complex(8),intent(INOUT) :: f(mm,nn)
+    integer :: irank_c,n,i,ierr
+    if ( .not.allocated(ir_c) ) then
+       allocate( ir_c(0:nprocs_c-1) ) ; ir_c=0
+       allocate( id_c(0:nprocs_c-1) ) ; id_c=0
+    end if
+    id_c(:)=0
+    ir_c(:)=0
+    do irank_c=0,nprocs_c-1
+       do i=1,n_ccurve
+          if ( ccurve_id_rank(i) == irank_c ) then 
+             ir_c(irank_c)=ir_c(irank_c)+numeig(i)
+          end if
+       end do
+    end do
+    ir_c(:)=ir_c(:)*mm
+    do irank_c=0,nprocs_c-1
+       id_c(irank_c)=sum(ir_c(0:irank_c))-ir_c(irank_c)
+    end do
+    n=min(nn,id_c(myrank_c)/mm+1)
+    call mpi_allgatherv(f(1,n),ir_c(myrank_c),MPI_COMPLEX16 &
+         ,f,ir_c,id_c,MPI_COMPLEX16,comm_ccurve,ierr)
+  END SUBROUTINE gather_sub
 
 END MODULE apply_sseig_module

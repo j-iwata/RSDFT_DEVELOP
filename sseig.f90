@@ -4,7 +4,7 @@ MODULE sseig
   use parallel_module
   use iter_lin_solvers, only: z_dot,comm_rhs,solver_timers,solver_info &
                              ,myrank_r,nprocs_r,seed_val,z_mgs_qr,z_matmat_cn,z_matmat_nx &
-                             ,current_solver_info,current_solver_timers !,timer
+                             ,current_solver_info,current_solver_timers
   use hamiltonian_module
   use timer_module
 
@@ -16,10 +16,10 @@ MODULE sseig
            ,unit_ss_band_cor,unit_ss_band_val,ssgamma,SS_IO,L_fixed,opt &
            ,solver_timers_array,sseig_timers_array,solver_info_array,my_rhs_set_id &
            ,first_time,eigvec,eigval,ssres,inputV,eigvec_merged,eigval_merged &
-           ,cmyrank,unit_ss_band_wf,eigvec_merged_old,file_ss_wf,file_ss_wf_split &
+           ,cmyrank,unit_ss_band_wf,file_ss_wf,file_ss_wf_split &
            ,old_idx,current_sseig_timers,n_rhs_set,current_ccurve_local_id &
            ,disp_sseig_result,z_rayleigh_ritz,z_normalize_eigenvectors,z_eval_residual &
-           ,opt_N,out_iter_max,out_iter_init
+           ,opt_N,out_iter_max,out_iter_init,resval_merged
   
   type optss
      integer :: N = 32
@@ -62,8 +62,9 @@ MODULE sseig
   
 
   real(8),allocatable :: eigval(:,:), eigval_merged(:)
+  real(8),allocatable :: resval_merged(:)
   complex(8),allocatable :: eigvec(:,:,:), inputV(:,:,:)
-  complex(8),allocatable :: eigvec_merged(:,:), eigvec_merged_old(:,:)
+  complex(8),allocatable :: eigvec_merged(:,:)
   integer,allocatable :: old_idx(:)
   logical :: first_time = .true.
   

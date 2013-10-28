@@ -272,6 +272,7 @@ CONTAINS
           end if
        end do
        if ( maxval(residual) < epsmax .or. conv_count > m/2 ) then
+     !  if ( maxval(residual) < epsmax ) then
           exit
        end if
 

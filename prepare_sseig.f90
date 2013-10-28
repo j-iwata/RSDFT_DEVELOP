@@ -17,6 +17,7 @@ CONTAINS
 
 
   SUBROUTINE prepare_sseig(unit,disp_switch_in)
+    implicit none
     integer,intent(IN) :: unit
     logical,intent(IN) :: disp_switch_in
     integer :: i,j,m,n,s,k,n1,n2,ierr,numeig_per_circle, count
@@ -131,6 +132,8 @@ CONTAINS
     call mpi_comm_size(comm_ccurve,nprocs_c,ierr)
     call mpi_comm_rank(comm_ccurve,myrank_c,ierr)
 
+    if ( n_ccurve < nprocs_c ) stop "stop@prepare_sseig"
+
     call mpi_comm_split(comm_band,myrank_b/nprocs_r,myrank_b,comm_rhs,ierr)
     call mpi_comm_size(comm_rhs,nprocs_r,ierr)
     call mpi_comm_rank(comm_rhs,myrank_r,ierr)
@@ -161,7 +164,19 @@ CONTAINS
        end do
        n_ccurve_local(j) = count
     end do
-  
+
+    if ( myrank == 0 ) then
+       write(*,'(1x,a8,a16)') "rank_c","n_ccurve_local"
+       do j=0,nprocs_c-1
+          write(*,'(1x,i8,i16)') j,n_ccurve_local(j)
+       end do
+       write(*,*) "n_ccurve=",n_ccurve
+       write(*,'(1x,a10,a10)') "ccurve_id","rank_c"
+       do i=1,n_ccurve
+          write(*,'(1x,i10,i10)') i,ccurve_id_rank(i)
+       end do
+    end if
+
     n=n_ccurve_local(myrank_c)
     allocate( my_ccurve_id(n) )
 
@@ -199,9 +214,9 @@ CONTAINS
     end if
     do i=1,n_ccurve
        call mpi_barrier(comm_ccurve,ierr)
-       if ( ccurve_id_rank(i) == myrank_c .and. myrank_r == 0 .and. myrank_g == 0 ) then
+       if ( myrank == 0 ) then
           write(*,'(I4,2x,I8,2x,e14.7,1x,e14.7,2x,I7)') &
-               i,myrank_c,ssgamma(i),ssrho(i),numeig(i)
+               i,ccurve_id_rank(i),ssgamma(i),ssrho(i),numeig(i)
        end if
     end do
     call mpi_barrier(comm_ccurve,ierr)
