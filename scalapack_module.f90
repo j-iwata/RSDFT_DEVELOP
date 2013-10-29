@@ -131,9 +131,11 @@ CONTAINS
              n=n+1
              m=m+1 ; if ( mod(m,NPROW*NPCOL) == 0 ) mchk=mchk+NPROW*NPCOL
              l=l+1
-             j=mod(m+NPCOL,NPCOL)
-!             i=m/NPCOL
-             i=mod(m/NPCOL,NPROW)
+!             j=mod(m+NPCOL,NPCOL)
+!!             i=m/NPCOL
+!             i=mod(m/NPCOL,NPROW)
+             i=mod(m+NPROW,NPROW)
+             j=m/NPROW
              mm=myrank_g+nprocs_g*myrank_b+1
              if ( id_class(myrank,5)==ik .and. id_class(myrank,6)==is .and. &
                   mm > mchk ) then

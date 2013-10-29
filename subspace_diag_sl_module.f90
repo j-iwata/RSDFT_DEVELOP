@@ -30,12 +30,12 @@ CONTAINS
     allocate( Hsub(LLD_R,LLD_C) )
     Hsub=zero
 
-!    call watch(ct0,et0)
-!    call subspace_mate_sl(k,s)
-!    call watch(ct1,et1) ; ct(1)=ct1-ct0 ; et(1)=et1-et0
     call watch(ct0,et0)
-    call subspace_mate_sl_0(k,s)
-    call watch(ct1,et1) ; ct(4)=ct1-ct0 ; et(4)=et1-et0
+    call subspace_mate_sl(k,s)
+    call watch(ct1,et1) ; ct(1)=ct1-ct0 ; et(1)=et1-et0
+!    call watch(ct0,et0)
+!    call subspace_mate_sl_0(k,s)
+!    call watch(ct1,et1) ; ct(4)=ct1-ct0 ; et(4)=et1-et0
 
     allocate( Vsub(LLD_R,LLD_C) )
     Vsub=zero
@@ -46,12 +46,12 @@ CONTAINS
 
     deallocate( Hsub )
 
-!    call watch(ct0,et0)
-!    call subspace_rotv_sl(k,s)
-!    call watch(ct1,et1) ; ct(3)=ct1-ct0 ; et(3)=et1-et0
     call watch(ct0,et0)
-    call subspace_rotv_sl_0(k,s)
-    call watch(ct1,et1) ; ct(5)=ct1-ct0 ; et(5)=et1-et0
+    call subspace_rotv_sl(k,s)
+    call watch(ct1,et1) ; ct(3)=ct1-ct0 ; et(3)=et1-et0
+!    call watch(ct0,et0)
+!    call subspace_rotv_sl_0(k,s)
+!    call watch(ct1,et1) ; ct(5)=ct1-ct0 ; et(5)=et1-et0
 
     deallocate( Vsub )
 

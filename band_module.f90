@@ -63,7 +63,7 @@ CONTAINS
 
 
   SUBROUTINE band_sseig(disp_switch)
-#ifndef _DRSDFT_
+
     use prepare_sseig_module
     use apply_sseig_module, only: apply_sseig,total_numeig
     use sseig
@@ -87,6 +87,8 @@ CONTAINS
     real(8),allocatable :: ktrj(:,:),pxyz(:,:)
     complex(8),allocatable :: eigvec_merged_old(:,:)
     integer,save :: total_numeig_old=0
+
+#ifndef _DRSDFT_
 
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1
