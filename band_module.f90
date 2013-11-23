@@ -328,12 +328,12 @@ CONTAINS
 
        iktrj_00 = id_k(0) + iktrj - iktrj_0 + 1
 
-       kbb(1:3,MBZ_0) = ktrj(1:3,min(iktrj,iktrj_1))
+       kbb(1:3,MBZ_0) = ktrj(1:3,min(iktrj,iktrj_1,nktrj))
        call mpi_allgather(kbb(1,MBZ_0),3,mpi_real8,kbb_tmp,3,mpi_real8,comm_bzsm,ierr)
        if ( myrank == 0 ) then
           write(*,*) "kbb_tmp"
           do ibz=0,np_bzsm-1
-             write(*,'(1x,i8,3f10.5)') ibz,kbb_tmp(1:3,ibz)
+             write(*,'(1x,i8,3f10.5)') id_k(ibz)+iktrj-iktrj_0+1,kbb_tmp(1:3,ibz)
           end do
        endif
 
@@ -348,16 +348,19 @@ CONTAINS
              call conjugate_gradient(ML_0,ML_1,MB,MBZ_0,s,Ncg,iswitch_gs &
                   ,unk(ML_0,1,MBZ_0,s),esp(1,MBZ_0,s),res(1,MBZ_0,s))
              call gram_schmidt_t(1,MB,MBZ_0,s)
-!            call subspace_diag_la(MBZ_0,s)
+#ifdef _LAPACK_
+             call subspace_diag_la(MBZ_0,s)
+#else
              call subspace_diag_sl(MBZ_0,s,.false.)
+#endif
           end do
           max_err = maxval( abs(  esp(1:mb2_band,MBZ_0,MSP_0:MSP_1) &
                                 -esp0(1:mb2_band,MBZ_0,MSP_0:MSP_1) ) )
           if ( iktrj_1 < iktrj ) max_err=0.d0
           call mpi_allreduce(max_err,max_err0,1,MPI_REAL8,MPI_MAX,comm_spin,ierr)
           call mpi_allreduce(max_err0,max_err,1,MPI_REAL8,MPI_MAX,comm_bzsm,ierr)
+          if ( disp_switch ) write(*,*) "iktrj,max_err,iter=",iktrj,max_err,iter
           if ( max_err < esp_conv_tol ) then
-             if ( disp_switch ) write(*,*) "iktrj,max_err,iter=",iktrj,max_err,iter
              exit
           else if ( iter == Diter_band ) then
              stop "band is not converged"

@@ -15,6 +15,7 @@ MODULE scf_module
   use io_module
   use total_energy_module
   use fermi_module
+  use subspace_diag_la_module
   use subspace_diag_sl_module
   use esp_gather_module
   use density_module
@@ -28,6 +29,7 @@ MODULE scf_module
 CONTAINS
 
   SUBROUTINE calc_scf(Diter,Nsweep,iter_final,disp_switch)
+    implicit none
     integer,intent(IN)  :: Diter,Nsweep
     integer,intent(OUT) :: iter_final
     logical,intent(IN) :: disp_switch
@@ -60,8 +62,11 @@ CONTAINS
        do k=MBZ_0,MBZ_1
           call watcht(disp_switch,"",0)
           if ( iter == 1 .or. flag_scf ) then
-!             call subspace_diag_la(k,s)
+#ifdef _LAPACK_
+             call subspace_diag_la(k,s)
+#else
              call subspace_diag_sl(k,s,disp_switch)
+#endif
           end if
           call watcht(disp_switch,"diag",1)
           call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
@@ -69,8 +74,11 @@ CONTAINS
           call watcht(disp_switch,"cg  ",1)
           call gram_schmidt_t(1,Nband,k,s)
           call watcht(disp_switch,"gs  ",1)
-!          call subspace_diag_la(k,s)
+#ifdef _LAPACK_
+          call subspace_diag_la(k,s)
+#else
           call subspace_diag_sl(k,s,disp_switch)
+#endif
           call watcht(disp_switch,"diag",1)
        end do
        end do

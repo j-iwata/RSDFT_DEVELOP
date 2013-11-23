@@ -47,12 +47,15 @@ CONTAINS
   END SUBROUTINE read_scalapack
 
   SUBROUTINE prep_scalapack(MB,disp_switch)
+    implicit none
     integer,intent(INOUT) :: MB
     logical,intent(IN) :: disp_switch
     integer :: ierr,NPCOL0,i,j,n,is,ik,m,ib,l,i1,i2,i3
     integer :: MXLLD,MYROW,MYCOL,mm,mchk
     integer,save :: icount_visit=0, ICTXT=0, ICTXT0=0
     integer :: NUMROC
+
+#ifndef _LAPACK_
 
     if ( iblacs ) return
 
@@ -181,6 +184,8 @@ CONTAINS
        write(*,*) "NPX,NQX          =",NPX,NQX
        write(*,*) "iblacs           =",iblacs
     end if
+
+#endif
 
   END SUBROUTINE prep_scalapack
 

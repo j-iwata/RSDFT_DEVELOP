@@ -72,6 +72,7 @@ PROGRAM Real_Space_Solid
   if (DISP_SWITCH) write(*,'(a60," read_param")') repeat("-",60)
 
   call read_parameters
+!  call read_oldformat_parameters
 
 ! --- initial preparetaion ---
 
@@ -147,7 +148,7 @@ PROGRAM Real_Space_Solid
 
   if ( SYStype == 3 ) then
 
-     call read_esm_rgrid(myrank,2)
+     call read_esm_rgrid(myrank,1)
      call prep_esm_rgrid(Md)
      call construct0_esm_rgrid
 
@@ -249,7 +250,7 @@ PROGRAM Real_Space_Solid
      call prep_ps_nloc2_esm
 
      call init_ps_local_rs
-     call read_rshell(myrank,2)
+     call read_rshell(myrank,1)
 
      if ( allocated(Vion) ) deallocate(Vion)
      if ( allocated(rho) ) deallocate(rho)
@@ -263,7 +264,7 @@ PROGRAM Real_Space_Solid
 !     c0=sum(rho)
 !     call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
 !     rho=rho-c/ML_ESM+Nelectron/(ML_ESM*dV)
-     write(*,*) "sum(rho)*dV",sum(rho)*dV,minval(rho),maxval(rho)
+     write(*,'(1x,"sum(rho)*dV",3f15.10)') sum(rho)*dV,minval(rho),maxval(rho)
 
      call flush(6)
 
@@ -335,12 +336,10 @@ PROGRAM Real_Space_Solid
   if ( SYStype == 3 ) then
 
      call construct_ps_density_longloc
-     call read_esm_genpot(myrank,2)
+     call read_esm_genpot(myrank,1)
      allocate( vtmp(ML0_ESM:ML1_ESM) )
      vtmp=0.d0
      call esm_genpot(vtmp)
-!     call func2gp_r_esm(10,ML0_ESM,ML1_ESM,vtmp)
-!     goto 900
      Vion(:) = Vion(:) + vtmp(:)
      deallocate( vtmp )
 
@@ -435,8 +434,11 @@ PROGRAM Real_Space_Solid
      do k=MBZ_0,MBZ_1
         call watcht(disp_switch,"",0)
         if ( iter == 1 .or. flag_scf ) then
-!          call subspace_diag_la(k,s)
+#ifdef _LAPACK_
+           call subspace_diag_la(k,s)
+#else
            call subspace_diag_sl(k,s,disp_switch)
+#endif
         end if
         call watcht(disp_switch,"diag",1)
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
@@ -444,8 +446,11 @@ PROGRAM Real_Space_Solid
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)
         call watcht(disp_switch,"gs  ",1)
-!       call subspace_diag_la(k,s)
+#ifdef _LAPACK_
+        call subspace_diag_la(k,s)
+#else
         call subspace_diag_sl(k,s,disp_switch)
+#endif
         call watcht(disp_switch,"diag",1)
      end do
      end do

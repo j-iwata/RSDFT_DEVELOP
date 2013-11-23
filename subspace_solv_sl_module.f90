@@ -24,6 +24,8 @@ CONTAINS
     complex(8),allocatable :: zwork(:)
     character(8) :: idiag
 
+#ifndef _LAPACK_
+
     MB = MB_diag
 
     ierr = 0
@@ -126,6 +128,9 @@ CONTAINS
     end if
 
     return
+
+#endif
+
   END SUBROUTINE subspace_solv_sl
 
 END MODULE subspace_solv_sl_module
