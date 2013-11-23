@@ -12,4 +12,4 @@ all : pzfft3dv.o fft235.o kernel.o
 #	$(FC) -c -mp  fft235.f -o fft235.o
 
 clean :
-	rm -r -f *.o mpif.h
+	rm -r -f *.o mpif.h *.lst
