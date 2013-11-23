@@ -76,14 +76,19 @@ CONTAINS
     end if
     call send_parallel(0)
   END SUBROUTINE read_parallel
-!  SUBROUTINE read_parallel(unit)
-!    integer,intent(IN) :: unit
-!    node_partition(:)=1
-!    read(unit,*) node_partition(1:max_parallel)
-!    read(unit,*) MB_d
-!    write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
-!    write(*,*) "MB_d=",MB_d
-!  END SUBROUTINE read_parallel
+
+
+  SUBROUTINE read_oldformat_parallel(rank,unit)
+    integer,intent(IN) :: rank,unit
+    node_partition(:)=1
+    if ( rank == 0 ) then
+       read(unit,*) node_partition(1:max_parallel)
+       read(unit,*) MB_d
+       write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
+       write(*,*) "MB_d=",MB_d
+    end if
+    call send_parallel(0)
+  END SUBROUTINE read_oldformat_parallel
 
 
   SUBROUTINE send_parallel(rank)

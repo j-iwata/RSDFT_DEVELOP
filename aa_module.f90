@@ -3,7 +3,7 @@ MODULE aa_module
   implicit none
 
   PRIVATE
-  PUBLIC :: ax,aa,Va,read_aa,construct_aa
+  PUBLIC :: ax,aa,Va,read_aa,construct_aa,read_oldformat_aa
 
   real(8) :: ax,Va
   real(8) :: aa(3,3)
@@ -47,6 +47,23 @@ CONTAINS
     end if
     call send_aa(0)
   END SUBROUTINE read_aa
+
+
+  SUBROUTINE read_oldformat_aa(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) ax
+       read(unit,*) aa(1:3,1)
+       read(unit,*) aa(1:3,2)
+       read(unit,*) aa(1:3,3)
+       write(*,*) "ax=",ax
+       write(*,'(1x,"aa(1:3,1)=",3F20.15)') aa(:,1)
+       write(*,'(1x,"aa(1:3,2)=",3F20.15)') aa(:,2)
+       write(*,'(1x,"aa(1:3,3)=",3F20.15)') aa(:,3)
+    end if
+    call send_aa(0)
+  END SUBROUTINE read_oldformat_aa
 
 
   SUBROUTINE send_aa(rank)

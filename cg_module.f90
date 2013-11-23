@@ -10,7 +10,7 @@ MODULE cg_module
   implicit none
 
   PRIVATE
-  PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs
+  PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs,read_oldformat_cg
 
   integer :: Ncg,iswitch_gs
 
@@ -45,12 +45,15 @@ CONTAINS
   END SUBROUTINE read_cg
 
 
-!  SUBROUTINE read_cg(unit)
-!    integer,intent(IN) :: unit
-!    read(unit,*) Ncg,iswitch_gs
-!    write(*,*) "Ncg=",Ncg
-!    write(*,*) "iswitch_gs=",iswitch_gs
-!  END SUBROUTINE read_cg
+  SUBROUTINE read_oldformat_cg(rank,unit)
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) Ncg,iswitch_gs
+       write(*,*) "Ncg=",Ncg
+       write(*,*) "iswitch_gs=",iswitch_gs
+    end if
+    call send_cg(0)
+  END SUBROUTINE read_oldformat_cg
 
 
   SUBROUTINE send_cg(rank)

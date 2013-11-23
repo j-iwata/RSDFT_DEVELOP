@@ -5,7 +5,7 @@ MODULE ps_nloc1_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Ndense,Nintp,read_ps_nloc1
+  PUBLIC :: Ndense,Nintp,read_ps_nloc1,read_oldformat_ps_nloc1
 
   integer :: Ndense, Nintp
   real(8),allocatable :: rad1(:,:)
@@ -43,6 +43,16 @@ CONTAINS
     end if
     call send_ps_nloc1(0)
   END SUBROUTINE read_ps_nloc1
+
+
+  SUBROUTINE read_oldformat_ps_nloc1(rank,unit)
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) Ndense, Nintp
+       write(*,*) "Ndense, Nintp =",Ndense,Nintp
+    end if
+    call send_ps_nloc1(0)
+  END SUBROUTINE read_oldformat_ps_nloc1
 
 
   SUBROUTINE send_ps_nloc1(rank)

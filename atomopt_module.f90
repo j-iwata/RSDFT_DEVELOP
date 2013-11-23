@@ -18,7 +18,7 @@ MODULE atomopt_module
 
   PRIVATE
   PUBLIC :: ncycl,most,nrfr,okatom,eeps,feps,decr &
-           ,read_atomopt,atomopt
+           ,read_atomopt,atomopt,read_oldformat_atomopt
 
   integer :: ncycl,most,nrfr
   real(8) :: okatom,eeps,feps,decr
@@ -70,6 +70,25 @@ CONTAINS
     end if
     call send_atomopt
   END SUBROUTINE read_atomopt
+
+
+  SUBROUTINE read_oldformat_atomopt(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) ncycl,most,nrfr,diter_opt
+       read(unit,*) okatom,eeps,feps,decr
+       write(*,*) "ncycl, most, nrfr =",ncycl,most,nrfr
+       write(*,*) "diter_opt         =",diter_opt
+       write(*,*) "okatom, eeps      =",okatom,eeps
+       write(*,*) "feps, decr        =",feps,decr
+       if ( diter_opt <= 0 ) then
+          diter_opt=50
+          write(*,*) "diter_opt         =",diter_opt
+       end if
+    end if
+    call send_atomopt
+  END SUBROUTINE read_oldformat_atomopt
 
 
   SUBROUTINE send_atomopt

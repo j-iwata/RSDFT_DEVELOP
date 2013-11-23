@@ -6,7 +6,7 @@ MODULE cgpc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: preconditioning,read_cgpc
+  PUBLIC :: preconditioning,read_cgpc,read_oldformat_cgpc
 
   integer :: mloop
 #ifdef _DRSDFT_
@@ -40,6 +40,16 @@ CONTAINS
     end if
     call send_cgpc(0)
   END SUBROUTINE read_cgpc
+
+
+  SUBROUTINE read_oldformat_cgpc(rank,unit)
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) mloop
+       write(*,*) "mloop=",mloop
+    end if
+    call send_cgpc(0)
+  END SUBROUTINE read_oldformat_cgpc
 
 
   SUBROUTINE send_cgpc(rank)

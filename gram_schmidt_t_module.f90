@@ -8,7 +8,7 @@ MODULE gram_schmidt_t_module
   implicit none
 
   PRIVATE
-  PUBLIC :: gram_schmidt_t, read_gram_schmidt_t
+  PUBLIC :: gram_schmidt_t, read_gram_schmidt_t, read_oldformat_gram_schmidt_t
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN = MPI_REAL8
@@ -55,11 +55,16 @@ CONTAINS
     end if
     call send_gram_schmidt_t(0)
   END SUBROUTINE read_gram_schmidt_t
-!  SUBROUTINE read_gram_schmidt_t(unit)
-!    integer,intent(IN) :: unit
-!    read(unit,*) NBLK,NBLK1
-!    write(*,*) "NBLK,NBLK1=",NBLK,NBLK1
-!  END SUBROUTINE read_gram_schmidt_t
+
+
+  SUBROUTINE read_oldformat_gram_schmidt_t(rank,unit)
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) NBLK,NBLK1
+       write(*,*) "NBLK,NBLK1=",NBLK,NBLK1
+    end if
+    call send_gram_schmidt_t(0)
+  END SUBROUTINE read_oldformat_gram_schmidt_t
 
 
   SUBROUTINE send_gram_schmidt_t(rank)

@@ -5,7 +5,7 @@ MODULE rgrid_module
   PRIVATE
   PUBLIC :: Ngrid,Hgrid,dV,zdV,Igrid &
            ,read_rgrid,construct_rgrid &
-           ,parallel_rgrid
+           ,parallel_rgrid,read_oldformat_rgrid
 
   integer :: Ngrid(0:3),Igrid(2,0:3)
   real(8) :: Hgrid(3)
@@ -40,12 +40,16 @@ CONTAINS
     call send_rgrid(0)
   END SUBROUTINE read_rgrid
 
-!  SUBROUTINE read_rgrid(unit)
-!    integer,intent(IN) :: unit
-!    Ngrid(:)=0
-!    read(unit,*) Ngrid(1:3)
-!    write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
-!  END SUBROUTINE read_rgrid
+
+  SUBROUTINE read_oldformat_rgrid(rank,unit)
+    integer,intent(IN) :: rank,unit
+    Ngrid(:)=0
+    if ( rank == 0 ) then
+       read(unit,*) Ngrid(1:3)
+       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
+    end if
+    call send_rgrid(0)
+  END SUBROUTINE read_oldformat_rgrid
 
 
   SUBROUTINE send_rgrid(rank)

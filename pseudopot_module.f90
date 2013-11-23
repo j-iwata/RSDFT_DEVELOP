@@ -6,7 +6,8 @@ MODULE pseudopot_module
   PUBLIC :: pselect,ippform,file_ps,inorm,NRps,norb,Npseudopot &
            ,Mr,lo,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
            ,read_ppname_pseudopot,read_pseudopot &
-           ,read_param_pseudopot
+           ,read_param_pseudopot,read_param_oldformat_pseudopot &
+           ,read_ppname_oldformat_pseudopot
 
   integer :: pselect,Npseudopot
   integer,allocatable :: ippform(:)
@@ -20,9 +21,9 @@ MODULE pseudopot_module
 CONTAINS
 
 
-  SUBROUTINE read_ppname_pseudopot(rank,unit)
+  SUBROUTINE read_ppname_pseudopot(MKI,rank,unit)
     implicit none
-    integer,intent(IN) :: rank,unit
+    integer,intent(IN) :: MKI,rank,unit
     integer :: i,j,ierr
     character(2) :: cbuf,ckey
     Nelement_PP=0
@@ -36,7 +37,6 @@ CONTAINS
 990    continue
     end if
     call send_ppname_1(0)
-    Npseudopot = Nelement_PP
     allocate( ippform(Nelement_PP),file_ps(Nelement_PP) )
     ippform(:)=0
     file_ps(:)=""
@@ -54,33 +54,44 @@ CONTAINS
           end if
        end do
 999    continue
-       write(*,*) "Nelement_PP,Npseudopot=",Nelement_PP,Npseudopot
+       write(*,*) "Nelement_PP, Nelement=",Nelement_PP,MKI
+       do i=1,Nelement_PP
+          write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
+               ippform(i),file_ps(i)
+       end do
+       if ( Nelement_PP > MKI ) then
+          write(*,'("WARNING(Nelement_PP>Nelement):First ",i1," potentials are used")') MKI
+       end if
+    end if
+    call send_ppname_2(0)
+    ierr=0
+    if ( Nelement_PP < MKI ) ierr=-1
+    do i=1,Nelement_PP
+       if ( ippform(i) <= 0 .or. file_ps(i)=="" ) ierr=-1
+    end do
+    if ( ierr == -1 ) stop "stop@read_ppname_pseudopot"
+    Nelement_PP=MKI
+    Npseudopot =MKI
+  END SUBROUTINE read_ppname_pseudopot
+
+  SUBROUTINE read_ppname_oldformat_pseudopot(MKI,rank,unit)
+    implicit none
+    integer,intent(IN) :: MKI,rank,unit
+    integer :: i
+    Nelement_PP=MKI
+    Npseudopot =MKI
+    allocate( ippform(Nelement_PP),file_ps(Nelement_PP) )
+    if ( rank == 0 ) then
+       do i=1,Nelement_PP
+          read(unit,*) ippform(i),file_ps(i)
+       end do
        do i=1,Nelement_PP
           write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
                ippform(i),file_ps(i)
        end do
     end if
     call send_ppname_2(0)
-    ierr=0
-    do i=1,Nelement_PP
-       if ( ippform(i) <= 0 .or. file_ps(i)=="" ) ierr=-1
-    end do
-    if ( ierr == -1 ) stop "stop@read_ppname_pseudopot"
-  END SUBROUTINE read_ppname_pseudopot
-!  SUBROUTINE read_ppname_pseudopot(MKI,unit)
-!    implicit none
-!    integer,intent(IN) :: MKI,unit
-!    integer :: i
-!    Nelement_PP=MKI
-!    allocate( ippform(Nelement_PP),file_ps(Nelement_PP) )
-!    do i=1,Nelement_PP
-!       read(unit,*) ippform(i),file_ps(i)
-!    end do
-!    do i=1,Nelement_PP
-!       write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
-!            ippform(i),file_ps(i)
-!    end do
-!  END SUBROUTINE read_ppname_pseudopot
+  END SUBROUTINE read_ppname_oldformat_pseudopot
 
   SUBROUTINE send_ppname_1(rank)
     implicit none
@@ -121,13 +132,16 @@ CONTAINS
     end if
     call send_param_pseudopot(0)
   END SUBROUTINE read_param_pseudopot
-!  SUBROUTINE read_param_pseudopot(unit)
-!    implicit none
-!    integer,intent(IN) :: unit
-!    read(unit,*) pselect
-!    write(*,*) "pselect=",pselect
-!  END SUBROUTINE read_param_pseudopot
 
+  SUBROUTINE read_param_oldformat_pseudopot(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) pselect
+       write(*,*) "pselect=",pselect
+    end if
+    call send_param_pseudopot(0)
+  END SUBROUTINE read_param_oldformat_pseudopot
 
   SUBROUTINE send_param_pseudopot(rank)
     implicit none
@@ -201,8 +215,9 @@ CONTAINS
 
   SUBROUTINE read_PSV
     implicit none
+    character(30) :: file_name
     real(8) :: znuc
-    integer :: nsmpl,ndlc,ndata
+    integer :: nsmpl,ndlc,ndlc_1,ndata
     integer :: nl,l,i,j,m
     integer,allocatable :: nr(:)
 
@@ -213,7 +228,7 @@ CONTAINS
 
     integer :: ifchrg,verpot,ngauss
     real(8) :: zatom,Rc_in,a1,a2,a3,a4
-    real(8) :: r1,r2,rend
+    real(8) :: r1,r2,rend,dummy
     character(8) :: xc_pot
 
     real(8),allocatable :: rr(:),vl(:),cc(:),r(:)
@@ -242,6 +257,24 @@ CONTAINS
        end do
        if ( i>10000 ) stop "stop at psv"
 
+       read(unit_ps,*) znuc
+
+    else if ( index(inbuf,'#xPSV')==1 ) then
+! xTAPP
+!
+       verpot=3
+       ifchrg=0
+       do i=1,10000
+          read(unit_ps,'(A)') inbuf
+          if ( index(inbuf,'#')==1 ) cycle
+          backspace unit_ps
+          exit
+       end do
+       if ( i>10000 ) stop "stop at psv"
+
+       read(unit_ps,*) xc_pot
+       read(unit_ps,*) znuc,zatom
+
     else
 
 ! Ver. 1.0 
@@ -261,7 +294,6 @@ CONTAINS
 
     end if
 
-    read(unit_ps,*) znuc
     read(unit_ps,*) nl
     allocate( nr(nl) )
     read(unit_ps,*) nr(1:nl)
@@ -377,18 +409,22 @@ CONTAINS
        end do
     end do
 
-    do j=1,10000
-       read(unit_ps,'(A)') inbuf18
-       if ( inbuf18=='### initial charge' ) then
-          read(unit_ps,*) ngauss
-          allocate( a0(ngauss),b0(ngauss),c0(ngauss) )
-          do i=1,ngauss
-             read(unit_ps,*) a0(i),b0(i),c0(i)
-          end do
-          exit
-       end if
-    end do
-    if ( j>10000 ) stop "read_psv"
+    select case( verpot )
+    case default
+       do j=1,10000
+          read(unit_ps,'(A)') inbuf18
+          if ( inbuf18=='### initial charge' ) then
+             read(unit_ps,*) ngauss
+             allocate( a0(ngauss),b0(ngauss),c0(ngauss) )
+             do i=1,ngauss
+                read(unit_ps,*) a0(i),b0(i),c0(i)
+             end do
+             exit
+          end if
+       end do
+       if ( j>10000 ) stop "read_psv"
+    case( 3 )
+    end select
 
     i = max( ndlc,nsmpl,ndata ) + 1
     j = max( 1, sum(nr(1:nl)) )
@@ -445,14 +481,29 @@ CONTAINS
 !
 ! initial charge
 !
-    temp=16.d0*atan(1.d0)
-    cdd(:,ielm)=0.d0
-    do l=1,ngauss
-       do i=1,ndlc
-          cdd(i+1,ielm)=cdd(i+1,ielm) &
-               +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
+    select case( verpot )
+    case default
+       temp=16.d0*atan(1.d0)
+       cdd(:,ielm)=0.d0
+       do l=1,ngauss
+          do i=1,ndlc
+             cdd(i+1,ielm)=cdd(i+1,ielm) &
+                  +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
+          end do
        end do
-    end do
+    case( 3 )
+       file_name=trim(file_ps(ielm))//".ichr"
+       open(unit_ps+1,file=file_name,status='old')
+       read(unit_ps+1,*) ndlc_1
+       if ( ndlc /= ndlc_1 ) stop "ndlc/=ndlc_1!!!"
+       temp=16.d0*atan(1.d0)
+       cdd(:,ielm)=0.d0
+       do i=1,ndlc
+          read(unit_ps+1,*) dummy,cdd(i+1,ielm)
+          cdd(i+1,ielm)=temp*cdd(i+1,ielm)*rr(i)**2
+       end do
+       close(unit_ps+1)
+    end select
 
     write(*,*) "*** PSV format ***"
     write(*,*) zatom
@@ -472,7 +523,7 @@ CONTAINS
     write(*,*) "sum(cdd)                =",sum( cdd(:,ielm)*rab(:,ielm) )
     write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rab(:,ielm) )*temp
 
-    deallocate( c0,b0,a0 )
+    if ( verpot /= 3 ) deallocate( c0,b0,a0 )
     deallocate( qqr,ddi )
     deallocate( bet,psi,phi )
     deallocate( r )

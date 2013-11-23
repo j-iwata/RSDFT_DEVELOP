@@ -9,7 +9,8 @@ MODULE kinetic_module
   PRIVATE
   PUBLIC :: Md, ggg, get_ggg_kinetic, get_coef_kinetic &
            ,read_kinetic, op_kinetic &
-           ,coef_lap0,coef_lap,SYStype,coef_nab,a2x_nab,a2y_nab,a2z_nab
+           ,coef_lap0,coef_lap,SYStype,coef_nab,a2x_nab,a2y_nab,a2z_nab &
+           ,read_oldformat_kinetic
 
   integer :: Md
   real(8) :: ggg(6)
@@ -50,6 +51,17 @@ CONTAINS
     call send_kinetic(0)
   END SUBROUTINE read_kinetic
 
+
+  SUBROUTINE read_oldformat_kinetic(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) Md, SYStype
+       write(*,*) "Md =",Md
+       write(*,*) "SYStype =",SYStype
+    end if
+    call send_kinetic(0)
+  END SUBROUTINE read_oldformat_kinetic
 
 
   SUBROUTINE send_kinetic(rank)

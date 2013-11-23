@@ -4,7 +4,7 @@ MODULE fermi_module
 
   PRIVATE
   PUBLIC :: read_fermi,ekbt,calc_fermi &
-           ,efermi, Eentropy
+           ,efermi, Eentropy, read_oldformat_fermi
 
   real(8) :: ekbt, efermi, Eentropy
   integer :: mb1,mb2
@@ -32,6 +32,17 @@ CONTAINS
     end if
     call send_fermi(0)
   END SUBROUTINE read_fermi
+
+
+  SUBROUTINE read_oldformat_fermi(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) ekbt
+       write(*,*) "ekbt=",ekbt
+    end if
+    call send_fermi(0)
+  END SUBROUTINE read_oldformat_fermi
 
 
   SUBROUTINE send_fermi(rank)

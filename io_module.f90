@@ -17,7 +17,7 @@ MODULE io_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_io, write_data, read_data
+  PUBLIC :: read_io, write_data, read_data, read_oldformat_io
 
   integer :: IO_ctrl=0
   integer :: IC,OC,OC2
@@ -84,6 +84,15 @@ CONTAINS
     end if
     call send_io(0)
   END SUBROUTINE read_io
+
+  SUBROUTINE read_oldformat_io(rank,unit)
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) IC,OC,OC2
+       write(*,*) "IC,OC,OC2=",IC,OC,OC2
+    end if
+    call send_io(0)
+  END SUBROUTINE read_oldformat_io
 
   SUBROUTINE send_io(rank)
     integer,intent(IN) :: rank

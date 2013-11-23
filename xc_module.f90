@@ -10,7 +10,8 @@ MODULE xc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: XCtype,calc_xc,read_xc,Vxc,Exc,E_exchange,E_correlation
+  PUBLIC :: XCtype,calc_xc,read_xc,Vxc,Exc,E_exchange,E_correlation &
+           ,read_oldformat_xc
 
   character(8) :: XCtype
   real(8),allocatable :: Vxc(:,:)
@@ -43,13 +44,16 @@ CONTAINS
   END SUBROUTINE read_xc
 
 
-!  SUBROUTINE read_xc(unit)
-!    implicit none
-!    integer,intent(IN) :: unit
-!    XCtype=""
-!    read(unit,*) XCtype
-!    write(*,*) "XCtype= ",XCtype
-!  END SUBROUTINE read_xc
+  SUBROUTINE read_oldformat_xc(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    XCtype=""
+    if ( rank == 0 ) then
+       read(unit,*) XCtype
+       write(*,*) "XCtype= ",XCtype
+    end if
+    call send_xc(0)
+  END SUBROUTINE read_oldformat_xc
 
 
   SUBROUTINE send_xc(rank)

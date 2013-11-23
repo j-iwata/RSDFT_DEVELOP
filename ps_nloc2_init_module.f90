@@ -5,7 +5,7 @@ MODULE ps_nloc2_init_module
   implicit none
 
   PRIVATE
-  PUBLIC :: rad1,dviod,read_ps_nloc2_init &
+  PUBLIC :: rad1,dviod,read_ps_nloc2_init,read_oldformat_ps_nloc2_init &
            ,ps_nloc2_init,ps_nloc2_init_derivative
 
   real(8),allocatable :: rad1(:,:),dviod(:,:,:)
@@ -39,12 +39,17 @@ CONTAINS
     end if
     call send_ps_nloc2_init(0)
   END SUBROUTINE read_ps_nloc2_init
-!  SUBROUTINE read_ps_nloc2(unit)
-!    integer,intent(IN) :: unit
-!    read(unit,*) rcfac,qcfac,etafac
-!    write(*,*) "rcfac, qcfac =",rcfac,qcfac
-!    write(*,*) "etafac       =",etafac
-!  END SUBROUTINE read_ps_nloc2
+
+
+  SUBROUTINE read_oldformat_ps_nloc2_init(rank,unit)
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) rcfac,qcfac,etafac
+       write(*,*) "rcfac, qcfac =",rcfac,qcfac
+       write(*,*) "etafac       =",etafac
+    end if
+    call send_ps_nloc2_init(0)
+  END SUBROUTINE read_oldformat_ps_nloc2_init
 
 
   SUBROUTINE send_ps_nloc2_init(rank)

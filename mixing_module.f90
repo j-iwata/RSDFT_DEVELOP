@@ -6,7 +6,7 @@ MODULE mixing_module
 
   PRIVATE
   PUBLIC :: imix, mmix, beta, sqerr_out &
-       , init_mixing, read_mixing, perform_mixing
+       , init_mixing, read_mixing, perform_mixing,read_oldformat_mixing
 
   integer :: imix,mmix
   real(8) :: beta,scf_conv,sqerr_out(2)
@@ -60,18 +60,23 @@ CONTAINS
     end if
     call send_mixing(0)
   END SUBROUTINE read_mixing
-!  SUBROUTINE read_mixing(unit)
-!    implicit none
-!    integer,intent(IN) :: unit
-!    read(unit,*) imix, mmix, beta, scf_conv
-!    write(*,*) "imix, mmix =",imix,mmix
-!    if ( mmix < 1 ) then
-!       mmix=1
-!       write(*,*) "mmix is replaced to 1 : mmix=",mmix
-!    end if
-!    write(*,*) "beta =",beta
-!    write(*,*) "scf_conv=",scf_conv
-!  END SUBROUTINE read_mixing
+
+
+  SUBROUTINE read_oldformat_mixing(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    if ( rank == 0 ) then
+       read(unit,*) imix, mmix, beta, scf_conv
+       write(*,*) "imix, mmix =",imix,mmix
+       if ( mmix < 1 ) then
+          mmix=1
+          write(*,*) "mmix is replaced to 1 : mmix=",mmix
+       end if
+       write(*,*) "beta =",beta
+       write(*,*) "scf_conv=",scf_conv
+    end if
+    call send_mixing(0)
+  END SUBROUTINE read_oldformat_mixing
 
 
   SUBROUTINE send_mixing(rank)
