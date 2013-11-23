@@ -88,7 +88,7 @@ CONTAINS
   SUBROUTINE read_oldformat_io(rank,unit)
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
-       read(unit,*) IC,OC,OC2
+       read(unit,*) IC,OC2,OC
        write(*,*) "IC,OC,OC2=",IC,OC,OC2
     end if
     call send_io(0)
