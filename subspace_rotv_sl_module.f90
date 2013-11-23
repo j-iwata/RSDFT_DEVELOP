@@ -6,6 +6,7 @@ MODULE subspace_rotv_sl_module
   use parallel_module
   use subspace_diag_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
+  use bcast_module
 
   implicit none
 
@@ -70,7 +71,12 @@ CONTAINS
                 i0=i0+mm
              end if
 
-             call mpi_bcast(utmp2(ms,ns),mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+!             call mpi_bcast(utmp2(ms,ns),mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+#ifdef _DRSDFT_
+          call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+#else
+          call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+#endif
 
              if ( ii>0 ) then
 #ifdef _DRSDFT_
