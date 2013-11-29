@@ -34,6 +34,7 @@ MODS1 = simc_module.o\
         hartree_esm_module.o \
         hartree_module.o \
         ps_nloc_gth_module.o \
+        ps_nloc_hgh_module.o \
         ps_pcc_module.o \
         ps_initrho_module.o \
         ps_nloc1_module.o \
@@ -41,6 +42,7 @@ MODS1 = simc_module.o\
         minimal_box_module.o \
         ps_nloc2_init_module.o \
         ps_nloc2_variables.o \
+        ps_nloc_mr_module.o \
         ps_nloc2_module.o \
         localpot_module.o \
         nonlocal_module.o \
@@ -68,6 +70,8 @@ MODS1 = simc_module.o\
         overlap_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
+        band_analysis_module.o \
+        esm_ion_module.o \
 
 DIAGLA_MOD = subspace_diag_la_module.o
 

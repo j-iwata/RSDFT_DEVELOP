@@ -45,7 +45,7 @@ CONTAINS
 
     allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.d0
 
-    if ( pselect == 4 ) then
+    if ( pselect == 4 .or. pselect == 5 ) then
        call init_ps_local_gth(NMGL,Nelement,GG,vqlg)
        return
     end if

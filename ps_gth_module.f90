@@ -6,22 +6,23 @@ MODULE ps_gth_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_ps_gth,hnl,no,Rcloc,Rps0
+  PUBLIC :: read_ps_gth,hnl,hnml,knml,no,Rcloc,Rps0
 
   real(8),allocatable :: Rps0(:,:)
   integer,allocatable :: no(:,:)
-  real(8),allocatable :: Rcloc(:),hnl(:,:,:)
+  real(8),allocatable :: Rcloc(:),hnl(:,:,:),knl(:,:,:)
+  real(8),allocatable :: hnml(:,:,:,:),knml(:,:,:,:)
 
 CONTAINS
 
   SUBROUTINE read_ps_gth(rank)
     implicit none
     integer,intent(IN) :: rank
-    integer,parameter :: lrefmax=2
+    integer,parameter :: lrefmax=3
     integer,parameter :: unit_pp=34
     integer :: i,j,ielm,ierr
     character(2) :: name
-    real(8) :: znuc,rcnl,work(2)
+    real(8) :: znuc,rcnl,work(3),work2(3)
     include 'mpif.h'
     integer :: MMr,iorb,L,n
     real(8) :: pi,rmax,dr,ep,gamma,const1,const2,v,r
@@ -34,7 +35,8 @@ CONTAINS
     allocate( no(4,Nelement) ) ; no=0
     allocate( Rps(4,Nelement) ) ; Rps=0.d0
     allocate( Rps0(4,Nelement) ) ; Rps0=0.d0
-    allocate( hnl(2,0:1,Nelement) ) ; hnl=0.d0
+    allocate( hnl(3,0:2,Nelement) ) ; hnl=0.d0
+    allocate( knl(3,1:2,Nelement) ) ; knl=0.d0
     allocate( inorm(4,Nelement) ) ; inorm=0
 
     if ( rank == 0 ) then
@@ -46,9 +48,11 @@ CONTAINS
           write(*,*) name,znuc,Zps(ielm)
           write(*,'(1x,f14.8,4f14.8)') Rcloc(ielm),parloc(1:4,ielm)
           do i=1,lrefmax
-             work(1:2)=0.d0
-             read(unit_pp,*,END=10) rcnl,work(1:2)
-             do j=1,2
+             work(1:3)=0.d0
+             work2(1:3)=0.d0
+             read(unit_pp,*,END=10) rcnl,work(1:3)
+             if ( pselect == 5 .and. i > 1 ) read(unit_pp,*,END=10) work2(1:3)
+             do j=1,3
                 if ( work(j) /= 0.d0 ) then
                    norb(ielm)=norb(ielm)+1
                    Rps0(norb(ielm),ielm)=rcnl
@@ -56,8 +60,12 @@ CONTAINS
                    no(norb(ielm),ielm)=j
                    hnl(j,i-1,ielm)=work(j)
                 end if
+                if ( work2(j) /= 0.d0 ) then
+                   knl(j,i-1,ielm)=work2(j)
+                end if
              end do
-             write(*,'(1x,f14.8,4f14.8)')Rps0(norb(ielm),ielm),hnl(1:2,i-1,ielm)
+             write(*,'(1x,f14.8,4f14.8)')Rps0(norb(ielm),ielm),hnl(1:3,i-1,ielm)
+             if ( i > 1 ) write(*,'(1x,14x,4f14.8)') knl(1:3,i-1,ielm)
           end do
 10        continue
           close(unit_pp)
@@ -71,7 +79,53 @@ CONTAINS
     call MPI_BCAST(lo,4*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(no,4*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(Rps0,4*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(hnl,4*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call MPI_BCAST(hnl,9*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call MPI_BCAST(knl,6*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+
+    allocate( hnml(3,3,0:2,Nelement) ) ; hnml=0.0d0
+    allocate( knml(3,3,1:2,Nelement) ) ; knml=0.0d0
+
+    do ielm=1,Nelement
+       hnml(1,1,0,ielm)= hnl(1,0,ielm)
+       hnml(2,2,0,ielm)= hnl(2,0,ielm)
+       hnml(3,3,0,ielm)= hnl(3,0,ielm)
+       hnml(1,2,0,ielm)=-0.5d0*sqrt(3.d0/5.d0)*hnml(2,2,0,ielm)
+       hnml(1,3,0,ielm)= 0.5d0*sqrt(5.d0/21.d0)*hnml(3,3,0,ielm)
+       hnml(2,3,0,ielm)=-0.5d0*sqrt(100.d0/63.d0)*hnml(3,3,0,ielm)
+       hnml(1,1,1,ielm)= hnl(1,1,ielm)
+       hnml(2,2,1,ielm)= hnl(2,1,ielm)
+       hnml(3,3,1,ielm)= hnl(3,1,ielm)
+       hnml(1,2,1,ielm)=-0.5d0*sqrt(5.d0/7.d0)*hnml(2,2,1,ielm)
+       hnml(1,3,1,ielm)=sqrt(35.d0/11.d0)/6.d0*hnml(3,3,1,ielm)
+       hnml(2,3,1,ielm)=-14.d0/sqrt(11.d0)/6.d0*hnml(3,3,1,ielm)
+       hnml(1,1,2,ielm)= hnl(1,2,ielm)
+       hnml(2,2,2,ielm)= hnl(2,2,ielm)
+       hnml(3,3,2,ielm)= hnl(3,2,ielm)
+       hnml(1,2,2,ielm)=-0.5d0*sqrt(7.d0/9.d0)*hnml(2,2,2,ielm)
+       hnml(1,3,2,ielm)= 0.5d0*sqrt(63.d0/143.d0)*hnml(3,3,2,ielm)
+       hnml(2,3,2,ielm)=-0.5d0*18.d0/sqrt(143.d0)*hnml(3,3,2,ielm)
+!
+       knml(1,1,1,ielm)= knl(1,1,ielm)
+       knml(2,2,1,ielm)= knl(2,1,ielm)
+       knml(3,3,1,ielm)= knl(3,1,ielm)
+       knml(1,2,1,ielm)=-0.5d0*sqrt(5.d0/7.d0)*knml(2,2,1,ielm)
+       knml(1,3,1,ielm)=sqrt(35.d0/11.d0)/6.d0*knml(3,3,1,ielm)
+       knml(2,3,1,ielm)=-14.d0/sqrt(11.d0)/6.d0*knml(3,3,1,ielm)
+       knml(1,1,2,ielm)= knl(1,2,ielm)
+       knml(2,2,2,ielm)= knl(2,2,ielm)
+       knml(3,3,2,ielm)= knl(3,2,ielm)
+       knml(1,2,2,ielm)=-0.5d0*sqrt(7.d0/9.d0)*knml(2,2,2,ielm)
+       knml(1,3,2,ielm)= 0.5d0*sqrt(63.d0/143.d0)*knml(3,3,2,ielm)
+       knml(2,3,2,ielm)=-0.5d0*18.d0/sqrt(143.d0)*knml(3,3,2,ielm)
+       do L=0,lrefmax-1
+          do j=1,3
+          do i=1,j-1
+             hnml(j,i,L,ielm)=hnml(i,j,L,ielm)
+             if ( L >= 1 ) knml(j,i,L,ielm)=knml(i,j,L,ielm)
+          end do
+          end do
+       end do
+    end do ! ielm
 
     do ielm=1,Nelement
        do iorb=1,norb(ielm)

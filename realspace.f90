@@ -26,6 +26,7 @@ PROGRAM Real_Space_Solid
 #endif
 
   use ps_gth_module
+  use ps_nloc_mr_module
 
   use bcast_module
 
@@ -204,7 +205,7 @@ PROGRAM Real_Space_Solid
   select case(pselect)
   case default
      call read_pseudopot(myrank)
-  case(4)
+  case(4,5)
      call read_ps_gth(myrank)
   end select
 
@@ -228,7 +229,7 @@ PROGRAM Real_Space_Solid
      call watcht(disp_switch,"loc&pcc",1)
      call watcht(disp_switch,"loc",1)
 
-     if ( pselect /= 4 ) then
+     if ( pselect /= 4 .and. pselect /= 5 ) then
         call construct_ps_pcc
         call watcht(disp_switch,"pcc",1)
         call construct_ps_initrho
@@ -237,10 +238,14 @@ PROGRAM Real_Space_Solid
 
      call destruct_strfac !----- structure factor
 
-     if ( pselect /= 4 ) then
+     if ( pselect /= 4 .and. pselect /= 5 ) then
         call ps_nloc2_init(Gcut)
      end if
-     call prep_ps_nloc2
+     if ( pselect == 5 ) then
+        call prep_ps_nloc_mr
+     else
+        call prep_ps_nloc2
+     end if
 
 !----------------------- ESM esm -----
 
@@ -587,7 +592,7 @@ PROGRAM Real_Space_Solid
 
 ! --- force calculation ---
 
-  if ( pselect /= 4 ) then
+  if ( pselect /= 4 .and. pselect /= 5 ) then
      call ps_nloc2_init_derivative
   end if
 

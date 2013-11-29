@@ -9,6 +9,7 @@ MODULE ps_nloc2_module
   use ps_nloc2_init_module
   use ps_nloc2_variables
   use ps_nloc_gth_module
+  use ps_nloc_mr_module
 
   implicit none
 
@@ -1161,6 +1162,11 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    if ( pselect == 5 ) then
+       call calc_force_ps_nloc_mr(MI,force2)
+       return
+    end if
 
     if ( flag_Y ) then
        Y1=0.d0
