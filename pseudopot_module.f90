@@ -6,7 +6,7 @@ MODULE pseudopot_module
   PUBLIC :: pselect,ippform,file_ps,inorm,NRps,norb,Npseudopot &
            ,Mr,lo,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
            ,read_ppname_pseudopot,read_pseudopot &
-           ,read_param_pseudopot,read_param_oldformat_pseudopot &
+           ,cdd_coef,read_param_pseudopot,read_param_oldformat_pseudopot &
            ,read_ppname_oldformat_pseudopot
 
   integer :: pselect,Npseudopot
@@ -15,8 +15,9 @@ MODULE pseudopot_module
   integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:)
   real(8),allocatable :: vql(:,:),cdd(:,:),cdc(:,:),rad(:,:),parloc(:,:)
   real(8),allocatable :: anorm(:,:),viod(:,:,:),Rps(:,:),Zps(:),rab(:,:)
+  real(8),allocatable :: cdd_coef(:,:,:)
   integer :: unit_ps,ielm,Nelement_PP
-  integer :: max_psgrd=0, max_psorb=0
+  integer :: max_psgrd=0, max_psorb=0, max_ngauss=0
 
 CONTAINS
 
@@ -204,6 +205,12 @@ CONTAINS
     call mpi_bcast(rad   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(rab   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(viod  ,m*n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+!
+    call mpi_bcast(max_ngauss,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    if ( myrank /= 0 ) then
+       allocate( cdd_coef(3,max_ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
+    end if
+    call mpi_bcast(cdd_coef,3*max_ngauss*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_pseudopot
 
 
@@ -234,7 +241,7 @@ CONTAINS
     real(8),allocatable :: rr(:),vl(:),cc(:),r(:)
     real(8),allocatable :: psi(:,:,:),phi(:,:,:),bet(:,:,:)
     real(8),allocatable :: ddi(:,:,:),qqr(:,:,:)
-    real(8),allocatable :: a0(:),b0(:),c0(:)
+    real(8),allocatable :: a0(:),b0(:),c0(:),cdd_coef_0(:,:,:)
 
 ! Check pseudopotential type
 
@@ -504,6 +511,23 @@ CONTAINS
        end do
        close(unit_ps+1)
     end select
+
+    if ( max_ngauss == 0 ) then
+       allocate( cdd_coef(3,ngauss,Nelement_PP) )
+       cdd_coef=0.0d0
+       max_ngauss=ngauss
+    else if ( ngauss > max_ngauss ) then
+       allocate( cdd_coef_0(3,max_ngauss,Nelement_PP) )
+       cdd_coef_0(:,:,:)=cdd_coef(:,:,:)
+       deallocate( cdd_coef )
+       allocate( cdd_coef(3,ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
+       deallocate( cdd_coef_0 )
+       cdd_coef(:,1:max_ngauss,:)=cdd_coef_0(:,:,:)
+       max_ngauss=ngauss
+    end if
+    cdd_coef(1,1:ngauss,ielm)=a0(1:ngauss)
+    cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
+    cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
 
     write(*,*) "*** PSV format ***"
     write(*,*) zatom
