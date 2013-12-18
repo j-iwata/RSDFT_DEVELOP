@@ -1,17 +1,19 @@
 MODULE ps_initrho_module
 
-  use rgrid_module, only: dV,Ngrid,Igrid
+  use rgrid_module, only: dV,Ngrid,Igrid,Hgrid
   use ggrid_module
-  use atom_module, only: Nelement
+  use atom_module, only: Natom,Nelement, ki_atom,aa_atom
   use strfac_module, only: SGK
   use density_module, only: rho
-  use pseudopot_module, only: Mr,rad,rab,cdd
+  use pseudopot_module, only: Mr,rad,rab,cdd,Zps,cdd_coef
   use electron_module, only: Nspin
+  use parallel_module
+  use aa_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_ps_initrho,construct_ps_initrho
+  PUBLIC :: init_ps_initrho,construct_ps_initrho,construct_r_ps_initrho
 
   logical :: flag_initrho_0
   logical,allocatable :: flag_initrho(:)
@@ -112,15 +114,19 @@ CONTAINS
 
   SUBROUTINE construct_ps_initrho
     implicit none
-    integer :: a,i,i1,i2,i3,ik,j,MG
+    integer :: a,i,i1,i2,i3,ik,j,MG,ierr
     integer :: ML1,ML2,ML3,ML,ML_0,ML_1
     integer :: ifacx(30),ifacy(30),ifacz(30)
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
-    real(8) :: c
+    real(8) :: c,c0
+    real(8),allocatable :: rho_tmp(:,:),nelectron_ik(:)
 
     if ( .not. flag_initrho_0 ) return
+
+   ! call construct_r_ps_initrho
+   ! return
 
     MG   = NGgrid(0)
     ML   = Ngrid(0)
@@ -136,34 +142,33 @@ CONTAINS
     end if
 
     allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
+    allocate( fftwork(ML) )
+    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+    allocate( vg(MG) ) ; vg=(0.d0,0.d0)
+    allocate( rho_tmp(ML_0:ML_1,Nelement) ) ; rho_tmp=0.d0
+    allocate( nelectron_ik(Nelement) ) ; nelectron_ik=0.0d0
 
-    allocate( vg(MG) )
+    do i=1,Natom
+       ik=ki_atom(i)
+       nelectron_ik(ik)=nelectron_ik(ik)+Zps(ik)
+    end do
+
+    call construct_Ggrid(2)
+
+    do ik=1,Nelement
 
     do i=MG_0,MG_1
        j=MGL(i)
-       vg(i)=cddg(j,1)*SGK(i,1)
+       vg(i)=cddg(j,ik)*SGK(i,ik)
     end do
-    do ik=2,Nelement
-       do i=MG_0,MG_1
-          j=MGL(i)
-          vg(i)=vg(i)+cddg(j,ik)*SGK(i,ik)
-       end do
-    end do
-    call allgatherv_Ggrid(vg)
 
-    call construct_Ggrid(2)
+    call allgatherv_Ggrid(vg)
 
     zwork(:,:,:)=(0.d0,0.d0)
     do i=1,NGgrid(0)
        zwork(LLG(1,i),LLG(2,i),LLG(3,i))=vg(i)
     end do
-    call destruct_Ggrid
-
-    deallocate( vg )
-
-    allocate( fftwork(ML) )
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
 
     call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
          ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
@@ -171,23 +176,41 @@ CONTAINS
     call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
          ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
 
-    rho(:,:)=0.d0
     i=ML_0-1
     do i3=Igrid(1,3),Igrid(2,3)
     do i2=Igrid(1,2),Igrid(2,2)
     do i1=Igrid(1,1),Igrid(2,1)
        i=i+1
-       rho(i,1)=rho(i,1)+real( zwork(i1,i2,i3) )
+       rho_tmp(i,ik)=rho_tmp(i,ik)+real( zwork(i1,i2,i3) )
     end do
     end do
     end do
-    if ( minval(rho(:,1)) < 0.d0 ) then
-       write(*,*) "WARNING: rho is negative at some points",minval(rho(:,1))
+
+    if ( minval(rho_tmp(:,ik)) < 0.d0 ) then
+       write(*,*) "WARNING: rho is negative at some points",minval(rho_tmp(:,ik))
     end if
 !    rho=abs(rho)
-    where( rho < 0.d0 )
-       rho=0.d0
+    where( rho_tmp(:,ik) < 0.d0 )
+      rho_tmp(:,ik)=0.d0
     end where
+
+    c0=sum( rho_tmp(:,ik) )*dV
+    call mpi_allreduce(c0,c,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    if ( disp_switch_parallel ) write(*,*) c,nelectron_ik(ik)
+
+    c=nelectron_ik(ik)/c
+    rho(:,1) = rho(:,1) + c*rho_tmp(:,ik)
+
+    c0=sum( rho(:,1) )*dV
+    call mpi_allreduce(c0,c,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    if ( disp_switch_parallel ) write(*,*) "sum(rho)*dV=",c
+
+    end do ! ik
+
+    call destruct_Ggrid
+
+    deallocate( nelectron_ik )
+    deallocate( vg )
     deallocate( wsavez,wsavey,wsavex )
     deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
     deallocate( fftwork )
@@ -202,5 +225,99 @@ CONTAINS
     end if
 
   END SUBROUTINE construct_ps_initrho
+
+
+  SUBROUTINE construct_r_ps_initrho
+    implicit none
+    integer :: iatm,ielm,i,i1,i2,i3,j1,j2,j3,ig,mg,ML_0,ML_1,ierr
+    real(8) :: a,b,c,a1,a2,a3,x,y,z,r1,r2,r3,c1,c2,c3,pi4,rr,zi
+    real(8),allocatable :: rho_tmp(:)
+
+    ML_0 = Igrid(1,0)
+    ML_1 = Igrid(2,0)
+    mg   = size(cdd_coef,2)
+    c1   = 1.0d0/Ngrid(1)
+    c2   = 1.0d0/Ngrid(2)
+    c3   = 1.0d0/Ngrid(3)
+    pi4  = 4.0d0*acos(-1.0d0)
+
+    if ( .not. allocated(rho) ) then
+       allocate( rho(ML_0:ML_1,Nspin) )
+       rho=0.0d0
+    end if
+
+    allocate( rho_tmp(ML_0:ML_1) )
+    rho_tmp=0.0d0
+
+    do ielm=1,Nelement
+
+       rho_tmp(:)=0.0d0
+       zi=0.0d0
+
+       do iatm=1,Natom
+
+          if ( ki_atom(iatm) /= ielm ) cycle
+          zi=zi+Zps(ielm)
+          write(*,*) iatm,zi
+          a1=aa_atom(1,iatm)
+          a2=aa_atom(2,iatm)
+          a3=aa_atom(3,iatm)
+
+          do j3=-1,1
+          do j2=-1,1
+          do j1=-1,1
+             i=ML_0-1
+             do i3=Igrid(1,3),Igrid(2,3)
+             do i2=Igrid(1,2),Igrid(2,2)
+             do i1=Igrid(1,1),Igrid(2,1)
+                r1=i1*c1
+                r2=i2*c2
+                r3=i3*c3
+                x=aa(1,1)*(r1-a1-j1)+aa(1,2)*(r2-a2-j2)+aa(1,3)*(r3-a3-j3)
+                y=aa(2,1)*(r1-a1-j1)+aa(2,2)*(r2-a2-j2)+aa(2,3)*(r3-a3-j3)
+                z=aa(3,1)*(r1-a1-j1)+aa(3,2)*(r2-a2-j2)+aa(3,3)*(r3-a3-j3)
+                rr=x*x+y*y+z*z
+                i=i+1
+                do ig=1,mg
+                   a=cdd_coef(1,ig,ielm)
+                   b=cdd_coef(2,ig,ielm)
+                   c=cdd_coef(3,ig,ielm)
+                   rho_tmp(i)=rho_tmp(i)+(a+b*rr)*exp(-c*rr)
+                end do
+             end do
+             end do
+             end do
+          end do
+          end do
+          end do
+
+       end do ! iatm
+
+       a=sum(rho_tmp)*dV
+       call mpi_allreduce(a,r1,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       a=minval(rho_tmp)
+       call mpi_allreduce(a,r2,1,mpi_real8,mpi_min,comm_grid,ierr)
+       a=maxval(rho_tmp)
+       call mpi_allreduce(a,r3,1,mpi_real8,mpi_max,comm_grid,ierr)
+       if ( disp_switch_parallel ) write(*,*) zi,r1,r2,r3
+       a=zi/r1
+       rho_tmp(:)=a*rho_tmp(:)
+
+       rho(:,1)=rho(:,1)+rho_tmp(:)
+
+       a=sum(rho)*dV
+       call mpi_allreduce(a,r1,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       a=minval(rho)
+       call mpi_allreduce(a,r2,1,mpi_real8,mpi_min,comm_grid,ierr)
+       a=maxval(rho)
+       call mpi_allreduce(a,r3,1,mpi_real8,mpi_max,comm_grid,ierr)
+       if ( disp_switch_parallel ) write(*,*) r1,r2,r3
+
+    end do ! ielm
+
+    deallocate( rho_tmp )
+
+  END SUBROUTINE construct_r_ps_initrho
+
 
 END MODULE ps_initrho_module
