@@ -66,6 +66,9 @@ CONTAINS
           else if ( ckey(1:6) == "NSWEEP" ) then
              backspace(unit)
              read(unit,*) cbuf,Nsweep
+          else if ( ckey(1:6) == "NDIAG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ndiag
           end if
        end do
 999    continue
@@ -155,9 +158,10 @@ CONTAINS
     call read_oldformat_fermi(myrank,unit)
 
     if ( myrank == 0 ) then
-       read(unit,*) Diter, Nsweep
+       read(unit,*) Diter, Nsweep, Ndiag
        write(*,*) "Diter =",Diter
        write(*,*) "Nsweep=",Nsweep
+       write(*,*) "Nsweep=",Ndiag
     end if
 
     call read_oldformat_io(myrank,unit)
@@ -184,6 +188,7 @@ CONTAINS
     integer :: ierr
     call mpi_bcast(Diter ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(Nsweep,1,mpi_integer,rank,mpi_comm_world,ierr)
+    call mpi_bcast(Ndiag ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_scf ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_opt ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_band,1,mpi_integer,rank,mpi_comm_world,ierr)

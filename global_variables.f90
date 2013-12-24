@@ -49,7 +49,7 @@ MODULE global_variables
 
   implicit none
 
-  integer :: Diter, Nsweep
+  integer :: Diter, Nsweep, Ndiag
   integer :: iswitch_scf,iswitch_opt,iswitch_band
   real(8) :: etime_limit
   logical :: disp_switch

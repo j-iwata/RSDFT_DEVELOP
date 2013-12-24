@@ -25,6 +25,8 @@ MODULE ewald_module
   real(8) :: ewldg_0=0.d0, g_0=0.d0
   real(8) :: ewldr_0=0.d0, r_0=0.d0
 
+  logical :: iswitch_test_ewald = .false.
+
 CONTAINS
 
   SUBROUTINE cal_ewald(Ewld,disp_switch)
@@ -57,6 +59,11 @@ CONTAINS
     real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
     logical :: flag_conv
     integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
+
+    if ( .not. iswitch_test_ewald ) then
+       Ewld=0.0d0
+       return
+    end if
 
     pi=acos(-1.d0)
 
@@ -753,7 +760,7 @@ CONTAINS
     real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
     integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
 
-    if ( disp_switch ) write(*,'(a60," cal_ewald")') repeat("-",60)
+    if ( disp_switch ) write(*,'(a60," calc_ewald")') repeat("-",60)
 
     pi=acos(-1.d0)
 

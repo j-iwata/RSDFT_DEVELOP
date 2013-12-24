@@ -451,11 +451,13 @@ PROGRAM Real_Space_Solid
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)
         call watcht(disp_switch,"gs  ",1)
+        if ( Ndiag /= 1 ) then
 #ifdef _LAPACK_
-        call subspace_diag_la(k,s)
+           call subspace_diag_la(k,s)
 #else
-        call subspace_diag_sl(k,s,disp_switch)
+           call subspace_diag_sl(k,s,disp_switch)
 #endif
+        end if
         call watcht(disp_switch,"diag",1)
      end do
      end do
