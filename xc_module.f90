@@ -6,16 +6,20 @@ MODULE xc_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1
   use pw92_gth_module
+  use xc_hybrid_module
+  use xc_hse_module
+  use watch_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: XCtype,calc_xc,read_xc,Vxc,Exc,E_exchange,E_correlation &
-           ,read_oldformat_xc
+           ,read_oldformat_xc, E_exchange_exx
 
   character(8) :: XCtype
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
+  real(8) :: E_exchange_exx
 
 CONTAINS
 
@@ -78,6 +82,22 @@ CONTAINS
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
     case('GGAPBE96')
        call calc_GGAPBE96
+    case('HF')
+       stop "HF is not available yet"
+    case('PBE0')
+       stop "PBE0 is not available yet"
+    case('HSE')
+       call calc_xc_hse(ML_0,ML_1,MSP,Vxc,Exc,E_exchange_exx)
+       if ( icount_sweep_hybrid <= Nsweep_hybrid ) then
+          call calc_GGAPBE96
+          if ( DISP_SWITCH_PARALLEL ) then
+             write(*,*) "icount_sweep_hybrid =" &
+                  ,icount_sweep_hybrid,Nsweep_hybrid
+          end if
+          icount_sweep_hybrid = icount_sweep_hybrid + 1
+       end if
+    case('LCwPBE')
+       stop "LCwPBE is not available yet"
     end select
   END SUBROUTINE calc_xc
 
@@ -103,6 +123,8 @@ CONTAINS
     real(8) :: zet,f,dfdzet,dfdrhoa,dfdrhob,rhoa,rhob
     real(8) :: ecd0(1:2),decddrs0(1:2)
     integer :: i,ierr,ispin
+
+    call watch(ctime0,etime0)
 
     onetwo=1.d0/2.d0
     onethr=1.d0/3.d0
@@ -210,6 +232,11 @@ CONTAINS
     E_correlation=s1(2)
     Exc=E_exchange+E_correlation
 
+    call watch(ctime1,etime1)
+    if ( DISP_SWITCH_PARALLEL ) then
+       write(*,*) "TIME(XC_LDAPZ81)",ctime1-ctime0,etime1-etime0
+    end if
+
     return
   END SUBROUTINE calc_LDAPZ81
 
@@ -246,6 +273,8 @@ CONTAINS
     real(8) :: dH_dphi,fz,dfz_dz,dec_dz,const1,const2,srho(2),dz_dn(2),aaL(3)
     real(8),allocatable :: rrrr(:,:),rho_tmp(:),zeta(:),nab(:)
     logical :: flag_alloc
+
+    call watch(ctime0,etime0)
 
     n1=idisp(myrank)+1
     n2=idisp(myrank)+ircnt(myrank)
@@ -715,6 +744,11 @@ CONTAINS
     case(1,2)
        deallocate(LL2)
     end select
+
+    call watch(ctime1,etime1)
+    if ( DISP_SWITCH_PARALLEL ) then
+       write(*,*) "TIME(XC_GGAPBE96)",ctime1-ctime0,etime1-etime0
+    end if
 
     return
   END SUBROUTINE CALC_GGAPBE96

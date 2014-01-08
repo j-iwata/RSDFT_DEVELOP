@@ -4,7 +4,7 @@ MODULE total_energy_module
   use electron_module, only: occ
   use hamiltonian_module
   use hartree_module, only: Vh, E_hartree
-  use xc_module, only: Vxc,E_exchange,E_correlation,Exc
+  use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
   use ewald_module, only: Eewald
   use wf_module, only: unk,esp
   use localpot_module, only: Vloc
@@ -14,6 +14,7 @@ MODULE total_energy_module
   use fermi_module, only: Efermi,Eentropy
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
+  use fock_module
 
   implicit none
 
@@ -101,6 +102,13 @@ CONTAINS
 #else
           esp0(n,k,s,3)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
 #endif
+          work=zero
+          call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
+#ifdef _DRSDFT_
+          esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV
+#else
+          esp0(n,k,s,4)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+#endif
        end do
        end do
        end do
@@ -116,7 +124,7 @@ CONTAINS
        Eloc = sum( occ(:,:,:)*esp1(:,:,:,2) )
        Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
 
-       esp(:,:,:) = esp1(:,:,:,1) + esp1(:,:,:,2) + esp1(:,:,:,3)
+       esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
 
        deallocate( esp1 )
        deallocate( esp0 )
@@ -147,9 +155,9 @@ CONTAINS
     Eloc = s1(1)
     Eion = s1(2)
 
-    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald
+    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald - 2*E_exchange_exx
 
-    Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald
+    Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald - 2*E_exchange_exx
 
     Fene = Etot - Eentropy
 

@@ -406,6 +406,11 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
+  call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
+  call calc_xc
+
+! ---
+
   call calc_with_rhoIN_total_energy(disp_switch)
   call calc_total_energy(.true.,disp_switch)
 

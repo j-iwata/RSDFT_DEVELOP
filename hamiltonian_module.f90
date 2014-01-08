@@ -3,6 +3,7 @@ MODULE hamiltonian_module
   use kinetic_module
   use localpot_module
   use nonlocal_module
+  use fock_module
   use watch_module
 
   implicit none
@@ -11,7 +12,7 @@ MODULE hamiltonian_module
   PUBLIC :: hamiltonian,op_kinetic,op_localpot,op_nonlocal &
            ,ctt_hamil,ett_hamil
 
-  real(8) :: ctt_hamil(3),ett_hamil(3)
+  real(8) :: ctt_hamil(4),ett_hamil(4)
 
 CONTAINS
 
@@ -52,6 +53,11 @@ CONTAINS
 
     call watch(ct1,et1)
     ctt_hamil(3)=ctt_hamil(3)+ct1-ct0 ; ett_hamil(3)=ett_hamil(3)+et1-et0
+
+    call op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
+
+    call watch(ct0,et0)
+    ctt_hamil(4)=ctt_hamil(4)+ct0-ct1 ; ett_hamil(4)=ett_hamil(4)+et0-et1
 
   END SUBROUTINE hamiltonian
 

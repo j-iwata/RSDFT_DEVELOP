@@ -3,7 +3,9 @@ include make.inc
 MODS1 = simc_module.o\
         watch_module.o \
         modified_bessel_module.o \
+        expint_module.o \
         parallel_module.o \
+        rsdft_mpi_module.o \
         bcast_module.o \
         omp_variables.o\
         array_bound_module.o\
@@ -52,6 +54,10 @@ MODS1 = simc_module.o\
         bc_mol_module.o\
         eion_mol_module.o\
         ps_local_mol_module.o\
+        xc_hybrid_module.o \
+        fock_fft_module.o \
+        fock_module.o \
+        xc_hse_module.o \
         hamiltonian_module.o\
         ewald_module.o\
         gram_schmidt_module.o \
@@ -72,6 +78,7 @@ MODS1 = simc_module.o\
         func2gp_module.o \
         band_analysis_module.o \
         esm_ion_module.o \
+
 
 DIAGLA_MOD = subspace_diag_la_module.o
 
