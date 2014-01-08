@@ -18,10 +18,23 @@ CONTAINS
   SUBROUTINE read_rshell(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
-    integer :: ierr
+    integer :: i,ierr
+    character(5) :: cbuf,ckey
     include 'mpif.h'
+    Ncell1=0
+    Ncell2=0
+    Ncell3=0
     if ( rank == 0 ) then
-       read(unit,*) Ncell1, Ncell2, Ncell3
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:5) == "NCELL" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ncell1,Ncell2,Ncell3
+          end if
+       end do
+999    continue
        write(*,*) "Ncell1,Ncell2,Ncell3=",Ncell1,Ncell2,Ncell3
     end if
     call mpi_bcast(Ncell1,1,mpi_integer,0,mpi_comm_world,ierr)

@@ -27,8 +27,21 @@ CONTAINS
   SUBROUTINE read_esm_rgrid(rank,unit)
     implicit none
     integer,intent(IN)  :: rank,unit
+    integer :: i
+    character(4) :: cbuf,ckey
+    Rsize1=0.0d0
+    Rsize2=0.0d0
     if ( rank == 0 ) then
-       read(unit,*) Rsize1,Rsize2
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:4) == "RESM" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Rsize1,Rsize2
+          end if
+       end do
+999    continue
        write(*,*) "Rsize1=",Rsize1
        write(*,*) "Rsize2=",Rsize2
     end if

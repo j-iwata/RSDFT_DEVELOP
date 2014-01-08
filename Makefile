@@ -76,8 +76,9 @@ MODS1 = simc_module.o\
         overlap_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
-        band_analysis_module.o \
-        esm_ion_module.o \
+
+#        band_analysis_module.o \
+#        esm_ion_module.o \
 
 
 DIAGLA_MOD = subspace_diag_la_module.o

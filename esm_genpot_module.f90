@@ -25,14 +25,33 @@ CONTAINS
   SUBROUTINE read_esm_genpot(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
-    integer :: ierr
+    integer :: ierr,i
+    character(6) :: cbuf,ckey
+    ikz_max=0
+    ima_max=0
+    v_const=0.d0
+    iswitch_bc=0
     if ( rank == 0 ) then
-       read(unit,*) ikz_max,ima_max
-       read(unit,*) v_const, iswitch_bc
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:5) == "KMESM" ) then
+             backspace(unit)
+             read(unit,*) cbuf,ikz_max,ima_max
+          else if ( ckey(1:6) == "VCONST" ) then
+             backspace(unit)
+             read(unit,*) cbuf,v_const
+          else if ( ckey(1:4) == "SWBC"   ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_bc
+          end if
+       end do
+999    continue
        write(*,*) "ikz_max,ima_max=",ikz_max,ima_max
-       write(*,*) "v_const        =",v_const
        write(*,*) "iswitch_bc     =",iswitch_bc
        if ( iswitch_bc == 0 ) v_const=0.d0
+       write(*,*) "v_const        =",v_const
     end if
     call mpi_bcast(ikz_max,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(ima_max,1,mpi_integer,0,mpi_comm_world,ierr)
@@ -63,16 +82,16 @@ CONTAINS
 
     rhot(:)=rho_ps(:)
 
-!    if ( iswitch_bc == 0 ) then
-       c0 = sum(rhot)*dV
-       call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
-       do i=ML0_ESM,ML1_ESM
-          if ( LL_ESM(1,i) == 0 .and. LL_ESM(2,i) == 0 ) then
-             rhot(i) = rhot(i) - c/(dV*Ngrid(3))
-          end if
-       end do
-!       rhot(:) = rhot(:) - c/(dV*ML_ESM)
-!    end if
+!--- neutralize ---
+!
+    c0 = sum(rhot)*dV
+    call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
+    do i=ML0_ESM,ML1_ESM
+       if ( LL_ESM(1,i) == 0 .and. LL_ESM(2,i) == 0 ) then
+          rhot(i) = rhot(i) - c/(dV*Ngrid(3))
+       end if
+    end do
+    rhot(:) = rhot(:) - c/(dV*ML_ESM)
 
     const = -2.d0*dV/aa(3,3)
 
@@ -109,18 +128,12 @@ CONTAINS
           phase_m = dcmplx( cos(ima*phi),-sin(ima*phi) )
           kr=abs(kz)*r
           fmk_inner = fmk_inner + phase_k*phase_m*bessi(ma,kr)*rhot(i)
-!          write(*,'(1x,3i4,2f20.10)') &
-!               i1,i2,i3,real(fmk_inner),aimag(fmk_inner)
-!          write(*,'(1x,3i4,6g20.10)') i1,i2,i3,phase_k,phase_m,bessi(ma,kr),rhot(i)
        end do
        fmk_inner=fmk_inner*const
 
        ztmp=fmk_inner
        call mpi_allreduce(ztmp,fmk_inner,1,mpi_complex16,mpi_sum,comm_grid,ierr)
 
-!       write(*,'(1x,i4,2i6,2g20.10)') myrank,ikz,ima,fmk_inner
-!       call flush(6)
-!       write(*,*) Rsize2,sum(rhot)*dV,abs(fmk_inner)**2
        do i=MK0_ESM,MK1_ESM
           i1=KK(1,i)
           i2=KK(2,i)
@@ -149,20 +162,19 @@ CONTAINS
 
     write(*,*) "maxval(v_vouter)",maxval(abs(v_outer)**2)
 
-!    if ( iswitch_bc == 0 ) then
-       do i=MK0_ESM,MK1_ESM
-          i1=KK(1,i)
-          i2=KK(2,i)
-          i3=KK(3,i)
-          x=aa(1,1)*i1*c1+aa(1,2)*i2*c2+aa(1,3)*i3*c3
-          y=aa(2,1)*i1*c1+aa(2,2)*i2*c2+aa(2,3)*i3*c3
-          z=aa(3,1)*i1*c1+aa(3,2)*i2*c2+aa(3,3)*i3*c3
-          r=sqrt(x*x+y*y)
-!          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
-          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r/Rsize2)
-       end do
-       rhot(:) = rho_ps(:)
-!    end if
+    do i=MK0_ESM,MK1_ESM
+       i1=KK(1,i)
+       i2=KK(2,i)
+       i3=KK(3,i)
+       x=aa(1,1)*i1*c1+aa(1,2)*i2*c2+aa(1,3)*i3*c3
+       y=aa(2,1)*i1*c1+aa(2,2)*i2*c2+aa(2,3)*i3*c3
+       z=aa(3,1)*i1*c1+aa(3,2)*i2*c2+aa(3,3)*i3*c3
+       r=sqrt(x*x+y*y)
+       if ( iswitch_bc == 1 .and. Rsize2 <= r + ep ) cycle
+!       v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
+       v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r/Rsize2)
+    end do
+    rhot(:) = rho_ps(:)
 
     if ( myrank == 0 ) write(*,*) "------- esm_test3"
 
@@ -338,17 +350,23 @@ CONTAINS
        j2=i2-m2
        j3=i3-m3
        if ( i2==m2 .and. i3==m3 ) then
-          write(u1,'(1x,i6,f20.10,2g20.10)') j1,j1*Hgrid(1),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
-!          write(u1,'(1x,i6,f20.10,2g20.10)') i1,i1*Hgrid(1),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
+          write(u1,'(1x,i6,f20.10,2g20.10)') &
+               j1,j1*Hgrid(1),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
+!          write(u1,'(1x,i6,f20.10,2g20.10)') &
+!          i1,i1*Hgrid(1),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
 !          write(u1,*) i1-m1,(i1-m1)*Hgrid(1),real(www(i1,i2,i3,1))
        end if
        if ( i1==m1 .and. i3==m3 ) then
-          write(u2,'(1x,i6,f20.10,2g20.10)') j2,j2*Hgrid(2),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
-!          write(u2,*) i2-m2,(i2-m2)*Hgrid(2),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
+          write(u2,'(1x,i6,f20.10,2g20.10)') &
+               j2,j2*Hgrid(2),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
+!          write(u2,*) i2-m2,(i2-m2)*Hgrid(2) &
+!          ,real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
        end if
        if ( i2==m2 .and. i1==m1 ) then
-          write(u3,'(1x,i6,f20.10,2g20.10)') j3,j3*Hgrid(3),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
-!          write(u3,*) i3-m3,(i3-m3)*Hgrid(3),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
+          write(u3,'(1x,i6,f20.10,2g20.10)') &
+               j3,j3*Hgrid(3),real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
+!          write(u3,*) i3-m3,(i3-m3)*Hgrid(3) &
+!          ,real(www(i1,i2,i3,1)),real(wk(i1,i2,i3))
        end if
     end do
     end do
@@ -515,13 +533,16 @@ CONTAINS
     do i2=a2-Md,b2+Md
     do i1=a1-Md,b1+Md
        if ( i3 == m3 .and. i2 == m2 ) then
-          write(u1,'(1x,i6,f20.10,2g20.10)') i1-m1,(i1-m1)*Hgrid(1),www(i1,i2,i3,1)
+          write(u1,'(1x,i6,f20.10,2g20.10)') &
+               i1-m1,(i1-m1)*Hgrid(1),www(i1,i2,i3,1)
        end if
        if ( i1 == m1 .and. i3 == m3 ) then
-          write(u2,'(1x,i6,f20.10,2g20.10)') i2-m2,(i2-m2)*Hgrid(2),www(i1,i2,i3,1)
+          write(u2,'(1x,i6,f20.10,2g20.10)') &
+               i2-m2,(i2-m2)*Hgrid(2),www(i1,i2,i3,1)
        end if
        if ( i1 == m1 .and. i2 == m2 ) then
-          write(u3,'(1x,i6,f20.10,2g20.10)') i3-m3,(i3-m3)*Hgrid(3),www(i1,i2,i3,1)
+          write(u3,'(1x,i6,f20.10,2g20.10)') &
+               i3-m3,(i3-m3)*Hgrid(3),www(i1,i2,i3,1)
        end if
     end do
     end do
@@ -556,7 +577,8 @@ CONTAINS
     do i2=a2-Md,b2+Md
     do i1=a1-Md,b1+Md
        if ( i3 == mp .and. i2 == mp ) then
-          write(u1,'(1x,i6,f20.10,2g20.10)') i1-m1,(i1-m1)*Hgrid(1),real(wk(i1,i2,i3)),real(www(i1,i2,i3,1))
+          write(u1,'(1x,i6,f20.10,2g20.10)') &
+               i1-m1,(i1-m1)*Hgrid(1),real(wk(i1,i2,i3)),real(www(i1,i2,i3,1))
        end if
     end do
     end do

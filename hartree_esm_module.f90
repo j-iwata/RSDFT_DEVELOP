@@ -47,7 +47,7 @@ CONTAINS
     do s=1,nsp
        rhot(:) = rhot(:) + rho_in(:,s)
     end do
-    if ( iswitch_bc == 0 ) then
+!    if ( iswitch_bc == 0 ) then
        c0 = sum(rhot)*dV
        call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
        do i=ML0_ESM,ML1_ESM
@@ -55,8 +55,8 @@ CONTAINS
              rhot(i) = rhot(i) - c/(dV*Ngrid(3))
           end if
        end do
-!       rhot(:) = rhot(:) - c/(dV*ML_ESM)
-    end if
+       rhot(:) = rhot(:) - c/(dV*ML_ESM)
+!    end if
 
     const = -2.d0*dV/aa(3,3)
 
@@ -128,7 +128,7 @@ CONTAINS
 
     v_outer(:) = v_outer(:) + v_const
 
-    if ( iswitch_bc == 0 ) then
+!    if ( iswitch_bc == 0 ) then
        do i=MK0_ESM,MK1_ESM
           i1=KK(1,i)
           i2=KK(2,i)
@@ -137,13 +137,15 @@ CONTAINS
           y=aa(2,1)*i1*c1+aa(2,2)*i2*c2+aa(2,3)*i3*c3
           z=aa(3,1)*i1*c1+aa(3,2)*i2*c2+aa(3,3)*i3*c3
           r=sqrt(x*x+y*y)
-          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
+          if ( iswitch_bc == 1 .and. Rsize2 <= r + ep ) cycle
+!          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
+          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r/Rsize2)
        end do
        rhot(:)=0.d0
        do s=1,nsp
           rhot(:) = rhot(:) + rho_in(:,s)
        end do
-    end if
+!    end if
 
     if ( myrank == 0 ) write(*,*) "------- esm_test3"
 
@@ -391,19 +393,22 @@ CONTAINS
     do i2=a2-Md,b2+Md
     do i1=a1-Md,b1+Md
        if ( i3 == m3 .and. i2 == m2 ) then
-          write(u1,'(1x,i6,f20.10,2g20.10)') i1-m1,(i1-m1)*Hgrid(1),www(i1,i2,i3,1)
+          write(u1,'(1x,i6,f20.10,2g20.10)') &
+               i1-m1,(i1-m1)*Hgrid(1),www(i1,i2,i3,1)
        end if
        if ( i1 == m1 .and. i3 == m3 ) then
-          write(u2,'(1x,i6,f20.10,2g20.10)') i2-m2,(i2-m2)*Hgrid(2),www(i1,i2,i3,1)
+          write(u2,'(1x,i6,f20.10,2g20.10)') &
+               i2-m2,(i2-m2)*Hgrid(2),www(i1,i2,i3,1)
        end if
        if ( i1 == m1 .and. i2 == m2 ) then
-          write(u3,'(1x,i6,f20.10,2g20.10)') i3-m3,(i3-m3)*Hgrid(3),www(i1,i2,i3,1)
+          write(u3,'(1x,i6,f20.10,2g20.10)') &
+               i3-m3,(i3-m3)*Hgrid(3),www(i1,i2,i3,1)
        end if
     end do
     end do
     end do
     end if
-    call end_mpi_parallel ; stop
+!    call end_mpi_parallel ; stop
 1 continue
     deallocate( v0 )
     deallocate( qk ) 
