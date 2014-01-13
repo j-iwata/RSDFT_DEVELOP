@@ -104,8 +104,9 @@ CONTAINS
 #endif            
     logical :: flag_alloc
     logical :: DISP_SWITCH_TMP
-    real(8) :: aaL(3),PI,H1,H2,H3
+    real(8) :: aaL(3),PI,H1,H2,H3,ctfft,etfft,ct0,ct1,et0,et1
     integer,allocatable :: LLL2(:,:,:)
+    real(8) :: ctt0,ctt1,ctt2,ctt3,ett0,ett1,ett2,ett3
 
     INTERFACE
        FUNCTION bberf(x)
@@ -859,7 +860,14 @@ CONTAINS
 
     VFunk(:,:,:,:)=zero
 
+    ctfft=0.0d0
+    etfft=0.0d0
+    ct_fock_fft(:)=0.0d0
+    et_fock_fft(:)=0.0d0
+
     icount_s=0
+
+    call watch(ctt0,ett0)
 
     do s=1,nspin
 
@@ -937,62 +945,84 @@ CONTAINS
 #else
                       c=occ_factor*occ(m,q,s)
                       if ( tr == 0 ) then
+!$OMP parallel do
                          do i=n1,n2
                             trho_hf(i)=conjg(unk_hf(i,m,q,s))*unk_hf(i,n,k,s)
                          end do
+!$OMP end parallel do
                       else
+!$OMP parallel do
                          do i=n1,n2
                             trho_hf(i)=unk_hf(i,m,q,s)*unk_hf(i,n,k,s)
                          end do
+!$OMP end parallel do
                       end if
+                      call watch(ct0,et0)
                       call Fock_fft(n1,n2,k_fock,q_fock,trho_hf,tvht,tr)
 !                     call Fock_fft_parallel(n1,n2,k_fock,q_fock,trho_hf,tvht,tr)
+                      call watch(ct1,et1) ; ctfft=ctfft+ct1-ct0 ; etfft=etfft+et1-et0
                       if ( tr == 0 ) then
+!$OMP parallel do
                          do i=n1,n2
                             VFunk(i,n,k,s)=VFunk(i,n,k,s)-c*tvht(i)*unk_hf(i,m,q,s)
                          end do
+!$OMP end parallel do
                       else
+!$OMP parallel do
                          do i=n1,n2
                             VFunk(i,n,k,s)=VFunk(i,n,k,s)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
                          end do
+!$OMP end parallel do
                       end if
 
                       if ( m /= n .and. q == k ) then
                          c=occ_factor*occ(n,q,s)
                          if ( tr == 0 ) then
+!$OMP parallel do
                             do i=n1,n2
                                VFunk(i,m,k,s)=VFunk(i,m,k,s)-c*conjg(tvht(i))*unk_hf(i,n,q,s)
                             end do
+!$OMP end parallel do
                          else
+!$OMP parallel do
                             do i=n1,n2
                                VFunk(i,m,k,s)=VFunk(i,m,k,s)-c*tvht(i)*conjg(unk_hf(i,n,q,s))
                             end do
+!$OMP end parallel do
                          end if
                       end if
    
                       if ( m == n .and. q /= k ) then
                          c=occ_factor*occ(m,k,s)
                          if ( tr == 0 ) then
+!$OMP parallel do
                             do i=n1,n2
                                VFunk(i,n,q,s)=VFunk(i,n,q,s)-c*conjg(tvht(i))*unk_hf(i,m,k,s)
                             end do
+!$OMP end parallel do
                          else
+!$OMP parallel do
                             do i=n1,n2
                                VFunk(i,n,q,s)=VFunk(i,n,q,s)-c*tvht(i)*conjg(unk_hf(i,m,k,s))
                             end do
+!$OMP end parallel do
                          end if
                       end if
 
                       if ( m /= n .and. q /= k ) then
                          c=occ_factor*occ(n,k,s)
                          if ( tr == 0 ) then
+!$OMP parallel do
                             do i=n1,n2
                                VFunk(i,m,q,s)=VFunk(i,m,q,s)-c*conjg(tvht(i))*unk_hf(i,n,k,s)
                             end do
+!$OMP end parallel do
                          else
+!$OMP parallel do
                             do i=n1,n2
                                VFunk(i,m,q,s)=VFunk(i,m,q,s)-c*tvht(i)*conjg(unk_hf(i,n,k,s))
                             end do
+!$OMP end parallel do
                          end if
                       end if
 #endif   
@@ -1007,6 +1037,8 @@ CONTAINS
        call rsdft_allreduce(comm_band,comm_bzsm,VFunk,size(VFunk),reduce_num)
 
     end do ! s
+
+    call watch(ctt1,ett1)
 
     deallocate( tvht )
     deallocate( trho_hf )
@@ -1036,10 +1068,15 @@ CONTAINS
           end do
        end do
     end do
+
+    call watch(ctt2,ett2)
+
     call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_grid,ierr)
     call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_band,ierr)
     call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_bzsm,ierr)
     call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_spin,ierr)
+
+    call watch(ctt3,ett3)
 
     E_exchange_exx=alpha_hf*sum0*dV
 
@@ -1072,6 +1109,20 @@ CONTAINS
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,*) "TIME(XC_HSE)=",ctime1-ctime0,etime1-etime0
        write(*,'(3x,"Ex,Ec,Exc=",3f20.15)') E_exchange,E_correlation,Exc
+       write(*,*) "time(fft)",ctfft,etfft
+       write(*,*) "time(fock_fft1)",ct_fock_fft(1),et_fock_fft(1)
+       write(*,*) "time(fock_fft2)",ct_fock_fft(2),et_fock_fft(2)
+       write(*,*) "time(fock_fft3)",ct_fock_fft(3),et_fock_fft(3)
+       write(*,*) "time(fock_fft4)",ct_fock_fft(4),et_fock_fft(4)
+       write(*,*) "time(fock_fft5)",ct_fock_fft(5),et_fock_fft(5)
+       write(*,*) "time(fock_fft6)",ct_fock_fft(6),et_fock_fft(6)
+       write(*,*) "time(fock_fft7)",ct_fock_fft(7),et_fock_fft(7)
+       write(*,*) "time(fock_fft8)",ct_fock_fft(8),et_fock_fft(8)
+       write(*,*) "time(fock_fft9)",ct_fock_fft(9),et_fock_fft(9)
+       write(*,*) "time(fock_fft10)",ct_fock_fft(10),et_fock_fft(10)
+       write(*,*) "(1)",ctt1-ctt0
+       write(*,*) "(2)",ctt2-ctt1
+       write(*,*) "(3)",ctt3-ctt2
     end if
 
     return
