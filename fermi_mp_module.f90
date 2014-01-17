@@ -9,6 +9,9 @@ MODULE fermi_module
   real(8) :: ekbt, efermi, Eentropy
   integer :: mb1,mb2,kinteg
 
+  integer :: nsetocc
+  real(8) :: setocc(10)
+
   logical :: first_time = .true.
   real(8),allocatable :: factor(:)
 
@@ -22,6 +25,8 @@ CONTAINS
     character(6) :: cbuf,ckey
     ekbt=1.d-5
     kinteg=0
+    nsetocc=0
+    setocc=0.0d0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -33,11 +38,15 @@ CONTAINS
           else if ( ckey(1:6) == "KINTEG" ) then
              backspace(unit)
              read(unit,*) cbuf,kinteg
+          else if ( ckey(1:6) == "SETOCC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,nsetocc,setocc(1:nsetocc)
           end if
        end do
 999    continue
-       write(*,*) "ekbt  =",ekbt
-       write(*,*) "kinteg=",kinteg
+       write(*,*) "ekbt   =",ekbt
+       write(*,*) "kinteg =",kinteg
+       write(*,*) "nsetocc=",nsetocc,setocc(1:nsetocc)
     end if
     call send_fermi(0)
   END SUBROUTINE read_fermi
@@ -62,6 +71,8 @@ CONTAINS
     include 'mpif.h'
     call mpi_bcast(ekbt,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(kinteg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(nsetocc,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(setocc,nsetocc,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_fermi
 
 
@@ -77,6 +88,18 @@ CONTAINS
     real(8) :: zne,octmp,ff,xx
     real(8),parameter :: eps=0.d0
     integer,parameter :: mxcycl=1000
+
+    if ( nsetocc > 0 ) then
+       mb1=1
+       mb2=MB
+       occ(:,:,:)=0.0d0
+       do s=1,MSP
+       do k=1,MBZ
+          occ(1:nsetocc,k,s) = setocc(1:nsetocc)
+       end do
+       end do
+       goto 100
+    end if
 
     if ( first_time ) then
        first_time = .false.

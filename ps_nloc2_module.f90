@@ -72,6 +72,8 @@ CONTAINS
        end do
     end do
 
+    if ( Mlma <= 0 ) return
+
     if ( .not.allocated(y2a) .and. pselect /=4 ) then
        NRc=maxval(NRps)
        n=maxval(norb)
@@ -1162,6 +1164,11 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    if ( Mlma <= 0 ) then
+       force2(:,:)=0.0d0
+       return
+    end if
 
     if ( pselect == 5 ) then
        call calc_force_ps_nloc_mr(MI,force2)
