@@ -98,6 +98,7 @@ CONTAINS
           occ(1:nsetocc,k,s) = setocc(1:nsetocc)
        end do
        end do
+       ef=maxval( esp(nsetocc,1:MBZ,1:MSP) )
        goto 100
     end if
 
