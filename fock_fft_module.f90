@@ -56,7 +56,8 @@ CONTAINS
     et_fock_fft(3) = et_fock_fft(3) + et1-et0
 
 !$OMP parallel private(i,m)
-    m=omp_get_thread_num()
+    m=0
+!$  m=omp_get_thread_num()
     i=n1_omp(m)-1
     do i3=a3b_omp(m),b3b_omp(m)
     do i2=a2b,b2b
@@ -191,7 +192,8 @@ CONTAINS
     et_fock_fft(8) = et_fock_fft(8) + et0-et1
 
 !$OMP parallel private(i,m)
-    m=omp_get_thread_num()
+    m=0
+!$  m=omp_get_thread_num()
     i=n1_omp(m)-1
     do i3=a3b_omp(m),b3b_omp(m)
     do i2=a2b,b2b
