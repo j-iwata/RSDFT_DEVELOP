@@ -3,7 +3,7 @@ MODULE nonlocal_module
   use pseudopot_module, only: pselect
   use ps_nloc1_module
   use ps_nloc2_module
-! use ps_nloc3_module
+  use ps_nloc3_module
   use ps_nloc_mr_module
 
   implicit none
@@ -26,6 +26,8 @@ CONTAINS
     select case( pselect )
     case(2,4)
        call op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
+    case(3)
+       call op_ps_nloc3(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(5)
        call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case default

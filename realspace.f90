@@ -30,6 +30,8 @@ PROGRAM Real_Space_Solid
 
   use bcast_module
 
+  use ps_nloc3_module
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1
@@ -238,14 +240,16 @@ PROGRAM Real_Space_Solid
 
      call destruct_strfac !----- structure factor
 
-     if ( pselect /= 4 .and. pselect /= 5 ) then
+     select case( pselect )
+     case( 2 )
         call ps_nloc2_init(Gcut)
-     end if
-     if ( pselect == 5 ) then
-        call prep_ps_nloc_mr
-     else
         call prep_ps_nloc2
-     end if
+     case( 3 )
+        call init_ps_nloc3
+        call prep_ps_nloc3
+     case( 5 )
+        call prep_ps_nloc_mr
+     end select
 
 !----------------------- ESM esm -----
 
@@ -599,9 +603,10 @@ PROGRAM Real_Space_Solid
 
 ! --- force calculation ---
 
-  if ( pselect /= 4 .and. pselect /= 5 ) then
+  select case( pselect )
+  case( 2 )
      call ps_nloc2_init_derivative
-  end if
+  end select
 
   if ( iswitch_opt == -1 ) then
 

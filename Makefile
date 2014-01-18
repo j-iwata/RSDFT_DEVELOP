@@ -42,6 +42,7 @@ MODS1 = simc_module.o\
         ps_nloc1_module.o \
         maskf_module.o \
         minimal_box_module.o \
+        ps_nloc3_module.o \
         ps_nloc2_init_module.o \
         ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
