@@ -1,5 +1,6 @@
 MODULE fock_fft_module
 
+!$ use omp_lib
   use parallel_module
   use rgrid_module, only: Ngrid,Igrid
   use ggrid_module, only: NGgrid,Ecut
@@ -40,7 +41,7 @@ CONTAINS
     complex(8),intent(IN)    :: trho(n1:n2)
     complex(8),intent(INOUT) :: tVh(n1:n2)
     integer :: i,j,i1,i2,i3,j1,j2,j3,ierr
-    integer :: a1,a2,a3,b1,b2,b3
+    integer :: a1,a2,a3,b1,b2,b3,m
     real(8) :: ct0,ct1,et0,et1,g2,gx,gy,gz
 
     call watch(ct0,et0)
@@ -54,11 +55,10 @@ CONTAINS
     ct_fock_fft(3) = ct_fock_fft(3) + ct1-ct0
     et_fock_fft(3) = et_fock_fft(3) + et1-et0
 
-!$OMP parallel private(i)
-    i=n1_omp-1
-    do i3=a3b_omp,b3b_omp
-!    i=n1-1
-!    do i3=a3b,b3b
+!$OMP parallel private(i,m)
+    m=omp_get_thread_num()
+    i=n1_omp(m)-1
+    do i3=a3b_omp(m),b3b_omp(m)
     do i2=a2b,b2b
        do i1=0,a1b-1
           zwork0(i1,i2,i3)=(0.0d0,0.0d0)
@@ -190,9 +190,10 @@ CONTAINS
     ct_fock_fft(8) = ct_fock_fft(8) + ct0-ct1
     et_fock_fft(8) = et_fock_fft(8) + et0-et1
 
-!$OMP parallel private(i)
-    i=n1_omp-1
-    do i3=a3b_omp,b3b_omp
+!$OMP parallel private(i,m)
+    m=omp_get_thread_num()
+    i=n1_omp(m)-1
+    do i3=a3b_omp(m),b3b_omp(m)
     do i2=a2b,b2b
     do i1=a1b,b1b
        i=i+1
