@@ -30,13 +30,22 @@ PROGRAM Real_Space_Solid
 
   use bcast_module
 
+  use localpot2_variables
+  use localpot2_ion_module
+  use localpot2_density_module
+  use localpot2_vh_module
+  use localpot2_xc_module
+  use localpot2_module
+  use localpot2_te_module
+
   use ps_nloc3_module
 
   implicit none
 
-  real(8) :: ct0,ct1,et0,et1
-  integer :: i,n,k,s,iter,m,ierr,i1,i2,i3
+  real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
+  integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j
   real(8),allocatable :: esp0(:,:,:),force(:,:),forcet(:,:),vtmp(:)
+  real(8),allocatable :: work(:,:,:)
   logical :: flag_conv=.false.
   logical :: flag_exit=.false.
   logical :: flag_end =.false.
@@ -408,6 +417,25 @@ PROGRAM Real_Space_Solid
   call read_data(disp_switch)
   call watcht(disp_switch,"read",1)
 
+!--------------------------------------------- LOCALLPOT2
+!
+  call read_localpot2(1,myrank)
+  if ( flag_localpot2 ) then
+     call init_localpot2(Ngrid(1),Ngrid(2),Ngrid(3))
+     m1=Ngrid_dense(1)
+     m2=Ngrid_dense(2)
+     m3=Ngrid_dense(3)
+     call test_localpot2
+     call localpot2_ion(m1,m2,m3,Nelement,Ecut,vion_nl)
+     call localpot2_density(m1,m2,m3,rho_nl)
+     call localpot2_vh(m1,m2,m3,Ecut,rho_nl,vh_nl,E_hartree)
+     call localpot2_xc(m1,m2,m3,rho_nl,vxc_nl,Exc)
+     allocate( work(0:m1-1,0:m2-1,0:m3-1) ) ; work=0.0d0
+     work(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
+     call test2_localpot2(m1,m2,m3,work)
+  end if
+!
+!---------------------------------------------
 ! ---
 
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
@@ -515,6 +543,19 @@ PROGRAM Real_Space_Solid
            end do
            call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,Vloc(ML_0,MSP_0),flag_conv,disp_switch)
         end if
+
+!---------------------------------- LPOT2
+        if ( flag_localpot2 ) then
+           call localpot2_density(m1,m2,m3,rho_nl)
+           call localpot2_calc_eion(m1,m2,m3,vion_nl,eion_tmp)
+           call localpot2_vh(m1,m2,m3,Ecut,rho_nl,vh_nl,eh_tmp)
+           call localpot2_xc(m1,m2,m3,rho_nl,vxc_nl,exc_tmp)
+           work=vion_nl+vh_nl+vxc_nl
+           call test2_localpot2(m1,m2,m3,work)
+           call localpot2_te(eion_tmp,eh_tmp,exc_tmp,disp_switch)
+        end if
+!------------------------------------------
+
      end if
 
      call watch(ct1,et1)

@@ -47,6 +47,8 @@ MODS1 = simc_module.o\
         ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
         ps_nloc2_module.o \
+        localpot2_variables.o \
+        localpot2_module.o \
         localpot_module.o \
         nonlocal_module.o \
         ps_pcc_mol_module.o\
@@ -77,6 +79,11 @@ MODS1 = simc_module.o\
         overlap_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
+        localpot2_ion_module.o \
+        localpot2_density_module.o \
+        localpot2_vh_module.o \
+        localpot2_xc_module.o \
+        localpot2_te_module.o
 
 #        band_analysis_module.o \
 #        esm_ion_module.o \

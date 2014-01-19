@@ -2,6 +2,7 @@ MODULE localpot_module
 
   use rgrid_module
   use array_bound_module
+  use localpot2_module
 
   implicit none
 
@@ -12,10 +13,12 @@ MODULE localpot_module
 
 CONTAINS
 
+
   SUBROUTINE init_localpot
     allocate( Vloc(ML_0:ML_1,MSP_0:MSP_1) )
     Vloc=0.d0
   END SUBROUTINE init_localpot
+
 
   SUBROUTINE op_localpot(s,mm,nn,f,vf)
     integer,intent(IN) :: s,mm,nn
@@ -26,17 +29,34 @@ CONTAINS
     complex(8),intent(IN) :: f(mm,nn)
     complex(8),intent(INOUT) :: vf(mm,nn)
 #endif
-    integer :: n,i
-!$OMP parallel
-    do n=1,nn
-!$OMP do
-       do i=1,mm
-          vf(i,n) = vf(i,n) + Vloc(ML_0-1+i,s)*f(i,n)
+    integer :: n,i,j
+
+    if ( flag_localpot2 ) then
+
+       do n=1,nn
+          do i=1,mm
+          do j=1,MLpot
+             vf(i,n)=vf(i,n)+vloc_nl(j,i)*f(Lpot(j,i),n)
+          end do
+          end do
        end do
-!$OMP end do
-    end do
-!$OMP end parallel
+
+    else
+
+!$OMP PARALLEL
+       do n=1,nn
+!$OMP DO
+          do i=1,mm
+             vf(i,n) = vf(i,n) + Vloc(ML_0-1+i,s)*f(i,n)
+          end do
+!$OMP END DO
+       end do
+!$OMP END PARALLEL
+
+    end if
+
   END SUBROUTINE op_localpot
+
 
   SUBROUTINE read_localpot(file_name,rank)
     character(*),intent(IN) :: file_name
