@@ -14,7 +14,7 @@ MODULE fock_fft_module
 
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
 
-  real(8) :: ct_fock_fft(9),et_fock_fft(9)
+  real(8) :: ct_fock_fft(10),et_fock_fft(10)
 
 CONTAINS
 
