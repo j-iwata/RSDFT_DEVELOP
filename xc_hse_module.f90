@@ -39,6 +39,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,n3
     real(8),intent(OUT) :: Vxc(n1:n2,n3),Exc,E_exchange_exx
+#ifdef _DRSDFT_
+    Vxc=0.0d0
+    Exc=0.0d0
+    E_exchange_exx=0.0d0
+#else
     real(8),parameter :: mu=0.21951d0,Kp=0.804d0
     real(8),parameter :: ep=1.d-25
     real(8),parameter :: A00  =0.031091d0,A01  =0.015545d0,A02  =0.016887d0
@@ -1126,7 +1131,7 @@ CONTAINS
     end if
 
     return
-
+#endif
   END SUBROUTINE calc_xc_hse
 
 

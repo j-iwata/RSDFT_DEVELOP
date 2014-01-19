@@ -33,8 +33,13 @@ CONTAINS
     integer :: n1,n2,n,k,s,ierr
     real(8) :: Etot,Ekin,Eloc,Enlc,Eeig
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
+#ifdef _DRSDFT_
+    real(8),parameter :: zero=0.0d0
+    real(8),allocatable :: work(:,:)
+#else
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: work(:,:)
+#endif
     include 'mpif.h'
 
     n1 = ML_0

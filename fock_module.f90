@@ -18,8 +18,13 @@ CONTAINS
   SUBROUTINE op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
+#ifdef _DRSDFT_
+    real(8),intent(IN) :: tpsi(n1:n2,ib1:ib2)
+    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+#else
     complex(8),intent(IN) :: tpsi(n1:n2,ib1:ib2)
     complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+#endif
     integer :: ib
     if ( iflag_hse == 0 ) return
     do ib=ib1,ib2
@@ -32,7 +37,11 @@ CONTAINS
     integer :: k,s,n1,n2,ib
     integer :: q,tr,i,n
     real(8) :: k_fock(3),q_fock(3)
+#ifdef _DRSDFT_
+    real(8) :: psi(n1:n2),tpsi(n1:n2)
+#else
     complex(8) :: psi(n1:n2),tpsi(n1:n2)
+#endif
     intent(IN) :: k,s,n1,n2,ib,psi
     intent(INOUT) :: tpsi
     complex(8),allocatable :: trho(:),tvht(:)

@@ -166,7 +166,11 @@ CONTAINS
        sum0=0.0d0
        do i=1,Ngrid(0)
        do j=1,MLpot
+#ifdef _DRSDFT_
+          sum0 = sum0 + unk(i,n,k,s)*vloc_nl(j,i)*unk(Lpot(j,i),n,k,s)
+#else
           sum0 = sum0 + conjg(unk(i,n,k,s))*vloc_nl(j,i)*unk(Lpot(j,i),n,k,s)
+#endif
        end do
        end do
 
