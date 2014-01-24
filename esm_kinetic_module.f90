@@ -1,4 +1,4 @@
-MODULE kinetic_esm_module
+MODULE esm_kinetic_module
 
   use esm_rgrid_module
   use rgrid_module
@@ -7,7 +7,7 @@ MODULE kinetic_esm_module
   implicit none
 
   PRIVATE
-  PUBLIC :: get_coef_kinetic_esm,op_kinetic_esm
+  PUBLIC :: get_coef_esm_kinetic,op_esm_kinetic
 
   real(8) :: coef_lap0
   real(8),allocatable :: coef_lap(:,:),coef_nab(:,:)
@@ -19,7 +19,7 @@ MODULE kinetic_esm_module
 CONTAINS
 
 
-  SUBROUTINE get_coef_kinetic_esm(aa,bb,MBZ,kbb,Md_in)
+  SUBROUTINE get_coef_esm_kinetic(aa,bb,MBZ,kbb,Md_in)
     use fd_module
     implicit none
     real(8),intent(IN) :: aa(3,3),bb(3,3)
@@ -79,10 +79,10 @@ CONTAINS
           zcoef_kin(1:3, n,k)=-zi*coef_nabk(1:3,n,k)
        end do
     end do
-  END SUBROUTINE get_coef_kinetic_esm
+  END SUBROUTINE get_coef_esm_kinetic
 
 
-  SUBROUTINE op_kinetic_esm(k,n1,n2,ib1,ib2,tpsi,htpsi)
+  SUBROUTINE op_esm_kinetic(k,n1,n2,ib1,ib2,tpsi,htpsi)
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
@@ -159,7 +159,7 @@ CONTAINS
 
     end if
 
-  END SUBROUTINE op_kinetic_esm
+  END SUBROUTINE op_esm_kinetic
 
 
-END MODULE kinetic_esm_module
+END MODULE esm_kinetic_module

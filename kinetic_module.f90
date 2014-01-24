@@ -2,7 +2,7 @@ MODULE kinetic_module
 
   use rgrid_module, only: Hgrid,Igrid
   use kinetic_mol_module
-  use kinetic_esm_module
+  use esm_kinetic_module
 
   implicit none
 
@@ -242,7 +242,7 @@ CONTAINS
     case(1)
        call op_kinetic_mol(n1,n2,ib1,ib2,tpsi,htpsi)
     case(3)
-       call op_kinetic_esm(k,n1,n2,ib1,ib2,tpsi,htpsi)
+       call op_esm_kinetic(k,n1,n2,ib1,ib2,tpsi,htpsi)
     end select
   END SUBROUTINE op_kinetic
 

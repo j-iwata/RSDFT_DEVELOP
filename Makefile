@@ -20,7 +20,7 @@ MODS1 = simc_module.o\
         rgrid_mol_module.o \
         esm_rgrid_module.o \
         kinetic_mol_module.o \
-        kinetic_esm_module.o \
+        esm_kinetic_module.o \
         kinetic_module.o \
         strfac_module.o \
         pseudopot_module.o \
@@ -33,7 +33,7 @@ MODS1 = simc_module.o\
         esm_rshell_module.o \
         ps_local_module.o ps_local_rs_module.o \
         esm_genpot_module.o \
-        hartree_esm_module.o \
+        esm_hartree_module.o \
         hartree_module.o \
         ps_nloc_gth_module.o \
         ps_nloc_hgh_module.o \
@@ -58,7 +58,7 @@ MODS1 = simc_module.o\
         eion_mol_module.o\
         ps_local_mol_module.o\
         xc_hybrid_module.o \
-        fock_fft_module.o \
+        fock_fft_module_pzfft3dv.o \
         fock_module.o \
         xc_hse_module.o \
         hamiltonian_module.o\
@@ -83,10 +83,11 @@ MODS1 = simc_module.o\
         localpot2_density_module.o \
         localpot2_vh_module.o \
         localpot2_xc_module.o \
-        localpot2_te_module.o
+        localpot2_te_module.o \
+        esm_ion_module.o \
 
 #        band_analysis_module.o \
-#        esm_ion_module.o \
+
 
 
 DIAGLA_MOD = subspace_diag_la_module.o

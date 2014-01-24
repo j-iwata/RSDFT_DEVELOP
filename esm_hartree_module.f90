@@ -1,4 +1,4 @@
-MODULE hartree_esm_module
+MODULE esm_hartree_module
 
   use aa_module
   use rgrid_module
@@ -12,14 +12,14 @@ MODULE hartree_esm_module
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_hartree_esm
+  PUBLIC :: calc_esm_hartree
 
   complex(8),allocatable :: v_outer(:) 
 
 CONTAINS
 
 
-  SUBROUTINE calc_hartree_esm(n1,n2,nsp,rho_in,v_inout,e_out)
+  SUBROUTINE calc_esm_hartree(n1,n2,nsp,rho_in,v_inout,e_out)
     implicit none
     integer,intent(IN)    :: n1,n2,nsp
     real(8),intent(IN)    :: rho_in(n1:n2,nsp)
@@ -47,16 +47,16 @@ CONTAINS
     do s=1,nsp
        rhot(:) = rhot(:) + rho_in(:,s)
     end do
-!    if ( iswitch_bc == 0 ) then
-       c0 = sum(rhot)*dV
-       call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
-       do i=ML0_ESM,ML1_ESM
-          if ( LL_ESM(1,i) == 0 .and. LL_ESM(2,i) == 0 ) then
-             rhot(i) = rhot(i) - c/(dV*Ngrid(3))
-          end if
-       end do
-       rhot(:) = rhot(:) - c/(dV*ML_ESM)
-!    end if
+
+!--- neutralize
+!
+    c0 = sum(rhot)*dV
+    call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
+    do i=ML0_ESM,ML1_ESM
+       if ( LL_ESM(1,i) == 0 .and. LL_ESM(2,i) == 0 ) then
+          rhot(i) = rhot(i) - c/(dV*Ngrid(3))
+       end if
+    end do
 
     const = -2.d0*dV/aa(3,3)
 
@@ -128,24 +128,25 @@ CONTAINS
 
     v_outer(:) = v_outer(:) + v_const
 
-!    if ( iswitch_bc == 0 ) then
-       do i=MK0_ESM,MK1_ESM
-          i1=KK(1,i)
-          i2=KK(2,i)
-          i3=KK(3,i)
-          x=aa(1,1)*i1*c1+aa(1,2)*i2*c2+aa(1,3)*i3*c3
-          y=aa(2,1)*i1*c1+aa(2,2)*i2*c2+aa(2,3)*i3*c3
-          z=aa(3,1)*i1*c1+aa(3,2)*i2*c2+aa(3,3)*i3*c3
-          r=sqrt(x*x+y*y)
-          if ( iswitch_bc == 1 .and. Rsize2 <= r + ep ) cycle
-!          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
+    do i=MK0_ESM,MK1_ESM
+       i1=KK(1,i)
+       i2=KK(2,i)
+       i3=KK(3,i)
+       x=aa(1,1)*i1*c1+aa(1,2)*i2*c2+aa(1,3)*i3*c3
+       y=aa(2,1)*i1*c1+aa(2,2)*i2*c2+aa(2,3)*i3*c3
+       z=aa(3,1)*i1*c1+aa(3,2)*i2*c2+aa(3,3)*i3*c3
+       r=sqrt(x*x+y*y)
+       if ( iswitch_bc == 1 ) then
+          if ( Rsize2 <= r + ep ) cycle
           v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r/Rsize2)
-       end do
-       rhot(:)=0.d0
-       do s=1,nsp
-          rhot(:) = rhot(:) + rho_in(:,s)
-       end do
-!    end if
+       else
+          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
+       end if
+    end do
+    rhot(:)=0.d0
+    do s=1,nsp
+       rhot(:) = rhot(:) + rho_in(:,s)
+    end do
 
     if ( myrank == 0 ) write(*,*) "------- esm_test3"
 
@@ -154,7 +155,7 @@ CONTAINS
     deallocate( rhot )
     deallocate( v_outer )
 
-  END SUBROUTINE calc_hartree_esm
+  END SUBROUTINE calc_esm_hartree
 
 
   SUBROUTINE esm_test3(n1,n2,rho_in,v_inout,e_out)
@@ -367,7 +368,7 @@ CONTAINS
     end do ! iter
 
 
-!    goto 1
+    goto 1
     www=z0
     do j=ML0_ESM,ML1_ESM
        i1=LL(1,j)+m1
@@ -424,4 +425,4 @@ CONTAINS
 
   END SUBROUTINE esm_test3
 
-END MODULE hartree_esm_module
+END MODULE esm_hartree_module

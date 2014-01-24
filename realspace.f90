@@ -9,7 +9,7 @@ PROGRAM Real_Space_Solid
   use esm_cylindrical_test
   use ps_local_rs_module
   use esm_genpot_module
-  use kinetic_esm_module
+  use esm_kinetic_module
 
   use func2gp_module
 
@@ -209,7 +209,7 @@ PROGRAM Real_Space_Solid
 
   call get_coef_kinetic(aa,bb,MBZ,kbb,DISP_SWITCH,SYStype_in=SYStype)
   if ( SYStype == 1 ) call get_coef_kinetic_mol(Md)
-  if ( SYStype == 3 ) call get_coef_kinetic_esm(aa,bb,MBZ,kbb,Md)
+  if ( SYStype == 3 ) call get_coef_esm_kinetic(aa,bb,MBZ,kbb,Md)
 
 ! --- Pseudopotential, initial density, and partial core correction ---
 

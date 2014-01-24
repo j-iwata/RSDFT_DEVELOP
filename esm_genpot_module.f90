@@ -91,7 +91,6 @@ CONTAINS
           rhot(i) = rhot(i) - c/(dV*Ngrid(3))
        end if
     end do
-    rhot(:) = rhot(:) - c/(dV*ML_ESM)
 
     const = -2.d0*dV/aa(3,3)
 
@@ -160,7 +159,7 @@ CONTAINS
 
     v_outer(:) = v_outer(:) + v_const
 
-    write(*,*) "maxval(v_vouter)",maxval(abs(v_outer)**2)
+!    write(*,*) "maxval(v_vouter)",maxval(abs(v_outer)**2)
 
     do i=MK0_ESM,MK1_ESM
        i1=KK(1,i)
@@ -170,9 +169,12 @@ CONTAINS
        y=aa(2,1)*i1*c1+aa(2,2)*i2*c2+aa(2,3)*i3*c3
        z=aa(3,1)*i1*c1+aa(3,2)*i2*c2+aa(3,3)*i3*c3
        r=sqrt(x*x+y*y)
-       if ( iswitch_bc == 1 .and. Rsize2 <= r + ep ) cycle
-!       v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
-       v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r/Rsize2)
+       if ( iswitch_bc == 1 ) then
+          if ( Rsize2 <= r + ep ) cycle
+          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r/Rsize2)
+       else
+          v_outer(i) = v_outer(i) - 2.d0*c/aa(3,3)*log(r)
+       end if
     end do
     rhot(:) = rho_ps(:)
 
@@ -521,7 +523,7 @@ CONTAINS
     end do
 22  continue
 
-!    goto 1
+    goto 1
     if ( myrank == 0 ) then
     u1=111
     u2=112
@@ -548,7 +550,7 @@ CONTAINS
     end do
     end do
     end if
-!    call end_mpi_parallel ; stop
+    call end_mpi_parallel ; stop
 1   continue
 
     goto 2

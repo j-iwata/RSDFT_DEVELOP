@@ -1,7 +1,7 @@
 MODULE hartree_module
 
   use hartree_mol_module
-  use hartree_esm_module
+  use esm_hartree_module
   use bb_module
   use watch_module
 
@@ -42,7 +42,7 @@ CONTAINS
     case(1)
        call calc_hartree_mol(n1,n2,n3,rho,Vh,E_hartree)
     case(3)
-       call calc_hartree_esm(n1,n2,n3,rho,Vh,E_hartree)
+       call calc_esm_hartree(n1,n2,n3,rho,Vh,E_hartree)
     end select
 
   END SUBROUTINE calc_hartree
