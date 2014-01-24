@@ -18,6 +18,7 @@ MODULE apply_sseig_module
                              ,solver_timers,solver_info,solver &
                              ,disp_lin_result,z_mgs_qr,z_matmat_cn,tol_iter
   use timer_module
+  use watch_module
 
   implicit none
 
@@ -51,11 +52,14 @@ CONTAINS
     real(8),parameter :: restol_ji=1.d-2
     complex(8) :: ovlp1,ovlp2
     real(8) :: norm1,norm2,c 
+    logical :: flag_end
 
     if ( disp_switch ) then
        write(*,'(a60," apply_sseig")') repeat("-",60)
        call flush(6)
     end if
+
+    flag_end = .false.
 
     eigrestol = 1d-2
 
@@ -296,6 +300,12 @@ CONTAINS
 
        end do ! i
 
+       call global_watch(flag_end)
+       if ( flag_end ) then
+          if ( myrank == 0 ) write(*,*) "etime limit exceeded!"
+          call mpi_finalize(ierr)
+          stop "stop@apply_sseig"
+       end if
 
        do i=1,n_ccurve
           if ( myrank_c == 0 ) then
