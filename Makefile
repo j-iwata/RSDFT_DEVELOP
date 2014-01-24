@@ -58,7 +58,7 @@ MODS1 = simc_module.o\
         eion_mol_module.o\
         ps_local_mol_module.o\
         xc_hybrid_module.o \
-        fock_fft_module_pzfft3dv.o \
+        fock_fft_module.o \
         fock_module.o \
         xc_hse_module.o \
         hamiltonian_module.o\
