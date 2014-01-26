@@ -364,9 +364,21 @@ CONTAINS
 
        if ( disp_switch_loc ) then
           write(*,*) "initial configuration"
-          do a=1,Natom
-             write(*,'(1x,i4,3f15.5)') a,aa_atom(:,a)
-          end do
+          if ( Natom <= 11 ) then
+             do a=1,Natom
+                write(*,'(1x,i4,3f15.5)') a,aa_atom(:,a)
+             end do
+          else
+             do a=1,min(5,Natom)
+                write(*,'(1x,i4,3f15.5)') a,aa_atom(:,a)
+             end do
+             write(*,'(1x,10x,".")')
+             write(*,'(1x,10x,".")')
+             write(*,'(1x,10x,".")')
+             do a=Natom-5,Natom
+                write(*,'(1x,i4,3f15.5)') a,aa_atom(:,a)
+             end do
+          end if
           write(*,*) "Etot =",Etot
           write(*,*) "grad =",grad0
           write(*,*) "Fmax =",Fmax
@@ -565,9 +577,21 @@ CONTAINS
 
           if ( disp_switch_loc ) then
              write(*,*) 'Trial configuration (see fort.97)'
-             do a=1,Natom
-                write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
-             end do
+             if ( Natom <= 11 ) then
+                do a=1,Natom
+                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                end do
+             else
+                do a=1,min(5,Natom)
+                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                end do
+                write(*,'(1x,10x,".")')
+                write(*,'(1x,10x,".")')
+                write(*,'(1x,10x,".")')
+                do a=Natom-5,Natom
+                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                end do
+             end if
           end if
           if ( myrank == 0 ) then
              rewind 97
@@ -605,9 +629,21 @@ CONTAINS
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')
-             do a=1,Natom
-                write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
-             end do
+             if ( Natom <= 11 ) then
+                do a=1,Natom
+                   write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
+                end do
+             else
+                do a=1,min(5,Natom)
+                   write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
+                end do
+                write(*,'(1x,10x,".")')
+                write(*,'(1x,10x,".")')
+                write(*,'(1x,10x,".")')
+                do a=Natom-5,Natom
+                   write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
+                end do
+             end if
           end if
 
           grad=sum( Force(1:3,1:Natom)*hi(1:3,1:Natom) )
