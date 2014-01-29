@@ -42,7 +42,6 @@ CONTAINS
              read(unit,*) ak(2,1:nbk+1)
              read(unit,*) ak(3,1:nbk+1)
              read(unit,*) nfki(1:nbk)
-             exit
           else if ( ckey(1:8) == 'SKIPBAND' ) then
              backspace(unit)
              read(unit,*) cbuf,nskip_band
