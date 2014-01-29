@@ -9,7 +9,7 @@ SUBROUTINE bomd
                            ,inivel,linitnose,lmeta,dtsuz,lbath,lbathnewe &
                            ,lscaleele,Rion,lscale,linitnosee,AMU,pmass &
                            ,iatom,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
-                           ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
+                           ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm
   use parallel_module
   use total_energy_module
   use wf_module
@@ -35,6 +35,8 @@ SUBROUTINE bomd
 !------------------------------------
   integer :: MI3
 
+  integer,parameter :: unit_trjxyz = 90
+
   if ( myrank == 0 ) write(*,'(1x,a60," CPMD")') repeat("-",60)
 
   if ( myrank == 0 ) then
@@ -54,6 +56,7 @@ SUBROUTINE bomd
   flag_etlimit= .false.
 
   if ( myrank == 0 ) then
+     open(unit_trjxyz,file='TRAJECTORY.xyz')
      if ( lcpmd ) then
         if ( lbath ) then
            write(*,*) "start NVT cpmd"
@@ -388,13 +391,11 @@ SUBROUTINE bomd
         endif
 !-------------------------------------------
         if ( mod(itime,1) == 0 ) then
-           write(90,*) Natom
-           write(90,*) "CPMD on RSDFT STEP->",itime
-        endif
-
-        if ( mod(itime,1) == 0 ) then
+           write(unit_trjxyz,*) Natom
+           write(unit_trjxyz,*) "CPMD on RSDFT STEP->",itime
            do i=1,Natom
-              write(90,'("X",i1,3f14.6)') ki_atom(i),Rion(1:3,i)*0.529177210d0
+              write(unit_trjxyz,'(a2,3f14.6)') &
+                   batm(iatom(i)),Rion(1:3,i)*0.529177210d0
            enddo
         endif
 !-------------------------------------------
@@ -438,7 +439,7 @@ SUBROUTINE bomd
   close(3)
   close(4)
   close(15)
-  close(90)
+  close(unit_trjxyz)
   if ( ltime ) then
      close(16)
      close(17)
