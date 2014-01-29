@@ -161,7 +161,7 @@ CONTAINS
     deallocate( esp0 )
 
     if ( flag_end ) then
-       if ( disp_switch ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
        call end_mpi_parallel
        stop
     end if
