@@ -43,7 +43,7 @@ PROGRAM Real_Space_Solid
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
-  integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j
+  integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3
   real(8),allocatable :: esp0(:,:,:),force(:,:),forcet(:,:),vtmp(:)
   real(8),allocatable :: work(:,:,:)
   logical :: flag_conv=.false.
@@ -413,26 +413,31 @@ PROGRAM Real_Space_Solid
 
 ! --- Read previous w.f. , density , potentials ---
 
-  call watcht(disp_switch,"read",0)
+  call watcht(disp_switch,"read_data",0)
   call read_data(disp_switch)
-  call watcht(disp_switch,"read",1)
+  call watcht(disp_switch,"read_data",1)
 
 !--------------------------------------------- LOCALLPOT2
 !
+  if ( DISP_SWITCH ) write(*,'(a60," LOCALPOT2")') repeat("-",60)
   call read_localpot2(1,myrank)
   if ( flag_localpot2 ) then
+     call prep_parallel_localpot2
      call init_localpot2(Ngrid(1),Ngrid(2),Ngrid(3))
      m1=Ngrid_dense(1)
      m2=Ngrid_dense(2)
      m3=Ngrid_dense(3)
+     mm1=Igrid_dense(2,1)-Igrid_dense(1,1)+1
+     mm2=Igrid_dense(2,2)-Igrid_dense(1,2)+1
+     mm3=Igrid_dense(2,3)-Igrid_dense(1,3)+1
      call test_localpot2
-     call localpot2_ion(m1,m2,m3,Nelement,Ecut,vion_nl)
-     call localpot2_density(m1,m2,m3,rho_nl)
-     call localpot2_vh(m1,m2,m3,Ecut,rho_nl,vh_nl,E_hartree)
-     call localpot2_xc(m1,m2,m3,rho_nl,vxc_nl,Exc)
-     allocate( work(0:m1-1,0:m2-1,0:m3-1) ) ; work=0.0d0
-     work(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
-     call test2_localpot2(m1,m2,m3,work)
+     call localpot2_ion(mm1,mm2,mm3,Nelement,Ecut,vion_nl)
+     call localpot2_density(mm1,mm2,mm3,rho_nl)
+     call localpot2_vh(mm1,mm2,mm3,Ecut,rho_nl,vh_nl,E_hartree)
+     call localpot2_xc(mm1,mm2,mm3,rho_nl,vxc_nl,Exc)
+     vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
+     vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
+     call test2_localpot2(mm1,mm2,mm3,vloc_dense)
   end if
 !
 !---------------------------------------------
@@ -546,12 +551,14 @@ PROGRAM Real_Space_Solid
 
 !---------------------------------- LPOT2
         if ( flag_localpot2 ) then
-           call localpot2_density(m1,m2,m3,rho_nl)
-           call localpot2_calc_eion(m1,m2,m3,vion_nl,eion_tmp)
-           call localpot2_vh(m1,m2,m3,Ecut,rho_nl,vh_nl,eh_tmp)
-           call localpot2_xc(m1,m2,m3,rho_nl,vxc_nl,exc_tmp)
-           work=vion_nl+vh_nl+vxc_nl
-           call test2_localpot2(m1,m2,m3,work)
+           call localpot2_density(mm1,mm2,mm3,rho_nl)
+           call localpot2_calc_eion(mm1,mm2,mm3,vion_nl,rho_nl,eion_tmp)
+           call localpot2_vh(mm1,mm2,mm3,Ecut,rho_nl,vh_nl,eh_tmp)
+           call localpot2_xc(mm1,mm2,mm3,rho_nl,vxc_nl,exc_tmp)
+           vloc_dense=vion_nl+vh_nl+vxc_nl
+           vloc_dense=beta*vloc_dense+(1.d0-beta)*vloc_dense_old
+           vloc_dense_old=vloc_dense
+           call test2_localpot2(mm1,mm2,mm3,vloc_dense)
            call localpot2_te(eion_tmp,eh_tmp,exc_tmp,disp_switch)
         end if
 !------------------------------------------

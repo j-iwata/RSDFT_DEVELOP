@@ -9,7 +9,8 @@ MODULE Ggrid_module
   PUBLIC :: Gcut,Ecut,NGgrid,LLG,MG_0,MG_1,MGL,NMGL,GG &
            ,allgatherv_Ggrid,construct_NMGL_Ggrid &
            ,get_cutoff_Ggrid,parallel_Ggrid &
-           ,construct_Ggrid,destruct_Ggrid
+           ,construct_Ggrid,destruct_Ggrid &
+           ,get_cutoff_ggrid_2,construct_ggrid_2
 
   integer :: NGgrid(0:3),MG_0,MG_1,NMGL
   integer,allocatable :: LLG(:,:),MGL(:)
@@ -219,6 +220,81 @@ CONTAINS
     call mpi_allgatherv(f(MG_0),MG_1-MG_0+1,MPI_COMPLEX16 &
          ,f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
   END SUBROUTINE allgatherv_Ggrid
+
+
+  SUBROUTINE get_cutoff_ggrid_2(mm1,mm2,mm3,ecut,MG2)
+    implicit none
+    integer,intent(IN) :: mm1,mm2,mm3
+    real(8),intent(IN) :: ecut
+    integer,intent(OUT) :: MG2
+    integer :: ig,i1,i2,i3
+    real(8) :: Gx,Gy,Gz,GG
+    ig=0
+    do i3=-mm3,mm3
+    do i2=-mm2,mm2
+    do i1=-mm1,mm1
+       Gx=bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3
+       Gy=bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3
+       Gz=bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3
+       GG=Gx*Gx+Gy*Gy+Gz*Gz
+       if ( GG < ecut-ep ) ig=ig+1
+    end do
+    end do
+    end do
+    MG2=ig
+  END SUBROUTINE get_cutoff_ggrid_2
+
+
+  SUBROUTINE construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,itype)
+    implicit none
+    integer,intent(IN) :: mm1,mm2,mm3,MG2,MG2_0,MG2_1,itype
+    integer :: ig,i1,i2,i3
+    real(8) :: Gx,Gy,Gz,GG
+    select case(itype)
+    case default
+       stop 'stop@construct_ggrid_2'
+    case(0)
+       allocate( LLG(3,MG2) ) ; LLG=0
+       ig=0
+       do i3=-mm3,mm3
+       do i2=-mm2,mm2
+       do i1=-mm1,mm1
+          Gx=bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3
+          Gy=bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3
+          Gz=bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3
+          GG=Gx*Gx+Gy*Gy+Gz*Gz
+          if ( GG < ecut-ep ) then
+             ig=ig+1
+             LLG(1,ig)=i1
+             LLG(2,ig)=i2
+             LLG(3,ig)=i3
+          end if
+       end do
+       end do
+       end do
+    case(1)
+       allocate( LLG(3,MG2_0:MG2_1) ) ; LLG=0
+       ig=0
+       do i3=-mm3,mm3
+       do i2=-mm2,mm2
+       do i1=-mm1,mm1
+          Gx=bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3
+          Gy=bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3
+          Gz=bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3
+          GG=Gx*Gx+Gy*Gy+Gz*Gz
+          if ( GG < ecut-ep ) then
+             ig=ig+1
+             if ( MG2_0 <= ig .and. ig <= MG2_1 ) then
+                LLG(1,ig)=i1
+                LLG(2,ig)=i2
+                LLG(3,ig)=i3
+             end if
+          end if
+       end do
+       end do
+       end do
+    end select
+  END SUBROUTINE construct_ggrid_2
 
 
 END MODULE Ggrid_module

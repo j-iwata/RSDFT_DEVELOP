@@ -2,17 +2,18 @@ MODULE localpot2_xc_module
 
   use parallel_module
   use rgrid_module
+  use localpot2_variables
   use watch_module
 
   implicit none
 
 CONTAINS
 
-  SUBROUTINE localpot2_xc(m1,m2,m3,n_in,vout,exc)
+  SUBROUTINE localpot2_xc(m1_0,m2_0,m3_0,n_in,vout,exc)
     implicit none
-    integer,intent(IN) :: m1,m2,m3
-    real(8),intent(IN) :: n_in(0:m1-1,0:m2-1,0:m3-1)
-    real(8),intent(OUT) :: vout(0:m1-1,0:m2-1,0:m3-1),exc
+    integer,intent(IN) :: m1_0,m2_0,m3_0
+    real(8),intent(IN) :: n_in(m1_0,m2_0,m3_0)
+    real(8),intent(OUT) :: vout(m1_0,m2_0,m3_0),exc
 
     real(8),parameter :: a0=0.4581652932831429d0 ,da0=0.119086804055547d0
     real(8),parameter :: a1=2.217058676663745d0  ,da1=0.6157402568883345d0
@@ -26,9 +27,17 @@ CONTAINS
     real(8) :: trho,zeta,d0,d1,d2,d3,d4,d5,fx,rs,epsilon_xc
     real(8) :: a0z,a1z,a2z,a3z,b1z,b2z,b3z,b4z,factor(2)
     real(8) :: de_dr,dr_dn,de_df,df_dz,ct0,ct1,et0,et1
-    integer :: i,ierr,i1,i2,i3
+    integer :: i,ierr,i1,i2,i3,m1,m2,m3,i10,i20,i30
 
     call watch(ct0,et0)
+
+    m1=Ngrid_dense(1)
+    m2=Ngrid_dense(2)
+    m3=Ngrid_dense(3)
+
+    i10=Igrid_dense(1,1)-1
+    i20=Igrid_dense(1,2)-1
+    i30=Igrid_dense(1,3)-1
 
     Exc = 0.d0
     vout = 0.d0
@@ -43,11 +52,11 @@ CONTAINS
     factor(1) = 2.d0
     factor(2) =-2.d0
 
-    do i3=0,m3-1
-    do i2=0,m2-1
-    do i1=0,m1-1
+    do i3=Igrid_dense(1,3),Igrid_dense(2,3)
+    do i2=Igrid_dense(1,2),Igrid_dense(2,2)
+    do i1=Igrid_dense(1,1),Igrid_dense(2,1)
 
-       trho = d0*( n_in(i1,i2,i3) )
+       trho = d0*( n_in(i1-i10,i2-i20,i3-i30) )
 
        if ( trho <= 0.d0 ) cycle
 
@@ -88,9 +97,9 @@ CONTAINS
 
        dr_dn = -d5/(trho*rs)**2
 
-       vout(i1,i2,i3) = epsilon_xc &
+       vout(i1-i10,i2-i20,i3-i30) = epsilon_xc &
             + trho*( de_dr*dr_dn &
-                   + de_df*df_dz*factor(1)*n_in(i1,i2,i3)/trho**2 )
+                   + de_df*df_dz*factor(1)*n_in(i1-i10,i2-i20,i3-i30)/trho**2 )
 
     end do
     end do
