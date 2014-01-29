@@ -9,7 +9,7 @@ MODULE band_module
 
   integer,parameter :: mnbk=100
   integer :: nbk,mb_band,mb2_band,maxiter_band
-  integer :: nfki(mnbk)
+  integer :: nfki(mnbk),nskip_band
   real(8) :: ak(3,mnbk+1)
   real(8) :: esp_conv_tol=-1.d0
 
@@ -25,10 +25,11 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i,ierr
     integer,parameter :: max_read=10000
-    character(7) :: cbuf,ckey
+    character(8) :: cbuf,ckey
     include 'mpif.h'
     esp_conv_tol = 1.d-5
     maxiter_band = 50
+    nskip_band=0
     if ( rank == 0 ) then
        rewind unit
        do i=1,max_read
@@ -42,6 +43,9 @@ CONTAINS
              read(unit,*) ak(3,1:nbk+1)
              read(unit,*) nfki(1:nbk)
              exit
+          else if ( ckey(1:8) == 'SKIPBAND' ) then
+             backspace(unit)
+             read(unit,*) cbuf,nskip_band
           end if
        end do
 999    continue
@@ -51,6 +55,7 @@ CONTAINS
        if ( esp_conv_tol < 0.d0 ) esp_conv_tol=1.d-5
        write(*,*) "esp_von_tol=",esp_conv_tol
        write(*,*) "maxiter_band=",maxiter_band
+       write(*,*) "nskip_band=",nskip_band
     end if
     call mpi_bcast(nbk,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(ak,3*mnbk,mpi_real8,0,mpi_comm_world,ierr)
@@ -59,6 +64,7 @@ CONTAINS
     call mpi_bcast(mb2_band,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(esp_conv_tol,1,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(maxiter_band,1,mpi_integer,0,mpi_comm_world,ierr)
+    call mpi_bcast(nskip_band,1,mpi_integer,0,mpi_comm_world,ierr)
   END SUBROUTINE read_band
 
 
@@ -128,6 +134,11 @@ CONTAINS
     call prepare_sseig(1,disp_switch)
 
     do k=1,nktrj
+
+       if ( k <= nskip_band ) then
+          if ( DISP_SWITCH_PARALLEL ) write(*,*) "Band ",k," is skipped"
+          cycle
+       end if
 
        kbb(1:3,1) = ktrj(1:3,k)
        call get_coef_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
