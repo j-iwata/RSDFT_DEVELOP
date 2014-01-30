@@ -93,7 +93,11 @@ CONTAINS
     complex(8),allocatable :: eigvec_merged_old(:,:)
     integer,save :: total_numeig_old=0
 
-#ifndef _DRSDFT_
+#ifdef _DRSDFT_
+
+    wrtite(*,*) "Bnad calculation is not available for REAL8 version"
+
+#else
 
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1
@@ -143,7 +147,7 @@ CONTAINS
        call get_coef_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
        call prep_uvk_ps_nloc2(1,Nbzsm,kbb)
 
-       call apply_sseig( ktrj(4:6,k) )
+       call apply_sseig( k, ktrj(4:6,k) )
 
        call prep_rvk_ps_nloc2(1,Nbzsm,kbb)
 

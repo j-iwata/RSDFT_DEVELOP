@@ -31,8 +31,9 @@ MODULE apply_sseig_module
 CONTAINS
 
 
-  SUBROUTINE apply_sseig(dk_bz)
+  SUBROUTINE apply_sseig(k_in,dk_bz)
     implicit none
+    integer,intent(IN) :: k_in 
     real(8),intent(IN) :: dk_bz(3)
     integer :: ev_size,sscount
     integer :: i,j,k,m,n1,n2,ierr,count,i_cc,j_cc
@@ -53,6 +54,7 @@ CONTAINS
     complex(8) :: ovlp1,ovlp2
     real(8) :: norm1,norm2,c 
     logical :: flag_end
+    character(4) :: c_k_in
 
     if ( disp_switch ) then
        write(*,'(a60," apply_sseig")') repeat("-",60)
@@ -487,15 +489,14 @@ CONTAINS
     if ( SS_IO == 1 .or. SS_IO == 2 ) then
        if ( myrank == 0 ) then
           write(*,*) 'write wave functions'
+          write(*,*) 'size(MB/procs)=',16.d0*total_numeig*(n2-n1+1)/1024.d0**2
        end if
        write(cmyrank,'(i5.5)') myrank
-       file_ss_wf_split = trim(file_ss_wf)//"."//trim(adjustl(cmyrank))
+       write(c_k_in ,'(i4.4)') k_in
+       file_ss_wf_split = trim(file_ss_wf)//"."//trim(adjustl(c_k_in))//"_"//trim(adjustl(cmyrank))
        open(unit_ss_band_wf,file=file_ss_wf_split,form="unformatted",status="replace")
-       write(unit_ss_band_wf) n1,n2,size(eigvec,2),size(eigvec,3),size(eigvec_merged,2)
-       write(unit_ss_band_wf) numeig(:)
-       write(unit_ss_band_wf) num_basis(:)
-       write(unit_ss_band_wf) eigvec(:,:,:)
-       write(unit_ss_band_wf) ssres(:,:)
+       write(unit_ss_band_wf) n1,n2,size(eigvec_merged,2),total_numeig,k_in,dk_bz(:)
+       write(unit_ss_band_wf) eigval_merged(:)
        write(unit_ss_band_wf) eigvec_merged(:,:)
        close(unit_ss_band_wf)
     end if
