@@ -45,6 +45,7 @@ CONTAINS
 
     if ( myrank == 0 ) then
        max_read = max(2*MI,1000)
+       rewind unit
        do i=1,max_read
           read(unit,'(a7)') label
           if ( label=='# SSEIG' ) then
