@@ -95,7 +95,7 @@ CONTAINS
 
 #ifdef _DRSDFT_
 
-    wrtite(*,*) "Bnad calculation is not available for REAL8 version"
+    write(*,*) "Bnad calculation is not available for REAL8 version"
 
 #else
 
