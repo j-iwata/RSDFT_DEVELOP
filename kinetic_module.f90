@@ -264,7 +264,7 @@ CONTAINS
     complex(8),parameter :: zero=(0.d0,0.d0)
 #endif
     integer :: i,ib,i1,i2,i3,nb,m,n,j
-    integer :: a1,a2,a3,b1,b2,b3,p
+    integer :: a1,a2,a3,b1,b2,b3,p,mm,nn
     integer :: a1b,b1b,a2b,b2b,a3b,b3b
     real(8) :: c,d
     integer,allocatable :: ic(:)
@@ -279,22 +279,22 @@ CONTAINS
 
     nb = ib2-ib1+1
 
-!$OMP parallel private(a3b_omp,b3b_omp,n1_omp,n2_omp,j,p,d)
+!$OMP parallel private(a3b_omp,b3b_omp,n1_omp,n2_omp,j,p,d,mm,nn)
 
-    n=1
-!$  n=omp_get_num_threads()
+    nn=1
+!$  nn=omp_get_num_threads()
 !$OMP single
-    allocate( ic(0:n-1) )
-    ic(:)=(b3b-a3b+1)/n
-    m=(b3b-a3b+1)-sum(ic)
-    do i=0,m-1
+    allocate( ic(0:nn-1) )
+    ic(:)=(b3b-a3b+1)/nn
+    mm=(b3b-a3b+1)-sum(ic)
+    do i=0,mm-1
        ic(i)=ic(i)+1
     end do
 !$OMP end single
-    m=0
-!$  m=omp_get_thread_num()
-    a3b_omp=a3b+sum(ic(0:m))-ic(m)
-    b3b_omp=a3b_omp+ic(m)-1
+    mm=0
+!$  mm=omp_get_thread_num()
+    a3b_omp=a3b+sum(ic(0:mm))-ic(mm)
+    b3b_omp=a3b_omp+ic(mm)-1
     n1_omp=n1+(a3b_omp-a3b)*(b2b-a2b+1)*(b1b-a1b+1)
     n2_omp=n1_omp+(b3b_omp-a3b_omp+1)*(b2b-a2b+1)*(b1b-a1b+1)-1
 !$OMP barrier

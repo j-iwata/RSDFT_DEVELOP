@@ -226,12 +226,12 @@ CONTAINS
     integer :: m,n,i,i1,i2,i3,j !,n1,n2
     integer :: a1b,b1b,a2b,b2b,a3b,b3b
     integer,allocatable :: ic(:)
-    integer :: a3b_omp,b3b_omp,n1_omp
+    integer :: a3b_omp,b3b_omp,n1_omp,mt,nt
 
-!$OMP parallel private(a3b_omp,b3b_omp,n1_omp,d,i)
+!$OMP parallel private(a3b_omp,b3b_omp,n1_omp,d,i,mt,nt)
 
-    n = 1
-!$  n = omp_get_num_threads()
+    nt = 1
+!$  nt = omp_get_num_threads()
 
 !$OMP single
 
@@ -247,18 +247,18 @@ CONTAINS
     c2 = -0.5d0/Hgrid(2)**2*ggg(2)
     c3 = -0.5d0/Hgrid(3)**2*ggg(3)
 
-    allocate( ic(0:n-1) )
-    ic(:)=(b3b-a3b+1)/n
-    m=(b3b-a3b+1)-sum(ic)
-    do i=0,m-1
+    allocate( ic(0:nt-1) )
+    ic(:)=(b3b-a3b+1)/nt
+    mt=(b3b-a3b+1)-sum(ic)
+    do i=0,mt-1
        ic(i)=ic(i)+1
     end do
 !$OMP end single
 
-    m=0
-!$  m=omp_get_thread_num()
-    a3b_omp=a3b+sum(ic(0:m))-ic(m)
-    b3b_omp=a3b_omp+ic(m)-1
+    mt=0
+!$  mt=omp_get_thread_num()
+    a3b_omp=a3b+sum(ic(0:mt))-ic(mt)
+    b3b_omp=a3b_omp+ic(mt)-1
     n1_omp=1+(a3b_omp-a3b)*(b2b-a2b+1)*(b1b-a1b+1)
 !$OMP barrier
 
