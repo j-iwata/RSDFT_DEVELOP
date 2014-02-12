@@ -9,7 +9,10 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   use strfac_module
   use ps_local_module
   use ps_pcc_module
+  use pseudopot_module
   use ps_nloc2_module
+  use ps_nloc3_module
+  use ps_nloc_mr_module
   use localpot_module, only: Vloc
   use array_bound_module, only: MSP_0,MSP_1,MB_0,MB_1,ML_0,ML_1
   use density_module
@@ -48,7 +51,14 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
 
   if ( ltime ) call watch(ctime_force(2),etime_force(2))
 
-  call prep_ps_nloc2
+  select case(pselect)
+  case(2)
+     call prep_ps_nloc2
+  case(3)
+     call prep_ps_nloc3
+  case(5)
+     call prep_ps_nloc_mr
+  end select
 
   if ( ltime ) call watch(ctime_force(3),etime_force(3))
 

@@ -7,7 +7,10 @@ SUBROUTINE getforce
   use strfac_module
   use ps_local_module
   use ps_pcc_module
+  use pseudopot_module
   use ps_nloc2_module
+  use ps_nloc3_module
+  use ps_nloc_mr_module
   use ewald_module
   use force_module
   use cpmd_variables, only: Rion,Force,pmass,iatom,AMU,disp_switch &
@@ -32,7 +35,14 @@ SUBROUTINE getforce
   call construct_ps_pcc
   call destruct_strfac
 
-  call prep_ps_nloc2
+  select case(pselect)
+  case(2)
+     call prep_ps_nloc2
+  case(3)
+     call prep_ps_nloc3
+  case(5)
+     call prep_ps_nloc_mr
+  end select
 
   MB_0=MB_0_SCF
   MB_1=MB_1_SCF

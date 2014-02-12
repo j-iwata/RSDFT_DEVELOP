@@ -9,7 +9,10 @@ MODULE atomopt_module
   use strfac_module
   use ps_local_module
   use ps_pcc_module
+  use pseudopot_module
   use ps_nloc2_module
+  use ps_nloc3_module
+  use ps_nloc_mr_module
   use force_module
 
   use kinetic_module, only: SYStype
@@ -620,7 +623,14 @@ CONTAINS
           call construct_ps_pcc
           call destruct_strfac
 
-          call prep_ps_nloc2
+          select case(pselect)
+          case(2)
+             call prep_ps_nloc2
+          case(3)
+             call prep_ps_nloc3
+          case(5)
+             call prep_ps_nloc_mr
+          end select
 
           if ( disp_switch ) write(*,*) "SCF start"
           call calc_scf(diter_opt,0,iter_final,.false.)
