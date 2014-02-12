@@ -31,13 +31,13 @@ CONTAINS
     allocate( parloc(1:4,Nelement) ) ; parloc=0.d0
     allocate( Zps(Nelement)  ) ; Zps=0.d0
     allocate( norb(Nelement) ) ; norb=0
-    allocate( lo(4,Nelement) ) ; lo=0
-    allocate( no(4,Nelement) ) ; no=0
-    allocate( Rps(4,Nelement) ) ; Rps=0.d0
-    allocate( Rps0(4,Nelement) ) ; Rps0=0.d0
+    allocate( lo(6,Nelement) ) ; lo=0
+    allocate( no(6,Nelement) ) ; no=0
+    allocate( Rps(6,Nelement) ) ; Rps=0.d0
+    allocate( Rps0(6,Nelement) ) ; Rps0=0.d0
     allocate( hnl(3,0:2,Nelement) ) ; hnl=0.d0
     allocate( knl(3,1:2,Nelement) ) ; knl=0.d0
-    allocate( inorm(4,Nelement) ) ; inorm=0
+    allocate( inorm(6,Nelement) ) ; inorm=0
 
     if ( rank == 0 ) then
        write(*,'(a60," read_ps_gth")') repeat("-",60)
@@ -76,9 +76,9 @@ CONTAINS
     call MPI_BCAST(parloc,4*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(Zps,Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(norb,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(lo,4*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(no,4*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(Rps0,4*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call MPI_BCAST(lo,6*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call MPI_BCAST(no,6*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call MPI_BCAST(Rps0,6*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(hnl,9*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(knl,6*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
 

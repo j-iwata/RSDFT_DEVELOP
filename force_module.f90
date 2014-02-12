@@ -2,7 +2,6 @@ MODULE force_module
 
   use ps_local_module
   use ps_nloc2_module
-  use ps_nloc_mr_module
   use ps_pcc_module
   use ewald_module
   use watch_module

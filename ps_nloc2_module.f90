@@ -9,7 +9,8 @@ MODULE ps_nloc2_module
   use ps_nloc2_init_module
   use ps_nloc2_variables
   use ps_nloc_gth_module
-  use ps_nloc_mr_module
+  use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
+  use ps_nloc3_module, only: calc_force_ps_nloc3
 
   implicit none
 
@@ -1165,13 +1166,16 @@ CONTAINS
        END FUNCTION Ylm
     END INTERFACE
 
-    if ( Mlma <= 0 ) then
-       force2(:,:)=0.0d0
+    if ( pselect == 5 ) then
+       call calc_force_ps_nloc_mr(MI,force2)
+       return
+    else if ( pselect == 3 ) then
+       call calc_force_ps_nloc3(MI,force2)
        return
     end if
 
-    if ( pselect == 5 ) then
-       call calc_force_ps_nloc_mr(MI,force2)
+    if ( Mlma <= 0 ) then
+       force2(:,:)=0.0d0
        return
     end if
 

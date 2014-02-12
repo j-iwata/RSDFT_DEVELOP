@@ -1190,6 +1190,10 @@ CONTAINS
        END FUNCTION Ylm
     END INTERFACE
 
+    force2(:,:) = 0.0d0
+
+    if ( Mlma <= 0 ) return
+
     if ( flag_Y ) then
        Y1=0.d0
        Y1( 0, 0, 1, 1) =  0.282094791773878d0

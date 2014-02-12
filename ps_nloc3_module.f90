@@ -9,11 +9,13 @@ MODULE ps_nloc3_module
   use bz_module
   use rgrid_module
   use parallel_module
+  use wf_module
+  use electron_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_ps_nloc3, prep_ps_nloc3, op_ps_nloc3
+  PUBLIC :: init_ps_nloc3, prep_ps_nloc3, op_ps_nloc3, calc_force_ps_nloc3
 
   integer :: m_mapgk, m_norb
   integer,allocatable :: mapgk(:,:)
@@ -344,7 +346,9 @@ CONTAINS
        lma=1+myrank_b*nprocs_g+myrank_g-nprocs_g*nprocs_b
        do lma0=1,Mlma_np
           lma=lma+nprocs_g*nprocs_b
+!$OMP parallel workshare
           utmp(:)=zero
+!$OMP end parallel workshare
           if ( lma <= Mlma ) then
              a=amap(lma)
              L=lmap(lma)
@@ -355,7 +359,11 @@ CONTAINS
              a3=aa_atom(3,a)*pi2
              ik=ki_atom(a)
              phase=(-zi)**L
+!$OMP parallel private( i1,i2,i3,Gr,c1,c2,c3,x,y,z,j )
+!$OMP workshare
              zwork=(0.d0,0.d0)
+!$OMP end workshare
+!$OMP do
              do i=1,MG
                 i1=mod(ML1+LLG(1,i),ML1)
                 i2=mod(ML2+LLG(2,i),ML2)
@@ -372,36 +380,47 @@ CONTAINS
                 zwork(i1,i2,i3)=viodgk2(j,iorb,ik) &
                      *phase*Ylm(x,y,z,L,m)*dcmplx(cos(Gr),-sin(Gr))
              end do
+!$OMP end do
+!$OMP end parallel
              call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
                   ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
-             i=0
-             irank_g=-1
+
+!             i=0
+!             irank_g=-1
+!!$OMP parallel do collapse(3) private( irank_g,l1,l2,l3,m1,m2,m3,i )
+!$OMP parallel private( irank_g,l1,l2,l3,m1,m2,m3,i )
              do i3=1,node_partition(3)
              do i2=1,node_partition(2)
              do i1=1,node_partition(1)
-                irank_g=irank_g+1
+!                irank_g=irank_g+1
+                irank_g=i1-1+(i2-1)*node_partition(1) &
+                     +(i3-1)*node_partition(1)*node_partition(2)
                 l1=pinfo_grid(1,irank_g)
                 m1=pinfo_grid(2,irank_g)+l1-1
                 l2=pinfo_grid(3,irank_g)
                 m2=pinfo_grid(4,irank_g)+l2-1
                 l3=pinfo_grid(5,irank_g)
                 m3=pinfo_grid(6,irank_g)+l3-1
+!$OMP do collapse(3)
                 do j3=l3,m3
                 do j2=l2,m2
                 do j1=l1,m1
-                   i=i+1
+!                   i=i+1
+                   i=1+j1+j2*ML1+j3*ML2*ML1
                    utmp(i)=zwork(j1,j2,j3)
                 end do
                 end do
                 end do
+!$OMP end do
              end do
              end do
              end do
+!$OMP end parallel
 
           end if ! lma<=Mlma
 
-          call mpi_alltoallv(utmp,ir_grid,id_grid,TYPE_MAIN,utmp3(nn1,0,myrank_b) &
-               ,icnt,idis,TYPE_MAIN,comm_grid,ierr)
+          call mpi_alltoallv(utmp,ir_grid,id_grid,TYPE_MAIN &
+               ,utmp3(nn1,0,myrank_b),icnt,idis,TYPE_MAIN,comm_grid,ierr)
 
           call mpi_allgather(utmp3(nn1,0,myrank_b),ML0*nprocs_g,TYPE_MAIN &
                ,utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
@@ -411,7 +430,9 @@ CONTAINS
           do i=0,nprocs_g-1
              lma1=lma1+1
              if ( lma1 <= Mlma ) then
+!$OMP parallel workshare
                 uVk(nn1:nn2,lma1,k)=utmp3(nn1:nn2,i,j)
+!$OMP end parallel workshare
              end if
           end do
           end do
@@ -492,6 +513,331 @@ CONTAINS
     deallocate( uVunk0,uVunk )
 
   END SUBROUTINE op_ps_nloc3
+
+
+  SUBROUTINE calc_force_ps_nloc3(MI,force2)
+    implicit none
+    integer,intent(IN)  :: MI
+    real(8),intent(OUT) :: force2(3,MI)
+    integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,Mlma_np,ierr,ML0
+    integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir
+    integer :: ifacx(30),ifacy(30),ifacz(30),j1,j2,j3,irank
+    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
+    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+    integer,allocatable :: idis(:),icnt(:),LL2(:,:),a2lma(:)
+    real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,kx,ky,kz,const
+    real(8),allocatable :: work2(:,:)
+    complex(8) :: phase
+    complex(8),parameter :: zi=(0.0d0,1.0d0),z0=(0.0d0,0.0d0)
+    complex(8),allocatable :: zwork0(:),zwork(:,:,:),fftwork(:)
+#ifdef _DRSDFT_
+    integer,parameter :: TRANSA='T', TRANSB='N'
+    real(8),allocatable :: wtmp3(:,:,:),wtmp4(:,:,:,:)
+    real(8),allocatable :: vtmp3(:,:,:)
+    real(8),allocatable :: utmp2(:,:)
+#else
+    integer,parameter :: TRANSA='C', TRANSB='N'
+    complex(8),allocatable :: wtmp3(:,:,:),wtmp4(:,:,:,:)
+    complex(8),allocatable :: vtmp3(:,:,:)
+    complex(8),allocatable :: utmp2(:,:)
+#endif
+
+    INTERFACE
+       FUNCTION Ylm(x,y,z,l,m)
+         real(8) :: Ylm
+         real(8),intent(IN) :: x,y,z
+         integer,intent(IN) :: l,m
+       END FUNCTION Ylm
+    END INTERFACE
+
+    force2(:,:) = 0.0d0
+
+    if ( Mlma <= 0 ) return
+
+    ML0 = ML_1-ML_0+1
+    ML  = Ngrid(0)
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+    nn1 = ML_0
+    nn2 = ML_1
+    MG  = NGgrid(0)
+
+    pi2 = 2.0d0*acos(-1.0d0)
+
+    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
+    allocate( fftwork(ML) )
+    allocate( zwork0(MG) )
+    allocate( utmp3(nn1:nn2,Mlma,3) )
+    allocate( vtmp3(MB,Mlma,0:3)  )
+    allocate( wtmp3(MB,Mlma,0:3) )
+    allocate( utmp2(ML,3) )
+    allocate( wtmp4(nn1:nn2,0:nprocs_g-1,0:nprocs_b-1,3) )
+
+    allocate( icnt(0:nprocs_g-1) )
+    allocate( idis(0:nprocs_g-1) )
+    allocate( LL2(3,ML) )
+
+    irank=-1
+    i=0
+    do i3=1,node_partition(3)
+    do i2=1,node_partition(2)
+    do i1=1,node_partition(1)
+       irank=irank+1
+       do j3=pinfo_grid(5,irank),pinfo_grid(5,irank)+pinfo_grid(6,irank)-1
+       do j2=pinfo_grid(3,irank),pinfo_grid(3,irank)+pinfo_grid(4,irank)-1
+       do j1=pinfo_grid(1,irank),pinfo_grid(1,irank)+pinfo_grid(2,irank)-1
+          i=i+1
+          LL2(1,i)=j1
+          LL2(2,i)=j2
+          LL2(3,i)=j3
+       end do
+       end do
+       end do
+    end do
+    end do
+    end do
+
+    allocate( a2lma(Natom) ) ; a2lma=0
+    lma=0
+    do a=1,Natom
+       a2lma(a)=lma
+       ik=ki_atom(a)
+       do iorb=1,norb(ik)
+          L=lo(iorb,ik)
+          do m=-L,L
+             lma=lma+1
+          end do
+       end do
+    end do
+
+    Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
+
+    icnt(0:nprocs_g-1)=ML0
+    idis(0)=0
+    do i=1,nprocs_g-1
+       idis(i)=sum( icnt(0:i) )-icnt(i)
+    end do
+
+    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+
+    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
+         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call construct_ggrid(0)
+
+    do s=MSP_0,MSP_1
+    do k=MBZ_0,MBZ_1
+
+       lma=1+myrank_b*nprocs_g+myrank_g-nprocs_g*nprocs_b
+
+       do lma0=1,Mlma_np
+
+          lma = lma + nprocs_g*nprocs_b
+
+          if ( lma <= Mlma ) then
+
+             a    = amap(lma)
+             L    = lmap(lma)
+             m    = mmap(lma)
+             iorb = iorbmap(lma)
+             ik   = ki_atom(a)
+             a1   = pi2*aa_atom(1,a)
+             a2   = pi2*aa_atom(2,a)
+             a3   = pi2*aa_atom(3,a)
+             phase= (-zi)**L
+
+             kx=bb(1,1)*kbb(1,k)+bb(1,2)*kbb(2,k)+bb(1,3)*kbb(3,k)
+             ky=bb(2,1)*kbb(1,k)+bb(2,2)*kbb(2,k)+bb(2,3)*kbb(3,k)
+             kz=bb(3,1)*kbb(1,k)+bb(3,2)*kbb(2,k)+bb(3,3)*kbb(3,k)
+!$OMP parallel private( Gx,Gy,Gz,Gr,j,i1,i2,i3 )
+!$OMP do
+             do i=1,MG
+                Gx = bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
+                Gy = bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
+                Gz = bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
+                Gr = a1*LLG(1,i)+a2*LLG(2,i)+a3*LLG(3,i)
+                j  = mapgk(i,k)
+                zwork0(i)=-viodgk2(j,iorb,ik)*dcmplx(sin(Gr),cos(Gr)) &
+                     *Ylm(kx+Gx,ky+Gy,kz+Gz,L,m)*phase
+             end do
+!$OMP end do
+!$OMP workshare
+             zwork(:,:,:)=z0
+!$OMP end workshare
+!$OMP do
+             do i=1,MG
+                Gx=bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
+                i1=mod(ML1+LLG(1,i),ML1)
+                i2=mod(ML2+LLG(2,i),ML2)
+                i3=mod(ML3+LLG(3,i),ML3)
+                zwork(i1,i2,i3)=Gx*zwork0(i)
+             end do
+!$OMP end do
+!$OMP end parallel
+             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
+                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!$OMP parallel private( i1,i2,i3,Gy )
+!$OMP do
+             do i=1,ML
+                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+                utmp2(i,1)=zwork(i1,i2,i3)
+             end do
+!$OMP end do
+!$OMP workshare
+             zwork(:,:,:)=z0
+!$OMP end workshare
+!$OMP do
+             do i=1,MG
+                Gy=bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
+                i1=mod(ML1+LLG(1,i),ML1)
+                i2=mod(ML2+LLG(2,i),ML2)
+                i3=mod(ML3+LLG(3,i),ML3)
+                zwork(i1,i2,i3)=Gy*zwork0(i)
+             end do
+!$OMP end do
+!$OMP end parallel
+             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
+                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!$OMP parallel private( Gz,i1,i2,i3 )
+!$OMP do
+             do i=1,ML
+                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+                utmp2(i,2)=zwork(i1,i2,i3)
+             end do
+!$OMP end do
+!$OMP workshare
+             zwork(:,:,:)=z0
+!$OMP end workshare
+!$OMP do
+             do i=1,MG
+                Gz=bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
+                i1=mod(ML1+LLG(1,i),ML1)
+                i2=mod(ML2+LLG(2,i),ML2)
+                i3=mod(ML3+LLG(3,i),ML3)
+                zwork(i1,i2,i3)=Gz*zwork0(i)
+             end do
+!$OMP end do
+!$OMP end parallel
+             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
+                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!$OMP parallel do private( i1,i2,i3 )
+             do i=1,ML
+                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+                utmp2(i,3)=zwork(i1,i2,i3)
+             end do
+!$OMP end parallel do
+
+          end if ! lma<=Mlma
+
+          do ir=1,3
+             call mpi_alltoallv(utmp2(1,ir),ir_grid,id_grid,TYPE_MAIN &
+                  ,wtmp4(nn1,0,myrank_b,ir),icnt,idis,TYPE_MAIN,comm_grid,ierr)
+             call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g, &
+                  TYPE_MAIN,wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN, &
+                  comm_band,ierr)
+             lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
+             do j=0,nprocs_b-1
+             do i=0,nprocs_g-1
+                lma1=lma1+1
+                if ( lma1 <= Mlma ) then
+!$OMP parallel workshare
+                   utmp3(nn1:nn2,lma1,ir)=wtmp4(nn1:nn2,i,j,ir)
+!$OMP end parallel workshare
+                end if
+             end do
+             end do
+          end do ! ir
+
+       end do ! lma0
+
+       m=MB_1-MB_0+1
+
+#ifdef _DRSDFT_
+       call dgemm(TRANSA,TRANSB,m,Mlma,ML0,one,unk(nn1,MB_0,k,s),ML0 &
+            ,uVk(nn1,1,k),ML0,zero,vtmp3(MB_0,1,0),MB)
+       call dgemm(TRANSA,TRANSB,m,3*Mlma,ML0,one,unk(nn1,MB_0,k,s),ML0 &
+            ,utmp3(nn1,1,1),ML0,zero,vtmp3(MB_0,1,1),MB)
+       call mpi_allreduce(vtmp3,wtmp3,MB*Mlma*4,TYPE_MAIN,mpi_sum &
+            ,comm_grid,ierr)
+#else
+       call zgemm(TRANSA,TRANSB,m,Mlma,ML0,one,unk(nn1,MB_0,k,s),ML0 &
+            ,uVk(nn1,1,k),ML0,zero,vtmp3(MB_0,1,0),MB)
+       call zgemm(TRANSA,TRANSB,m,3*Mlma,ML0,one,unk(nn1,MB_0,k,s),ML0 &
+            ,utmp3(nn1,1,1),ML0,zero,vtmp3(MB_0,1,1),MB)
+       call mpi_allreduce(vtmp3,wtmp3,MB*Mlma*4,TYPE_MAIN,mpi_sum &
+            ,comm_grid,ierr)
+       do lma=1,Mlma
+       do n=MB_0,MB_1
+          ztmp=wtmp3(n,lma,0)
+          ztmp=conjg(ztmp)
+          wtmp3(n,lma,0)=ztmp
+       end do
+       end do
+#endif
+
+!       do lma=1,Mlma
+!          a=amap(lma)
+!          const=-iuV(lma)*2.d0*dV*dV
+!          wtmp3(MB_0:MB_1,lma,0)=const*occ(MB_0:MB_1,k,s)*wtmp3(MB_0:MB_1,lma,0)
+!          force2(1,a)=force2(1,a) &
+!               +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,1),8) )
+!          force2(2,a)=force2(2,a) &
+!               +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,2),8) )
+!          force2(3,a)=force2(3,a) &
+!               +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,3),8) )
+!       end do
+!$OMP parallel do private( lma,ik,L,const )
+       do a=1,Natom
+          lma=a2lma(a)
+          ik=ki_atom(a)
+          do iorb=1,norb(ik)
+             L=lo(iorb,ik)
+             do m=-L,L
+                lma=lma+1
+                const=-iuV(lma)*2.d0*dV*dV
+                wtmp3(MB_0:MB_1,lma,0) &
+                     =const*occ(MB_0:MB_1,k,s)*wtmp3(MB_0:MB_1,lma,0)
+                force2(1,a)=force2(1,a) &
+                +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,1),8) )
+                force2(2,a)=force2(2,a) &
+                +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,2),8) )
+                force2(3,a)=force2(3,a) &
+                +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,3),8) )
+             end do ! m
+          end do ! iorb
+       end do ! a
+!$OMP end parallel do
+
+    end do ! k
+    end do ! s
+
+    deallocate( wsavez,wsavey,wsavex )
+    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+
+    deallocate( a2lma )
+    deallocate( LL2 )
+    deallocate( idis,icnt )
+    deallocate( wtmp4 )
+    deallocate( utmp2 )
+    deallocate( wtmp3,vtmp3 )
+    deallocate( utmp3 )
+    deallocate( zwork0 )
+    deallocate( zwork,fftwork )
+
+    allocate( work2(3,MI) )
+
+    call mpi_allreduce(force2,work2,3*MI,mpi_real8,mpi_sum,comm_band,ierr)
+    call mpi_allreduce(work2,force2,3*MI,mpi_real8,mpi_sum,comm_bzsm,ierr)
+    call mpi_allreduce(force2,work2,3*MI,mpi_real8,mpi_sum,comm_spin,ierr)
+!$OMP parallel workshare
+    force2(1:3,1:MI)=work2(1:3,1:MI)
+!$OMP end parallel workshare
+
+    deallocate( work2 )
+
+  END SUBROUTINE calc_force_ps_nloc3
 
 
 END MODULE ps_nloc3_module
