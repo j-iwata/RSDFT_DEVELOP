@@ -26,6 +26,8 @@ MODULE ps_nloc3_module
   integer :: Mlma
   integer :: nzlma
 
+  logical :: first_time = .true.
+
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
   real(8),allocatable :: uVk(:,:,:)
@@ -294,6 +296,8 @@ CONTAINS
 
     if ( Mlma <= 0 ) return
 
+    if ( first_time ) then
+
 ! allocate ---------------------------------------------
     allocate( uVk(nn1:nn2,Mlma,MBZ_0:MBZ_1) ) ; uVk(:,:,:)=zero
     allocate( iuV(Mlma)     ) ; iuV=0
@@ -301,14 +305,10 @@ CONTAINS
     allocate( lmap(Mlma)    ) ; lmap=0
     allocate( mmap(Mlma)    ) ; mmap=0
     allocate( iorbmap(Mlma) ) ; iorbmap=0
+    allocate( idis(0:nprocs_g-1),icnt(0:nprocs_g-1) )
 !-------------------------------------------------------
 
-!- allocate -----------------------------------------------------
-    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1),fftwork(ML) )
-    allocate( idis(0:nprocs_g-1),icnt(0:nprocs_g-1) )
-    allocate( utmp(ML) )
-    allocate( utmp3(nn1:nn2,0:nprocs_g-1,0:nprocs_b-1) )
-!----------------------------------------------------------------
+    nzlma = Mlma
 
     Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
 
@@ -333,6 +333,16 @@ CONTAINS
           end do
        end do
     end do
+
+    first_time = .false.
+
+    end if
+
+!- allocate -----------------------------------------------------
+    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1),fftwork(ML) )
+    allocate( utmp(ML) )
+    allocate( utmp3(nn1:nn2,0:nprocs_g-1,0:nprocs_b-1) )
+!----------------------------------------------------------------
 
     allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
     allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
@@ -448,10 +458,7 @@ CONTAINS
 
     deallocate( utmp3 )
     deallocate( utmp  )
-    deallocate( icnt,idis  )
     deallocate( zwork,fftwork )
-
-    nzlma = Mlma
 
     return
 
@@ -520,14 +527,14 @@ CONTAINS
     integer,intent(IN)  :: MI
     real(8),intent(OUT) :: force2(3,MI)
     integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,Mlma_np,ierr,ML0
-    integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir
+    integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir,n
     integer :: ifacx(30),ifacy(30),ifacz(30),j1,j2,j3,irank
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     integer,allocatable :: idis(:),icnt(:),LL2(:,:),a2lma(:)
     real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,kx,ky,kz,const
     real(8),allocatable :: work2(:,:)
-    complex(8) :: phase
+    complex(8) :: phase,ztmp
     complex(8),parameter :: zi=(0.0d0,1.0d0),z0=(0.0d0,0.0d0)
     complex(8),allocatable :: zwork0(:),zwork(:,:,:),fftwork(:)
 #ifdef _DRSDFT_
