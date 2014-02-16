@@ -260,7 +260,7 @@ CONTAINS
     complex(8) :: zum,ztmp,phase
     integer,allocatable :: icnt(:),idis(:)
     integer :: nn1,nn2,ML0,Mlma_np,l1,l2,l3,m1,m2,m3
-    integer :: i1,i2,i3,j1,j2,j3,irank_g,ierr
+    integer :: i0,i1,i2,i3,j1,j2,j3,irank_g,ierr
     integer :: ik,i,j,k,a,L,m,iorb,lma,lma0,lma1
     real(8) :: a1,a2,a3,c1,c2,c3,Gr,x,y,z,pi2
     integer :: k1,kk1,ig,ML1,ML2,ML3,ML,MG
@@ -411,12 +411,13 @@ CONTAINS
                 m2=pinfo_grid(4,irank_g)+l2-1
                 l3=pinfo_grid(5,irank_g)
                 m3=pinfo_grid(6,irank_g)+l3-1
+                i0=sum( ir_grid(0:irank_g) ) - ir_grid(irank_g) + 1 
 !$OMP do collapse(3)
                 do j3=l3,m3
                 do j2=l2,m2
                 do j1=l1,m1
 !                   i=i+1
-                   i=1+j1+j2*ML1+j3*ML2*ML1
+                   i=(j1-l1)+(j2-l2)*(m1-l1+1)+(j3-l3)*(m2-l2+1)*(m1-l1+1) + i0
                    utmp(i)=zwork(j1,j2,j3)
                 end do
                 end do
