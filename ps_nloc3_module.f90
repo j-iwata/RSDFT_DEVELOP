@@ -23,9 +23,10 @@ MODULE ps_nloc3_module
 
   integer,allocatable :: iuV(:),iorbmap(:),amap(:),lmap(:),mmap(:)
 
-  integer :: Mlma
+  integer :: Mlma, Mlma_np
   integer :: nzlma
 
+  integer,allocatable :: icnt(:),idis(:)
   logical :: first_time = .true.
 
 #ifdef _DRSDFT_
@@ -258,8 +259,7 @@ CONTAINS
     complex(8),parameter :: zi=(0.d0,1.d0)
     complex(8),allocatable :: zwork(:,:,:),fftwork(:)
     complex(8) :: zum,ztmp,phase
-    integer,allocatable :: icnt(:),idis(:)
-    integer :: nn1,nn2,ML0,Mlma_np,l1,l2,l3,m1,m2,m3
+    integer :: nn1,nn2,ML0,l1,l2,l3,m1,m2,m3
     integer :: i0,i1,i2,i3,j1,j2,j3,irank_g,ierr
     integer :: ik,i,j,k,a,L,m,iorb,lma,lma0,lma1
     real(8) :: a1,a2,a3,c1,c2,c3,Gr,x,y,z,pi2
@@ -527,12 +527,12 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: MI
     real(8),intent(OUT) :: force2(3,MI)
-    integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,Mlma_np,ierr,ML0
+    integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,ierr,ML0
     integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir,n
     integer :: ifacx(30),ifacy(30),ifacz(30),j1,j2,j3,irank
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
-    integer,allocatable :: idis(:),icnt(:),LL2(:,:),a2lma(:)
+    integer,allocatable :: LL2(:,:),a2lma(:)
     real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,kx,ky,kz,const
     real(8),allocatable :: work2(:,:)
     complex(8) :: phase,ztmp
@@ -582,8 +582,6 @@ CONTAINS
     allocate( utmp2(ML,3) )
     allocate( wtmp4(nn1:nn2,0:nprocs_g-1,0:nprocs_b-1,3) )
 
-    allocate( icnt(0:nprocs_g-1) )
-    allocate( idis(0:nprocs_g-1) )
     allocate( LL2(3,ML) )
 
     irank=-1
@@ -619,13 +617,13 @@ CONTAINS
        end do
     end do
 
-    Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
+!    Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
 
-    icnt(0:nprocs_g-1)=ML0
-    idis(0)=0
-    do i=1,nprocs_g-1
-       idis(i)=sum( icnt(0:i) )-icnt(i)
-    end do
+!    icnt(0:nprocs_g-1)=ML0
+!    idis(0)=0
+!    do i=1,nprocs_g-1
+!       idis(i)=sum( icnt(0:i) )-icnt(i)
+!    end do
 
     allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
     allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
@@ -821,12 +819,13 @@ CONTAINS
     end do ! k
     end do ! s
 
+    call destruct_ggrid
+
     deallocate( wsavez,wsavey,wsavex )
     deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
 
     deallocate( a2lma )
     deallocate( LL2 )
-    deallocate( idis,icnt )
     deallocate( wtmp4 )
     deallocate( utmp2 )
     deallocate( wtmp3,vtmp3 )
