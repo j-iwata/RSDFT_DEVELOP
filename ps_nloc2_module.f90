@@ -20,8 +20,6 @@ MODULE ps_nloc2_module
            ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
            ,prep_ps_nloc2_esm
 
-  integer :: Mlma
-
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)
 

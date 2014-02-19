@@ -15,8 +15,6 @@ MODULE ps_nloc2_mol_module
   PRIVATE
   PUBLIC :: prep_ps_nloc2_mol
 
-  integer :: Mlma
-
 CONTAINS
 
 

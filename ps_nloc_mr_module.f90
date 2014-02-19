@@ -18,8 +18,6 @@ MODULE ps_nloc_mr_module
            ,op_ps_nloc_mr,calc_force_ps_nloc_mr &
            ,prep_uvk_ps_nloc_mr,prep_rvk_ps_nloc_mr
 
-  integer :: Mlma
-
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)
 

@@ -2,7 +2,7 @@ MODULE ps_nloc2_variables
 
   use parallel_module, only: MPI_REAL8,MPI_COMPLEX16,nprocs_g
 
-  integer :: nzlma
+  integer :: Mlma,nzlma
   integer,allocatable :: JJ_MAP(:,:,:),MJJ_MAP(:),MJJ(:)
   integer :: MMJJ,MAXMJJ,nrlma_xyz(6)
   real(8),allocatable :: uV(:,:)
