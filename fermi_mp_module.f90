@@ -10,7 +10,7 @@ MODULE fermi_module
   integer :: mb1,mb2,kinteg
 
   integer :: nsetocc
-  real(8) :: setocc(10)
+  real(8) :: setocc(20)
 
   logical :: first_time = .true.
   real(8),allocatable :: factor(:)
@@ -72,7 +72,7 @@ CONTAINS
     call mpi_bcast(ekbt,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(kinteg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(nsetocc,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(setocc,nsetocc,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(setocc,nsetocc,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_fermi
 
 
