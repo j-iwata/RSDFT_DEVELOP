@@ -9,7 +9,7 @@ MODULE fermi_module
   real(8) :: ekbt, efermi, Eentropy
   integer :: mb1,mb2,kinteg
 
-  integer :: nsetocc
+  integer :: nsetocc,isetocc(2)
   real(8) :: setocc(20)
 
   logical :: first_time = .true.
@@ -21,11 +21,12 @@ CONTAINS
   SUBROUTINE read_fermi(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
-    integer :: i
+    integer :: i,n1,n2
     character(6) :: cbuf,ckey
     ekbt=1.d-5
     kinteg=0
     nsetocc=0
+    isetocc=0
     setocc=0.0d0
     if ( rank == 0 ) then
        rewind unit
@@ -40,13 +41,17 @@ CONTAINS
              read(unit,*) cbuf,kinteg
           else if ( ckey(1:6) == "SETOCC" ) then
              backspace(unit)
-             read(unit,*) cbuf,nsetocc,setocc(1:nsetocc)
+             read(unit,*) cbuf,n1,n2,setocc(1:n2-n1+1)
+             nsetocc=n2-n1+1
+             isetocc(1)=n1
+             isetocc(2)=n2
           end if
        end do
 999    continue
        write(*,*) "ekbt   =",ekbt
        write(*,*) "kinteg =",kinteg
        write(*,*) "nsetocc=",nsetocc,setocc(1:nsetocc)
+       write(*,*) "isetocc=",isetocc(1:2)
     end if
     call send_fermi(0)
   END SUBROUTINE read_fermi
@@ -72,6 +77,7 @@ CONTAINS
     call mpi_bcast(ekbt,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(kinteg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(nsetocc,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(isetocc,2,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(setocc,nsetocc,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_fermi
 
@@ -95,10 +101,13 @@ CONTAINS
        occ(:,:,:)=0.0d0
        do s=1,MSP
        do k=1,MBZ
-          occ(1:nsetocc,k,s) = setocc(1:nsetocc)
+          do n=1,isetocc(1)-1
+             occ(n,k,s)=1.0d0
+          end do
+          occ(isetocc(1):isetocc(2),k,s) = setocc(1:nsetocc)
        end do
        end do
-       ef=maxval( esp(nsetocc,1:MBZ,1:MSP) )
+       ef=maxval( esp(isetocc(2),1:MBZ,1:MSP) )
        goto 100
     end if
 

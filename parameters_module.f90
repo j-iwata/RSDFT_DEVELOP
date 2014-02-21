@@ -9,6 +9,8 @@ MODULE parameters_module
 
   integer,parameter :: unit=1, unit_atom=970
 
+  integer :: atom_format
+
 CONTAINS
 
   SUBROUTINE read_parameters
@@ -101,9 +103,32 @@ CONTAINS
        write(*,*) "iswitch_band=",iswitch_band
     end if
 
+    atom_format = 0
+    if ( myrank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=980) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:3) == "XYZ" ) then
+             atom_format = 1
+             write(*,*) "atom_format=",atom_format,ckey(1:3)
+             exit
+          end if
+       end do
+980    continue
+    end if
+
     call send_parameters(0)
 
     call read_atomopt(myrank,unit)
+
+    if ( atom_format == 1 ) then
+       do i=1,Natom
+          aa_atom(1,i) = aa_atom(1,i)/( ax*aa(1,1) )
+          aa_atom(2,i) = aa_atom(2,i)/( ax*aa(2,2) )
+          aa_atom(3,i) = aa_atom(3,i)/( ax*aa(3,3) )
+       end do
+    end if
 
   END SUBROUTINE read_parameters
 
@@ -192,6 +217,7 @@ CONTAINS
     call mpi_bcast(iswitch_scf ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_opt ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_band,1,mpi_integer,rank,mpi_comm_world,ierr)
+    call mpi_bcast(atom_format,1,mpi_integer,rank,mpi_comm_world,ierr)
   END SUBROUTINE send_parameters
 
 

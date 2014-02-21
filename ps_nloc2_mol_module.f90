@@ -38,6 +38,7 @@ CONTAINS
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
     real(8),allocatable :: uV_tmp(:,:,:),work(:)
+    real(8) :: rmin(3),rmax(3)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: MMJJ_t,ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
@@ -57,6 +58,41 @@ CONTAINS
           Mlma=Mlma+2*lo(iorb,ik)+1
        end do
     end do
+
+    rmin(:)= 1.d100
+    rmax(:)=-1.d100
+    do a=1,Natom
+       rmin(1) = min( aa_atom(1,a), rmin(1) )
+       rmin(2) = min( aa_atom(2,a), rmin(2) )
+       rmin(3) = min( aa_atom(3,a), rmin(3) )
+       rmax(1) = max( aa_atom(1,a), rmax(1) )
+       rmax(2) = max( aa_atom(2,a), rmax(2) )
+       rmax(3) = max( aa_atom(3,a), rmax(3) )
+    end do
+    if ( DISP_SWITCH_PARALLEL ) then
+       write(*,*) "rmin(1),rmin(1)+max(Rps)=",rmin(1),rmin(1)-maxval(Rps)
+       write(*,*) "rmin(2),rmin(2)+max(Rps)=",rmin(2),rmin(2)-maxval(Rps)
+       write(*,*) "rmin(3),rmin(3)+max(Rps)=",rmin(3),rmin(3)-maxval(Rps)
+       write(*,*) "rmax(1),rmax(1)+max(Rps)=",rmax(1),rmax(1)+maxval(Rps)
+       write(*,*) "rmax(2),rmax(2)+max(Rps)=",rmax(2),rmax(2)+maxval(Rps)
+       write(*,*) "rmax(3),rmax(3)+max(Rps)=",rmax(3),rmax(3)+maxval(Rps)
+    end if
+    rmin(1)=rmin(1)-maxval(Rps)
+    rmin(2)=rmin(2)-maxval(Rps)
+    rmin(3)=rmin(3)-maxval(Rps)
+    rmax(1)=rmax(1)+maxval(Rps)
+    rmax(2)=rmax(2)+maxval(Rps)
+    rmax(3)=rmax(3)+maxval(Rps)
+    if ( abs(rmin(1))>(Hgrid(1)*Ngrid(1)/2) .or. &
+         abs(rmax(1))>(Hgrid(1)*Ngrid(1)/2) .or. &
+         abs(rmin(2))>(Hgrid(2)*Ngrid(2)/2) .or. &
+         abs(rmax(2))>(Hgrid(2)*Ngrid(2)/2) .or. &
+         abs(rmin(3))>(Hgrid(3)*Ngrid(3)/2) .or. &
+         abs(rmax(3))>(Hgrid(3)*Ngrid(3)/2)      ) then
+       if ( myrank == 0 ) write(*,*) "Rsize is too small!!"
+       call mpi_finalize(ierr)
+       stop "stop@ps_nloc2_mol"
+    end if
 
     if ( Mlma < nprocs_g ) then
        nzlma_0 = Mlma

@@ -65,6 +65,7 @@ CONTAINS
     bb(2,2)=2.d0*acos(-1.d0)/aa(2,2)
     bb(3,3)=2.d0*acos(-1.d0)/aa(3,3)
     if ( present(disp_switch) ) then
+       if ( disp_switch ) then
        write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
        write(*,*) "Hgrid(1:3)=",Hgrid(1:3)
        write(*,*) "aa"
@@ -75,6 +76,7 @@ CONTAINS
        write(*,*) bb(1:3,1)
        write(*,*) bb(1:3,2)
        write(*,*) bb(1:3,3)
+       end if
     end if
   END SUBROUTINE init_rgrid_mol
 
