@@ -818,13 +818,12 @@ end subroutine berendsen
 !-----------------------------------------------------------------------------
 !---------------Scaling fictitious kinetic energy KK--------------------------
 subroutine rscve(fke)
-!       use global_variables
   use cpmd_variables
   implicit none
   real(8) :: alfae,fke
   !       if(fke.gt.ekin1.or.fke.lt.ekin2.and.fke.ne.0.d0) then
-  if(fke.gt.ekin1.and.fke.ne.0.d0) then
-     write(*,*) "SCALE ELEC. KIN. ENE."
+  if ( fke > ekin1 .and. fke /= 0.d0 ) then
+  !   write(*,*) "SCALE ELEC. KIN. ENE."
      alfae=dsqrt(ekinw/fke)
      psi_v=psi_v*alfae
   endif
