@@ -878,7 +878,7 @@ CONTAINS
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     integer :: ispin,i,i1,i2,i3,ik,a,j,ierr,irank,N_MI,n
-    integer :: MI_0,MI_1,ML1,ML2,ML3,ML,MG
+    integer :: MI_0,MI_1,ML1,ML2,ML3,ML,MG,ML_0
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     integer,allocatable :: icnt(:),idis(:)
     real(8) :: a1,a2,a3,pi2,Gr,Gx,Gy,Gz,Vcell
@@ -898,6 +898,7 @@ CONTAINS
     ML1   = Ngrid(1)
     ML2   = Ngrid(2)
     ML3   = Ngrid(3)
+    ML_0  = Igrid(1,0)
     pi2   = 2.d0*acos(-1.d0)
     Vcell = ML*dV
     a1b = Igrid(1,1)
@@ -938,7 +939,7 @@ CONTAINS
        do i3=a3b,b3b
        do i2=a2b,b2b
        do i1=a1b,b1b
-          i=i1-a1b+(i2-a2b)*ab1+(i3-a3b)*ab12
+          i=ML_0+i1-a1b+(i2-a2b)*ab1+(i3-a3b)*ab12
           zwork1(i1,i2,i3)=zwork1(i1,i2,i3)+rho(i,ispin)
        end do
        end do
