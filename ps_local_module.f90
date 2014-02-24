@@ -853,16 +853,16 @@ CONTAINS
     call watch(ctt(1),ett(1))
 
     call pzfft3dv(zwork1,zwork2,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,1)
-    zwork1=ML*zwork2
+   ! zwork1=ML*zwork2
 
     call watch(ctt(2),ett(2))
 
-!$OMP parallel do collapse(3)
+!$OMP parallel do collapse(3) private(i)
     do i3=a3b,b3b
     do i2=a2b,b2b
     do i1=a1b,b1b
        i = ML_0 + i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab12
-       Vion(i)=real( zwork1(i1,i2,i3) )
+       Vion(i)=real( zwork2(i1,i2,i3) )*ML
     end do
     end do
     end do
@@ -946,7 +946,7 @@ CONTAINS
     allocate( zwork1(0:ML1-1,a2b:b2b,a3b:b3b) )
     zwork1(:,:,:)=z0
     do ispin=1,Nspin
-!$OMP parallel do collapse(3)
+!$OMP parallel do collapse(3) private(i)
        do i3=a3b,b3b
        do i2=a2b,b2b
        do i1=a1b,b1b
