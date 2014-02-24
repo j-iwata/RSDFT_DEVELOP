@@ -814,20 +814,28 @@ CONTAINS
     allocate( zwork2(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork2(:,:,:)=(0.d0,0.d0)
     allocate( vg(MG) ) ; vg=(0.d0,0.d0)
 
+!$OMP parallel private(j,ik)
+!$OMP do
     do i=MG_0,MG_1
        j=MGL(i)
        vg(i)=vqlg(j,1)*SGK(i,1)
     end do
+!$OMP end do
     do ik=2,Nelement
+!$OMP do
        do i=MG_0,MG_1
           j=MGL(i)
           vg(i)=vg(i)+vqlg(j,ik)*SGK(i,ik)
        end do
+!$OMP end do
     end do
+!$OMP end parallel
+
     call allgatherv_Ggrid(vg)
 
     call construct_Ggrid(2)
 
+!$OMP parallel do private( i1,i2,i3 )
     do i=1,NGgrid(0)
        i3=LLG(3,i)
        i2=LLG(2,i)
@@ -836,6 +844,7 @@ CONTAINS
           zwork1(i1,i2,i3)=vg(i)
        endif
     end do
+!$OMP end parallel do
 
     call destruct_Ggrid
 
@@ -848,6 +857,7 @@ CONTAINS
 
     call watch(ctt(2),ett(2))
 
+!$OMP parallel do collapse(3)
     do i3=a3b,b3b
     do i2=a2b,b2b
     do i1=a1b,b1b
@@ -856,6 +866,7 @@ CONTAINS
     end do
     end do
     end do
+!$OMP end parallel do
 
     deallocate( zwork2 )
     deallocate( zwork1 )
@@ -957,7 +968,7 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    call pzfft3dv(zwork2,zwork1,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,1)
+    call pzfft3dv(zwork2,zwork1,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,-1)
 
     call watch(ctt(4),ett(4))
 
@@ -1013,9 +1024,9 @@ CONTAINS
        end do
 !$OMP end parallel do
 
-       force(1,a) = -zsum1*Vcell
-       force(2,a) = -zsum2*Vcell
-       force(3,a) = -zsum3*Vcell
+       force(1,a) = -zsum1*dV
+       force(2,a) = -zsum2*dV
+       force(3,a) = -zsum3*dV
 
     end do ! a
 

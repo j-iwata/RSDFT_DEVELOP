@@ -31,7 +31,11 @@ SUBROUTINE getforce
   call calc_ewald(Eewald,disp_switch)
 
   call construct_strfac
+#ifndef _FFTE_
   call construct_ps_local
+#else
+  call construct_ps_local_ffte
+#endif
   call construct_ps_pcc
   call destruct_strfac
 
