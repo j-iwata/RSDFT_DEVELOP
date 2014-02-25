@@ -236,7 +236,11 @@ PROGRAM Real_Space_Solid
      call watcht(disp_switch,"strf",1)
      call watcht(disp_switch,"strf",1)
 
+#ifndef _FFTE_
      call construct_ps_local
+#else
+     call construct_ps_local_ffte
+#endif
      call watcht(disp_switch,"loc&pcc",1)
      call watcht(disp_switch,"loc",1)
 
@@ -602,33 +606,6 @@ PROGRAM Real_Space_Solid
 
   call calc_total_energy(.true.,disp_switch)
 
-  m=Ngrid(1)/2
-  if ( .not.allocated(LL_ESM) ) then
-     ML0_ESM=ML_0
-     ML1_ESM=ML_1
-     allocate( LL_ESM(3,ML_0:ML_1) ) ; LL_ESM=0
-     i=ML_0-1
-     do i3=Igrid(1,3),Igrid(2,3)
-     do i2=Igrid(1,2),Igrid(2,2)
-     do i1=Igrid(1,1),Igrid(2,1)
-        i=i+1
-        LL_ESM(1,i)=i1
-        LL_ESM(2,i)=i2
-        LL_ESM(3,i)=i3
-     end do
-     end do
-     end do
-     m=0
-  end if
-
-!  call func2gp_c_esm(10,ML0_ESM,ML1_ESM,unk(:,1,1,1))
-!  call func2gp_r_esm(11,ML0_ESM,ML1_ESM,Vloc(:,1))
-!  call func2gp_r_esm(12,ML0_ESM,ML1_ESM,Vion)
-!  call func2gp_r_esm(13,ML0_ESM,ML1_ESM,Vh)
-!  call func2gp_r_esm(14,ML0_ESM,ML1_ESM,Vxc(:,1))
-!  call func2gp_r_esm(15,ML0_ESM,ML1_ESM,rho(:,1))
-!  goto 900
-
   if ( flag_end ) then
      if ( disp_switch ) write(*,*) "flag_end=",flag_end
      call end_mpi_parallel
@@ -651,10 +628,12 @@ PROGRAM Real_Space_Solid
 
 ! --- force calculation ---
 
-  select case( pselect )
-  case( 2 )
-     call ps_nloc2_init_derivative
-  end select
+  if ( SYStype == 0 ) then
+     select case( pselect )
+     case( 2 )
+        call ps_nloc2_init_derivative
+     end select
+  end if
 
   if ( iswitch_opt == -1 ) then
 
