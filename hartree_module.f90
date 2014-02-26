@@ -4,6 +4,7 @@ MODULE hartree_module
   use esm_hartree_module
   use bb_module
   use watch_module
+  use ffte_sub_module
 
   implicit none
 
@@ -14,9 +15,16 @@ MODULE hartree_module
   real(8),allocatable :: Vh(:)
   integer :: SYStype=0
 
+!  logical :: first_time=.true.
+!  integer :: npux,npuy,npuz
+!  integer :: comm_fftx,comm_ffty,comm_fftz
+
   logical :: first_time=.true.
-  integer :: npux,npuy,npuz
-  integer :: comm_fftx,comm_ffty,comm_fftz
+  integer :: NGHT
+  integer,allocatable :: LGHT(:,:)
+  integer,allocatable :: IGHT(:,:)
+  real(8),allocatable :: GGHT(:)
+
 
 CONTAINS
 
@@ -199,10 +207,10 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,n3
     real(8),intent(IN) :: rho(n1:n2,n3)
-    integer :: i,i1,i2,i3,ierr,ispin
+    integer :: i,i1,i2,i3,ierr,ispin,n
     real(8) :: Eh0,pi4,g2,ctt(0:5),ett(0:5)
     complex(8),parameter :: z0=(0.d0,0.d0)
-    complex(8),allocatable :: zwork1(:,:,:),zwork2(:,:,:)
+!    complex(8),allocatable :: zwork1(:,:,:),zwork2(:,:,:)
     integer :: ML1,ML2,ML3,ML
     integer :: MG,ML_0,ML_1,a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     integer :: MG1,MG2,MG3,NG1,NG2,NG3,np1,np2,np3
@@ -226,7 +234,40 @@ CONTAINS
     ab12= (b1b-a1b+1)* (b2b-a2b+1)
 
     if ( first_time ) then
-       call prep_ffte
+!       call prep_ffte
+       call construct_Ggrid(0)
+       n=0
+       do i=1,NGgrid(0)
+          i1=mod( Ngrid(1)+LLG(1,i), Ngrid(1) )
+          i2=mod( Ngrid(2)+LLG(2,i), Ngrid(2) )
+          i3=mod( Ngrid(3)+LLG(3,i), Ngrid(3) )
+          if ( all(LLG(1:3,i)==0) ) cycle
+          if ( a2b <= i2 .and. i2 <= b2b .and. a3b <= i3 .and. i3 <= b3b ) then
+             n=n+1
+          end if
+       end do
+       allocate( LGHT(3,n) ) ; LGHT=0
+       allocate( IGHT(3,n) ) ; IGHT=0
+       allocate( GGHT(n)   ) ; GGHT=0.0d0
+       n=0
+       do i=1,NGgrid(0)
+          i1=mod( Ngrid(1)+LLG(1,i), Ngrid(1) )
+          i2=mod( Ngrid(2)+LLG(2,i), Ngrid(2) )
+          i3=mod( Ngrid(3)+LLG(3,i), Ngrid(3) )
+          if ( all(LLG(1:3,i)==0) ) cycle
+          if ( a2b <= i2 .and. i2 <= b2b .and. a3b <= i3 .and. i3 <= b3b ) then
+             n=n+1
+             LGHT(1,n)=i1
+             LGHT(2,n)=i2
+             LGHT(3,n)=i3
+             g2=( bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i) )**2 &
+               +( bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i) )**2 &
+               +( bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i) )**2
+             GGHT(n)=pi4/g2
+          end if
+       end do
+       NGHT=n
+       call destruct_Ggrid
        first_time=.false.
     end if
     
@@ -235,57 +276,68 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
-    allocate( zwork1(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork1=z0
-    allocate( zwork2(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork2=z0
+!    allocate( zwork1(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork1=z0
+!    allocate( zwork2(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork2=z0
 
+    zwork1_ffte(:,:,:)=z0
     do ispin=1,n3
 !$OMP parallel do collapse(3) private(i)
        do i3=a3b,b3b
        do i2=a2b,b2b
        do i1=a1b,b1b
           i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
-          zwork1(i1,i2,i3)=zwork1(i1,i2,i3)+rho(i,ispin)
+          zwork1_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)+rho(i,ispin)
        end do
        end do
        end do
 !$OMP end parallel do
     end do
 
-    call mpi_allreduce(zwork1,zwork2,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
+    call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
          ,mpi_complex16,mpi_sum,comm_fftx,ierr)
 
     call watch(ctt(1),ett(1))
 
-    call pzfft3dv(zwork2,zwork1,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,-1)
+    call pzfft3dv(zwork2_ffte,zwork1_ffte,ML1,ML2,ML3 &
+         ,comm_ffty,comm_fftz,npuy,npuz,-1)
 
     call watch(ctt(2),ett(2))
 
-    call construct_Ggrid(2)
+!    call construct_Ggrid(2)
+!    zwork2_ffte(:,:,:)=z0
+!!$OMP parallel do private( g2,i1,i2,i3 )
+!    do i=1,NGgrid(0)
+!       g2=GG(MGL(i))
+!       if ( g2 == 0.d0 ) cycle
+!       i1=LLG(1,i)
+!       i2=LLG(2,i)
+!       i3=LLG(3,i)
+!       if ( a1b <= i1 .and. i1 <= b1b .and. &
+!            a2b <= i2 .and. i2 <= b2b .and. &
+!            a3b <= i3 .and. i3 <= b3b       ) then
+!          zwork2_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)*pi4/g2
+!       end if
+!    end do
+!!$OMP end parallel do
+!    call destruct_Ggrid
 
-    zwork2(:,:,:)=z0
-!$OMP parallel do private( g2,i1,i2,i3 )
-    do i=1,NGgrid(0)
-       g2=GG(MGL(i))
-       if ( g2 == 0.d0 ) cycle
-       i1=LLG(1,i)
-       i2=LLG(2,i)
-       i3=LLG(3,i)
-       if ( a1b <= i1 .and. i1 <= b1b .and. &
-            a2b <= i2 .and. i2 <= b2b .and. &
-            a3b <= i3 .and. i3 <= b3b       ) then
-          zwork2(i1,i2,i3)=zwork1(i1,i2,i3)*pi4/g2
-       end if
+    zwork2_ffte(:,:,:)=z0
+    do i=1,NGHT
+       i1=LGHT(1,i)
+       i2=LGHT(2,i)
+       i3=LGHT(3,i)
+       zwork2_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)*GGHT(i)
     end do
-!$OMP end parallel do
 
-    call destruct_Ggrid
-
-    call mpi_allreduce(zwork2,zwork1,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
-         ,mpi_complex16,mpi_sum,comm_fftx,ierr)
+!    call mpi_allreduce(zwork2_ffte,zwork1_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
+!         ,mpi_complex16,mpi_sum,comm_fftx,ierr)
 
     call watch(ctt(3),ett(3))
 
-    call pzfft3dv(zwork1,zwork2,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,1)
+!    call pzfft3dv(zwork1_ffte,zwork2_ffte,ML1,ML2,ML3 &
+!         ,comm_ffty,comm_fftz,npuy,npuz,1)
+    call pzfft3dv(zwork2_ffte,zwork1_ffte,ML1,ML2,ML3 &
+         ,comm_ffty,comm_fftz,npuy,npuz,1)
 
     call watch(ctt(4),ett(4))
 
@@ -294,7 +346,7 @@ CONTAINS
     do i2=a2b,b2b
     do i1=a1b,b1b
        i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
-       Vh(i)=real( zwork2(i1,i2,i3) )
+       Vh(i)=real( zwork1_ffte(i1,i2,i3) )
     end do
     end do
     end do
@@ -307,7 +359,7 @@ CONTAINS
        do i2=a2b,b2b
        do i1=a1b,b1b
           i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
-          Eh0 = Eh0 + real( zwork2(i1,i2,i3) )*rho(i,ispin)
+          Eh0 = Eh0 + real( zwork1_ffte(i1,i2,i3) )*rho(i,ispin)
        end do
        end do
        end do
@@ -316,8 +368,8 @@ CONTAINS
     Eh0=0.5d0*Eh0*dV
     call mpi_allreduce(Eh0,E_hartree,1,mpi_real8,mpi_sum,comm_grid,ierr)
 
-    deallocate( zwork2 )
-    deallocate( zwork1 )
+!    deallocate( zwork2 )
+!    deallocate( zwork1 )
 
     call watch(ctt(5),ett(5))
 
