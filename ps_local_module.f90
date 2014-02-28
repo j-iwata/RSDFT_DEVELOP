@@ -40,6 +40,7 @@ MODULE ps_local_module
   integer,allocatable :: LGPS(:,:),IGPS(:)
   integer :: MI_0,MI_1
   complex(8),allocatable :: fg(:)
+  integer,allocatable :: icnta(:),idisa(:)
 
 CONTAINS
 
@@ -942,7 +943,7 @@ CONTAINS
 !    integer :: MI_0,MI_1
     integer :: ML1,ML2,ML3,ML,MG,ML_0
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
-    integer,allocatable :: icnt(:),idis(:)
+!    integer,allocatable :: icnt(:),idis(:)
     real(8) :: a1,a2,a3,pi2,Gr,Gx,Gy,Gz,Vcell
     real(8) :: ctt(0:9),ett(0:9)
     complex(8),allocatable :: zrho(:) !, zrho3(:,:,:)
@@ -1007,23 +1008,25 @@ CONTAINS
        end do
        NGPS=n
        call destruct_Ggrid
-       allocate( icnt(0:nprocs-1) ) ; icnt=0
-       allocate( idis(0:nprocs-1) ) ; idis=0
+       allocate( icnta(0:nprocs-1) ) ; icnta=0
+       allocate( idisa(0:nprocs-1) ) ; idisa=0
        N_MI = Natom/nprocs
-       icnt(0:nprocs-1) = N_MI
+       icnta(0:nprocs-1) = N_MI
        n = Natom - N_MI*nprocs
        if ( n>0 ) then
           do irank=0,n-1
-             icnt(irank)=icnt(irank)+1
+             icnta(irank)=icnta(irank)+1
           end do
        end if
        do irank=0,nprocs-1
-          idis(irank) = sum( icnt(0:irank) ) - icnt(irank)
+          idisa(irank) = sum( icnta(0:irank) ) - icnta(irank)
        end do
-       MI_0 = idis(myrank)+1
-       MI_1 = idis(myrank)+icnt(myrank)
-       deallocate( idis )
-       deallocate( icnt )
+       MI_0 = idisa(myrank)+1
+       MI_1 = idisa(myrank)+icnta(myrank)
+       idisa(:)=idisa(:)*3
+       icnta(:)=icnta(:)*3
+!       deallocate( idisa )
+!       deallocate( icnta )
        first_time2=.false.
     end if
 
@@ -1100,6 +1103,8 @@ CONTAINS
     call construct_Ggrid(0)
 
     do a=MI_0,MI_1
+!!$OMP parallel do private( ik,a1,a2,a3,zsum1,zsum2,zsum3,i,Gr,Gx,Gy,Gz,j,ztmp )
+!    do a=1,Natom
 
        ik=ki_atom(a)
        a1=pi2*aa_atom(1,a)
@@ -1111,6 +1116,7 @@ CONTAINS
        zsum3=z0
 !$OMP parallel do reduction(+:zsum1,zsum2,zsum3) private( Gx,Gy,Gz,j,ztmp )
        do i=1,NGgrid(0)
+!       do i=MG_0,MG_1
           Gx=bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
           Gy=bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
           Gz=bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
@@ -1128,6 +1134,7 @@ CONTAINS
        force(3,a) = -zsum3*dV
 
     end do ! a
+!!$OMP end parallel do
 
     call watch(ctt(7),ett(7))
 
@@ -1135,8 +1142,10 @@ CONTAINS
 
 !    deallocate( zrho )
 
-    call mpi_allreduce(MPI_IN_PLACE,force,3*Natom,MPI_REAL8 &
-                      ,MPI_SUM,MPI_COMM_WORLD,ierr)
+!    call mpi_allreduce(MPI_IN_PLACE,force,3*Natom,MPI_REAL8 &
+!                      ,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+                        ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
 
     call watch(ctt(8),ett(8))
 
@@ -1144,13 +1153,13 @@ CONTAINS
 
     if ( myrank == 0 ) then
        write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(force_local_ffte1)=",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(force_local_ffte1)=",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(force_local_ffte1)=",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(force_local_ffte1)=",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(force_local_ffte1)=",ctt(6)-ctt(5),ett(6)-ett(5)
-       write(*,*) "time(force_local_ffte1)=",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(force_local_ffte1)=",ctt(8)-ctt(7),ett(8)-ett(7)
+       write(*,*) "time(force_local_ffte2)=",ctt(2)-ctt(1),ett(2)-ett(1)
+       write(*,*) "time(force_local_ffte3)=",ctt(3)-ctt(2),ett(3)-ett(2)
+       write(*,*) "time(force_local_ffte4)=",ctt(4)-ctt(3),ett(4)-ett(3)
+       write(*,*) "time(force_local_ffte5)=",ctt(5)-ctt(4),ett(5)-ett(4)
+       write(*,*) "time(force_local_ffte6)=",ctt(6)-ctt(5),ett(6)-ett(5)
+       write(*,*) "time(force_local_ffte7)=",ctt(7)-ctt(6),ett(7)-ett(6)
+       write(*,*) "time(force_local_ffte8)=",ctt(8)-ctt(7),ett(8)-ett(7)
     end if
 
   END SUBROUTINE calc_force_ps_local_ffte
