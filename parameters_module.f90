@@ -17,6 +17,7 @@ CONTAINS
     implicit none
     integer :: i
     character(7) :: label,cbuf,ckey
+    real(8) :: Ratom(3)
 
     call read_atom(myrank,unit_atom)
 
@@ -122,12 +123,32 @@ CONTAINS
 
     call read_atomopt(myrank,unit)
 
-    if ( atom_format == 1 ) then
-       do i=1,Natom
-          aa_atom(1,i) = aa_atom(1,i)/( ax*aa(1,1) )
-          aa_atom(2,i) = aa_atom(2,i)/( ax*aa(2,2) )
-          aa_atom(3,i) = aa_atom(3,i)/( ax*aa(3,3) )
-       end do
+    if ( SYStype == 1 ) then
+       if ( atom_format == 0 ) then
+          aa=ax*aa
+          do i=1,Natom
+             Ratom(1:3) = matmul( aa, aa_atom(:,i) )
+             aa_atom(1:3,i) = Ratom(1:3)
+             write(*,'(1x,i6,3f20.15)') i,aa_atom(1:3,i)
+          end do
+       end if
+       ax=1.0d0
+       aa=0.0d0
+       aa(1,1)=1.0d0
+       aa(2,2)=1.0d0
+       aa(3,3)=1.0d0
+       if ( myrank == 0 ) then
+          write(*,*) "Molecule"
+          write(*,*) "aa & aa_atom are modified"
+       end if
+    else if ( SYStype == 0 ) then
+       if ( atom_format == 1 ) then
+          do i=1,Natom
+             aa_atom(1,i) = aa_atom(1,i)/( ax*aa(1,1) )
+             aa_atom(2,i) = aa_atom(2,i)/( ax*aa(2,2) )
+             aa_atom(3,i) = aa_atom(3,i)/( ax*aa(3,3) )
+          end do
+       end if
     end if
 
   END SUBROUTINE read_parameters
