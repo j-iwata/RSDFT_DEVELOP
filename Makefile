@@ -9,6 +9,7 @@ MODS1 = simc_module.o\
         bcast_module.o \
         omp_variables.o\
         array_bound_module.o\
+        ffte_sub_module.o \
         aa_module.o \
         bb_module.o \
         atom_module.o \
@@ -85,6 +86,8 @@ MODS1 = simc_module.o\
         localpot2_xc_module.o \
         localpot2_te_module.o \
 
+#        momentum_mate_module.o \
+#        test_hpsi2_module.o \
 #        esm_ion_module.o \
 #        band_analysis_module.o \
 
