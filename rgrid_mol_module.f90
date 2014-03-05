@@ -1,17 +1,21 @@
 MODULE rgrid_mol_module
 
+  use rgrid_module
+  use parallel_module
+
   implicit none
 
   PRIVATE
   PUBLIC :: LL,KK,Hsize &
            ,read_rgrid_mol &
-           ,init_rgrid_mol,mesh_div_1 &
+           ,init_rgrid_mol,mesh_div_1,mesh_div_2 &
            ,construct_rgrid_mol,destruct_rgrid_mol &
            ,construct_boundary_rgrid_mol,destruct_boundary_rgrid_mol &
-           ,map_g2p_rgrid_mol
+           ,map_g2p_rgrid_mol,iswitch_eqdiv
 
   integer :: Box_Shape
   real(8) :: Hsize,Rsize,Zsize
+  integer :: iswitch_eqdiv
   integer,allocatable :: LL(:,:),KK(:,:)
 
   real(8),parameter :: eps = 1.d-10
@@ -29,10 +33,12 @@ CONTAINS
        case(2)
           read(unit,*) Hsize,Rsize,Zsize
        end select
+       read(unit,*) iswitch_eqdiv
        write(*,*) "Box_Shape=",Box_Shape
        write(*,*) "Hsize=",Hsize
        write(*,*) "Rsize=",Rsize
        write(*,*) "Zsize=",Zsize
+       write(*,*) "iswitch_eqdiv=",iswitch_eqdiv
     end if
     call send_rgrid_mol(rank)
   END SUBROUTINE read_rgrid_mol
@@ -45,6 +51,7 @@ CONTAINS
     call mpi_bcast(Hsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Rsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Zsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iswitch_eqdiv,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_rgrid_mol
 
 
@@ -52,6 +59,7 @@ CONTAINS
     integer,intent(OUT) :: Ngrid(3)
     real(8),intent(OUT) :: Hgrid(3),aa(3,3),bb(3,3)
     logical,optional,intent(IN)  :: disp_switch
+    if ( disp_switch ) write(*,'(a60," init_rgrid_mol")') repeat("-",60)
     call init_mesh_rsmol( Ngrid(1),Ngrid(2),Ngrid(3) )
     Hgrid(1)=Hsize
     Hgrid(2)=Hsize
@@ -247,6 +255,288 @@ CONTAINS
 
     return
   END SUBROUTINE mesh_div_1
+
+
+  SUBROUTINE mesh_div_2
+    implicit none
+    integer,parameter :: max_loop=100
+    integer :: i1,i2,i3,i,j,iloop,iloc(1),m1,m2,m3,m
+    integer :: ix,jx,iy,jy,iz,jz,i_dif,Mx,My,Mz,n,j1,j2,j3
+    integer :: min_dif,max_val,icount
+    integer,allocatable :: LLLL(:,:,:),itmp(:),jtmp(:),mtmp(:,:)
+    integer,allocatable :: ip(:,:,:),Mxp(:),Myp(:),Mzp(:),LLLp(:,:,:)
+    real(8),parameter :: eps=1.d-10
+    real(8) :: Rc2,r2,z,H
+
+    integer :: np1,np2,np3
+
+    np1 = node_partition(1)
+    np2 = node_partition(2)
+    np3 = node_partition(3)
+
+    Mx = ( Ngrid(1)-1 )/2
+    My = ( Ngrid(2)-1 )/2
+    Mz = ( Ngrid(3)-1 )/2
+
+    H = Hsize
+
+    n   = max( np1, np2, np3 )
+    Rc2 = Rsize**2
+
+    allocate( LLLp(np1,np2,np3) ) ; LLLp=0
+
+    allocate( ip(3,2,0:np_grid-1) ) ; ip=0
+
+    allocate( Mxp(np1) ) ; Mxp=0
+    allocate( Myp(np2) ) ; Myp=0
+    allocate( Mzp(np3) ) ; Mzp=0
+
+    Mxp(1:np1) = Ngrid(1)/np1
+    Myp(1:np2) = Ngrid(2)/np2
+    Mzp(1:np3) = Ngrid(3)/np3
+    Mxp(1) = Mxp(1) + Ngrid(1) - sum(Mxp)
+    Myp(1) = Myp(1) + Ngrid(2) - sum(Myp)
+    Mzp(1) = Mzp(1) + Ngrid(3) - sum(Mzp)
+
+    allocate( itmp(n)   ) ; itmp=0
+    allocate( jtmp(n)   ) ; jtmp=0
+    allocate( mtmp(n,3) ) ; mtmp=0
+
+    allocate( LLLL(-Mx:Mx,-My:My,-Mz:Mz) ) ; LLLL=0
+
+    select case(Box_Shape)
+    case(1)
+       do i3=-Mz,Mz
+       do i2=-My,My
+       do i1=-Mx,Mx
+          r2=H*H*(i1*i1+i2*i2+i3*i3)
+          if ( r2<=Rc2+eps ) LLLL(i1,i2,i3)=1
+       end do
+       end do
+       end do
+    case(2)
+       do i3=-Mz,Mz
+          z=H*i3
+          if ( abs(z)>Zsize+eps ) cycle
+          do i2=-My,My
+          do i1=-Mx,Mx
+             r2=H*H*(i1*i1+i2*i2)
+             if ( r2<=Rc2+eps ) LLLL(i1,i2,i3)=1
+          end do
+          end do
+       end do
+    end select
+
+    min_dif = sum(LLLL)
+    max_val = min_dif
+    icount  = 0
+    jtmp(:) = 0
+
+    loop_x : do iloop=1,max_loop
+       itmp(:)=0
+       do m1=1,np1
+          ix=-Mx+sum(Mxp(1:m1))-Mxp(m1)
+          jx=ix+Mxp(m1)-1
+          do i1=ix,jx
+             itmp(m1)=itmp(m1)+sum(LLLL(i1,:,:))
+          end do
+       end do
+       i=maxloc( itmp(1:np1), 1 )
+       j=minloc( itmp(1:np1), 1 )
+       i_dif=itmp(i)-itmp(j)
+       if ( i_dif < min_dif ) then
+          min_dif=i_dif
+          max_val=maxval(itmp(1:np1))
+          mtmp(1:np1,1)=Mxp(1:np1)
+          jtmp(1:np1)=itmp(1:np1)
+          icount=0
+       else if ( i_dif == min_dif ) then
+          if ( maxval(itmp(1:np1))==max_val ) then
+             icount=icount+1
+          else if ( maxval(itmp(1:np1))<max_val ) then
+             max_val=maxval(itmp(1:np1))
+             mtmp(1:np1,1)=Mxp(1:np1)
+             jtmp(1:np1)=itmp(1:np1)
+             icount=0
+          end if
+       end if
+       if ( icount>9 ) exit
+       Mxp(i)=Mxp(i)-1
+       Mxp(j)=Mxp(j)+1
+    end do loop_x
+
+    i = maxval( jtmp(1:np1) )
+    j = minval( jtmp(1:np1) )
+
+    do i3=1,np3
+    do i2=1,np2
+    do i1=1,np1
+       n=i1-1+(i2-1)*np1+(i3-1)*np1*np2
+       ip(1,1,n)=-Mx+sum(mtmp(1:i1,1))-mtmp(i1,1)
+       ip(1,2,n)=ip(1,1,n)+mtmp(i1,1)-1
+       LLLp(i1,i2,i3)=n
+    end do
+    end do
+    end do
+
+    do m1=1,np1
+
+       min_dif = sum(LLLL)
+       max_val = min_dif
+       icount  = 0
+       jtmp(:) = 0
+
+       loop_y : do iloop=1,max_loop
+          itmp(:)=0
+          do m2=1,np2
+             n=LLLp(m1,m2,1)
+             ix=ip(1,1,n)
+             jx=ip(1,2,n)
+             iy=-My+sum(Myp(1:m2))-Myp(m2)
+             jy=iy+Myp(m2)-1
+             do i2=iy,jy
+                itmp(m2)=itmp(m2)+sum(LLLL(ix:jx,i2,:))
+             end do
+          end do
+          i = maxloc( itmp(1:np2), 1 )
+          j = minloc( itmp(1:np2), 1 )
+          i_dif=itmp(i)-itmp(j)
+          if ( i_dif<min_dif ) then
+             min_dif=i_dif
+             max_val=maxval(itmp(1:np2))
+             mtmp(1:np2,2)=Myp(1:np2)
+             jtmp(1:np2)=itmp(1:np2)
+             icount=0
+          else if ( i_dif==min_dif ) then
+             if ( maxval(itmp(1:np2))==max_val ) then
+                icount=icount+1
+             else if ( maxval(itmp(1:np2))<max_val ) then
+                max_val=maxval(itmp(1:np2))
+                mtmp(1:np2,2)=Myp(1:np2)
+                jtmp(1:np2)=itmp(1:np2)
+                icount=0
+             end if
+          end if
+          if ( icount>9 ) exit
+          Myp(i)=Myp(i)-1
+          Myp(j)=Myp(j)+1
+       end do loop_y
+
+       i=maxval(jtmp(1:np2)) ; j=minval(jtmp(1:np2))
+
+       do i3=1,np3
+       do i2=1,np2
+          n=LLLp(m1,i2,i3)
+          ip(2,1,n)=-My+sum(mtmp(1:i2,2))-mtmp(i2,2)
+          ip(2,2,n)=ip(2,1,n)+mtmp(i2,2)-1
+       end do
+       end do
+
+    end do ! m1
+
+
+    do m1=1,np1
+    do m2=1,np2
+
+       min_dif = sum(LLLL)
+       max_val = min_dif
+       icount  = 0
+       jtmp(:) = 0
+
+       loop_z : do iloop=1,max_loop
+          itmp(:)=0
+          do m3=1,np3
+             n=LLLp(m1,m2,m3)
+             ix=ip(1,1,n)
+             jx=ip(1,2,n)
+             iy=ip(2,1,n)
+             jy=ip(2,2,n)
+             iz=-Mz+sum(Mzp(1:m3))-Mzp(m3)
+             jz=iz+Mzp(m3)-1
+             do i3=iz,jz
+                itmp(m3)=itmp(m3)+sum(LLLL(ix:jx,iy:jy,i3))
+             end do
+          end do
+          i = maxloc( itmp(1:np3), 1 )
+          j = minloc( itmp(1:np3), 1 )
+          i_dif=itmp(i)-itmp(j)
+          if ( i_dif<min_dif ) then
+             min_dif=i_dif
+             max_val=maxval(itmp(1:np3))
+             mtmp(1:np3,3)=Mzp(1:np3)
+             jtmp(1:np3)=itmp(1:np3)
+             icount=0
+          else if ( i_dif==min_dif ) then
+             if ( maxval(itmp(1:np3))==max_val ) then
+                icount=icount+1
+             else if ( maxval(itmp(1:np3))<max_val ) then
+                max_val=maxval(itmp(1:np3))
+                mtmp(1:np3,3)=Mzp(1:np3)
+                jtmp(1:np3)=itmp(1:np3)
+                icount=0
+             end if
+          end if
+          if ( icount>9 ) exit
+          Mzp(i)=Mzp(i)-1
+          Mzp(j)=Mzp(j)+1
+       end do loop_z
+
+       i=maxval(jtmp(1:np3)) ; j=minval(jtmp(1:np3))
+
+       do i3=1,np3
+          n=LLLp(m1,m2,i3)
+          ip(3,1,n)=-Mz+sum(mtmp(1:i3,3))-mtmp(i3,3)
+          ip(3,2,n)=ip(3,1,n)+mtmp(i3,3)-1
+       end do
+
+    end do ! m2
+    end do ! m1
+
+    n=-1
+    do i3=1,np3
+    do i2=1,np2
+    do i1=1,np1
+       n=n+1
+       pinfo_grid(1,n)=ip(1,1,n)-1
+       pinfo_grid(2,n)=ip(1,2,n)-ip(1,1,n)+1
+       pinfo_grid(3,n)=ip(2,1,n)-1
+       pinfo_grid(4,n)=ip(2,2,n)-ip(2,1,n)+1
+       pinfo_grid(5,n)=ip(3,1,n)-1
+       pinfo_grid(6,n)=ip(3,2,n)-ip(3,1,n)+1
+       m=0
+       do j3=ip(3,1,n),ip(3,2,n)
+       do j2=ip(2,1,n),ip(2,2,n)
+       do j1=ip(1,1,n),ip(1,2,n)
+          select case(Box_Shape)
+          case(1)
+             r2=H*H*(j1*j1+j2*j2+j3*j3)
+             if ( r2 <= Rc2+eps ) m=m+1
+          case(2)
+             z=H*j3
+             r2=H*H*(j1*j1+j2*j2)
+             if ( abs(z) > Zsize+eps .and. r2 <= Rc2+eps ) m=m+1
+          end select
+       end do
+       end do
+       end do
+       pinfo_grid(8,n)=m
+       pinfo_grid(7,n)=sum(pinfo_grid(8,0:n))-pinfo_grid(8,n)
+    end do
+    end do
+    end do
+
+    deallocate( LLLL )
+    deallocate( mtmp )
+    deallocate( jtmp )
+    deallocate( itmp )
+    deallocate( Mzp )
+    deallocate( Myp )
+    deallocate( Mxp )
+    deallocate( ip )
+    deallocate( LLLp )
+
+    return
+  END SUBROUTINE mesh_div_2
 
 
   SUBROUTINE construct_rgrid_mol

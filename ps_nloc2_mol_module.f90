@@ -20,6 +20,7 @@ CONTAINS
 
   SUBROUTINE prep_ps_nloc2_mol
     use minimal_box_module
+    implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
     integer,allocatable :: icheck_tmp3(:,:,:),icheck_tmp4(:,:,:)
@@ -250,6 +251,137 @@ CONTAINS
     end do ! a
 
     deallocate( irad )
+
+
+    if ( iswitch_eqdiv == 2 ) then
+
+
+       allocate( lma_nsend(0:nprocs_g-1) ) ; lma_nsend=0
+       allocate( MJJ(nzlma) ) ; MJJ=0
+       allocate( JJP(MMJJ,nzlma) ) ; JJP=0
+       allocate( uVk(MMJJ,nzlma,1) ) ; uVk=0.0d0
+       allocate( iuV(nzlma) ) ; iuV=0
+
+       allocate( icheck_tmp1(0:nprocs_g-1) ) ; icheck_tmp1=0
+       allocate( icheck_tmp2(0:nprocs_g-1) ) ; icheck_tmp2=0
+       allocate( LLL(a1b:b1b,a2b:b2b,a3b:b3b) ) ; LLL=0
+
+       do i=ML_0,ML_1
+          LLL( LL(1,i),LL(2,i),LL(3,i) ) = i
+       end do
+
+       do a=1,Natom
+          ik=ki_atom(a)
+          Rx=aa_atom(1,a)
+          Ry=aa_atom(2,a)
+          Rz=aa_atom(3,a)
+          do iorb=1,norb(ik)
+             L=lo(iorb,ik)
+             do m=-L,L
+
+                icheck_tmp1(:)=0
+                call mpi_allgather(icheck_tmp3(a,iorb,m+L+1),1,mpi_integer &
+                     ,icheck_tmp1,1,mpi_integer,comm_grid,ierr)
+
+                do irank=0,nprocs_g-1
+
+                   if ( icheck_tmp1(irank) /= 0 ) then
+
+                      icheck_tmp2(irank)=icheck_tmp2(irank)+1
+                      lma=icheck_tmp2(irank)
+
+                      if ( irank == myrank_g ) then
+
+                         iuV(lma)=inorm(iorb,ik)
+                         MJJ(lma)=MJJ_tmp(iorb,a)
+                         do j=1,MJJ(lma)
+                            i1=JJ_tmp(1,j,iorb,a)
+                            i2=JJ_tmp(2,j,iorb,a)
+                            i3=JJ_tmp(3,j,iorb,a)
+                            x=i1*Hsize-Rx
+                            y=i2*Hsize-Ry
+                            z=i3*Hsize-Rz
+                            JJP(j,lma)=LLL(i1,i2,i3)
+                            uVk(j,lma,1)=uV_tmp(j,iorb,a)*Ylm(x,y,z,L,m)
+
+                         end do ! j
+
+                      else
+
+                         lma_nsend(irank) = lma_nsend(irank) + 1
+
+                      end if
+
+                   end if
+
+                end do ! irank
+
+             end do ! m
+          end do ! iorb
+       end do ! a
+
+       deallocate( LLL )
+
+       nl_max_send=maxval( lma_nsend )
+       allocate( sendmap(nl_max_send,0:nprocs_g-1) ) ; sendmap=0
+       allocate( recvmap(nl_max_send,0:nprocs_g-1) ) ; recvmap=0
+
+       lma_nsend(:)=0
+       icheck_tmp2(:)=0
+       do a=1,Natom
+          ik=ki_atom(a)
+          do iorb=1,norb(ik)
+             L=lo(iorb,ik)
+             do m=-L,L
+
+                icheck_tmp1(:)=0
+                call mpi_allgather(icheck_tmp3(a,iorb,m+L+1),1,mpi_integer &
+                     ,icheck_tmp1,1,mpi_integer,comm_grid,ierr)
+
+                do irank=0,nprocs_g-1
+                   if ( icheck_tmp1(irank) == 0 ) cycle
+                   icheck_tmp2(irank) = icheck_tmp2(irank) + 1
+                end do
+
+                do irank=0,nprocs_g-1
+
+                   if ( irank == myrank_g .or. icheck_tmp1(irank) == 0 ) cycle
+
+                   lma_nsend(irank) = lma_nsend(irank) + 1
+
+                   sendmap( lma_nsend(irank),irank ) = icheck_tmp2(myrank_g)
+
+                   recvmap( lma_nsend(irank),irank ) = icheck_tmp2(irank)
+
+                end do
+
+             end do ! m
+          end do ! iorb
+       end do ! a
+
+       deallocate( icheck_tmp2 )
+       deallocate( icheck_tmp1 )
+
+       allocate( ireq(2*nprocs_g) )
+       allocate( istatus(MPI_STATUS_SIZE,2*nprocs_g) )
+       nreq=0
+       do n=0,nprocs_g-1
+          if ( lma_nsend(n) <= 0 .or. n == myrank_g ) cycle
+          nreq=nreq+1
+          call mpi_isend(recvmap(1,n),lma_nsend(n),mpi_integer,n,1 &
+               ,comm_grid,ireq(nreq),ierr)
+          nreq=nreq+1
+          call mpi_irecv(recvmap(1,n),lma_nsend(n),mpi_integer,n,1 &
+               ,comm_grid,ireq(nreq),ierr)
+       end do
+       call mpi_waitall(nreq,ireq,istatus,ierr)
+       deallocate( istatus )
+       deallocate( ireq )
+
+       call allocate_ps_nloc2(MB_d)
+
+    else
+
 
 ! for grid-parallel computation
 
@@ -743,6 +875,10 @@ CONTAINS
 
     deallocate( icheck_tmp4 )
     deallocate( LLL )
+
+
+    end if ![ iswitch_eqdiv ]
+
 
   END SUBROUTINE prep_ps_nloc2_mol
 

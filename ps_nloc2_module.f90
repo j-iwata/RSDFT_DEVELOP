@@ -11,6 +11,7 @@ MODULE ps_nloc2_module
   use ps_nloc_gth_module
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
+  use rgrid_mol_module, only: iswitch_eqdiv
 
   implicit none
 
@@ -1040,6 +1041,8 @@ CONTAINS
 !$OMP end do
     end do
 
+    if ( iswitch_eqdiv == 1 ) then
+
 !$OMP single
     do i=1,6
        select case(i)
@@ -1093,6 +1096,12 @@ CONTAINS
     end do
 !$OMP end single
 
+    else if ( iswitch_eqdiv == 2 ) then
+
+       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
+
+    end if
+
 !    do ib=ib1,ib2
 !       do lma=1,nzlma
 !          do j=1,MJJ(lma)
@@ -1117,6 +1126,51 @@ CONTAINS
     deallocate( uVunk0,uVunk )
 
   END SUBROUTINE op_ps_nloc2
+
+
+  SUBROUTINE comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
+    implicit none
+    integer,intent(IN) :: nzlma,ib1,ib2
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
+#else
+    complex(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
+#endif
+    integer :: nreq,irank,m,i1,i2,ib,ierr,nb
+    integer :: istatus(mpi_status_size,512),ireq(512)
+    nb=ib2-ib1+1
+    nreq=0
+    do irank=0,nprocs_g-1
+       m=lma_nsend(irank)
+       if ( irank == myrank_g .or. m <= 0 ) cycle
+       i2=0
+       do ib=ib1,ib2
+       do i1=1,m
+          i2=i2+1
+          sbufnl(i2,irank)=uVunk(sendmap(i1,irank),ib)
+       end do
+       end do
+       nreq=nreq+1
+       call mpi_isend(sbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
+            ,comm_grid,ireq(nreq),ierr)
+       nreq=nreq+1
+       call mpi_irecv(rbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
+            ,comm_grid,ireq(nreq),ierr)
+    end do
+    if ( nreq > 0 ) call mpi_waitall(nreq,ireq,istatus,ierr)
+    do irank=0,nprocs_g-1
+       m=lma_nsend(irank)
+       if ( irank == myrank_g .or. m <= 0 ) cycle
+       i2=0
+       do ib=ib1,ib2
+       do i1=1,m
+          i2=i2+1
+          uVunk(recvmap(i1,irank),ib) &
+               =uVunk(recvmap(i1,irank),ib)+rbufnl(i2,irank)
+       end do
+       end do
+    end do
+  END SUBROUTINE comm_eqdiv_ps_nloc2_mol
 
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)

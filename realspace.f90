@@ -132,7 +132,12 @@ PROGRAM Real_Space_Solid
 
   if ( SYStype == 1 ) then
 
-     call mesh_div_1(np_grid,node_partition,Ngrid(1),pinfo_grid,disp_switch)
+     select case(iswitch_eqdiv)
+     case default
+        call mesh_div_1(np_grid,node_partition,Ngrid(1),pinfo_grid,disp_switch)
+     case(2)
+        call mesh_div_2
+     end select
 
      id_grid(:)=pinfo_grid(7,:)
      ir_grid(:)=pinfo_grid(8,:)
