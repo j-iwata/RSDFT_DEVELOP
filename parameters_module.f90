@@ -129,7 +129,7 @@ CONTAINS
           do i=1,Natom
              Ratom(1:3) = matmul( aa, aa_atom(:,i) )
              aa_atom(1:3,i) = Ratom(1:3)
-             write(*,'(1x,i6,3f20.15)') i,aa_atom(1:3,i)
+             if ( myrank == 0 ) write(*,'(1x,i6,3f20.15)') i,aa_atom(1:3,i)
           end do
        end if
        ax=1.0d0
