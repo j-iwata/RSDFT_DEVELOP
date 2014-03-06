@@ -1041,7 +1041,8 @@ CONTAINS
 !$OMP end do
     end do
 
-    if ( iswitch_eqdiv == 1 ) then
+    select case( iswitch_eqdiv )
+    case default
 
 !$OMP single
     do i=1,6
@@ -1096,11 +1097,11 @@ CONTAINS
     end do
 !$OMP end single
 
-    else if ( iswitch_eqdiv == 2 ) then
+    case( 2 )
 
        call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
 
-    end if
+    end select
 
 !    do ib=ib1,ib2
 !       do lma=1,nzlma
