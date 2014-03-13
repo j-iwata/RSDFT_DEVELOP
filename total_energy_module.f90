@@ -19,7 +19,7 @@ MODULE total_energy_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy
+  PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy,diff_etot
 
   real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene
   real(8) :: Etot_0=0.d0
@@ -43,6 +43,8 @@ MODULE total_energy_module
   real(8) :: Ehat_in = 0.d0
   real(8) :: Exc_in  = 0.d0
   real(8) :: Eion_in = 0.d0
+
+  real(8) :: diff_etot = 0.d0
 
 CONTAINS
 
@@ -161,6 +163,8 @@ CONTAINS
 
     Fene = Etot - Eentropy
 
+    diff_etot = Etot_0 - Etot
+
     if ( disp_switch ) then
        write(*,*) '(EII) ',Eewald
        write(*,*) '(KIN) ',Ekin, Ekin-Ekin_0
@@ -177,7 +181,6 @@ CONTAINS
        write(*,*) '(efermi)  ',efermi, efermi-efermi_0
        write(*,*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
        write(*,*) '(FreeEne) ',Fene,Fene-Fene_0
-       write(41,*) abs(Etot_0-Etot)
     end if
 
     Etot_0 = Etot
@@ -215,6 +218,7 @@ CONTAINS
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
     Ehwf = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald
+    diff_etot = Ehwf_0 - Ehwf
     if ( disp_switch ) then
        write(*,*) '(HWF) ',Ehwf, Ehwf_0-Ehwf
     end if

@@ -479,11 +479,13 @@ PROGRAM Real_Space_Solid
         if ( iswitch_scf == 1 ) then
            flag_scf = .true.
         else
-           exit
+           flag_exit = .true.
         end if
      end if
 
      call watch(ct0,et0)
+
+     if ( .not. flag_exit ) then
 
      esp0=esp
      do s=MSP_0,MSP_1
@@ -527,7 +529,7 @@ PROGRAM Real_Space_Solid
         end do
         end do
         write(*,*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-        write(*,*) "flag_scf=",flag_scf
+        write(*,'(1x,"flag_scf,iswitch_scf=",l2,i2)') flag_scf,iswitch_scf
      end if
 
      call calc_with_rhoIN_total_energy(disp_switch)
@@ -572,16 +574,28 @@ PROGRAM Real_Space_Solid
         end if
 !------------------------------------------
 
+     end if ! flag_scf
+
+     end if ! .not.flag_exit
+
+     if ( abs(diff_etot) <= 1.d-14 ) then
+        if ( iswitch_scf == 1 ) then
+           flag_scf = .true.
+        else
+           flag_exit = .true.
+        end if
      end if
 
      call watch(ct1,et1)
      if ( disp_switch ) write(*,*) "time(scf)",ct1-ct0,et1-et0
      call global_watch(flag_end)
-     flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
+     flag_exit = (flag_exit.or.flag_conv.or.flag_end.or.(iter==Diter))
 
+     if ( flag_scf .or. Nsweep > 0 ) then
      call watcht(disp_switch,"",0)
      call write_data(disp_switch,flag_exit)
      call watcht(disp_switch,"io",1)
+     end if
 
      if ( flag_exit ) exit
 
