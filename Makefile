@@ -7,7 +7,7 @@ MODS1 = simc_module.o\
         parallel_module.o \
         rsdft_mpi_module.o \
         bcast_module.o \
-        omp_variables.o\
+        omp_variables.o \
         array_bound_module.o\
         ffte_sub_module.o \
         aa_module.o \
@@ -15,11 +15,11 @@ MODS1 = simc_module.o\
         atom_module.o \
         rgrid_module.o \
         ggrid_module.o \
-        bz_module.o \
-        fd_module.o \
-        bc_module.o\
         rgrid_mol_module.o \
         esm_rgrid_module.o \
+        bz_module.o \
+        fd_module.o \
+        bc_module.o \
         kinetic_mol_module.o \
         esm_kinetic_module.o \
         kinetic_module.o \

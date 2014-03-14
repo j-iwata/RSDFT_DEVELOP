@@ -631,27 +631,30 @@ PROGRAM Real_Space_Solid
      stop
   end if
 
-  if ( disp_switch ) write(*,'(a40," result")') repeat("-",40)
-
-  if ( flag_scf ) then
-     call calc_density
-     call calc_hartree(ML_0,ML_1,MSP,rho)
-     call calc_xc
-     do s=MSP_0,MSP_1
-        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-     end do
-  end if
-
+  if ( disp_switch ) write(*,'(a40," etot(with latest wf)")') repeat("-",40)
+  call calc_density
+  call calc_hartree(ML_0,ML_1,MSP,rho)
+  call calc_xc
+  do s=MSP_0,MSP_1
+     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+  end do
   call calc_total_energy(.true.,disp_switch)
 
-
+!
 ! --- force calculation ---
+!
+  if ( disp_switch ) write(*,'(a40," Force")') repeat("-",40)
 
   if ( SYStype == 0 ) then
      select case( pselect )
      case( 2 )
         call ps_nloc2_init_derivative
      end select
+  else
+     if ( disp_switch ) then
+        write(*,*) "force calc is not available yet for SYStype=",SYStype
+     end if
+     goto 900
   end if
 
   if ( iswitch_opt == -1 ) then
