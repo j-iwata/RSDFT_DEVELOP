@@ -308,7 +308,9 @@ CONTAINS
 
                       else
 
-                         lma_nsend(irank) = lma_nsend(irank) + 1
+                         if ( icheck_tmp1(myrank_g) /= 0 ) then
+                            lma_nsend(irank) = lma_nsend(irank) + 1
+                         end if
 
                       end if
 
@@ -345,13 +347,13 @@ CONTAINS
 
                 do irank=0,nprocs_g-1
 
-                   if ( irank == myrank_g .or. icheck_tmp1(irank) == 0 ) cycle
+                   if ( icheck_tmp1(irank) == 0 .or. icheck_tmp1(myrank_g) == 0 .or. irank == myrank_g ) cycle
 
                    lma_nsend(irank) = lma_nsend(irank) + 1
 
                    sendmap( lma_nsend(irank),irank ) = icheck_tmp2(myrank_g)
 
-                   recvmap( lma_nsend(irank),irank ) = icheck_tmp2(irank)
+                   recvmap( lma_nsend(irank),irank ) = icheck_tmp2(myrank_g)
 
                 end do
 
@@ -361,22 +363,6 @@ CONTAINS
 
        deallocate( icheck_tmp2 )
        deallocate( icheck_tmp1 )
-
-       allocate( ireq(2*nprocs_g) )
-       allocate( istatus(MPI_STATUS_SIZE,2*nprocs_g) )
-       nreq=0
-       do n=0,nprocs_g-1
-          if ( lma_nsend(n) <= 0 .or. n == myrank_g ) cycle
-          nreq=nreq+1
-          call mpi_isend(recvmap(1,n),lma_nsend(n),mpi_integer,n,1 &
-               ,comm_grid,ireq(nreq),ierr)
-          nreq=nreq+1
-          call mpi_irecv(recvmap(1,n),lma_nsend(n),mpi_integer,n,1 &
-               ,comm_grid,ireq(nreq),ierr)
-       end do
-       call mpi_waitall(nreq,ireq,istatus,ierr)
-       deallocate( istatus )
-       deallocate( ireq )
 
        call allocate_ps_nloc2(MB_d)
 

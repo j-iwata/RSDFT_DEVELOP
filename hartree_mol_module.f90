@@ -30,6 +30,7 @@ CONTAINS
     use fd_module
     use kinetic_module, only: Md
     use atom_module
+    implicit none
     integer,intent(IN)    :: n1,n2,n3
     real(8),intent(IN)    :: rho(n1:n2,n3)
     real(8),intent(INOUT) :: Vh(n1:n2)
@@ -107,7 +108,14 @@ CONTAINS
     Vh0(n1:n2) = Vh(n1:n2)
 
 !
-! --- Boundary condition (multipole expansion) ---
+! - Boundary condition 1
+!
+    do i=n1,n2
+       www( LL(1,i),LL(2,i),LL(3,i),1 ) = Vh(i)
+    end do
+    call bcset(1,1,Md,0)
+!
+! --- Boundary condition 2 (multipole expansion) ---
 !
 
     select case( MEO )
@@ -142,7 +150,6 @@ CONTAINS
 
        rholm_0(:,:) = 0.d0
        rholm(:,:)   = 0.d0
-       www(:,:,:,:) = 0.d0
        M_max        = Lmax_ME
 
        allocate( sk(0:Lmax_ME) )
@@ -328,12 +335,6 @@ CONTAINS
 ! --- C.-G. minimization ---
 !
 
-    do i=n1,n2
-       www( LL(1,i),LL(2,i),LL(3,i),1 ) = Vh(i)
-    end do
-
-    call bcset(1,1,Md,0)
-
     const = 3.d0*lap(0)/H**2
 
     zk(n1:n2) = -const*Vh(n1:n2) - pi4*tn(n1:n2)
@@ -421,6 +422,8 @@ CONTAINS
     deallocate( zk )
     deallocate( tk )
     deallocate( tn )
+
+    www(:,:,:,:) = zero
 
     return
 
