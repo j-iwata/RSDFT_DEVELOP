@@ -156,7 +156,7 @@ CONTAINS
           if ( disp_switch ) then
              write(*,'(1x,"diff=",i4,2x,2(4g14.6,2x))') &
                   loop,(diff(i),dif1(i),dif0(i),beta,i=1,n)
-             write(42,*) ( diff(i),i=1,n ),beta
+             !write(42,*) ( diff(i),i=1,n ),beta
           end if
        end if
     end if
@@ -199,7 +199,7 @@ CONTAINS
     if ( present(disp_switch) ) then
        if ( disp_switch ) then
           write(*,*) "SQERR=",err(1:nn)
-          write(40,*) err(1:nn)
+          !write(40,*) err(1:nn)
        end if
     end if
 
