@@ -89,16 +89,6 @@ CONTAINS
 
     if ( m == 1 ) then
 
-       allocate( ntmp(1,1) )
-
-       do i=0,nthreads-1
-          Ngrid_omp(3,i) = nn(3)
-          Ngrid_omp(2,i) = nn(2)
-          Ngrid_omp(1,i) = nn(1)
-       end do
-
-    else
-
        np(1)=m
        np(2)=ab2/nn(2)
        np(3)=ab3/nn(3)
@@ -106,7 +96,8 @@ CONTAINS
        if ( disp_switch ) write(*,*) "np=",np
 
        n=maxval(np)
-       allocate(ntmp(3,n) ) ; ntmp=0
+       allocate( ntmp(3,n) ) ; ntmp=0
+
        do i=1,ab1
           n=mod(i-1,np(1))+1
           ntmp(1,n)=ntmp(1,n)+1
@@ -128,7 +119,43 @@ CONTAINS
           Ngrid_omp(1,n)=ntmp(1,i)
           Ngrid_omp(2,n)=ntmp(2,j)
           Ngrid_omp(3,n)=ntmp(3,k)
-          write(*,'(1x,"Ngrid_omp",3i5)') Ngrid_omp(1:3,n)
+          if ( disp_switch ) write(*,'(1x,"Ngrid_omp",3i5)') Ngrid_omp(1:3,n)
+       end do
+       end do
+       end do
+
+    else
+
+       np(1)=m
+       np(2)=ab2/nn(2)
+       np(3)=ab3/nn(3)
+
+       if ( disp_switch ) write(*,*) "np=",np
+
+       n=maxval(np)
+       allocate( ntmp(3,n) ) ; ntmp=0
+       do i=1,ab1
+          n=mod(i-1,np(1))+1
+          ntmp(1,n)=ntmp(1,n)+1
+       end do
+       do i=1,ab2
+          n=mod(i-1,np(2))+1
+          ntmp(2,n)=ntmp(2,n)+1
+       end do
+       do i=1,ab3
+          n=mod(i-1,np(3))+1
+          ntmp(3,n)=ntmp(3,n)+1
+       end do
+
+       n=-1
+       do k=1,np(3)
+       do j=1,np(2)
+       do i=1,np(1)
+          n=n+1
+          Ngrid_omp(1,n)=ntmp(1,i)
+          Ngrid_omp(2,n)=ntmp(2,j)
+          Ngrid_omp(3,n)=ntmp(3,k)
+          if ( disp_switch ) write(*,'(1x,"Ngrid_omp",3i5)') Ngrid_omp(1:3,n)
        end do
        end do
        end do
