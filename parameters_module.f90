@@ -143,10 +143,13 @@ CONTAINS
        end if
     else if ( SYStype == 0 ) then
        if ( atom_format == 1 ) then
+          call construct_bb(aa)
+          bb(:,:)=transpose(bb(:,:))/(ax*2.0d0*acos(-1.0d0))
           do i=1,Natom
-             aa_atom(1,i) = aa_atom(1,i)/( ax*aa(1,1) )
-             aa_atom(2,i) = aa_atom(2,i)/( ax*aa(2,2) )
-             aa_atom(3,i) = aa_atom(3,i)/( ax*aa(3,3) )
+             !aa_atom(1,i) = aa_atom(1,i)/( ax*aa(1,1) )
+             !aa_atom(2,i) = aa_atom(2,i)/( ax*aa(2,2) )
+             !aa_atom(3,i) = aa_atom(3,i)/( ax*aa(3,3) )
+             aa_atom(1:3,i) = matmul( bb(1:3,1:3), aa_atom(1:3,i) )
           end do
        end if
     end if
