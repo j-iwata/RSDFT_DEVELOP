@@ -21,6 +21,25 @@ CONTAINS
     complex(8) :: z1(1),z2(1)
     complex(8) :: z0=(0.0d0,0.0d0)
     include 'mpif.h'
+!------------------------------- parameter check
+    ierr=0
+    ix=mod(ng(1),np(2))
+    iy=mod(ng(2),np(2))
+    if ( ix /= 0 .or. iy /= 0 ) then
+       write(*,'(1x,"Both NX and NY must be divisible by NPUY",6i5)') ng,np
+       ierr=1
+    end if
+    iy=mod(ng(2),np(3))
+    iz=mod(ng(3),np(3))
+    if ( iy /= 0 .or. iz /= 0 ) then
+       write(*,'(1x,"Both NY and NZ must be divisible by NPUZ",6i5)') ng,np
+       ierr=1
+    end if
+    if ( ierr /= 0 ) then
+       call mpi_finalize(ierr)
+       stop "stop@prep_ffte_sub"
+    end if
+!------------------------------- parameter check (end)
     ix = ig(1)/( ng(1)/np(1) )
     iy = ig(2)/( ng(2)/np(2) )
     iz = ig(3)/( ng(3)/np(3) )
