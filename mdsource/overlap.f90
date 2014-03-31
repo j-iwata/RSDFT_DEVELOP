@@ -111,7 +111,7 @@ SUBROUTINE overlap(s,k,iswitch_overlap,iswitch_paformance,lblas)
         enddo
         enddo
      else if ( iswitch_overlap==4 ) then
-!        call watcht(myrank==0,"",0)
+        call watcht(myrank==0,"",0)
 !        call dsyr2k('u','t',MBT,ML0,-dV*0.5D0,unk(n1,1,k,s),ML0 &
 !             ,psi_n(n1,1,k,s),ML0,zero,tau,MBC)
 !        call watcht(myrank==0,"overlap(5)",1)
@@ -128,15 +128,15 @@ SUBROUTINE overlap(s,k,iswitch_overlap,iswitch_paformance,lblas)
 #ifdef _DRSDFT_
         call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_n(n1,1,k,s),-dV,tau)
 #endif
-        call watcht(myrank==0,"",0)
+        call watcht(myrank==0,"overlap(5)",1)
         do i=1,MBC
         do j=1,i-1
            tau(j,i)=tau(i,j)
         enddo
         enddo
-        call watcht(myrank==0,"overlap(7)",1)
+        call watcht(myrank==0,"overlap(6)",1)
      else if ( iswitch_overlap==5 ) then
-!        call watcht(myrank==0,"",0)
+        call watcht(myrank==0,"",0)
 !        call dsyr2k('u','t',MBT,ML0,dV*0.5D0,unk(n1,1,k,s),ML0 &
 !             ,psi_v(n1,1,k,s),ML0,zero,scr,MBC)
 !        call watcht(myrank==0,"overlap(8)",1)
@@ -153,13 +153,13 @@ SUBROUTINE overlap(s,k,iswitch_overlap,iswitch_paformance,lblas)
 #ifdef _DRSDFT_
         call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_v(n1,1,k,s),dV,wrk)
 #endif
-        call watcht(myrank==0,"",0)
+        call watcht(myrank==0,"overlap(7)",1)
         do i=1,MBC
         do j=1,i-1
            wrk(j,i)=wrk(i,j)
         enddo
         enddo
-        call watcht(myrank==0,"overlap(10)",1)
+        call watcht(myrank==0,"overlap(8)",1)
      endif
 
   else !(lblas)

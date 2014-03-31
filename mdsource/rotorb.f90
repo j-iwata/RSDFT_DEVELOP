@@ -64,6 +64,8 @@ subroutine rotorb
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
 
+     call watcht(myrank==0,"",0)
+
      MBT=mstocck(k,s)
 
      tau(:,:)=zr
@@ -73,7 +75,8 @@ subroutine rotorb
      scr(:,:)=zr
      wrk(:,:)=zr
 
-     call watcht(myrank==0,"",0)
+     call watcht(myrank==0,"rotorb(0)",1)
+
      call overlap(s,k,4,0,lblas)
      call watcht(myrank==0,"rotorb(1)",1)
      call overlap(s,k,2,0,lblas)
@@ -147,9 +150,11 @@ subroutine rotorb
            write(*,*) "WARNING: iteration was not converged in rotorb"
         end if
 
+        call watcht(myrank==0,"rotorb(6)",1)
+
      end do ! it
 
-     call watcht(myrank==0,"rotorb(6)",1)
+     call watcht(myrank==0,"",0)
 
      call mpi_allgatherv(gam(1,ls),ir_i(myrank),mpi_real8,wrk &
           ,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
@@ -212,6 +217,8 @@ subroutine rotorb
 
   deallocate( psi_tmp )
   deallocate( ir_i, id_i )
+
+  call watcht(myrank==0,"",0)
 
   unk(:,MB_0_CPMD:MB_1_CPMD,:,:)=psi_n(:,MB_0_CPMD:MB_1_CPMD,:,:)
 

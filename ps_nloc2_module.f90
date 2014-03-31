@@ -50,7 +50,7 @@ CONTAINS
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
     real(8),allocatable :: uV_tmp(:,:,:),work(:)
-    real(8) :: ctt(0:5),ett(0:5)
+    real(8) :: ctt(0:9),ett(0:9)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
@@ -63,6 +63,10 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    ctt=0.0d0 ; ett=0.0d0
+
+    call watch(ctt(6),ett(6))
 
     Mlma=0
     do i=1,Natom
@@ -94,8 +98,8 @@ CONTAINS
        nzlma_0 = min(Mlma*125/nprocs_g,Mlma)
     end if
 
-    ctt(:)=0.d0
-    ett(:)=0.d0
+!    ctt(:)=0.d0
+!    ett(:)=0.d0
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -111,11 +115,15 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
+    call watch(ctt(7),ett(7))
+
     r=maxval(Rps)+maxval(Hgrid(1:3))+1.d-8
     call make_minimal_box(r,mm1,mm2,mm3,MMJJ_0)
     mm1 = maxval( abs(mcube_grid_ion(:,1)) ) + 1
     mm2 = maxval( abs(mcube_grid_ion(:,2)) ) + 1
     mm3 = maxval( abs(mcube_grid_ion(:,3)) ) + 1
+
+    call watch(ctt(8),ett(8))
 
     MMJJ_0 = M_grid_ion
 
@@ -841,6 +849,9 @@ CONTAINS
        write(*,*) "time(ps_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
        write(*,*) "time(ps_nloc2_4)",ctt(4)-ctt(3),ett(4)-ett(3)
        write(*,*) "time(ps_nloc2_5)",ctt(5)-ctt(4),ett(5)-ett(4)
+       write(*,*) "time(ps_nloc2_7)",ctt(7)-ctt(6),ett(7)-ett(6)
+       write(*,*) "time(ps_nloc2_8)",ctt(8)-ctt(7),ett(8)-ett(7)
+       write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
 
   END SUBROUTINE prep_ps_nloc2

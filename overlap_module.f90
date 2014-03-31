@@ -25,7 +25,7 @@ CONTAINS
     nblk1=4
     call watcht(myrank==0,"",0)
     call calc_overlap_sub(m,n,nblk0,a,b,c)
-    call watcht(myrank==0,"overlap(5)",1)
+    call watcht(myrank==0,"calc_overlap(1)",1)
     nme=n*(n+1)/2
     allocate( s(nme),r(nme) )
     k=0
@@ -35,9 +35,9 @@ CONTAINS
        s(k)=c(i,j)*dv
     end do
     end do
-    call watcht(myrank==0,"overlap(6-1)",1)
+    call watcht(myrank==0,"calc_overlap(2)",1)
     call mpi_allreduce(s,r,nme,mpi_real8,mpi_sum,comm_grid,ierr)
-    call watcht(myrank==0,"overlap(6-2)",1)
+    call watcht(myrank==0,"calc_overlap(3)",1)
     k=0
     do j=1,n
     do i=j,n
@@ -46,7 +46,7 @@ CONTAINS
     end do
     end do
     deallocate( r,s )
-    call watcht(myrank==0,"overlap(6-3)",1)
+    call watcht(myrank==0,"calc_overlap(4)",1)
   END SUBROUTINE calc_overlap
 
   RECURSIVE SUBROUTINE calc_overlap_sub(m,n,nblk,a,b,c)
