@@ -24,6 +24,7 @@ MODS1 = simc_module.o\
         esm_kinetic_module.o \
         kinetic_module.o \
         strfac_module.o \
+        ps_read_yb_module.o \
         pseudopot_module.o \
         ps_gth_module.o \
         ps_local_gth_module.o \
