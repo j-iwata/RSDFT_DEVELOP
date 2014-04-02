@@ -94,7 +94,22 @@ CONTAINS
           end if
        end do
 
-!- filtering
+       if ( Rcloc(ik) == 0.0d0 ) then
+          do i=1,MMr
+             if ( abs(vshort(i)) < 1.d-4 ) then
+                NRcloc(ik)=i
+                Rcloc(ik)=rad(i,ik)
+                exit
+             end if
+          end do
+       end if
+
+       if ( Rcloc(ik) == 0.0d0 ) then
+          write(*,*) "log-range part fitting is failed"
+          stop "init_local_mol(0)"
+       end if
+
+!- Filtering
 
        const = 2.d0/pi
        fac   = 1.2d0

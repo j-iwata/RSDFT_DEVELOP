@@ -1,5 +1,7 @@
 MODULE pseudopot_module
 
+  use ps_read_YB_module
+
   implicit none
 
   PRIVATE
@@ -168,8 +170,28 @@ CONTAINS
              open(unit_ps,FILE=file_ps(ielm),STATUS='old')
              call read_PSV
              close(unit_ps)
+          case(3)
+             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+             call ps_read_YB(unit_ps)
+             close(unit_ps)
+             call ps_allocate(ps_yb%nrr,ps_yb%norb)
+             Mr(ielm)                 = ps_yb%nrr
+             norb(ielm)               = ps_yb%norb
+             Zps(ielm)                = ps_yb%znuc
+             anorm(1:norb(ielm),ielm) = ps_yb%anorm(1:norb(ielm))
+             inorm(1:norb(ielm),ielm) = ps_yb%inorm(1:norb(ielm))
+             Rps(1:norb(ielm),ielm)   = ps_yb%Rc(1:norb(ielm))
+             NRps(1:norb(ielm),ielm)  = ps_yb%NRc(1:norb(ielm))
+             lo(1:norb(ielm),ielm)    = ps_yb%lo(1:norb(ielm))
+             vql(1:Mr(ielm),ielm)     = ps_yb%vql(1:Mr(ielm))
+             cdd(1:Mr(ielm),ielm)     = ps_yb%cdd(1:Mr(ielm))
+             cdc(1:Mr(ielm),ielm)     = ps_yb%cdc(1:Mr(ielm))
+             rad(1:Mr(ielm),ielm)     = ps_yb%rr(1:Mr(ielm))
+             rab(1:Mr(ielm),ielm)     = ps_yb%rx(1:Mr(ielm))
+             viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                      = ps_yb%vps(1:Mr(ielm),1:norb(ielm))
           case default
-             stop
+             stop "ippform error"
           end select
        end do
     end if
@@ -207,10 +229,12 @@ CONTAINS
     call mpi_bcast(viod  ,m*n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
 !
     call mpi_bcast(max_ngauss,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    if ( myrank /= 0 ) then
-       allocate( cdd_coef(3,max_ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
+    if ( max_ngauss /= 0 ) then
+       if ( myrank /= 0 ) then
+          allocate( cdd_coef(3,max_ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
+       end if
+       call mpi_bcast(cdd_coef,3*max_ngauss*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     end if
-    call mpi_bcast(cdd_coef,3*max_ngauss*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_pseudopot
 
 
