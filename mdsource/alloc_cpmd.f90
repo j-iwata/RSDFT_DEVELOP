@@ -90,7 +90,6 @@ end subroutine dealloc_cpmd
 !     read and send cpmd input variables
 !-----------------------------------------------------------------------
 subroutine read_cpmd_variables
-!   use global_variables
    use cpmd_variables
    implicit none 
    open(2,file='cpmd_var.dat',status='old')
@@ -116,16 +115,28 @@ subroutine read_cpmd_variables
    read(2,*) linitnose
    read(2,*) linitnosee
    close(2)
+
    write(*,*) "nstep =",nstep
    write(*,*) "deltat=",deltat
    write(*,*) "temp  =",temp
    write(*,*) "omegan=",omegan
    write(*,*) "emass =",emass
+   write(*,*) "trange=",trange
+   write(*,*) "ekin1,ekin2=",ekin1,ekin2
+   write(*,*) "wnose0=",wnose0
+   write(*,*) "ekinw =",ekinw
    write(*,*) "lcpmd =",lcpmd
    write(*,*) "lbath =",lbath
    write(*,*) "inivel=",inivel
    write(*,*) "lmeta =",lmeta
-   if(lforce_fast) write(*,*) "Use new force routine!!!"
+   write(*,*) "lbere =",lbere
+   write(*,*) "lbathnew=",lbathnew
+   write(*,*) "lscale=",lscale
+   write(*,*) "lscalee=",lscaleele
+   write(*,*) "lquench=",lquench
+   write(*,*) "lforce_fast",lforce_fast
+   write(*,*) "linitnose=",linitnose
+   write(*,*) "linitnosee=",linitnosee
 
    return
 end subroutine read_cpmd_variables
