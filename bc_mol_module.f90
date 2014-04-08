@@ -109,7 +109,7 @@ CONTAINS
        jx=min( ix1, pinfo_grid(1,irank)+pinfo_grid(2,irank) )
        iy=max( iy0, pinfo_grid(3,irank)+1 )
        jy=min( iy1, pinfo_grid(3,irank)+pinfo_grid(4,irank) )
-       iz=max( iz0, pinfo_grid(5,irank+1) )
+       iz=max( iz0, pinfo_grid(5,irank)+1 )
        jz=min( iz1, pinfo_grid(5,irank)+pinfo_grid(6,irank) )
        neighbor_info( 1, 1, i )=myrnk
        neighbor_info( 2, 1, i )=irank
