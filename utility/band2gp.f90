@@ -8,7 +8,7 @@ PROGRAM band_plot
   integer :: nbk,mb,mbv,mbc,mb1,mb2
   real(8),parameter :: HT=27.2116d0
   real(8),allocatable :: eval(:,:),dk_bz(:,:)
-  real(8) :: evb,ecb,dummy,rdummy(3),bb(3,3)
+  real(8) :: evb,ecb,esft,dummy,rdummy(3),bb(3,3)
   real(8) :: kx,ky,kz,d1,d2,d3
 
   open(u1,file="band_eigv",status='old')
@@ -70,7 +70,19 @@ PROGRAM band_plot
 
 !------------------------------
 
-  call plot_eval(mb1,mb2,ecb,HT)
+  write(*,*) "evb=",evb
+  write(*,*) "ecb=",ecb
+  write(*,*) "Which energy is used as origin ? [ 0:0.0, 1:evb, 2:ecb ]"
+  read(*,*) i
+  select case(i)
+  case default
+  case(1)
+     esft=evb
+  case(2)
+     esft=ecb
+  end select
+
+  call plot_eval(mb1,mb2,esft,HT)
 
 !------------------------------
 
