@@ -324,7 +324,7 @@ PROGRAM Real_Space_Solid
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
-     call test_hpsi2( max(1,NBLK) )
+     call test_hpsi2( 10 )
      goto 900
   end if
 

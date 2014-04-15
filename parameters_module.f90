@@ -81,7 +81,7 @@ CONTAINS
 
     iswitch_scf  = 1
     iswitch_opt  = 0
-    iswitch_band = 0
+    iswitch_test = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
@@ -96,12 +96,17 @@ CONTAINS
           else if ( ckey(1:6) == "SWBAND" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_band
+          else if ( ckey(1:6) == "SWTEST" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_test
+          end if
           end if
        end do
 990    continue
        write(*,*) "iswitch_scf =",iswitch_scf
        write(*,*) "iswitch_opt =",iswitch_opt
        write(*,*) "iswitch_band=",iswitch_band
+       write(*,*) "iswitch_test=",iswitch_test
     end if
 
     atom_format = 0
