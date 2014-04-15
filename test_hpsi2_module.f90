@@ -30,8 +30,6 @@ CONTAINS
     real(8) :: t0, t1, t2, t3, t4
     logical,save :: flag_allocate=.false.
 
-    call read_test_hpsi2
-  
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
 
