@@ -40,6 +40,8 @@ PROGRAM Real_Space_Solid
 
   use ps_nloc3_module
 
+  use test_hpsi2_module
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -318,6 +320,13 @@ PROGRAM Real_Space_Solid
 
 ! if initrho is not available, random_number density is set here
   call init_density
+
+!-------------------- Hamiltonian Test
+
+  if ( iswitch_test == 1 ) then
+     call test_hpsi2( max(1,NBLK) )
+     goto 900
+  end if
 
 !-------------------- BAND with SSEIG
 #ifndef _DRSDFT_

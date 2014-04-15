@@ -51,6 +51,7 @@ MODULE global_variables
 
   integer :: Diter, Nsweep, Ndiag
   integer :: iswitch_scf,iswitch_opt,iswitch_band
+  integer :: iswitch_test
   real(8) :: etime_limit
   logical :: disp_switch
 

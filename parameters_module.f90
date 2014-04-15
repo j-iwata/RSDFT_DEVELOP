@@ -216,10 +216,11 @@ CONTAINS
     call read_oldformat_io(myrank,unit)
 
     if ( myrank == 0 ) then
-       read(unit,*) iswitch_scf,iswitch_opt,iswitch_band
+       read(unit,*) iswitch_scf,iswitch_opt,iswitch_band,iswitch_test
        write(*,*) "iswitch_scf =",iswitch_scf
        write(*,*) "iswitch_opt =",iswitch_opt
        write(*,*) "iswitch_band=",iswitch_band
+       write(*,*) "iswitch_test=",iswitch_test
     end if
 
     call read_oldformat_watch(myrank,unit)
@@ -241,6 +242,7 @@ CONTAINS
     call mpi_bcast(iswitch_scf ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_opt ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_band,1,mpi_integer,rank,mpi_comm_world,ierr)
+    call mpi_bcast(iswitch_test,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(atom_format,1,mpi_integer,rank,mpi_comm_world,ierr)
   END SUBROUTINE send_parameters
 

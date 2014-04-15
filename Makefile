@@ -86,9 +86,9 @@ MODS1 = simc_module.o\
         localpot2_vh_module.o \
         localpot2_xc_module.o \
         localpot2_te_module.o \
+        test_hpsi2_module.o \
 
 #        momentum_mate_module.o \
-#        test_hpsi2_module.o \
 #        esm_ion_module.o \
 #        band_analysis_module.o \
 
