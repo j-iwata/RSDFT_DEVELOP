@@ -100,7 +100,6 @@ CONTAINS
              backspace(unit)
              read(unit,*) cbuf,iswitch_test
           end if
-          end if
        end do
 990    continue
        write(*,*) "iswitch_scf =",iswitch_scf
