@@ -68,6 +68,8 @@ PROGRAM band_plot
   evb = maxval( eval(1:mbv,1:nbk) )
   ecb = minval( eval(mbc:mb,1:nbk) )
 
+  write(*,*) "eg(HT,eV)=",ecb-evb,(ecb-evb)*HT
+
 !------------------------------
 
   write(*,*) "evb=",evb
