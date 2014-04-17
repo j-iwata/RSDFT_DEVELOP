@@ -18,7 +18,7 @@ CONTAINS
     integer :: a1,a2,a3,b1,b2,b3,nb,ns,ms,mt
     integer :: m,n,ndata,i1,i2,i3,ib,ierr
     integer :: c1,c2,c3,d1,d2,d3,irank,nreq,itags,itagr,ireq(36)
-    integer :: i,j,l
+    integer :: i,l
     integer :: istatus(mpi_status_size,123)
 
     a1=Igrid(1,1)
@@ -58,24 +58,24 @@ CONTAINS
           if ( ndepth==1 ) then
              c1=b1
              d1=b1
-             j=fdinfo_send(10,n,2)*nb
+             ndata=fdinfo_send(10,n,2)*nb
           else
              c1=fdinfo_send(1,n,2)
              d1=fdinfo_send(2,n,2)
-             j=fdinfo_send(9,n,2)*nb
+             ndata=fdinfo_send(9,n,2)*nb
           end if
           c2=fdinfo_send(3,n,2) ; d2=fdinfo_send(4,n,2)
           c3=fdinfo_send(5,n,2) ; d3=fdinfo_send(6,n,2)
-          if ( j<1 ) cycle
+          if ( ndata<1 ) cycle
 !$OMP do
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                ndata = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                     + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                     + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
-                sbuf(ndata,n,2)=www(i1,i2,i3,ib)
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,2)=www(i1,i2,i3,ib)
              end do
              end do
              end do
@@ -120,24 +120,24 @@ CONTAINS
           if ( ndepth==1 ) then
              c2=b2
              d2=b2
-             j=fdinfo_send(10,n,4)*nb
+             ndata=fdinfo_send(10,n,4)*nb
           else
              c2=fdinfo_send(3,n,4)
              d2=fdinfo_send(4,n,4)
-             j=fdinfo_send(9,n,4)*nb
+             ndata=fdinfo_send(9,n,4)*nb
           end if
           c1=fdinfo_send(1,n,4) ; d1=fdinfo_send(2,n,4)
           c3=fdinfo_send(5,n,4) ; d3=fdinfo_send(6,n,4)
-          if ( j<1 ) cycle
+          if ( ndata<1 ) cycle
 !$OMP do
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                ndata = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                     + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                     + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
-                sbuf(ndata,n,4)=www(i1,i2,i3,ib)
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,4)=www(i1,i2,i3,ib)
              end do
              end do
              end do
@@ -182,24 +182,24 @@ CONTAINS
           if ( ndepth==1 ) then
              c3=b3
              d3=b3
-             j=fdinfo_send(10,n,6)*nb
+             ndata=fdinfo_send(10,n,6)*nb
           else
              c3=fdinfo_send(5,n,6)
              d3=fdinfo_send(6,n,6)
-             j=fdinfo_send(9,n,6)*nb
+             ndata=fdinfo_send(9,n,6)*nb
           end if
           c1=fdinfo_send(1,n,6) ; d1=fdinfo_send(2,n,6)
           c2=fdinfo_send(3,n,6) ; d2=fdinfo_send(4,n,6)
-          if ( j<1 ) cycle
+          if ( ndata<1 ) cycle
 !$OMP do
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                ndata = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                     + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                     + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
-                sbuf(ndata,n,6)=www(i1,i2,i3,ib)
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,6)=www(i1,i2,i3,ib)
              end do
              end do
              end do
@@ -244,24 +244,24 @@ CONTAINS
           if ( ndepth==1 ) then
              c1=a1
              d1=a1
-             j=fdinfo_send(10,n,1)*nb
+             ndata=fdinfo_send(10,n,1)*nb
           else
              c1=fdinfo_send(1,n,1)
              d1=fdinfo_send(2,n,1)
-             j=fdinfo_send(9,n,1)*nb
+             ndata=fdinfo_send(9,n,1)*nb
           end if
           c2=fdinfo_send(3,n,1) ; d2=fdinfo_send(4,n,1)
           c3=fdinfo_send(5,n,1) ; d3=fdinfo_send(6,n,1)
-          if ( j<1 ) cycle
+          if ( ndata<1 ) cycle
 !$OMP do
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                ndata = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                     + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                     + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
-                sbuf(ndata,n,1)=www(i1,i2,i3,ib)
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,1)=www(i1,i2,i3,ib)
              end do
              end do
              end do
@@ -306,24 +306,24 @@ CONTAINS
           if ( ndepth==1 ) then
              c2=a2
              d2=a2
-             j=fdinfo_send(10,n,3)*nb
+             ndata=fdinfo_send(10,n,3)*nb
           else
              c2=fdinfo_send(3,n,3)
              d2=fdinfo_send(4,n,3)
-             j=fdinfo_send(9,n,3)*nb
+             ndata=fdinfo_send(9,n,3)*nb
           end if
           c1=fdinfo_send(1,n,3) ; d1=fdinfo_send(2,n,3)
           c3=fdinfo_send(5,n,3) ; d3=fdinfo_send(6,n,3)
-          if ( j<1 ) cycle
+          if ( ndata<1 ) cycle
 !$OMP do
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                ndata = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                     + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                     + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
-                sbuf(ndata,n,3)=www(i1,i2,i3,ib)
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,3)=www(i1,i2,i3,ib)
              end do
              end do
              end do
@@ -368,24 +368,24 @@ CONTAINS
           if ( ndepth==1 ) then
              c3=a3
              d3=a3
-             j=fdinfo_send(10,n,5)*nb
+             ndata=fdinfo_send(10,n,5)*nb
           else
              c3=fdinfo_send(5,n,5)
              d3=fdinfo_send(6,n,5)
-             j=fdinfo_send(9,n,5)*nb
+             ndata=fdinfo_send(9,n,5)*nb
           end if
           c1=fdinfo_send(1,n,5) ; d1=fdinfo_send(2,n,5)
           c2=fdinfo_send(3,n,5) ; d2=fdinfo_send(4,n,5)
-          if ( j<1 ) cycle
+          if ( ndata<1 ) cycle
 !$OMP do
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                ndata = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                     + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                     + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
-                sbuf(ndata,n,5)=www(i1,i2,i3,ib)
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,5)=www(i1,i2,i3,ib)
              end do
              end do
              end do
