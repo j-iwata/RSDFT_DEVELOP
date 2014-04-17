@@ -50,8 +50,9 @@ CONTAINS
 
 
   SUBROUTINE calc_total_energy(flag_recalc_esp,disp_switch)
+    implicit none
     logical,intent(IN) :: flag_recalc_esp,disp_switch
-    integer :: i,n,k,s,n1,n2,ierr
+    integer :: i,n,k,s,n1,n2,ierr,nb1,nb2
     real(8) :: s0(4),s1(4),uu
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
 #ifdef _DRSDFT_
@@ -78,32 +79,40 @@ CONTAINS
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
 
-       allocate( work(n1:n2,1) )
+       allocate( work(n1:n2,MB_d) ) ; work=(0.0d0,0.0d0)
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
-       do n=MB_0,MB_1
+       do n=MB_0,MB_1,MB_d
+          nb1=n
+          nb2=min(nb1+MB_d-1,MB_1)
           work=zero
-          call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,n,n)
+          call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+          do i=nb1,nb2
 #ifdef _DRSDFT_
-          esp0(n,k,s,1)=sum( unk(:,n,k,s)*work(:,1) )*dV
+          esp0(i,k,s,1)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
 #else
-          esp0(n,k,s,1)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+          esp0(i,k,s,1)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
+          end do
           work=zero
-          call op_localpot(s,n2-n1+1,1,unk(n1,n,k,s),work)
+          call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
+          do i=nb1,nb2
 #ifdef _DRSDFT_
-          esp0(n,k,s,2)=sum( unk(:,n,k,s)*work(:,1) )*dV
+          esp0(i,k,s,2)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
 #else
-          esp0(n,k,s,2)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+          esp0(i,k,s,2)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
+          end do
           work=zero
-          call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,n,n)
+          call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+          do i=nb1,nb2
 #ifdef _DRSDFT_
-          esp0(n,k,s,3)=sum( unk(:,n,k,s)*work(:,1) )*dV
+          esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
 #else
-          esp0(n,k,s,3)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+          esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
+          end do
           work=zero
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_

@@ -114,8 +114,8 @@ CONTAINS
     esp(:)  = 0.d0
 !$OMP end parallel workshare
 
-    do ns=MB_0,MB_1,MB_d
-       ne=min(ns+MB_d-1,MB_1)
+    do ns=MB_0,MB_1
+       ne=ns
        nn=ne-ns+1
 
        E1(:)=1.d10
@@ -396,8 +396,8 @@ CONTAINS
     esp(:)  = 0.d0
 !$OMP end parallel workshare
 
-    do ns=MB_0,MB_1,MB_d
-       ne=min(ns+MB_d-1,MB_1)
+    do ns=MB_0,MB_1
+       ne=ns
        nn=ne-ns+1
 
        E1(:)=1.d10
