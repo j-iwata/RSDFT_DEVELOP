@@ -2,6 +2,7 @@ include make.inc
 
 MODS1 = simc_module.o\
         watch_module.o \
+        info_module.o \
         modified_bessel_module.o \
         expint_module.o \
         parallel_module.o \

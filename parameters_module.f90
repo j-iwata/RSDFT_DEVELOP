@@ -13,17 +13,26 @@ MODULE parameters_module
 
 CONTAINS
 
-  SUBROUTINE read_parameters
+  SUBROUTINE read_parameters(info)
     implicit none
+    character(*),intent(OUT) :: info
     integer :: i
     character(7) :: label,cbuf,ckey
-    real(8) :: Ratom(3)
+    real(8) :: Ratom(3),ax_atom,aa_atom(3,3)
 
-    call read_atom(myrank,unit_atom)
+    info = ""
+
+    call read_atom(myrank,unit_atom,ax_atom,aa_atom)
 
     call read_xc(myrank,unit)
 
     call read_aa(myrank,unit)
+
+    if ( ax == 0.0d0 ) then
+       ax = ax_atom
+       aa(:,:) = aa_atom(:,:)
+       info = "Lattice constant and vectors given in fort.970 are used" 
+    end if
 
     call read_electron(myrank,unit)
 
@@ -165,8 +174,9 @@ CONTAINS
     implicit none
     integer :: i
     character(7) :: label,cbuf,ckey
+    real(8) :: ax_atom,aa_atom(3,3)
 
-    call read_atom(myrank,unit_atom)
+    call read_atom(myrank,unit_atom,ax_atom,aa_atom)
 
     if ( myrank == 0 ) then
        do i=1,1000

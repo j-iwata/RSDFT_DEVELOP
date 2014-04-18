@@ -42,6 +42,8 @@ PROGRAM Real_Space_Solid
 
   use test_hpsi2_module
 
+  use info_module
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -52,6 +54,7 @@ PROGRAM Real_Space_Solid
   logical :: flag_exit=.false.
   logical :: flag_end =.false.
   logical :: flag_scf =.false.
+  character(72) :: info
 
 ! --- start MPI ---
 
@@ -60,6 +63,10 @@ PROGRAM Real_Space_Solid
 ! --- global time counter start ---
 
   call global_watch(flag_end)
+
+! --- info ---
+
+  call open_info(myrank)
 
 ! --- DISP_SWITCH ---
 
@@ -85,8 +92,10 @@ PROGRAM Real_Space_Solid
 
   if (DISP_SWITCH) write(*,'(a60," read_param")') repeat("-",60)
 
-  call read_parameters
+  call read_parameters(info)
 !  call read_oldformat_parameters
+
+  call write_info(info)
 
 ! --- initial preparetaion ---
 
@@ -751,6 +760,7 @@ PROGRAM Real_Space_Solid
      write(*,*) "END_PROGRAM : MAIN" 
   end if
 900 continue
+  call close_info
   call end_mpi_parallel
 
 END PROGRAM Real_Space_Solid

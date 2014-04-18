@@ -3,6 +3,7 @@ MODULE atomopt_module
   use parallel_module
   use atom_module
   use total_energy_module
+  use aa_module
   use bb_module
   use scf_module
   use ewald_module
@@ -598,6 +599,11 @@ CONTAINS
           end if
           if ( myrank == 0 ) then
              rewind 97
+             write(97,'("AX",f20.15)') ax
+             write(97,'("A1",3f20.15)') aa(1:3,1)/ax
+             write(97,'("A2",3f20.15)') aa(1:3,2)/ax
+             write(97,'("A3",3f20.15)') aa(1:3,3)/ax
+             write(97,'("AA")')
              write(97,*) Nelement,Natom
              do a=1,Natom
                 write(97,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
@@ -793,6 +799,11 @@ CONTAINS
        if ( myrank == 0 ) then
 
           rewind 197
+          write(197,'("AX",f20.15)') ax
+          write(197,'("A1",3f20.15)') aa(1:3,1)/ax
+          write(197,'("A2",3f20.15)') aa(1:3,2)/ax
+          write(197,'("A3",3f20.15)') aa(1:3,3)/ax
+          write(197,'("AA")')
           write(197,*) Nelement,Natom
           do a=1,Natom
              write(197,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1

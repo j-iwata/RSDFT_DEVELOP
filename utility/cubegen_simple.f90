@@ -22,13 +22,12 @@ PROGRAM cubegen_simple
 
 ! --- read input data ---
 
-  read(u1,*)
-  read(u1,*)
   read(u1,*) cbuf,ax
   do i=1,3
      read(u1,*) cbuf,aa(1:3,i)
   end do
-  read(u2,*) MKI,MI,zatom(1:MKI)
+  read(u1,*)
+  read(u1,*) MKI,MI,zatom(1:MKI)
 
   if ( MKI > 5 ) then
      write(*,*) "MKI=",MKI,size(zatom)
@@ -38,7 +37,7 @@ PROGRAM cubegen_simple
   allocate( asi(3,MI),Kion(MI),rsi(3,MI) )
 
   do i=1,MI
-     read(u2,*) Kion(i),asi(:,i)
+     read(u1,*) Kion(i),asi(:,i)
   end do
 
   aa=ax*aa
