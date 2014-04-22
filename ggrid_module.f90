@@ -10,7 +10,8 @@ MODULE Ggrid_module
            ,allgatherv_Ggrid,construct_NMGL_Ggrid &
            ,get_cutoff_Ggrid,parallel_Ggrid &
            ,construct_Ggrid,destruct_Ggrid &
-           ,get_cutoff_ggrid_2,construct_ggrid_2
+           ,get_cutoff_ggrid_2,construct_ggrid_2 &
+           ,get_Ggrid
 
   integer :: NGgrid(0:3),MG_0,MG_1,NMGL
   integer,allocatable :: LLG(:,:),MGL(:)
@@ -22,6 +23,7 @@ MODULE Ggrid_module
 CONTAINS
 
   SUBROUTINE get_cutoff_Ggrid
+    implicit none
     integer :: i,i1,i2,i3,m,n
     real(8) :: b0(3),b1,b2,b3,b12,c,r1,r2,r3
     real(8) :: s,smax
@@ -65,6 +67,7 @@ CONTAINS
 
 
   SUBROUTINE construct_Ggrid(itype)
+    implicit none
     integer,intent(IN) :: itype
     integer :: i1,i2,i3,n
     real(8) :: s
@@ -139,7 +142,77 @@ CONTAINS
   END SUBROUTINE destruct_Ggrid
 
 
+  SUBROUTINE get_Ggrid(itype,LLG_out)
+    implicit none
+    integer,intent(IN) :: itype
+    integer,intent(OUT) :: LLG_out(:,:)
+    integer :: i1,i2,i3,n
+    real(8) :: s
+    select case(itype)
+    case default
+       stop 'get_Ggrid'
+    case(0)
+       LLG_out=0
+       n=0
+       do i3=-(Ngrid(3)-1)/2,(Ngrid(3)-1)/2
+       do i2=-(Ngrid(2)-1)/2,(Ngrid(2)-1)/2
+       do i1=-(Ngrid(1)-1)/2,(Ngrid(1)-1)/2
+          s=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3)**2 &
+           +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3)**2 &
+           +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3)**2
+          if ( s < Ecut-ep ) then
+             n=n+1
+             LLG_out(1,n)=i1
+             LLG_out(2,n)=i2
+             LLG_out(3,n)=i3
+          end if
+       end do
+       end do
+       end do
+    case(1)
+       LLG_out=0
+       n=0
+       do i3=-(Ngrid(3)-1)/2,(Ngrid(3)-1)/2
+       do i2=-(Ngrid(2)-1)/2,(Ngrid(2)-1)/2
+       do i1=-(Ngrid(1)-1)/2,(Ngrid(1)-1)/2
+          s=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3)**2 &
+           +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3)**2 &
+           +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3)**2
+          if ( s < Ecut-ep ) then
+             n=n+1
+             if ( MG_0 <= n .and. n <= MG_1 ) then
+                LLG_out(1,n)=i1
+                LLG_out(2,n)=i2
+                LLG_out(3,n)=i3
+             end if
+          end if
+       end do
+       end do
+       end do
+    case(2)
+       LLG_out=0
+       n=0
+       do i3=-(Ngrid(3)-1)/2,(Ngrid(3)-1)/2
+       do i2=-(Ngrid(2)-1)/2,(Ngrid(2)-1)/2
+       do i1=-(Ngrid(1)-1)/2,(Ngrid(1)-1)/2
+          s=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3)**2 &
+           +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3)**2 &
+           +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3)**2
+          if ( s < Ecut-ep ) then
+             n=n+1
+             LLG_out(1,n) = mod( Ngrid(1)+i1, Ngrid(1) )
+             LLG_out(2,n) = mod( Ngrid(2)+i2, Ngrid(2) )
+             LLG_out(3,n) = mod( Ngrid(3)+i3, Ngrid(3) )
+          end if
+       end do
+       end do
+       end do
+    end select
+  END SUBROUTINE get_Ggrid
+
+
   SUBROUTINE construct_NMGL_Ggrid
+    implicit none
     integer :: i1,i2,i3,n
     integer,allocatable :: indx(:)
     real(8) :: s1,s2
@@ -192,6 +265,7 @@ CONTAINS
 
 
   SUBROUTINE parallel_Ggrid(nprocs,myrank)
+    implicit none
     integer,intent(IN) :: nprocs,myrank
     integer :: i,n
     integer,allocatable :: np(:)
@@ -214,6 +288,7 @@ CONTAINS
 
 
   SUBROUTINE allgatherv_Ggrid(f)
+    implicit none
     complex(8),intent(INOUT) :: f(*)
     include 'mpif.h'
     integer :: ierr

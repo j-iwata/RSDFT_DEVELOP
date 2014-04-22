@@ -13,6 +13,7 @@ MODULE ps_local_module
   use ps_local_gth_module
   use simc_module
   use ffte_sub_module
+  use bberf_module
 
   implicit none
 
@@ -24,15 +25,6 @@ MODULE ps_local_module
   integer,allocatable :: NRcloc(:)
   real(8),allocatable :: Vion(:)
 
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
-
-!  logical :: first_time=.true.
-!  integer :: comm_fftx,comm_ffty,comm_fftz
-!  integer :: npux,npuy,npuz
   logical :: first_time1=.true.
   logical :: first_time2=.true.
   integer :: NGHT, NGPS
@@ -42,10 +34,13 @@ MODULE ps_local_module
   complex(8),allocatable :: fg(:)
   integer,allocatable :: icnta(:),idisa(:)
 
+  integer,allocatable :: LLG_f(:,:)
+
 CONTAINS
 
 
   SUBROUTINE init_ps_local
+    implicit none
     integer :: i,ig,ik,iorb,MMr,NRc,MKI
     real(8) :: Rc,p1,p2,p3,p4,vlong,Pi,const,x,r,sb,sum0,G,G2
     real(8) :: Vcell
@@ -164,6 +159,7 @@ CONTAINS
   END SUBROUTINE init_ps_local
 
   SUBROUTINE simp(f,s,m)
+    implicit none
     integer,intent(IN)  :: m
     real(8),intent(IN)  :: f(:)
     real(8),intent(OUT) :: s
@@ -227,6 +223,7 @@ CONTAINS
 
     if ( .not.allocated(Vion) ) then
        allocate( Vion(ML_0:ML_1) )
+       Vion=0.0d0
     end if
 
     allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
@@ -439,7 +436,6 @@ CONTAINS
     end do
     call mpi_allreduce(work,force,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
     deallocate( work )
-
 
   END SUBROUTINE calc_force_ps_local
 
@@ -786,7 +782,6 @@ CONTAINS
     implicit none
     integer :: i,i1,i2,i3,ik,j,n
     integer :: ML,ML1,ML2,ML3,MG,ML_0,ML_1
-!    complex(8),allocatable :: vg(:) !,zwork1(:,:,:),zwork2(:,:,:)
     real(8) :: ctt(0:3),ett(0:3)
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
 
@@ -807,7 +802,6 @@ CONTAINS
     ab12= (b2b-a2b+1)*(b1b-a1b+1)
 
     if ( first_time1 ) then
-!       call prep_ffte
        call prep_ffte_sub(Igrid(1,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
        if ( .not.allocated(Vion) ) then
           allocate( Vion(ML_0:ML_1) )
@@ -848,10 +842,6 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
-!    allocate( zwork1(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork1(:,:,:)=(0.d0,0.d0)
-!    allocate( zwork2(0:ML1-1,a2b:b2b,a3b:b3b) ) ; zwork2(:,:,:)=(0.d0,0.d0)
-!    allocate( vg(MG) ) ; vg=(0.d0,0.d0)
-
 !$OMP parallel private(j,ik)
 !$OMP do
     do i=MG_0,MG_1
@@ -871,20 +861,6 @@ CONTAINS
 
     call allgatherv_Ggrid(fg)
 
-!    call construct_Ggrid(2)
-
-!    zwork1_ffte(:,:,:)=(0.0d0,0.0d0)
-!!$OMP parallel do private( i1,i2,i3 )
-!    do i=1,NGgrid(0)
-!       i3=LLG(3,i)
-!       i2=LLG(2,i)
-!       i1=LLG(1,i)
-!       if ( a2b<=i2 .and. i2<=b2b .and. a3b<=i3 .and. i3<=b3b ) then
-!          zwork1_ffte(i1,i2,i3)=fg(i)
-!       endif
-!    end do
-!!$OMP end parallel do
-
 !$OMP parallel
 !$OMP workshare
     zwork1_ffte(:,:,:)=(0.0d0,0.0d0)
@@ -896,15 +872,10 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-!    call destruct_Ggrid
-
-!    deallocate( vg )
-
     call watch(ctt(1),ett(1))
 
     call pzfft3dv(zwork1_ffte,zwork2_ffte,ML1,ML2,ML3 &
          ,comm_ffty,comm_fftz,npuy,npuz,1)
-   ! zwork1=ML*zwork2
 
     call watch(ctt(2),ett(2))
 
@@ -919,12 +890,7 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-!    deallocate( zwork2 )
-!    deallocate( zwork1 )
-
     call watch(ctt(3),ett(3))
-
-   ! call ffte_free
 
     if ( disp_switch_parallel ) then
        write(*,*) "time(const_ps_loc_ffte1)",ctt(1)-ctt(0),ett(1)-ett(0)
@@ -940,16 +906,12 @@ CONTAINS
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     integer :: ispin,i,i1,i2,i3,ik,a,j,ierr,irank,N_MI,n
-!    integer :: MI_0,MI_1
     integer :: ML1,ML2,ML3,ML,MG,ML_0
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
-!    integer,allocatable :: icnt(:),idis(:)
     real(8) :: a1,a2,a3,pi2,Gr,Gx,Gy,Gz,Vcell
     real(8) :: ctt(0:9),ett(0:9)
     complex(8),allocatable :: zrho(:) !, zrho3(:,:,:)
     complex(8),parameter :: z0=(0.d0,0.d0)
-!    complex(8),allocatable :: zwork1(:,:,:),zwork2(:,:,:)
-!    complex(8) :: zsum1,zsum2,zsum3,ztmp
     real(8) :: zsum1,zsum2,zsum3,ztmp
 
     force(:,:)=0.d0
@@ -1025,14 +987,11 @@ CONTAINS
        MI_1 = idisa(myrank)+icnta(myrank)
        idisa(:)=idisa(:)*3
        icnta(:)=icnta(:)*3
-!       deallocate( idisa )
-!       deallocate( icnta )
        first_time2=.false.
     end if
 
     call watch(ctt(1),ett(1))
 
-!    allocate( zwork1(0:ML1-1,a2b:b2b,a3b:b3b) )
 !$OMP parallel private(i)
 !$OMP workshare
     zwork1_ffte(:,:,:)=z0
@@ -1053,9 +1012,6 @@ CONTAINS
 
     call watch(ctt(2),ett(2))
 
-!    allocate( zwork2(0:ML1-1,a2b:b2b,a3b:b3b) )
-!    zwork2(:,:,:)=z0
-
     call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
          ,mpi_complex16,mpi_sum,comm_fftx,ierr)
 
@@ -1066,32 +1022,12 @@ CONTAINS
 
     call watch(ctt(4),ett(4))
 
-!    deallocate( zwork2 )
-
-!    call construct_Ggrid(0)
-
-!    allocate( zrho(MG) ) ; zrho=z0
-
     fg(:)=z0
-!!$OMP parallel do private( i1,i2,i3 )
-!    do i=1,NGgrid(0)
-!       i1=mod(ML1+LLG(1,i),ML1)
-!       i2=mod(ML2+LLG(2,i),ML2)
-!       i3=mod(ML3+LLG(3,i),ML3)
-!       if ( a1b <= i1 .and. i1 <= b1b .and. &
-!            a2b <= i2 .and. i2 <= b2b .and. &
-!            a3b <= i3 .and. i3 <= b3b       ) then
-!          fg(i) = conjg( zwork1_ffte(i1,i2,i3) )
-!       end if
-!    end do
-!!$OMP end parallel do
 !$OMP parallel do
     do i=1,NGPS
        fg(IGPS(i))=conjg( zwork1_ffte(LGPS(1,i),LGPS(2,i),LGPS(3,i)) )
     end do
 !$OMP end parallel do
-
-!    deallocate( zwork1 )
 
     call watch(ctt(5),ett(5))
 
@@ -1100,7 +1036,11 @@ CONTAINS
 
     call watch(ctt(6),ett(6))
 
-    call construct_Ggrid(0)
+    if ( .not.allocated(LLG_f) ) then
+       allocate( LLG_f(3,NGgrid(0)) ) ; LLG_f=0
+       call get_Ggrid(0,LLG_f)
+    end if
+!    call construct_Ggrid(0)
 
     call watch(ctt(7),ett(7))
 
@@ -1119,10 +1059,10 @@ CONTAINS
 !$OMP parallel do reduction(+:zsum1,zsum2,zsum3) private( Gx,Gy,Gz,j,ztmp )
        do i=1,NGgrid(0)
 !       do i=MG_0,MG_1
-          Gx=bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
-          Gy=bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
-          Gz=bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
-          Gr=a1*LLG(1,i)+a2*LLG(2,i)+a3*LLG(3,i)
+          Gx=bb(1,1)*LLG_f(1,i)+bb(1,2)*LLG_f(2,i)+bb(1,3)*LLG_f(3,i)
+          Gy=bb(2,1)*LLG_f(1,i)+bb(2,2)*LLG_f(2,i)+bb(2,3)*LLG_f(3,i)
+          Gz=bb(3,1)*LLG_f(1,i)+bb(3,2)*LLG_f(2,i)+bb(3,3)*LLG_f(3,i)
+          Gr=a1*LLG_f(1,i)+a2*LLG_f(2,i)+a3*LLG_f(3,i)
           j=MGL(i)
           ztmp=-vqlg(j,ik)*dcmplx(sin(Gr),cos(Gr))*fg(i)
           zsum1=zsum1+Gx*ztmp
@@ -1140,18 +1080,12 @@ CONTAINS
 
     call watch(ctt(8),ett(8))
 
-    call destruct_Ggrid
+!    call destruct_Ggrid
 
-!    deallocate( zrho )
-
-!    call mpi_allreduce(MPI_IN_PLACE,force,3*Natom,MPI_REAL8 &
-!                      ,MPI_SUM,MPI_COMM_WORLD,ierr)
     call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
                         ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
 
     call watch(ctt(9),ett(9))
-
-!    call ffte_free
 
     if ( myrank == 0 ) then
        write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
@@ -1162,7 +1096,7 @@ CONTAINS
        write(*,*) "time(force_local_ffte6)=",ctt(6)-ctt(5),ett(6)-ett(5)
        write(*,*) "time(force_local_ffte7)=",ctt(7)-ctt(6),ett(7)-ett(6)
        write(*,*) "time(force_local_ffte8)=",ctt(8)-ctt(7),ett(8)-ett(7)
-       write(*,*) "time(force_local_ffte8)=",ctt(9)-ctt(8),ett(9)-ett(8)
+       write(*,*) "time(force_local_ffte9)=",ctt(9)-ctt(8),ett(9)-ett(8)
     end if
 
   END SUBROUTINE calc_force_ps_local_ffte

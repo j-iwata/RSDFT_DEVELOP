@@ -24,6 +24,11 @@ MODULE ps_nloc2_module
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)
 
+  integer,allocatable :: icheck_tmp3(:,:,:)
+  integer,allocatable :: JJ_tmp(:,:,:,:)
+  integer,allocatable :: MJJ_tmp(:,:)
+  real(8),allocatable :: uV_tmp(:,:,:)
+
 CONTAINS
 
 
@@ -34,12 +39,13 @@ CONTAINS
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
-    integer,allocatable :: icheck_tmp3(:,:,:),icheck_tmp4(:,:,:)
+!    integer,allocatable :: icheck_tmp3(:,:,:)
+    integer,allocatable :: icheck_tmp4(:,:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:),ireq(:)
     integer,allocatable :: lma_nsend_tmp(:),maps_tmp(:,:),itmp1(:)
     integer,allocatable :: irad(:,:),nl_rank_map_tmp(:),itmp3(:,:)
     integer,allocatable :: itmp2(:),LLp(:,:)
-    integer,allocatable :: JJ_tmp(:,:,:,:),MJJ_tmp(:,:)
+!    integer,allocatable :: JJ_tmp(:,:,:,:),MJJ_tmp(:,:)
     integer,allocatable :: jtmp3(:,:,:),mtmp3(:),istatus(:,:)
     integer :: a,i,j,k,L,m,n,mm1,mm2,mm3,m1,m2,ML0,k1,k2,k3
     integer :: i1,i2,i3,j1,j2,j3,ik,ir,m0,iorb,mm,ierr,ir0,irlma
@@ -49,7 +55,8 @@ CONTAINS
     real(8),parameter :: ep=1.d-8
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
-    real(8),allocatable :: uV_tmp(:,:,:),work(:)
+!    real(8),allocatable :: uV_tmp(:,:,:)
+    real(8),allocatable :: work(:)
     real(8) :: ctt(0:9),ett(0:9)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3
@@ -273,7 +280,6 @@ CONTAINS
 #endif
                 end if
 
-!                nzlma = lma+2*L+1
                 j=j+1
                 JJ_tmp(1,j,iorb,a) = i1_0
                 JJ_tmp(2,j,iorb,a) = i2_0
@@ -287,14 +293,7 @@ CONTAINS
 
           end do ! i ( 1 - M_grid_ion )
 
-!          MMJJ = max( MMJJ, j )
-!          if ( nzlma == lma+2*L+1 ) then
-!             do m=1,2*L+1
-!                lma=lma+1
-!                icheck_tmp3(a,iorb,m)=lma
-!             end do
-             MJJ_tmp(iorb,a)=j
-!          end if
+          MJJ_tmp(iorb,a)=j
 
        end do ! iorb
     end do ! a
@@ -378,9 +377,8 @@ CONTAINS
        L=lo(iorb,ik)
     do m=-L,L
        lma=lma+1
+
        icheck_tmp1(:)=0
-!       call mpi_allgather(icheck_tmp3(a,iorb,m+L+1),1,mpi_integer &
-!                         ,icheck_tmp1,1,mpi_integer,comm_grid,ierr)
        do n=0,np_grid-1
           if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
        end do
@@ -625,13 +623,6 @@ CONTAINS
     end do
     MAXMJJ = maxval( MJJ(1:nzlma) )
     deallocate( icheck_tmp4 )
-
-!   deallocate( itmp )
-!   deallocate( nl_rank_map_tmp )
-!   deallocate( icheck_tmp2 )
-!   deallocate( icheck_tmp1 )
-!   deallocate( maps_tmp )
-!   deallocate( icheck_tmp3 )
 
     nl_max_send = maxval( lma_nsend_tmp )
 
