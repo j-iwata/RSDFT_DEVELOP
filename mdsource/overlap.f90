@@ -79,15 +79,23 @@ SUBROUTINE overlap(s,k,iswitch_overlap,iswitch_paformance,lblas)
         call watcht(myrank==0,"",0)
         call dsyrk('u','t',MBT,ML0,-dV,psi_n(n1,1,k,s),ML0,zero,sig,MBC)
         call watcht(myrank==0,"overlap(2)",1)
-        call mpi_allreduce(sig,wrk,MBC*MBC,mpi_real8,mpi_sum,comm_grid,ierr)
+!        call mpi_allreduce(sig,wrk,MBC*MBC,mpi_real8,mpi_sum,comm_grid,ierr)
+        call mpi_allreduce(MPI_IN_PLACE,sig,MBC*MBC,mpi_real8,mpi_sum,comm_grid,ierr)
         call watcht(myrank==0,"overlap(3)",1)
+!        do i=1,MBC
+!        do j=i,MBC
+!           tmp1=wrk(i,j)
+!           sig(i,j)=tmp1
+!           sig(j,i)=tmp1
+!        enddo
+!        enddo
+!$OMP parallel do
         do i=1,MBC
-        do j=i,MBC
-           tmp1=wrk(i,j)
-           sig(i,j)=tmp1
-           sig(j,i)=tmp1
+        do j=1,i-1
+           sig(i,j)=sig(j,i)
         enddo
         enddo
+!$OMP end parallel do
         call watcht(myrank==0,"overlap(4)",1)
 !        call watcht(myrank==0,"overlap(4)",1)
 !        call calc_overlap(ML0,MBT,psi_n(n1,1,k,s),psi_n(n1,1,k,s),-dV,wrk)
@@ -129,11 +137,13 @@ SUBROUTINE overlap(s,k,iswitch_overlap,iswitch_paformance,lblas)
         call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_n(n1,1,k,s),-dV,tau)
 #endif
         call watcht(myrank==0,"overlap(5)",1)
+!$OMP parallel do
         do i=1,MBC
         do j=1,i-1
            tau(j,i)=tau(i,j)
         enddo
         enddo
+!$OMP end parallel do
         call watcht(myrank==0,"overlap(6)",1)
      else if ( iswitch_overlap==5 ) then
         call watcht(myrank==0,"",0)
@@ -154,11 +164,13 @@ SUBROUTINE overlap(s,k,iswitch_overlap,iswitch_paformance,lblas)
         call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_v(n1,1,k,s),dV,wrk)
 #endif
         call watcht(myrank==0,"overlap(7)",1)
+!$OMP parallel do
         do i=1,MBC
         do j=1,i-1
            wrk(j,i)=wrk(i,j)
         enddo
         enddo
+!$OMP end parallel do 
         call watcht(myrank==0,"overlap(8)",1)
      endif
 
