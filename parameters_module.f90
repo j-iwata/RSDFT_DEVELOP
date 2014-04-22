@@ -1,6 +1,7 @@
 MODULE parameters_module
 
   use global_variables
+  use info_module
 
   implicit none
 
@@ -13,25 +14,22 @@ MODULE parameters_module
 
 CONTAINS
 
-  SUBROUTINE read_parameters(info)
+  SUBROUTINE read_parameters
     implicit none
-    character(*),intent(OUT) :: info
     integer :: i
     character(7) :: label,cbuf,ckey
-    real(8) :: Ratom(3),ax_atom,aa_atom(3,3)
+    real(8) :: Ratom(3),ax_tmp,aa_tmp(3,3)
 
-    info = ""
-
-    call read_atom(myrank,unit_atom,ax_atom,aa_atom)
+    call read_atom(myrank,unit_atom,ax_tmp,aa_tmp)
 
     call read_xc(myrank,unit)
 
     call read_aa(myrank,unit)
 
     if ( ax == 0.0d0 ) then
-       ax = ax_atom
-       aa(:,:) = aa_atom(:,:)
-       info = "Lattice constant and vectors given in fort.970 are used" 
+       ax = ax_tmp
+       aa(:,:) = aa_tmp(:,:)
+       call write_info("ax and aa given in fort.970 are used") 
     end if
 
     call read_electron(myrank,unit)
@@ -153,6 +151,7 @@ CONTAINS
        if ( myrank == 0 ) then
           write(*,*) "Molecule"
           write(*,*) "aa & aa_atom are modified"
+          call write_info("aa & aa_atom are modified")
        end if
     else if ( SYStype == 0 ) then
        if ( atom_format == 1 ) then

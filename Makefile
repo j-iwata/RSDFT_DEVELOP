@@ -4,6 +4,7 @@ MODS1 = simc_module.o\
         watch_module.o \
         info_module.o \
         modified_bessel_module.o \
+	bberf_module.o \
         expint_module.o \
         parallel_module.o \
         rsdft_mpi_module.o \
@@ -60,6 +61,10 @@ MODS1 = simc_module.o\
         bc_mol_module.o\
         eion_mol_module.o\
         ps_local_mol_module.o\
+        vloc_rho_mol_module.o \
+        force_nloc2_mol_module.o \
+        force_ion_mol_module.o \
+        force_local_mol_module.o \
         xc_hybrid_module.o \
         fock_fft_module.o \
         fock_module.o \
@@ -79,6 +84,7 @@ MODS1 = simc_module.o\
         esp_gather_module.o \
         io_module.o \
         force_module.o \
+        force_mol_module.o \
         overlap_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
@@ -88,6 +94,7 @@ MODS1 = simc_module.o\
         localpot2_xc_module.o \
         localpot2_te_module.o \
         test_hpsi2_module.o \
+        test_force_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \

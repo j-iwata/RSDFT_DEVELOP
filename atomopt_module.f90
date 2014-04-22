@@ -18,6 +18,12 @@ MODULE atomopt_module
 
   use kinetic_module, only: SYStype
 
+  use ps_local_mol_module
+  use ps_nloc2_mol_module
+  use ps_pcc_mol_module
+  use eion_mol_module
+  use force_mol_module
+
   implicit none
 
   PRIVATE
@@ -154,7 +160,7 @@ CONTAINS
        case default
           call calc_force(Natom,Force)
        case(1,2)
-!          call force_ion_mol
+          call calc_force_mol(Natom,Force)
        end select
 
        Fmax=0.d0
@@ -618,30 +624,52 @@ CONTAINS
 
              call calc_ewald(Eewald,disp_switch)
 
+             call construct_strfac
+             call construct_ps_local
+             call construct_ps_pcc
+             call destruct_strfac
+
+             select case(pselect)
+             case(2)
+                call prep_ps_nloc2
+             case(3)
+                call prep_ps_nloc3
+             case(5)
+                call prep_ps_nloc_mr
+             end select
+
           case(1)
 
-!             call calc_eion_mol(Eewald)
+             call calc_eion_mol(Eewald)
+
+             call construct_ps_local_mol
+             call construct_ps_pcc_mol
+             call prep_ps_nloc2_mol
 
           end select
 
-          call construct_strfac
-          call construct_ps_local
-          call construct_ps_pcc
-          call destruct_strfac
-
-          select case(pselect)
-          case(2)
-             call prep_ps_nloc2
-          case(3)
-             call prep_ps_nloc3
-          case(5)
-             call prep_ps_nloc_mr
-          end select
+!          call construct_strfac
+!          call construct_ps_local
+!          call construct_ps_pcc
+!          call destruct_strfac
+!          select case(pselect)
+!          case(2)
+!             call prep_ps_nloc2
+!          case(3)
+!             call prep_ps_nloc3
+!          case(5)
+!             call prep_ps_nloc_mr
+!          end select
 
           if ( disp_switch ) write(*,*) "SCF start"
           call calc_scf(diter_opt,0,iter_final,.false.)
 
-          call calc_force(Natom,Force)
+          select case(SYStype)
+          case default
+             call calc_force(Natom,Force)
+          case(1)
+             call calc_force_mol(Natom,Force)
+          end select
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')

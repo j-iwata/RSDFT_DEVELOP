@@ -1,9 +1,14 @@
 MODULE ps_local_mol_module
 
+  use pseudopot_module
+  use maskf_module
+  use simc_module
+
   implicit none
 
   PRIVATE
-  PUBLIC :: init_ps_local_mol,construct_ps_local_mol
+  PUBLIC :: init_ps_local_mol,construct_ps_local_mol &
+       ,vqls,Rcloc,NRcloc
 
   real(8),allocatable :: vqls(:,:)
   real(8),allocatable :: Rcloc(:)
@@ -19,9 +24,7 @@ CONTAINS
 
 
   SUBROUTINE init_ps_local_mol(qcut)
-    use pseudopot_module
-    use maskf_module
-    use simc_module
+    implicit none
     real(8),intent(IN) :: qcut
     integer :: i,ik,j,m,mm,m0,m1,m2,NRc,MMr,MKI
     real(8) :: pi,Rc,c1,c2,p1,p2,p3,p4,r,vlong,qc,eta

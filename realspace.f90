@@ -41,6 +41,7 @@ PROGRAM Real_Space_Solid
   use ps_nloc3_module
 
   use test_hpsi2_module
+  use test_force_module
 
   use info_module
 
@@ -54,7 +55,6 @@ PROGRAM Real_Space_Solid
   logical :: flag_exit=.false.
   logical :: flag_end =.false.
   logical :: flag_scf =.false.
-  character(72) :: info
 
 ! --- start MPI ---
 
@@ -92,10 +92,8 @@ PROGRAM Real_Space_Solid
 
   if (DISP_SWITCH) write(*,'(a60," read_param")') repeat("-",60)
 
-  call read_parameters(info)
+  call read_parameters
 !  call read_oldformat_parameters
-
-  call write_info(info)
 
 ! --- initial preparetaion ---
 
@@ -668,68 +666,11 @@ PROGRAM Real_Space_Solid
      case( 2 )
         call ps_nloc2_init_derivative
      end select
-  else
-     if ( disp_switch ) then
-        write(*,*) "force calc is not available yet for SYStype=",SYStype
-     end if
-     goto 900
   end if
 
   if ( iswitch_opt == -1 ) then
 
-     allocate( force(3,Natom) ) ; force=0.d0
-     allocate( forcet(3,Natom) ) ; forcet=0.d0
-
-     call watcht(disp_switch,"floc",0)
-     call calc_force_ps_local(Natom,force)
-     call watcht(disp_switch,"floc",1)
-     forcet(:,:)=forcet(:,:)+force(:,:)
-
-     if ( disp_switch ) then
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
-        end do
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,forcet(1:3,i),myrank
-        end do
-     end if
-
-     call watcht(disp_switch,"fewl",0)
-     call calc_force_ewald(Natom,force)
-     call watcht(disp_switch,"fewl",1)
-     if ( disp_switch ) then
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
-        end do
-     end if
-     forcet(:,:)=forcet(:,:)+force(:,:)
-
-     if ( disp_switch ) then
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
-        end do
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,forcet(1:3,i),myrank
-        end do
-     end if
-
-     call watch(ct0,et0)
-     call calc_force_ps_nloc2(Natom,force)
-     call watch(ct1,et1) ; if (disp_switch) write(*,*) "fnlc:",ct1-ct0,et1-et0
-     forcet(:,:)=forcet(:,:)+force(:,:)
-
-     if ( disp_switch ) then
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
-        end do
-     end if
-
-     if ( disp_switch ) then
-        write(*,*) "ftot"
-        do i=1,Natom
-           write(*,'(1x,i6,3g20.10,i6)') i,forcet(1:3,i),myrank
-        end do
-     end if
+     call test_force(SYStype)
 
   end if
 

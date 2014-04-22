@@ -10,6 +10,8 @@ MODULE ps_nloc2_mol_module
   use ps_nloc2_init_module
   use ps_nloc2_variables
 
+  use minimal_box_module
+
   implicit none
 
   PRIVATE
@@ -19,7 +21,6 @@ CONTAINS
 
 
   SUBROUTINE prep_ps_nloc2_mol
-    use minimal_box_module
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
@@ -51,6 +52,10 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    if ( DISP_SWITCH_PARALLEL ) then
+       write(*,'(a60," prep_ps_nloc2_mol")') repeat("-",60)
+    end if
 
     Mlma=0
     do i=1,Natom
@@ -255,12 +260,33 @@ CONTAINS
 
     if ( iswitch_eqdiv == 2 ) then
 
+       if ( allocated(MJJ_MAP) ) then
+          deallocate(MJJ_MAP)
+          deallocate(JJ_MAP)
+          deallocate(iorbmap)
+          deallocate(mmap)
+          deallocate(lmap)
+          deallocate(amap)
+          deallocate(iuV)
+          deallocate(uVk)
+          deallocate(JJP)
+          deallocate(MJJ)
+          deallocate(lma_nsend)
+       end if
 
        allocate( lma_nsend(0:nprocs_g-1) ) ; lma_nsend=0
        allocate( MJJ(nzlma) ) ; MJJ=0
        allocate( JJP(MMJJ,nzlma) ) ; JJP=0
        allocate( uVk(MMJJ,nzlma,1) ) ; uVk=0.0d0
        allocate( iuV(nzlma) ) ; iuV=0
+
+       allocate( amap(nzlma)    ) ; amap=0.0d0
+       allocate( lmap(nzlma)    ) ; lmap=0.0d0
+       allocate( mmap(nzlma)    ) ; mmap=0.0d0
+       allocate( iorbmap(nzlma) ) ; iorbmap=0.0d0
+
+       allocate( JJ_MAP(3,MMJJ,nzlma) ) ; JJ_MAP=0
+       allocate( MJJ_MAP(nzlma)       ) ; MJJ_MAP=0
 
        allocate( icheck_tmp1(0:nprocs_g-1) ) ; icheck_tmp1=0
        allocate( icheck_tmp2(0:nprocs_g-1) ) ; icheck_tmp2=0
@@ -292,18 +318,24 @@ CONTAINS
 
                       if ( irank == myrank_g ) then
 
+                         amap(lma) = a
+                         lmap(lma) = L
+                         mmap(lma) = m
+                         iorbmap(lma) = iorb
+
                          iuV(lma)=inorm(iorb,ik)
                          MJJ(lma)=MJJ_tmp(iorb,a)
+                         MJJ_MAP(lma)=MJJ_tmp(iorb,a)
                          do j=1,MJJ(lma)
                             i1=JJ_tmp(1,j,iorb,a)
                             i2=JJ_tmp(2,j,iorb,a)
                             i3=JJ_tmp(3,j,iorb,a)
+                            JJ_MAP(1:3,j,lma)=JJ_tmp(1:3,j,iorb,a)
                             x=i1*Hsize-Rx
                             y=i2*Hsize-Ry
                             z=i3*Hsize-Rz
                             JJP(j,lma)=LLL(i1,i2,i3)
                             uVk(j,lma,1)=uV_tmp(j,iorb,a)*Ylm(x,y,z,L,m)
-
                          end do ! j
 
                       else
@@ -323,6 +355,11 @@ CONTAINS
        end do ! a
 
        deallocate( LLL )
+
+       if ( allocated(sendmap) ) then
+          deallocate( recvmap )
+          deallocate( sendmap )
+       end if
 
        nl_max_send=maxval( lma_nsend )
        allocate( sendmap(nl_max_send,0:nprocs_g-1) ) ; sendmap=0

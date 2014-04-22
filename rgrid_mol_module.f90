@@ -24,8 +24,10 @@ CONTAINS
 
 
   SUBROUTINE read_rgrid_mol(rank,unit)
+    implicit none
     integer,intent(IN)  :: rank,unit
     if ( rank == 0 ) then
+       write(*,'(a60," read_rgrid_mol")') repeat("-",60)
        read(unit,*) Box_Shape
        select case(Box_Shape)
        case(1)
