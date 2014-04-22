@@ -603,18 +603,9 @@ CONTAINS
                 end do
              end if
           end if
-          if ( myrank == 0 ) then
-             rewind 97
-             write(97,'("AX",f20.15)') ax
-             write(97,'("A1",3f20.15)') aa(1:3,1)/ax
-             write(97,'("A2",3f20.15)') aa(1:3,2)/ax
-             write(97,'("A3",3f20.15)') aa(1:3,3)/ax
-             write(97,'("AA")')
-             write(97,*) Nelement,Natom
-             do a=1,Natom
-                write(97,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
-             end do
-          end if
+
+          if ( myrank == 0 ) call write_atomic_coordinates(97)
+
 !
 ! --- SCF ---
 !
@@ -647,19 +638,6 @@ CONTAINS
              call prep_ps_nloc2_mol
 
           end select
-
-!          call construct_strfac
-!          call construct_ps_local
-!          call construct_ps_pcc
-!          call destruct_strfac
-!          select case(pselect)
-!          case(2)
-!             call prep_ps_nloc2
-!          case(3)
-!             call prep_ps_nloc3
-!          case(5)
-!             call prep_ps_nloc_mr
-!          end select
 
           if ( disp_switch ) write(*,*) "SCF start"
           call calc_scf(diter_opt,0,iter_final,.false.)
@@ -824,20 +802,7 @@ CONTAINS
 
 !  Best structure on a line.
 
-       if ( myrank == 0 ) then
-
-          rewind 197
-          write(197,'("AX",f20.15)') ax
-          write(197,'("A1",3f20.15)') aa(1:3,1)/ax
-          write(197,'("A2",3f20.15)') aa(1:3,2)/ax
-          write(197,'("A3",3f20.15)') aa(1:3,3)/ax
-          write(197,'("AA")')
-          write(197,*) Nelement,Natom
-          do a=1,Natom
-             write(197,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
-          end do
-
-       end if
+       if ( myrank == 0 ) call write_atomic_coordinates(197)
 
     end do opt_ion
 
@@ -920,6 +885,44 @@ CONTAINS
     end if
     return
   END SUBROUTINE parmin
+
+
+  SUBROUTINE write_atomic_coordinates(unit)
+    implicit none
+    integer,intent(IN) :: unit
+    integer :: a
+    real(8) :: ax_org,aa_org(3,3),bb_tmp(3,3),aa_inv(3,3),vtmp(3)
+
+    call get_org_aa(ax_org,aa_org)
+
+    rewind unit
+    write(unit,'("AX",1f20.15)') ax_org
+    write(unit,'("A1",3f20.15)') aa_org(1:3,1)
+    write(unit,'("A2",3f20.15)') aa_org(1:3,2)
+    write(unit,'("A3",3f20.15)') aa_org(1:3,3)
+    write(unit,'("AA")')
+    write(unit,*) Nelement,Natom
+
+    select case( SYStype )
+    case default
+
+       do a=1,Natom
+          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+       end do
+
+    case( 1 )
+
+       aa_org(:,:)=ax_org*aa_org(:,:)
+       call calc_bb(aa_org,bb_tmp)
+       aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
+       do a=1,Natom
+          vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
+          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),1
+       end do
+
+    end select
+
+  END SUBROUTINE write_atomic_coordinates
 
 
 END MODULE atomopt_module
