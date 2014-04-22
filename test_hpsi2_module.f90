@@ -25,7 +25,7 @@ CONTAINS
     complex(8), allocatable :: htpsi(:,:)
 #endif
     integer :: i, j, n1, n2, nrhs, niter, ierr
-    integer :: loop
+    integer :: loop,ii
     real(8), allocatable :: sums(:)
     real(8) :: t0, t1, t2, t3, t4
     logical,save :: flag_allocate=.false.
@@ -33,13 +33,18 @@ CONTAINS
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
 
-    nrhs  = MB_d !32
-    niter = MB/MB_d
-
     if ( .not.allocated(Vloc) ) then
        allocate( Vloc(n1:n2,1) ) ; Vloc=0.0d0
        flag_allocate=.true.
     end if
+
+    do ii = 0,10
+
+    nrhs = 2**ii
+    if ( nrhs > MB_d ) exit
+
+    niter = MB/nrhs
+
     allocate( tpsi(n1:n2,nrhs)  ) ; tpsi=one
     allocate( htpsi(n1:n2,nrhs) ) ; htpsi=zero
     allocate( sums(nrhs)        ) ; sums=0.0d0
@@ -114,6 +119,9 @@ CONTAINS
     deallocate( sums )
     deallocate( htpsi )
     deallocate( tpsi )
+
+    end do ! ii
+
     if ( flag_allocate ) then
        deallocate( Vloc )
        flag_allocate=.false.
