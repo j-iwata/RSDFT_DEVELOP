@@ -1102,6 +1102,8 @@ CONTAINS
 
     call construct_Ggrid(0)
 
+    call watch(ctt(7),ett(7))
+
     do a=MI_0,MI_1
 !!$OMP parallel do private( ik,a1,a2,a3,zsum1,zsum2,zsum3,i,Gr,Gx,Gy,Gz,j,ztmp )
 !    do a=1,Natom
@@ -1136,7 +1138,7 @@ CONTAINS
     end do ! a
 !!$OMP end parallel do
 
-    call watch(ctt(7),ett(7))
+    call watch(ctt(8),ett(8))
 
     call destruct_Ggrid
 
@@ -1147,7 +1149,7 @@ CONTAINS
     call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
                         ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
 
-    call watch(ctt(8),ett(8))
+    call watch(ctt(9),ett(9))
 
 !    call ffte_free
 
@@ -1160,6 +1162,7 @@ CONTAINS
        write(*,*) "time(force_local_ffte6)=",ctt(6)-ctt(5),ett(6)-ett(5)
        write(*,*) "time(force_local_ffte7)=",ctt(7)-ctt(6),ett(7)-ett(6)
        write(*,*) "time(force_local_ffte8)=",ctt(8)-ctt(7),ett(8)-ett(7)
+       write(*,*) "time(force_local_ffte8)=",ctt(9)-ctt(8),ett(9)-ett(8)
     end if
 
   END SUBROUTINE calc_force_ps_local_ffte

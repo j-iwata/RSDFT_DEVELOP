@@ -127,12 +127,14 @@ CONTAINS
 
     MMJJ_0 = M_grid_ion
 
+    if ( .not.allocated(icheck_tmp3) ) then
     L=maxval(lo)
     n=maxval(norb)
     allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
     allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
     allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
     allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
+    end if
 
     call watch(ctt(0),ett(0))
 
@@ -523,7 +525,7 @@ CONTAINS
     deallocate( itmp )
     deallocate( icheck_tmp2 )
     deallocate( icheck_tmp1 )
-    deallocate( icheck_tmp3 )
+!    deallocate( icheck_tmp3 )
     deallocate( lcheck_tmp1 )
 
     if ( allocated(uV) ) then
@@ -598,9 +600,9 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    deallocate( MJJ_tmp )
-    deallocate( JJ_tmp )
-    deallocate( uV_tmp )
+!    deallocate( MJJ_tmp )
+!    deallocate( JJ_tmp )
+!    deallocate( uV_tmp )
     deallocate( maps_tmp )
 
     call watch(ctt(3),ett(3))
@@ -1195,7 +1197,7 @@ CONTAINS
     real(8),intent(OUT) :: force2(3,MI)
     integer :: i1,i2,i3
     integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
-    integer :: nreq,max_nreq
+    integer :: nreq,max_nreq,ib,ib1,ib2,nnn
     integer :: a,a0,ik,m,lm0,lm1,lma,im,m1,m2
     integer :: ierr,M_irad,ir0
     integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
@@ -1207,15 +1209,15 @@ CONTAINS
     real(8) :: a1,a2,a3,c1,c2,c3,d1,d2,d3
     real(8) :: x,y,z,r,kr,pi2,c
     real(8) :: tmp,tmp0,tmp1
-    real(8) :: ctt(0:3),ett(0:3)
+    real(8) :: ctt(0:5),ett(0:5)
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),duVdR(:,:,:)
 #ifdef _DRSDFT_
     real(8) :: ztmp
-    real(8),allocatable :: wtmp5(:,:,:,:,:),vtmp2(:,:)
+    real(8),allocatable :: wtmp5(:,:,:,:,:),vtmp2(:,:,:)
 #else
     complex(8) :: ztmp
-    complex(8),allocatable :: wtmp5(:,:,:,:,:),vtmp2(:,:)
+    complex(8),allocatable :: wtmp5(:,:,:,:,:),vtmp2(:,:,:)
 #endif
     logical,save :: flag_Y = .true.
     logical,allocatable :: a_rank(:)
@@ -1354,10 +1356,14 @@ CONTAINS
        end do
     end if
 
+    call watch(ctt(4),ett(4))
+
     allocate( wtmp5(0:3,nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-    allocate( vtmp2(0:3,nzlma) )
+    allocate( vtmp2(0:3,nzlma,MB_d) )
     allocate( a_rank(Natom) )
     allocate( duVdR(3,MMJJ,nzlma) )
+
+    call watch(ctt(5),ett(5))
 
 !$OMP parallel
 
@@ -1640,7 +1646,11 @@ CONTAINS
 !$OMP single
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-    do n=MB_0,MB_1
+    do n=MB_0,MB_1,MB_d
+
+       ib1=n
+       ib2=min(ib1+MB_d-1,MB_1)
+       nnn=ib2-ib1+1
 
        if ( occ(n,k,s) == 0.d0 ) cycle
 
@@ -1648,7 +1658,7 @@ CONTAINS
           select case(i)
           case(1,3,5)
              j=i+1
-             vtmp2(:,:)=wtmp5(:,:,n,k,s)
+             vtmp2(:,:,1:nnn)=wtmp5(:,:,ib1:ib2,k,s)
           case(2,4,6)
              j=i-1
           end select
@@ -1658,46 +1668,52 @@ CONTAINS
              jrank=num_2_rank(m,j)
              if( irank >= 0 )then
                 i1=0
+                do ib=1,nnn
                 do i2=1,lma_nsend(irank)
                 do i3=0,3
                    i1=i1+1
-                   sbufnl(i1,irank)=vtmp2(i3,sendmap(i2,irank))
+                   sbufnl(i1,irank)=vtmp2(i3,sendmap(i2,irank),ib)
+                end do
                 end do
                 end do
                 nreq=nreq+1
-                call mpi_isend(sbufnl(1,irank),4*lma_nsend(irank) &
+                call mpi_isend(sbufnl(1,irank),4*lma_nsend(irank)*nnn &
                      ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
              end if
              if( jrank >= 0 )then
                 nreq=nreq+1
-                call mpi_irecv(rbufnl(1,jrank),4*lma_nsend(jrank) &
+                call mpi_irecv(rbufnl(1,jrank),4*lma_nsend(jrank)*nnn &
                      ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
              end if
              call mpi_waitall(nreq,ireq,istatus,ierr)
              if( jrank >= 0 )then
                 i1=0
+                do ib=ib1,ib2
                 do i2=1,lma_nsend(jrank)
                 do i3=0,3
                    i1=i1+1
-                   wtmp5(i3,recvmap(i2,jrank),n,k,s) &
-                        =wtmp5(i3,recvmap(i2,jrank),n,k,s)+rbufnl(i1,jrank)
+                   wtmp5(i3,recvmap(i2,jrank),ib,k,s) &
+                        =wtmp5(i3,recvmap(i2,jrank),ib,k,s)+rbufnl(i1,jrank)
+                end do
                 end do
                 end do
              end if
           end do ! m
        end do ! i
 
+       do ib=ib1,ib2
        do lma=1,nzlma
           a=amap(lma)
           if ( a <= 0 ) cycle
           if ( a_rank(a) ) then
              force2(1,a)=force2(1,a) &
-                  +real(wtmp5(0,lma,n,k,s)*wtmp5(1,lma,n,k,s),8)
+                  +real(wtmp5(0,lma,ib,k,s)*wtmp5(1,lma,ib,k,s),8)
              force2(2,a)=force2(2,a) &
-                  +real(wtmp5(0,lma,n,k,s)*wtmp5(2,lma,n,k,s),8)
+                  +real(wtmp5(0,lma,ib,k,s)*wtmp5(2,lma,ib,k,s),8)
              force2(3,a)=force2(3,a) &
-                  +real(wtmp5(0,lma,n,k,s)*wtmp5(3,lma,n,k,s),8)
+                  +real(wtmp5(0,lma,ib,k,s)*wtmp5(3,lma,ib,k,s),8)
           end if
+       end do
        end do
 
     end do ! n
@@ -1733,6 +1749,7 @@ CONTAINS
        write(*,*) "time(force_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+       write(*,*) "time(force_nloc2_4)",ctt(5)-ctt(4),ett(5)-ett(4)
     end if
 
   END SUBROUTINE calc_force_ps_nloc2
