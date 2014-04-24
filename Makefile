@@ -144,8 +144,8 @@ MDOBJ = $(DIR3)/cpmdio2_module.o\
         $(DIR3)/wf_force.o\
         $(DIR3)/calkin.o\
         $(DIR3)/calfke.o\
-        $(DIR3)/overlap.o\
-        $(DIR3)/rotorb.o\
+        $(DIR3)/overlap_cpmd_module.o\
+        $(DIR3)/rotorb_module.o\
         $(DIR3)/rotorb2.o\
         $(DIR3)/setv.o\
         $(DIR3)/vcom.o\

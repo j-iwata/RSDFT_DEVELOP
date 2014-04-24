@@ -18,6 +18,8 @@ SUBROUTINE bomd
   use array_bound_module, only: MB_0,MB_1
   use cpmdio2_module
 
+  use rotorb_module
+
   implicit none
 
   integer :: i,j,k,n,s,ierr,itime,ib1,ib2

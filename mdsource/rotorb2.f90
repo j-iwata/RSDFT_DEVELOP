@@ -8,6 +8,7 @@ subroutine rotorb2
   use electron_module, only: occ
   use array_bound_module, only: MSP_0,MSP_1,MBZ_0,MBZ_1
   use cpmd_variables, only: MBC,MBT,mstocck,psi_v,wrk,MB_0_CPMD,MB_1_CPMD
+  use overlap_cpmd_module
 
   implicit none
 
@@ -25,7 +26,7 @@ subroutine rotorb2
 
      MBT = mstocck(k,s)
 
-     call overlap(s,k,5,0,.true.) 
+     call overlap5(s,k)
 
      call dgemm('n','n',ML0,MB0,MBT,om,unk(n1,1,k,s),ML0 &
           ,wrk(1,MB_0_CPMD),MBC,on,psi_v(n1,MB_0_CPMD,k,s),ML0)
