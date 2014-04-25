@@ -1,4 +1,4 @@
-MODULE overlap_module
+MODULE calc_overlap_module
 
   use parallel_module
   use watch_module
@@ -15,41 +15,67 @@ MODULE overlap_module
 CONTAINS
 
   SUBROUTINE calc_overlap(m,n,a,b,dv,c)
+    implicit none
     integer,intent(IN)  :: m,n
     real(8),intent(IN)  :: a(m,n),b(m,n),dv
     real(8),intent(OUT) :: c(n,n)
     integer :: nme,i,j,k,ierr
     real(8),allocatable :: s(:),r(:)
 
-    nblk0=n
-    nblk1=4
+    nblk0 = n
+    nblk1 = 4
+
     call watcht(myrank==0,"",0)
+
     call calc_overlap_sub(m,n,nblk0,a,b,c)
+
     call watcht(myrank==0,"calc_overlap(1)",1)
-    nme=n*(n+1)/2
+
+    nme = n*(n+1)/2
     allocate( s(nme),r(nme) )
-    k=0
+
+!    k=0
+!    do j=1,n
+!    do i=j,n
+!       k=k+1
+!       s(k)=c(i,j)*dv
+!    end do
+!    end do
     do j=1,n
     do i=j,n
-       k=k+1
+       k=(j-1)*n-(j*(j-1))/2+i
        s(k)=c(i,j)*dv
     end do
     end do
+
     call watcht(myrank==0,"calc_overlap(2)",1)
+
     call mpi_allreduce(s,r,nme,mpi_real8,mpi_sum,comm_grid,ierr)
+
     call watcht(myrank==0,"calc_overlap(3)",1)
-    k=0
+
+!    k=0
+!    do j=1,n
+!    do i=j,n
+!       k=k+1
+!       c(i,j)=r(k)
+!    end do
+!    end do
     do j=1,n
     do i=j,n
-       k=k+1
+       k=(j-1)*n-(j*(j-1))/2+i
        c(i,j)=r(k)
     end do
     end do
+
     deallocate( r,s )
+
     call watcht(myrank==0,"calc_overlap(4)",1)
+
   END SUBROUTINE calc_overlap
 
   RECURSIVE SUBROUTINE calc_overlap_sub(m,n,nblk,a,b,c)
+    implicit none
     integer,intent(IN)  :: m,n,nblk
     real(8),intent(IN)  :: a(m,n),b(m,n)
     real(8),intent(OUT) :: c(n,n)
@@ -65,11 +91,16 @@ CONTAINS
           nj=j1-j0+1
 
           if ( j0 > i1 ) then
+
              cycle
+
           else if ( j1 <= i0 ) then
-!             write(*,'("M",1x,2i6,2x,2i6,2x,2i6,2x,i6)') i0,i1,j0,j1,ni,nj,nblk
-             call dgemm('T','N',ni,nj,m,alpha,a(1,i0),m,b(1,j0),m,beta,c(i0,j0),n)
+
+             call dgemm &
+                  ('T','N',ni,nj,m,alpha,a(1,i0),m,b(1,j0),m,beta,c(i0,j0),n)
+
           else
+
              if ( ni > nblk1 ) then
                 allocate( ctmp(ni,ni) ) ; ctmp=0.d0
                 nblkh=nblk/2
@@ -77,13 +108,18 @@ CONTAINS
                 c(i0:i1,j0:j1)=ctmp(:,:)
                 deallocate( ctmp )
              else
-!                write(*,'("T",1x,2i6,2x,2i6,2x,2i6,2x,i6)') i0,i1,j0,j1,ni,nj,nblk
-                do i=i0,i1
-                do j=j0,i
-                   c(i,j)=sum( a(:,i)*b(:,j) )
+                do j=j0,j1
+                do i=j ,i1
+                    c(i,j)=sum( a(:,i)*b(:,j) )
                 end do
                 end do
+!                do i=i0,i1
+!                do j=j0,i
+!                   c(i,j)=sum( a(:,i)*b(:,j) )
+!                end do
+!                end do
              end if
+
           end if
 
        end do ! j0
@@ -92,4 +128,4 @@ CONTAINS
 
   END SUBROUTINE calc_overlap_sub
 
-END MODULE overlap_module
+END MODULE calc_overlap_module
