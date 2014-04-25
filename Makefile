@@ -85,7 +85,6 @@ MODS1 = simc_module.o\
         io_module.o \
         force_module.o \
         force_mol_module.o \
-        overlap_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
         localpot2_ion_module.o \
@@ -144,6 +143,7 @@ MDOBJ = $(DIR3)/cpmdio2_module.o\
         $(DIR3)/wf_force.o\
         $(DIR3)/calkin.o\
         $(DIR3)/calfke.o\
+        $(DIR3)/calc_overlap_module.o \
         $(DIR3)/overlap_cpmd_module.o\
         $(DIR3)/rotorb_module.o\
         $(DIR3)/rotorb2.o\

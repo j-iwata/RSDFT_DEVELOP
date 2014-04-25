@@ -11,6 +11,7 @@ OBJ = mnhc.o\
       init_ion.o\
       active_band.o\
       alloc_cpmd.o\
+      calc_overlap_module.o \
       overlap_cpmd_module.o \
       rotorb_module.o \
       bomd.o\

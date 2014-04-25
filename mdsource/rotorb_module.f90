@@ -13,6 +13,9 @@ MODULE rotorb_module
   PRIVATE
   PUBLIC :: rotorb
 
+  integer,allocatable :: ir_i(:),id_i(:)
+  real(8),allocatable :: psi_tmp(:,:)
+
 CONTAINS
 
   SUBROUTINE rotorb
@@ -20,7 +23,6 @@ CONTAINS
     integer,parameter :: maxit=100
     integer i,j,k,l,m,n,s,ii,it,ij
     integer n1,n2,ML0,ierr,MB0
-    integer,allocatable :: ir_i(:),id_i(:)
     integer ls,le,li
     real(8),parameter :: eps=1.0d-8
     real(8),parameter :: hf = 0.5d0
@@ -29,11 +31,9 @@ CONTAINS
     real(8),parameter :: zr = 0.0d0
     real(8) :: ctime_force(0:10),etime_force(0:10)
     real(8) :: error,error0,tmp1
-    real(8),allocatable :: psi_tmp(:,:)
     complex(8),parameter :: zo = (1.0d0,0.0d0)
     complex(8),parameter :: zz = (0.0d0,0.0d0)
     complex(8),allocatable :: zrk(:,:)
-    logical :: dirprod,lblas
 
     call watcht(myrank==0,"",0)
 
@@ -45,34 +45,33 @@ CONTAINS
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = ircnt(myrank)
-    lblas =.true.
     MB0   = MB_1_CPMD - MB_0_CPMD + 1
 
-    allocate( id_i(0:nprocs-1) ) ; id_i=0
-    allocate( ir_i(0:nprocs-1) ) ; ir_i=0
-    ir_i(0:nprocs-1)=MBC/nprocs
-    n=MBC-sum(ir_i)
-    do i=1,n
-       k=mod(i-1,nprocs)
-       ir_i(k)=ir_i(k)+1
-    end do
-    do k=0,nprocs-1
-       id_i(k)=sum(ir_i(0:k))-ir_i(k)
-    end do
-    if ( DISP_SWITCH ) then
-       do k=0,nprocs-1
-          write(*,*) k,id_i(k)+1,id_i(k)+ir_i(k)
+    if ( .not.allocated(id_i) ) then
+       allocate( id_i(0:nprocs-1) ) ; id_i=0
+       allocate( ir_i(0:nprocs-1) ) ; ir_i=0
+       ir_i(0:nprocs-1)=MBC/nprocs
+       n=MBC-sum(ir_i)
+       do i=1,n
+          k=mod(i-1,nprocs)
+          ir_i(k)=ir_i(k)+1
        end do
+       do k=0,nprocs-1
+          id_i(k)=sum(ir_i(0:k))-ir_i(k)
+       end do
+       if ( DISP_SWITCH ) then
+          do k=0,nprocs-1
+             write(*,*) k,id_i(k)+1,id_i(k)+ir_i(k)
+          end do
+       end if
+       id_i(0:nprocs-1) = id_i(0:nprocs-1)*MBC
+       ir_i(0:nprocs-1) = ir_i(0:nprocs-1)*MBC
+       allocate( psi_tmp(ML0,MB0) ) ; psi_tmp=0.0d0
     end if
 
-    ls = id_i(myrank)+1
-    le = id_i(myrank)+ir_i(myrank)
-    li = ir_i(myrank)
-
-    id_i(0:nprocs-1) = id_i(0:nprocs-1)*MBC
-    ir_i(0:nprocs-1) = ir_i(0:nprocs-1)*MBC
-
-    allocate( psi_tmp(ML0,MB0) ) ; psi_tmp=0.0d0
+    ls = id_i(myrank)/MBC+1
+    le = id_i(myrank)/MBC+ir_i(myrank)/MBC
+    li = ir_i(myrank)/MBC
 
     call watcht(myrank==0,"rotorb(00)",1)
 
@@ -83,12 +82,12 @@ CONTAINS
 
        MBT=mstocck(k,s)
 
-       tau(:,:) =zr
-       sig(:,:) =zr
-       gam(:,:) =zr
-       gamn(:,:)=zr
-       scr(:,:) =zr
-       wrk(:,:) =zr
+!       tau(:,:) =zr
+!       sig(:,:) =zr
+!       gam(:,:) =zr
+!       gamn(:,:)=zr
+!       scr(:,:) =zr
+!       wrk(:,:) =zr
 
        call watcht(myrank==0,"rotorb(0)",1)
 
@@ -99,7 +98,6 @@ CONTAINS
        call overlap2(s,k)
 
        call watcht(myrank==0,"rotorb(2)",1)
-
        do i=ls,le
           sig(i,i) = on + sig(i,i) ! I-A
        end do
@@ -109,10 +107,10 @@ CONTAINS
 
        gam(:,:) = sig(:,:)*hf      ! (I-A)/2
 
-       wrk(:,:)=zr
-       do i=ls,le
-       do j=1,MBC
-          wrk(j,i) = tau(j,i)
+!       wrk(:,:)=zr
+       do j=ls,le
+       do i=1,MBC
+          wrk(i,j) = tau(i,j)
        end do
        end do
 
@@ -129,16 +127,16 @@ CONTAINS
 
        do it=1,maxit
 
-          do i=ls,le
-          do j=1,MBC
-             gamn(j,i) = sig(j,i)
+          do j=ls,le
+          do i=1,MBC
+             gamn(i,j) = sig(i,j)
           end do
           end do
-          do i=ls,le
-          do j=1,MBC
-             tmp1 = tau(j,i) - gam(j,i)
-             scr(j,i) = tmp1
-             wrk(j,i) = tmp1
+          do j=ls,le
+          do i=1,MBC
+             tmp1 = tau(i,j) - gam(i,j)
+             scr(i,j) = tmp1
+             wrk(i,j) = tmp1
           end do
           end do
 
@@ -149,9 +147,9 @@ CONTAINS
                ('n','n',MBT,li,MBT,hm,wrk,MBC,scr(1,ls),MBC,on,gamn(1,ls),MBC)
 
           error0=0.0d0
-          do i=ls,le
-          do j=i,MBT
-             error0 = error0 + (gamn(j,i)-gam(j,i))**2
+          do j=ls,le
+          do i=j,MBT
+             error0 = error0 + (gamn(i,j)-gam(i,j))**2
           end do
           end do
           call mpi_allreduce(error0,error,1,MPI_REAL8,mpi_sum &
@@ -159,9 +157,9 @@ CONTAINS
           error=sqrt(error)/MBT
           if ( myrank == 0 .and. error > on ) write(*,*) k,s,error
 
-          do i=ls,le
-          do j=1,MBC
-             gam(j,i) = gamn(j,i)
+          do j=ls,le
+          do i=1,MBC
+             gam(i,j) = gamn(i,j)
           end do
           end do
 
@@ -188,20 +186,24 @@ CONTAINS
        call watcht(myrank==0,"rotorb(8)",1)
 
        tmp1=1.d0/dt
+!$OMP parallel workshare
        psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) &
             = psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + tmp1*psi_tmp(1:ML0,1:MB0)
+!$OMP end parallel workshare
 
        call watcht(myrank==0,"rotorb(9)",1)
 
     end do ! k
     end do ! s
 
-    deallocate( psi_tmp )
-    deallocate( ir_i, id_i )
+!    deallocate( psi_tmp )
+!    deallocate( ir_i, id_i )
 
     call watcht(myrank==0,"",0)
 
+!$OMP parallel workshare
     unk(:,MB_0_CPMD:MB_1_CPMD,:,:) = psi_n(:,MB_0_CPMD:MB_1_CPMD,:,:)
+!$OMP end parallel workshare
 
     call watcht(myrank==0,"rotorb(10)",1)
 
