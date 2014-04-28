@@ -30,7 +30,7 @@ CONTAINS
     real(8),parameter :: on = 1.0d0
     real(8),parameter :: zr = 0.0d0
     real(8) :: ctime_force(0:10),etime_force(0:10)
-    real(8) :: error,error0,tmp1
+    real(8) :: error,error0,tmp1,ct0,ct1,et0,et1
     complex(8),parameter :: zo = (1.0d0,0.0d0)
     complex(8),parameter :: zz = (0.0d0,0.0d0)
     complex(8),allocatable :: zrk(:,:)
@@ -66,7 +66,7 @@ CONTAINS
        end if
        id_i(0:nprocs-1) = id_i(0:nprocs-1)*MBC
        ir_i(0:nprocs-1) = ir_i(0:nprocs-1)*MBC
-       allocate( psi_tmp(ML0,MB0) ) ; psi_tmp=0.0d0
+       allocate( psi_tmp(n1:n2,MB_0_CPMD:MB_1_CPMD) ) ; psi_tmp=0.0d0
     end if
 
     ls = id_i(myrank)/MBC+1
@@ -82,46 +82,25 @@ CONTAINS
 
        MBT=mstocck(k,s)
 
-!       tau(:,:) =zr
-!       sig(:,:) =zr
-!       gam(:,:) =zr
-!       gamn(:,:)=zr
-!       scr(:,:) =zr
-!       wrk(:,:) =zr
-
        call watcht(myrank==0,"rotorb(0)",1)
+       call watch(ct0,et0)
 
-       call overlap4(s,k)
+       call overlap4(s,k) ! tau
 
-       call watcht(myrank==0,"rotorb(1)",1)
+       call watch(ct1,et1) ; if ( myrank==0 ) write(*,*) "timet(rotorb(1)=",ct1-ct0,et1-et0
 
-       call overlap2(s,k)
+       call overlap2(s,k) ! sig
 
-       call watcht(myrank==0,"rotorb(2)",1)
-       do i=ls,le
-          sig(i,i) = on + sig(i,i) ! I-A
-       end do
-       do i=ls,le
-          tau(i,i) = on + tau(i,i) ! I-B
-       end do
+       call watch(ct0,et0) ; if ( myrank == 0 ) write(*,*) "timet(rotorb(2)=",ct0-ct1,et0-et1
+       call watcht(myrank==0,"",0)
 
-       gam(:,:) = sig(:,:)*hf      ! (I-A)/2
-
-!       wrk(:,:)=zr
-       do j=ls,le
-       do i=1,MBC
-          wrk(i,j) = tau(i,j)
-       end do
-       end do
+!$OMP parallel workshare
+       gam(1:MBC,ls:le) = sig(1:MBC,ls:le)*hf      ! (I-A)/2
+!$OMP end parallel workshare
 
        call watcht(myrank==0,"rotorb(3)",1)
 
-       call mpi_allgatherv(wrk(1,ls),ir_i(myrank),mpi_real8 &
-            ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
-
-       call watcht(myrank==0,"rotorb(4)",1)
-
-       call dgemm('n','n',MBT,li,MBT,hf,wrk,MBC,tau(1,ls),MBC,hf,sig(1,ls),MBC)
+       call dgemm('n','n',MBT,li,MBT,hf,tau,MBC,tau(1,ls),MBC,hf,sig(1,ls),MBC)
 
        call watcht(myrank==0,"rotorb(5)",1)
 
@@ -134,9 +113,7 @@ CONTAINS
           end do
           do j=ls,le
           do i=1,MBC
-             tmp1 = tau(i,j) - gam(i,j)
-             scr(i,j) = tmp1
-             wrk(i,j) = tmp1
+             wrk(i,j) = tau(i,j) - gam(i,j)
           end do
           end do
 
@@ -144,7 +121,7 @@ CONTAINS
                ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
           call dgemm &
-               ('n','n',MBT,li,MBT,hm,wrk,MBC,scr(1,ls),MBC,on,gamn(1,ls),MBC)
+               ('n','n',MBT,li,MBT,hm,wrk,MBC,wrk(1,ls),MBC,on,gamn(1,ls),MBC)
 
           error0=0.0d0
           do j=ls,le
@@ -152,8 +129,7 @@ CONTAINS
              error0 = error0 + (gamn(i,j)-gam(i,j))**2
           end do
           end do
-          call mpi_allreduce(error0,error,1,MPI_REAL8,mpi_sum &
-               ,mpi_comm_world,ierr)
+          call mpi_allreduce(error0,error,1,MPI_REAL8,mpi_sum,mpi_comm_world,ierr)
           error=sqrt(error)/MBT
           if ( myrank == 0 .and. error > on ) write(*,*) k,s,error
 
@@ -178,26 +154,25 @@ CONTAINS
        call watcht(myrank==0,"rotorb(7)",1)
 
        call dgemm('n','n',ML0,MB0,MBT,on,unk(n1,1,k,s),ML0 &
-            ,wrk(1,MB_0_CPMD),MBC,zr,psi_tmp(1,1),ML0)
+            ,wrk(1,MB_0_CPMD),MBC,zr,psi_tmp(n1,MB_0_CPMD),ML0)
 
-       psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) &
-            = psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + psi_tmp(1:ML0,1:MB0)
+!$OMP parallel workshare
+       psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) = &
+       psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + psi_tmp(n1:n2,MB_0_CPMD:MB_1_CPMD)
+!$OMP end parallel workshare
 
        call watcht(myrank==0,"rotorb(8)",1)
 
        tmp1=1.d0/dt
 !$OMP parallel workshare
-       psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) &
-            = psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + tmp1*psi_tmp(1:ML0,1:MB0)
+       psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) = &
+       psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + tmp1*psi_tmp(n1:n2,MB_0_CPMD:MB_1_CPMD)
 !$OMP end parallel workshare
 
        call watcht(myrank==0,"rotorb(9)",1)
 
     end do ! k
     end do ! s
-
-!    deallocate( psi_tmp )
-!    deallocate( ir_i, id_i )
 
     call watcht(myrank==0,"",0)
 

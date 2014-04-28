@@ -60,7 +60,6 @@ CONTAINS
     n = (MBC*(MBC+1))/2
     if ( .not.allocated(w1) ) then
        allocate( w1(n) ) ; w1=0.0d0
-       allocate( w2(n) ) ; w2=0.0d0
     end if
 
     do j=1,MBC
@@ -71,9 +70,6 @@ CONTAINS
     end do
 
     call mpi_allreduce(MPI_IN_PLACE,w1,n,mpi_real8,mpi_sum,comm_grid,ierr)
-
-!    call mpi_allreduce &
-!         (MPI_IN_PLACE,sig,MBC*MBC,mpi_real8,mpi_sum,comm_grid,ierr)
 
     do j=1,MBC
     do i=j,MBC
@@ -86,18 +82,12 @@ CONTAINS
 
 !$OMP parallel do
     do j=1  ,MBC
-    do i=j+1,MBC
-       sig(j,i) = sig(i,j)
-    end do
+       do i=j+1,MBC
+          sig(j,i) = sig(i,j)
+       end do
+       sig(j,j)=sig(j,j)+1.0d0
     end do
 !$OMP end parallel do
-!!$OMP parallel do
-!    do i=1,MBC
-!    do j=1,i-1
-!       sig(i,j) = sig(j,i)
-!    end do
-!    end do
-!!$OMP end parallel do
 
     call watcht(myrank==0,"overlap(2-4)",1)
 
@@ -151,18 +141,12 @@ CONTAINS
 
     call watcht(myrank==0,"overlap(4-2)",1)
 
-!!$OMP parallel do
-!    do i=1,MBC
-!    do j=1,i-1
-!       tau(j,i) = tau(i,j)
-!    end do
-!    end do
-!!$OMP end parallel do
 !$OMP parallel do
     do j=1,MBC
-    do i=j+1,MBC
-       tau(j,i) = tau(i,j)
-    end do
+       do i=j+1,MBC
+          tau(j,i) = tau(i,j)
+       end do
+       tau(j,j)=tau(j,j)+1.0d0
     end do
 !$OMP end parallel do
 
@@ -225,13 +209,6 @@ CONTAINS
     end do
     end do
 !$OMP end parallel do 
-!!$OMP parallel do
-!    do i=1,MBC
-!    do j=1,i-1
-!       wrk(j,i) = wrk(i,j)
-!    end do
-!    end do
-!!$OMP end parallel do 
 
     call watcht(myrank==0,"overlap(5-3)",1)
 

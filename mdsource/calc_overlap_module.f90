@@ -34,13 +34,6 @@ CONTAINS
     nme = n*(n+1)/2
     allocate( s(nme),r(nme) )
 
-!    k=0
-!    do j=1,n
-!    do i=j,n
-!       k=k+1
-!       s(k)=c(i,j)*dv
-!    end do
-!    end do
     do j=1,n
     do i=j,n
        k=(j-1)*n-(j*(j-1))/2+i
@@ -50,21 +43,14 @@ CONTAINS
 
     call watcht(myrank==0,"calc_overlap(2)",1)
 
-    call mpi_allreduce(s,r,nme,mpi_real8,mpi_sum,comm_grid,ierr)
+    call mpi_allreduce(MPI_IN_PLACE,s,nme,mpi_real8,mpi_sum,comm_grid,ierr)
 
     call watcht(myrank==0,"calc_overlap(3)",1)
 
-!    k=0
-!    do j=1,n
-!    do i=j,n
-!       k=k+1
-!       c(i,j)=r(k)
-!    end do
-!    end do
     do j=1,n
     do i=j,n
        k=(j-1)*n-(j*(j-1))/2+i
-       c(i,j)=r(k)
+       c(i,j)=s(k)
     end do
     end do
 
@@ -113,11 +99,6 @@ CONTAINS
                     c(i,j)=sum( a(:,i)*b(:,j) )
                 end do
                 end do
-!                do i=i0,i1
-!                do j=j0,i
-!                   c(i,j)=sum( a(:,i)*b(:,j) )
-!                end do
-!                end do
              end if
 
           end if
