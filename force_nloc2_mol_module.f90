@@ -465,11 +465,7 @@ CONTAINS
   SUBROUTINE comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,w)
     implicit none
     integer,intent(IN) :: nzlma,ib1,ib2
-#ifdef _DRSDFT_
     real(8),intent(INOUT) :: w(4,nzlma,ib1:ib2)
-#else
-    complex(8),intent(INOUT) :: w(4,nzlma,ib1:ib2)
-#endif
     integer :: nreq,irank,m,i1,i2,i3,i4,ib,ierr,nb
     integer :: istatus(mpi_status_size,512),ireq(512)
     nb=ib2-ib1+1
