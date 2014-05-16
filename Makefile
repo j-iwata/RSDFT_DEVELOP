@@ -95,6 +95,7 @@ MODS1 = simc_module.o\
         localpot2_te_module.o \
         test_hpsi2_module.o \
         test_force_module.o \
+        esp_calc_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \
