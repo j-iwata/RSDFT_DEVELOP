@@ -138,8 +138,8 @@ CONTAINS
 
     if ( .not. allocated(rho) ) then
        allocate( rho(ML_0:ML_1,Nspin) )
-       rho=0.d0
     end if
+    rho=0.0d0
 
     allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
     allocate( fftwork(ML) )

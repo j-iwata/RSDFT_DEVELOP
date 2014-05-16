@@ -1,8 +1,7 @@
 MODULE io_module
 
   use rgrid_module, only: Ngrid,Igrid
-  use electron_module, only: occ
-  use wf_module, only: unk
+  use wf_module, only: unk,occ
   use density_module, only: rho
   use xc_module, only: Vxc
   use localpot_module, only: Vloc

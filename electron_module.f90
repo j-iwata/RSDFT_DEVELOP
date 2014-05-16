@@ -7,15 +7,14 @@ MODULE electron_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Nband,Nspin,Nelectron,Next_electron,occ &
-           ,Ndspin,Nfixed,init_occ_electron &
-           ,read_electron,count_electron,init_occupation &
+  PUBLIC :: Nband,Nspin,Nelectron,Next_electron &
+           ,Ndspin,Nfixed &
+           ,read_electron,count_electron &
            ,read_oldformat_electron
 
   integer :: Nband, Nspin, Nfixed
   real(8) :: Nelectron,Next_electron,Ndspin
   integer :: MB_0,MB_1,MSP_0,MSP_1
-  real(8),allocatable :: occ(:,:,:)
 
 CONTAINS
 
@@ -112,6 +111,7 @@ CONTAINS
   END SUBROUTINE count_electron
 
 
+#ifdef TEST
   SUBROUTINE init_occupation
     integer :: n,k,s
     real(8) :: sum0
@@ -184,6 +184,7 @@ CONTAINS
        stop "sum(occ) /= Nelectron !!!"
     end if
   END SUBROUTINE init_occ_electron
+#endif
 
 
 END MODULE electron_module

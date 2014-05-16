@@ -2,7 +2,7 @@
 !     detect active bands
 !-----------------------------------------------------------------------
 subroutine active_band
-  use electron_module, only: occ
+  use wf_module, only: occ
   use cpmd_variables,only:mstocck,MBC,MB,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 &
        ,MB_0_CPMD,MB_1_CPMD,ir_band_cpmd,id_band_cpmd
   use parallel_module, only: myrank,myrank_b,np_band

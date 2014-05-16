@@ -6,7 +6,7 @@ MODULE xc_hse_module
   use array_bound_module
   use kinetic_module, only: Md, SYStype
   use density_module, only: rho
-  use electron_module, only: Nspin,occ
+  use electron_module, only: Nspin
   use parallel_module
   use ps_pcc_module
   use bc_module

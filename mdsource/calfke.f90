@@ -3,7 +3,7 @@
 !-----------------------------------------------------------------------
 SUBROUTINE calfke(fke)
   use cpmd_variables, only: DISP_SWITCH,psi_v,emass,MB_0_CPMD,MB_1_CPMD
-  use electron_module, only: occ
+  use wf_module, only: occ
   use array_bound_module
   use rgrid_module, only: dV
   use watch_module

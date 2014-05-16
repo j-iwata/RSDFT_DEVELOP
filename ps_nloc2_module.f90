@@ -1180,7 +1180,6 @@ CONTAINS
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)
     use bz_module
-    use electron_module, only: occ
     use wf_module
     use watch_module
     implicit none

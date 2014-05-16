@@ -45,6 +45,8 @@ PROGRAM Real_Space_Solid
 
   use info_module
 
+  use init_occ_electron_module
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -236,6 +238,10 @@ PROGRAM Real_Space_Solid
 
   call count_electron
 
+!-------- init density 
+
+  call init_density(Nelectron,dV)
+
 !----------------------- SOL sol -----
 
   if ( SYStype == 0 ) then
@@ -325,9 +331,6 @@ PROGRAM Real_Space_Solid
 
   end if
 
-! if initrho is not available, random_number density is set here
-  call init_density
-
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
@@ -347,32 +350,6 @@ PROGRAM Real_Space_Solid
 #endif
 !--------------------
 
-  call init_occ_electron
-  call flush(6)
-
-  if ( DISP_SWITCH ) then
-     write(*,'(a60," main")') repeat("-",60)
-     write(*,*) "Natom    =",Natom
-     write(*,*) "Nelement =",Nelement
-     write(*,*) "Nband =",Nband
-     write(*,*) "Nspin =",Nspin
-     write(*,*) "Nbzsm =",Nbzsm,MBZ
-     write(*,*) "Nelectron =",Nelectron
-     write(*,*) "Next_electron =",Next_electron
-     write(*,*) "Ndspin,Nfixed =",Ndspin,Nfixed
-     write(*,*) "Zps   =",Zps(1:Nelement)
-     write(*,*) "sum(occ)=",sum(occ)
-     if ( Nspin == 2 ) then
-        write(*,*) "sum(occ(up))  =",sum(occ(:,:,1))
-        write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin))
-     endif
-     do n=max(1,nint(Nelectron/2)-20),min(nint(Nelectron/2)+80,Nband)
-        do k=1,Nbzsm
-           write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
-        end do
-     end do
-  end if
-  call flush(6)
 
 ! --- ESM esm ---
 
@@ -422,7 +399,34 @@ PROGRAM Real_Space_Solid
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
-!  call test_on_wf(myrank==0)
+!  call test_on_wf(dV,myrank==0)
+
+! --- Initial occupation ---
+
+  call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+
+  if ( DISP_SWITCH ) then
+     write(*,'(a60," main")') repeat("-",60)
+     write(*,*) "Natom    =",Natom
+     write(*,*) "Nelement =",Nelement
+     write(*,*) "Nband =",Nband
+     write(*,*) "Nspin =",Nspin
+     write(*,*) "Nbzsm =",Nbzsm,MBZ
+     write(*,*) "Nelectron =",Nelectron
+     write(*,*) "Next_electron =",Next_electron
+     write(*,*) "Ndspin,Nfixed =",Ndspin,Nfixed
+     write(*,*) "Zps   =",Zps(1:Nelement)
+     write(*,*) "sum(occ)=",sum(occ)
+     if ( Nspin == 2 ) then
+        write(*,*) "sum(occ(up))  =",sum(occ(:,:,1))
+        write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin))
+     endif
+     do n=max(1,nint(Nelectron/2)-20),min(nint(Nelectron/2)+80,Nband)
+        do k=1,Nbzsm
+           write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
+        end do
+     end do
+  end if
 
 ! --- Initial Potential ---
 

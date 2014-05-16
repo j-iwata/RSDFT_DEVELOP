@@ -1,12 +1,11 @@
 MODULE total_energy_module
 
   use rgrid_module, only: dV
-  use electron_module, only: occ
   use hamiltonian_module
   use hartree_module, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
   use ewald_module, only: Eewald
-  use wf_module, only: unk,esp
+  use wf_module, only: unk,esp,occ
   use localpot_module, only: Vloc
   use ps_local_module, only: Vion
   use density_module, only: rho

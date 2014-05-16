@@ -31,6 +31,7 @@ MODS1 = simc_module.o\
         ps_gth_module.o \
         ps_local_gth_module.o \
         electron_module.o\
+        init_occ_electron_module.o \
         wf_module.o \
         density_module.o\
         hartree_mol_module.o \
