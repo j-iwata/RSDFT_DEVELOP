@@ -527,13 +527,16 @@ PROGRAM Real_Space_Solid
         call gram_schmidt_t(1,Nband,k,s)
         call watcht(disp_switch,"gs  ",1)
         if ( Ndiag /= 1 ) then
+           !if ( .not.flag_scf ) then
 #ifdef _LAPACK_
            call subspace_diag_la(k,s)
 #else
            call subspace_diag_sl(k,s,disp_switch)
 #endif
-!           call esp_calc &
-!                (k,s,unk(ML_0,MB_0,k,s),ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+           !else
+           !call esp_calc &
+           !     (k,s,unk(ML_0,MB_0,k,s),ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+           !end if
         end if
         call watcht(disp_switch,"diag",1)
      end do

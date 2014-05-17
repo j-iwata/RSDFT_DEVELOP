@@ -243,8 +243,8 @@ CONTAINS
 
     if ( .not. allocated(rho) ) then
        allocate( rho(ML_0:ML_1,Nspin) )
-       rho=0.0d0
     end if
+    rho=0.0d0
 
     allocate( rho_tmp(ML_0:ML_1) )
     rho_tmp=0.0d0
@@ -258,7 +258,6 @@ CONTAINS
 
           if ( ki_atom(iatm) /= ielm ) cycle
           zi=zi+Zps(ielm)
-          write(*,*) iatm,zi
           a1=aa_atom(1,iatm)
           a2=aa_atom(2,iatm)
           a3=aa_atom(3,iatm)
