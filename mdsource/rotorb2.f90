@@ -5,7 +5,6 @@ subroutine rotorb2
 
   use parallel_module
   use wf_module
-  use electron_module, only: occ
   use array_bound_module, only: MSP_0,MSP_1,MBZ_0,MBZ_1
   use cpmd_variables, only: MBC,MBT,mstocck,psi_v,wrk,MB_0_CPMD,MB_1_CPMD
   use overlap_cpmd_module

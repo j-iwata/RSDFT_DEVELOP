@@ -13,7 +13,6 @@ SUBROUTINE bomd
   use parallel_module
   use total_energy_module
   use wf_module
-  use electron_module, only: occ
   use watch_module
   use array_bound_module, only: MB_0,MB_1
   use cpmdio2_module
