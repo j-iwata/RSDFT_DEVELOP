@@ -48,7 +48,7 @@ CONTAINS
        write(*,*) "(Compile date/time) ",date,"/",time
        write(unit_info,*) "(Subversion Revision) $Rev$"
        write(unit_info,*) "(Subversion Date    ) $Date$"
-       write(unit_info,*) "(Compile date/time) ",date,"/",time
+       write(unit_info,*) "(Execution date/time) ",date,"/",time
 #ifdef _DRSDFT_
        write(*,*) "DRSDFT(REAL8)"
        write(unit_info,*) "DRSDFT(REAL8)"
