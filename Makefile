@@ -51,6 +51,8 @@ MODS1 = simc_module.o\
         ps_nloc2_init_module.o \
         ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
+		VarPara.o \
+		ParaRGridComm.o \
         ps_nloc2_module.o \
         localpot2_variables.o \
         localpot2_module.o \
