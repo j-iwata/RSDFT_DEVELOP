@@ -11,7 +11,7 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE prepThreeWayComm( nr,NLRankMap,NRxyz,Num2Rank0 )
-    use parallel_module, only: node_partition,nprocs_g,myrank_g,myrank
+    use parallel_module, only: node_partition,nprocs_g,myrank_g
     
     implicit none
     
@@ -24,17 +24,13 @@ CONTAINS
     integer :: i1,i2,i3
     integer :: np1,np2,np3
     integer,allocatable :: LLp(:,:)
-!    integer,allocatable :: LLLp(:,:,:)
     integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
-
-write(222+myrank,*) "myrank_g = ",myrank_g
 
     np1=node_partition(1)
     np2=node_partition(2)
     np3=node_partition(3)
     
     allocate( LLp(3,0:nprocs_g-1) ) ; LLp=0
-!    allocate( LLLp(1:np1,1:np2,1:np3) ) ; LLLp=0
     n=-1
     do i3=0,np3-1
         do i2=0,np2-1
@@ -43,7 +39,6 @@ write(222+myrank,*) "myrank_g = ",myrank_g
                 LLp(1,n)=i1
                 LLp(2,n)=i2
                 LLp(3,n)=i3
-!                LLLp(i1,i2,i3)=n
             end do
         end do
     end do
@@ -202,9 +197,6 @@ write(222+myrank,*) "myrank_g = ",myrank_g
         end do
     end do
     !===== calc. Num2Rank0 =====
-write(222+myrank,*) "itmp1 = ",itmp1
-write(222+myrank,*) "itmp2 = ",itmp2
-write(222+myrank,*) "itmp3 = ",itmp3
     
     deallocate( itmp  )
     deallocate( itmp1 )
@@ -212,7 +204,6 @@ write(222+myrank,*) "itmp3 = ",itmp3
     deallocate( itmp3 )
     deallocate( work  )
     deallocate( LLp   )
-!    deallocate( LLLp  )
     
     !----- adjust NRxyz -----
     do i=1,5,2
@@ -221,8 +212,6 @@ write(222+myrank,*) "itmp3 = ",itmp3
         NRxyz(i+1)=n
     end do
     !===== adjust NRxyz =====
-write(222+myrank,*) "num_2_rank = ",Num2Rank0
-write(222+myrank,*) "nrlma_xyz = ",NRxyz
 
   END SUBROUTINE prepThreeWayComm
 
