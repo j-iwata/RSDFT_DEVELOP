@@ -26,7 +26,9 @@ CONTAINS
     integer,allocatable :: LLp(:,:)
 !    integer,allocatable :: LLLp(:,:,:)
     real(8),allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
-    
+
+write(222+myrank,*) "myrank_g = ",myrank_g
+
     np1=node_partition(1)
     np2=node_partition(2)
     np3=node_partition(3)
@@ -200,6 +202,7 @@ CONTAINS
         end do
     end do
     !===== calc. Num2Rank0 =====
+write(222+myrank,*) "itmp3 = ",itmp3
     
     deallocate( itmp  )
     deallocate( itmp1 )
