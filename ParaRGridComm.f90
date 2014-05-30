@@ -217,22 +217,22 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE threeWayComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
-    use parallel_module, only: nprocs_g,COMM_GRID
+    use parallel_module, only: nprocs_g,COMM_GRID,myrank
   
     implicit none
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
-    integer,intent(IN) :: Num2Rank0(:,:)
-    integer,intent(IN) :: SendMap(:,:),RecvMap(:,:)
-    integer,intent(IN) :: TarNSend(:)
+    integer,allocatable,intent(IN) :: Num2Rank0(:,:)
+    integer,allocatable,intent(IN) :: SendMap(:,:),RecvMap(:,:)
+    integer,allocatable,intent(INOUT) :: TarNSend(:)
     
 #ifdef _DRSDFT_
     real(8),intent(INOUT) :: TarIN(nz,ib1:ib2)
-    real(8) :: SbufNL(:,:),RbufNL(:,:)
+    real(8),allocatable,intent(INOUT) :: SbufNL(:,:),RbufNL(:,:)
     real(8) :: tmp0(nz,ib1:ib2)
 #else
     complex(8),intent(INOUT) :: TarIN(nz,ib1:ib2)
-    complex(8) :: SbufNL(:,:),RbufNL(:,:)
+    complex(8),allocatable,intent(INOUT) :: SbufNL(:,:),RbufNL(:,:)
     complex(8) :: tmp0(nz,ib1:ib2)
 #endif
     integer :: i,j,m,ib,i1,i2
@@ -241,6 +241,11 @@ CONTAINS
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
     
     nb=ib2-ib1+1
+
+write(222+myrank,*) "NRxyz = ",NRxyz
+write(222+myrank,*) "Num2Rank0 = ",Num2Rank0
+write(222+myrank,*) "nz = ",nz
+
 !!$OMP single    
     do i=1,6
         select case ( i )
@@ -263,12 +268,15 @@ CONTAINS
                     end do
                 end do
                 nreq=nreq+1
+write(222+myrank,*) "before isend"
                 call MPI_ISEND( SbufNL(1,irank),TarNSend(jrank)*nb,TYPE_MAIN,irank,1,COMM_GRID,ireq(nreq),ierr )
             end if
             if ( jrank>=0 ) then
                 nreq=nreq+1
+write(222+myrank,*) "before irecv"
                 call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*nb,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
             end if
+write(222+myrank,*) "before waitall"
             call MPI_WAITALL( nreq,ireq,istatus,ierr )
             if ( jrank>=0 ) then
                 i2=0
@@ -282,6 +290,7 @@ CONTAINS
         end do
     end do
 !!$OMP end single
+write(222+myrank,*) "threeWayComm end"
   END SUBROUTINE threeWayComm
 
 !---------------------------------------------------------------------------------------
