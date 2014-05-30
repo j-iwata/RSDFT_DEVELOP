@@ -12,7 +12,7 @@ MODULE ps_nloc2_module
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
-  use ParaRGridComm, only: prepThreeWayComm
+  use ParaRGridComm, only: prepThreeWayComm,threeWayComm
 
   implicit none
 
@@ -888,59 +888,8 @@ CONTAINS
 
     select case( iswitch_eqdiv )
     case default
-
-!$OMP single
-    do i=1,6
-       select case(i)
-       case(1,3,5)
-!!$OMP single
-          j=i+1
-!!$OMP end single
-!!$OMP workshare
-          uVunk0(:,:)=uVunk(:,:)
-!!$OMP end workshare
-       case(2,4,6)
-!!$OMP single
-          j=i-1
-!!$OMP end single
-       end select
-!!$OMP single
-       do m=1,nrlma_xyz(i)
-          nreq=0
-          irank=num_2_rank(m,i)
-          jrank=num_2_rank(m,j)
-          if( irank>=0 )then
-             i2=0
-             do ib=ib1,ib2
-                do i1=1,lma_nsend(irank)
-                   i2=i2+1
-                   sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
-                end do
-             end do
-             nreq=nreq+1
-             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb &
-                  ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
-          end if
-          if( jrank>=0 )then
-             nreq=nreq+1
-             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
-                  ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
-          end if
-          call mpi_waitall(nreq,ireq,istatus,ierr)
-          if( jrank>=0 )then
-             i2=0
-             do ib=ib1,ib2
-                do i1=1,lma_nsend(jrank)
-                   i2=i2+1
-                   uVunk(recvmap(i1,jrank),ib) &
-                        =uVunk(recvmap(i1,jrank),ib)+rbufnl(i2,jrank)
-                end do
-             end do
-          end if
-       end do
-!!$OMP end single
-    end do
-!$OMP end single
+    
+      call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
     case( 2 )
 

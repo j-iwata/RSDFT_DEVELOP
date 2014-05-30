@@ -241,7 +241,7 @@ CONTAINS
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
     
     nb=ib2-ib1+1
-    
+!!$OMP single    
     do i=1,6
         select case ( i )
         case ( 1,3,5 )
@@ -281,6 +281,7 @@ CONTAINS
             end if
         end do
     end do
+!!$OMP end single
   END SUBROUTINE threeWayComm
 
 !---------------------------------------------------------------------------------------
