@@ -25,7 +25,7 @@ CONTAINS
     integer :: np1,np2,np3
     integer,allocatable :: LLp(:,:)
 !    integer,allocatable :: LLLp(:,:,:)
-    real(8),allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
+    integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
 
 write(222+myrank,*) "myrank_g = ",myrank_g
 
@@ -202,6 +202,8 @@ write(222+myrank,*) "myrank_g = ",myrank_g
         end do
     end do
     !===== calc. Num2Rank0 =====
+write(222+myrank,*) "itmp1 = ",itmp1
+write(222+myrank,*) "itmp2 = ",itmp2
 write(222+myrank,*) "itmp3 = ",itmp3
     
     deallocate( itmp  )
