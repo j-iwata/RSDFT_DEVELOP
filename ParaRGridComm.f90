@@ -217,7 +217,7 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE threeWayComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
-    use parallel_module, only: nprocs_g,COMM_GRID,myrank
+    use parallel_module, only: nprocs_g,COMM_GRID
   
     implicit none
     integer,intent(IN) :: nz,ib1,ib2
@@ -242,22 +242,18 @@ CONTAINS
     
     nb=ib2-ib1+1
 
-write(222+myrank,*) "NRxyz = ",NRxyz
-write(222+myrank,*) "Num2Rank0 = ",Num2Rank0
-write(222+myrank,*) "nz = ",nz
-
 !!$OMP single    
     do i=1,6
         select case ( i )
         case ( 1,3,5 )
-            j=j+1
+            j=i+1
             tmp0(:,:) = TarIN(:,:)
         case ( 2,4,6 )
-            j=j-1
+            j=i-1
         end select
         do m=1,NRxyz(i)
             nreq=0
-            irank=Num2Rank0(m,j)
+            irank=Num2Rank0(m,i)
             jrank=Num2Rank0(m,j)
             if ( irank>=0 ) then
                 i2=0
@@ -268,15 +264,12 @@ write(222+myrank,*) "nz = ",nz
                     end do
                 end do
                 nreq=nreq+1
-write(222+myrank,*) "before isend"
-                call MPI_ISEND( SbufNL(1,irank),TarNSend(jrank)*nb,TYPE_MAIN,irank,1,COMM_GRID,ireq(nreq),ierr )
+                call MPI_ISEND( SbufNL(1,irank),TarNSend(irank)*nb,TYPE_MAIN,irank,1,COMM_GRID,ireq(nreq),ierr )
             end if
             if ( jrank>=0 ) then
                 nreq=nreq+1
-write(222+myrank,*) "before irecv"
                 call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*nb,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
             end if
-write(222+myrank,*) "before waitall"
             call MPI_WAITALL( nreq,ireq,istatus,ierr )
             if ( jrank>=0 ) then
                 i2=0
@@ -290,7 +283,6 @@ write(222+myrank,*) "before waitall"
         end do
     end do
 !!$OMP end single
-write(222+myrank,*) "threeWayComm end"
   END SUBROUTINE threeWayComm
 
 !---------------------------------------------------------------------------------------
