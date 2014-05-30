@@ -11,7 +11,7 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE prepThreeWayComm( nr,NLRankMap,NRxyz,Num2Rank0 )
-    use parallel_module, only: node_partition,nprocs_g,myrank_g
+    use parallel_module, only: node_partition,nprocs_g,myrank_g,myrank
     
     implicit none
     
@@ -216,7 +216,9 @@ CONTAINS
         NRxyz(i+1)=n
     end do
     !===== adjust NRxyz =====
-    
+write(222+myrank,*) "num_2_rank = ",Num2Rank0
+write(222+myrank,*) "nrlma_xyz = ",NRxyz
+
   END SUBROUTINE prepThreeWayComm
 
 !---------------------------------------------------------------------------------------
