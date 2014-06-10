@@ -300,45 +300,4 @@ CONTAINS
 
   END SUBROUTINE ps_nloc2_init_derivative
 
-
-  SUBROUTINE simp(f,s,n,m)
-    implicit none
-    integer,intent(IN)  :: n,m
-    real(8),intent(IN)  :: f(n)
-    real(8),intent(OUT) :: s
-    real(8),allocatable :: g(:)
-    integer :: i,nn,nmax
-    nmax=int(n/m)*m
-    do i=0,m
-       nmax=nmax+i ; if ( nmax>=n ) exit
-    end do
-    allocate( g(nmax) ) ; g(1:n)=f ; if ( nmax>n ) g(n+1:)=0.d0
-    select case(m)
-    case default
-       s = 0.5d0*(f(1)+f(n)) + sum(f(2:n-1))
-    case(2)
-       s=0.d0
-       do i=1,nmax-2,2
-          s = s + g(i) + 4.d0*g(i+1) + g(i+2)
-       end do
-       s=s/3.d0
-    case(4)
-       s=0.d0
-       do i=1,nmax-4,4
-          s=s+7*g(i)+32*g(i+1)+12*g(i+2)+32*g(i+3)+7*g(i+4)
-       end do
-       s=s*2.d0/45.d0
-    case(6)
-       s=0.d0
-       do i=1,nmax-6,6
-          s=s+41*g(i)+216*g(i+1)+27*g(i+2)+272*g(i+3) &
-               +27*g(i+4)+216*g(i+5)+41*g(i+6)
-       end do
-       s=s/140.d0
-    end select
-    deallocate( g )
-    return
-  END SUBROUTINE simp
-
-
 END MODULE ps_nloc2_init_module
