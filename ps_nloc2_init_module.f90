@@ -2,6 +2,8 @@ MODULE ps_nloc2_init_module
 
   use pseudopot_module
 
+  use Filtering, only: opFiltering
+
   implicit none
 
   PRIVATE
@@ -171,91 +173,9 @@ CONTAINS
           NRc=NRps0(iorb,ik)
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
-          do i=1,NRps(iorb,ik)
+          
+          call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
 
-             r=rad1(i,ik)
-             tmp(:)=0.d0
-
-             select case(L)
-             case(0)
-                if ( r==0.d0 ) then
-                   r1=rad(1,ik)
-                   if ( r1==0.d0 ) then
-                      tmp(1)=qc*qc*qc/3.d0
-                   else
-                      tmp(1)=sin(qc*r1)/(r1*r1*r1)-qc*cos(qc*r1)/(r1*r1)
-                   end if
-                   do j=2,NRc
-                      r1=rad(j,ik)
-                      tmp(j)=sin(qc*r1)/(r1*r1*r1)-qc*cos(qc*r1)/(r1*r1)
-                   end do
-                else
-                   do j=1,NRc
-                      r1=rad(j,ik)
-                      if ( r1==0.d0 ) then
-                         tmp(j)=sin(qc*r)/(r*r*r)-qc*cos(qc*r)/(r*r)
-                      else if ( r1==r ) then
-                         tmp(j)=(2*qc*r-sin(2.d0*qc*r))/(4*r*r*r)
-                      else
-                         tmp(j)=( sin(qc*(r-r1))/(r-r1) &
-                                 -sin(qc*(r+r1))/(r+r1) )/(2.d0*r*r1)
-                      end if
-                   end do
-                end if
-             case(1)
-                if ( r==0.d0 ) then
-                   viod(i,iorb,ik)=0.d0
-                   cycle
-                else
-                   do j=1,NRc
-                      r1=rad(j,ik)
-                      if ( r1==0.d0 ) then
-                         tmp(j)=0.d0
-                      else if ( r1==r ) then
-                         sb0x=sin(qc*r)/(qc*r)
-                         sb1x=sb0x/(qc*r)-cos(qc*r)/(qc*r)
-                         tmp(j)=(2*qc*r-sin(2.d0*qc*r))/(4*r*r*r) &
-                              -qc*qc*sb0x*sb1x/r
-                      else
-                         sb0x=sin(qc*r)/(qc*r)
-                         sb0y=sin(qc*r1)/(qc*r1)
-                         sb1x=sb0x/(qc*r)-cos(qc*r)/(qc*r)
-                         sb1y=sb0y/(qc*r1)-cos(qc*r1)/(qc*r1)
-                         tmp(j)=( r1*sb0y*sb1x-r*sb0x*sb1y )*qc*qc/(r*r-r1*r1)
-                      end if
-                   end do
-                end if
-             case(2)
-                if ( r==0.d0 ) then
-                   viod(i,iorb,ik)=0.d0
-                   cycle
-                else
-                   do j=1,NRc
-                      r1=rad(j,ik)
-                      if ( r1==0.d0 ) then
-                         tmp(j)=0.d0
-                      else if ( r1==r ) then
-                         sb1x=sin(qc*r)/(qc*qc*r*r)-cos(qc*r)/(qc*r)
-                         tmp(j)=(2.d0*qc*r-sin(2.d0*qc*r))/(4.d0*r*r*r) &
-                              -3.d0*qc*sb1x*sb1x/(r*r)
-                      else
-                         sb0x=sin(qc*r)/(qc*r)
-                         sb0y=sin(qc*r1)/(qc*r1)
-                         sb1x=sb0x/(qc*r)-cos(qc*r)/(qc*r)
-                         sb1y=sb0y/(qc*r1)-cos(qc*r1)/(qc*r1)
-                         tmp(j)=( r*sb0y*sb1x-r1*sb0x*sb1y ) &
-                              *qc*qc/(r*r-r1*r1)-3.d0*qc/(r*r1)*sb1x*sb1y
-                      end if
-                   end do
-                end if
-             case default
-                write(*,*) "PP for L>2 is not implemented."
-                stop
-             end select
-             tmp(1:NRc)=tmp(1:NRc)*vrad(1:NRc)
-             call simp(tmp(1:NRc),sum0,NRc,2)
-             viod(i,iorb,ik)=sum0*const
-          end do ! i
        end do ! iorb
     end do ! ik
     deallocate( vrad,tmp )

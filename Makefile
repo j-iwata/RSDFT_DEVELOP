@@ -6,6 +6,7 @@ MODS1 = simc_module.o\
         modified_bessel_module.o \
 	bberf_module.o \
         expint_module.o \
+		Filtering.o \
         parallel_module.o \
         rsdft_mpi_module.o \
         bcast_module.o \
