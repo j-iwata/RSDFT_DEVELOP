@@ -1,6 +1,7 @@
 MODULE pseudopot_module
 
   use ps_read_YB_module
+  use VarPSMember
 
   implicit none
 
@@ -12,14 +13,7 @@ MODULE pseudopot_module
            ,read_ppname_oldformat_pseudopot
 
   integer :: pselect,Npseudopot
-  integer,allocatable :: ippform(:)
-  character(30),allocatable :: file_ps(:)
-  integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:)
-  real(8),allocatable :: vql(:,:),cdd(:,:),cdc(:,:),rad(:,:),parloc(:,:)
-  real(8),allocatable :: anorm(:,:),viod(:,:,:),Rps(:,:),Zps(:),rab(:,:)
-  real(8),allocatable :: cdd_coef(:,:,:)
-  integer :: unit_ps,ielm,Nelement_PP
-  integer :: max_psgrd=0, max_psorb=0, max_ngauss=0
+  integer :: unit_ps,ielm
 
 CONTAINS
 
