@@ -17,6 +17,8 @@ CONTAINS
     real(8),intent(INOUT) :: ax,aa(3,3)
     integer :: i,iflag_format
     character(3) :: cbuf,ckey
+    ax=0.0d0
+    aa=0.0d0
     if ( rank == 0 ) then
        iflag_format = 0
        rewind unit
