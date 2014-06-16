@@ -47,6 +47,46 @@ MODULE global_variables
   use array_bound_module
   use atomopt_module
 
+  use esm_rgrid_module
+  use esm_rshell_module
+  use esm_cylindrical_test
+  use ps_local_rs_module
+  use esm_genpot_module
+  use esm_kinetic_module
+
+  use rgrid_mol_module
+  use ps_local_mol_module
+  use eion_mol_module
+  use ps_pcc_mol_module
+  use ps_initrho_mol_module
+  use ps_nloc2_mol_module
+  use bc_mol_module
+  use kinetic_mol_module
+
+  use ps_gth_module
+  use ps_nloc_mr_module
+
+  use bcast_module
+
+  use localpot2_variables
+  use localpot2_ion_module
+  use localpot2_density_module
+  use localpot2_vh_module
+  use localpot2_xc_module
+  use localpot2_module
+  use localpot2_te_module
+
+  use ps_nloc3_module
+
+  use test_hpsi2_module
+  use test_force_module
+
+  use info_module
+
+  use init_occ_electron_module
+
+  use esp_calc_module
+
   implicit none
 
   integer :: Diter, Nsweep, Ndiag

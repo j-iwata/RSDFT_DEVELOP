@@ -731,8 +731,11 @@ CONTAINS
   END SUBROUTINE init_bcset
 
 
-  SUBROUTINE allocate_bcset
+  SUBROUTINE allocate_bcset(Md_in)
+    implicit none
+    integer,optional,intent(IN) :: Md_in
     integer :: a1,a2,a3,b1,b2,b3
+    if ( present(Md_in) ) Md=Md_in
     a1=Igrid(1,1)-Md ; a2=Igrid(1,2)-Md ; a3=Igrid(1,3)-Md
     b1=Igrid(2,1)+Md ; b2=Igrid(2,2)+Md ; b3=Igrid(2,3)+Md
     if ( allocated(www) ) deallocate(www)

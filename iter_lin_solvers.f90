@@ -1,6 +1,5 @@
 MODULE iter_lin_solvers
 
-  use global_variables, only: disp_switch
   use parallel_module
   use hamiltonian_module
   use timer_module
@@ -76,7 +75,7 @@ CONTAINS
     epsmin = iterative_method_args%epsmin
     imax   = iterative_method_args%imax
 
-    if ( disp_switch ) write(*,*) "epsmax,epsmin,imax=",epsmax,epsmin,imax
+    if ( disp_switch_parallel ) write(*,*) "epsmax,epsmin,imax=",epsmax,epsmin,imax
 
     call clear_timer(current_solver_timers%total_time)
     call tic(current_solver_timers%total_time,comm_grid)

@@ -96,6 +96,7 @@ MODS1 = simc_module.o\
         test_hpsi2_module.o \
         test_force_module.o \
         esp_calc_module.o \
+        init_rgrid_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \
@@ -171,7 +172,7 @@ all : lda0 lda1 lda2 lda3 lda4 lda
 	                $(EXTOBJ2) $(MINPACOBJ) \
                         $(MDOBJ) $(FFTOBJ) $(LAPACK_L)
 
-lda0 : $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) $(MODS2) $(MODS3) $(MODS4)
+lda0 : $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) $(MODS3) $(MODS4) $(MODS2)
 
 lda1 :
 	cd $(DIR1) ; $(MAKE)

@@ -398,7 +398,7 @@ CONTAINS
     deallocate( istatus )
     deallocate( ireq )
 
-    call allocate_bcset
+    call allocate_bcset(Md)
 
     if ( myrnk == 0 ) write(*,'(a60," init_bcset_mol(end)")') repeat("-",60)
 

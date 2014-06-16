@@ -100,10 +100,9 @@ CONTAINS
   END SUBROUTINE send_parallel
 
 
-  SUBROUTINE init_parallel(disp_switch,Ngrid,Nband,Nbzsm,Nspin)
+  SUBROUTINE init_parallel(Ngrid,Nband,Nbzsm,Nspin)
     implicit none
-    logical,intent(IN) :: disp_switch
-    integer,intent(IN) :: Ngrid(3),Nband,Nspin,Nbzsm
+    integer,intent(IN) :: Ngrid(0:3),Nband,Nspin,Nbzsm
     integer :: m,n,ierr,irank,jrank,itags,itagr,nreq
     integer :: istatus(MPI_STATUS_SIZE,123)
     integer :: ip,fp,nc,ns,a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6
@@ -112,7 +111,7 @@ CONTAINS
     integer,allocatable :: mtmp(:),ntmp(:,:),ireq(:)
     integer,allocatable :: map_grid_2_pinfo(:,:,:,:)
 
-    if ( disp_switch ) write(*,'(a60," init_parallel")') repeat("-",60)
+    if ( disp_switch_parallel ) write(*,'(a60," init_parallel")') repeat("-",60)
 
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
@@ -132,7 +131,7 @@ CONTAINS
     np1=node_partition(1)
     np2=node_partition(2)
     np3=node_partition(3)
-    if (DISP_SWITCH) then
+    if ( disp_switch_parallel ) then
        write(*,*) "np1,np2,np3=",np1,np2,np3
        write(*,*) "np_band    =",node_partition(4)
        write(*,*) "np_bz      =",node_partition(5)
@@ -179,7 +178,7 @@ CONTAINS
     end do
     end do
 
-!    if ( DISP_SWITCH ) then
+!    if ( disp_switch_parallel ) then
 !       write(*,'(1x,5a5)') "irank","grid","band","bz","spin"
 !       do i=0,nprocs-1
 !          write(*,'(1x,5(2x,i3))') i,id_class(i,0),id_class(i,4:6)
@@ -188,7 +187,7 @@ CONTAINS
 
 ! --- spin parallel ---
 
-    if ( DISP_SWITCH ) write(*,'("--- spin-parallel ---")')
+    if ( disp_switch_parallel ) write(*,'("--- spin-parallel ---")')
 
     np_spin = node_partition(6)
 
@@ -210,7 +209,7 @@ CONTAINS
        id_spin(i)=sum( ir_spin(0:i) )-ir_spin(i)
     end do
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "nspin  =",nspin
        write(*,*) "np_spin=",np_spin
        write(*,'(1x,3a8)') "i","id_spin","ir_spin"
@@ -221,11 +220,11 @@ CONTAINS
 
     nprocs_s = count( id_class(:,6)==id_class(myrank,6) )
 
-    if ( DISP_SWITCH ) write(*,*) "nprocs_s =",nprocs_s
+    if ( disp_switch_parallel ) write(*,*) "nprocs_s =",nprocs_s
 
 ! --- k parallel ---
 
-    if ( DISP_SWITCH ) write(*,'("--- k-parallel ---")')
+    if ( disp_switch_parallel ) write(*,'("--- k-parallel ---")')
 
     np_bzsm = node_partition(5)
 
@@ -241,7 +240,7 @@ CONTAINS
        id_bzsm(i)=sum( ir_bzsm(0:i) )-ir_bzsm(i)
     end do
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "Nbzsm    =",Nbzsm
        write(*,*) "np_bzsm=",np_bzsm
        write(*,'(1x,3a8)') "i","id_bzsm","ir_bzsm"
@@ -253,11 +252,11 @@ CONTAINS
     nprocs_k = count( id_class(:,5)==id_class(myrank,5) .and. &
                       id_class(:,6)==id_class(myrank,6) )
 
-    if ( DISP_SWITCH ) write(*,*) "nprocs_k =",nprocs_k
+    if ( disp_switch_parallel ) write(*,*) "nprocs_k =",nprocs_k
 
 ! --- band parallel ---
 
-    if ( DISP_SWITCH ) write(*,'("--- band-parallel ---")')
+    if ( disp_switch_parallel ) write(*,'("--- band-parallel ---")')
 
     np_band = node_partition(4)
 
@@ -273,7 +272,7 @@ CONTAINS
        id_band(i)=sum( ir_band(0:i) )-ir_band(i)
     end do
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "MB     =",MB
        write(*,*) "np_band=",np_band
        write(*,'(1x,3a8)') "i","id_band","ir_band"
@@ -286,81 +285,25 @@ CONTAINS
                       id_class(:,5)==id_class(myrank,5) .and.  &
                       id_class(:,6)==id_class(myrank,6)       )
 
-    if ( DISP_SWITCH ) write(*,*) "nprocs_b =",nprocs_b
+    if ( disp_switch_parallel ) write(*,*) "nprocs_b =",nprocs_b
 
 ! --- grid parallel ---
 
-    if ( DISP_SWITCH ) write(*,'("--- grid-parallel ---")')
+    if ( disp_switch_parallel ) write(*,'("--- grid-parallel ---")')
 
     np_grid = node_partition(1)*node_partition(2)*node_partition(3)
     if ( np_spin*np_bzsm*np_band*np_grid/=nprocs ) stop
 
-    allocate( id_grid(0:np_grid-1) ) ; id_grid=0
-    allocate( ir_grid(0:np_grid-1) ) ; ir_grid=0
-
-    MLI(1,1)=0 ; MLI(2,1)=ML1-1
-    MLI(1,2)=0 ; MLI(2,2)=ML2-1
-    MLI(1,3)=0 ; MLI(2,3)=ML3-1
-
-    n=maxval( node_partition(1:3) )
-    allocate( ntmp(0:n-1,3) ) ; ntmp=0
-
-    do m=1,3
-       do i=MLI(1,m),MLI(2,m)
-          j=mod(i,node_partition(m))
-          ntmp(j,m)=ntmp(j,m)+1
-       end do
-    end do
-
+    allocate( id_grid(0:np_grid-1)      ) ; id_grid=0
+    allocate( ir_grid(0:np_grid-1)      ) ; ir_grid=0
     allocate( pinfo_grid(8,0:np_grid-1) ) ; pinfo_grid=0
-
-    m =-1
-    j0= 0
-    do i3=0,node_partition(3)-1
-    do i2=0,node_partition(2)-1
-    do i1=0,node_partition(1)-1
-       m=m+1
-       pinfo_grid(1,m)=sum( ntmp(0:i1,1) )-ntmp(i1,1)
-       pinfo_grid(2,m)=ntmp(i1,1)
-       pinfo_grid(3,m)=sum( ntmp(0:i2,2) )-ntmp(i2,2)
-       pinfo_grid(4,m)=ntmp(i2,2)
-       pinfo_grid(5,m)=sum( ntmp(0:i3,3) )-ntmp(i3,3)
-       pinfo_grid(6,m)=ntmp(i3,3)
-       pinfo_grid(7,m)=j0
-       pinfo_grid(8,m)=ntmp(i1,1)*ntmp(i2,2)*ntmp(i3,3)
-       j0=j0+ntmp(i1,1)*ntmp(i2,2)*ntmp(i3,3)
-    end do
-    end do
-    end do
-
-    deallocate( ntmp )
-
-    if ( DISP_SWITCH ) then
-       write(*,*) "pinfo_grid"
-       do i=0,np_grid-1
-          write(*,'(1x,i4,2x,8i7)') i,pinfo_grid(1:8,i)
-       end do
-    end if
-
-    do i=0,np_grid-1
-       id_grid(i)=pinfo_grid(7,i)
-       ir_grid(i)=pinfo_grid(8,i)
-    end do
-
-    if ( DISP_SWITCH ) then
-       write(*,*) "np_grid=",np_grid
-       write(*,'(1x,3a10)') "i","id_grid","ir_grid"
-       do i=0,np_grid-1
-          write(*,'(1x,3i10)') i,id_grid(i),ir_grid(i)
-       end do
-    end if
 
     nprocs_g = count( id_class(:,0)==id_class(myrank,0) .and. &
                       id_class(:,4)==id_class(myrank,4) .and. &
                       id_class(:,5)==id_class(myrank,5) .and. &
                       id_class(:,6)==id_class(myrank,6)       )
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "nprocs_g =",nprocs_g
        write(*,*) "nprocs_b =",nprocs_b
        write(*,*) "nprocs_k =",nprocs_k
@@ -436,7 +379,7 @@ CONTAINS
 
     deallocate( ntmp )
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "comm_world, nprocs   =",MPI_COMM_WORLD,nprocs
        write(*,*) "comm_grid,  nprocs_g =",comm_grid,nprocs_g
        write(*,*) "comm_band,  nprocs_b =",comm_band,nprocs_b
@@ -458,14 +401,6 @@ CONTAINS
 
     allocate( idisp(0:nprocs-1) ) ; idisp=-1
     allocate( ircnt(0:nprocs-1) ) ; ircnt=0
-
-    idisp(myrank)=id_grid(myrank_g)
-    ircnt(myrank)=ir_grid(myrank_g)
-
-    call mpi_allgather(idisp(myrank),1,mpi_integer,idisp,1 &
-                      ,mpi_integer,mpi_comm_world,ierr)
-    call mpi_allgather(ircnt(myrank),1,mpi_integer,ircnt,1 &
-                      ,mpi_integer,mpi_comm_world,ierr)
 
   END SUBROUTINE init_parallel
 

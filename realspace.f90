@@ -3,51 +3,12 @@ PROGRAM Real_Space_Solid
   use global_variables
   use parameters_module
   use omp_variables
-
-  use esm_rgrid_module
-  use esm_rshell_module
-  use esm_cylindrical_test
-  use ps_local_rs_module
-  use esm_genpot_module
-  use esm_kinetic_module
-
   use func2gp_module
-
-  use rgrid_mol_module
-  use ps_local_mol_module
-  use eion_mol_module
-  use ps_pcc_mol_module
-  use ps_initrho_mol_module
-  use ps_nloc2_mol_module
-  use bc_mol_module
-  use kinetic_mol_module
 #ifndef _DRSDFT_
   use band_module
 #endif
 
-  use ps_gth_module
-  use ps_nloc_mr_module
-
-  use bcast_module
-
-  use localpot2_variables
-  use localpot2_ion_module
-  use localpot2_density_module
-  use localpot2_vh_module
-  use localpot2_xc_module
-  use localpot2_module
-  use localpot2_te_module
-
-  use ps_nloc3_module
-
-  use test_hpsi2_module
-  use test_force_module
-
-  use info_module
-
-  use init_occ_electron_module
-
-  use esp_calc_module
+  use init_rgrid_module
 
   implicit none
 
@@ -77,20 +38,6 @@ PROGRAM Real_Space_Solid
 ! DISP_SWITCH = .true.
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
-
-  if ( disp_switch ) then
-#ifdef _DRSDFT_
-     write(*,*) "DRSDFT(REAL8)"
-#else
-     write(*,*) "RSDFT(COMPLEX16)"
-#endif
-#ifdef _SPLINE_
-     write(*,*) "SPLINE(ps_nloc2_module)"
-#endif
-#ifdef _FFTE_
-     write(*,*) "FFTE(ps_local,hartree)"
-#endif
-  end if
      
 ! --- input parameters ---
 
@@ -102,26 +49,19 @@ PROGRAM Real_Space_Solid
 ! --- initial preparetaion ---
 
   call construct_aa
+
+  call init_rgrid( SYStype, Md, unit=2 )
+
+! --- Reciprocal Lattice ---
+
   call construct_bb(aa)
 
-! --- RSMOL ---
-
-  if ( SYStype == 1 ) then
-     call read_rgrid_mol(myrank,2)
-     call init_rgrid_mol( Ngrid(1),Hgrid(1),aa,bb,disp_switch )
-  end if
-
-! --- R-grid and G-grid ---
-
-  call construct_rgrid(aa)
-  call get_cutoff_ggrid
-  call construct_NMGL_ggrid
+  call Init_Ggrid( Ngrid, bb, Hgrid )
 
   if ( DISP_SWITCH ) then
-     write(*,*) "Gcut,Ecut=",Gcut,Ecut
+     write(*,*) "Ecut,Gcut=",Ecut,Gcut
      write(*,*) "NGgrid=",NGgrid
      write(*,*) "NMGL=",NMGL
-     write(*,'(1x,"Hgrid(1:3)=",3f20.10)') Hgrid(1:3)
   end if
 
 ! --- Brillouin Zone sampling ---
@@ -134,91 +74,28 @@ PROGRAM Real_Space_Solid
 
   call prep_0_scalapack(Nband,disp_switch)
 
-  call init_parallel(disp_switch,Ngrid(1),Nband,Nbzsm,Nspin)
+  call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
 
-  call parallel_rgrid(node_partition(1:3),myrank_g)
-  call parallel_ggrid(nprocs,myrank)
+  call parallel_init_rgrid( SYStype )
 
-  call init_bcset(Md)
+  call parallel_init_ggrid( nprocs, myrank )
 
-! --- parallel computation for RSMOL ---
+!- FDBC -
 
-  if ( SYStype == 1 ) then
+  select case( SYStype )
+  case( 0,2 )
 
-     select case(iswitch_eqdiv)
-     case default
-        call mesh_div_1(np_grid,node_partition,Ngrid(1),pinfo_grid,disp_switch)
-     case(2)
-        call mesh_div_2
-     end select
+     call init_bcset(Md)
 
-     id_grid(:)=pinfo_grid(7,:)
-     ir_grid(:)=pinfo_grid(8,:)
-     idisp(myrank)=id_grid(myrank_g)
-     ircnt(myrank)=ir_grid(myrank_g)
-     call mpi_allgather(idisp(myrank),1,mpi_integer,idisp,1 &
-                       ,mpi_integer,mpi_comm_world,ierr)
-     call mpi_allgather(ircnt(myrank),1,mpi_integer,ircnt,1 &
-                       ,mpi_integer,mpi_comm_world,ierr)
-     Ngrid(0)=sum(ir_grid)
-     Igrid(1,0)=pinfo_grid(7,myrank_g)+1
-     Igrid(2,0)=pinfo_grid(7,myrank_g)+pinfo_grid(8,myrank_g)
-     Igrid(1,1)=pinfo_grid(1,myrank_g)+1
-     Igrid(2,1)=pinfo_grid(1,myrank_g)+pinfo_grid(2,myrank)
-     Igrid(1,2)=pinfo_grid(3,myrank_g)+1
-     Igrid(2,2)=pinfo_grid(3,myrank_g)+pinfo_grid(4,myrank)
-     Igrid(1,3)=pinfo_grid(5,myrank_g)+1
-     Igrid(2,3)=pinfo_grid(5,myrank_g)+pinfo_grid(6,myrank)
+  case( 1 )
 
      call init_bcset_mol(Md,Ngrid(1),np_grid,myrank_g,comm_grid,pinfo_grid)
 
-  end if
+  end select
 
-! --- ESM esm ---
-
-  if ( SYStype == 3 ) then
-
-     call read_esm_rgrid(myrank,1)
-     call prep_esm_rgrid(Md)
-     call construct0_esm_rgrid
-
-     id_grid(:)=0
-     ir_grid(:)=0
-     id_grid(myrank_g) = ML0_ESM-1
-     ir_grid(myrank_g) = ML1_ESM-ML0_ESM+1
-     call mpi_allgather(id_grid(myrank_g),1,mpi_integer,id_grid,1,mpi_integer,comm_grid,ierr)
-     call mpi_allgather(ir_grid(myrank_g),1,mpi_integer,ir_grid,1,mpi_integer,comm_grid,ierr)
-     if ( myrank == 0 ) then
-        do i=0,np_grid-1
-           write(*,*) i,id_grid(i),id_grid(i)+ir_grid(i)-1,ir_grid(i)
-        end do
-     end if
-     idisp(:)=0
-     ircnt(:)=0
-     idisp(myrank)=id_grid(myrank_g)
-     ircnt(myrank)=ir_grid(myrank_g)
-     call mpi_allgather(idisp(myrank),1,mpi_integer,idisp,1,mpi_integer,comm_grid,ierr)
-     call mpi_allgather(ircnt(myrank),1,mpi_integer,ircnt,1,mpi_integer,comm_grid,ierr)
-     if ( myrank == 0 ) then
-        do i=0,nprocs-1
-           write(*,*) i,idisp(i)+1,idisp(i)+ircnt(i),ircnt(i)
-        end do
-     end if
-     Ngrid(0) = ML_ESM
-     Igrid(1,0) = id_grid(myrank_g)+1
-     Igrid(2,0) = id_grid(myrank_g)+ir_grid(myrank_g)
-     call flush(6)
-     call mpi_barrier(mpi_comm_world,ierr)
-     write(*,'(1x,i6,2x,8i8)') myrank,Igrid(:,:)
-     call flush(6)
-
-  end if
-
-! --- array bounds ---
+! --- ??? ---
 
   call set_array_bound
-
-! --- OpenMP parallel ---
 
   call init_omp(Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
                ,Igrid(1,3),Igrid(2,3),ML_0,ML_1,disp_switch)
@@ -251,19 +128,15 @@ PROGRAM Real_Space_Solid
      call init_ps_local
      call init_ps_pcc
      call init_ps_initrho
-     call watcht(disp_switch,"strf",0)
+
      call watcht(disp_switch,"strf",0)
 
      call construct_strfac !----- structure factor
-     call watcht(disp_switch,"strf",1)
+
      call watcht(disp_switch,"strf",1)
 
-#ifndef _FFTE_
      call construct_ps_local
-#else
-     call construct_ps_local_ffte
-#endif
-     call watcht(disp_switch,"loc&pcc",1)
+
      call watcht(disp_switch,"loc",1)
 
      if ( pselect /= 4 .and. pselect /= 5 ) then
@@ -285,6 +158,25 @@ PROGRAM Real_Space_Solid
      case( 5 )
         call prep_ps_nloc_mr
      end select
+
+!----------------------- MOL mol -----
+
+  else if ( SYStype == 1 ) then
+
+     call init_ps_local_mol(Gcut)
+     call init_ps_pcc_mol
+     call init_ps_initrho_mol
+
+     call construct_rgrid_mol(Igrid)
+     call construct_ps_local_mol
+     call construct_ps_pcc_mol
+     call construct_ps_initrho_mol
+     call normalize_density
+
+     call ps_nloc2_init(Gcut)
+     call prep_ps_nloc2_mol
+
+     call construct_boundary_rgrid_mol(Md,ML_0,ML_1)
 
 !----------------------- ESM esm -----
 
@@ -311,25 +203,6 @@ PROGRAM Real_Space_Solid
      write(*,'(1x,"sum(rho)*dV",3f15.10)') sum(rho)*dV,minval(rho),maxval(rho)
 
      call flush(6)
-
-!----------------------- MOL mol -----
-
-  else if ( SYStype == 1 ) then
-
-     call init_ps_local_mol(Gcut)
-     call init_ps_pcc_mol
-     call init_ps_initrho_mol
-
-     call construct_rgrid_mol
-     call construct_ps_local_mol
-     call construct_ps_pcc_mol
-     call construct_ps_initrho_mol
-     call normalize_density
-
-     call ps_nloc2_init(Gcut)
-     call prep_ps_nloc2_mol
-
-     call construct_boundary_rgrid_mol(Md)
 
   end if
 

@@ -1,6 +1,5 @@
 MODULE apply_sseig_module
 
-  use global_variables, only: disp_switch
   use parallel_module
   use bc_module, only: allocate_bcset
   use ps_nloc2_module, only: allocate_ps_nloc2
@@ -56,7 +55,7 @@ CONTAINS
     logical :: flag_end
     character(4) :: c_k_in
 
-    if ( disp_switch ) then
+    if ( disp_switch_parallel ) then
        write(*,'(a60," apply_sseig")') repeat("-",60)
        call flush(6)
     end if
@@ -83,7 +82,7 @@ CONTAINS
 
     ev_size = opt%M * opt%L
 
-    if ( disp_switch ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "ev_size,myrank=",ev_size,myrank
        call flush(6)
     end if
@@ -158,7 +157,7 @@ CONTAINS
 
     do out_iter=1,out_iter_max
 
-       if ( DISP_SWITCH ) then
+       if ( DISP_SWITCH_PARALLEL ) then
           write(*,'(a40," out_iter=",i2)') repeat("-",40),out_iter
           call flush(6)
        end if
@@ -275,7 +274,7 @@ CONTAINS
           call clear_timer(current_sseig_timers%dsyev_time)
           call clear_timer(current_sseig_timers%rot_time)
 
-          if ( disp_switch ) then
+          if ( disp_switch_parallel ) then
              write(*,'(a40," z_sseig_one_circle",i4)') repeat("-",40),i
              call flush(6)
           end if
@@ -285,7 +284,7 @@ CONTAINS
                ,eigvec(:,:,i),ssres(:,i),solver,inputV(:,:,i),num_basis(i) )
           call toc(current_sseig_timers%total_time,comm_grid)
           if ( nprocs_r == 1 .and. nprocs_c == 1 .and. myrank_g == 0 ) then
-             if ( disp_switch ) then
+             if ( disp_switch_parallel ) then
                 write(*,'(a40," disp_sseig_result",i4)') repeat("-",40),i
                 call flush(6)
              end if
@@ -370,7 +369,7 @@ CONTAINS
 
 
        if ( all(numeig(1:n_ccurve)==0) ) then
-          if ( disp_switch ) write(*,*) "No new vectors( numeig(:)==0 )"
+          if ( disp_switch_parallel ) write(*,*) "No new vectors( numeig(:)==0 )"
           exit
        end if
 
@@ -443,7 +442,7 @@ CONTAINS
 
        call toc(tot_time,mpi_comm_world)
 
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,'(1x,"m,n,ntmp=",3i6,2f15.10,4f10.3)') m,n,ntmp,left,right &
           ,current_sseig_timers%total_time%ct,current_sseig_timers%total_time%et &
           ,tot_time%ct,tot_time%et
@@ -462,7 +461,7 @@ CONTAINS
              resval_merged(n) = resval_merged_tmp(i)
              eigval_merged(n) = eigval_merged_tmp(i)
              eigvec_merged(:,n) = eigvec_merged_tmp(:,i)
-             if ( disp_switch ) then
+             if ( disp_switch_parallel ) then
                 write(*,*) n,i,eigval_merged_tmp(i),resval_merged_tmp(i), "   ji"
                 call flush(6)
              end if
@@ -475,7 +474,7 @@ CONTAINS
        deallocate( eigvec_merged_tmp )
 
        tot_num_states = sum( num_states_ccurve(1:n_ccurve) )
-       if ( disp_switch ) write(*,*) "tot_num_states,old=",tot_num_states,tot_num_states_old
+       if ( disp_switch_parallel ) write(*,*) "tot_num_states,old=",tot_num_states,tot_num_states_old
        if ( tot_num_states <= tot_num_states_old ) then
           exit
        else

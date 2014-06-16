@@ -4,8 +4,8 @@ MODULE rgrid_module
 
   PRIVATE
   PUBLIC :: Ngrid,Hgrid,dV,zdV,Igrid &
-           ,read_rgrid,construct_rgrid &
-           ,parallel_rgrid,read_oldformat_rgrid
+           ,read_rgrid,read_oldformat_rgrid,construct_rgrid &
+           ,ParallelInit_RgridSol
 
   integer :: Ngrid(0:3),Igrid(2,0:3)
   real(8) :: Hgrid(3)
@@ -17,6 +17,7 @@ MODULE rgrid_module
 #endif
 
 CONTAINS
+
 
   SUBROUTINE read_rgrid(rank,unit)
     implicit none
@@ -74,56 +75,43 @@ CONTAINS
     Hgrid(3)=sqrt( sum(aa(1:3,3)**2) )/Ngrid(3)
     dV=abs(Vaa)/Ngrid(0)
     zdV=dV
-    Igrid(:,:)=0
-    Igrid(2,1)=Ngrid(1)-1
-    Igrid(2,2)=Ngrid(2)-1
-    Igrid(2,3)=Ngrid(3)-1
-    Igrid(1,0)=1
-    Igrid(2,0)=Ngrid(0)
   END SUBROUTINE construct_rgrid
 
 
-  SUBROUTINE parallel_rgrid(np_grid,myrank)
+  SUBROUTINE ParallelInit_RgridSol( np, np_grid, pinfo_grid )
     implicit none
-    integer,intent(IN) :: np_grid(3),myrank
+    integer,intent(IN)  :: np(3), np_grid
+    integer,intent(OUT) :: pinfo_grid(8,0:np_grid-1)
     integer :: i,j,n,i1,i2,i3
-    integer,allocatable :: np1(:),np2(:),np3(:)
-    allocate( np1(np_grid(1)) ) ; np1=0
-    allocate( np2(np_grid(2)) ) ; np2=0
-    allocate( np3(np_grid(3)) ) ; np3=0
-    do i=1,Ngrid(1)
-       n=mod(i-1,np_grid(1))+1
-       np1(n)=np1(n)+1
-    end do
-    do i=1,Ngrid(2)
-       n=mod(i-1,np_grid(2))+1
-       np2(n)=np2(n)+1
-    end do
-    do i=1,Ngrid(3)
-       n=mod(i-1,np_grid(3))+1
-       np3(n)=np3(n)+1
+    integer,allocatable :: ntmp(:,:)
+    n=maxval(np)
+    allocate( ntmp(0:n-1,3) ) ; ntmp=0
+    do j=1,3
+       do i=0,Ngrid(j)-1
+          n=mod(i,np(j))
+          ntmp(n,j)=ntmp(n,j)+1
+       end do
     end do
     n=-1
-    i=0
-    do i3=1,np_grid(3)
-    do i2=1,np_grid(2)
-    do i1=1,np_grid(1)
+    i= 0
+    do i3=0,np(3)-1
+    do i2=0,np(2)-1
+    do i1=0,np(1)-1
        n=n+1
-       if ( n == myrank ) then
-          Igrid(1,0)=i+1
-          Igrid(2,0)=i+np1(i1)*np2(i2)*np3(i3)
-          Igrid(1,1)=sum(np1(1:i1))-np1(i1)
-          Igrid(2,1)=sum(np1(1:i1))-1
-          Igrid(1,2)=sum(np2(1:i2))-np2(i2)
-          Igrid(2,2)=sum(np2(1:i2))-1
-          Igrid(1,3)=sum(np3(1:i3))-np3(i3)
-          Igrid(2,3)=sum(np3(1:i3))-1
-       end if
-       i=i+np1(i1)*np2(i2)*np3(i3)
+       pinfo_grid(1,n)=sum( ntmp(0:i1,1) )-ntmp(i1,1)
+       pinfo_grid(2,n)=ntmp(i1,1)
+       pinfo_grid(3,n)=sum( ntmp(0:i2,2) )-ntmp(i2,2)
+       pinfo_grid(4,n)=ntmp(i2,2)
+       pinfo_grid(5,n)=sum( ntmp(0:i3,3) )-ntmp(i3,3)
+       pinfo_grid(6,n)=ntmp(i3,3)
+       pinfo_grid(7,n)=i
+       pinfo_grid(8,n)=ntmp(i1,1)*ntmp(i2,2)*ntmp(i3,3)
+       i=i+pinfo_grid(8,n)
     end do
     end do
     end do
-    deallocate( np3,np2,np1 )
-  END SUBROUTINE parallel_rgrid
+    deallocate( ntmp )
+  END SUBROUTINE ParallelInit_RgridSol
+
 
 END MODULE rgrid_module

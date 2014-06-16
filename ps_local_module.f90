@@ -208,6 +208,11 @@ CONTAINS
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:3),ett(0:3)
 
+#ifdef _FFTE_
+    call construct_ps_local_ffte
+    return
+#endif
+
     MG  = NGgrid(0)
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
