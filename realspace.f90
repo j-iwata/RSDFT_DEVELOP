@@ -2,7 +2,6 @@ PROGRAM Real_Space_Solid
 
   use global_variables
   use parameters_module
-  use omp_variables
   use func2gp_module
 #ifndef _DRSDFT_
   use band_module
@@ -46,7 +45,7 @@ PROGRAM Real_Space_Solid
   call read_parameters
 !  call read_oldformat_parameters
 
-! --- initial preparetaion ---
+! --- R-space Lattice & Grid ---
 
   call construct_aa
 
@@ -97,14 +96,9 @@ PROGRAM Real_Space_Solid
 
   call set_array_bound
 
-  call init_omp(Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
-               ,Igrid(1,3),Igrid(2,3),ML_0,ML_1,disp_switch)
-
 ! --- kinetic energy oprator coefficients ---
 
-  call get_coef_kinetic(aa,bb,MBZ,kbb,DISP_SWITCH,SYStype_in=SYStype)
-  if ( SYStype == 1 ) call get_coef_kinetic_mol(Md)
-  if ( SYStype == 3 ) call get_coef_esm_kinetic(aa,bb,MBZ,kbb,Md)
+  call init_kinetic( aa, bb, Nbzsm, kbb, DISP_SWITCH )
 
 ! --- Pseudopotential, initial density, and partial core correction ---
 
@@ -167,7 +161,8 @@ PROGRAM Real_Space_Solid
      call init_ps_pcc_mol
      call init_ps_initrho_mol
 
-     call construct_rgrid_mol(Igrid)
+     call Construct_RgridMol(Igrid)
+
      call construct_ps_local_mol
      call construct_ps_pcc_mol
      call construct_ps_initrho_mol
@@ -176,7 +171,7 @@ PROGRAM Real_Space_Solid
      call ps_nloc2_init(Gcut)
      call prep_ps_nloc2_mol
 
-     call construct_boundary_rgrid_mol(Md,ML_0,ML_1)
+     call ConstructBoundary_RgridMol(Md,Igrid)
 
 !----------------------- ESM esm -----
 
@@ -204,6 +199,14 @@ PROGRAM Real_Space_Solid
 
      call flush(6)
 
+     call construct_ps_density_longloc
+     call read_esm_genpot(myrank,1)
+     allocate( vtmp(ML0_ESM:ML1_ESM) )
+     vtmp=0.d0
+     call esm_genpot(vtmp)
+     Vion(:) = Vion(:) + vtmp(:)
+     deallocate( vtmp )
+
   end if
 
 !-------------------- Hamiltonian Test
@@ -224,21 +227,6 @@ PROGRAM Real_Space_Solid
   end if
 #endif
 !--------------------
-
-
-! --- ESM esm ---
-
-  if ( SYStype == 3 ) then
-
-     call construct_ps_density_longloc
-     call read_esm_genpot(myrank,1)
-     allocate( vtmp(ML0_ESM:ML1_ESM) )
-     vtmp=0.d0
-     call esm_genpot(vtmp)
-     Vion(:) = Vion(:) + vtmp(:)
-     deallocate( vtmp )
-
-  end if
 
 ! --- Ewald sum ---
 

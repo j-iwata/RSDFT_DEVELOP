@@ -36,7 +36,7 @@ CONTAINS
        if ( present(Md_in) ) then
           Md = Md_in
           allocate( lap(-Md:Md) ) ; lap=0.0d0
-          call get_coef_laplacian_fd(Md,lap)
+          call get_coef_lapla_fd(Md,lap)
        else
           stop "stop@calc_vloc_rho_mol(1)"
        end if

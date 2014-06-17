@@ -34,6 +34,7 @@ MODULE global_variables
   use subspace_mate_sl_module
   use subspace_solv_sl_module
   use subspace_rotv_sl_module
+  use kinetic_variables
   use kinetic_module
   use hamiltonian_module
   use cgpc_module

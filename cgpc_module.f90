@@ -1,7 +1,14 @@
 MODULE cgpc_module
 
+!$  use omp_lib
   use rgrid_module
+! use rgrid_mol_module  !( used in precond_cg_mat_mol )
+! use esm_rgrid_module  !( used in precond_cg_mat_esm )
   use parallel_module
+  use kinetic_module, only: SYStype
+  use bc_module
+  use kinetic_variables, only: Md, ggg
+  use array_bound_module, only: ML_0,ML_1
 
   implicit none
 
@@ -18,6 +25,7 @@ MODULE cgpc_module
 #endif
 
 CONTAINS
+
 
   SUBROUTINE read_cgpc(rank,unit)
     implicit none
@@ -201,7 +209,6 @@ CONTAINS
 
 
   SUBROUTINE precond_cg_mat(E,k,s,mm,nn)
-    use kinetic_module, only: SYStype
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
@@ -217,9 +224,7 @@ CONTAINS
 
 
   SUBROUTINE precond_cg_mat_sol(E,k,s,mm,nn)
-    use bc_module
-    use kinetic_module
-!$  use omp_lib
+    implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
     real(8) :: c,c1,c2,c3,d
@@ -317,8 +322,6 @@ CONTAINS
 
   SUBROUTINE precond_cg_mat_mol(E,k,s,mm,nn)
     use rgrid_mol_module
-    use bc_module
-    use array_bound_module, only: ML_0,ML_1
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
@@ -378,8 +381,6 @@ CONTAINS
 
   SUBROUTINE precond_cg_mat_esm(E,k,s,mm,nn)
     use esm_rgrid_module
-    use bc_module
-    use kinetic_module, only: Md
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)

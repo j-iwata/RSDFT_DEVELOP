@@ -3,10 +3,9 @@ MODULE rgrid_mol_module
   implicit none
 
   PRIVATE
-  PUBLIC :: LL,KK,Hsize &
-           ,construct_rgrid_mol,destruct_rgrid_mol &
-           ,construct_boundary_rgrid_mol,destruct_boundary_rgrid_mol &
-           ,map_g2p_rgrid_mol,iswitch_eqdiv &
+  PUBLIC :: LL,KK,Hsize,map_g2p_rgrid_mol,iswitch_eqdiv &
+           ,Construct_RgridMol, Destruct_RgridMol &
+           ,ConstructBoundary_RgridMol, DestructBoundary_RgridMol &
            ,Read_RgridMol,ParallelInit_RgridMol &
            ,GetGridSize_RgridMol, GetNumGrids_RgridMol, GetSimBox_RgridMol
 
@@ -179,7 +178,6 @@ CONTAINS
     end select
   END SUBROUTINE ParallelInit_RgridMol
 
-
   SUBROUTINE mesh_div_1( np_grid, pinfo_grid, disp_switch )
     implicit none
     integer,intent(IN)  :: np_grid
@@ -329,7 +327,6 @@ CONTAINS
 
     return
   END SUBROUTINE mesh_div_1
-
 
   SUBROUTINE mesh_div_2( np_grid, pinfo_grid, disp_switch )
     implicit none
@@ -615,13 +612,14 @@ CONTAINS
   END SUBROUTINE mesh_div_2
 
 
-  SUBROUTINE construct_rgrid_mol(Igrid)
+  SUBROUTINE Construct_RgridMol(Igrid)
     implicit none
     integer,intent(IN) :: Igrid(2,0:3)
     integer :: i,ix,iy,iz,ML_0,ML_1
     real(8) :: r2,Rc2,z,x,y
     ML_0=Igrid(1,0)
     ML_1=Igrid(2,0)
+write(*,*) ML_0,ML_1,"jjj"
     if ( allocated(LL) ) deallocate(LL)
     allocate( LL(3,ML_0:ML_1) ) ; LL=0
     Rc2=Rsize*Rsize
@@ -659,19 +657,21 @@ CONTAINS
           end do
        end do
     end select
-  END SUBROUTINE construct_rgrid_mol
+  END SUBROUTINE Construct_RgridMol
 
-  SUBROUTINE destruct_rgrid_mol
+  SUBROUTINE Destruct_RgridMol
     if ( allocated(LL) ) deallocate(LL)
-  END SUBROUTINE destruct_rgrid_mol
+  END SUBROUTINE Destruct_RgridMol
 
 
-  SUBROUTINE construct_boundary_rgrid_mol(Md,ML_0,ML_1)
+  SUBROUTINE ConstructBoundary_RgridMol(Md,Igrid)
     implicit none
-    integer,intent(IN) :: Md,ML_0,ML_1
-    integer :: i,ix,iy,iz,m,m1,m2,m3,m4,m5,m6
+    integer,intent(IN) :: Md,Igrid(2,0:3)
+    integer :: i,ix,iy,iz,m,m1,m2,m3,m4,m5,m6,ML_0,ML_1
     integer,allocatable :: icheck(:,:,:)
     real(8) :: z,r2,Rc2,H2
+    ML_0 = Igrid(1,0)
+    ML_1 = Igrid(2,0)
     m1 = minval( LL(1,:) ) - Md
     m2 = maxval( LL(1,:) ) + Md
     m3 = minval( LL(2,:) ) - Md
@@ -733,11 +733,11 @@ CONTAINS
     end do
     end do
 
-  END SUBROUTINE construct_boundary_rgrid_mol
+  END SUBROUTINE ConstructBoundary_RgridMol
 
-  SUBROUTINE destruct_boundary_rgrid_mol
+  SUBROUTINE DestructBoundary_RgridMol
     if ( allocated(KK) ) deallocate(KK)
-  END SUBROUTINE destruct_boundary_rgrid_mol
+  END SUBROUTINE DestructBoundary_RgridMol
 
 
   SUBROUTINE map_g2p_rgrid_mol(a1,b1,a2,b2,a3,b3,map_g2p,np,pinfo_grid)

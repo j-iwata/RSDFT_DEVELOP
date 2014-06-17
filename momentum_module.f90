@@ -2,6 +2,13 @@ MODULE momentum_module
 
   use rgrid_module
   use parallel_module
+  use bz_module
+  use aa_module
+  use bb_module
+  use kinetic_variables, only: Md, coef_nab
+  use bc_module
+  use ps_nloc2_variables
+  use atom_module
 
   implicit none
 
@@ -12,8 +19,6 @@ CONTAINS
 
 
   SUBROUTINE calc_expectval_momentum(k,n1,n2,b1,b2,tpsi,pxyz)
-    use bz_module
-    use bb_module
     implicit none
     integer,intent(IN)    :: k,n1,n2,b1,b2
     complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
@@ -42,14 +47,12 @@ CONTAINS
 
 
   SUBROUTINE momentum_kine(n1,n2,b1,b2,tpsi,pxyz)
-    use kinetic_module
-    use bc_module
     implicit none
     integer,intent(IN)    :: n1,n2,b1,b2
     complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
     real(8),intent(INOUT) :: pxyz(3,b1:b2)
     integer :: n,nb,ib,i,i1,i2,i3,j,a1b,b1b,a2b,b2b,a3b,b3b
-    real(8) :: c
+    real(8) :: c,a1,a2,a3,a2x_nab(3),a2y_nab(3),a2z_nab(3),pi2
     complex(8),allocatable :: uuu(:,:)
     complex(8),parameter :: zi=(0.d0,1.d0)
 
@@ -59,6 +62,20 @@ CONTAINS
     b2b = Igrid(2,2)
     a3b = Igrid(1,3)
     b3b = Igrid(2,3)
+
+    pi2 = 2.d0*acos(-1.d0)
+    a1  = sqrt(sum(aa(1:3,1)**2))/pi2
+    a2  = sqrt(sum(aa(1:3,2)**2))/pi2
+    a3  = sqrt(sum(aa(1:3,3)**2))/pi2
+    a2x_nab(1) = bb(1,1)*a1
+    a2x_nab(2) = bb(1,2)*a2
+    a2x_nab(3) = bb(1,3)*a3
+    a2y_nab(1) = bb(2,1)*a1
+    a2y_nab(2) = bb(2,2)*a2
+    a2y_nab(3) = bb(2,3)*a3
+    a2z_nab(1) = bb(3,1)*a1
+    a2z_nab(2) = bb(3,2)*a2
+    a2z_nab(3) = bb(3,3)*a3
 
     nb=b2-b1+1
 
@@ -132,8 +149,6 @@ CONTAINS
 
 
   SUBROUTINE momentum_nloc(k,n1,n2,b1,b2,tpsi,pxyz)
-    use ps_nloc2_variables
-    use atom_module
     implicit none
     integer,intent(IN)    :: k,n1,n2,b1,b2
     complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
@@ -145,8 +160,8 @@ CONTAINS
 
     nb=b2-b1+1
 
-    allocate( uuu(0:3,nzlma,b1:b2),uuu0(0:3,nzlma,b1:b2) )
-    uuu=0.d0
+    allocate( uuu(0:3,nzlma,b1:b2)  ) ; uuu=0.0d0
+    allocate( uuu0(0:3,nzlma,b1:b2) ) ; uuu0=0.0d0
 
     do ib=b1,b2
        do lma=1,nzlma
@@ -252,7 +267,8 @@ CONTAINS
 
     deallocate( a_rank )
 
-    deallocate( uuu0, uuu )
+    deallocate( uuu0 )
+    deallocate( uuu  )
 
   END SUBROUTINE momentum_nloc
 

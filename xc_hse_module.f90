@@ -4,7 +4,8 @@ MODULE xc_hse_module
   use bb_module
   use rgrid_module
   use array_bound_module
-  use kinetic_module, only: Md, SYStype
+  use kinetic_module, only: SYStype
+  use kinetic_variables, only: Md
   use density_module, only: rho
   use electron_module, only: Nspin
   use parallel_module

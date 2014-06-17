@@ -9,7 +9,6 @@ MODS1 = simc_module.o\
         parallel_module.o \
         rsdft_mpi_module.o \
         bcast_module.o \
-        omp_variables.o \
         array_bound_module.o\
         ffte_sub_module.o \
         aa_module.o \
@@ -22,8 +21,10 @@ MODS1 = simc_module.o\
         bz_module.o \
         fd_module.o \
         bc_module.o \
+        kinetic_variables.o  \
         kinetic_mol_module.o \
         esm_kinetic_module.o \
+        kinetic_sol_0_module.o \
         kinetic_module.o \
         strfac_module.o \
         ps_read_yb_module.o \

@@ -9,6 +9,13 @@ MODULE xc_module
   use xc_hybrid_module
   use xc_hse_module
   use watch_module
+  use aa_module
+  use bb_module
+  use bc_module
+  use kinetic_module, only: SYStype
+  use kinetic_variables, only: Md
+  use fd_module
+  use electron_module, only: Nspin
 
   implicit none
 
@@ -244,12 +251,6 @@ CONTAINS
 !--------1---------2---------3---------4---------5---------6---------7--
 
   SUBROUTINE calc_GGAPBE96
-    use aa_module
-    use bb_module
-    use bc_module
-    use kinetic_module, only: Md,SYStype
-    use fd_module
-    use electron_module, only: Nspin
     implicit none
     real(8),parameter :: mu=0.21951d0,Kp=0.804d0
     real(8),parameter :: zero_density=1.d-10
@@ -363,9 +364,7 @@ CONTAINS
     case(1,2)
        stop "stop@GGAPBE96,MOL"
        allocate( LL2(3,ML) ) ; LL2=0
-!       call Make_GridMap_1(LL2,1,ML)
        allocate( LLL2(-Mx:Mx,-My:My,-Mz:Mz) ) ; LLL2=0
-!       call Make_GridMap_3(LLL2,-Mx,Mx,-My,My,-Mz,Mz)
     end select
 
     allocate( rrrr(ML,3) ) ; rrrr=0.d0
@@ -467,7 +466,6 @@ CONTAINS
 
           trho=dble(nspin)*rho(i,ispin) ; if (allocated(rhoc)) trho=trho+rhoc(i)
 
-!          if ( trho==0.d0 ) cycle
           if ( trho <= zero_density ) cycle
 
           kf=(3.d0*Pi*Pi*trho)**(1.d0/3.d0)
@@ -556,10 +554,8 @@ CONTAINS
 
     do i=n1,n2
 
-!       trho=rho(i,ispin) ; if ( allocated(rhoc) ) trho=trho+rhoc(i)
        trho=rho_tmp(i)
 
-!       if ( trho==0.d0 ) cycle
        if ( trho <= zero_density ) cycle
 
        fz=( (1.d0+zeta(i))**(4.d0/3.d0)+(1.d0-zeta(i))**(4.d0/3.d0)-2.d0 )*const1

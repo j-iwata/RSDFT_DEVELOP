@@ -3,6 +3,10 @@ MODULE hartree_mol_module
   use rgrid_mol_module, only: LL,KK
   use rgrid_module, only: dV,Hgrid,Ngrid
   use parallel_module
+  use bc_module
+  use fd_module
+  use atom_module
+  use kinetic_variables, only: Md
 
   implicit none
 
@@ -26,10 +30,6 @@ CONTAINS
 !                  Phys. Rev. C17, 1682 (1978). )
 !
   SUBROUTINE calc_hartree_mol(n1,n2,n3,rho,Vh,Eh)
-    use bc_module
-    use fd_module
-    use kinetic_module, only: Md
-    use atom_module
     implicit none
     integer,intent(IN)    :: n1,n2,n3
     real(8),intent(IN)    :: rho(n1:n2,n3)
@@ -52,8 +52,8 @@ CONTAINS
 
     if ( flag_prep ) then
 
-       allocate( lap(-Md:Md) )
-       call get_coef_laplacian_fd(Md,lap)
+       allocate( lap(-Md:Md) ) ; lap=0.0d0
+       call get_coef_lapla_fd(Md,lap)
 
        lmmax_ME = (Lmax_ME+1)**2
 
@@ -434,6 +434,7 @@ CONTAINS
 ! Spherical Harmonic Funciton
 !
   SUBROUTINE prep1_hartree_mol
+    implicit none
     integer :: i,j,k,lm,L,a,m,n,n1,n2,ML0
     integer :: m1,m2
     logical :: flag_alloc(2)
@@ -492,7 +493,7 @@ CONTAINS
 ! Division of Area for Multipole Expansion (MEO=2)
 !
   SUBROUTINE prep2_hartree_mol
-    use atom_module
+    implicit none
     real(8),allocatable :: ra(:)
     real(8) :: x,y,z,r2,H
     integer :: i,a,m,n,i1,i2,i3,n1,n2,ierr,maxMdv

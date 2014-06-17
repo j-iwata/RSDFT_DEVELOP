@@ -80,7 +80,7 @@ CONTAINS
     use bz_module
     use aa_module, only: aa
     use bb_module, only: bb
-    use kinetic_module, only: get_coef_kinetic
+    use kinetic_module, only: init_kinetic
     use ps_nloc2_module, only: prep_uvk_ps_nloc2,prep_rvk_ps_nloc2
     use momentum_module
 
@@ -144,7 +144,7 @@ CONTAINS
        end if
 
        kbb(1:3,1) = ktrj(1:3,k)
-       call get_coef_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
+       call init_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
        call prep_uvk_ps_nloc2(1,Nbzsm,kbb)
 
        call apply_sseig( k, ktrj(4:6,k) )
@@ -218,7 +218,7 @@ CONTAINS
     use bz_module
     use aa_module, only: aa
     use bb_module, only: bb
-    use kinetic_module, only: get_coef_kinetic
+    use kinetic_module, only: init_kinetic
     use ps_nloc2_module, only: prep_uvk_ps_nloc2,prep_rvk_ps_nloc2
     use momentum_module
     use wf_module, only: esp,res,unk,gather_wf
@@ -356,7 +356,7 @@ CONTAINS
           end do
        endif
 
-       call get_coef_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
+       call init_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
        call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
 
        esp0(:,:,:) = 1.d10
