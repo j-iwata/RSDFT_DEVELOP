@@ -1,27 +1,29 @@
 MODULE subspace_diag_module
 
-  use parallel_module
+  use parallel_module, only: np_band, ir_band, id_band, myrank &
+                            ,disp_switch_parallel
+  use subspace_diag_variables
+  use subspace_diag_la_module
+  use subspace_diag_sl_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_subspace_diag, MB_diag, Hsub, Vsub, mat_block &
-           ,NBLK1, NBLK2, zero, one, TYPE_MAIN
-
-  integer,allocatable :: mat_block(:,:)
-
-#ifdef _DRSDFT_
-  integer,parameter :: TYPE_MAIN = MPI_REAL8
-  real(8),allocatable :: Hsub(:,:), Vsub(:,:)
-  real(8),parameter :: zero=0.d0,one=1.d0
-#else
-  integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
-  complex(8),allocatable :: Hsub(:,:), Vsub(:,:)
-  complex(8),parameter :: zero=(0.d0,0.d0),one=(1.d0,0.d0)
-#endif
-  integer :: MB_diag,NBLK1,NBLK2
+  PUBLIC :: subspace_diag, init_subspace_diag
 
 CONTAINS
+
+
+  SUBROUTINE subspace_diag(k,s)
+    implicit none
+    integer,intent(IN) :: k,s
+#ifdef _LAPACK_
+    call subspace_diag_la(k,s)
+#else
+    call subspace_diag_sl(k,s,disp_switch_parallel)
+#endif
+  END SUBROUTINE subspace_diag
+
 
   SUBROUTINE init_subspace_diag( MB_in )
     implicit none
@@ -99,5 +101,6 @@ CONTAINS
        stop "stop@init_subspace_diag"
     end if
   END SUBROUTINE parameter_check
+
 
 END MODULE subspace_diag_module

@@ -89,7 +89,6 @@ MODS1 = simc_module.o\
         gram_schmidt_t_module.o \
         xc_pw92_gth_module.o\
         xc_module.o \
-        subspace_diag_module.o \
         cgpc_module.o \
         cg_module.o \
         fermi_mp_module.o\
@@ -105,6 +104,7 @@ MODS1 = simc_module.o\
         test_hpsi2_module.o \
         test_force_module.o \
         esp_calc_module.o \
+        subspace_diag_variables.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \
@@ -113,12 +113,12 @@ MODS1 = simc_module.o\
 
 
 DIAGLA_MOD = subspace_diag_la_module.o
-
 DIAGSL_MOD = scalapack_module.o\
              subspace_mate_sl_module.o subspace_mate_sl_0_module.o\
              subspace_solv_sl_module.o \
              subspace_rotv_sl_module.o subspace_rotv_sl_0_module.o\
              subspace_diag_sl_module.o 
+DIAG_MOD   = subspace_diag_module.o
 
 MODS2 = scf_module.o atomopt_module.o global_variables.o parameters_module.o
 MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
@@ -175,12 +175,12 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 ########################################################################
 
 all : lda0 lda1 lda2 lda3 lda4 lda
-	$(FC) $(LFLAGS) $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) \
+	$(FC) $(LFLAGS) $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) $(DIAG_MOD) \
                         $(MODS2) $(MODS3) $(MODS4) $(OBJ1) \
 	                $(EXTOBJ2) $(MINPACOBJ) \
                         $(MDOBJ) $(FFTOBJ) $(LAPACK_L)
 
-lda0 : $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) $(MODS3) $(MODS4) $(MODS2)
+lda0 : $(MODS1) $(DIAGLA_MOD) $(DIAGSL_MOD) $(DIAG_MOD) $(MODS3) $(MODS4) $(MODS2)
 
 lda1 :
 	cd $(DIR1) ; $(MAKE)

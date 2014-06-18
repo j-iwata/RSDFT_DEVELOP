@@ -224,8 +224,7 @@ CONTAINS
     use wf_module, only: esp,res,unk,gather_wf
     use cg_module
     use gram_schmidt_t_module
-    use subspace_diag_sl_module
-    use subspace_diag_la_module
+    use subspace_diag_module
     use esp_gather_module
 
     implicit none
@@ -367,11 +366,7 @@ CONTAINS
              call conjugate_gradient(ML_0,ML_1,MB,MBZ_0,s,Ncg,iswitch_gs &
                   ,unk(ML_0,1,MBZ_0,s),esp(1,MBZ_0,s),res(1,MBZ_0,s))
              call gram_schmidt_t(1,MB,MBZ_0,s)
-#ifdef _LAPACK_
-             call subspace_diag_la(MBZ_0,s)
-#else
-             call subspace_diag_sl(MBZ_0,s,.false.)
-#endif
+             call subspace_diag(MBZ_0,s)
           end do
           max_err = maxval( abs(  esp(1:mb2_band,MBZ_0,MSP_0:MSP_1) &
                                 -esp0(1:mb2_band,MBZ_0,MSP_0:MSP_1) ) )

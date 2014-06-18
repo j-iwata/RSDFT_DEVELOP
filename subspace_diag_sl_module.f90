@@ -6,7 +6,7 @@ MODULE subspace_diag_sl_module
   use subspace_solv_sl_module
   use subspace_rotv_sl_module
   use subspace_rotv_sl_0_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use watch_module
 
   implicit none

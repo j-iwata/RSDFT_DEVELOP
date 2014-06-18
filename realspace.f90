@@ -328,11 +328,7 @@ PROGRAM Real_Space_Solid
      do k=MBZ_0,MBZ_1
         call watcht(disp_switch,"",0)
         if ( iter == 1 .or. flag_scf ) then
-#ifdef _LAPACK_
-           call subspace_diag_la(k,s)
-#else
-           call subspace_diag_sl(k,s,disp_switch)
-#endif
+           call subspace_diag(k,s)
         end if
         call watcht(disp_switch,"diag",1)
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
@@ -342,11 +338,7 @@ PROGRAM Real_Space_Solid
         call watcht(disp_switch,"gs  ",1)
         if ( Ndiag /= 1 ) then
            !if ( .not.flag_scf ) then
-#ifdef _LAPACK_
-           call subspace_diag_la(k,s)
-#else
-           call subspace_diag_sl(k,s,disp_switch)
-#endif
+           call subspace_diag(k,s)
            !else
            !call esp_calc &
            !     (k,s,unk(ML_0,MB_0,k,s),ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
