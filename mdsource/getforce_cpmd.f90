@@ -17,7 +17,8 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   use array_bound_module, only: MSP_0,MSP_1,MB_0,MB_1,ML_0,ML_1
   use density_module
   use xc_module
-  use hartree_module
+  use hartree_variables, only: Vh
+  use hartree_module, only: calc_hartree
   use cpmd_variables, only: Force,Rion,disp_switch,AMU,pmass,iatom
   use watch_module
   use force_module

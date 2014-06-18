@@ -6,7 +6,7 @@ MODULE rgrid_mol_module
   PUBLIC :: LL,KK,Hsize,map_g2p_rgrid_mol,iswitch_eqdiv &
            ,Construct_RgridMol, Destruct_RgridMol &
            ,ConstructBoundary_RgridMol, DestructBoundary_RgridMol &
-           ,Read_RgridMol,ParallelInit_RgridMol &
+           ,Read_RgridMol, ParallelInit_RgridMol &
            ,GetGridSize_RgridMol, GetNumGrids_RgridMol, GetSimBox_RgridMol
 
   integer :: Box_Shape
@@ -619,7 +619,6 @@ CONTAINS
     real(8) :: r2,Rc2,z,x,y
     ML_0=Igrid(1,0)
     ML_1=Igrid(2,0)
-write(*,*) ML_0,ML_1,"jjj"
     if ( allocated(LL) ) deallocate(LL)
     allocate( LL(3,ML_0:ML_1) ) ; LL=0
     Rc2=Rsize*Rsize

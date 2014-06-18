@@ -25,6 +25,7 @@ MODULE global_variables
   use ewald_module
   use gram_schmidt_module
   use gram_schmidt_t_module
+  use hartree_variables
   use hartree_module
   use xc_module
   use scalapack_module

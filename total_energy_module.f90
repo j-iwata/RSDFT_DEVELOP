@@ -2,7 +2,7 @@ MODULE total_energy_module
 
   use rgrid_module, only: dV
   use hamiltonian_module
-  use hartree_module, only: Vh, E_hartree
+  use hartree_variables, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
   use ewald_module, only: Eewald
   use wf_module, only: unk,esp,occ

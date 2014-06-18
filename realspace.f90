@@ -293,7 +293,8 @@ PROGRAM Real_Space_Solid
 
 ! --- Initial Potential ---
 
-  call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
+  call init_hartree( Igrid, Nspin, Md, SYStype )
+  call calc_hartree(ML_0,ML_1,MSP,rho)
 
   call calc_xc
 
@@ -335,7 +336,7 @@ PROGRAM Real_Space_Solid
 !---------------------------------------------
 ! ---
 
-  call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
+  call calc_hartree(ML_0,ML_1,MSP,rho)
   call calc_xc
 
 ! ---
@@ -425,7 +426,9 @@ PROGRAM Real_Space_Solid
      if ( flag_scf ) then
         call calc_density ! n_out
         call watcht(disp_switch,"hartree",0)
+
         call calc_hartree(ML_0,ML_1,MSP,rho)
+
         call watcht(disp_switch,"hartree",1)
         call calc_xc
         call calc_total_energy(.false.,disp_switch)

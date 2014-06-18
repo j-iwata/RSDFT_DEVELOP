@@ -5,7 +5,8 @@ MODULE scf_module
   use localpot_module
   use mixing_module
   use xc_module
-  use hartree_module
+  use hartree_variables, only: Vh
+  use hartree_module, only: calc_hartree
   use ps_local_module
   use bz_module
   use wf_module

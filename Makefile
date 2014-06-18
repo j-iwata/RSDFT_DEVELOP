@@ -35,10 +35,13 @@ MODS1 = simc_module.o\
         init_occ_electron_module.o \
         wf_module.o \
         density_module.o\
-        hartree_mol_module.o \
         esm_rshell_module.o \
         ps_local_module.o ps_local_rs_module.o \
         esm_genpot_module.o \
+        hartree_variables.o \
+        hartree_sol_ffte_module.o \
+        hartree_sol_module.o \
+        hartree_mol_module.o \
         esm_hartree_module.o \
         hartree_module.o \
         ps_nloc_gth_module.o \

@@ -5,7 +5,7 @@ MODULE io_module
   use density_module, only: rho
   use xc_module, only: Vxc
   use localpot_module, only: Vloc
-  use hartree_module, only: Vh
+  use hartree_variables, only: Vh
   use parallel_module
   use array_bound_module, only: ML,ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
