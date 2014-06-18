@@ -18,6 +18,7 @@ CONTAINS
 
 
   SUBROUTINE subspace_diag_sl(k,s,disp_switch)
+    implicit none
     logical,intent(IN) :: disp_switch
     integer,intent(IN) :: k,s
     real(8) :: ct(5),et(5),ct0,et0,ct1,et1
@@ -25,7 +26,7 @@ CONTAINS
     ct(:)=0.d0
     et(:)=0.d0
 
-    call prep_scalapack(MB_diag,disp_switch)
+    call prep_scalapack( MB_diag )
 
     allocate( Hsub(LLD_R,LLD_C) )
     Hsub=zero

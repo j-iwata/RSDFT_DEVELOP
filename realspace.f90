@@ -7,8 +7,6 @@ PROGRAM Real_Space_Solid
   use band_module
 #endif
 
-  use init_rgrid_module
-
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -49,19 +47,13 @@ PROGRAM Real_Space_Solid
 
   call construct_aa
 
-  call init_rgrid( SYStype, Md, unit=2 )
+  call Init_Rgrid( SYStype, Md, unit=2 )
 
 ! --- Reciprocal Lattice ---
 
   call construct_bb(aa)
 
-  call Init_Ggrid( Ngrid, bb, Hgrid )
-
-  if ( DISP_SWITCH ) then
-     write(*,*) "Ecut,Gcut=",Ecut,Gcut
-     write(*,*) "NGgrid=",NGgrid
-     write(*,*) "NMGL=",NMGL
-  end if
+  call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
 ! --- Brillouin Zone sampling ---
 
@@ -71,13 +63,13 @@ PROGRAM Real_Space_Solid
 
   call test_bcast
 
-  call prep_0_scalapack(Nband,disp_switch)
+  call init_scalapack( Nband )
 
   call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
 
-  call parallel_init_rgrid( SYStype )
+  call InitParallel_Rgrid
 
-  call parallel_init_ggrid( nprocs, myrank )
+  call InitParallel_Ggrid( nprocs, myrank )
 
 !- FDBC -
 
@@ -234,7 +226,7 @@ PROGRAM Real_Space_Solid
 
 ! --- preparing for subspace diagonalization ---
 
-  call prep_subspace_diag(Nband,disp_switch)
+  call init_subspace_diag( Nband )
 
 ! --- Initial wave functions ---
 

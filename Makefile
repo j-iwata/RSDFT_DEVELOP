@@ -14,10 +14,12 @@ MODS1 = simc_module.o\
         aa_module.o \
         bb_module.o \
         atom_module.o \
-        rgrid_module.o \
-        ggrid_module.o \
+        rgrid_variables.o \
+        rgrid_sol_module.o \
         rgrid_mol_module.o \
         esm_rgrid_module.o \
+        rgrid_module.o \
+        ggrid_module.o \
         bz_module.o \
         fd_module.o \
         bc_module.o \
@@ -103,7 +105,6 @@ MODS1 = simc_module.o\
         test_hpsi2_module.o \
         test_force_module.o \
         esp_calc_module.o \
-        init_rgrid_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \

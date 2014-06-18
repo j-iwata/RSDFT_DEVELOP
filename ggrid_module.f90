@@ -5,11 +5,11 @@ MODULE ggrid_module
   PRIVATE
   PUBLIC :: Gcut,Ecut,NGgrid,LLG,MG_0,MG_1,MGL,NMGL,GG &
            ,allgatherv_Ggrid &
-           ,parallel_init_Ggrid &
            ,construct_Ggrid,destruct_Ggrid &
            ,get_cutoff_ggrid_2,construct_ggrid_2 &
            ,get_Ggrid &
-           ,Init_Ggrid
+           ,Init_Ggrid, InitParallel_Ggrid
+
 
   integer :: NGgrid(0:3),MG_0,MG_1,NMGL
   integer,allocatable :: LLG(:,:),MGL(:)
@@ -25,10 +25,11 @@ MODULE ggrid_module
 CONTAINS
 
 
-  SUBROUTINE Init_Ggrid( Ngrid_in, bb_in, Hgrid_in )
+  SUBROUTINE Init_Ggrid( Ngrid_in, bb_in, Hgrid_in, disp_switch )
     implicit none
     integer,intent(IN) :: Ngrid_in(0:3)
     real(8),intent(IN) :: bb_in(3,3), Hgrid_in(3)
+    logical,intent(IN) :: disp_switch
 
     Ngrid(:) = Ngrid_in(:)
     bb(:,:)  = bb_in(:,:)
@@ -36,6 +37,13 @@ CONTAINS
 
     call CalcCutoff_Ggrid
     call construct_NMGL_Ggrid
+
+    if ( disp_switch ) then
+       write(*,*) "Ecut,Gcut=",Ecut,Gcut
+       write(*,*) "NGgrid=",NGgrid
+       write(*,*) "NMGL=",NMGL
+       write(*,'(a60," Init_Ggrid(END)")') repeat("-",60)
+    end if
 
   END SUBROUTINE Init_Ggrid
 
@@ -280,7 +288,7 @@ CONTAINS
   END SUBROUTINE get_Ggrid
 
 
-  SUBROUTINE parallel_init_ggrid(nprocs,myrank)
+  SUBROUTINE InitParallel_Ggrid( nprocs, myrank )
     implicit none
     integer,intent(IN) :: nprocs,myrank
     integer :: i,n
@@ -299,7 +307,7 @@ CONTAINS
     deallocate( np )
     MG_0 = idispg(myrank) + 1
     MG_1 = idispg(myrank) + ircntg(myrank)
-  END SUBROUTINE parallel_init_ggrid
+  END SUBROUTINE InitParallel_Ggrid
 
 
   SUBROUTINE allgatherv_Ggrid(f)

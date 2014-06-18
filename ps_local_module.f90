@@ -918,6 +918,7 @@ CONTAINS
     complex(8),allocatable :: zrho(:) !, zrho3(:,:,:)
     complex(8),parameter :: z0=(0.d0,0.d0)
     real(8) :: zsum1,zsum2,zsum3,ztmp
+    include 'mpif.h'
 
     force(:,:)=0.d0
 

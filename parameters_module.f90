@@ -38,7 +38,7 @@ CONTAINS
 
     call read_cg(myrank,unit)
 
-    call read_rgrid(myrank,unit)
+    call Read_RgridSol(myrank,unit)
 
     call read_kinetic(myrank,unit)
 
@@ -167,6 +167,10 @@ CONTAINS
        end if
     end if
 
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(END)")') repeat("-",60)
+    end if
+
   END SUBROUTINE read_parameters
 
 
@@ -200,7 +204,7 @@ CONTAINS
 
     call read_oldformat_cg(myrank,unit)
 
-    call read_oldformat_rgrid(myrank,unit)
+    call ReadOldformat_RgridSol(myrank,unit)
 
     call read_oldformat_kinetic(myrank,unit)
 

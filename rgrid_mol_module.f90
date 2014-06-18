@@ -6,7 +6,7 @@ MODULE rgrid_mol_module
   PUBLIC :: LL,KK,Hsize,map_g2p_rgrid_mol,iswitch_eqdiv &
            ,Construct_RgridMol, Destruct_RgridMol &
            ,ConstructBoundary_RgridMol, DestructBoundary_RgridMol &
-           ,Read_RgridMol, ParallelInit_RgridMol &
+           ,Read_RgridMol, InitParallel_RgridMol &
            ,GetGridSize_RgridMol, GetNumGrids_RgridMol, GetSimBox_RgridMol
 
   integer :: Box_Shape
@@ -164,7 +164,7 @@ CONTAINS
   END SUBROUTINE GetSimBox_RgridMol
 
 
-  SUBROUTINE ParallelInit_RgridMol( np, np_grid, pinfo_grid, disp_switch )
+  SUBROUTINE InitParallel_RgridMol( np, np_grid, pinfo_grid, disp_switch )
     implicit none
     integer,intent(IN)  :: np(3), np_grid
     integer,intent(OUT) :: pinfo_grid(8,0:np_grid-1)
@@ -176,7 +176,7 @@ CONTAINS
     case(2)
        call mesh_div_2( np_grid, pinfo_grid, disp_switch )
     end select
-  END SUBROUTINE ParallelInit_RgridMol
+  END SUBROUTINE InitParallel_RgridMol
 
   SUBROUTINE mesh_div_1( np_grid, pinfo_grid, disp_switch )
     implicit none

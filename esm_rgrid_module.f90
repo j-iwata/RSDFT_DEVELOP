@@ -8,7 +8,7 @@ MODULE esm_rgrid_module
   PUBLIC :: Rsize1,Rsize2,LL,KK &
        ,ML_ESM,MK_ESM,ML0_ESM,ML1_ESM,MK0_ESM,MK1_ESM,LL_ESM &
        ,Nshift_ESM &
-       ,Read_RgridESM, Init_RgridESM, ParallelInit_RgridESM
+       ,Read_RgridESM, Init_RgridESM, InitParallel_RgridESM
 
   real(8) :: Rsize1,Rsize2
   integer,allocatable :: LL(:,:),KK(:,:),LL_ESM(:,:)
@@ -131,7 +131,7 @@ CONTAINS
   END SUBROUTINE Init_RgridESM
 
 
-  SUBROUTINE ParallelInit_RgridESM( np, pinfo_grid, Nshift )
+  SUBROUTINE InitParallel_RgridESM( np, pinfo_grid, Nshift )
     implicit none
     integer,intent(IN)    :: np
     integer,intent(INOUT) :: pinfo_grid(8,0:np-1) 
@@ -202,7 +202,7 @@ CONTAINS
 
     deallocate( ichk )
 
-  END SUBROUTINE ParallelInit_RgridESM
+  END SUBROUTINE InitParallel_RgridESM
 
   SUBROUTINE construct_esm_rgrid(ml,map1,mk,map2)
     implicit none

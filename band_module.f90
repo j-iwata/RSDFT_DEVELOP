@@ -916,7 +916,7 @@ CONTAINS
     use electron_module
     use parallel_module
     use scalapack_module
-    use subspace_diag_module, only: prep_subspace_diag
+    use subspace_diag_module, only: init_subspace_diag
     use subspace_mate_sl_0_module
     use subspace_rotv_sl_0_module
 
@@ -928,7 +928,7 @@ CONTAINS
 
     Nband = mb_band
 
-    call prep_0_scalapack(Nband,myrank==0)
+    call init_scalapack( Nband )
 
     ir_band(:)=0
     do i=0,Nband-1
@@ -942,7 +942,7 @@ CONTAINS
     MB_0 = id_band(myrank_b) + 1
     MB_1 = id_band(myrank_b) + ir_band(myrank_b)
 
-    call prep_subspace_diag(Nband,myrank==0)
+    call init_subspace_diag( Nband )
     call reset_subspace_mate_sl_0
     call reset_subspace_rotv_sl_0
 
