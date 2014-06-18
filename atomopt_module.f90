@@ -6,7 +6,7 @@ MODULE atomopt_module
   use aa_module
   use bb_module
   use scf_module
-  use ewald_module
+  use eion_module, only: calc_eion
   use strfac_module
   use ps_local_module
   use ps_pcc_module
@@ -613,7 +613,7 @@ CONTAINS
           select case(SYStype)
           case default
 
-             call calc_ewald(Eewald,disp_switch)
+             call calc_eion
 
              call construct_strfac
              call construct_ps_local
@@ -631,7 +631,7 @@ CONTAINS
 
           case(1)
 
-             call calc_eion_mol(Eewald)
+             call calc_eion
 
              call construct_ps_local_mol
              call construct_ps_pcc_mol

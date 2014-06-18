@@ -22,7 +22,7 @@ MODULE global_variables
   use wf_module
   use localpot_module
   use nonlocal_module
-  use ewald_module
+  use eion_module
   use gram_schmidt_module
   use gram_schmidt_t_module
   use hartree_variables
@@ -58,7 +58,6 @@ MODULE global_variables
 
   use rgrid_mol_module
   use ps_local_mol_module
-  use eion_mol_module
   use ps_pcc_mol_module
   use ps_initrho_mol_module
   use ps_nloc2_mol_module

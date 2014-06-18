@@ -11,7 +11,7 @@ SUBROUTINE getforce
   use ps_nloc2_module
   use ps_nloc3_module
   use ps_nloc_mr_module
-  use ewald_module
+  use eion_module, only: calc_eion
   use force_module
   use cpmd_variables, only: Rion,Force,pmass,iatom,AMU,disp_switch &
        ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
@@ -28,7 +28,7 @@ SUBROUTINE getforce
 
   call init_ion
 
-  call calc_ewald(Eewald,disp_switch)
+  call calc_eion
 
   call construct_strfac
   call construct_ps_local

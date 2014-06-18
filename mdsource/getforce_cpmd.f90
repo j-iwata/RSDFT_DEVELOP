@@ -2,7 +2,8 @@
 !     Evaluate Force for CPMD
 !-----------------------------------------------------------------------
 SUBROUTINE getforce_cpmd(lewald,ltime)
-  use ewald_module
+
+  use eion_module, only: calc_eion
   use atom_module, only: Natom,aa_atom
   use bb_module
   use parallel_module, only: myrank
@@ -22,7 +23,9 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   use cpmd_variables, only: Force,Rion,disp_switch,AMU,pmass,iatom
   use watch_module
   use force_module
+
   implicit none
+
   integer :: i,s,MB_0_BAK,MB_1_BAK
   real(8) :: ctime_force(0:9),etime_force(0:9),c
   logical :: lewald,ltime
@@ -36,7 +39,7 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   if ( ltime ) call watch(ctime_force(0),etime_force(0))
 
   if ( lewald ) then
-     call calc_ewald(Eewald,disp_switch)
+     call calc_eion
   end if
 
   if ( ltime ) call watch(ctime_force(1),etime_force(1))

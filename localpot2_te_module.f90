@@ -6,7 +6,7 @@ MODULE localpot2_te_module
   use localpot_module
   use kinetic_module
   use nonlocal_module
-  use ewald_module
+  use eion_module, only: Eewald
   use electron_module
 
   implicit none

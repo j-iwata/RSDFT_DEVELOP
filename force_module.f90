@@ -3,7 +3,7 @@ MODULE force_module
   use ps_local_module
   use ps_nloc2_module
   use ps_pcc_module
-  use ewald_module
+  use force_ewald_module
   use watch_module
   use parallel_module, only: disp_switch_parallel
 

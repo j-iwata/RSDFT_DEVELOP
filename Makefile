@@ -64,7 +64,6 @@ MODS1 = simc_module.o\
         ps_initrho_mol_module.o\
         ps_nloc2_mol_module.o\
         bc_mol_module.o\
-        eion_mol_module.o\
         ps_local_mol_module.o\
         vloc_rho_mol_module.o \
         force_nloc2_mol_module.o \
@@ -75,7 +74,11 @@ MODS1 = simc_module.o\
         fock_module.o \
         xc_hse_module.o \
         hamiltonian_module.o\
+        eion_mol_module.o\
+        ewald_variables.o \
         ewald_module.o\
+        eion_module.o \
+        force_ewald_module.o \
         gram_schmidt_module.o \
         gram_schmidt_t_module.o \
         xc_pw92_gth_module.o\

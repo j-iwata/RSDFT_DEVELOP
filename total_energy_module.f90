@@ -4,7 +4,7 @@ MODULE total_energy_module
   use hamiltonian_module
   use hartree_variables, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
-  use ewald_module, only: Eewald
+  use eion_module, only: Eewald
   use wf_module, only: unk,esp,occ
   use localpot_module, only: Vloc
   use ps_local_module, only: Vion
@@ -210,6 +210,7 @@ CONTAINS
 
 
   SUBROUTINE calc_with_rhoIN_total_energy(disp_switch)
+    implicit none
     logical,intent(IN) :: disp_switch
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr

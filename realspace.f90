@@ -92,13 +92,13 @@ PROGRAM Real_Space_Solid
 
   end select
 
-! --- ??? ---
-
-  call set_array_bound
-
 ! --- kinetic energy oprator coefficients ---
 
   call init_kinetic( aa, bb, Nbzsm, kbb, DISP_SWITCH )
+
+! --- ??? ---
+
+  call set_array_bound
 
 ! --- Pseudopotential, initial density, and partial core correction ---
 
@@ -109,9 +109,9 @@ PROGRAM Real_Space_Solid
      call read_ps_gth(myrank)
   end select
 
-  call count_electron
-
 !-------- init density 
+
+  call count_electron
 
   call init_density(Nelectron,dV)
 
@@ -228,25 +228,9 @@ PROGRAM Real_Space_Solid
 #endif
 !--------------------
 
-! --- Ewald sum ---
+! --- Ion-Ion ---
 
-  select case(SYStype)
-  case default
-
-     call watcht(disp_switch,"",0)
-     call test_ewald(Eewald,disp_switch)
-     call watcht(disp_switch,"test_ewald",1)
-     call calc_ewald(Eewald,disp_switch)
-     call watcht(disp_switch,"calc_ewald",1)
-
-  case( 1 )
-
-     call watcht(disp_switch,"",0)
-     call calc_eion_mol(Eewald)
-     call watcht(disp_switch,"eion_mol",1)
-     if ( disp_switch ) write(*,*) "Ewld(MOL)=",Eewald
-
-  end select 
+  call init_eion( SYStype, disp_switch )
 
 ! --- preparing for subspace diagonalization ---
 
@@ -258,7 +242,6 @@ PROGRAM Real_Space_Solid
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
-!     call gram_schmidt_m(1,Nband,k,s)
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
