@@ -8,7 +8,7 @@ MODULE localpot2_ion_module
 
   use rgrid_module
   use parallel_module
-  use localpot2_module
+  use localpot2_variables, only: fecut_loc,Ngrid_dense,Igrid_dense,dV_dense
   use array_bound_module
   use electron_module
   use wf_module
@@ -17,8 +17,6 @@ MODULE localpot2_ion_module
 
   use ggrid_module
   use strfac_module
-
-  use localpot2_variables
 
   implicit none
 

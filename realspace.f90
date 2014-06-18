@@ -38,10 +38,7 @@ PROGRAM Real_Space_Solid
      
 ! --- input parameters ---
 
-  if (DISP_SWITCH) write(*,'(a60," read_param")') repeat("-",60)
-
   call read_parameters
-!  call read_oldformat_parameters
 
 ! --- R-space Lattice & Grid ---
 
@@ -224,7 +221,7 @@ PROGRAM Real_Space_Solid
 
   call init_eion( SYStype, disp_switch )
 
-! --- preparing for subspace diagonalization ---
+! --- Initialization of subspace diagonalization ---
 
   call init_subspace_diag( Nband )
 
@@ -285,30 +282,10 @@ PROGRAM Real_Space_Solid
   call read_data(disp_switch)
   call watcht(disp_switch,"read_data",1)
 
-!--------------------------------------------- LOCALLPOT2
-!
-  if ( DISP_SWITCH ) write(*,'(a60," LOCALPOT2")') repeat("-",60)
-  call read_localpot2(1,myrank)
-  if ( flag_localpot2 ) then
-     call prep_parallel_localpot2
-     call init_localpot2(Ngrid(1),Ngrid(2),Ngrid(3))
-     m1=Ngrid_dense(1)
-     m2=Ngrid_dense(2)
-     m3=Ngrid_dense(3)
-     mm1=Igrid_dense(2,1)-Igrid_dense(1,1)+1
-     mm2=Igrid_dense(2,2)-Igrid_dense(1,2)+1
-     mm3=Igrid_dense(2,3)-Igrid_dense(1,3)+1
-     call test_localpot2
-     call localpot2_ion(mm1,mm2,mm3,Nelement,Ecut,vion_nl)
-     call localpot2_density(mm1,mm2,mm3,rho_nl)
-     call localpot2_vh(mm1,mm2,mm3,Ecut,rho_nl,vh_nl,E_hartree)
-     call localpot2_xc(mm1,mm2,mm3,rho_nl,vxc_nl,Exc)
-     vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
-     vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
-     call test2_localpot2(mm1,mm2,mm3,vloc_dense)
-  end if
-!
-!---------------------------------------------
+! --- Init Localpot2 ---
+
+  call init_localpot2( Nelement, Ecut, E_hartree, Exc )
+
 ! ---
 
   call calc_hartree(ML_0,ML_1,MSP,rho)

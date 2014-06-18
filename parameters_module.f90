@@ -6,15 +6,38 @@ MODULE parameters_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_parameters, read_oldformat_parameters
+  PUBLIC :: read_parameters
 
   integer,parameter :: unit=1, unit_atom=970
 
   integer :: atom_format
+  integer :: param_format=0
 
 CONTAINS
 
+
   SUBROUTINE read_parameters
+    implicit none
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(START)")') repeat("-",60)
+    end if
+
+    select case( param_format )
+    case default
+       call read_keywordformat_parameters
+    case( 1 )
+       call read_oldformat_parameters
+    end select
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(END)")') repeat("-",60)
+    end if
+
+  END SUBROUTINE read_parameters
+
+
+  SUBROUTINE read_keywordformat_parameters
     implicit none
     integer :: i
     character(7) :: label,cbuf,ckey
@@ -167,11 +190,7 @@ CONTAINS
        end if
     end if
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," read_parameters(END)")') repeat("-",60)
-    end if
-
-  END SUBROUTINE read_parameters
+  END SUBROUTINE read_keywordformat_parameters
 
 
   SUBROUTINE read_oldformat_parameters

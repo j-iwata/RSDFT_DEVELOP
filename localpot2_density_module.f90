@@ -1,6 +1,7 @@
 MODULE localpot2_density_module
 
-  use localpot2_variables
+  use localpot2_variables, only: Ngrid_dense,Ndens_loc,Igrid_dense &
+       ,nitp_0,nitp_1,Clag1,Clag2,Clag3
   use wf_module
   use array_bound_module
   use rgrid_module

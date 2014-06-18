@@ -2,10 +2,13 @@ MODULE localpot2_xc_module
 
   use parallel_module
   use rgrid_module
-  use localpot2_variables
+  use localpot2_variables, only: Igrid_dense, Ngrid_dense
   use watch_module
 
   implicit none
+
+  PRIVATE
+  PUBLIC :: localpot2_xc
 
 CONTAINS
 

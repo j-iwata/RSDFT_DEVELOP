@@ -2,6 +2,10 @@ MODULE localpot2_module
 
   use rgrid_module
   use localpot2_variables
+  use localpot2_ion_module
+  use localpot2_density_module
+  use localpot2_vh_module
+  use localpot2_xc_module
   use watch_module
   use parallel_module
   use array_bound_module
@@ -10,19 +14,52 @@ MODULE localpot2_module
 
   PRIVATE
   PUBLIC :: test_localpot2, test2_localpot2, Lpot, vloc_nl, MLpot &
-           ,read_localpot2, flag_localpot2, fecut_loc &
-           ,prep_parallel_localpot2
+           ,read_localpot2, flag_localpot2 &
+           ,prep_parallel_localpot2, init_localpot2
 
   logical :: flag_localpot2 = .false.
 
   integer :: Nintp_loc
-  real(8) :: fecut_loc
 
   integer :: MLpot
   integer,allocatable :: Lpot(:,:)
   real(8),allocatable :: vloc_nl(:,:)
 
 CONTAINS
+
+
+  SUBROUTINE init_localpot2( Nelement, Ecut, E_hartree, Exc )
+    implicit none
+    integer,intent(IN)  :: Nelement
+    real(8),intent(IN)  :: Ecut
+    real(8),intent(OUT) :: E_hartree, Exc
+    integer :: m1,m2,m3,mm1,mm2,mm3
+
+    call read_localpot2(1,myrank)
+
+    if ( flag_localpot2 ) then
+       if ( disp_switch_parallel ) then
+          write(*,'(a60," Init_LOCALPOT2(START)")') repeat("-",60)
+       end if
+       call prep_parallel_localpot2
+       call initsub_localpot2(Ngrid(1),Ngrid(2),Ngrid(3))
+       m1=Ngrid_dense(1)
+       m2=Ngrid_dense(2)
+       m3=Ngrid_dense(3)
+       mm1=Igrid_dense(2,1)-Igrid_dense(1,1)+1
+       mm2=Igrid_dense(2,2)-Igrid_dense(1,2)+1
+       mm3=Igrid_dense(2,3)-Igrid_dense(1,3)+1
+       call test_localpot2
+       call localpot2_ion(mm1,mm2,mm3,Nelement,Ecut,vion_nl)
+       call localpot2_density(mm1,mm2,mm3,rho_nl)
+       call localpot2_vh(mm1,mm2,mm3,Ecut,rho_nl,vh_nl,E_hartree)
+       call localpot2_xc(mm1,mm2,mm3,rho_nl,vxc_nl,Exc)
+       vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
+       vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
+       call test2_localpot2(mm1,mm2,mm3,vloc_dense)
+    end if
+
+  END SUBROUTINE init_localpot2
 
 
   SUBROUTINE read_localpot2(unit,rank)
@@ -59,12 +96,35 @@ CONTAINS
   SUBROUTINE send_localpot2
     implicit none
     integer :: ierr
-    include 'mpif.h'
     call mpi_bcast(Ndens_loc,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Nintp_loc,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(fecut_loc,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(flag_localpot2,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_localpot2
+
+
+  SUBROUTINE initsub_localpot2(n1,n2,n3)
+    implicit none
+    integer,intent(IN) :: n1,n2,n3
+    integer :: m1,m2,m3,m1_0,m1_1,m2_0,m2_1,m3_0,m3_1
+    Ngrid_dense(1) = n1*Ndens_loc
+    Ngrid_dense(2) = n2*Ndens_loc
+    Ngrid_dense(3) = n3*Ndens_loc
+    Ngrid_dense(0) = Ngrid_dense(1)*Ngrid_dense(2)*Ngrid_dense(3)
+    m1_0=Igrid_dense(1,1)
+    m1_1=Igrid_dense(2,1)
+    m2_0=Igrid_dense(1,2)
+    m2_1=Igrid_dense(2,2)
+    m3_0=Igrid_dense(1,3)
+    m3_1=Igrid_dense(2,3)
+    allocate( vion_nl(m1_0:m1_1,m2_0:m2_1,m3_0:m3_1) ) ; vion_nl=0.0d0
+    allocate(   vh_nl(m1_0:m1_1,m2_0:m2_1,m3_0:m3_1) ) ;   vh_nl=0.0d0
+    allocate(  vxc_nl(m1_0:m1_1,m2_0:m2_1,m3_0:m3_1) ) ;  vxc_nl=0.0d0
+    allocate(  rho_nl(m1_0:m1_1,m2_0:m2_1,m3_0:m3_1) ) ;  rho_nl=0.0d0
+    allocate( vloc_dense(m1_0:m1_1,m2_0:m2_1,m3_0:m3_1) ) ; vloc_dense=0.0d0
+    allocate( vloc_dense_old(m1_0:m1_1,m2_0:m2_1,m3_0:m3_1) )
+    vloc_dense_old=0.0d0
+  END SUBROUTINE initsub_localpot2
 
 
   SUBROUTINE test_localpot2
@@ -384,5 +444,6 @@ CONTAINS
     call watch(ct0,et0) ; write(*,*) "(4)",ct0-ct1,et0-et1
 
   END SUBROUTINE test2_localpot2
+
 
 END MODULE localpot2_module

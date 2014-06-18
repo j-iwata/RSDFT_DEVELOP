@@ -2,8 +2,7 @@ MODULE localpot2_vh_module
 
   use rgrid_module
   use bb_module
-  use localpot2_module, only: fecut_loc
-  use localpot2_variables
+  use localpot2_variables, only: fecut_loc, Ngrid_dense, Igrid_dense
   use parallel_module
   use watch_module
 
