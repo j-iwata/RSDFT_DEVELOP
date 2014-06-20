@@ -16,7 +16,7 @@ MODULE cg_module
 
 CONTAINS
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE read_cg(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -44,7 +44,7 @@ CONTAINS
     call send_cg(0)
   END SUBROUTINE read_cg
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE read_oldformat_cg(rank,unit)
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
@@ -55,7 +55,7 @@ CONTAINS
     call send_cg(0)
   END SUBROUTINE read_oldformat_cg
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE send_cg(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -64,6 +64,7 @@ CONTAINS
     call mpi_bcast(iswitch_gs,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_cg
 
+!---------------------------------------------------------------------------------------
 #ifdef _DRSDFT_
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
@@ -345,6 +346,16 @@ CONTAINS
 
   END SUBROUTINE conjugate_gradient
 
+#elseif _USPP_
+  SUBROUTINE conjugate_gradient( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
+    use CGG
+    implicit none
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+    real(8),intent(INOUT) :: esp(MB),res(MB)
+    
+    call CGG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+  END SUBROUTINE conjugate_gradient
 #else
 
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
@@ -627,7 +638,7 @@ CONTAINS
 
 #endif
 
-
+!---------------------------------------------------------------------------------------
 #ifdef TEST
   SUBROUTINE dot_product(a,b,c,alpha,n,m)
     implicit none
