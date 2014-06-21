@@ -285,62 +285,46 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
-  call calc_sweep( Nsweep, iswitch_gs, iter, disp_switch )
-
-! ---
-
-!  if ( mod(imix,2) == 0 ) then
-!     call init_mixing( ML_1-ML_0+1, MSP_1-MSP_0+1,  rho(ML_0,MSP_0) )
-!  else
-!     call init_mixing( ML_1-ML_0+1, MSP_1-MSP_0+1, Vloc(ML_0,MSP_0) )
-!  end if
+  if ( Nsweep > 0 ) then
+!     call init_sweep( 2, Nband, 1.d-7 )
+     call calc_sweep( Nsweep, iswitch_gs, ierr, disp_switch )
+     if ( ierr == -1 ) goto 900
+  end if
 
 ! ---
 
   if ( iswitch_scf ) then
      call init_scf( Ndiag ) 
-     call calc_scf( Diter, iter, disp_switch )
+     call calc_scf( Diter, ierr, disp_switch )
+     if ( ierr < 0 ) goto 900
   end if
 
 ! ---
 
-  call calc_total_energy(.true.,disp_switch)
-
-  if ( disp_switch ) write(*,'(a40," etot(with latest wf)")') repeat("-",40)
-  call calc_density
-  call calc_hartree(ML_0,ML_1,MSP,rho)
-  call calc_xc
-  do s=MSP_0,MSP_1
-     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-  end do
-  call calc_total_energy(.true.,disp_switch)
-
 !
-! --- force calculation ---
-!
-  if ( disp_switch ) write(*,'(a40," Force")') repeat("-",40)
-
-  if ( SYStype == 0 ) then
-     select case( pselect )
-     case( 2 )
-        call ps_nloc2_init_derivative
-     end select
-  end if
-
-  if ( iswitch_opt == -1 ) then
-
-     call test_force(SYStype)
-
-  end if
-
 ! --- BAND ---
+!
 #ifndef _DRSDFT_
   if ( iswitch_band == 1 ) then
      call band(nint(Nelectron*0.5d0),disp_switch)
   end if
 #endif
 
-  select case(iswitch_opt)
+!
+! --- Force test, atomopt, CPMD ---
+!
+  if ( iswitch_opt /= 0 ) then
+     if ( SYStype == 0 ) then
+        select case( pselect )
+        case( 2 )
+           call ps_nloc2_init_derivative
+        end select
+     end if
+  end if
+  select case( iswitch_opt )
+  case( -1 )
+     if ( disp_switch ) write(*,'(a40," test_force")') repeat("-",40)
+     call test_force(SYStype)
   case( 1,2 )
      call atomopt(iswitch_opt,disp_switch)
   case( 3 )

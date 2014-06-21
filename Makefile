@@ -122,9 +122,9 @@ DIAGSL_MOD = scalapack_module.o\
              subspace_diag_sl_module.o 
 DIAG_MOD   = subspace_diag_module.o
 
-MODS2 = scf_module.o sweep_module.o atomopt_module.o global_variables.o parameters_module.o
 MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
-MODS4 = momentum_module.o band_variables.o band_sseig_module.o band_module.o
+MODS2 = momentum_module.o band_variables.o band_sseig_module.o band_module.o
+MODS4 = scf_module.o sweep_module.o atomopt_module.o global_variables.o parameters_module.o
 
 ########################################################################
 ########################################################################

@@ -41,8 +41,8 @@ MODULE scf_module
 
   real(8),allocatable :: esp0(:,:,:)
 
-  logical :: second_diag=.false.
-!  logical :: second_diag=.true.
+!  logical :: second_diag=.false.
+  logical :: second_diag=.true.
 
 CONTAINS
 
@@ -52,10 +52,10 @@ CONTAINS
      if ( Ndiag_in > 0 ) Ndiag=Ndiag_in
   END SUBROUTINE init_scf
 
-  SUBROUTINE calc_scf( Diter, iter_final, disp_switch )
+  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch )
     implicit none
     integer,intent(IN)  :: Diter
-    integer,intent(OUT) :: iter_final
+    integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2
@@ -65,6 +65,7 @@ CONTAINS
     flag_end  = .false.
     flag_exit = .false.
     flag_conv = .false.
+    ierr_out  = 0
 
     ML01      = ML_1-ML_0+1
     MSP01     = MSP_1-MSP_0+1
@@ -191,14 +192,19 @@ CONTAINS
        write(*,*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
     end if
 
-    iter_final = iter
-
     deallocate( esp0 )
 
+    ierr_out = iter
+
     if ( flag_end ) then
+       ierr_out = -1
        if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
-       call end_mpi_parallel
-       stop
+       return
+    end if
+
+    if ( iter > Diter ) then
+       ierr_out = -2
+       if ( myrank == 0 ) write(*,*) "scf not converged"
     end if
 
     call gather_wf

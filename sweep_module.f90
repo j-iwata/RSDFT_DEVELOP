@@ -1,6 +1,6 @@
 MODULE sweep_module
 
-  use parallel_module, only: myrank, end_mpi_parallel
+  use parallel_module
   use electron_module, only: Nfixed, Ndspin, Nspin, Nband, Nelectron
   use bz_module, only: weight_bz, Nbzsm
   use wf_module
@@ -17,28 +17,49 @@ MODULE sweep_module
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_sweep
+  PUBLIC :: calc_sweep, init_sweep
 
   real(8),allocatable :: esp0(:,:,:)
 
+  integer :: iconv_check=1
   real(8) :: Echk, Echk0
-  real(8),parameter :: tol_Echk=1.d-12
+  real(8) :: tol_Echk=1.d-12
+  real(8) :: tol_esp=1.d-7
+  real(8) :: max_esperr
+  integer :: mb_ref
 
 CONTAINS
 
-  SUBROUTINE calc_sweep( Diter, isw_gs, iter_final, disp_switch )
+
+  SUBROUTINE init_sweep( iconv_check_in, mb_ref_in, tol_in )
+    implicit none
+    integer,intent(IN) :: iconv_check_in, mb_ref_in
+    real(8),intent(IN) :: tol_in
+    iconv_check = iconv_check_in
+    mb_ref = mb_ref_in
+    select case( iconv_check )
+    case( 1 )
+       tol_Echk = tol_in
+    case( 2 )
+       tol_esp = tol_in
+    end select
+  END SUBROUTINE init_sweep
+
+
+  SUBROUTINE calc_sweep( Diter, isw_gs, ierr_out, disp_switch )
     implicit none
     integer,intent(IN)  :: Diter,isw_gs
-    integer,intent(OUT) :: iter_final
+    integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
-    integer :: iter,s,k,n,m,ierr
+    integer :: iter,s,k,n,m
     real(8) :: ct0,et0,ct1,et1
     logical :: flag_exit, flag_end, flag_conv
 
     flag_end  = .false.
     flag_exit = .false.
     flag_conv = .false.
-    Echk0     = 0.0d0
+    Echk      = 0.0d0
+    ierr_out  = 0
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -50,7 +71,8 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       esp0=esp
+       Echk0=Echk
+       esp0 =esp
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
           call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,isw_gs &
@@ -68,31 +90,34 @@ CONTAINS
        call calc_with_rhoIN_total_energy( .false., Echk )
 
        call watch(ct1,et1)
-       if ( disp_switch ) call write_info_sweep(ct1-ct0,et1-et0)
 
-! ---
        call conv_check( iter, flag_conv )
-
        call global_watch( .false., flag_end )
-
        flag_exit = (flag_end.or.flag_conv)
+
+       if ( disp_switch ) call write_info_sweep(ct1-ct0,et1-et0)
 ! ---
        call watcht(disp_switch,"",0)
        call write_data( disp_switch, flag_exit )
        call watcht(disp_switch,"io",1)
-
+! ---
        if ( flag_exit ) exit
 
     end do ! iter
 
-    iter_final = iter
-
     deallocate( esp0 )
 
+    ierr_out = iter
+
     if ( flag_end ) then
+       ierr_out = -1
        if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
-       call end_mpi_parallel
-       stop
+       return
+    end if
+
+    if ( iter > Diter ) then
+       ierr_out = -2
+       if ( myrank == 0 ) write(*,*) "sweep not converged"
     end if
 
     call gather_wf
@@ -104,14 +129,35 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: iter
     logical,intent(OUT) :: flag_conv
-    if ( iter == 1 ) Echk0=0.0d0
-    if ( abs(Echk-Echk0) < tol_Echk ) then
-       flag_conv=.true.
-    else
-       flag_conv=.false.
-       Echk0=Echk
-    end if
+    select case( iconv_check )
+    case( 1 )
+         call conv_check_1( iter, flag_conv )
+    case( 2 )
+         call conv_check_2( flag_conv )
+    end select
   END SUBROUTINE conv_check
+
+  SUBROUTINE conv_check_1( iter, flag_conv )
+    implicit none
+    integer,intent(IN)  :: iter
+    logical,intent(OUT) :: flag_conv
+    if ( iter == 1 ) Echk0=0.0d0
+    flag_conv=.false.
+    if ( abs(Echk-Echk0) < tol_Echk ) flag_conv=.true.
+  END SUBROUTINE conv_check_1
+
+  SUBROUTINE conv_check_2( flag_conv )
+    implicit none
+    logical,intent(OUT) :: flag_conv
+    integer :: ierr
+    real(8) :: err0
+    max_esperr = maxval( abs(  esp(1:mb_ref,MBZ_0,MSP_0:MSP_1) &
+                             -esp0(1:mb_ref,MBZ_0,MSP_0:MSP_1) ) )
+    call mpi_allreduce(max_esperr,err0,1,MPI_REAL8,MPI_MAX,comm_spin,ierr)
+    call mpi_allreduce(err0,max_esperr,1,MPI_REAL8,MPI_MAX,comm_bzsm,ierr)
+    flag_conv = .false.
+    if ( max_esperr < tol_esp ) flag_conv = .true.
+  END SUBROUTINE conv_check_2
 
 
   SUBROUTINE write_info_sweep(ct,et)
@@ -126,7 +172,13 @@ CONTAINS
             ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
     end do
     end do
-    write(*,'(1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",g12.5)') Echk, Echk-Echk0, tol_Echk
+    if ( iconv_check == 1 ) then
+       write(*,'(1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",g12.5)') &
+            Echk, Echk-Echk0, tol_Echk
+    else
+       write(*,'(1x,"max_esperr/tol, mb_ref =",g12.5," /",g12.5,i7)') &
+            max_esperr,tol_esp,mb_ref
+    end if
     write(*,*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
     write(*,*) "time(sweep)=",ct,et
   END SUBROUTINE write_info_sweep

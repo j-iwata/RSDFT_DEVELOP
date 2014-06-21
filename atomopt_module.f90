@@ -640,7 +640,15 @@ CONTAINS
           end select
 
           if ( disp_switch ) write(*,*) "SCF start"
-          call calc_scf( diter_opt, iter_final, .false. )
+          call calc_scf( diter_opt, ierr, .false. )
+          if ( ierr == -1 ) then
+             if ( myrank == 0 ) write(*,*) "time limit !!!"
+             exit opt_ion
+          end if
+          if ( ierr == -2 ) then
+             if ( myrank == 0 ) write(*,*) "SCF is not converged"
+          end if
+          iter_final=ierr
 
           select case(SYStype)
           case default

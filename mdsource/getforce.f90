@@ -17,9 +17,10 @@ SUBROUTINE getforce
        ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
   use scf_module
   use array_bound_module, only: MB_0,MB_1
+  use parallel_module, only: end_mpi_parallel
   implicit none
   real(8) :: c
-  integer :: a,Diter1,iter_final
+  integer :: a,Diter1,ierr
 
   Diter1       = 100
   c            = 1.d0/(2.d0*acos(-1.d0))
@@ -47,7 +48,15 @@ SUBROUTINE getforce
   MB_0=MB_0_SCF
   MB_1=MB_1_SCF
 
-  call calc_scf( Diter1, iter_final, disp_switch )
+  call calc_scf( Diter1, ierr, disp_switch )
+  if ( ierr == -1 ) then
+     if ( disp_switch ) write(*,*) "time limit !!!"
+     call end_mpi_parallel
+     stop "stop@getforce"
+  end if
+  if ( ierr == -2 ) then
+     if ( disp_switch ) write(*,*) "SCF is not converged"
+  end if
 
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD

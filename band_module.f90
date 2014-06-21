@@ -22,6 +22,7 @@ MODULE band_module
   use band_variables, only: nfki,nbk,ak,nskip_band &
        ,esp_conv_tol, mb_band, mb2_band, maxiter_band &
        ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,read_band
+  use sweep_module, only: calc_sweep, init_sweep
   
   implicit none
 
@@ -118,7 +119,7 @@ CONTAINS
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
     allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
     allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
-    allocate( esp0(MB,MBZ,MSP)               ) ; esp0=0.d0
+!    allocate( esp0(MB,MBZ,MSP)               ) ; esp0=0.d0
     allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) ) ; unk0=0.d0
 
 !    k=MBZ_0
@@ -147,6 +148,8 @@ CONTAINS
     iktrj_1 = id_k(myrank_k)+ir_k(myrank_k)
     iktrj_2 = id_k(myrank_k)+maxval(ir_k)
 
+    call init_sweep( 2, mb2_band, esp_conv_tol )
+
     loop_iktrj : do iktrj = iktrj_0, iktrj_2
 
        if ( iktrj <= nskip_band ) then
@@ -168,38 +171,16 @@ CONTAINS
        call init_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
        call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
 
-       esp0(:,:,:) = 1.d10
+       call calc_sweep( Diter_band, iswitch_gs, ierr, disp_switch )
 
-       do iter=1,Diter_band
-          if ( disp_switch ) write(*,'(a60,"band_iter=",i3)') repeat("-",60),iter
-          do s=MSP_0,MSP_1
-             call conjugate_gradient(ML_0,ML_1,MB,MBZ_0,s,Ncg,iswitch_gs &
-                  ,unk(ML_0,1,MBZ_0,s),esp(1,MBZ_0,s),res(1,MBZ_0,s))
-             call gram_schmidt_t(1,MB,MBZ_0,s)
-             call subspace_diag(MBZ_0,s)
-          end do
-          max_err = maxval( abs(  esp(1:mb2_band,MBZ_0,MSP_0:MSP_1) &
-                                -esp0(1:mb2_band,MBZ_0,MSP_0:MSP_1) ) )
-          if ( iktrj_1 < iktrj ) max_err=0.d0
-          call mpi_allreduce(max_err,max_err0,1,MPI_REAL8,MPI_MAX,comm_spin,ierr)
-          call mpi_allreduce(max_err0,max_err,1,MPI_REAL8,MPI_MAX,comm_bzsm,ierr)
-          if ( disp_switch ) write(*,*) "iktrj,max_err,iter=",iktrj,max_err,iter
-          if ( max_err < esp_conv_tol ) then
-             exit
-          else if ( iter == Diter_band ) then
-             stop "band is not converged"
-          end if
-          esp0(:,:,:)=esp(:,:,:)
-          call global_watch(.false.,flag_end)
-          if ( flag_end ) then
-             if ( myrank == 0 ) write(*,*) "etime limit !!!"
-             exit loop_iktrj
-          end if
-       end do ! iter
-
-       call esp_gather(MB,Nbzsm,MSP,esp)
-
-       call gather_wf
+       if ( ierr == 1 ) then
+          if ( myrank == 0 ) write(*,*) "etime limit !!!"
+          exit loop_iktrj
+       end if
+       if ( ierr == 2 ) then
+          write(*,*) "band is not converged"
+          return
+       end if
 
 #ifndef _DRSDFT_
        if ( iktrj_0 < iktrj ) then
@@ -268,7 +249,7 @@ CONTAINS
           call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
        do s=1,MSP
-          esp0_tmp(:,myrank_k,s)=esp0(:,MBZ_0,s)
+          esp0_tmp(:,myrank_k,s)=esp(:,MBZ_0,s)
           call mpi_allgather(esp0_tmp(1,myrank_k,s),MB,mpi_real8,esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
 
@@ -276,13 +257,15 @@ CONTAINS
           iktrj_tmp = iktrj_00 + ibz
           if ( iktrj_tmp > nktrj ) exit
           if ( myrank == 0 ) then
-             write(unit_band_eigv,'(1x,2i6,3f20.12,i8)') iktrj_tmp,mb2_band,kbb_tmp(1:3,ibz),MBV
-             write(unit_band_dedk,'(1x,2i6,3f20.12)') iktrj_tmp,mb2_band,kbb_tmp(1:3,ibz)
+             write(unit_band_eigv,'(1x,2i6,3f20.12,i8)') &
+                  iktrj_tmp,mb2_band,kbb_tmp(1:3,ibz),MBV
+             write(unit_band_dedk,'(1x,2i6,3f20.12)') &
+                  iktrj_tmp,mb2_band,kbb_tmp(1:3,ibz)
           end if
           do n=1,mb2_band
              if ( disp_switch ) then
                 write(*,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
-                     ,( esp_tmp(n,ibz,s),abs(esp_tmp(n,ibz,s)-esp0_tmp(n,ibz,s)),s=1,MSP )
+           ,( esp_tmp(n,ibz,s),abs(esp_tmp(n,ibz,s)-esp0_tmp(n,ibz,s)),s=1,MSP )
              end if
              if ( myrank == 0 ) then
                 write(unit_band_eigv,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
@@ -310,7 +293,7 @@ CONTAINS
     end if
 
     deallocate( unk0 )
-    deallocate( esp0 )
+!    deallocate( esp0 )
     deallocate( pxyz )
     deallocate( kbb_tmp )
     deallocate( esp_tmp )
