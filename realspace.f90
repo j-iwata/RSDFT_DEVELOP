@@ -293,7 +293,7 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
-  if ( iswitch_scf ) then
+  if ( iswitch_scf == 1 ) then
      call init_scf( Ndiag ) 
      call calc_scf( Diter, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
