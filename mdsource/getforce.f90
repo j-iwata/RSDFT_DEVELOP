@@ -47,7 +47,7 @@ SUBROUTINE getforce
   MB_0=MB_0_SCF
   MB_1=MB_1_SCF
 
-  call calc_scf(Diter1,0,iter_final,disp_switch)
+  call calc_scf( Diter1, iter_final, disp_switch )
 
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD

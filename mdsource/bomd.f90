@@ -412,7 +412,7 @@ SUBROUTINE bomd
         end if
      endif
 
-     call global_watch(flag_etlimit)
+     call global_watch(.false.,flag_etlimit)
      if ( flag_etlimit ) then
         if ( myrank == 0 ) write(*,*) "elapsed time limit exceeded : flag_etlimit=",flag_etlimit
         exit

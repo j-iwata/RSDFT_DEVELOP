@@ -640,7 +640,7 @@ CONTAINS
           end select
 
           if ( disp_switch ) write(*,*) "SCF start"
-          call calc_scf(diter_opt,0,iter_final,.false.)
+          call calc_scf( diter_opt, iter_final, .false. )
 
           select case(SYStype)
           case default

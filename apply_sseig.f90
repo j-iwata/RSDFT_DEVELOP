@@ -301,7 +301,7 @@ CONTAINS
 
        end do ! i
 
-       call global_watch(flag_end)
+       call global_watch(.false.,flag_end)
        if ( flag_end ) then
           if ( myrank == 0 ) write(*,*) "etime limit exceeded!"
           call mpi_finalize(ierr)

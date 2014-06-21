@@ -209,9 +209,10 @@ CONTAINS
   END SUBROUTINE calc_total_energy
 
 
-  SUBROUTINE calc_with_rhoIN_total_energy(disp_switch)
+  SUBROUTINE calc_with_rhoIN_total_energy(disp_switch,Ehwf_out)
     implicit none
     logical,intent(IN) :: disp_switch
+    real(8),optional,intent(OUT) :: Ehwf_out
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
     sb(:)=0.d0
@@ -232,6 +233,7 @@ CONTAINS
        write(*,*) '(HWF) ',Ehwf, Ehwf_0-Ehwf
     end if
     Ehwf_0 = Ehwf
+    if ( present(Ehwf_out) ) Ehwf_out=Ehwf
   END SUBROUTINE calc_with_rhoIN_total_energy
 
 

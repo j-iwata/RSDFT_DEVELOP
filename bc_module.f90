@@ -2,15 +2,14 @@ MODULE bc_module
 
   use rgrid_module, only: Ngrid,Igrid
   use parallel_module
+  use bc_mol_module, only: init_bcset_mol
+  use bc_variables, only: fdinfo_send,fdinfo_recv,n_neighbor
 
   implicit none
 
   PRIVATE
-  PUBLIC :: www,bcset,init_bcset,allocate_bcset &
-           ,n_neighbor,fdinfo_send,fdinfo_recv
-
-  integer :: n_neighbor(6)
-  integer,allocatable :: fdinfo_send(:,:,:),fdinfo_recv(:,:,:)
+  PUBLIC :: www, bcset, init_bcset, allocate_bcset &
+           ,n_neighbor, fdinfo_send, fdinfo_recv
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
@@ -30,6 +29,7 @@ CONTAINS
 
 
   SUBROUTINE bcset(ib1,ib2,ndepth,idir)
+    implicit none
     integer,intent(IN) :: ib1,ib2,ndepth,idir
     integer :: a1,a2,a3,b1,b2,b3,nb,ns,ms,mt
     integer :: m,n,ndata,i1,i2,i3,ib,ierr
@@ -409,8 +409,22 @@ CONTAINS
   END SUBROUTINE bcset
 
 
-  SUBROUTINE init_bcset(Md_max)
-    integer,intent(IN) :: Md_max
+  SUBROUTINE init_bcset( Md_in, SYStype )
+    implicit none
+    integer,intent(IN) :: Md_in, SYStype
+    Md = Md_in
+    select case( SYStype )
+    case default
+       call init_bcset_sol
+    case( 1 )
+       call init_bcset_mol(Md,Ngrid(1),np_grid,myrank_g,comm_grid,pinfo_grid)
+    end select
+    call allocate_bcset
+  END SUBROUTINE init_bcset
+
+
+  SUBROUTINE init_bcset_sol
+    implicit none
     integer :: a1,a2,a3,b1,b2,b3,a1b,b1b,a2b,b2b,a3b,b3b
     integer,allocatable :: map_grid_2_pinfo(:,:,:,:)
     integer,allocatable :: ireq(:)
@@ -418,8 +432,6 @@ CONTAINS
     integer :: jrank,ip,fp,ns,irank,nreq,itags,itagr,ierr
     integer :: ML1,ML2,ML3
     integer :: istatus(MPI_STATUS_SIZE,123)
-
-    Md = Md_max
 
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
@@ -728,14 +740,14 @@ CONTAINS
 
     call allocate_bcset
 
-  END SUBROUTINE init_bcset
+    if ( myrank == 0 ) write(*,'(a60," init_bcset_sol(end)")') repeat("-",60)
+
+  END SUBROUTINE init_bcset_sol
 
 
-  SUBROUTINE allocate_bcset(Md_in)
+  SUBROUTINE allocate_bcset
     implicit none
-    integer,optional,intent(IN) :: Md_in
     integer :: a1,a2,a3,b1,b2,b3
-    if ( present(Md_in) ) Md=Md_in
     a1=Igrid(1,1)-Md ; a2=Igrid(1,2)-Md ; a3=Igrid(1,3)-Md
     b1=Igrid(2,1)+Md ; b2=Igrid(2,2)+Md ; b3=Igrid(2,3)+Md
     if ( allocated(www) ) deallocate(www)

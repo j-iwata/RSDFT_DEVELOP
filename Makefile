@@ -22,6 +22,8 @@ MODS1 = simc_module.o\
         ggrid_module.o \
         bz_module.o \
         fd_module.o \
+        bc_variables.o \
+        bc_mol_module.o \
         bc_module.o \
         kinetic_variables.o  \
         kinetic_mol_module.o \
@@ -69,7 +71,6 @@ MODS1 = simc_module.o\
         ps_pcc_mol_module.o\
         ps_initrho_mol_module.o\
         ps_nloc2_mol_module.o\
-        bc_mol_module.o\
         ps_local_mol_module.o\
         vloc_rho_mol_module.o \
         force_nloc2_mol_module.o \
@@ -85,8 +86,9 @@ MODS1 = simc_module.o\
         ewald_module.o\
         eion_module.o \
         force_ewald_module.o \
-        gram_schmidt_module.o \
+        gram_schmidt_m_module.o \
         gram_schmidt_t_module.o \
+        gram_schmidt_module.o \
         xc_pw92_gth_module.o\
         xc_module.o \
         cgpc_module.o \
@@ -120,9 +122,9 @@ DIAGSL_MOD = scalapack_module.o\
              subspace_diag_sl_module.o 
 DIAG_MOD   = subspace_diag_module.o
 
-MODS2 = scf_module.o atomopt_module.o global_variables.o parameters_module.o
+MODS2 = scf_module.o sweep_module.o atomopt_module.o global_variables.o parameters_module.o
 MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
-MODS4 = momentum_module.o band_module.o
+MODS4 = momentum_module.o band_variables.o band_sseig_module.o band_module.o
 
 ########################################################################
 ########################################################################
