@@ -44,7 +44,11 @@ MODULE scf_module
 !  logical :: second_diag=.false.
   logical :: second_diag=.true.
 
+  real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
+  real(8) :: diff_vrho(7)
+
 CONTAINS
+
 
   SUBROUTINE init_scf( Ndiag_in )
      implicit none
@@ -77,6 +81,8 @@ CONTAINS
     else
        call init_mixing( ML01, MSP01, Vloc(ML_0,MSP_0) )
     end if
+
+    call init_diff_vrho_scf
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -145,7 +151,9 @@ CONTAINS
        call calc_hartree(ML_0,ML_1,MSP,rho)
        call calc_xc
 
-       call calc_total_energy(.false.,disp_switch)
+       call diff_vrho_scf( disp_switch )
+
+       call calc_total_energy( .false., disp_switch )
 
        if ( mod(imix,2) == 0 ) then
 
@@ -193,6 +201,8 @@ CONTAINS
     end if
 
     deallocate( esp0 )
+
+    call end_diff_vrho_scf
 
     ierr_out = iter
 
@@ -243,6 +253,86 @@ CONTAINS
     call test2_localpot2(mm1,mm2,mm3,vloc_dense)
     call localpot2_te(eion_tmp,eh_tmp,exc_tmp,disp_switch)
   END SUBROUTINE sub_localpot2_scf
+
+
+  SUBROUTINE init_diff_vrho_scf
+    implicit none
+    allocate( rho_0(ML_0:ML_1,MSP)         ) ; rho_0=0.0d0
+    allocate( vxc_0(ML_0:ML_1,MSP_0:MSP_1) ) ; vxc_0=0.0d0
+    allocate( vht_0(ML_0:ML_1)             ) ; vht_0=0.0d0
+  END SUBROUTINE init_diff_vrho_scf
+
+  SUBROUTINE diff_vrho_scf( disp_switch )
+    implicit none
+    logical,intent(IN) :: disp_switch
+    integer :: i,j,m,ierr
+    real(8) :: dtmp_0,dtmp_1
+
+    diff_vrho(:)=0.0d0
+
+    do i=MSP_0,MSP_1
+       diff_vrho(i+0) = sum( (rho(:,i)-rho_0(:,i))**2 )
+       diff_vrho(i+2) = sum( (Vxc(:,i)-vxc_0(:,i))**2 )
+    end do
+
+    m=MSP_1-MSP_0+1
+    call mpi_allgather(diff_vrho(MSP_0),m,MPI_REAL8 &
+                      ,diff_vrho,m,MPI_REAL8,comm_spin,ierr)
+    call mpi_allgather(diff_vrho(MSP_0+2),m,MPI_REAL8 &
+                      ,diff_vrho(3),m,MPI_REAL8,comm_spin,ierr)
+
+    diff_vrho(5) = sum( (Vh(:)-vht_0(:))**2 )
+
+    do i=ML_0,ML_1
+
+       dtmp_1=0.0d0
+       dtmp_0=0.0d0
+       do j=1,MSP
+          dtmp_1 = dtmp_1 + rho(i,j)
+          dtmp_0 = dtmp_0 + rho_0(i,j)
+       end do
+       diff_vrho(6) = diff_vrho(6) + (dtmp_1-dtmp_0)**2
+
+       dtmp_1=0.0d0
+       dtmp_0=0.0d0
+       do j=1,MSP
+          dtmp_1 = dtmp_1 - rho(i,j)
+          dtmp_0 = dtmp_0 - rho_0(i,j)
+       end do
+       diff_vrho(7) = diff_vrho(7) + (dtmp_1-dtmp_0)**2
+
+    end do ! i
+
+    diff_vrho(:)=diff_vrho(:)/ML
+    call mpi_allreduce( MPI_IN_PLACE,diff_vrho,7,MPI_REAL8 &
+                       ,MPI_SUM,comm_grid,ierr )
+
+    if ( disp_switch ) then
+       do i=1,MSP
+          write(*,'(1x,"diff_rho(",i1,"/",i1,")=",g12.5)') i,MSP,diff_vrho(i)
+       end do
+       write(*,'(1x,"diff_tod     =",g12.5)') diff_vrho(6)
+       write(*,'(1x,"diff_spd     =",g12.5)') diff_vrho(7)
+       do i=1,MSP
+          write(*,'(1x,"diff_vxc(",i1,"/",i1,")=",g12.5)') i,MSP,diff_vrho(2+i)
+       end do
+       write(*,'(1x,"diff_vht     =",g12.5)'),diff_vrho(5)
+    end if
+
+    do i=MSP_0,MSP_1
+       rho_0(:,i) = rho(:,i)
+       vxc_0(:,i) = Vxc(:,i)
+    end do
+    vht_0(:) = Vh(:)
+
+  END SUBROUTINE diff_vrho_scf
+
+  SUBROUTINE end_diff_vrho_scf
+    implicit none
+    deallocate( vht_0 )
+    deallocate( vxc_0 )
+    deallocate( rho_0 )
+  END SUBROUTINE end_diff_vrho_scf
 
 
 END MODULE scf_module

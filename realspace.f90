@@ -339,12 +339,11 @@ PROGRAM Real_Space_Solid
 
 ! --- finalize ---
 
-  call global_watch(disp_switch)
-
   if ( DISP_SWITCH ) then
      write(*,*) "END_PROGRAM : MAIN" 
   end if
 900 continue
+  call global_watch(disp_switch)
   call close_info
   call end_mpi_parallel
 

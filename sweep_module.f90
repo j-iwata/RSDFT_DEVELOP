@@ -75,10 +75,14 @@ CONTAINS
        esp0 =esp
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
+          call watcht(disp_switch,"",0)
           call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,isw_gs &
                                  ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+          call watcht(disp_switch,"cg",1)
           call gram_schmidt(1,Nband,k,s)
+          call watcht(disp_switch,"gs",1)
           call subspace_diag(k,s)
+          call watcht(disp_switch,"diag",1)
        end do
        end do
 
