@@ -173,11 +173,11 @@ CONTAINS
 
        call calc_sweep( Diter_band, iswitch_gs, ierr, disp_switch )
 
-       if ( ierr == 1 ) then
+       if ( ierr == -1 ) then
           if ( myrank == 0 ) write(*,*) "etime limit !!!"
           exit loop_iktrj
        end if
-       if ( ierr == 2 ) then
+       if ( ierr == -2 ) then
           write(*,*) "band is not converged"
           return
        end if

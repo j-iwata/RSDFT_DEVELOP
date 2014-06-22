@@ -82,8 +82,10 @@ CONTAINS
 
 !$OMP parallel do
     do j=1  ,MBC
-       do i=j+1,MBC
-          sig(j,i) = sig(i,j)
+       !do i=j+1,MBC
+       !   sig(j,i) = sig(i,j)
+       do i=1,j-1
+          sig(i,j) = sig(j,i)
        end do
        sig(j,j)=sig(j,j)+1.0d0
     end do
@@ -143,8 +145,10 @@ CONTAINS
 
 !$OMP parallel do
     do j=1,MBC
-       do i=j+1,MBC
-          tau(j,i) = tau(i,j)
+       !do i=j+1,MBC
+       !   tau(j,i) = tau(i,j)
+       do i=1,j-1
+          tau(i,j) = tau(j,i)
        end do
        tau(j,j)=tau(j,j)+1.0d0
     end do
@@ -204,8 +208,10 @@ CONTAINS
 
 !$OMP parallel do
     do j=1,MBC
-    do i=j+1,MBC
-       wrk(j,i) = wrk(i,j)
+    !do i=j+1,MBC
+    !   wrk(j,i) = wrk(i,j)
+    do i=1,j-1
+       wrk(i,j) = wrk(j,i)
     end do
     end do
 !$OMP end parallel do 
