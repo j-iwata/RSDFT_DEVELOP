@@ -76,11 +76,7 @@ CONTAINS
     ib1       = max(1,nint(Nelectron/2)-20)
     ib2       = min(nint(Nelectron/2)+80,Nband)
 
-    if ( mod(imix,2) == 0 ) then
-       call init_mixing( ML01, MSP01,  rho(ML_0,MSP_0) )
-    else
-       call init_mixing( ML01, MSP01, Vloc(ML_0,MSP_0) )
-    end if
+    call init_mixing(ML01,MSP,MSP_0,MSP_1,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0))
 
     call init_diff_vrho_scf
 
@@ -155,9 +151,15 @@ CONTAINS
 
        call calc_total_energy( .false., disp_switch )
 
-       if ( mod(imix,2) == 0 ) then
+! ---
+       do s=MSP_0,MSP_1
+          Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+       end do
 
-          call perform_mixing(ML01,MSP01,rho(ML_0,MSP_0),flag_conv,disp_switch)
+       call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
+                           ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
+
+       if ( mod(imix,2) == 0 ) then
           call normalize_density
           m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
           call mpi_allgather &
@@ -167,15 +169,8 @@ CONTAINS
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
-
-       else if ( mod(imix,2) == 1 ) then
-
-          do s=MSP_0,MSP_1
-             Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-          end do
-          call perform_mixing(ML01,MSP01,Vloc(ML_0,MSP_0),flag_conv,disp_switch)
-
        end if
+! ---
 
        if ( flag_localpot2 ) call sub_localpot2_scf( disp_switch )
 
