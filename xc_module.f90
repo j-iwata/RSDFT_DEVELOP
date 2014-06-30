@@ -17,6 +17,8 @@ MODULE xc_module
   use fd_module
   use electron_module, only: Nspin
 
+  use xc_ldapz81_module
+
   implicit none
 
   PRIVATE
@@ -78,12 +80,32 @@ CONTAINS
 
   SUBROUTINE calc_xc
     implicit none
+    real(8),allocatable :: rho_tmp(:,:)
+    real(8) :: c
+    integer :: s
+
     if ( .not.allocated(Vxc) ) then
        allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
+       Vxc=0.0d0
     end if
+
+    allocate( rho_tmp(ML_0:ML_1,MSP) )
+    rho_tmp(:,:)=rho(:,:)
+
+    if ( flag_pcc_0 ) then
+       c=1.0d0
+       if ( MSP == 2 ) c=0.5d0
+       do s=1,MSP
+          rho_tmp(:,s) = rho_tmp(:,s) + c*rhoc(:)
+       end do
+    end if
+       
     select case(XCtype)
+    case('LDAPZ81_org')
+       call calc_LDAPZ81_org
     case('LDAPZ81')
-       call calc_LDAPZ81
+       call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
+       call calc_LDAPZ81( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
     case('LDAPW92')
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
@@ -106,10 +128,13 @@ CONTAINS
     case('LCwPBE')
        stop "LCwPBE is not available yet"
     end select
+
+    deallocate( rho_tmp )
+
   END SUBROUTINE calc_xc
 
 
-  SUBROUTINE calc_LDAPZ81
+  SUBROUTINE calc_LDAPZ81_org
     implicit none
     real(8),parameter :: gam(1:2)=(/-0.1423d0,-0.0843d0/)
     real(8),parameter :: bet1(1:2)=(/1.0529d0,1.3981d0/)
@@ -245,7 +270,7 @@ CONTAINS
     end if
 
     return
-  END SUBROUTINE calc_LDAPZ81
+  END SUBROUTINE calc_LDAPZ81_org
 
 !============================================================== GGAPBE96
 !--------1---------2---------3---------4---------5---------6---------7--

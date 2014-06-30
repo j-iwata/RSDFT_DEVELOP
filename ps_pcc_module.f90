@@ -134,6 +134,7 @@ CONTAINS
 
     if ( .not.allocated(rhoc) ) then
        allocate( rhoc(ML_0:ML_1) )
+       rhoc=0.0d0
     end if
 
     allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )

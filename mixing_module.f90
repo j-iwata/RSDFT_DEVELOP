@@ -194,8 +194,9 @@ CONTAINS
        case(10:19)
           call pulay_r_mixing( ML0, MSP, h )
        case(20:29)
-          write(*,*) "imix=",imix
-          stop "this mixing is not available"
+          call pulay_r2_mixing( ML0, MSP, h )
+!          write(*,*) "imix=",imix
+!          stop "this mixing is not available"
        end select
 
        sum0(:)=0.0d0
@@ -433,6 +434,91 @@ CONTAINS
     return
 
   END SUBROUTINE pulay_r_mixing
+
+
+  SUBROUTINE pulay_r2_mixing(m,n,f)
+    implicit none
+    integer,intent(IN)    :: m,n
+    real(8),intent(INOUT) :: f(m,n)
+    integer :: s,mmix0,ierr,i,i0,j0,mm,j
+    integer,allocatable :: ipiv(:)
+    real(8),allocatable :: rwork(:,:)
+    complex(8) :: zc
+    complex(8),allocatable :: A0(:,:),A1(:,:),b1(:),X(:),Y(:)
+
+    Xou(:,:,mmix) = f(:,:)
+
+    mmix_count = mmix_count + 1
+
+    mmix0 = min( mmix_count, mmix )
+
+    if ( mmix == 1 .or. mmix0 < mmix ) then
+       do i=2,mmix
+          Xin(:,:,i-1)=Xin(:,:,i)
+          Xou(:,:,i-1)=Xou(:,:,i)
+       end do
+       Xin(:,:,mmix) = Xin(:,:,mmix) + beta*( Xou(:,:,mmix)-Xin(:,:,mmix) )
+       f(:,:) = Xin(:,:,mmix)
+       return
+    end if
+
+    allocate( ipiv(mmix0) )
+    allocate( X(m),Y(m) )
+    allocate( b1(mmix0) )
+    allocate( A1(mmix0,mmix0) )
+    allocate( A0(mmix0,mmix0) )
+
+    b1(:)   = zero
+    A1(:,:) = zero
+    A0(:,:) = zero
+    mm      = size(A1)
+
+    do j0=1 ,mmix0
+    do i0=j0,mmix0
+       i=mmix-mmix0+i0
+       j=mmix-mmix0+j0
+       A0(i0,j0)=sum( conjg(Xou(:,:,i)-Xin(:,:,i)) &
+                          *(Xou(:,:,j)-Xin(:,:,j)) )
+       A0(j0,i0)=conjg( A0(i0,j0) )
+    end do
+    end do
+
+    call mpi_allreduce(A0,A1,mm,mpi_complex16,mpi_sum,comm_grid,ierr)
+
+    b1(1:mmix0) = (1.d0,0.d0)
+    A0(:,:)     = A1(:,:)
+
+    call zgesv(mmix0,1,A1,mmix0,ipiv,b1,mmix0,ierr)
+
+    zc=1.d0/sum( b1(1:mmix0) )
+    b1(1:mmix0)=zc*b1(1:mmix0)
+
+    do s=1,n
+
+       X(:)=zero
+       Y(:)=zero
+
+       do i0=1,mmix0
+          i=mmix-mmix0+i0
+          X(:)=X(:)+b1(i0)*Xin(:,s,i)
+          Y(:)=Y(:)+b1(i0)*Xou(:,s,i)
+       end do
+
+       do i=max(1,mmix-mmix0),mmix-1
+          Xin(:,s,i)=Xin(:,s,i+1)
+          Xou(:,s,i)=Xou(:,s,i+1)
+       end do
+
+       Xin(:,s,mmix) = X(:) + beta*( Y(:)-X(:) )
+
+    end do ! s
+
+    f(:,:) = real( Xin(:,:,mmix) )
+
+    deallocate( A0,A1,b1,Y,X,ipiv )
+    return
+
+  END SUBROUTINE pulay_r2_mixing
 
 
 END MODULE mixing_module
