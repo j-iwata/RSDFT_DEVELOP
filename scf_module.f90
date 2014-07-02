@@ -21,6 +21,7 @@ MODULE scf_module
   use density_module
   use watch_module
   use ggrid_module, only: Ecut
+  use rgrid_module, only: dV
   use esp_calc_module
 
   use localpot2_variables, only: vloc_dense,vloc_dense_old,rho_nl &
@@ -76,7 +77,7 @@ CONTAINS
     ib1       = max(1,nint(Nelectron/2)-20)
     ib2       = min(nint(Nelectron/2)+80,Nband)
 
-    call init_mixing(ML01,MSP,MSP_0,MSP_1,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0))
+    call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0))
 
     call init_diff_vrho_scf
 

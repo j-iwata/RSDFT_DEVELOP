@@ -1,13 +1,12 @@
 MODULE mixing_module
 
-  use parallel_module
-  use rgrid_module, only: dV
-
   implicit none
 
   PRIVATE
-  PUBLIC :: imix, mmix, beta, sqerr_out &
-       , init_mixing, read_mixing, perform_mixing,read_oldformat_mixing
+  PUBLIC :: sqerr_out, imix, beta &
+           ,init_mixing,read_mixing,perform_mixing,read_oldformat_mixing
+
+  include 'mpif.h'
 
   integer :: imix,mmix
   real(8) :: beta,scf_conv,sqerr_out(4)
@@ -19,6 +18,9 @@ MODULE mixing_module
   real(8) :: diff(2),dif0(2),dif1(2)
 
   integer :: ML, ML0, MF0, MSP
+  integer :: comm_grid, comm_spin
+  real(8) :: dV
+  logical :: disp_switch
 
 CONTAINS
 
@@ -86,7 +88,6 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank
     integer :: ierr
-    include 'mpif.h'
     call mpi_bcast(imix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(mmix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(beta,1,MPI_REAL8  ,rank,MPI_COMM_WORLD,ierr)
@@ -94,10 +95,10 @@ CONTAINS
   END SUBROUTINE send_mixing
 
 
-  SUBROUTINE init_mixing( ML0_in,MSP_in,nf1,nf2,f,g )
+  SUBROUTINE init_mixing(ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in,dV_in,f,g)
     implicit none
-    integer,intent(IN) :: ML0_in,MSP_in,nf1,nf2
-    real(8),intent(IN) :: f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
+    integer,intent(IN) :: ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in
+    real(8),intent(IN) :: dV_in,f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
     integer :: m,ierr
 
     beta0      = 1.0d0-beta
@@ -107,6 +108,11 @@ CONTAINS
     MSP = MSP_in
     MF0 = MSP*2
     call mpi_allreduce( ML0, ML, 1,MPI_INTEGER,MPI_SUM,comm_grid,ierr )
+
+    comm_grid = comm_grid_in
+    comm_spin = comm_spin_in
+
+    dV = dV_in
 
     if ( allocated(Xou)  ) deallocate( Xou )
     if ( allocated(Xin)  ) deallocate( Xin )
@@ -132,16 +138,19 @@ CONTAINS
   END SUBROUTINE init_mixing
 
 
-  SUBROUTINE perform_mixing( m, n1, n2, f_io, g_io, flag_conv, disp_switch )
+  SUBROUTINE perform_mixing( m, n1, n2, f_io, g_io, flag_conv, disp_sw_in )
     implicit none
     integer,intent(IN)    :: m,n1,n2
     real(8),intent(INOUT) :: f_io(m,n1:n2),g_io(m,n1:n2)
     logical,intent(OUT)   :: flag_conv
-    logical,optional,intent(IN) :: disp_switch
+    logical,optional,intent(IN) :: disp_sw_in
     real(8) :: err0(2),err(2),sum0(2),beta_bak,beta_min,dif_min(2)
     integer :: n,ierr,loop,max_loop,mmix_count_bak,i,i0
     complex(8),allocatable :: Xou_bak(:,:,:),Xin_bak(:,:,:)
     real(8),allocatable :: f(:,:),g(:,:),h(:,:),h_old(:,:),h_bak(:,:)
+
+    disp_switch = .false.
+    if ( present(disp_sw_in) ) disp_switch = disp_sw_in
 
     if ( disp_switch ) write(*,'("----- mixing")')
 
@@ -210,7 +219,7 @@ CONTAINS
           if ( dif0(i) /= 0.0d0 ) diff(i) = dif1(i)/dif0(i)
        end do
 
-       if ( present(disp_switch) ) then
+       if ( present(disp_sw_in) ) then
           if ( disp_switch ) then
              write(*,'(1x,"diff=",i4,2x,2(4g14.6,2x))') &
                   loop,(diff(i),dif1(i),dif0(i),beta,i=1,MSP)
@@ -294,7 +303,7 @@ CONTAINS
        flag_conv = .false.
     end if
 
-    if ( disp_switch_parallel ) then
+    if ( disp_switch ) then
        if ( MSP == 1 ) then
           write(*,'(1x,"RSQERR=",g12.5,3x,"VSQERR=",g12.5)') err(1:2)
           write(40,*) err(1:2)
@@ -328,7 +337,7 @@ CONTAINS
     call mpi_allreduce(MPI_IN_PLACE,chrg,2*n,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
     if ( any( chrg(2,1:n) < 0.0d0 ) ) then
-       if ( disp_switch_parallel ) then
+       if ( disp_switch ) then
           write(*,'(1x,"NEGATIVE density exist (tot,neg)=",4g18.9)') &
                ( chrg(1,i),chrg(2,i), i=1,n )
        end if
