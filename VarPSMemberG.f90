@@ -1,7 +1,29 @@
-MODULE VarPSQG
-  
+MODULE VarPSMemberG
   implicit none
 
+  integer,allocatable :: nl(:)
+  integer,allocatable :: nr(:,:)
+  integer,allocatable :: nl3v(:,:)
+  integer,allocatable :: l2v(:,:,:)
+  
+  real(8),allocatable :: qrL(:,:,:,:)
+  real(8),allocatable :: dqrL(:,:,:,:,:)
+
+  complex(8),allocatable :: QG(:,:,:)
+
+  real(8),allocatable :: QRij(:,:)
+
+  integer,allocatable :: no(:,:)
+
+  real(8),allocatable :: ddi(:,:,:,:)
+
+  real(8),allocatable :: qqr(:,:,:,:)
+  real(8),allocatable :: qqc(:,:,:,:)
+
+  real(8),allocatable :: rabr2(:)
+
+  integer :: k1max,k2max,k3max
+  
   integer,allocatable :: k1_to_k2(:,:)
   integer,allocatable :: k1_to_k3(:,:)
   integer,allocatable :: k1_to_iorb(:,:,:)
@@ -11,7 +33,8 @@ MODULE VarPSQG
   integer,allocatable :: N_k2(:)
   integer,allocatable :: icheck_k2(:)
 
-  real(8),allocatable :: qqc(:,:,:,:)
+
+
 
 CONTAINS
 
@@ -66,4 +89,5 @@ CONTAINS
 !------------------------------------------
 
 
-END MODULE VarPSQG
+
+END MODULE VarPSMemberG

@@ -252,10 +252,8 @@ PROGRAM Real_Space_Solid
      call init_ps_pcc
      call init_ps_initrho
      call watcht(disp_switch,"strf",0)
-     call watcht(disp_switch,"strf",0)
 
      call construct_strfac !----- structure factor
-     call watcht(disp_switch,"strf",1)
      call watcht(disp_switch,"strf",1)
 
 #ifndef _FFTE_
@@ -275,6 +273,7 @@ PROGRAM Real_Space_Solid
 
      call destruct_strfac !----- structure factor
 
+if (myrank==0) write(*,*) "start initPS"
      select case( pselect )
      case( 2 )
         call ps_nloc2_init(Gcut)

@@ -24,6 +24,7 @@ CONTAINS
     integer :: i,j,ierr
     character(2) :: cbuf,ckey
     Nelement_PP=0
+    Nelement_local=MKI
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000

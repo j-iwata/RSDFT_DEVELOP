@@ -1,6 +1,7 @@
 MODULE ps_nloc2_init_module
 
-  use pseudopot_module
+!  use pseudopot_module
+  use VarPSMember
 
   use Filtering, only: opFiltering
 
@@ -68,24 +69,30 @@ CONTAINS
   SUBROUTINE ps_nloc2_init(qcut)
     use atom_module, only: Nelement,Natom,ki_atom
     use maskf_module
+use parallel_module
     implicit none
     real(8),intent(IN) :: qcut
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
-    integer,allocatable :: NRps0(:,:)
+!    integer,allocatable :: NRps0(:,:)
     real(8),parameter :: dr=2.d-3
     real(8) :: qc,Rc,sum0,const
     real(8) :: x,y,y0,dy,dy0,maxerr
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
-    real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),Rps0(:,:),vtmp(:,:,:)
+    real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
+!    real(8),allocatable :: Rps0(:,:)
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
+if (myrank==0) write(*,*) "Nelement= ",Nelement_local
+    call allocateRps
+if (myrank==0) write(*,*) "Rps allocated"
+if (myrank==0) write(*,*) "1"
 
-    m=maxval( norb )
-    allocate( NRps0(m,Nelement)  ) ; NRps0=0
-    allocate(  Rps0(m,Nelement)  ) ;  Rps0=0.d0
-    NRps0(:,:)=NRps(:,:)
-     Rps0(:,:)= Rps(:,:)
+!    m=maxval( norb )
+!    allocate( NRps0(m,Nelement)  ) ; NRps0=0
+!    allocate(  Rps0(m,Nelement)  ) ;  Rps0=0.d0
+!    NRps0(:,:)=NRps(:,:)
+!     Rps0(:,:)= Rps(:,:)
 
     do ik=1,Nelement
        MMr=Mr(ik)
@@ -102,6 +109,7 @@ CONTAINS
        end do
     end do
 
+if (myrank==0) write(*,*) "2"
     NRc=maxval( NRps )
     m=maxval( norb )
     allocate( wm(NRc,m,Nelement) )
@@ -167,14 +175,19 @@ CONTAINS
 
     const=2.d0/acos(-1.d0)
 
+if (myrank==0) write(*,*) "3"
     do ik=1,Nelement
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
+if (myrank==0) write(*,*) "NO NRps0? 1"
           NRc=NRps0(iorb,ik)
+if (myrank==0) write(*,*) "NO NRps0? 2"
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
           
+if (myrank==0) write(*,*) "before filtering"
           call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
+if (myrank==0) write(*,*) "after filtering"
 
        end do ! iorb
     end do ! ik
@@ -208,9 +221,12 @@ CONTAINS
        end do
     end do
 
-    deallocate(  Rps0 )
-    deallocate( NRps0 )
+!    deallocate(  Rps0 )
+!    deallocate( NRps0 )
     deallocate( wm )
+
+if (myrank==0) write(*,*) "4"
+if (myrank==0) write(*,*) "end of ps_nloc2_init"
 
   END SUBROUTINE ps_nloc2_init
 
