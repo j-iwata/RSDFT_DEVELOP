@@ -18,6 +18,7 @@ MODULE pseudopot_module
 CONTAINS
 
 
+!-------------------------------------------------------
   SUBROUTINE read_ppname_pseudopot(MKI,rank,unit)
     implicit none
     integer,intent(IN) :: MKI,rank,unit
@@ -72,6 +73,7 @@ CONTAINS
     Npseudopot =MKI
   END SUBROUTINE read_ppname_pseudopot
 
+!-------------------------------------------------------
   SUBROUTINE read_ppname_oldformat_pseudopot(MKI,rank,unit)
     implicit none
     integer,intent(IN) :: MKI,rank,unit
@@ -91,6 +93,7 @@ CONTAINS
     call send_ppname_2(0)
   END SUBROUTINE read_ppname_oldformat_pseudopot
 
+!-------------------------------------------------------
   SUBROUTINE send_ppname_1(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -99,6 +102,7 @@ CONTAINS
     call mpi_bcast(Nelement_PP,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)    
   END SUBROUTINE send_ppname_1
 
+!-------------------------------------------------------
   SUBROUTINE send_ppname_2(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -109,6 +113,7 @@ CONTAINS
   END SUBROUTINE send_ppname_2
 
 
+!-------------------------------------------------------
   SUBROUTINE read_param_pseudopot(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -131,6 +136,7 @@ CONTAINS
     call send_param_pseudopot(0)
   END SUBROUTINE read_param_pseudopot
 
+!-------------------------------------------------------
   SUBROUTINE read_param_oldformat_pseudopot(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -149,7 +155,7 @@ CONTAINS
     call mpi_bcast(pselect,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_param_pseudopot
 
-
+!-------------------------------------------------------
   SUBROUTINE read_pseudopot(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -194,6 +200,7 @@ CONTAINS
   END SUBROUTINE read_pseudopot
 
 
+!-------------------------------------------------------
   SUBROUTINE send_pseudopot(myrank)
     implicit none
     integer,intent(IN) :: myrank
@@ -233,12 +240,14 @@ CONTAINS
   END SUBROUTINE send_pseudopot
 
 
+!-------------------------------------------------------
   SUBROUTINE read_TM
     implicit none
     stop
   END SUBROUTINE read_TM
 
 
+!-------------------------------------------------------
   SUBROUTINE read_PSV
     implicit none
     character(30) :: file_name
@@ -576,6 +585,7 @@ CONTAINS
   END SUBROUTINE read_PSV
 
 
+!-------------------------------------------------------
   SUBROUTINE ps_allocate(n_grd,n_orb)
     implicit none
     integer,intent(IN) :: n_grd,n_orb

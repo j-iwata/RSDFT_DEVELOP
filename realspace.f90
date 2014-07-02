@@ -40,6 +40,10 @@ PROGRAM Real_Space_Solid
 
   use ps_nloc3_module
 
+#ifdef _MODULEINITPS_
+  use pseudopotentials
+#endif
+
   use test_hpsi2_module
   use test_force_module
 
@@ -248,6 +252,10 @@ PROGRAM Real_Space_Solid
 
   if ( SYStype == 0 ) then
 
+#ifdef _MODULEINITPS_
+     call initiationPS(gcut)
+#else
+!-----------------------------------------
      call init_ps_local
      call init_ps_pcc
      call init_ps_initrho
@@ -284,6 +292,8 @@ if (myrank==0) write(*,*) "start initPS"
      case( 5 )
         call prep_ps_nloc_mr
      end select
+!=========================================
+#endif
 
 !----------------------- ESM esm -----
 
