@@ -43,7 +43,7 @@ CONTAINS
 
     if ( flag_init ) then
        write(*,*) "Call INIT_LDAPZ81 first"
-       stop "stop@calc_LDAPZ81"
+       stop "stop@calc_LDAPZ81(in xc_ldapz81_module)"
     end if
 
     allocate( vxc_tmp(ML_0:ML_1,1:MSP) ) ; vxc_tmp=0.0d0
@@ -139,7 +139,7 @@ CONTAINS
     real(8),parameter :: C(1:2)=(/0.002d0,0.0007d0/)
     real(8),parameter :: D(1:2)=(/-0.0116d0,-0.0048d0/)
     real(8) :: onethr,fouthr,onesix,ThrFouPi
-    real(8) :: cns0,factor
+    real(8) :: c0,factor
     real(8) :: s0(2),s1(2)
     real(8) :: trho,rs,rssq,rsln,rhoa,rhob
     real(8) :: f,dfdrhoa,dfdrhob
@@ -150,7 +150,7 @@ CONTAINS
     onethr   = 1.0d0/3.0d0
     fouthr   = 4.0d0/3.0d0
     onesix   = 1.0d0/6.0d0
-    cns0     = 2.0d0**fouthr-2.0d0
+    c0       = 1.d0/( 2.0d0**fouthr-2.0d0 )
 
     factor = 1.0d0
     if ( MSP == 1 ) factor=0.5d0
@@ -163,7 +163,7 @@ CONTAINS
        rhob = rho(i,MSP)*factor
        trho = rhoa + rhob
 
-       if ( trho == 0.0d0 ) stop "stop@ldapz81_c"
+       if ( trho <= 0.0d0 ) cycle
 
        rs = (ThrFouPi/trho)**onethr
 
@@ -174,14 +174,16 @@ CONTAINS
           ecd(1) = gam(1)/( 1.0d0 + bet1(1)*rssq + bet2(1)*rs )
           ecd(2) = gam(2)/( 1.0d0 + bet1(2)*rssq + bet2(2)*rs )
 
-          f  = (2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr
+          f=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr)
           Ec = Ec + trho*ecd(1) &
-               + gam(1)*trho/(  trho**onethr &
-                              + bet1(1)*(trho*ThrFouPi)**onesix &
-                              + bet2(1)*ThrFouPi**onethr )*f &
-               - gam(2)*trho/(  trho**onethr &
-                              + bet1(2)*(trho*ThrFouPi)**onesix &
-                              + bet2(2)*ThrFouPi**onethr )*f
+               + gam(2)/(  trho**onethr &
+                         + bet1(2)*(trho*ThrFouPi)**onesix &
+                         + bet2(2)*ThrFouPi**onethr )*f &
+               - gam(1)/(  trho**onethr &
+                         + bet1(1)*(trho*ThrFouPi)**onesix &
+                         + bet2(1)*ThrFouPi**onethr )*f
+
+          f = f/trho**fouthr
 
           mu(1) = ecd(1) + ecd(1)*onethr*( 0.5d0*bet1(1)/rssq + bet2(1) ) &
                           /( 1.0d0/rs + bet1(1)/rssq + bet2(1) )
@@ -197,8 +199,8 @@ CONTAINS
           ecd(1) = A(1)*rsln + B(1) + C(1)*rs*rsln + D(1)*rs
           ecd(2) = A(2)*rsln + B(2) + C(2)*rs*rsln + D(2)*rs
 
-          f = ( (2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr ) &
-               /( cns0 * trho**fouthr )
+          f=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr) &
+               /trho**fouthr
 
           ecdz = ecd(1) + ( ecd(2) - ecd(1) )*f
 
@@ -209,9 +211,9 @@ CONTAINS
 
        end if
 
-       dfdrhoa = fouthr/cns0 * 2.0d0*rhob &
+       dfdrhoa = c0*fouthr*2.0d0*rhob &
             *( (2.0d0*rhoa)**onethr - (2.0d0*rhob)**onethr )/trho**fouthr
-       dfdrhob =-fouthr/cns0 * 2.0d0*rhoa &
+       dfdrhob =-c0*fouthr*2.0d0*rhoa &
             *( (2.0d0*rhoa)**onethr - (2.0d0*rhob)**onethr )/trho**fouthr
 
        vco(i,1)   = mu(1) + ( mu(2)-mu(1) )*f + ( ecd(2)-ecd(1) )*dfdrhoa

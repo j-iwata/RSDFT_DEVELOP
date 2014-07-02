@@ -101,7 +101,7 @@ CONTAINS
     end if
        
     select case(XCtype)
-    case('LDAPZ81_org')
+    case('LDAPZ81_')
        call calc_LDAPZ81_org
     case('LDAPZ81')
        call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
@@ -127,6 +127,9 @@ CONTAINS
        end if
     case('LCwPBE')
        stop "LCwPBE is not available yet"
+    case default
+       write(*,*) "Invalid Keyword: XCtype=",XCtype
+       stop "stop@calc_xc"
     end select
 
     deallocate( rho_tmp )
