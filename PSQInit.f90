@@ -1,13 +1,16 @@
 MODULE PSQInit
-  
   use VarPSMember
   use VarPSMemberG
   use parallel_module, only: myrank
 
+  use maskf_module
+
+  use Filtering, only: opFiltering
+
   implicit none
   
   PRIVATE
-  PUBLIC :: initKtoKPSQ
+  PUBLIC :: initKtoKPSQ,ps_Q_init,ps_Q_init_derivative
 
 
 CONTAINS
@@ -21,6 +24,10 @@ CONTAINS
     logical :: disp_switch_local
     
     disp_switch_local=(myrank==0)
+
+#ifdef _SHOWPROCESS_
+    if ( myrank==0 ) write(*,*) "start initKtoKPSQ"
+#endif
 
     call allocateKtoK( k1max,k2max,Nelement_local,Rrefmax,Lrefmax )
 
@@ -89,7 +96,6 @@ CONTAINS
   END SUBROUTINE initKtoKPSQ
 
 !-----------------------------------------------
-
   SUBROUTINE ps_Q_init(qcut)
     implicit none
     integer,intent(IN) :: qcut
@@ -98,22 +104,22 @@ CONTAINS
     integer :: MMr
     real(8) :: Rc
 
-    integer :: ik,k2
+    integer :: ik,k2,i,m,m0,ll3
     integer :: iorb1,iorb2
 
     integer :: iloc(1)
 
-    integer,allocatable :: Q_NRps(:,:)
-    real(8),allocatable :: Q_Rps(:,:)
+    real(8) :: x,dxm,y,y0,dy0
+    real(8) :: maxerr
+
     real(8),allocatable :: Q_wm(:,:,:)
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
     NRc=maxval( NRps )
-    allocate( Q_NRps(k2max,Nelement_local) ) ; Q_NRps(:,:)=0
-    allocate( Q_Rps(k2max,Nelement_local)  ) ; Q_Rps(:,:)=0.d0
-    allocate( Q_wm(NRc,k2max,nki)          ) ; Q_wm(:,:,:)=0.d0
+    call allocateQRps( k2max,nki )
+    allocate( Q_wm(NRc,k2max,nki) ) ; Q_wm(:,:,:)=0.d0
 
     do ik=1,Nelement_local
       MMr=Mr(ik)
@@ -135,9 +141,111 @@ CONTAINS
       end do
     end do
 
+    do ik=1,Nelement_local
+        do k2=1,N_k2(ik)
+            NRc=Q_NRps(k2,ik)
+            Rc=Q_Rps(k2,ik)
+            call makemaskf(etafac)
 
+            maxerr=0.d0
+            do i=1,NRc
+                x=rad(i,ik)/Rc
+                if ( x<=dxm ) then
+                  y0=1.d0 ; dy0=0.d0
+                else
+                  m0=int(x/dxm)
+                  dy0=1.d10
+                  do m=1,20
+                      m1=max(m0-m,1) ; m2=min(m0+m,nmsk)
+                      call polint(xm(m1),maskr(m1),m2-m1+1,x,y,dy)
+                      if ( abs(dy)<dy0 ) then
+                        y0=y ; dy0=abs(dy)
+                      end if
+                  end do
+                end if
+                Q_wm(i,k2,ik)=y0
+                maxerr=max(maxerr,dy0)
+            end do
+        end do ! k2
+    end do ! ik
 
+    do ik=1,Nelement_local
+        do k2=1,N_k2(ik)
+            Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr
+            if ( Q_NRps(k2,ik)>nrmax ) stop
+        end do 
+    end do
 
+    MMr=max( maxval(Mr),maxval(Q_NRps) )
+    do ik=1,Nelement_local
+        do i=1,MMr
+            rad1(i,ik)=(i-1)*dr
+        end do
+    end do
+
+    NRc=maxval(NRps0)
+    allocate( vrad(NRc),tmp(NRc) )
+
+    do ik=1,Nelement_local
+        do k2=1,N_k2(ik)
+            iorb1=k2_to_iorb(1,k2,ik)
+            iorb2=k2_to_iorb(2,k2,ik)
+            NRc=max( NRps0(iorb1,ik),NRps0(iorb2,ik) )
+
+            do ll3=1,nl3v(k2,ik)
+                L=l3v(ll3,k2,ik)-1
+
+                vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
+
+                call opFiltering( qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik),vrad,qrL(1,ll3,k2,ik) )
+            end do ! ll3
+        end do ! k2
+    end do ! ik
+
+    deallocate( vrad,tmp )
+
+    do ik=1,Nelement_local
+        do k2=1,N_k2(ik)
+            NRc=Q_NRps(k2,ik)
+            Rc=Q_Rps(k2,ik)
+            call makemaskf(etafac)
+            maxerr=0.d0
+
+            do i=1,NRc
+                x=(i-1)*dr/Rc
+                if ( x<dxm ) then
+                  y0=1.d0 ; dy0=0.d0
+                else
+                  m0=int(x/dxm)
+                  dy0=1.d10
+                  do m=1,20
+                      m1=max(m0-m,1) ; m2=min(m0+m,nmsk)
+                      call polint(xm(m1),maskr(m2),m2-m1+1,x,y,dy)
+                      if ( abs(dy)<dy0 ) then
+                        y0=y ; dy0=abs(dy)
+                      end if
+                  end do
+                end if
+
+                if ( maxerr<dy0 ) maxerr=dy0
+
+                do ll3=1,nl3v(k2,ik)
+                    qrL(i,ll3,k2,ik)=y0*qrL(i,ll3,k2,ik)
+                end do
+            end do ! i
+        end do ! k2
+    end do ! ik
+
+    deallocate( Q_wm )
+
+    return
   END SUBROUTINE ps_Q_init
+
+!-----------------------------------------------
+  SUBROUTINE ps_Q_init_derivative
+    implicit none
+
+    stop 'force not implemented'
+  END SUBROUTINE ps_Q_init_derivative
 
 END MODULE PSQInit

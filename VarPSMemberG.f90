@@ -33,6 +33,9 @@ MODULE VarPSMemberG
   integer,allocatable :: N_k2(:)
   integer,allocatable :: icheck_k2(:)
 
+  integer,allocatable :: Q_NRps(:,:)
+  real(8),allocatable :: Q_Rps(:,:)
+
 
 
 
@@ -88,6 +91,28 @@ CONTAINS
 
 !------------------------------------------
 
+  SUBROUTINE allocateQRps( k2max,nki )
+    implicit none
+    integer,intent(IN) :: k2max,nki
 
+    if ( allocated(Q_NRps) ) then
+      call deallocateQRps
+    end if
+
+    allocate( Q_NRps(k2max,nki) ) ; Q_NRps(:,:)=0
+    allocate( Q_Rps(k2max,nki)  ) ; Q_Rps(:,:)=0.d0
+
+    return
+  END SUBROUTINE allocateQRps
+
+!------------------------------------------
+  SUBROUTINE deallocateQRps
+    implicit none
+
+    deallocate( Q_NRps )
+    deallocate( Q_Rps  )
+
+    return
+  END SUBROUTINE deallocateQRps
 
 END MODULE VarPSMemberG

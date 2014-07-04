@@ -16,10 +16,12 @@ CONTAINS
     SUBROUTINE initiationPS(gcut)
         implicit none
         real(8),intent(IN) :: gcut
+        
         call init_ps_local
         call init_ps_pcc
         call init_ps_initrho
         call construct_strfac
+
 #ifndef _FFTE_
         call construct_ps_local
 #else
@@ -43,6 +45,15 @@ CONTAINS
             call prep_ps_nloc3
         case( 5 )
             call prep_ps_nloc_mr
+
+#ifdef _USPP_
+        case( 102 )
+            call initKtoKPSQ
+            call ps_nloc2_init(gcut)
+            call ps_Q_init(gcut)
+            call prep_ps_nloc2
+#endif
+
         end select
 
         return

@@ -169,6 +169,7 @@ CONTAINS
        tarIN(i)=sum0*const
     end do	! i
 
+    return
   END SUBROUTINE opFiltering
 
 !----------------------------------

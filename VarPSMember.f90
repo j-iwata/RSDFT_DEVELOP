@@ -11,9 +11,7 @@ MODULE VarPSMember
   real(8),allocatable :: anorm(:,:)
 
   real(8),allocatable :: Rps(:,:)   ! Rps0(:,:),Rps1(:,:)
-  real(8),allocatable :: Rps0(:,:)
   integer,allocatable :: lo(:,:),inorm(:,:),NRps(:,:)   ! NRps0(:,:),NRps1(:,:)
-  integer,allocatable :: NRps0(:,:)
 
   integer,allocatable :: Mr(:),norb(:)
   real(8),allocatable :: parloc(:,:)
@@ -21,6 +19,9 @@ MODULE VarPSMember
   real(8),allocatable :: cdd_coef(:,:,:)
 
   integer :: Rrefmax,Lrefmax
+
+  integer,allocatable :: NRps0(:,:)
+  real(8),allocatable :: Rps0(:,:)
 
   integer :: max_psgrd=0,max_psorb=0,max_ngauss=0
 
