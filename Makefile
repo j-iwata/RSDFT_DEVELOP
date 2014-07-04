@@ -93,6 +93,7 @@ MODS1 = simc_module.o\
         gram_schmidt_module.o \
         xc_pw92_gth_module.o\
         xc_ldapz81_module.o \
+        xc_ggapbe96_module.o \
         xc_module.o \
         cgpc_module.o \
         cg_module.o \

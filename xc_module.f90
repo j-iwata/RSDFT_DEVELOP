@@ -18,6 +18,7 @@ MODULE xc_module
   use electron_module, only: Nspin
 
   use xc_ldapz81_module
+  use xc_ggapbe96_module
 
   implicit none
 
@@ -109,8 +110,12 @@ CONTAINS
     case('LDAPW92')
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
+    case('GGAPBE9_')
+       call calc_GGAPBE96_org
     case('GGAPBE96')
-       call calc_GGAPBE96
+       call init_GGAPBE96 &
+            ( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV ,Md, Hgrid, Ngrid )
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
     case('HF')
        stop "HF is not available yet"
     case('PBE0')
@@ -118,7 +123,7 @@ CONTAINS
     case('HSE')
        call calc_xc_hse(ML_0,ML_1,MSP,Vxc,Exc,E_exchange_exx)
        if ( icount_sweep_hybrid <= Nsweep_hybrid ) then
-          call calc_GGAPBE96
+          call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
           if ( DISP_SWITCH_PARALLEL ) then
              write(*,*) "icount_sweep_hybrid =" &
                   ,icount_sweep_hybrid,Nsweep_hybrid
@@ -278,7 +283,7 @@ CONTAINS
 !============================================================== GGAPBE96
 !--------1---------2---------3---------4---------5---------6---------7--
 
-  SUBROUTINE calc_GGAPBE96
+  SUBROUTINE calc_GGAPBE96_org
     implicit none
     real(8),parameter :: mu=0.21951d0,Kp=0.804d0
     real(8),parameter :: zero_density=1.d-10
@@ -771,10 +776,10 @@ CONTAINS
 
     call watch(ctime1,etime1)
     if ( DISP_SWITCH_PARALLEL ) then
-       write(*,*) "TIME(XC_GGAPBE96)",ctime1-ctime0,etime1-etime0
+       write(*,*) "TIME(XC_GGAPBE96_org)",ctime1-ctime0,etime1-etime0
     end if
 
     return
-  END SUBROUTINE CALC_GGAPBE96
+  END SUBROUTINE CALC_GGAPBE96_org
 
 END MODULE xc_module
