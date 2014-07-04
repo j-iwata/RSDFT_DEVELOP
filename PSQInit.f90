@@ -25,7 +25,7 @@ CONTAINS
     
     disp_switch_local=(myrank==0)
 
-#ifdef _SHOWPROCESS_
+#ifdef _SHOW_INIT_PROCESS_
     if ( myrank==0 ) write(*,*) "start initKtoKPSQ"
 #endif
 

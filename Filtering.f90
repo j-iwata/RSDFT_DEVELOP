@@ -1,4 +1,6 @@
 MODULE Filtering
+  PRIVATE
+  PUBLIC :: opFiltering
   implicit none
 
 CONTAINS

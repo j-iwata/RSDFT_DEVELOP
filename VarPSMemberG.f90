@@ -4,7 +4,7 @@ MODULE VarPSMemberG
   integer,allocatable :: nl(:)
   integer,allocatable :: nr(:,:)
   integer,allocatable :: nl3v(:,:)
-  integer,allocatable :: l2v(:,:,:)
+  integer,allocatable :: l3v(:,:,:)
   
   real(8),allocatable :: qrL(:,:,:,:)
   real(8),allocatable :: dqrL(:,:,:,:,:)
@@ -31,6 +31,7 @@ MODULE VarPSMemberG
 
   integer,allocatable :: k2_to_iorb(:,:,:)
   integer,allocatable :: N_k2(:)
+
   integer,allocatable :: icheck_k2(:)
 
   integer,allocatable :: Q_NRps(:,:)
@@ -83,11 +84,6 @@ CONTAINS
 
     return
   END SUBROUTINE deallocateKtoK
-
-!------------------------------------------
-  SUBROUTINE checkKtoK
-
-  END SUBROUTINE checkKtoK
 
 !------------------------------------------
 
