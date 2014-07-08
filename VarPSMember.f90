@@ -25,6 +25,11 @@ MODULE VarPSMember
 
   integer :: max_psgrd=0,max_psorb=0,max_ngauss=0
 
+  real(8),allocatable :: psi(:,:,:,:)
+  real(8),allocatable :: phi(:,:,:,:)
+  real(8),allocatable :: beta(:,:,:,:)
+
+
 CONTAINS
 !------------------------------------------
   SUBROUTINE allocateRps
@@ -53,5 +58,26 @@ CONTAINS
     return
   END SUBROUTINE deallocateRps
 
+!------------------------------------------
+    SUBROUTINE allocatePSI
+        implicit none
+        
+        if allocated( psi ) then
+            call deallocatePSI
+        end if
+
+
+    END SUBROUTINE allocatePSI
+
+!------------------------------------------
+    SUBROUTINE deallocatePSI
+        implicit none
+        
+        deallocate( psi  )
+        deallocate( phi  )
+        deallocate( beta )
+        
+        return
+    END SUBROUTINE deallocatePSI
 
 END MODULE VarPSMember
