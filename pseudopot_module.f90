@@ -2,6 +2,9 @@ MODULE pseudopot_module
 
   use ps_read_YB_module
   use VarPSMember
+#ifdef _USPP_
+  use VarPSMemberG
+#endif
 
   implicit none
 
@@ -191,12 +194,32 @@ CONTAINS
              rab(1:Mr(ielm),ielm)     = ps_yb%rx(1:Mr(ielm))
              viod(1:Mr(ielm),1:norb(ielm),ielm) &
                                       = ps_yb%vps(1:Mr(ielm),1:norb(ielm))
+#ifdef _USPP_
+          case(102)
+            open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+            call readPSV_uspp()
+            call allocatePS()
+            call allocatePSG()
+            call transferPS()
+            call transferPSG()
+            close(unit_ps)
+
+#endif
           case default
              stop "ippform error"
           end select
        end do
     end if
-    call send_pseudopot(rank)
+
+    if (pselect=2) then
+      call send_pseudopot(rank)
+#ifdef _USPP_
+    elseif (pselect=102) then
+      call sendPSG(rank)
+#endif
+    else
+      stop 'pselect must = 2,102'
+    end if
   END SUBROUTINE read_pseudopot
 
 

@@ -4,27 +4,35 @@ MODULE PSReadPSV_uspp
   PRIVATE
   PUBLIC :: readPSV_uspp
   
-  integer,parameter :: nrmax=8001
-  integer,parameter :: Rrefmax=3,Lrefmax=4
-  integer,parameter :: lpsmax=Lrefmax*Rrefmax
-  integer,parameter :: k2max=lpsmax*(lpsmax+1)/2
+!  integer,parameter :: nrmax=8001
+!  integer,parameter :: Rrefmax=3,Lrefmax=4
+!  integer,parameter :: lpsmax=Lrefmax*Rrefmax
+!  integer,parameter :: k2max=lpsmax*(lpsmax+1)/2
   
   TYPE PSV_uspp
-      integer :: nrr
-      integer :: norb
-      integer :: NRc(lpsmax+1)
-      integer :: inorm(lpsmax+1)
-      integer :: lo(lpsmax+1)
-      real(8) :: znuc
-      real(8) :: vps(nrmax,lpsmax+1)
-      real(8) :: ups(nrmax,lpsmax+1)
-      real(8) :: vql(nrmax)
-      real(8) :: cdc(nrmax)
-      real(8) :: cdd(nrmax)
-      real(8) :: rr(nrmax)
-      real(8) :: rx(nrmax)
-      real(8) :: Rc(lpsmax+1)
-      real(8) :: anorm(lpsmax+1)
+    character(8) :: xc_pot
+    integer :: verpot
+    real(8) :: zatom
+    integer :: nl
+    integer :: Lrefmax
+    integer,allocatable :: nr(:)
+    integer :: NRnl
+    real(8) :: a1,a2,a3,a4
+    integer :: NRl
+    real(8),allocatable :: rr(:),vql(:),cdc(:)
+    integer :: iost
+    integer :: Rrefmax
+    integer :: lpsmax
+    integer :: k2max
+    real(8),allocatable :: psi(:,:,:),phi(:,:,:),bet(:,:,:)
+    real(8),allocatable :: ddi(:,:,:),qqr(:,:,:)
+    integer :: npq
+    integer,allocatable :: nl3v(:)
+    integer,allocatable :: l3v(:,:)
+    integer,allocatable :: ncf(:,:),nrin(:,:)
+    real(8),allocatable :: rin(:,:)
+    real(8),allocatable :: coe(:,:,:)
+    real(8),allocatable :: qrL(:,:,:),qrad(:,:,:)
   END TYPE PSV_uspp
 
   type(PSV_uspp) :: tmpPS
@@ -32,7 +40,7 @@ MODULE PSReadPSV_uspp
 CONTAINS
 
 !-------------------------------------------------------------------
-  SUBROUTINE readPSV_uspp( unit_ps,ps_nrr,ps_norb )
+  SUBROUTINE readPSV_uspp( unit_ps,ps_nrr,ps_norb,tmpPS )
     implicit none
     
     integer,intent(IN) :: unit_ps
@@ -44,6 +52,7 @@ CONTAINS
 
     integer :: iost,iorb
     real(8) :: temp,h
+
     character(18) :: inbuf18
     character(80) :: inbuf
 
@@ -54,21 +63,19 @@ CONTAINS
 
     real(8),allocatable :: rr(:),vl(:),cc(:),r(:)
     real(8),allocatable :: psi(:,:,:),phi(:,:,:),bet(:,:,:)
-    real(8),allocatable :: ddi(:,:,:),qqr(:,:,:)
+    real(8),allocatable :: ddi_0(:,:,:),qqr_0(:,:,:)
     real(8),allocatable :: a0(:),b0(:),c0(:),cdd_coef_0(:,:,:)
-
-
 
     integer :: k2,ic
     integer,allocatable :: ncf(:,:),nrin(:,:)
     integer,allocatable :: nl3v(:),l3v(:,:)
     real(8),allocatable :: rin(:,:),coe(:,:,:)
-    real(8),allocatable :: qL(:,:,:)
+    real(8),allocatable :: qL(:,:,:),qrad(:,:,:)
 
     real(8) :: dif
-    allocate(qL
 
     integer :: npq,nnn,na2
+    integer :: lpsmax
 
 
 
@@ -84,12 +91,12 @@ CONTAINS
           read(unit_ps,'(A)') inbuf
           if ( index(inbuf,'#')==1 ) cycle
           backspace unit_ps
-          exit
        end do
        if ( i>10000 ) stop "stop at psv"
        read(unit_ps,*) znuc
     else if ( index(inbuf,'#xPSV')==1 ) then
        ! xTAPP
+       write(*,*) 'xPSV: no guarantee of correctness'
        verpot=3
        ifchrg=0
        do i=1,10000
@@ -103,6 +110,7 @@ CONTAINS
        read(unit_ps,*) znuc,zatom
     else
        ! Ver. 1.0 
+       write(*,*) 'PSV1: no guarantee of correctness'
        verpot=1
        ifchrg=0
        znuc=0
@@ -214,7 +222,7 @@ CONTAINS
 
     m=maxval(nr(1:nl))
     allocate( psi(nsmpl,m,nl),phi(nsmpl,m,nl),bet(nsmpl,m,nl) )
-    allocate( ddi_0(m,m,nl), qqc_0(m,m,nl) )
+    allocate( ddi_0(m,m,nl), qqr_0(m,m,nl) )
 
     do l=1,nl
        read(unit_ps,*)
@@ -225,10 +233,10 @@ CONTAINS
              ddi_0(i,j,l)=ddi_0(j,i,l)
           end do
        end do
-       read(unit_ps,*) ( (qqc_0(i,j,l),i=1,j),j=1,m )
+       read(unit_ps,*) ( (qqr_0(i,j,l),i=1,j),j=1,m )
        do j=1,m
           do i=j+1,m
-             qqc_0(i,j,l)=qqc_0(j,i,l)
+             qqr_0(i,j,l)=qqr_0(j,i,l)
           end do
        end do
        do j=1,m
@@ -246,6 +254,8 @@ CONTAINS
 
     nnn=sum( nr(1:nl) )
     na2=nnn*(nnn+1)/2
+!    m=maxval(nr(1:nl))
+    lpsmax=m*nl
 
     allocate( ncf(lpsmax,na2),nrin(lpsmax,na2) &
          ,rin(lpsmax,na2),coe(10,lpsmax,na2) )
@@ -259,7 +269,7 @@ CONTAINS
     rin(:,:)=0.d0
     coe(:,:,:)=0.d0
 
-    !----- qL,qrad -----
+!----- qL,qrad -----
     k2=0
     do l1=1,nl
        do i1=1,nr(l1)
@@ -298,7 +308,8 @@ CONTAINS
                    end do
                    do i=nrin(ll3,k2)+1,nsmpl
                       qL(i,ll3,k2)=psi(i,i1,l1)*psi(i,i2,l2)-phi(i,i1,l1)*phi(i,i2,l2)
-                      qrad(i,ll3,i2)=psi(i,i1,l1)*psi(i,i2,l2)-phi(i,i1,l1)*phi(i,i2,l2)
+                      qrad(i,ll3,k2)=qL(i,ll3,k2)
+!                      qrad(i,ll3,i2)=psi(i,i1,l1)*psi(i,i2,l2)-phi(i,i1,l1)*phi(i,i2,l2)
                    end do
                 end do ! ll3
              end do ! i2
@@ -306,7 +317,7 @@ CONTAINS
        end do ! i1
     end do ! l1
     write(*,*) k2,sum(nl3v),maxval(nl3v)
-    !===== qL,qrad =====
+!===== qL,qrad =====
 
     write(*,'(A,2(1X,I5))') "npq, k2 = ",npq,k2
     if ( npq/=k2 ) then
@@ -331,6 +342,46 @@ CONTAINS
        if ( j>10000 ) stop "read_psv"
     case( 3 )
     end select
+
+#ifdef _SHOWREADPSV_
+    write(*,*) "*** PSV format ***"
+    write(*,*) zatom
+    write(*,*) "# of radial mesh points =",Mr(ielm)
+    write(*,*) "r(1),...,r(end)         =",rad(1,ielm),rad(Mr(ielm),ielm)
+    write(*,*) "NRps                    =",NRps(1:norb(ielm),ielm)
+    write(*,*) "# of orbitals           =",norb(ielm)
+    write(*,*) "angular momentum        =",lo(1:norb(ielm),ielm)
+    write(*,*) "cut off radius          =",Rps(1:norb(ielm),ielm)
+    write(*,*) "Zps                     =",Zps(ielm)
+    write(*,*) "xc_pot                  =   ",xc_pot
+    write(*,*) "a1,a2,a3,a4             =",a1,a2
+    write(*,*) "                         ",a3,a4
+    write(*,*) "Reference               =",nr(1:nl)
+    write(*,*) "Reference               =",no(1:norb(ielm))
+    write(*,*) "anorm                   =",anorm(1:norb(ielm),ielm)
+    write(*,*) "inorm                   =",inorm(1:norb(ielm),ielm)
+    write(*,*) "sum(cdd)                =",sum( cdd(:,ielm)*rab(:,ielm) )
+    ! USPP
+    write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rabr2(:,ielm) )*temp
+#endif
+
+    if ( verpot /= 3 ) deallocate( c0,b0,a0 )
+    deallocate( qqr,ddi )
+    deallocate( bet,psi,phi )
+    deallocate( r )
+    deallocate( cc,vl,rr )
+    deallocate( nr )
+    ! USPP
+    deallocate( qL,qrad,ncf,nrin,rin,coe )
+
+  END SUBROUTINE readPSV_uspp
+
+
+
+
+
+
+
 
     i = max( ndlc,nsmpl,ndata ) + 1
     j = max( 1, sum(nr(1:nl)) )
@@ -443,34 +494,5 @@ CONTAINS
     cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
     cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
 
-    write(*,*) "*** PSV format ***"
-    write(*,*) zatom
-    write(*,*) "# of radial mesh points =",Mr(ielm)
-    write(*,*) "r(1),...,r(end)         =",rad(1,ielm),rad(Mr(ielm),ielm)
-    write(*,*) "NRps                    =",NRps(1:norb(ielm),ielm)
-    write(*,*) "# of orbitals           =",norb(ielm)
-    write(*,*) "angular momentum        =",lo(1:norb(ielm),ielm)
-    write(*,*) "cut off radius          =",Rps(1:norb(ielm),ielm)
-    write(*,*) "Zps                     =",Zps(ielm)
-    write(*,*) "xc_pot                  =   ",xc_pot
-    write(*,*) "a1,a2,a3,a4             =",a1,a2
-    write(*,*) "                         ",a3,a4
-    write(*,*) "Reference               =",nr(1:nl)
-    write(*,*) "Reference               =",no(1:norb(ielm))
-    write(*,*) "anorm                   =",anorm(1:norb(ielm),ielm)
-    write(*,*) "inorm                   =",inorm(1:norb(ielm),ielm)
-    write(*,*) "sum(cdd)                =",sum( cdd(:,ielm)*rab(:,ielm) )
-    ! USPP
-    write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rabr2(:,ielm) )*temp
 
-    if ( verpot /= 3 ) deallocate( c0,b0,a0 )
-    deallocate( qqr,ddi )
-    deallocate( bet,psi,phi )
-    deallocate( r )
-    deallocate( cc,vl,rr )
-    deallocate( nr )
-    ! USPP
-    deallocate( qL,qrad,ncf,nrin,rin,coe )
-
-  END SUBROUTINE readPSV_uspp
 END MODULE PSReadPSV_uspp
