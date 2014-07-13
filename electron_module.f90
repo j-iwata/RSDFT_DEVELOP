@@ -10,11 +10,16 @@ MODULE electron_module
   PUBLIC :: Nband,Nspin,Nelectron,Next_electron &
            ,Ndspin,Nfixed &
            ,read_electron,count_electron &
-           ,read_oldformat_electron
+           ,read_oldformat_electron &
+           ,NSelectron, dspin
 
   integer :: Nband, Nspin, Nfixed
   real(8) :: Nelectron,Next_electron,Ndspin
   integer :: MB_0,MB_1,MSP_0,MSP_1
+
+  integer,parameter :: unit_sc=980
+  real(8) :: NSelectron(2)
+  real(8),allocatable :: dspin(:)
 
 CONTAINS
 
@@ -61,7 +66,31 @@ CONTAINS
        end if
     end if
     call send_electron(0)
+    if ( Ndspin < 0.0d0 ) then
+       allocate( dspin(Natom) ) ; dspin=0.0d0
+       call Read_SpinConf(rank)
+    end if
   END SUBROUTINE read_electron
+
+
+  SUBROUTINE Read_SpinConf(rank)
+    implicit none
+    integer,intent(IN) :: rank
+    integer :: i1,i2,i,ierr
+    real(8) :: diff_ele
+    include 'mpif.h'
+    if ( rank == 0 ) then
+       rewind unit_sc
+       do i=1,Natom
+          read(unit_sc,*,END=90) i1,i2,diff_ele
+          dspin(i1:i2)=diff_ele
+       end do
+90     continue
+    end if
+    call MPI_BCAST(dspin,Natom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    Ndspin=sum(dspin)
+    if ( rank == 0 ) write(*,*) "Ndspin is replaced: Ndspin=",Ndspin
+  END SUBROUTINE Read_SpinConf
 
 
   SUBROUTINE read_oldformat_electron(rank,unit)
@@ -108,6 +137,8 @@ CONTAINS
        write(*,*) "Nband is too small!!!"
        stop 'count_eletron'
     end if
+    NSelectron(1)=0.5d0*Nelectron + 0.5d0*Ndspin
+    NSelectron(2)=0.5d0*Nelectron - 0.5d0*Ndspin
   END SUBROUTINE count_electron
 
 

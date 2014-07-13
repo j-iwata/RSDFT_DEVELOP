@@ -6,7 +6,7 @@ MODULE ps_initrho_module
   use strfac_module, only: SGK
   use density_module, only: rho
   use pseudopot_module, only: Mr,rad,rab,cdd,Zps,cdd_coef
-  use electron_module, only: Nspin
+  use electron_module, only: Nspin, dspin, NSelectron
   use parallel_module
   use aa_module
 
@@ -233,6 +233,11 @@ CONTAINS
     real(8) :: a,b,c,a1,a2,a3,x,y,z,r1,r2,r3,c1,c2,c3,pi4,rr,zi
     real(8),allocatable :: rho_tmp(:)
 
+    if ( Nspin == 2 .and. allocated(dspin) ) then
+       call construct_r_spin_ps_initrho
+       return
+    end if
+
     ML_0 = Igrid(1,0)
     ML_1 = Igrid(2,0)
     mg   = size(cdd_coef,2)
@@ -316,7 +321,113 @@ CONTAINS
 
     deallocate( rho_tmp )
 
+    if ( Nspin > 1 ) then
+       c=1.0d0/Nspin
+       rho(:,1) = c*rho(:,1)
+       do i=2,Nspin
+          rho(:,i) = rho(:,1)
+       end do
+    end if
+
   END SUBROUTINE construct_r_ps_initrho
+
+
+  SUBROUTINE construct_r_spin_ps_initrho
+    implicit none
+    integer :: iatm,ielm,i,i1,i2,i3,j1,j2,j3,ig,mg,ML_0,ML_1,ierr,s
+    real(8) :: a,b,c,a1,a2,a3,x,y,z,r1,r2,r3,c1,c2,c3,pi4,rr
+    real(8),allocatable :: rho_tmp(:)
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," const_r_spin_initrho")') repeat("-",60)
+    end if
+
+    ML_0 = Igrid(1,0)
+    ML_1 = Igrid(2,0)
+    mg   = size(cdd_coef,2)
+    c1   = 1.0d0/Ngrid(1)
+    c2   = 1.0d0/Ngrid(2)
+    c3   = 1.0d0/Ngrid(3)
+    pi4  = 4.0d0*acos(-1.0d0)
+
+    if ( .not. allocated(rho) ) then
+       allocate( rho(ML_0:ML_1,Nspin) )
+    end if
+    rho=0.0d0
+
+    allocate( rho_tmp(ML_0:ML_1) )
+    rho_tmp=0.0d0
+
+    do iatm=1,Natom
+
+       ielm=ki_atom(iatm)
+
+       a1=aa_atom(1,iatm)
+       a2=aa_atom(2,iatm)
+       a3=aa_atom(3,iatm)
+
+       rho_tmp(:)=0.0d0
+
+       do j3=-1,1
+       do j2=-1,1
+       do j1=-1,1
+          i=ML_0-1
+          do i3=Igrid(1,3),Igrid(2,3)
+          do i2=Igrid(1,2),Igrid(2,2)
+          do i1=Igrid(1,1),Igrid(2,1)
+             r1=i1*c1
+             r2=i2*c2
+             r3=i3*c3
+             x=aa(1,1)*(r1-a1-j1)+aa(1,2)*(r2-a2-j2)+aa(1,3)*(r3-a3-j3)
+             y=aa(2,1)*(r1-a1-j1)+aa(2,2)*(r2-a2-j2)+aa(2,3)*(r3-a3-j3)
+             z=aa(3,1)*(r1-a1-j1)+aa(3,2)*(r2-a2-j2)+aa(3,3)*(r3-a3-j3)
+             rr=x*x+y*y+z*z
+             i=i+1
+             do ig=1,mg
+                a=cdd_coef(1,ig,ielm)
+                b=cdd_coef(2,ig,ielm)
+                c=cdd_coef(3,ig,ielm)
+                rho_tmp(i)=rho_tmp(i)+(a+b*rr)*exp(-c*rr)
+             end do
+          end do
+          end do
+          end do
+       end do
+       end do
+       end do
+
+       c=( Zps(ielm) + dspin(iatm) )/Nspin /Zps(ielm)
+       rho(:,1) = rho(:,1) + c*rho_tmp(:)
+
+       c=( Zps(ielm) - dspin(iatm) )/Nspin /Zps(ielm)
+       rho(:,2) = rho(:,2) + c*rho_tmp(:)
+
+    end do ! iatm
+
+    do s=1,Nspin
+       a=sum(rho(:,s))*dV
+       call mpi_allreduce(a,b,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       c=NSelectron(s)/b
+       rho(:,s)=c*rho(:,s)
+    end do
+
+    do s=1,Nspin
+       a=sum( rho(:,s) )*dV
+       call mpi_allreduce(a,c1,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       b=minval( rho(:,s) )
+       call mpi_allreduce(b,c2,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       c=maxval( rho(:,s) )
+       call mpi_allreduce(c,c3,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       if ( disp_switch_parallel ) then
+          write(*,'(1x,"sum(init_rho(",i1,"))=",2f15.10)') s,c1,NSelectron(s)
+          write(*,'(1x,"min(init_rho(",i1,"))=",f15.10)') s,c2
+          write(*,'(1x,"max(init_rho(",i1,"))=",f15.10)') s,c3
+       end if
+    end do
+
+    deallocate( rho_tmp )
+
+  END SUBROUTINE construct_r_spin_ps_initrho
 
 
 END MODULE ps_initrho_module
