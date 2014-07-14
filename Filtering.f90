@@ -1,7 +1,8 @@
 MODULE Filtering
+  implicit none
   PRIVATE
   PUBLIC :: opFiltering
-  implicit none
+
 
 CONTAINS
 
