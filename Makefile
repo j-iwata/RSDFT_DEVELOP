@@ -99,6 +99,7 @@ MODS1 = simc_module.o\
         cg_module.o \
         fermi_mp_module.o\
         total_energy_module.o \
+        mixing_broyden_module.o \
         mixing_module.o \
         esp_gather_module.o \
         io_module.o \
@@ -147,6 +148,7 @@ EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/dotp.o \
           $(DIR2)/spline.o\
           $(DIR2)/convert_capital.o\
+          $(DIR2)/gaussj.o\
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o\

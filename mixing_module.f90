@@ -1,5 +1,7 @@
 MODULE mixing_module
 
+  use mixing_broyden_module
+
   implicit none
 
   PRIVATE
@@ -206,6 +208,9 @@ CONTAINS
           call pulay_r2_mixing( ML0, MSP, h )
 !          write(*,*) "imix=",imix
 !          stop "this mixing is not available"
+       case(30:39)
+          call broyden_mixing &
+               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        end select
 
        sum0(:)=0.0d0
