@@ -109,6 +109,46 @@ CONTAINS
   END SUBROUTINE deallocateQRps
 
 !------------------------------------------
+  SUBROUTINE sendPSG(myrank,Nelement_PP)
+    implicit none
+    integer,intent(IN) :: myrank,Nelement_PP
+    integer :: maxs(1:4),ierr,l,m,n
+    include 'mpif.h'
+    maxs(1)=max_Lref
+    maxs(2)=max_Rref
+    maxs(3)=max_k2
+    maxs(4)=max_qgrd
+    call mpi_bcast(maxs,4,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Nelement_PP,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    if ( myrank /= 0 ) then
+       call allocatePSG(maxs(2),maxs(1),maxs(3),maxs(4),Nelement_PP)
+    end if
+    l=maxs(1)*Nelement_PP
+    m=maxs(2)*maxs(2)*l
+    n=maxs(3)*Nelement_PP
+    call mpi_bcast(npq   ,Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(ddi   ,m,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(qqr   ,m,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(nl3v  ,n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(l3v   ,maxs(1)*n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(qrL   ,maxs(4)*maxs(1)*n,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+
+! FOR DEBUG
+    write(300+myrank,*) 'npq='
+    write(300+myrank,*) npq
+    write(300+myrank,*) 'ddi='
+    write(300+myrank,*) ddi
+    write(300+myrank,*) 'qqr='
+    write(300+myrank,*) qqr
+    write(300+myrank,*) 'nl3v='
+    write(300+myrank,*) nl3v
+    write(300+myrank,*) 'l3v='
+    write(300+myrank,*) l3v
+    write(300+myrank,*) 'qrL='
+    write(300+myrank,*) qrL
+  END SUBROUTINE sendPSG
+
+!------------------------------------------
   SUBROUTINE allocatePSG( n_l,n_r,n_k,n_g,nki )
     implicit none
     integer,intent(IN) :: n_l,n_r,n_k,n_g,nki
@@ -124,11 +164,11 @@ CONTAINS
         allocate( qqc(n_r,n_r,n_l,nki) ) ; qqc=0.d0
         allocate( nl3v(n_k,nki) ) ; nl3v=0
         allocate( l3v(n_l,n_k,nki) ) ; l3v=0
-        allocate( qrL(max_psgrd,n_l,n_k,nki) ) ; qrL=0.d0
+        allocate( qrL(n_g,n_l,n_k,nki) ) ; qrL=0.d0
         max_Rref=n_r
         max_Lref=n_l
         max_k2=n_k
-        max_qgrd=n_gr
+        max_qgrd=n_g
         return
     end if
     ml=max(max_Lref,n_l)
@@ -209,15 +249,4 @@ CONTAINS
     return
   END SUBROUTINE allocatePSG
 
-!------------------------------------------
-  SUBROUTINE deallocatePSG
-    implicit none
-
-    deallocate( nl3v )
-    deallocate( l3v  )
-    deallocate( qrad )
-    deallocate( qrL  )
-
-    return
-  END SUBROUTINE deallocatePSG
 END MODULE VarPSMemberG

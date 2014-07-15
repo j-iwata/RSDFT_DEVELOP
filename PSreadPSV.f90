@@ -5,7 +5,7 @@ MODULE PSreadPSV
 CONTAINS
   
 !-------------------------------------------------------
-  SUBROUTINE read_PSV( unit_ps,ielm,ddi,qqr,psi,phi,bet )
+  SUBROUTINE read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
     implicit none
     integer,intent(IN) :: unit_ps,ielm
     character(30) :: file_name
@@ -25,8 +25,8 @@ CONTAINS
     character(8) :: xc_pot
 
     real(8),allocatable :: rr(:),vl(:),cc(:),r(:)
-    real(8),allocatable,intent(OUT) :: psi(:,:,:),phi(:,:,:),bet(:,:,:)
-    real(8),allocatable,intent(OUT) :: ddi(:,:,:),qqr(:,:,:)
+    real(8),allocatable,intent(OUT) :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
+    real(8),allocatable,intent(OUT) :: ddi_(:,:,:),qqr_(:,:,:)
     real(8),allocatable :: a0(:),b0(:),c0(:),cdd_coef_0(:,:,:)
 
 ! Check pseudopotential type
@@ -176,28 +176,28 @@ CONTAINS
     end if
 
     m=maxval(nr(1:nl))
-    allocate( psi(nsmpl,m,nl),phi(nsmpl,m,nl),bet(nsmpl,m,nl) )
-    allocate( ddi(m,m,nl), qqr(m,m,nl) )
+    allocate( psi_(nsmpl,m,nl),phi_(nsmpl,m,nl),bet_(nsmpl,m,nl) )
+    allocate( ddi_(m,m,nl), qqr_(m,m,nl) )
 
     do l=1,nl
        read(unit_ps,*)
        m=nr(l)
-       read(unit_ps,'(3e20.12)') ( (ddi(i,j,l),i=1,j), j=1,m )
+       read(unit_ps,'(3e20.12)') ( (ddi_(i,j,l),i=1,j), j=1,m )
        do j=1,m
        do i=j+1,m
-          ddi(i,j,l)=ddi(j,i,l)
+          ddi_(i,j,l)=ddi_(j,i,l)
        end do
        end do
-       read(unit_ps,*) ( (qqr(i,j,l),i=1,j),j=1,m )
+       read(unit_ps,*) ( (qqr_(i,j,l),i=1,j),j=1,m )
        do j=1,m
        do i=j+1,m
-          qqr(i,j,l)=qqr(j,i,l)
+          qqr_(i,j,l)=qqr_(j,i,l)
        end do
        end do
        do j=1,m
           read(unit_ps,*)
           do i=1,nsmpl
-             read(unit_ps,*) psi(i,j,l),phi(i,j,l),bet(i,j,l)
+             read(unit_ps,*) psi_(i,j,l),phi_(i,j,l),bet_(i,j,l)
           end do
        end do
     end do
@@ -230,8 +230,8 @@ CONTAINS
           iorb=iorb+1
           lo(iorb,ielm)=l-1
           no(iorb,ielm)=j
-          anorm(iorb,ielm)=abs( ddi(j,j,l) )
-          inorm(iorb,ielm)=sign( 1.d0, ddi(j,j,l) )
+          anorm(iorb,ielm)=abs( ddi_(j,j,l) )
+          inorm(iorb,ielm)=sign( 1.d0, ddi_(j,j,l) )
           NRps(iorb,ielm)=nsmpl+1
           Rps(iorb,ielm)=Rc_in
        end do
@@ -257,8 +257,8 @@ CONTAINS
           iorb=iorb+1
 !          temp=sqrt( anorm(iorb,ielm) )
           do i=1,nsmpl
-!             viod(i+1,iorb,ielm)=bet(i,j,l)*temp
-             viod(i+1,iorb,ielm)=bet(i,j,l)
+!             viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
+             viod(i+1,iorb,ielm)=bet_(i,j,l)
           end do
           viod(1,iorb,ielm)=0.d0
        end do
@@ -343,8 +343,8 @@ CONTAINS
     write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rab(:,ielm) )*temp
 
     if ( verpot /= 3 ) deallocate( c0,b0,a0 )
-!    deallocate( qqr,ddi )
-!    deallocate( bet,psi,phi )
+!    deallocate( qqr_,ddi_ )
+!    deallocate( bet_,psi_,phi_ )
     deallocate( r )
     deallocate( cc,vl,rr )
     deallocate( nr )

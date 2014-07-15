@@ -177,7 +177,7 @@ CONTAINS
              call read_TM
           case(2)
              open(unit_ps,FILE=file_ps(ielm),STATUS='old')
-             call read_PSV( unit_ps,ielm,ddi,qqr,psi,phi,bet )
+             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
              close(unit_ps)
           case(3)
              open(unit_ps,FILE=file_ps(ielm),STATUS='old')
@@ -203,7 +203,9 @@ CONTAINS
           case(102)
             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
+            write(*,*) 'normal PSV finished'
             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
+            write(*,*) 'new PSV finished'
             close(unit_ps)
 
 #endif
@@ -218,7 +220,7 @@ CONTAINS
 #ifdef _USPP_
     elseif (pselect==102) then
       call send_pseudopot(rank)
-      call sendPSG(rank)
+      call sendPSG(rank,Nelement_PP)
 #endif
     else
       stop 'pselect must = 2(NCPP),102(USPP)'
