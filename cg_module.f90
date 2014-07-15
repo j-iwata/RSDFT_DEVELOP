@@ -7,12 +7,15 @@ MODULE cg_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
 
+  use cg_lobpcg_module, only: init_lobpcg, lobpcg
+
   implicit none
 
   PRIVATE
   PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs,read_oldformat_cg
 
   integer :: Ncg,iswitch_gs
+  integer :: iswitch_cg
 
 CONTAINS
 
@@ -24,6 +27,7 @@ CONTAINS
     character(4) :: cbuf,ckey
     Ncg = 2
     iswitch_gs = 0
+    iswitch_cg = 1
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -35,11 +39,15 @@ CONTAINS
           else if ( ckey(1:4) == "SWGS" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_gs
+          else if ( ckey(1:3) == "ICG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_cg
           end if
        end do
 999    continue
        write(*,*) "Ncg=",Ncg
        write(*,*) "iswitch_gs=",iswitch_gs
+       write(*,*) "iswitch_cg=",iswitch_cg
     end if
     call send_cg(0)
   END SUBROUTINE read_cg
@@ -62,10 +70,38 @@ CONTAINS
     integer :: ierr
     call mpi_bcast(Ncg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iswitch_gs,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iswitch_cg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_cg
 
-#ifdef _DRSDFT_
+
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+    implicit none
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    real(8),intent(INOUT) :: esp(MB),res(MB)
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
+    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
+
+    call init_cgpc(n1,n2,k,s,dV)
+
+    select case( iswitch_cg )
+    case default
+
+    case( 1 )
+       call conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+    case( 2 )
+       if ( disp_switch_parallel ) write(*,*) "--- LOBPCG ---"
+       call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+       call lobpcg( k,s,Mcg,igs,unk,esp,res )
+    end select
+
+  END SUBROUTINE conjugate_gradient
+
+
+#ifdef _DRSDFT_
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     real(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -175,7 +211,7 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
@@ -343,11 +379,11 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE conjugate_gradient_1
 
 #else
 
-  SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -455,7 +491,7 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
@@ -623,7 +659,7 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE conjugate_gradient_1
 
 #endif
 

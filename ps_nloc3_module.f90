@@ -12,6 +12,8 @@ MODULE ps_nloc3_module
   use wf_module
   use electron_module
 
+  use ps_nloc2_variables
+
   implicit none
 
   PRIVATE
@@ -21,26 +23,29 @@ MODULE ps_nloc3_module
   integer,allocatable :: mapgk(:,:)
   real(8),allocatable :: viodgk2(:,:,:)
 
-  integer,allocatable :: iuV(:),iorbmap(:),amap(:),lmap(:),mmap(:)
+!  integer,allocatable :: iuV(:),iorbmap(:),amap(:),lmap(:),mmap(:)
 
-  integer :: Mlma, Mlma_np
-  integer :: nzlma
+!  integer :: Mlma
+!  integer :: nzlma
+  integer :: Mlma_np
 
   integer,allocatable :: icnt(:),idis(:)
   logical :: first_time = .true.
 
 #ifdef _DRSDFT_
-  integer,parameter :: TYPE_MAIN=MPI_REAL8
-  real(8),allocatable :: uVk(:,:,:)
+!  integer,parameter :: TYPE_MAIN=MPI_REAL8
+!  real(8),allocatable :: uVk(:,:,:)
   real(8),allocatable :: utmp(:)
   real(8),allocatable :: utmp3(:,:,:)
-  real(8),parameter :: zero=0.0d0,one=1.0d0
+!  real(8),parameter :: zero=0.0d0
+  real(8),parameter :: one=1.0d0
 #else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
-  complex(8),allocatable :: uVk(:,:,:)
+!  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+!  complex(8),allocatable :: uVk(:,:,:)
   complex(8),allocatable :: utmp(:)
   complex(8),allocatable :: utmp3(:,:,:)
-  complex(8),parameter :: zero=(0.0d0,0.0d0),one=(1.0d0,0.0d0)
+!  complex(8),parameter :: zero=(0.0d0,0.0d0)
+  complex(8),parameter :: one=(1.0d0,0.0d0)
 #endif
 
 CONTAINS

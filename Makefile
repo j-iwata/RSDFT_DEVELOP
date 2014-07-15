@@ -57,10 +57,10 @@ MODS1 = simc_module.o\
         ps_nloc1_module.o \
         maskf_module.o \
         minimal_box_module.o \
-        ps_nloc3_module.o \
         ps_nloc2_init_module.o \
         ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
+        ps_nloc3_module.o \
         ps_nloc2_module.o \
         localpot2_variables.o \
         localpot2_density_module.o \
@@ -95,7 +95,10 @@ MODS1 = simc_module.o\
         xc_ldapz81_module.o \
         xc_ggapbe96_module.o \
         xc_module.o \
+        cgpc_diag_module.o \
+        cgpc_seitsonen_module.o \
         cgpc_module.o \
+        cg_lobpcg_module.o \
         cg_module.o \
         fermi_mp_module.o\
         total_energy_module.o \
