@@ -42,8 +42,8 @@ MODULE scf_module
 
   real(8),allocatable :: esp0(:,:,:)
 
-!  logical :: second_diag=.false.
-  logical :: second_diag=.true.
+  logical :: second_diag=.false.
+!  logical :: second_diag=.true.
 
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
@@ -55,6 +55,10 @@ CONTAINS
      implicit none
      integer,intent(IN) :: Ndiag_in
      if ( Ndiag_in > 0 ) Ndiag=Ndiag_in
+     if ( disp_switch_parallel ) then
+        write(*,*) "Ndiag=",Ndiag
+        write(*,*) "second_diag=",second_diag
+     end if
   END SUBROUTINE init_scf
 
   SUBROUTINE calc_scf( Diter, ierr_out, disp_switch )

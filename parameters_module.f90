@@ -107,7 +107,7 @@ CONTAINS
 999    continue
        write(*,*) "Diter =",Diter
        write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Ndaig =",Ndiag
+       write(*,*) "Ndiag =",Ndiag
     end if
 
     iswitch_scf  = 1
