@@ -9,9 +9,10 @@ MODULE ps_nloc2_init_module
 
   PRIVATE
   PUBLIC :: rad1,dviod,read_ps_nloc2_init,read_oldformat_ps_nloc2_init &
-           ,ps_nloc2_init,ps_nloc2_init_derivative
+           ,ps_nloc2_init,ps_nloc2_init_derivative &
+           ,rcfac,qcfac,etafac
 
-  real(8),allocatable :: rad1(:,:),dviod(:,:,:)
+  real(8),allocatable :: dviod(:,:,:)
   real(8) :: rcfac,qcfac,etafac
 
 CONTAINS
@@ -79,9 +80,12 @@ use parallel_module
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
 
+if (myrank==0) write(400+myrank,*) ">>>>> inside ps_nloc2_init"
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
+if (myrank==0) write(400+myrank,*) "before allocateRps"
     call allocateRps
+if (myrank==0) write(400+myrank,*) "after allocateRps"
 
     do ik=1,Nelement_local
        MMr=Mr(ik)
@@ -98,9 +102,11 @@ use parallel_module
        end do
     end do
 
-    NRc=maxval( NRps )
-    m=maxval( norb )
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 1"
+    NRc=max_psgrd
+    m=max_psorb
     allocate( wm(NRc,m,Nelement_local) )
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 2"
 
     do ik=1,Nelement_local
        do iorb=1,norb(ik)
@@ -129,6 +135,7 @@ use parallel_module
        end do
     end do
 
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 3"
     do ik=1,Nelement_local
        do iorb=1,norb(ik)
           NRps(iorb,ik)=Rps(iorb,ik)/dr+1
@@ -139,6 +146,7 @@ use parallel_module
     end do
     MMr=max( maxval(Mr),maxval(NRps) )
 
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 4"
     if ( MMr>maxval(Mr) ) then
        m0=size(viod,1)
        m1=size(viod,2)
@@ -151,7 +159,7 @@ use parallel_module
        deallocate( vtmp )
     end if
 
-    allocate( rad1(MMr,Nelement_local) ) ; rad1=0.d0
+!    allocate( rad1(MMr,Nelement_local) ) ; rad1=0.d0
     do ik=1,Nelement_local
        do i=1,MMr
           rad1(i,ik)=(i-1)*dr
@@ -161,6 +169,7 @@ use parallel_module
     NRc=maxval(NRps0)
     allocate( vrad(NRc),tmp(NRc) )
 
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 5"
     const=2.d0/acos(-1.d0)
 
     do ik=1,Nelement_local
@@ -176,6 +185,7 @@ use parallel_module
     end do ! ik
     deallocate( vrad,tmp )
 
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 6"
     do ik=1,Nelement_local
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
@@ -205,6 +215,7 @@ use parallel_module
     end do
 
     deallocate( wm )
+if (myrank==0) write(400+myrank,*) "ps_nloc2_init 7"
 
     return
   END SUBROUTINE ps_nloc2_init

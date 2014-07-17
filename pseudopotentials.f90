@@ -4,11 +4,14 @@ MODULE pseudopotentials
     use ps_pcc_module, only: init_ps_pcc,construct_ps_pcc
     use ps_initrho_module, only: init_ps_initrho,construct_ps_initrho
     use density_module, only: normalize_density
-    use ps_nloc2_init_module, only: ps_nloc2_init
+    use ps_nloc2_init_module, only: ps_nloc2_init,rcfac,qcfac,etafac
     use ps_nloc2_module, only: prep_ps_nloc2
     use ps_nloc3_module, only: init_ps_nloc3,prep_ps_nloc3
     use ps_nloc_mr_module, only: prep_ps_nloc_mr
     use pseudopot_module, only: pselect
+    use PSQInit, only: initKtoKPSQ,ps_Q_init
+
+    use parallel_module, only: myrank
     implicit none
 
 CONTAINS
@@ -48,9 +51,14 @@ CONTAINS
 
 #ifdef _USPP_
         case( 102 )
+if (myrank==0) write(400+myrank,*) ">>>>> init PS nonlocal for pselect==102"
+if (myrank==0) write(400+myrank,*) ">>>>> initKtoKPSQ"
             call initKtoKPSQ
+if (myrank==0) write(400+myrank,*) ">>>>> ps_nloc2_init"
             call ps_nloc2_init(gcut)
-            call ps_Q_init(gcut)
+if (myrank==0) write(400+myrank,*) ">>>>> ps_Q_init"
+            call ps_Q_init(gcut,rcfac,qcfac,etafac)
+if (myrank==0) write(400+myrank,*) ">>>>> prep_ps_nloc2"
             call prep_ps_nloc2
 #endif
 

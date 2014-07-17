@@ -16,7 +16,7 @@ MODULE PSQInit
 CONTAINS
 
 !-----------------------------------------------
-  SUBROUTINE initKtoKPSQ()
+  SUBROUTINE initKtoKPSQ
     implicit none
     integer :: ik,l1,l2,i1,i2,m1,m2
     integer :: k1,k2,k3,nr1,nr2
@@ -26,24 +26,28 @@ CONTAINS
     disp_switch_local=(myrank==0)
 
 #ifdef _SHOW_INIT_PROCESS_
-    if ( myrank==0 ) write(*,*) "start initKtoKPSQ"
+    if ( myrank==0 ) write(400+myrank,*) "start initKtoKPSQ"
 #endif
 
-    call allocateKtoK( k1max,k2max,Nelement_local,Rrefmax,Lrefmax )
+if ( myrank==0 ) write(400+myrank,*) "allocateKtoK"
+if ( myrank==0 ) write(400+myrank,*) "k1max=",k1max
+    call allocateKtoK( k1max,max_k2,Nelement_local,max_Rref,max_Lref )
 
     do ik=1,Nelement_local
       k1=0
       nr1=0
-      do l1=1,nl(ik)
-        do i1=1,nr(l1,ik)
+      do l1=1,nlf(ik)
+        do i1=1,nrf(l1,ik)
           nr1=nr1+1
           do m1=1,2*l1-1
             nr2=0
             do l2=1,l1
-              do i2=1,nr(l2,ik)
+              do i2=1,nrf(l2,ik)
                 if (.not. ((l1==l2) .and. (i2>i1))) then
                   nr2=nr2+1
+if ( myrank==0 ) write(400+myrank,*) "nr2=",nr2
                   k2=(nr1*(nr1-1))/2+nr2
+if ( myrank==0 ) write(400+myrank,*) "k2=",k2
                   do m2=1,2*l2-1
                     if (.not. ((l1==l2) .and. (i1==i2) .and. (m2>m1))) then
                       k1=k1+1
@@ -91,43 +95,55 @@ CONTAINS
         k2_to_iorb(2,k2,ik)=k1_to_iorb(2,k1,ik)
       end do
     end do
+if ( myrank==0 ) write(400+myrank,*) "end of initKtoKPSQ"
 
     return
   END SUBROUTINE initKtoKPSQ
 
 !-----------------------------------------------
-  SUBROUTINE ps_Q_init(qcut)
+  SUBROUTINE ps_Q_init(qcut,rcfac,qcfac,etafac)
     implicit none
-    integer,intent(IN) :: qcut
+    real(8),intent(IN) :: qcut
+    real(8),intent(IN) :: rcfac,qcfac,etafac
 
     integer :: NRc
     integer :: MMr
     real(8) :: Rc
 
-    integer :: ik,k2,i,m,m0,ll3
+    integer :: ik,k2,i,m,m0,m1,m2,ll3,L
     integer :: iorb1,iorb2
 
     integer :: iloc(1)
 
-    real(8) :: x,dxm,y,y0,dy0
+    real(8) :: x,y,dy,y0,dy0
+    real(8),parameter :: dr=2.d-3,ep=1.d-14
     real(8) :: maxerr
 
+    real(8) :: qc
+    real(8) :: Q_rcfac,Q_etafac
+
     real(8),allocatable :: Q_wm(:,:,:)
+    real(8),allocatable :: vrad(:),tmp(:)
+
+if (myrank==0) write(400+myrank,*) ">>>>> inside ps_Q_init"
+qc=0.d0
+Q_rcfac=rcfac
+Q_etafac=Q_etafac
+k2max=max_k2
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
-    NRc=maxval( NRps )
-    call allocateQRps( k2max,nki )
-    allocate( Q_wm(NRc,k2max,nki) ) ; Q_wm(:,:,:)=0.d0
+    call allocateQRps( k2max,Nelement_local )
 
+if (myrank==0) write(400+myrank,*) "ps_Q_init 1"
     do ik=1,Nelement_local
       MMr=Mr(ik)
       do k2=1,N_k2(ik)
         iorb1=k2_to_iorb(1,k2,ik)
         iorb2=k2_to_iorb(2,k2,ik)
 
-        Rc=max( Rps0(iorb1,ik),Rps0(iorb2,ik) )*rcfac
+        Rc=max( Rps0(iorb1,ik),Rps0(iorb2,ik) )*Q_rcfac
         iloc=minloc( abs(rad(1:MMr,ik)-Rc) )
         NRc=iloc(1) ; if (rad(NRc,ik)<Rc) NRc=NRc+1
 
@@ -141,11 +157,15 @@ CONTAINS
       end do
     end do
 
+    NRc=maxval( Q_NRps )
+    allocate( Q_wm(NRc,k2max,Nelement_local) ) ; Q_wm(:,:,:)=0.d0
+
+if (myrank==0) write(400+myrank,*) "ps_Q_init 2"
     do ik=1,Nelement_local
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
             Rc=Q_Rps(k2,ik)
-            call makemaskf(etafac)
+            call makemaskf(Q_etafac)
 
             maxerr=0.d0
             do i=1,NRc
@@ -169,13 +189,15 @@ CONTAINS
         end do ! k2
     end do ! ik
 
+if (myrank==0) write(400+myrank,*) "ps_Q_init 2-1"
     do ik=1,Nelement_local
         do k2=1,N_k2(ik)
             Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr
-            if ( Q_NRps(k2,ik)>nrmax ) stop
+            if ( Q_NRps(k2,ik)>max_psgrd ) stop
         end do 
     end do
 
+if (myrank==0) write(400+myrank,*) "ps_Q_init 2-2"
     MMr=max( maxval(Mr),maxval(Q_NRps) )
     do ik=1,Nelement_local
         do i=1,MMr
@@ -186,6 +208,7 @@ CONTAINS
     NRc=maxval(NRps0)
     allocate( vrad(NRc),tmp(NRc) )
 
+if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
     do ik=1,Nelement_local
         do k2=1,N_k2(ik)
             iorb1=k2_to_iorb(1,k2,ik)
@@ -208,7 +231,7 @@ CONTAINS
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
             Rc=Q_Rps(k2,ik)
-            call makemaskf(etafac)
+            call makemaskf(Q_etafac)
             maxerr=0.d0
 
             do i=1,NRc
@@ -238,6 +261,7 @@ CONTAINS
 
     deallocate( Q_wm )
 
+if (myrank==0) write(400+myrank,*) "ps_Q_init 4"
     return
   END SUBROUTINE ps_Q_init
 

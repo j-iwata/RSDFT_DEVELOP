@@ -21,7 +21,7 @@ CONTAINS
         integer :: Rrefmax,Lrefmax,lpsmax,npqmax,ncfmax,nsmpl
         integer :: nl3vmax,npq_
         
-write(*,*) 'inside readPSVG'
+write(*,*) '>>>>> inside readPSVG'
         Lrefmax=nlf(ik)
         Rrefmax=maxval(nrf(:,ik))
         lpsmax=Lrefmax*Rrefmax
@@ -138,6 +138,7 @@ write(*,*) 'after allocatePSG'
         deallocate( nl3v_,l3v_ )
         deallocate( ncf,nrin,rin,coe )
         deallocate( qrL_,qrad_ )
+write(*,*) '>>>>> end of readPSVG'
         return
     END SUBROUTINE readPSVG
 END MODULE PSReadPSVG

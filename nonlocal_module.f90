@@ -6,6 +6,8 @@ MODULE nonlocal_module
   use ps_nloc3_module
   use ps_nloc_mr_module
 
+  use parallel_module, only: myrank
+
   implicit none
 
   PRIVATE
@@ -25,13 +27,19 @@ CONTAINS
 #endif
     select case( pselect )
     case(2,4)
+if (myrank==0) write(400+myrank,*) "before op_ps_nloc2"
        call op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(3)
+if (myrank==0) write(400+myrank,*) "before op_ps_nloc3"
        call op_ps_nloc3(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(5)
+if (myrank==0) write(400+myrank,*) "before op_ps_nloc_mr"
        call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
+    case(102)
+if (myrank==0) write(400+myrank,*) "before op_ps_nloc_uspp"
+        call op_ps_nloc2_uspp()
     case default
-       stop "pselect/=2,4,5 are not implemented"
+       stop "pselect/=2,4,5,102 are not implemented"
     end select
 
   END SUBROUTINE op_nonlocal

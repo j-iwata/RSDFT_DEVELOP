@@ -489,6 +489,7 @@ if (myrank==0) write(*,*) "start initPS"
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
+if (myrank==0) write(400+myrank,*) "before calc_total_energy"
   call calc_total_energy(.true.,disp_switch)
 
   if ( mod(imix,2) == 0 ) then

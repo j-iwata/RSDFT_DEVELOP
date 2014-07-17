@@ -6,12 +6,12 @@ MODS1 = simc_module.o\
         modified_bessel_module.o \
 	bberf_module.o \
         expint_module.o \
+        parallel_module.o \
 		VarPSMember.o \
 		VarPSMemberG.o \
 		PSreadPSV.o \
 		PSReadPSVG.o \
 		Filtering.o \
-        parallel_module.o \
         rsdft_mpi_module.o \
         bcast_module.o \
         omp_variables.o \
@@ -59,6 +59,7 @@ MODS1 = simc_module.o\
 		VarPara.o \
 		ParaRGridComm.o \
         ps_nloc2_module.o \
+		PSQInit.o \
 		pseudopotentials.o \
         localpot2_variables.o \
         localpot2_module.o \
