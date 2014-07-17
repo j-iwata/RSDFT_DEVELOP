@@ -6,6 +6,8 @@ MODULE nonlocal_module
   use ps_nloc3_module
   use ps_nloc_mr_module
 
+  use PSnonLocOpG2
+
   use parallel_module, only: myrank
 
   implicit none
