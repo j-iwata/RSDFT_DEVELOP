@@ -1,11 +1,13 @@
 MODULE PSQRijPrep
   implicit none
+  PRIVATE
+  PUBLIC :: prepQRijp102
 
 CONTAINS
 
-  SUBROUTINE prep_QRij_p12
+  SUBROUTINE prepQRijp102
     implicit none
-
-  END SUBROUTINE prep_QRij_p12
+    return
+  END SUBROUTINE prepQRijp102
 
 END MODULE PSQRijPrep

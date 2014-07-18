@@ -9,7 +9,11 @@ MODULE pseudopotentials
     use ps_nloc3_module, only: init_ps_nloc3,prep_ps_nloc3
     use ps_nloc_mr_module, only: prep_ps_nloc_mr
     use pseudopot_module, only: pselect
+#ifdef _USPP_
     use PSQInit, only: initKtoKPSQ,ps_Q_init
+    use PSQRijPrep, only: prepQRijp102
+    use PSnonLocPrepG, only: prepNzqr
+#endif
 
     use parallel_module, only: myrank
     implicit none
@@ -60,6 +64,8 @@ if (myrank==0) write(400+myrank,*) ">>>>> ps_Q_init"
             call ps_Q_init(gcut,rcfac,qcfac,etafac)
 if (myrank==0) write(400+myrank,*) ">>>>> prep_ps_nloc2"
             call prep_ps_nloc2
+            call prepNzqr
+            call prepQRijp102
 #endif
 
         end select

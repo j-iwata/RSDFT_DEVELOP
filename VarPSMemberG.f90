@@ -35,11 +35,47 @@ use parallel_module, only: myrank
 
   integer,allocatable :: npq(:)
 
+  integer :: N_nzqr
+  integer :: N_nlop
+
   integer :: max_Rref=0,max_Lref=0,max_k2=0,max_qgrd=0
 
 
 CONTAINS
+!------------------------------------------
+  SUBROUTINE allocateNzqr(nspin,Natom,k1max)
+    implicit none
+    integer,intent(IN) :: nspin,Natom,k1max
+    call deallocateNzqr
+    allocate(nzqr_pair(N_nzqr,2)) ; nzqr_pair=0
+    allocate(atommap(N_nzqr)    ) ; atommap=0
+    allocate(k1map(N_nzqr)      ) ; k1map=0
+    allocate(kk1map(k1max,Natom)) ; kk1map=0
+    allocate(nlop_pair(2,N_nlop)) ; nlop_pair=0
+    allocate(Dij(N_nzqr,nspin)  ) ; Dij=0.d0
+    allocate(Dij00(N_nzqr)      ) ; Dij00=0.d0
+    allocate(Dij0(N_nzqr)       ) ; Dij0=0.d0
+    allocate(qij(N_nzqr)        ) ; qij=0.d0
+    allocate(qij_f(N_nzqr)      ) ; qij_f=0.d0
+    return
+  END SUBROUTINE allocateNzqr
 
+!------------------------------------------
+  SUBROUTINE deallocateNzqr
+    implicit none
+    if (allocated(nzqr_pair)) deallocate(nzqr_pair)
+    if (allocated(atommap)  ) deallocate(atommap)
+    if (allocated(k1map)    ) deallocate(k1map)
+    if (allocated(kk1map)   ) deallocate(kk1map)
+    if (allocated(nlop_pair)) deallocate(nlop_pair)
+    if (allocated(Dij)      ) deallocate(Dij)
+    if (allocated(Dij00)    ) deallocate(Dij00)
+    if (allocated(Dij0)     ) deallocate(Dij0)
+    if (allocated(qij)      ) deallocate(qij)
+    if (allocated(qij_f)    ) deallocate(qij_f)
+    return
+  END SUBROUTINE deallocateNzqr
+  
 !------------------------------------------
   SUBROUTINE allocateKtoK( k1max,k2max,nki,Rrefmax,Lrefmax )
     implicit none
@@ -138,6 +174,8 @@ if (myrank==0) write(400+myrank,*) "allocateKtoK 3"
     call mpi_bcast(nl3v  ,n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(l3v   ,maxs(1)*n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(qrL   ,maxs(4)*maxs(1)*n,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    
+    return
 
 ! FOR DEBUG
     write(300+myrank,*) 'npq='
