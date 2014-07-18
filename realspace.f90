@@ -273,6 +273,12 @@ PROGRAM Real_Space_Solid
 
   call init_localpot2( Nelement, Ecut, E_hartree, Exc )
 
+! --- Init vdW ---
+
+  call read_vdw_grimme(myrank,1)
+  call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
+  call calc_E_vdw_grimme( Natom, aa_atom )
+
 ! --- ( the followings are just to get H and XC energies ? )
 
   call calc_hartree(ML_0,ML_1,MSP,rho)

@@ -6,6 +6,8 @@ MODULE force_module
   use force_ewald_module
   use watch_module
   use parallel_module, only: disp_switch_parallel
+  use vdw_grimme_module, only: calc_F_vdw_grimme
+  use atom_module, only: aa_atom
 
   implicit none
 
@@ -18,7 +20,7 @@ CONTAINS
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     real(8),allocatable :: work(:,:)
-    real(8) :: ctt(0:3),ett(0:3)
+    real(8) :: ctt(0:4),ett(0:4)
 
     force(:,:) = 0.d0
 
@@ -53,6 +55,10 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
+    call calc_F_vdw_grimme( MI, aa_atom, force )
+
+    call watch(ctt(4),ett(4))
+
 ! --- constraint & symmetry ---
 
 !    call_symforce
@@ -64,6 +70,7 @@ CONTAINS
        write(*,*) "time(force1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force3)",ctt(3)-ctt(2),ett(3)-ett(2)
+       write(*,*) "time(force4)",ctt(4)-ctt(3),ett(4)-ett(3)
     end if
 
   END SUBROUTINE calc_force

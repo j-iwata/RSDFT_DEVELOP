@@ -14,13 +14,14 @@ MODULE total_energy_module
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
+  use vdw_grimme_module, only: get_E_vdw_grimme
 
   implicit none
 
   PRIVATE
   PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy,diff_etot
 
-  real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene
+  real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
   real(8) :: Eloc_0=0.d0
@@ -70,6 +71,7 @@ CONTAINS
     Eeig = 0.d0
     Eion = 0.d0
     Fene = 0.d0
+    Evdw = 0.d0
 
     n1 = ML_0
     n2 = ML_1
@@ -165,9 +167,13 @@ CONTAINS
     Eloc = s1(1)
     Eion = s1(2)
 
-    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald - 2*E_exchange_exx
+    call get_E_vdw_grimme( Evdw )
 
-    Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald - 2*E_exchange_exx
+    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
+         - 2*E_exchange_exx + Evdw
+
+    Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
+         - 2*E_exchange_exx + Evdw
 
     Fene = Etot - Eentropy
 
@@ -175,6 +181,7 @@ CONTAINS
 
     if ( disp_switch ) then
        write(*,*) '(EII) ',Eewald
+       write(*,*) '(VDW) ',Evdw
        write(*,*) '(KIN) ',Ekin, Ekin-Ekin_0
        write(*,*) '(LOC) ',Eloc, Eloc-Eloc_0
        write(*,*) '(NLC) ',Enlc, Enlc-Enlc_0
