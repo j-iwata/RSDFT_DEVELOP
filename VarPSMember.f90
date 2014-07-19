@@ -3,7 +3,7 @@ use parallel_module, only: myrank
   implicit none
 
   integer :: Nelement_PP
-  integer :: Nelement_local
+  integer :: Nelement_
   integer,allocatable :: ippform(:)
   character(30),allocatable :: file_ps(:)
   real(8),allocatable :: rad(:,:),rab(:,:),rad1(:,:)
@@ -43,9 +43,9 @@ if (myrank==0) write(400+myrank,*) "inside allocateRps 1"
 if (myrank==0) write(400+myrank,*) "inside allocateRps 2"
     m=max_psorb
 if (myrank==0) write(400+myrank,*) "inside allocateRps 2-1"
-    allocate( NRps0(m,Nelement_local) ) ; NRps0=0
+    allocate( NRps0(m,Nelement_) ) ; NRps0=0
 if (myrank==0) write(400+myrank,*) "inside allocateRps 3"
-    allocate( Rps0(m,Nelement_local)  ) ; Rps0=0.d0
+    allocate( Rps0(m,Nelement_)  ) ; Rps0=0.d0
     NRps0(:,:)=NRps(:,:)
     Rps0(:,:)=Rps(:,:)
 

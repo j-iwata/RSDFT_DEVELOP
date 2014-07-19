@@ -38,6 +38,12 @@ use parallel_module, only: myrank
   integer :: N_nzqr
   integer :: N_nlop
 
+  integer,allocatable :: nzqr_pair(:,:)
+  integer,allocatable :: atommap(:),kk1map(:,:),k1map(:)
+  integer,allocatable :: nlop_pair(:,:)
+  real(8),allocatable :: Dij(:,:),Dij00(:),Dij0(:)
+  real(8),allocatable :: qij(:),qij_f(:)
+
   integer :: max_Rref=0,max_Lref=0,max_k2=0,max_qgrd=0
 
 

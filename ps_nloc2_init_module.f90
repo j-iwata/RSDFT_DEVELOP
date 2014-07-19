@@ -87,7 +87,7 @@ if (myrank==0) write(400+myrank,*) "before allocateRps"
     call allocateRps
 if (myrank==0) write(400+myrank,*) "after allocateRps"
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        MMr=Mr(ik)
        do iorb=1,norb(ik)
           Rc=Rps(iorb,ik)*rcfac
@@ -105,10 +105,10 @@ if (myrank==0) write(400+myrank,*) "after allocateRps"
 if (myrank==0) write(400+myrank,*) "ps_nloc2_init 1"
     NRc=max_psgrd
     m=max_psorb
-    allocate( wm(NRc,m,Nelement_local) )
+    allocate( wm(NRc,m,Nelement_) )
 if (myrank==0) write(400+myrank,*) "ps_nloc2_init 2"
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        do iorb=1,norb(ik)
           NRc=NRps(iorb,ik)
           Rc=Rps(iorb,ik)
@@ -136,7 +136,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 2"
     end do
 
 if (myrank==0) write(400+myrank,*) "ps_nloc2_init 3"
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        do iorb=1,norb(ik)
           NRps(iorb,ik)=Rps(iorb,ik)/dr+1
           if ( (NRps(iorb,ik)-1)*dr < Rps(iorb,ik) ) then
@@ -159,8 +159,8 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 4"
        deallocate( vtmp )
     end if
 
-!    allocate( rad1(MMr,Nelement_local) ) ; rad1=0.d0
-    do ik=1,Nelement_local
+!    allocate( rad1(MMr,Nelement_) ) ; rad1=0.d0
+    do ik=1,Nelement_
        do i=1,MMr
           rad1(i,ik)=(i-1)*dr
        end do
@@ -172,7 +172,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 4"
 if (myrank==0) write(400+myrank,*) "ps_nloc2_init 5"
     const=2.d0/acos(-1.d0)
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
           NRc=NRps0(iorb,ik)
@@ -186,7 +186,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 5"
     deallocate( vrad,tmp )
 
 if (myrank==0) write(400+myrank,*) "ps_nloc2_init 6"
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
           NRc=NRps(iorb,ik)
@@ -231,7 +231,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 7"
     pi4 = 4.d0*acos(-1.d0)
 
     lm=0
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        m=0
        do iorb=1,norb(ik)
           if ( lo(iorb,ik)==0 ) then
@@ -244,10 +244,10 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 7"
     end do
     NRc=maxval(NRps)
 
-    allocate( dviod(NRc,lm,Nelement_local) )
+    allocate( dviod(NRc,lm,Nelement_) )
     dviod=0.d0
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
           NRc=NRps(iorb,ik)
@@ -269,9 +269,9 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 7"
     end do
 
     NRc=maxval(NRps)
-    allocate( dvrad(NRc,lm,Nelement_local) ) ; dvrad=0.d0
+    allocate( dvrad(NRc,lm,Nelement_) ) ; dvrad=0.d0
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        lm=0
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
@@ -287,7 +287,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 7"
        end do
     end do
     const=sqrt(pi4/3.d0)
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
        lm=0
        do iorb=1,norb(ik)
           L=lo(iorb,ik)

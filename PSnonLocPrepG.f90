@@ -1,8 +1,9 @@
 MODULE PSnonLocPrepG
   use VarPSMemberG
   use VarPSMember
-  use atom_module, only: ki_atom
+  use atom_module, only: Natom,ki_atom
   use ps_nloc2_variables
+  use electron_module, only: nspin
   ! nzlma
 
   use parallel_module, only: myrank
@@ -15,10 +16,10 @@ CONTAINS
   SUBROUTINE prepNzqr
     implicit none
     integer :: kk1
-    integer :: i,j
+    integer :: i,j,ik
     integer :: lma1,lma2,a1,a2,l1,l2,m1,m2,i1,i2,a,l,m
     integer,allocatable :: k1a(:)
-if (myrank==0) write(400+myrank,*) "inside prepNzqr"
+if (myrank==0) write(400+myrank,*) ">>>>> inside prepNzqr"
 
 !----- get N_nzqr -----
     kk1=0
@@ -118,6 +119,9 @@ if (myrank==0) write(400+myrank,*) "inside prepNzqr"
       l2=lmap(j)
       m1=mmap(i)
       m2=mmap(j)
+      ik=ki_atom(a1)
+      i1=no(iorbmap(i),ik)
+      i2=no(iorbmap(j),ik)
       if (myrank==0) then
         if (i==j) then
           write(*,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10)') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
@@ -130,7 +134,7 @@ if (myrank==0) write(400+myrank,*) "inside prepNzqr"
 #endif
 
 !----- Nlop_type Matrix -----
-    if (myrank==0) write(*,*) "--- Dij00(1:N_nlop) ---"
+    if (myrank==0) write(*,*) "--- Dij0 (1:N_nlop) ---"
     if (myrank==0) write(*,*) "   [ qij(1:N_nlop) ]   "
     kk1=0
     do lma1=1,nzlma
@@ -146,9 +150,11 @@ if (myrank==0) write(400+myrank,*) "inside prepNzqr"
         i1=no(iorbmap(lma1),ik)
         i2=no(iorbmap(lma2),ik)
         Dij0(kk1)=ddi(i1,i2,l+1,ik)
+#ifdef _SHOWALL_Q_
         if (myrank==0) then
           write(*,*) i,lma1,lma2,Dij0(kk1)
         end if
+#endif
         qij(kk1)=qqc(i1,i2,l+1,ik)
       end do
     end do
@@ -156,6 +162,7 @@ if (myrank==0) write(400+myrank,*) "inside prepNzqr"
       write(*,*) "N_nlop= ",N_nlop,kk1
     end if
 !===== Nlop_type Matrix =====
+if (myrank==0) write(400+myrank,*) "<<<<< end of prepNzqr"
 
     return
   END SUBROUTINE prepNzqr

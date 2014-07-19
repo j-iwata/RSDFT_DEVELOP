@@ -60,6 +60,8 @@ MODS1 = simc_module.o\
 		ParaRGridComm.o \
         ps_nloc2_module.o \
 		PSQInit.o \
+		PSQRijPrep.o \
+		PSnonLocPrepG.o \
 		pseudopotentials.o \
         localpot2_variables.o \
         localpot2_module.o \

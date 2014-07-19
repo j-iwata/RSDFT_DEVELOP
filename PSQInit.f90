@@ -31,9 +31,9 @@ CONTAINS
 
 if ( myrank==0 ) write(400+myrank,*) "allocateKtoK"
 if ( myrank==0 ) write(400+myrank,*) "k1max=",k1max
-    call allocateKtoK( k1max,max_k2,Nelement_local,max_Rref,max_Lref )
+    call allocateKtoK( k1max,max_k2,Nelement_,max_Rref,max_Lref )
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
       k1=0
       nr1=0
       do l1=1,nlf(ik)
@@ -84,7 +84,7 @@ if ( myrank==0 ) write(400+myrank,*) "k2=",k2
       N_k1(ik)=k1
     end do ! ik
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
       do k1=1,N_k1(ik)
         k2=k1_to_k2(k1,ik)
         if (icheck_k2(k2)==1) cycle
@@ -134,10 +134,10 @@ k2max=max_k2
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
-    call allocateQRps( k2max,Nelement_local )
+    call allocateQRps( k2max,Nelement_ )
 
 if (myrank==0) write(400+myrank,*) "ps_Q_init 1"
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
       MMr=Mr(ik)
       do k2=1,N_k2(ik)
         iorb1=k2_to_iorb(1,k2,ik)
@@ -158,10 +158,10 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 1"
     end do
 
     NRc=maxval( Q_NRps )
-    allocate( Q_wm(NRc,k2max,Nelement_local) ) ; Q_wm(:,:,:)=0.d0
+    allocate( Q_wm(NRc,k2max,Nelement_) ) ; Q_wm(:,:,:)=0.d0
 
 if (myrank==0) write(400+myrank,*) "ps_Q_init 2"
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
             Rc=Q_Rps(k2,ik)
@@ -190,7 +190,7 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 2"
     end do ! ik
 
 if (myrank==0) write(400+myrank,*) "ps_Q_init 2-1"
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
         do k2=1,N_k2(ik)
             Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr
             if ( Q_NRps(k2,ik)>max_psgrd ) stop
@@ -199,7 +199,7 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 2-1"
 
 if (myrank==0) write(400+myrank,*) "ps_Q_init 2-2"
     MMr=max( maxval(Mr),maxval(Q_NRps) )
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
         do i=1,MMr
             rad1(i,ik)=(i-1)*dr
         end do
@@ -209,7 +209,7 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 2-2"
     allocate( vrad(NRc),tmp(NRc) )
 
 if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
         do k2=1,N_k2(ik)
             iorb1=k2_to_iorb(1,k2,ik)
             iorb2=k2_to_iorb(2,k2,ik)
@@ -227,7 +227,7 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
 
     deallocate( vrad,tmp )
 
-    do ik=1,Nelement_local
+    do ik=1,Nelement_
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
             Rc=Q_Rps(k2,ik)

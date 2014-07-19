@@ -401,6 +401,11 @@ CONTAINS
        k1=count( itmp(:,1)>0 )
        k2=count( itmp(:,2)>0 )
        k3=count( itmp(:,3)>0 )
+ 
+#ifdef _REFACT_
+       call #########
+
+#else
        ic1=0
        id1=np1
        do i=1,np1
@@ -492,6 +497,8 @@ CONTAINS
              icheck_tmp2(n)=icheck_tmp2(n)+1
           end if
        end do
+#endif
+
        if ( icheck_tmp1(myrank_g)/=0 ) then
           if ( icheck_tmp1(myrank_g)>0 ) then
              maps_tmp(icheck_tmp2(myrank_g),1)=icheck_tmp1(myrank_g)
