@@ -80,12 +80,12 @@ use parallel_module
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
 
-if (myrank==0) write(400+myrank,*) ">>>>> inside ps_nloc2_init"
+write(400+myrank,*) ">>>>> inside ps_nloc2_init"
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
-if (myrank==0) write(400+myrank,*) "before allocateRps"
+write(400+myrank,*) "before allocateRps"
     call allocateRps
-if (myrank==0) write(400+myrank,*) "after allocateRps"
+write(400+myrank,*) "after allocateRps"
 
     do ik=1,Nelement_
        MMr=Mr(ik)
@@ -102,11 +102,11 @@ if (myrank==0) write(400+myrank,*) "after allocateRps"
        end do
     end do
 
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 1"
+write(400+myrank,*) "ps_nloc2_init 1"
     NRc=max_psgrd
     m=max_psorb
     allocate( wm(NRc,m,Nelement_) )
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 2"
+write(400+myrank,*) "ps_nloc2_init 2"
 
     do ik=1,Nelement_
        do iorb=1,norb(ik)
@@ -135,7 +135,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 2"
        end do
     end do
 
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 3"
+write(400+myrank,*) "ps_nloc2_init 3"
     do ik=1,Nelement_
        do iorb=1,norb(ik)
           NRps(iorb,ik)=Rps(iorb,ik)/dr+1
@@ -146,7 +146,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 3"
     end do
     MMr=max( maxval(Mr),maxval(NRps) )
 
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 4"
+write(400+myrank,*) "ps_nloc2_init 4"
     if ( MMr>maxval(Mr) ) then
        m0=size(viod,1)
        m1=size(viod,2)
@@ -160,6 +160,8 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 4"
     end if
 
 !    allocate( rad1(MMr,Nelement_) ) ; rad1=0.d0
+write(400+myrank,*) "MMr",MMr
+write(400+myrank,*) "size of rad1",size(rad1)
     do ik=1,Nelement_
        do i=1,MMr
           rad1(i,ik)=(i-1)*dr
@@ -167,9 +169,11 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 4"
     end do
 
     NRc=maxval(NRps0)
-    allocate( vrad(NRc),tmp(NRc) )
+write(400+myrank,*) "NRc= ",NRc
+write(400+myrank,*) "max_psgrd= ",max_psgrd
+    allocate( vrad(NRc) ) ; vrad=0.d0
 
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 5"
+write(400+myrank,*) "ps_nloc2_init 5"
     const=2.d0/acos(-1.d0)
 
     do ik=1,Nelement_
@@ -178,14 +182,17 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 5"
           NRc=NRps0(iorb,ik)
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
+write(400+myrank,*) "NRc",NRc
+write(400+myrank,*) "NRps",NRps(iorb,ik)
+write(400+myrank,*) "size of rad1",size(rad1)
           
-          call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
+          call opFiltering( qc,L,NRc,NRps(iorb,ik),max_psgrd,rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
 
        end do ! iorb
     end do ! ik
-    deallocate( vrad,tmp )
+    deallocate( vrad )
 
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 6"
+write(400+myrank,*) "ps_nloc2_init 6"
     do ik=1,Nelement_
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
@@ -215,7 +222,7 @@ if (myrank==0) write(400+myrank,*) "ps_nloc2_init 6"
     end do
 
     deallocate( wm )
-if (myrank==0) write(400+myrank,*) "ps_nloc2_init 7"
+write(400+myrank,*) "ps_nloc2_init 7"
 
     return
   END SUBROUTINE ps_nloc2_init

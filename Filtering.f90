@@ -7,13 +7,13 @@ MODULE Filtering
 CONTAINS
 
 !------------------------------------
-  SUBROUTINE opFiltering( qc,L,NRc,NRps,rad,rad1,vrad,tarIN )
+  SUBROUTINE opFiltering( qc,L,NRc,NRps,max_psgrd,rad,rad1,vrad,tarIN )
     implicit none
 
     real(8),intent(IN) :: qc
-    integer,intent(IN) :: L,NRc,NRps
-    real(8),intent(IN) :: rad(NRc),rad1(NRc),vrad(NRc)
-    real(8),intent(INOUT) :: tarIN(NRc)
+    integer,intent(IN) :: L,NRc,NRps,max_psgrd
+    real(8),intent(IN) :: rad(max_psgrd),rad1(max_psgrd),vrad(max_psgrd)
+    real(8),intent(INOUT) :: tarIN(max_psgrd)
     integer :: i,j
     real(8) :: r,r1
     real(8) :: sb0x,sb1x,sb0y,sb1y,sum0
@@ -21,7 +21,7 @@ CONTAINS
     real(8),parameter :: const=2.d0/acos(-1.d0) ! HERE
 
     
-    allocate( tmp(NRc) ) ; tmp(:)=0.d0
+    allocate( tmp(max_psgrd) ) ; tmp(:)=0.d0
     do i=1,NRps
       r=rad1(i)
        select case(L)

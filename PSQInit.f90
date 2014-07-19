@@ -220,7 +220,7 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
 
                 vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
 
-                call opFiltering( qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik),vrad,qrL(1,ll3,k2,ik) )
+                call opFiltering( qc,L,NRc,Q_NRps(k2,ik),max_qgrd,rad(1,ik),rad1(1,ik),vrad,qrL(1,ll3,k2,ik) )
             end do ! ll3
         end do ! k2
     end do ! ik

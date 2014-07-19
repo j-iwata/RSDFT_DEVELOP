@@ -127,13 +127,8 @@ CONTAINS
 
     r=maxval(Rps)+maxval(Hgrid(1:3))+1.d-8
     call make_minimal_box(r,mm1,mm2,mm3,MMJJ_0)
-    mm1 = maxval( abs(mcube_grid_ion(:,1)) ) + 1
-    mm2 = maxval( abs(mcube_grid_ion(:,2)) ) + 1
-    mm3 = maxval( abs(mcube_grid_ion(:,3)) ) + 1
 
     call watch(ctt(8),ett(8))
-
-    MMJJ_0 = M_grid_ion
 
     if ( .not.allocated(icheck_tmp3) ) then
     L=maxval(lo)
@@ -385,6 +380,10 @@ CONTAINS
        end do
        icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
+#ifdef _REFACT_
+       call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
+
+#else
        itmp(:,:)=0
        n=-1
        do i3=1,node_partition(3)
@@ -402,10 +401,6 @@ CONTAINS
        k2=count( itmp(:,2)>0 )
        k3=count( itmp(:,3)>0 )
  
-#ifdef _REFACT_
-       call #########
-
-#else
        ic1=0
        id1=np1
        do i=1,np1
@@ -697,6 +692,122 @@ CONTAINS
 
   END SUBROUTINE prep_ps_nloc2
 
+  SUBROUTINE prepMapsTmp(np1,np2,np3,nprocs_g_,itmp,icheck_tmp1,icheck_tmp2)
+    implicit none
+    integer,intent(IN) :: np1,np2,np3,nprocs_g_
+    integer,allocatable,intent(INOUT) :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:)
+    integer :: n,i,i1,i2,i3,j1,j2,j3
+    integer :: k,k1,k2,k3,ic1,ic2,ic3,id1,id2,id3
+    itmp(:,:)=0
+    n=-1
+    do i3=1,np3
+      do i2=1,np2
+        do i1=1,np1
+          n=n+1
+          if ( icheck_tmp1(n) == 0 ) cycle
+          itmp(i1,1) = i1
+          itmp(i2,2) = i2
+          itmp(i3,3) = i3
+        end do
+      end do
+    end do
+    k1=count( itmp(:,1)>0 )
+    k2=count( itmp(:,2)>0 )
+    k3=count( itmp(:,3)>0 )
+
+    ic1=0
+    id1=np1
+    do i=1,np1
+      if ( ic1==0 .and. itmp(i,1)/=0 ) then
+        ic1=i
+      else if ( ic1/=0 .and. itmp(i,1)==0 ) then
+        id1=i-1
+        exit
+      end if
+    end do
+    if ( id1-ic1+1/=k1 ) then
+      i1=0
+      j1=np1
+      do i=id1+1,np1
+        if ( i1==0 .and. itmp(i,1)/=0 ) then
+          i1=i
+        else if ( i1/=0 .and. itmp(i,1)==0 ) then
+          j1=i-1
+          exit
+        end if
+      end do
+      i1=i1-np1
+      j1=j1-np1
+      ic1=i1
+    end if
+    ic2=0
+    id2=np2
+    do i=1,np2
+      if ( ic2==0 .and. itmp(i,2)/=0 ) then
+        ic2=i
+      else if ( ic2/=0 .and. itmp(i,2)==0 ) then
+        id2=i-1
+        exit
+      end if
+    end do
+    if ( id2-ic2+1/=k2 ) then
+      i2=0
+      j2=np2
+      do i=id2+1,np2
+        if ( i2==0 .and. itmp(i,2)/=0 ) then
+          i2=i
+        else if ( i2/=0 .and. itmp(i,2)==0 ) then
+          j2=i-1
+          exit
+        end if
+      end do
+      i2=i2-np2
+      j2=j2-np2
+      ic2=i2
+    end if
+    ic3=0
+    id3=np3
+    do i=1,np3
+      if ( ic3==0 .and. itmp(i,3)/=0 ) then
+        ic3=i
+      else if ( ic3/=0 .and. itmp(i,3)==0 ) then
+        id3=i-1
+        exit
+      end if
+    end do
+    if ( id3-ic3+1/=k3 ) then
+      i3=0
+      j3=np3
+      do i=id3+1,np3
+        if ( i3==0 .and. itmp(i,3)/=0 ) then
+          i3=i
+        else if ( i3/=0 .and. itmp(i,3)==0 ) then
+          j3=i-1
+          exit
+        end if
+      end do
+      i3=i3-np3
+      j3=j3-np3
+      ic3=i3
+    end if
+    do j3=ic3,id3
+      do j2=ic2,id2
+        do j1=ic1,id1
+        k1=mod(j1+np1-1,np1)+1
+        k2=mod(j2+np2-1,np2)+1
+        k3=mod(j3+np3-1,np3)+1
+        k = k1-1 + (k2-1)*np1 + (k3-1)*np1*np2
+        if ( icheck_tmp1(k)==0 ) icheck_tmp1(k)=-1
+        end do
+      end do
+    end do
+    do n=0,nprocs_g_-1
+      if ( icheck_tmp1(n)/=0 ) then
+        icheck_tmp2(n)=icheck_tmp2(n)+1
+      end if
+    end do
+    return
+  END SUBROUTINE prepMapsTmp
 
   SUBROUTINE prep_uvk_ps_nloc2(k0,k1,kbb)
     implicit none
