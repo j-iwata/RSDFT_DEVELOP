@@ -69,7 +69,7 @@ CONTAINS
 
     logical,allocatable :: lcheck_tmp1(:,:)
 
-if (myrank==0) write(400+myrank,*) ">>>>> inside prepQRijp102"
+write(400+myrank,*) ">>>>> prepQRijp102"
 
     INTERFACE
        FUNCTION Ylm(x,y,z,l,m)
@@ -548,7 +548,7 @@ if (myrank==0) write(400+myrank,*) ">>>>> inside prepQRijp102"
        write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
     
-if (myrank==0) write(400+myrank,*) "<<<<< end of prepQRijp102"
+write(400+myrank,*) "<<<<< prepQRijp102"
     return
   END SUBROUTINE prepQRijp102
 #endif

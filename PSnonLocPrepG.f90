@@ -19,7 +19,7 @@ CONTAINS
     integer :: i,j,ik
     integer :: lma1,lma2,a1,a2,l1,l2,m1,m2,i1,i2,a,l,m
     integer,allocatable :: k1a(:)
-if (myrank==0) write(400+myrank,*) ">>>>> inside prepNzqr"
+write(400+myrank,*) ">>>>> inside prepNzqr"
 
 !----- get N_nzqr -----
     kk1=0
@@ -162,7 +162,7 @@ if (myrank==0) write(400+myrank,*) ">>>>> inside prepNzqr"
       write(*,*) "N_nlop= ",N_nlop,kk1
     end if
 !===== Nlop_type Matrix =====
-if (myrank==0) write(400+myrank,*) "<<<<< end of prepNzqr"
+write(400+myrank,*) "<<<<< end of prepNzqr"
 
     return
   END SUBROUTINE prepNzqr

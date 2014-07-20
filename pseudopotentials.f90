@@ -45,7 +45,9 @@ CONTAINS
 
         select case( pselect )
         case( 2 )
+write(400+myrank,*) "--- ps_nloc2_init ---"
             call ps_nloc2_init(gcut)
+write(400+myrank,*) "--- prep_ps_nloc2 ---"
             call prep_ps_nloc2
         case( 3 )
             call init_ps_nloc3
@@ -55,16 +57,18 @@ CONTAINS
 
 #ifdef _USPP_
         case( 102 )
-if (myrank==0) write(400+myrank,*) ">>>>> init PS nonlocal for pselect==102"
-if (myrank==0) write(400+myrank,*) ">>>>> initKtoKPSQ"
+write(400+myrank,*) "----- init PS nonlocal for pselect==102 -----"
+write(400+myrank,*) "--- initKtoKPSQ ---"
             call initKtoKPSQ
-if (myrank==0) write(400+myrank,*) ">>>>> ps_nloc2_init"
+write(400+myrank,*) "--- ps_nloc2_init ---"
             call ps_nloc2_init(gcut)
-if (myrank==0) write(400+myrank,*) ">>>>> ps_Q_init"
+write(400+myrank,*) "--- ps_Q_init ---"
             call ps_Q_init(gcut,rcfac,qcfac,etafac)
-if (myrank==0) write(400+myrank,*) ">>>>> prep_ps_nloc2"
+write(400+myrank,*) "--- prep_ps_nloc2 ---"
             call prep_ps_nloc2
+write(400+myrank,*) "--- prepNzqr ---"
             call prepNzqr
+write(400+myrank,*) "--- prepQRijp102 ---"
             call prepQRijp102
 #endif
 

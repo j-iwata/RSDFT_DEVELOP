@@ -255,10 +255,15 @@ CONTAINS
     do l=1,nl
        do j=1,nr(l)
           iorb=iorb+1
-!          temp=sqrt( anorm(iorb,ielm) )
+#ifndef _USPP_
+          temp=sqrt( anorm(iorb,ielm) )
+#endif
           do i=1,nsmpl
-!             viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
+#ifdef _USPP_
              viod(i+1,iorb,ielm)=bet_(i,j,l)
+#else
+             viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
+#endif
           end do
           viod(1,iorb,ielm)=0.d0
        end do

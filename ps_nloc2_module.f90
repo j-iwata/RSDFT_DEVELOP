@@ -72,6 +72,7 @@ CONTAINS
        END FUNCTION Ylm
     END INTERFACE
 
+write(400+myrank,*) ">>>> prep_ps_nloc2"
     ctt=0.0d0 ; ett=0.0d0
 
     call watch(ctt(6),ett(6))
@@ -689,6 +690,7 @@ CONTAINS
        write(*,*) "time(ps_nloc2_8)",ctt(8)-ctt(7),ett(8)-ett(7)
        write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
+write(400+myrank,*) "<<<<< prep_ps_nloc2"
 
   END SUBROUTINE prep_ps_nloc2
 
@@ -698,6 +700,7 @@ CONTAINS
     integer,allocatable,intent(INOUT) :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:)
     integer :: n,i,i1,i2,i3,j1,j2,j3
     integer :: k,k1,k2,k3,ic1,ic2,ic3,id1,id2,id3
+write(400+myrank,*) ">>>> prepMapsTmp"
     itmp(:,:)=0
     n=-1
     do i3=1,np3
@@ -806,6 +809,7 @@ CONTAINS
         icheck_tmp2(n)=icheck_tmp2(n)+1
       end if
     end do
+write(400+myrank,*) "<<<< prepMapsTmp"
     return
   END SUBROUTINE prepMapsTmp
 

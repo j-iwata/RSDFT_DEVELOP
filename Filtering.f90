@@ -1,4 +1,5 @@
 MODULE Filtering
+use parallel_module, only: myrank
   implicit none
   PRIVATE
   PUBLIC :: opFiltering
@@ -7,21 +8,22 @@ MODULE Filtering
 CONTAINS
 
 !------------------------------------
-  SUBROUTINE opFiltering( qc,L,NRc,NRps,max_psgrd,rad,rad1,vrad,tarIN )
+  SUBROUTINE opFiltering( qc,L,NRc,NRps,rad,rad1,vrad,tarIN )
     implicit none
 
     real(8),intent(IN) :: qc
-    integer,intent(IN) :: L,NRc,NRps,max_psgrd
-    real(8),intent(IN) :: rad(max_psgrd),rad1(max_psgrd),vrad(max_psgrd)
-    real(8),intent(INOUT) :: tarIN(max_psgrd)
+    integer,intent(IN) :: L,NRc,NRps
+    real(8),intent(IN) :: rad(NRps),rad1(NRps),vrad(NRc)
+    real(8),intent(INOUT) :: tarIN(NRps)
     integer :: i,j
     real(8) :: r,r1
     real(8) :: sb0x,sb1x,sb0y,sb1y,sum0
     real(8),allocatable :: tmp(:)
     real(8),parameter :: const=2.d0/acos(-1.d0) ! HERE
 
+write(400+myrank,*) ">>>> opFiltering"
     
-    allocate( tmp(max_psgrd) ) ; tmp(:)=0.d0
+    allocate( tmp(NRc) ) ; tmp(:)=0.d0
     do i=1,NRps
       r=rad1(i)
        select case(L)
@@ -169,9 +171,17 @@ CONTAINS
        end select
        tmp(1:NRc)=tmp(1:NRc)*vrad(1:NRc)
        call simp(tmp(1:NRc),sum0,NRc,2)
+#ifdef _SHOWALL_
+write(500+myrank,*) "tarIN(i)(b)= ",tarIN(i)
+write(500+myrank,*) "sum0= ",sum0
+#endif
        tarIN(i)=sum0*const
+#ifdef _SHOWALL_
+write(500+myrank,*) "tarIN(i)(a)= ",tarIN(i)
+#endif
     end do	! i
 
+write(400+myrank,*) "<<<< opFiltering"
     return
   END SUBROUTINE opFiltering
 

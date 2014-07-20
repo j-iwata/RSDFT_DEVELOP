@@ -36,20 +36,20 @@ CONTAINS
   SUBROUTINE allocateRps
     implicit none
     integer :: m
-if (myrank==0) write(400+myrank,*) "inside allocateRps 1"
+if (myrank==0) write(400+myrank,*) ">>>> allocateRps"
     if (allocated( NRps0 )) then
       call deallocateRps
     end if
-if (myrank==0) write(400+myrank,*) "inside allocateRps 2"
+if (myrank==0) write(400+myrank,*) "inside allocateRps 1"
     m=max_psorb
-if (myrank==0) write(400+myrank,*) "inside allocateRps 2-1"
+if (myrank==0) write(400+myrank,*) "inside allocateRps 2"
     allocate( NRps0(m,Nelement_) ) ; NRps0=0
 if (myrank==0) write(400+myrank,*) "inside allocateRps 3"
     allocate( Rps0(m,Nelement_)  ) ; Rps0=0.d0
     NRps0(:,:)=NRps(:,:)
     Rps0(:,:)=Rps(:,:)
 
-if (myrank==0) write(400+myrank,*) "end of allocateRps"
+if (myrank==0) write(400+myrank,*) "<<<< allocateRps"
     return
   END SUBROUTINE allocateRps
 

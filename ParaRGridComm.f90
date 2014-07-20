@@ -1,4 +1,5 @@
 MODULE ParaRGridComm
+  use parallel_module, only: node_partition,myrank_g,nprocs_g,COMM_GRID,myrank
   use VarPara
   ! TYPE_MAIN,node_partition,nprocs_g,myrank_g
   implicit none
@@ -11,8 +12,6 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE prepThreeWayComm( nr,NLRankMap,NRxyz,Num2Rank0 )
-    use parallel_module, only: node_partition,nprocs_g,myrank_g
-    
     implicit none
     
     integer,intent(IN) :: nr
@@ -26,6 +25,7 @@ CONTAINS
     integer,allocatable :: LLp(:,:)
     integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
 
+write(400+myrank,*) ">>>> prepThreeWayComm"
     np1=node_partition(1)
     np2=node_partition(2)
     np3=node_partition(3)
@@ -213,12 +213,12 @@ CONTAINS
     end do
     !===== adjust NRxyz =====
 
+write(400+myrank,*) "<<<< prepThreeWayComm"
+    return
   END SUBROUTINE prepThreeWayComm
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE threeWayComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
-    use parallel_module, only: nprocs_g,COMM_GRID
-  
     implicit none
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
@@ -239,7 +239,11 @@ CONTAINS
     integer :: irank,jrank
     integer :: nb
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
-    
+
+#ifdef _SHOWALL_
+write(400+myrank,*) ">>>> threeWayComm"
+#endif
+
     nb=ib2-ib1+1
 
 !!$OMP single    
@@ -283,6 +287,11 @@ CONTAINS
         end do
     end do
 !!$OMP end single
+
+#ifdef _SHOWALL_
+write(400+myrank,*) ">>>> threeWayComm"
+#endif
+    return
   END SUBROUTINE threeWayComm
 
 !---------------------------------------------------------------------------------------

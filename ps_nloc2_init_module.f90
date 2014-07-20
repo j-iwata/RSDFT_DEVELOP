@@ -1,4 +1,5 @@
 MODULE ps_nloc2_init_module
+use parallel_module, only: myrank
 
 !  use pseudopot_module
   use VarPSMember
@@ -70,7 +71,6 @@ CONTAINS
   SUBROUTINE ps_nloc2_init(qcut)
     use atom_module, only: Natom,ki_atom
     use maskf_module
-use parallel_module
     implicit none
     real(8),intent(IN) :: qcut
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
@@ -80,7 +80,7 @@ use parallel_module
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
 
-write(400+myrank,*) ">>>>> inside ps_nloc2_init"
+write(400+myrank,*) ">>>>> ps_nloc2_init"
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 write(400+myrank,*) "before allocateRps"
@@ -160,8 +160,6 @@ write(400+myrank,*) "ps_nloc2_init 4"
     end if
 
 !    allocate( rad1(MMr,Nelement_) ) ; rad1=0.d0
-write(400+myrank,*) "MMr",MMr
-write(400+myrank,*) "size of rad1",size(rad1)
     do ik=1,Nelement_
        do i=1,MMr
           rad1(i,ik)=(i-1)*dr
@@ -169,8 +167,6 @@ write(400+myrank,*) "size of rad1",size(rad1)
     end do
 
     NRc=maxval(NRps0)
-write(400+myrank,*) "NRc= ",NRc
-write(400+myrank,*) "max_psgrd= ",max_psgrd
     allocate( vrad(NRc) ) ; vrad=0.d0
 
 write(400+myrank,*) "ps_nloc2_init 5"
@@ -182,11 +178,9 @@ write(400+myrank,*) "ps_nloc2_init 5"
           NRc=NRps0(iorb,ik)
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
-write(400+myrank,*) "NRc",NRc
-write(400+myrank,*) "NRps",NRps(iorb,ik)
-write(400+myrank,*) "size of rad1",size(rad1)
-          
-          call opFiltering( qc,L,NRc,NRps(iorb,ik),max_psgrd,rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
+write(500+myrank,*) "ik,iorb= ",ik,iorb
+!write(400+myrank,*) "qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)= ",qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
+          call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
 
        end do ! iorb
     end do ! ik
@@ -222,7 +216,7 @@ write(400+myrank,*) "ps_nloc2_init 6"
     end do
 
     deallocate( wm )
-write(400+myrank,*) "ps_nloc2_init 7"
+write(400+myrank,*) "<<<<< ps_nloc2_init"
 
     return
   END SUBROUTINE ps_nloc2_init

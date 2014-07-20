@@ -26,11 +26,12 @@ CONTAINS
     disp_switch_local=(myrank==0)
 
 #ifdef _SHOW_INIT_PROCESS_
-    if ( myrank==0 ) write(400+myrank,*) "start initKtoKPSQ"
+write(400+myrank,*) ">>>>> initKtoKPSQ"
 #endif
-
-if ( myrank==0 ) write(400+myrank,*) "allocateKtoK"
-if ( myrank==0 ) write(400+myrank,*) "k1max=",k1max
+#ifdef _SHOWALL_
+write(400+myrank,*) "allocateKtoK"
+write(400+myrank,*) "k1max=",k1max
+#endif
     call allocateKtoK( k1max,max_k2,Nelement_,max_Rref,max_Lref )
 
     do ik=1,Nelement_
@@ -45,9 +46,11 @@ if ( myrank==0 ) write(400+myrank,*) "k1max=",k1max
               do i2=1,nrf(l2,ik)
                 if (.not. ((l1==l2) .and. (i2>i1))) then
                   nr2=nr2+1
-if ( myrank==0 ) write(400+myrank,*) "nr2=",nr2
                   k2=(nr1*(nr1-1))/2+nr2
-if ( myrank==0 ) write(400+myrank,*) "k2=",k2
+#ifdef _SHOWALL_
+write(400+myrank,*) "nr2=",nr2
+write(400+myrank,*) "k2=",k2
+#endif
                   do m2=1,2*l2-1
                     if (.not. ((l1==l2) .and. (i1==i2) .and. (m2>m1))) then
                       k1=k1+1
@@ -95,8 +98,9 @@ if ( myrank==0 ) write(400+myrank,*) "k2=",k2
         k2_to_iorb(2,k2,ik)=k1_to_iorb(2,k1,ik)
       end do
     end do
-if ( myrank==0 ) write(400+myrank,*) "end of initKtoKPSQ"
-
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "<<<<< initKtoKPSQ"
+#endif
     return
   END SUBROUTINE initKtoKPSQ
 
@@ -125,7 +129,9 @@ if ( myrank==0 ) write(400+myrank,*) "end of initKtoKPSQ"
     real(8),allocatable :: Q_wm(:,:,:)
     real(8),allocatable :: vrad(:),tmp(:)
 
-if (myrank==0) write(400+myrank,*) ">>>>> inside ps_Q_init"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) ">>>>> ps_Q_init"
+#endif
 qc=0.d0
 Q_rcfac=rcfac
 Q_etafac=Q_etafac
@@ -136,7 +142,9 @@ k2max=max_k2
 
     call allocateQRps( k2max,Nelement_ )
 
-if (myrank==0) write(400+myrank,*) "ps_Q_init 1"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "ps_Q_init 1"
+#endif
     do ik=1,Nelement_
       MMr=Mr(ik)
       do k2=1,N_k2(ik)
@@ -160,7 +168,9 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 1"
     NRc=maxval( Q_NRps )
     allocate( Q_wm(NRc,k2max,Nelement_) ) ; Q_wm(:,:,:)=0.d0
 
-if (myrank==0) write(400+myrank,*) "ps_Q_init 2"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "ps_Q_init 2"
+#endif
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
@@ -189,7 +199,9 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 2"
         end do ! k2
     end do ! ik
 
-if (myrank==0) write(400+myrank,*) "ps_Q_init 2-1"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "ps_Q_init 2-1"
+#endif
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
             Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr
@@ -197,7 +209,9 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 2-1"
         end do 
     end do
 
-if (myrank==0) write(400+myrank,*) "ps_Q_init 2-2"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "ps_Q_init 2-2"
+#endif
     MMr=max( maxval(Mr),maxval(Q_NRps) )
     do ik=1,Nelement_
         do i=1,MMr
@@ -208,7 +222,9 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 2-2"
     NRc=maxval(NRps0)
     allocate( vrad(NRc),tmp(NRc) )
 
-if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "ps_Q_init 3"
+#endif
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
             iorb1=k2_to_iorb(1,k2,ik)
@@ -220,7 +236,7 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
 
                 vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
 
-                call opFiltering( qc,L,NRc,Q_NRps(k2,ik),max_qgrd,rad(1,ik),rad1(1,ik),vrad,qrL(1,ll3,k2,ik) )
+                call opFiltering( qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik),vrad,qrL(1,ll3,k2,ik) )
             end do ! ll3
         end do ! k2
     end do ! ik
@@ -261,7 +277,9 @@ if (myrank==0) write(400+myrank,*) "ps_Q_init 3"
 
     deallocate( Q_wm )
 
-if (myrank==0) write(400+myrank,*) "ps_Q_init 4"
+#ifdef _SHOW_INIT_PROCESS_
+write(400+myrank,*) "<<<<< ps_Q_init"
+#endif
     return
   END SUBROUTINE ps_Q_init
 
