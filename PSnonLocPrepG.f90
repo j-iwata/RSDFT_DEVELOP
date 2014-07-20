@@ -1,4 +1,5 @@
 MODULE PSnonLocPrepG
+use parallel_module, only: myrank
   use VarPSMemberG
   use VarPSMember
   use atom_module, only: Natom,ki_atom
@@ -6,7 +7,6 @@ MODULE PSnonLocPrepG
   use electron_module, only: nspin
   ! nzlma
 
-  use parallel_module, only: myrank
   implicit none
   
   PRIVATE
