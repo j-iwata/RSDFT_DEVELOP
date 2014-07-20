@@ -23,6 +23,8 @@ CONTAINS
     integer :: i1,i2,i3,m,n,k,j,i,ab1,ab2,ab3,nn(3),np(3)
     integer,allocatable :: ntmp(:,:)
 
+    if ( disp_switch ) write(*,'(a60," init_omp")') repeat("-",60)
+
     ab1 = b1b-a1b+1
     ab2 = b2b-a2b+1
     ab3 = b3b-a3b+1
