@@ -127,9 +127,9 @@ CONTAINS
              do i1=a1b_omp,b1b_omp
                 j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
                 htpsi(j,ib)=htpsi(j,ib) &
-                  +coef_lap(1,m)*( www(i1+m,i2,i3,p)+www(i1-m,i2,i3,p) ) &
-                  +coef_lap(2,m)*( www(i1,i2+m,i3,p)+www(i1,i2-m,i3,p) ) &
-                  +coef_lap(3,m)*( www(i1,i2,i3+m,p)+www(i1,i2,i3-m,p) )
+                  +coef_lap(1,m)*( www(i1-m,i2,i3,p)+www(i1+m,i2,i3,p) ) &
+                  +coef_lap(2,m)*( www(i1,i2-m,i3,p)+www(i1,i2+m,i3,p) ) &
+                  +coef_lap(3,m)*( www(i1,i2,i3-m,p)+www(i1,i2,i3+m,p) )
              end do
              end do
              end do
@@ -197,6 +197,8 @@ CONTAINS
              end do
           end do
 
+!$OMP barrier
+
        end if
 
        if ( flag_n23 ) then
@@ -244,6 +246,8 @@ CONTAINS
                 end do
              end do
           end do
+
+!$OMP barrier
 
        end if
 
