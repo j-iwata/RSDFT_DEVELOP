@@ -1,25 +1,18 @@
-MODULE cgpc_module
+MODULE cgpc_2_module
 
 !$  use omp_lib
   use rgrid_module
   use parallel_module
-  use kinetic_module, only: SYStype
   use bc_module
   use kinetic_variables, only: Md, ggg
   use array_bound_module, only: ML_0,ML_1
-
-  use cgpc_diag_module
-  use cgpc_seitsonen_module
-  use cgpc_2_module
-  use cgpc_gausseidel_module
+  use kinetic_module, only: op_kinetic
+  use omp_variables
 
   implicit none
 
   PRIVATE
-  PUBLIC :: preconditioning,read_cgpc,read_oldformat_cgpc,init_cgpc
-
-  integer :: mloop
-  integer :: iswitch_cgpc
+  PUBLIC :: preconditioning_2, init_cgpc_2
 
 #ifdef _DRSDFT_
   real(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
@@ -29,115 +22,44 @@ MODULE cgpc_module
   complex(8),parameter :: zero=(0.d0,0.d0)
 #endif
 
+  integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
+  real(8) :: c0,c1,c2,c3
+
+  integer :: SYStype
+  integer :: mloop = 3
+  logical :: iswitch_bc = .true.
 
 CONTAINS
 
 
-  SUBROUTINE read_cgpc(rank,unit)
+  SUBROUTINE init_cgpc_2( mloop_in, SYStype_in )
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(5) :: cbuf,ckey
-    mloop=3
-    iswitch_cgpc=1
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "MLOOP" ) then
-             backspace(unit)
-             read(unit,*) cbuf,mloop
-          else if ( ckey(1:4) == "IPC" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iswitch_cgpc
-          end if
-       end do
-999    continue
-       write(*,*) "mloop=",mloop
-       write(*,*) "iswitch_cgpc=",iswitch_cgpc
-    end if
-    call send_cgpc(0)
-  END SUBROUTINE read_cgpc
+    integer,intent(IN) :: mloop_in, SYStype_in
+
+    if ( mloop_in > 0 ) mloop = mloop_in
+    SYStype = SYStype_in
+
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+    ab1 = (b1b-a1b+1)
+    ab12= (b1b-a1b+1)*(b2b-a2b+1)
+
+    c0 =  ggg(1)/Hgrid(1)**2+ggg(2)/Hgrid(2)**2+ggg(3)/Hgrid(3)**2
+    c1 = -0.5d0/Hgrid(1)**2*ggg(1)
+    c2 = -0.5d0/Hgrid(2)**2*ggg(2)
+    c3 = -0.5d0/Hgrid(3)**2*ggg(3)
+
+  END SUBROUTINE init_cgpc_2
 
 
-  SUBROUTINE read_oldformat_cgpc(rank,unit)
+  SUBROUTINE preconditioning_2( E, k,s, nn, ML0, gk, Pgk )
+
     implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) mloop
-       write(*,*) "mloop=",mloop
-    end if
-    call send_cgpc(0)
-  END SUBROUTINE read_oldformat_cgpc
 
-
-  SUBROUTINE send_cgpc(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    call mpi_bcast(mloop,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iswitch_cgpc,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_cgpc
-
-
-  SUBROUTINE init_cgpc(n1,n2,k,s,dV_in)
-    implicit none
-    integer,intent(IN) :: n1,n2,k,s
-    real(8),intent(IN) :: dV_in
-    select case( iswitch_cgpc )
-    case( 0 )
-    case( 1 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_1 ---"
-       if ( mloop == 0 ) mloop=3
-    case( 2 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_2 ---"
-       call init_cgpc_2( mloop, SYStype )
-    case( 3 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
-       call init_cgpc_gausseidel(Igrid,Ngrid,Hgrid,ggg,mloop)
-    case( 10 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_diag ---"
-       call init_cgpc_diag(n1,n2,k,s,dV_in)
-    case( 20 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_seitsonen ---"
-       call init_cgpc_seitsonen(n1,n2,comm_grid,dV_in)
-    end select
-  END SUBROUTINE init_cgpc
-
-
-  SUBROUTINE preconditioning(E,k,s,nn,ML0,xk,gk,Pgk)
-    implicit none
-    integer,intent(IN) :: k,s,nn,ML0
-    real(8),intent(IN) :: E(nn)
-#ifdef _DRSDFT_
-    real(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
-    real(8),intent(IN) :: xk(ML0,nn)
-#else
-    complex(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
-    complex(8),intent(IN) :: xk(ML0,nn)
-#endif
-
-    select case( iswitch_cgpc )
-    case( 0 )
-       return
-    case( 1 )
-       call preconditioning_1(E,k,s,nn,ML0,gk,Pgk)
-    case( 2 )
-       call preconditioning_2(E,k,s,nn,ML0,gk,Pgk)
-    case( 3 )
-       call cgpc_gausseidel(ML0,nn,Pgk)
-    case( 10 )
-       call cgpc_diag(ML0,nn,Pgk)
-    case( 20 )
-       call cgpc_seitsonen(k,s,ML0,nn,E,xk,Pgk)
-    end select
-
-  END SUBROUTINE preconditioning
-
-
-  SUBROUTINE preconditioning_1(E,k,s,nn,ML0,gk,Pgk)
-    implicit none
     integer,intent(IN)    :: k,s,nn,ML0
     real(8),intent(IN)    :: E(nn)
 #ifdef _DRSDFT_
@@ -149,14 +71,16 @@ CONTAINS
 #endif
     real(8),parameter :: ep=1.d-24
     real(8) :: rr0(nn),rr1(nn),sb(nn),pAp(nn),a(nn),E0(nn),b,c
-    integer :: i,n,ierr,iloop !,n1,n2
+    integer :: i,n,ierr,iloop
 
-    E0(:) = 0.d0
+    E0(:) = 0.0d0
 
-    if ( mloop<=0 ) return
+    if ( mloop <= 0 ) return
 
-    allocate( rk_pc(ML0,nn),pk_pc(ML0,nn) )
-    allocate( gtmp2(ML0,nn),ftmp2(ML0,nn) )
+    allocate( rk_pc(ML0,nn) ) ; rk_pc=0.0d0
+    allocate( pk_pc(ML0,nn) ) ; pk_pc=0.0d0
+    allocate( gtmp2(ML0,nn) ) ; gtmp2=0.0d0
+    allocate( ftmp2(ML0,nn) ) ; ftmp2=0.0d0
 
 !$OMP parallel workshare
     gtmp2(1:ML0,1:nn)=gk(1:ML0,1:nn)
@@ -174,7 +98,7 @@ CONTAINS
     end do
 
     do n=1,nn
-       c=0.d0
+       c=0.0d0
 !$OMP parallel do reduction(+:c)
        do i=1,ML0
           c=c+abs(rk_pc(i,n))**2
@@ -201,7 +125,7 @@ CONTAINS
 
        do n=1,nn
 !$OMP single
-          c=0.d0
+          c=0.0d0
 !$OMP end single
 !$OMP do reduction(+:c)
           do i=1,ML0
@@ -273,7 +197,7 @@ CONTAINS
 
     return
 
-  END SUBROUTINE preconditioning_1
+  END SUBROUTINE preconditioning_2
 
 
   SUBROUTINE precond_cg_mat(E,k,s,mm,nn)
@@ -283,6 +207,8 @@ CONTAINS
     select case(SYStype)
     case(0)
        call precond_cg_mat_sol(E,k,s,mm,nn)
+!       call precond_cg_mat_sol_1(E,k,s,mm,nn)
+!       call op_kinetic(k,gtmp2,ftmp2,ML_0,ML_1,1,nn)
     case(1)
        call precond_cg_mat_mol(E,k,s,mm,nn)
     case(3)
@@ -292,6 +218,172 @@ CONTAINS
 
 
   SUBROUTINE precond_cg_mat_sol(E,k,s,mm,nn)
+    implicit none
+    integer,intent(IN) :: k,s,mm,nn
+    real(8),intent(INOUT) :: E(nn)
+    real(8) :: d
+    integer :: n,i,i1,i2,i3,m0,n1_omp,n2_omp
+    integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp
+
+!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &
+!$OMP                 ,n1_omp,n2_omp,i,d,m0)
+
+    m0 = 0
+!$  m0 = omp_get_thread_num()
+
+    n1_omp = Igrid_omp(1,0,m0) - ML_0 + 1
+    n2_omp = Igrid_omp(2,0,m0) - ML_0 + 1
+
+    a1b_omp = Igrid_omp(1,1,m0)
+    b1b_omp = Igrid_omp(2,1,m0)
+    a2b_omp = Igrid_omp(1,2,m0)
+    b2b_omp = Igrid_omp(2,2,m0)
+    a3b_omp = Igrid_omp(1,3,m0)
+    b3b_omp = Igrid_omp(2,3,m0)
+
+    do n=1,nn
+       d=c0-E(n)
+       do i=n1_omp,n2_omp
+          ftmp2(i,n)=d*gtmp2(i,n)
+       end do
+    end do
+
+!!$OMP workshare
+!    www(:,:,:,:)=zero
+!!$OMP end workshare
+    do n=1,nn
+       do i3=a3b_omp,b3b_omp
+       do i2=a2b_omp,b2b_omp
+       do i1=a1b_omp,b1b_omp
+          i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+          www(i1,i2,i3,n)=gtmp2(i,n)
+       end do
+       end do
+       end do
+    end do
+
+!$OMP barrier
+    if ( iswitch_bc ) call bcset_1(1,nn,1,0)
+!$OMP barrier
+
+    do n=1,nn
+       do i3=a3b_omp,b3b_omp
+       do i2=a2b_omp,b2b_omp
+       do i1=a1b_omp,b1b_omp
+          i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+          ftmp2(i,n)=ftmp2(i,n)+c1*( www(i1-1,i2,i3,n)+www(i1+1,i2,i3,n) ) &
+                               +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
+                               +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
+       end do
+       end do
+       end do
+    end do
+!$OMP barrier
+
+!$OMP end parallel
+
+    return
+  END SUBROUTINE precond_cg_mat_sol
+
+
+  SUBROUTINE precond_cg_mat_sol_0(E,k,s,mm,nn)
+    implicit none
+    integer,intent(IN) :: k,s,mm,nn
+    real(8),intent(INOUT) :: E(nn)
+    real(8) :: c,c1,c2,c3,d
+    integer :: m,n,i,i1,i2,i3,j
+    integer :: a1b,b1b,a2b,b2b,a3b,b3b
+    integer,allocatable :: ic(:)
+    integer :: a3b_omp,b3b_omp,n1_omp,mt,nt
+
+!$OMP parallel private(a3b_omp,b3b_omp,n1_omp,d,i,mt,nt)
+
+    nt = 1
+!$  nt = omp_get_num_threads()
+
+!$OMP single
+
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+
+    c  =  ggg(1)/Hgrid(1)**2+ggg(2)/Hgrid(2)**2+ggg(3)/Hgrid(3)**2
+    c1 = -0.5d0/Hgrid(1)**2*ggg(1)
+    c2 = -0.5d0/Hgrid(2)**2*ggg(2)
+    c3 = -0.5d0/Hgrid(3)**2*ggg(3)
+
+    allocate( ic(0:nt-1) )
+    ic(:)=(b3b-a3b+1)/nt
+    mt=(b3b-a3b+1)-sum(ic)
+    do i=0,mt-1
+       ic(i)=ic(i)+1
+    end do
+!$OMP end single
+
+    mt=0
+!$  mt=omp_get_thread_num()
+    a3b_omp=a3b+sum(ic(0:mt))-ic(mt)
+    b3b_omp=a3b_omp+ic(mt)-1
+    n1_omp=1+(a3b_omp-a3b)*(b2b-a2b+1)*(b1b-a1b+1)
+!$OMP barrier
+
+!$OMP single
+    deallocate( ic )
+!$OMP end single
+
+    do n=1,nn
+       d=c-E(n)
+!$OMP do
+       do i=1,mm
+          ftmp2(i,n)=d*gtmp2(i,n)
+       end do
+!$OMP end do
+    end do
+
+!$OMP workshare
+    www(:,:,:,:)=zero
+!$OMP end workshare
+    do n=1,nn
+       i=n1_omp-1
+       do i3=a3b_omp,b3b_omp
+       do i2=a2b,b2b
+       do i1=a1b,b1b
+          i=i+1 ; www(i1,i2,i3,n)=gtmp2(i,n)
+       end do
+       end do
+       end do
+    end do
+!$OMP barrier
+
+!$OMP single
+    if ( iswitch_bc ) call bcset(1,nn,1,0)
+!$OMP end single
+
+    do n=1,nn
+       i=n1_omp-1
+       do i3=a3b_omp,b3b_omp
+       do i2=a2b,b2b
+       do i1=a1b,b1b
+          i=i+1
+          ftmp2(i,n)=ftmp2(i,n)+c1*( www(i1-1,i2,i3,n)+www(i1+1,i2,i3,n) ) &
+                               +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
+                               +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
+       end do
+       end do
+       end do
+    end do
+!$OMP barrier
+
+!$OMP end parallel
+
+    return
+  END SUBROUTINE precond_cg_mat_sol_0
+
+
+  SUBROUTINE precond_cg_mat_sol_1(E,k,s,mm,nn)
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
@@ -364,8 +456,35 @@ CONTAINS
 !$OMP barrier
 
 !$OMP single
-    call bcset(1,nn,1,0)
+    if ( iswitch_bc ) call bcset(1,nn,1,0)
 !$OMP end single
+
+    do n=1,nn
+       do i2=a2b,b2b
+       do i1=a1b,b1b
+          www(i1,i2,a3b-1,n) = www(i1,i2,a3b,n)
+          www(i1,i2,b3b+1,n) = www(i1,i2,b3b,n)
+!          www(i1,i2,a3b-1,n) = 2*www(i1,i2,a3b,n)-www(i1,i2,a3b+1,n)
+!          www(i1,i2,b3b+1,n) = 2*www(i1,i2,b3b,n)-www(i1,i2,b3b-1,n)
+       end do
+       end do
+       do i3=a3b,b3b
+       do i1=a1b,b1b
+          www(i1,a2b-1,i3,n) = www(i1,a2b,i3,n)
+          www(i1,b2b+1,i3,n) = www(i1,b2b,i3,n)
+!          www(i1,a2b-1,i3,n) = 2*www(i1,a2b,i3,n)-www(i1,a2b+1,i3,n)
+!          www(i1,b2b+1,i3,n) = 2*www(i1,b2b,i3,n)-www(i1,b2b-1,i3,n)
+       end do
+       end do
+       do i3=a3b,b3b
+       do i2=a2b,b2b
+          www(a1b-1,i2,i3,n) = www(a1b,i2,i3,n)
+          www(b1b+1,i2,i3,n) = www(b1b,i2,i3,n)
+!          www(a1b-1,i2,i3,n) = 2*www(a1b,i2,i3,n)-www(a1b+1,i2,i3,n)
+!          www(b1b+1,i2,i3,n) = 2*www(b1b,i2,i3,n)-www(b1b-1,i2,i3,n)
+       end do
+       end do
+    end do
 
     do n=1,nn
        i=n1_omp-1
@@ -385,7 +504,7 @@ CONTAINS
 !$OMP end parallel
 
     return
-  END SUBROUTINE precond_cg_mat_sol
+  END SUBROUTINE precond_cg_mat_sol_1
 
 
   SUBROUTINE precond_cg_mat_mol(E,k,s,mm,nn)
@@ -520,4 +639,4 @@ CONTAINS
   END SUBROUTINE precond_cg_mat_esm
 
 
-END MODULE cgpc_module
+END MODULE cgpc_2_module
