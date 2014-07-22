@@ -126,6 +126,8 @@ PROGRAM Real_Space_Solid
      case( 3 )
         call init_ps_nloc3
         call prep_ps_nloc3
+     case( 4 )
+        call prep_ps_nloc2
      case( 5 )
         call prep_ps_nloc_mr
      end select
