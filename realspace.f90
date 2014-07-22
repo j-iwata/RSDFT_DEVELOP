@@ -9,6 +9,8 @@ PROGRAM Real_Space_Solid
   use sweep_module
   use scf_module
 
+  use psv_initrho_module
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -114,6 +116,10 @@ PROGRAM Real_Space_Solid
         call construct_ps_pcc
         call watcht(disp_switch,"pcc",1)
         call construct_ps_initrho
+        call normalize_density
+     else if ( pselect == 4 .or. pselect == 5 ) then
+        call read_psv_initrho( Nelement, myrank, 1 )
+        call construct_r_ps_initrho
         call normalize_density
      end if
 
