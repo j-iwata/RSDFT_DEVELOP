@@ -59,7 +59,11 @@ CONTAINS
   SUBROUTINE cgpc_diag(m,n,Pgk)
     implicit none
     integer,intent(IN)       :: m,n
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: Pgk(m,n)
+#else
     complex(8),intent(INOUT) :: Pgk(m,n)
+#endif
     integer :: j
 
     do j=1,n

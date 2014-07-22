@@ -59,7 +59,11 @@ CONTAINS
     call op_kinetic(k,wf,Hwf,1,mm,1,nn)
 
     do n=1,nn
+#ifdef _DRSDFT_
+       T0(n) = sum( wf(:,n)*Hwf(:,n) )*dV
+#else
        T0(n) = sum( conjg(wf(:,n))*Hwf(:,n) )*dV
+#endif
     end do
 
     deallocate( Hwf )
