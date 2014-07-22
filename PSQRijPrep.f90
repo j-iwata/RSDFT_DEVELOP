@@ -7,10 +7,13 @@ MODULE PSQRijPrep
   use VarPSMember
   ! lo,Nelement_,norb,viod
   use VarPSMemberG
+  use VarParaPSnonLocG
   use ps_nloc2_module, only: prepMapsTmp
   use pseudopot_module, only: pselect
   use minimal_box_module
   implicit none
+
+  include 'mpif.h'
   PRIVATE
   PUBLIC :: prepQRijp102
   
@@ -21,6 +24,13 @@ MODULE PSQRijPrep
   real(8),allocatable :: y2a(:,:,:,:)
 
 CONTAINS
+
+  SUBROUTINE allocateQaL
+    implicit none
+    if (allocated(qaL)) deallocate(qaL)
+    allocate( qaL(k2max,max_Lref) ) ; qaL=z0
+    return
+  END SUBROUTINE allocateQaL
 
 
 #ifdef _FOR_COMPILE_
@@ -35,17 +45,17 @@ CONTAINS
     integer :: l,m
 
     integer :: ia,ik,ik1,ik2,ik3,il,ir,ir0
-    integer :: i1,i2,i3
+    integer :: i,j,i1,i2,i3
     integer :: iorb1,iorb2
     integer :: NRc,n
-    real(8) :: d1,d2,Rps2
+    real(8) :: Rps2
 
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
     integer :: ML1,ML2,ML3
     integer :: np1,np2,np3
 
     real(8) :: r
-    real(8) :: mm1,mm2,mm3
+    integer :: mm1,mm2,mm3
     integer :: MMJJ_0,nrqr
 
     integer :: nl3vmax
@@ -73,9 +83,14 @@ CONTAINS
 
     real(8),allocatable :: QRij_tmp(:,:,:,:)
     integer :: c_nzqr,c_nzqr_0
-    integer,allocatable :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:)
+    integer,allocatable :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:),icheck_tmp4(:,:,:)
     integer,allocatable :: qr_nsend_tmp(:),nl_rank_map_tmp(:),maps_tmp(:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:)
+    
+    integer :: ierr
+    real(8) :: ctt(0:9),ett(0:9)
+    integer,allocatable :: ireq(:)
+    ,allocatable :: istatus(:,:)
 
 write(400+myrank,*) ">>>>> prepQRijp102"
 
@@ -86,6 +101,9 @@ write(400+myrank,*) ">>>>> prepQRijp102"
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    ctt=0.0d0 ; ett=0.0d0
+    call watch(ctt(6),ett(6))
 
   call allocateQaL
 
@@ -118,17 +136,23 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
+    call watch(ctt(7),ett(7))
+
     r=maxval(Rps)+maxval(Hgrid(1:3))+1.d-8
     call make_minimal_box(r,mm1,mm2,mm3,MMJJ_0)
+    
+    call watch(ctt(8),ett(8))
 
     if ( .not.allocated(icheck_tmp5) ) then
       nl3vmax=maxval(nl3v)
       allocate( icheck_tmp5(k1max,Natom)             ) ; icheck_tmp5=0
       allocate( JJ_tmp(6,MMJJ_0,nl3vmax,k1max,Natom) ) ; JJ_tmp=0
       allocate( MJJ_tmp_Q(k1max,Natom)               ) ; MJJ_tmp_Q=0
-      allocate( QRij_tmp(MMJJ_0,nl3vmax,k1max,Natom  ) ; QRij_tmp=0.d0
+      allocate( QRij_tmp(MMJJ_0,nl3vmax,k1max,Natom) ) ; QRij_tmp=0.d0
     end if
 
+    call watch(ctt(0),ett(0))
+    
 #ifndef _SPLINE_
     allocate( irad(0:3000,Nelement_) ) ; irad=0
     M_irad=0
@@ -262,6 +286,8 @@ write(400+myrank,*) ">>>>> prepQRijp102"
             end if ! Igrid
           end do ! i ( 1 - MMJJ_0 )
           MJJ_tmp_Q(ik1,ia)=j
+          ik_tmp(
+          ia_tmp(
           c_nzqr_pre=c_nzqr_pre+1
           icheck_tmp5(ik1,ia)=c_nzqr_pre
        end do ! ik1
@@ -295,6 +321,8 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     end do
     call mpi_allgather(lcheck_tmp1(1,myrank_g),Mqr,mpi_logical &
                       ,lcheck_tmp1,Mqr,mpi_logical,comm_grid,ierr)
+    
+    call watch(ctt(1),ett(1))
 
 ! for grid-parallel computation
 
@@ -342,6 +370,8 @@ write(400+myrank,*) ">>>>> prepQRijp102"
         end if
       end do ! ik
     end do ! ia
+    
+    call watch(ctt(2),ett(2))
 
     c_nzqr = icheck_tmp2(myrank_g)
 
@@ -350,7 +380,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     deallocate( icheck_tmp2 )
     deallocate( icheck_tmp5 )
     deallocate( lcheck_tmp1 )
-===================================================================
+!===================================================================
     if ( allocated(QRij) ) then
        deallocate( uV )
        deallocate( JJ_MAP )
@@ -361,7 +391,6 @@ write(400+myrank,*) ">>>>> prepQRijp102"
        deallocate( lmap )
        deallocate( mmap )
        deallocate( iorbmap )
-       deallocate( nl_rank_map )
     end if
     allocate( uV(MMJJ,nzlma)       ) ; uV=0.d0
     allocate( JJ_MAP(6,MMJJ,nzlma) ) ; JJ_MAP=0
@@ -372,62 +401,49 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     allocate( lmap(nzlma)          ) ; lmap=0
     allocate( mmap(nzlma)          ) ; mmap=0
     allocate( iorbmap(nzlma)       ) ; iorbmap=0
-    allocate( nl_rank_map(nrlma)   ) ; nl_rank_map=-1
-===================================================================
+!===================================================================
     
     if (allocated(nl_rank_map_Q)) deallocate(nl_rank_map_Q)
-    allocate( nl_rank_map_Q(nrqr)
+    allocate( nl_rank_map_Q(nrqr) )
     do i=1,nrqr
        nl_rank_map_Q(i)=nl_rank_map_tmp(i)
     end do
     deallocate( nl_rank_map_tmp )
 
 !!$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
-    do lma=1,nzlma
-       if ( maps_tmp(lma,1) == 0 ) cycle
-       a    = amap(lma)
-       l    = lmap(lma)
-       m    = mmap(lma)
-       iorb = iorbmap(lma)
-       MJJ_MAP(lma) = MJJ_tmp(iorb,a)
-       Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
-       Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
-       Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
-       do j=1,MJJ_MAP(lma)
-          i1=JJ_tmp(1,j,iorb,a)
-          i2=JJ_tmp(2,j,iorb,a)
-          i3=JJ_tmp(3,j,iorb,a)
-          k1=JJ_tmp(4,j,iorb,a)
-          k2=JJ_tmp(5,j,iorb,a)
-          k3=JJ_tmp(6,j,iorb,a)
-          d1=c1*i1+k1
-          d2=c2*i2+k2
-          d3=c3*i3+k3
-          x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
-          y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
-          z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-          uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
-          JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
+    do kk1=1,c_nzqr
+       l=maps_tmp(kk1)
+       if (l==0) cycle
+!===================================================================
+       ik1=
+       ia=
+!===================================================================
+       MJJ_MAP_Q(kk1) = MJJ_tmp_Q(ik1,ia)
+       do j=1,MJJ_MAP_Q(kk1)
+!===================================================================
+          QRij_tmp(j,kk1) = QRij_tmp(j,iorb,a)
+!===================================================================
+          JJ_MAP_Q(1:6,j,kk1) = JJ_tmp(1:6,j,ik1,ia)
        end do
     end do
 !!$OMP end parallel do
 
-!    deallocate( MJJ_tmp )
-!    deallocate( JJ_tmp )
-!    deallocate( uV_tmp )
-    deallocate( maps_tmp )
+    deallocate( MJJ_tmp_Q )
+    deallocate( JJ_tmp    )
+    deallocate( QRij_tmp  )
+    deallocate( maps_tmp  )
 
     call watch(ctt(3),ett(3))
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
-    do lma=1,nzlma
+    do kk1=1,c_nzqr
        j=0
        icheck_tmp4=0
-       do i=1,MJJ_MAP(lma)
-          i1=JJ_MAP(1,i,lma)
-          i2=JJ_MAP(2,i,lma)
-          i3=JJ_MAP(3,i,lma)
+       do i=1,MJJ_MAP_Q(kk1)
+          i1=JJ_MAP(1,i,kk1)
+          i2=JJ_MAP(2,i,kk1)
+          i3=JJ_MAP(3,i,kk1)
           if ( icheck_tmp4(i1,i2,i3)==0 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)=j
@@ -435,70 +451,77 @@ write(400+myrank,*) ">>>>> prepQRijp102"
        end do
        MJJ(lma)=j
     end do
-    MAXMJJ = maxval( MJJ(1:nzlma) )
+    MAXMJJ = maxval( MJJ(1:c_nzqr) )
     deallocate( icheck_tmp4 )
 
-    nl_max_send = maxval( lma_nsend_tmp )
+    nl_max_send = maxval( qr_nsend_tmp )
 
-    if ( allocated(lma_nsend) ) then
-       deallocate( lma_nsend )
-       deallocate( sendmap )
-       deallocate( recvmap )
+!===================================================================
+    if ( allocated(qr_nsend) ) then
+       deallocate( qr_nsend )
+       deallocate( sendmap_Q )
+       deallocate( recvmap_Q )
     end if
-    allocate( lma_nsend(0:nprocs_g-1) ) ; lma_nsend=0
-    allocate( sendmap(nl_max_send,0:nprocs_g-1) ) ; sendmap=0
-    allocate( recvmap(nl_max_send,0:nprocs_g-1) ) ; recvmap=0
+    allocate( qr_nsend(0:nprocs_g-1) ) ; qr_nsend=0
+    allocate( sendmap_Q(nl_max_send,0:nprocs_g-1) ) ; sendmap_Q=0
+    allocate( recvmap_Q(nl_max_send,0:nprocs_g-1) ) ; recvmap_Q=0
+!===================================================================
 
     do n=0,nprocs_g-1
-       sendmap(1:nl_max_send,n) = sendmap_tmp(1:nl_max_send,n)
-       lma_nsend(n) = lma_nsend_tmp(n)
+       sendmap_Q(1:nl_max_send,n) = sendmap_tmp(1:nl_max_send,n)
+       qr_nsend(n) = qr_nsend_tmp(n)
     end do
 
-
-    allocate( ireq(2*nprocs_g) )
-    allocate( istatus(MPI_STATUS_SIZE,2*nprocs_g) )
+!===================================================================
+    allocate( ireq(2*nprocs_g) ) ; ireq=0
+    allocate( istatus(MPI_STATUS_SIZE,2*nprocs_g) ) ; istatus=
+!===================================================================
     nreq=0
     do n=0,nprocs_g-1
-       if ( lma_nsend(n)<=0 .or. n==myrank_g ) cycle
+       if ( qr_nsend(n)<=0 .or. n==myrank_g ) cycle
        nreq=nreq+1
-       call mpi_isend(recvmap_tmp(1,n),lma_nsend(n),mpi_integer,n,1 &
+       call mpi_isend(recvmap_tmp(1,n),qr_nsend(n),mpi_integer,n,1 &
             ,comm_grid,ireq(nreq),ierr)
        nreq=nreq+1
-       call mpi_irecv(recvmap(1,n) ,lma_nsend(n),mpi_integer,n,1 &
+       call mpi_irecv(recvmap_Q(1,n) ,qr_nsend(n),mpi_integer,n,1 &
             ,comm_grid,ireq(nreq),ierr)
     end do
     call mpi_waitall(nreq,ireq,istatus,ierr)
     deallocate( istatus )
     deallocate( ireq )
 
-    deallocate( recvmap_tmp,sendmap_tmp,lma_nsend_tmp )
+    deallocate( recvmap_tmp,sendmap_tmp,qr_nsend_tmp )
 
     call prepThreeWayComm( nrqr,nl_rank_map_Q,nrqr_xyz,num_2_rank_Q )
 
     call watch(ctt(4),ett(4))
 
+!===================================================================
     call allocate_ps_nloc2(MB_d)
+!===================================================================
 
+!===================================================================
     if ( allocated(JJP) ) then
        deallocate( JJP )
        deallocate( uVk )
     end if
     allocate( JJP(MAXMJJ,nzlma) ) ; JJP=0
     allocate( uVk(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk=0.d0
+!===================================================================
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
     call watch(ctt(5),ett(5))
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(ps_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(ps_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(ps_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(ps_nloc2_4)",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(ps_nloc2_5)",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(ps_nloc2_7)",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(ps_nloc2_8)",ctt(8)-ctt(7),ett(8)-ett(7)
-       write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
+       write(*,*) "time(prepQRijp102_1)",ctt(1)-ctt(0),ett(1)-ett(0)
+       write(*,*) "time(prepQRijp102_2)",ctt(2)-ctt(1),ett(2)-ett(1)
+       write(*,*) "time(prepQRijp102_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+       write(*,*) "time(prepQRijp102_4)",ctt(4)-ctt(3),ett(4)-ett(3)
+       write(*,*) "time(prepQRijp102_5)",ctt(5)-ctt(4),ett(5)-ett(4)
+       write(*,*) "time(prepQRijp102_7)",ctt(7)-ctt(6),ett(7)-ett(6)
+       write(*,*) "time(prepQRijp102_8)",ctt(8)-ctt(7),ett(8)-ett(7)
+       write(*,*) "time(prepQRijp102_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
     
 write(400+myrank,*) "<<<<< prepQRijp102"

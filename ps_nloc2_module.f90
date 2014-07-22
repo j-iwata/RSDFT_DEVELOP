@@ -20,7 +20,8 @@ MODULE ps_nloc2_module
   PUBLIC :: prep_ps_nloc2 &
            ,op_ps_nloc2,calc_force_ps_nloc2 &
            ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
-           ,prep_ps_nloc2_esm
+           ,prep_ps_nloc2_esm &
+           ,prepMapsTmp
 
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)

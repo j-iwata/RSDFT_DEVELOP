@@ -9,6 +9,7 @@ MODS1 = simc_module.o\
         parallel_module.o \
 		VarPSMember.o \
 		VarPSMemberG.o \
+		VarParaPSnonLocG.o \
 		PSreadPSV.o \
 		PSReadPSVG.o \
 		Filtering.o \

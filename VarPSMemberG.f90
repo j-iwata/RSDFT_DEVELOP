@@ -18,7 +18,7 @@ use parallel_module, only: myrank
   real(8),allocatable :: qqr(:,:,:,:)
   real(8),allocatable :: qqc(:,:,:,:)
 
-  integer :: k1max,k2max,k3max
+  integer :: k1max,k2max,k3max,lpsmax
   
   integer,allocatable :: k1_to_k2(:,:)
   integer,allocatable :: k1_to_k3(:,:)
@@ -93,7 +93,10 @@ if (myrank==0) write(400+myrank,*) "allocateKtoK 1"
       call deallocateKtoK
     end if
 if (myrank==0) write(400+myrank,*) "allocateKtoK 2"
+if (myrank==0) write(400+myrank,*) "---- k1max,k2max,k3max,lpsmax are calculated here ----"
 k1max=(Rrefmax*(Lrefmax**2))*(Rrefmax*(Lrefmax**2)+1)/2
+lpsmax=max_Rref*max_Lref
+k3max=(max_Lref**2)*(max_Lref**2+1)/2
 
     allocate( k1_to_k2(k1max,nki)     ) ; k1_to_k2(:,:)=0
     allocate( k1_to_k3(k1max,nki)     ) ; k1_to_k3(:,:)=0
