@@ -1,5 +1,6 @@
 MODULE scf_module
 
+  use aa_module
   use parallel_module
   use electron_module
   use localpot_module
@@ -138,23 +139,30 @@ CONTAINS
        end do
        end do
 
+       call watcht(disp_switch,"    ",0)
+
        call esp_gather(Nband,Nbzsm,Nspin,esp)
+
+       call watcht(disp_switch,"esp_gather",1)
 
        call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                       ,esp,weight_bz,occ,disp_switch)
 
+       call watcht(disp_switch,"fermi",1)
+
        call calc_with_rhoIN_total_energy(disp_switch)
 
-       if ( disp_switch ) call write_info_scf( ib1, ib2 )
+       call watcht(disp_switch,"harris",1)
 
 ! ---
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
        call calc_xc
-
        call diff_vrho_scf( disp_switch )
-
        call calc_total_energy( .false., disp_switch )
+! ---
+
+       call watcht(disp_switch,"etot",1)
 
 ! ---
        do s=MSP_0,MSP_1
@@ -177,7 +185,11 @@ CONTAINS
        end if
 ! ---
 
+       call watcht(disp_switch,"mixing",1)
+
        if ( flag_localpot2 ) call sub_localpot2_scf( disp_switch )
+
+       call write_info_scf( ib1, ib2, iter, disp_switch )
 
        call watch(ct1,et1)
        if ( disp_switch ) write(*,*) "time(scf)",ct1-ct0,et1-et0
@@ -194,11 +206,8 @@ CONTAINS
 
     end do ! iter
 
-    if ( myrank == 0 ) then
-       write(*,*) "------------ SCF result ----------"
-       call write_info_scf( 1, Nband )
-       write(*,*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
-    end if
+    if ( myrank == 0 ) write(*,*) "------------ SCF result ----------"
+    call write_info_scf( 1, Nband, iter, myrank==0 )
 
     deallocate( esp0 )
 
@@ -222,19 +231,37 @@ CONTAINS
   END SUBROUTINE calc_scf
 
 
-  SUBROUTINE write_info_scf(ib1,ib2)
+  SUBROUTINE write_info_scf( ib1, ib2, iter, disp_switch )
     implicit none
-    integer,intent(IN) :: ib1,ib2
-    integer :: s,k,n
-    write(*,'(a4,a6,a20,2a13,1x)') &
-         "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
-    do k=1,Nbzsm
-    do n=ib1,ib2
-       write(*,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
-            ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
+    integer,intent(IN) :: ib1, ib2, iter
+    logical,intent(IN) :: disp_switch
+    integer :: s,k,n,nb1,nb2,i,u(2)
+    u(:) = (/ 6, 98 /)
+    do i=1,2
+       nb1 = ib1
+       nb2 = ib2
+       if ( u(i) == 6 .and. .not.disp_switch ) cycle
+       if ( u(i) /= 6 .and. myrank /= 0 ) cycle
+       if ( u(i) /= 6 .and. myrank == 0 ) then
+          nb1 = 1
+          nb2 = Nband
+          write(u(i),'("AX", f20.15)') ax
+          write(u(i),'("A1",3f20.15)') aa(1:3,1)/ax
+          write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
+          write(u(i),'("A3",3f20.15)') aa(1:3,3)/ax
+          write(u(i),'("VA",3f20.15)') Va
+       end if
+       write(u(i),'(a4,a6,a20,2a13,1x)') &
+            "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
+       do k=1,Nbzsm
+       do n=nb1,nb2
+          write(u(i),'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+               ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
+       end do
+       end do
+       write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
+       write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
     end do
-    end do
-    write(*,*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
   END SUBROUTINE write_info_scf
 
 

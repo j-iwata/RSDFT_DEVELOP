@@ -179,24 +179,7 @@ CONTAINS
 
     diff_etot = Etot_0 - Etot
 
-    if ( disp_switch ) then
-       write(*,*) '(EII) ',Eewald
-       write(*,*) '(VDW) ',Evdw
-       write(*,*) '(KIN) ',Ekin, Ekin-Ekin_0
-       write(*,*) '(LOC) ',Eloc, Eloc-Eloc_0
-       write(*,*) '(NLC) ',Enlc, Enlc-Enlc_0
-       write(*,*) '(ION) ',Eion, Eion-Eion_0
-       write(*,*) '(HTR) ',E_hartree, E_hartree-Ehat_0
-       write(*,*) '(EXC) ',Exc,  Exc-Exc_0
-       write(*,*) '(EXG) ',E_exchange, E_exchange-Ex_0
-       write(*,*) '(COR) ',E_correlation, E_correlation-Ec_0
-       write(*,*) '(EIG) ',Eeig, Eeig-Eeig_0
-       write(*,*) '(HWF) ',Ehwf, Ehwf-Etot
-       write(*,*) '(TOT) ',Etot, Etot_0-Etot
-       write(*,*) '(efermi)  ',efermi, efermi-efermi_0
-       write(*,*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
-       write(*,*) '(FreeEne) ',Fene,Fene-Fene_0
-    end if
+    call write_info_total_energy( disp_switch )
 
     Etot_0 = Etot
     Ekin_0 = Ekin
@@ -242,6 +225,36 @@ CONTAINS
     Ehwf_0 = Ehwf
     if ( present(Ehwf_out) ) Ehwf_out=Ehwf
   END SUBROUTINE calc_with_rhoIN_total_energy
+
+
+  SUBROUTINE write_info_total_energy( disp_switch )
+    implicit none
+    logical,intent(IN) :: disp_switch
+    integer :: i,u(2)
+    u(:) = (/ 6, 98 /)
+    do i=1,2
+       if ( u(i) == 6 .and. .not.disp_switch ) cycle
+       if ( u(i) /= 6 .and. myrank /= 0 ) cycle
+       if ( u(i) /= 6 .and. myrank == 0 ) rewind u(i)
+       write(u(i),*) '(EII) ',Eewald
+       write(u(i),*) '(VDW) ',Evdw
+       write(u(i),*) '(KIN) ',Ekin, Ekin-Ekin_0
+       write(u(i),*) '(LOC) ',Eloc, Eloc-Eloc_0
+       write(u(i),*) '(NLC) ',Enlc, Enlc-Enlc_0
+       write(u(i),*) '(ION) ',Eion, Eion-Eion_0
+       write(u(i),*) '(HTR) ',E_hartree, E_hartree-Ehat_0
+       write(u(i),*) '(EXC) ',Exc,  Exc-Exc_0
+       write(u(i),*) '(EXG) ',E_exchange, E_exchange-Ex_0
+       write(u(i),*) '(COR) ',E_correlation, E_correlation-Ec_0
+       write(u(i),*) '(EIG) ',Eeig, Eeig-Eeig_0
+       write(u(i),*) '(HWF) ',Ehwf, Ehwf-Etot
+       write(u(i),*) '(TOT) ',Etot, Etot_0-Etot
+       write(u(i),*) '(efermi)  ',efermi, efermi-efermi_0
+       write(u(i),*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
+       write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0
+       call flush(u(i))
+    end do
+  END SUBROUTINE write_info_total_energy
 
 
 END MODULE total_energy_module
