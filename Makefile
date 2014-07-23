@@ -119,6 +119,7 @@ MODS1 = simc_module.o\
         esp_calc_module.o \
         subspace_diag_variables.o \
         psv_initrho_module.o \
+        random_initrho_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \

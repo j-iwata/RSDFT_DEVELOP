@@ -15,9 +15,10 @@ MODULE psv_initrho_module
 CONTAINS
 
 
-  SUBROUTINE read_psv_initrho( Nelement, rank, unit )
+  SUBROUTINE read_psv_initrho( Nelement, rank, unit, info )
     implicit none
     integer,intent(IN) :: Nelement, rank, unit
+    integer,intent(OUT) :: info
     integer :: i, ierr
     character(7) :: cbuf, ckey
     iswitch_initrho = 0
@@ -40,6 +41,8 @@ CONTAINS
     if ( iswitch_initrho == 2 ) then
        call read_coef_psv_initrho( Nelement, rank )
     end if
+
+    info = iswitch_initrho
 
   END SUBROUTINE read_psv_initrho
 
