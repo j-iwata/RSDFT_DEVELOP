@@ -13,7 +13,7 @@ CONTAINS
 
     real(8),intent(IN) :: qc
     integer,intent(IN) :: L,NRc,NRps
-    real(8),intent(IN) :: rad(NRps),rad1(NRps),vrad(NRc)
+    real(8),intent(IN) :: rad(NRc),rad1(NRps),vrad(NRc)
     real(8),intent(INOUT) :: tarIN(NRps)
     integer :: i,j
     real(8) :: r,r1
