@@ -13,7 +13,7 @@ MODULE PSQRijPrep
   use minimal_box_module
   implicit none
 
-  include 'mpif.h'
+!  include 'mpif.h'
   PRIVATE
   PUBLIC :: prepQRijp102
   
@@ -275,13 +275,13 @@ write(400+myrank,*) ">>>>> prepQRijp102"
                   QRtmp=v0/pi4* real(qaL(ik3,ll3)/(-zi)**L)
                 end if ! x,y,z
                 j=j+1
-                JJ_tmp(1,i,ll3,ik1,ia) = i1_0
-                JJ_tmp(2,i,ll3,ik1,ia) = i2_0
-                JJ_tmp(3,i,ll3,ik1,ia) = i3_0
-                JJ_tmp(4,i,ll3,ik1,ia) = k1
-                JJ_tmp(5,i,ll3,ik1,ia) = k2
-                JJ_tmp(6,i,ll3,ik1,ia) = k3
-                QRij_tmp(i,ll3,ik1,ia) = QRtmp
+                JJ_tmp(1,j,ll3,ik1,ia) = i1_0
+                JJ_tmp(2,j,ll3,ik1,ia) = i2_0
+                JJ_tmp(3,j,ll3,ik1,ia) = i3_0
+                JJ_tmp(4,j,ll3,ik1,ia) = k1
+                JJ_tmp(5,j,ll3,ik1,ia) = k2
+                JJ_tmp(6,j,ll3,ik1,ia) = k3
+                QRij_tmp(j,ll3,ik1,ia) = QRtmp
               end do ! ll3
             end if ! Igrid
           end do ! i ( 1 - MMJJ_0 )

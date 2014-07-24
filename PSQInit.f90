@@ -33,7 +33,7 @@ write(400+myrank,*) "allocateKtoK"
 write(400+myrank,*) "k1max=",k1max
 #endif
     call allocateKtoK( k1max,max_k2,Nelement_,max_Rref,max_Lref )
-
+write(600+myrank,*) "l1,i2,nr1,m1,l2,i2,nr2,m2,k1,k2,k3"
     do ik=1,Nelement_
       k1=0
       nr1=0
@@ -59,6 +59,7 @@ write(400+myrank,*) "k2=",k2
                       mmin=min(mm1,mm2)
                       mmax=max(mm1,mm2)
                       k3=(mmax-1)*mmax/2 + mmin
+write(600+myrank,'(11I3)') l1,i1,nr1,m1,l2,i2,nr2,m2,k1,k2,k3
 
                       k1_to_k2(k1,ik)=k2
                       k1_to_k3(k1,ik)=k3
