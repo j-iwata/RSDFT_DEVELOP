@@ -220,7 +220,9 @@ CONTAINS
 #ifdef _USPP_
     elseif (pselect==102) then
       call send_pseudopot(rank)
+      write(*,*) 'normal sendPSV finished'
       call sendPSG(rank,Nelement_PP)
+      write(*,*) 'new sendPSV finished'
 #endif
     else
       stop 'pselect must = 2(NCPP),102(USPP)'
