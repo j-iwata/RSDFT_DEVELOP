@@ -8,11 +8,10 @@ MODULE InnerProduct
   use rgrid_module, only: dV
   use parallel_module, only: COMM_GRID
   ! N_nlop,nlop_pair(1:2,:),qij(m)
-  use ps_nloc_u_module, only: N_nlop,nlop_pair,qij
+  use VarPSMemberG, only: N_nlop,nlop_pair,qij
   ! unk(nn1,n,k,s)
-  use wf_module, only: unk
+  use wf_module, only: unk,Sunk
   ! Sunk(nn1,n)
-  use GlobalVar_uspp, only: Sunk
   use RealComplex, only: zero,RCProduct
   
   use ParaRGridComm, only: threeWayComm

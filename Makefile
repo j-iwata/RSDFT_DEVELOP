@@ -4,7 +4,8 @@ MODS1 = simc_module.o\
         watch_module.o \
         info_module.o \
         modified_bessel_module.o \
-	bberf_module.o \
+		bberf_module.o \
+		RealComplex.o \
         expint_module.o \
         parallel_module.o \
 		VarPSMember.o \
@@ -64,6 +65,7 @@ MODS1 = simc_module.o\
 		PSQRijPrep.o \
 		PSnonLocPrepG.o \
 		pseudopotentials.o \
+		InnerProduct.o \
         localpot2_variables.o \
         localpot2_module.o \
         localpot_module.o \
@@ -90,6 +92,7 @@ MODS1 = simc_module.o\
         xc_pw92_gth_module.o\
         xc_module.o \
         subspace_diag_module.o \
+		CGG.o \
         cgpc_module.o \
         cg_module.o \
         fermi_mp_module.o\
