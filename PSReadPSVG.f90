@@ -29,7 +29,6 @@ write(*,*) '>>>>> inside readPSVG'
         ncfmax=10
         nsmpl=NRps(1,ik)-1
         
-write(*,*) '1'
         allocate( nl3v_(npqmax)       ) ; nl3v_=0
         allocate( l3v_(lpsmax,npqmax) ) ; l3v_ =0
         allocate( ncf(lpsmax,npqmax)        ) ; ncf =0
@@ -39,7 +38,6 @@ write(*,*) '1'
         allocate( qrL_(nsmpl+1,lpsmax,npqmax)  ) ; qrL_ =0.d0
         allocate( qrad_(nsmpl+1,lpsmax,npqmax) ) ; qrad_=0.d0
         
-write(*,*) '2'
         rewind unit_ps
         do j=1,10000
             read(unit_ps,'(A)') cbuf9
@@ -47,14 +45,12 @@ write(*,*) '2'
         end do
         read(unit_ps,*) npq_
         
-write(*,*) '3'
         k2=0
         do l1=1,nlf(ik)
             do i1=1,nrf(l1,ik)
                 do l2=1,l1
                     do i2=1,nrf(l2,ik)
                         if (l1==l2 .and. i2>i1) cycle
-write(*,*) '4'
                         k2=k2+1
                         read(unit_ps,*) ll1,ii1,ll2,ii2
                         if ((ll1/=l1) .or. (ll2/=l2) .or. (ii1/=i1) .or. (ii2/=i2)) then
@@ -62,26 +58,21 @@ write(*,*) '4'
                         end if
                         read(unit_ps,*) nl3v_(k2)
                         do ll3=1,nl3v_(k2)
-write(*,*) '5'
                             read(unit_ps,*) l3v_(ll3,k2),ncf(ll3,k2),nrin(ll3,k2),rin(ll3,k2)
                             if (ncf(ll3,k2)>0) then
                                 read(unit_ps,*) coe(1:ncf(ll3,k2),ll3,k2)
-write(*,*) '6'
                                 dif=abs(rad(nrin(ll3,k2)+1,ik)-rin(ll3,k2))
-write(*,*) '6-1',dif
                                 if (dif>1.d-8) then
                                     stop 'ERROR in PSV read space cutoff'
                                 end if
                             end if
                             qrL_(:,ll3,k2)=0.d0
-write(*,*) '6-2'
                             do ic=ncf(ll3,k2),1,-1
                                 do i=1,nrin(ll3,k2)
                                     r2=rad(i+1,ik)*rad(i+1,ik)
                                     qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*r2+coe(ic,ll3,k2)
                                 end do
                             end do
-write(*,*) '7'
                             do i=1,nrin(ll3,k2)
                                 qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*rad(i+1,ik)**(l3v_(ll3,k2)+1)
                                 qrad_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2)-phi_(i,i1,l1)*phi_(i,i2,l2)
@@ -96,14 +87,10 @@ write(*,*) '7'
             end do ! i1
         end do ! l1
         
-write(*,*) '8'
-write(*,*)  npq_,k2
         if (npq_/=k2) stop 'ERROR npq/=k2'
         npqmax=npq_
 
-write(*,*) 'before allocatePSG'
         call allocatePSG( Lrefmax,Rrefmax,npqmax,nsmpl+1,Nelement_PP )
-write(*,*) 'after allocatePSG'
 
         npq(ik)=npq_
         do l=1,nlf(ik)
