@@ -5,6 +5,12 @@ MODULE gram_schmidt_t_module
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module
 
+!--------------------------------------------------------------------------- 20140507 HL
+#ifdef _USPP_
+    use GramSchmidtG, only: GramSchmidtG
+#endif
+!=========================================================================== 20140507 HL
+
   implicit none
 
   PRIVATE
@@ -28,7 +34,7 @@ MODULE gram_schmidt_t_module
 
 CONTAINS
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE read_gram_schmidt_t(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -56,7 +62,7 @@ CONTAINS
     call send_gram_schmidt_t(0)
   END SUBROUTINE read_gram_schmidt_t
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE read_oldformat_gram_schmidt_t(rank,unit)
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
@@ -66,7 +72,7 @@ CONTAINS
     call send_gram_schmidt_t(0)
   END SUBROUTINE read_oldformat_gram_schmidt_t
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE send_gram_schmidt_t(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -76,7 +82,15 @@ CONTAINS
     call mpi_bcast(NBLK1,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_gram_schmidt_t
 
-
+!---------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------- 20140507 HL
+#ifdef _USPP_
+  SUBROUTINE gram_schmidt_t(n0,n1,k,s)
+    implicit none
+    integer,intent(IN) :: n0,n1,k,s
+    call GramSchmidtG(n0,n1,k,s,NBLK,NBLK1)
+  END SUBROUTINE gram_schmidt_t
+#else
   SUBROUTINE gram_schmidt_t(n0,n1,k,s)
     implicit none
     integer,intent(IN) :: n0,n1,k,s
@@ -145,7 +159,7 @@ CONTAINS
 
   END SUBROUTINE gram_schmidt_t
 
-
+!---------------------------------------------------------------------------------------
   RECURSIVE SUBROUTINE gram_schmidt_sub(mm1,mm2,nn1,nn2,MBLK,k,s)
     implicit none
     integer,intent(IN) :: mm1,mm2,nn1,nn2,MBLK,k,s
@@ -169,7 +183,7 @@ CONTAINS
 
           if ( ms>=ne+1 ) then
 
-             allocate( utmp2(ns:ne,ms:me) )
+             allocate( utmp2(ns:ne,ms:me),vtmp2(ns:ne,ms:me) )
 
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,nn,mm,ML0, -dV,unk(ML_0,ns,k,s) &
@@ -179,18 +193,18 @@ CONTAINS
                   ,ML0,unk(ML_0,ms,k,s),ML0,zero,utmp2,nn)
 #endif
 
-             call mpi_allreduce(MPI_IN_PLACE,utmp2,nn*mm,TYPE_MAIN,mpi_sum &
+             call mpi_allreduce(utmp2,vtmp2,nn*mm,TYPE_MAIN,mpi_sum &
                   ,comm_grid,ierr)
 
 #ifdef _DRSDFT_
              call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
-                  ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
+                  ,ML0,vtmp2,nn,one,unk(ML_0,ms,k,s),ML0)
 #else
              call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
-                  ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
+                  ,ML0,vtmp2,nn,one,unk(ML_0,ms,k,s),ML0)
 #endif
 
-             deallocate( utmp2 )
+             deallocate( vtmp2,utmp2 )
 
              if ( ms==ne+1 ) then
 
@@ -276,6 +290,7 @@ CONTAINS
     return
 
   END SUBROUTINE gram_schmidt_sub
-
+#endif
+!=========================================================================== 20140507 HL
 
 END MODULE gram_schmidt_t_module
