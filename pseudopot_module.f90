@@ -1,5 +1,5 @@
 MODULE pseudopot_module
-
+use parallel_module, only:myrank
   use ps_read_YB_module
   use VarPSMember
   use PSreadPSV
@@ -203,9 +203,9 @@ CONTAINS
           case(102)
             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-            write(*,*) 'normal PSV finished'
+            write(*,*) 'myrank= ',myrank,'normal PSV finished'
             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-            write(*,*) 'new PSV finished'
+            write(*,*) 'myrank= ',myrank,'new PSV finished'
             close(unit_ps)
 
 #endif
@@ -220,9 +220,9 @@ CONTAINS
 #ifdef _USPP_
     elseif (pselect==102) then
       call send_pseudopot(rank)
-      write(*,*) 'normal sendPSV finished'
+      write(*,*) 'myrank= ',myrank,'normal sendPSV finished'
       call sendPSG(rank,Nelement_PP)
-      write(*,*) 'new sendPSV finished'
+      write(*,*) 'myrank= ',myrank,'new sendPSV finished'
 #endif
     else
       stop 'pselect must = 2(NCPP),102(USPP)'

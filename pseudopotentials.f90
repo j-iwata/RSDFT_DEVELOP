@@ -23,7 +23,8 @@ CONTAINS
     SUBROUTINE initiationPS(gcut)
         implicit none
         real(8),intent(IN) :: gcut
-        
+write(400+myrank,*) ">>>>>>> initiationPS"
+if (myrank==0) write(*,*) ">>>>>>> initiationPS"
         call init_ps_local
         call init_ps_pcc
         call init_ps_initrho
@@ -73,6 +74,8 @@ write(400+myrank,*) "--- prepQRijp102 ---"
 #endif
 
         end select
+write(400+myrank,*) "<<<<<<< initiationPS"
+if (myrank==0) write(*,*) "<<<<<<<< initiationPS"
 
         return
     END SUBROUTINE initiationPS
