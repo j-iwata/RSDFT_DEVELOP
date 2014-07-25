@@ -23,6 +23,7 @@ CONTAINS
 
 write(400+myrank,*) ">>>> opFiltering"
     
+write(500+myrank,*) "L= ",L
     allocate( tmp(NRc) ) ; tmp(:)=0.d0
     do i=1,NRps
       r=rad1(i)

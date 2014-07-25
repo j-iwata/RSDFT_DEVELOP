@@ -29,7 +29,8 @@ CONTAINS
   SUBROUTINE allocateQaL
     implicit none
     if (allocated(qaL)) deallocate(qaL)
-    allocate( qaL(k2max,max_Lref) ) ; qaL=z0
+!    allocate( qaL(k2max,max_Lref) ) ; qaL=z0
+    allocate( qaL(45,3) ) ; qaL=z0
     return
   END SUBROUTINE allocateQaL
 
@@ -171,6 +172,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
        M_irad=max(M_irad,m)
     end do
 #endif
+write(400+myrank,*) "prepQRijp102 1"
 
     c1          = 1.d0/Ngrid(1)
     c2          = 1.d0/Ngrid(2)
@@ -194,6 +196,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
       ic3 = nint( aa_atom(3,ia)*Ngrid(3) )
       ik = ki_atom(ia)
       do ik1=1,N_k1(ik)
+        j=0
         ik2 = k1_to_k2(ik1,ik)
         ik3 = k1_to_k3(ik1,ik)
         iorb1 = k1_to_iorb(1,ik1,ik)
@@ -289,6 +292,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     end do ! ia
 !!$OMP end parallel do
     MMJJ_Q = maxval( MJJ_tmp_Q )
+write(400+myrank,*) "prepQRijp102 2"
 
 #ifndef _SPLINE_
     deallocate( irad )
@@ -297,7 +301,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     Mqr=0
     do ia=1,Natom
       ik=ki_atom(ia)
-      do ik1=1,N_k1(ia)
+      do ik1=1,N_k1(ik)
         Mqr=Mqr+1
       end do
     end do
@@ -307,7 +311,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     iqr=0
     do ia=1,Natom
       ik  = ki_atom(ia)
-      do ik1=1,N_k1(ia)
+      do ik1=1,N_k1(ik)
         iqr=iqr+1
         if (j>0) then
           lcheck_tmp1(iqr,myrank_g) = .true.
@@ -318,6 +322,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
                       ,lcheck_tmp1,Mqr,mpi_logical,comm_grid,ierr)
     
     call watch(ctt(1),ett(1))
+write(400+myrank,*) "prepQRijp102 3"
 
 ! for grid-parallel computation
 
@@ -336,6 +341,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     np1 = node_partition(1)
     np2 = node_partition(2)
     np3 = node_partition(3)
+write(400+myrank,*) "prepQRijp102 4"
 
     nrqr=0
     do ia=1,Natom
@@ -367,6 +373,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
         end if
       end do ! ik
     end do ! ia
+write(400+myrank,*) "prepQRijp102 5"
     
     call watch(ctt(2),ett(2))
 
@@ -399,6 +406,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
 !      amap_Q(iqr) =maps_tmp(iqr,2)
 !      k1map_Q(iqr)=maps_tmp(iqr,3)
 !    end do
+write(400+myrank,*) "prepQRijp102 6"
 
 !!$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
     do iqr=1,c_nzqr
@@ -420,6 +428,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     deallocate( maps_tmp  )
 
     call watch(ctt(3),ett(3))
+write(400+myrank,*) "prepQRijp102 7"
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
@@ -439,6 +448,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     end do
     MAXMJJ_Q = maxval( MJJ_Q(1:c_nzqr) )
     deallocate( icheck_tmp4 )
+write(400+myrank,*) "prepQRijp102 8"
 
     nl_max_send = maxval( qr_nsend_tmp )
     call allocateMAPQ(nl_max_send,nprocs_g)
@@ -467,6 +477,7 @@ write(400+myrank,*) ">>>>> prepQRijp102"
     deallocate( ireq )
 
     deallocate( recvmap_tmp,sendmap_tmp,qr_nsend_tmp )
+write(400+myrank,*) "prepQRijp102 9"
 
     call prepThreeWayComm( nrqr,nl_rank_map_Q,nrqr_xyz,num_2_rank_Q )
 
