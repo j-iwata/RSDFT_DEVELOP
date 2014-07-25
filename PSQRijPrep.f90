@@ -196,6 +196,7 @@ write(400+myrank,*) "prepQRijp102 1"
       ic3 = nint( aa_atom(3,ia)*Ngrid(3) )
       ik = ki_atom(ia)
       do ik1=1,N_k1(ik)
+write(630+myrank,*) "ia,ik,ik1=",ia,ik,ik1
         j=0
         ik2 = k1_to_k2(ik1,ik)
         ik3 = k1_to_k3(ik1,ik)
@@ -219,7 +220,6 @@ write(400+myrank,*) "prepQRijp102 1"
             if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
                 Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
                 Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
-              j=j+1
               d1 = id1*c1
               d2 = id2*c2
               d3 = id3*c3
@@ -228,6 +228,7 @@ write(400+myrank,*) "prepQRijp102 1"
               z  = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
               r2 = x*x+y*y+z*z
               if ( r2 > Rps2+1.d-10 ) cycle
+              j=j+1
 
               r    = sqrt(r2)
 
@@ -283,9 +284,12 @@ write(400+myrank,*) "prepQRijp102 1"
               JJ_tmp(4,j,ik1,ia) = k1
               JJ_tmp(5,j,ik1,ia) = k2
               JJ_tmp(6,j,ik1,ia) = k3
+write(630+myrank,'(2I5,A8,6I4)') i,j," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
             end if ! Igrid
           end do ! i ( 1 - MMJJ_0 )
           MJJ_tmp_Q(ik1,ia)   = j
+write(630+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
+write(740+myrank,*) j
           c_nzqr_pre          = c_nzqr_pre+1
           icheck_tmp5(ik1,ia) = c_nzqr_pre
        end do ! ik1
@@ -415,9 +419,12 @@ write(400+myrank,*) "prepQRijp102 6"
       ia  = maps_tmp(iqr,2)
       ik1 = maps_tmp(iqr,3)
       MJJ_MAP_Q(iqr) = MJJ_tmp_Q(ik1,ia)
+write(620+myrank,*) "   ia  ik1    l MJJ_MAP_Q"
+write(620+myrank,'(4I5)') ia,ik1,l,MJJ_MAP_Q(iqr)
       do j=1,MJJ_MAP_Q(iqr)
         QRij(j,iqr)         = QRij_tmp(j,ik1,ia)
         JJ_MAP_Q(1:6,j,iqr) = JJ_tmp(1:6,j,ik1,ia)
+write(620+myrank,'(I3,A6,E15.7e2,A8,6I4)') j," QRij=",QRij(j,iqr)," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
       end do
     end do
 !!$OMP end parallel do
@@ -430,7 +437,8 @@ write(400+myrank,*) "prepQRijp102 6"
     call watch(ctt(3),ett(3))
 write(400+myrank,*) "prepQRijp102 7"
 
-    allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
+    allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) ) ; icheck_tmp4=0
+write(720+myrank,'(6I3)') a1b,b1b,a2b,b2b,a3b,b3b
     icheck_tmp4=0
     do iqr=1,c_nzqr
        j=0
@@ -439,6 +447,7 @@ write(400+myrank,*) "prepQRijp102 7"
           i1  = JJ_MAP_Q(1,i,iqr)
           i2  = JJ_MAP_Q(2,i,iqr)
           i3  = JJ_MAP_Q(3,i,iqr)
+write(720+myrank,'(3I3)') i1,i2,i3
           if ( icheck_tmp4(i1,i2,i3)==0 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)  = j

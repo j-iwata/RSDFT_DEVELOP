@@ -292,6 +292,7 @@ write(400+myrank,*) ">>>> prep_ps_nloc2"
           end do ! i ( 1 - M_grid_ion )
 
           MJJ_tmp(iorb,a)=j
+write(750+myrank,*) j
 
        end do ! iorb
     end do ! a
