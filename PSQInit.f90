@@ -135,7 +135,7 @@ write(400+myrank,*) ">>>>> ps_Q_init"
 #endif
 qc=0.d0
 Q_rcfac=rcfac
-Q_etafac=Q_etafac
+Q_etafac=etafac
 k2max=max_k2
 
     qc = qcut*qcfac
@@ -176,6 +176,8 @@ write(400+myrank,*) "ps_Q_init 2"
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
             Rc=Q_Rps(k2,ik)
+!write(820+myrank,*) '------------------------'
+!write(820+myrank,'(3I5,2E15.7e2)') ik,k2,NRc,Rc,Q_etafac
             call makemaskf(Q_etafac)
 
             maxerr=0.d0
@@ -188,13 +190,16 @@ write(400+myrank,*) "ps_Q_init 2"
                   dy0=1.d10
                   do m=1,20
                       m1=max(m0-m,1) ; m2=min(m0+m,nmsk)
+!write(820+myrank,'(3I5,E15.7e2)') m,m1,m2,x
                       call polint(xm(m1),maskr(m1),m2-m1+1,x,y,dy)
+!write(820+myrank,'(I5,3E15.7e2)') m,x,y,dy
                       if ( abs(dy)<dy0 ) then
                         y0=y ; dy0=abs(dy)
                       end if
                   end do
                 end if
                 Q_wm(i,k2,ik)=y0
+!write(820+myrank,'(3I5,E15.7e2)') ik,k2,i,Q_wm(i,k2,ik)
                 maxerr=max(maxerr,dy0)
             end do
         end do ! k2
@@ -236,10 +241,20 @@ write(400+myrank,*) "ps_Q_init 3"
                 L=l3v(ll3,k2,ik)-1
 
                 vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
-write(500+myrank,*) "ik,k2, ll3= ",ik,k2,ll3
-write(500+myrank,*) "qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),qrL(1,ll3,k2,ik)= ",qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik),qrL(1,ll3,k2,ik)
+write(500+myrank,*) "ik,k2,ll3= ",ik,k2,ll3
+write(500+myrank,*) "    qc L  NRc NRps            rad           rad1            qrL"
+write(500+myrank,'(f6.3,I2,2I5,3E15.7e2)') qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik),qrL(1,ll3,k2,ik)
 
                 call opFiltering( qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik),vrad,qrL(1,ll3,k2,ik) )
+
+write(700+myrank,*) "ik,k2,ll3= ",ik,k2,ll3
+write(700+myrank,*) "       rad     rad1      vrad      Q_wm       qrL"
+do i=1,10
+  write(700+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),Q_wm(i,k2,ik),qrL(i,ll3,k2,ik)
+end do
+do i=Q_NRps(k2,ik)-10,Q_NRps(k2,ik)
+  write(700+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),Q_wm(i,k2,ik),qrL(i,ll3,k2,ik)
+end do
             end do ! ll3
         end do ! k2
     end do ! ik

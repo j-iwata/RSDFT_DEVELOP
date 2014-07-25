@@ -112,6 +112,8 @@ write(400+myrank,*) "ps_nloc2_init 2"
        do iorb=1,norb(ik)
           NRc=NRps(iorb,ik)
           Rc=Rps(iorb,ik)
+!write(840+myrank,*) '------------------------'
+!write(840+myrank,'(3I5,2E15.7e2)') ik,iorb,NRc,Rc,etafac
           call makemaskf(etafac)
           maxerr=0.d0
           do i=1,NRc
@@ -123,13 +125,16 @@ write(400+myrank,*) "ps_nloc2_init 2"
                 dy0=1.d10
                 do m=1,20
                    m1=max(m0-m,1) ; m2=min(m0+m,nmsk)
+!write(840+myrank,'(3I5,E15.7e2)') m,m1,m2,x
                    call polint(xm(m1),maskr(m1),m2-m1+1,x,y,dy)
+!write(840+myrank,'(I5,3E15.7e2)') m,x,y,dy
                    if ( abs(dy)<dy0 ) then
                       y0=y ; dy0=abs(dy)
                    end if
                 end do
              end if
              wm(i,iorb,ik)=y0
+!write(840+myrank,'(3I5,E15.7e2)') ik,iorb,i,wm(i,iorb,ik)
              maxerr=max(maxerr,dy0)
           end do
        end do
@@ -179,9 +184,18 @@ write(400+myrank,*) "ps_nloc2_init 5"
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
 write(500+myrank,*) "ik,iorb= ",ik,iorb
-write(500+myrank,*) "qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)= ",qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
+write(500+myrank,*) "    qc L  NRc NRps            rad           rad1           viod"
+write(500+myrank,'(f6.3,I2,2I5,3E15.7e2)') qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
           call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
 
+write(700+myrank,*) "ik,iorb= ",ik,iorb
+write(700+myrank,*) "       rad      rad1      vrad        wm      viod"
+do i=1,10
+  write(700+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+end do
+do i=NRps(iorb,ik)-10,NRps(iorb,ik)
+  write(700+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+end do
        end do ! iorb
     end do ! ik
     deallocate( vrad )
