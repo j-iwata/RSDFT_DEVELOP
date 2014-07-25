@@ -491,9 +491,9 @@ write(400+myrank,*) ">>>> prep_ps_nloc2"
     end do
 !$OMP end parallel do
 
-!    deallocate( MJJ_tmp )
-!    deallocate( JJ_tmp )
-!    deallocate( uV_tmp )
+    deallocate( MJJ_tmp )
+    deallocate( JJ_tmp )
+    deallocate( uV_tmp )
     deallocate( maps_tmp )
 
     call watch(ctt(3),ett(3))
