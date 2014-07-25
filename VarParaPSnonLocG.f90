@@ -3,17 +3,82 @@ MODULE VarParaPSnonLocG
 
   integer :: Mqr
   integer :: MMJJ_Q,MMJJ_t_Q
-  integer :: MAXMJJ
+  integer :: MAXMJJ_Q
+  integer :: nrqr_xyz(6)
 
-  real(8),allocatable :: QRij(:,:)
+  integer,allocatable :: JJP_Q(:,:)
   integer,allocatable :: JJ_MAP_Q(:,:,:)
   integer,allocatable :: MJJ_MAP_Q(:)
-  integer,allocatable :: MMJ_Q(:)
+  integer,allocatable :: MJJ_Q(:)
   integer,allocatable :: nl_rank_map_Q(:)
 
   integer,allocatable :: qr_nsend(:)
   integer,allocatable :: sendmap_Q(:,:),recvmap_Q(:,:)
 
+  integer,allocatable :: num_2_rank_Q(:,:)
+
+#ifdef _DRSDFT_
+  real(8),allocatable :: sbufnl_Q(:,:),rbufnl_Q(:,:)
+  real(8),parameter :: zero=0.d0
+#else
+  complex(8),allocatable :: sbufnl_Q(:,:),rbufnl_Q(:,:)
+  complex(8),parameter :: zero=(0.d0,0.d0)
+#endif
+
 CONTAINS
+
+  SUBROUTINE allocateJJMAPQ(c_nzqr)
+    implicit none
+    integer,intent(IN) :: c_nzqr
+    call deallocateJJMAPQ
+    allocate(JJ_MAP_Q(6,MMJJ_Q,c_nzqr)) ; JJ_MAP_Q      =0
+    allocate(MJJ_MAP_Q(c_nzqr)        ) ; MJJ_MAP_Q     =0
+    allocate(MJJ_Q(c_nzqr)            ) ; MJJ_Q         =0
+    allocate(nl_rank_map_Q(c_nzqr)    ) ; nl_rank_map_Q =0
+    return
+  END SUBROUTINE allocateJJMAPQ
+
+  SUBROUTINE deallocateJJMAPQ
+    implicit none
+    if (allocated(JJ_MAP_Q) )     deallocate(JJ_MAP_Q)
+    if (allocated(MJJ_MAP_Q))     deallocate(MJJ_MAP_Q)
+    if (allocated(MJJ_Q)    )     deallocate(MJJ_Q)
+    if (allocated(nl_rank_map_Q)) deallocate(nl_rank_map_Q)
+    return
+  END SUBROUTINE deallocateJJMAPQ
+
+  SUBROUTINE allocateMAPQ(nl_max_send,nprocs_g)
+    implicit none
+    integer,intent(IN) :: nl_max_send,nprocs_g
+    call deallocateMAPQ
+    allocate(qr_nsend(0:nprocs_g-1)             ) ; qr_nsend  =0
+    allocate(sendmap_Q(nl_max_send,0:nprocs_g-1)) ; sendmap_Q =0
+    allocate(recvmap_Q(nl_max_send,0:nprocs_g-1)) ; recvmap_Q =0
+    return
+  END SUBROUTINE allocateMAPQ
+
+  SUBROUTINE deallocateMAPQ
+    implicit none
+    if (allocated(qr_nsend))  deallocate(qr_nsend)
+    if (allocated(sendmap_Q)) deallocate(sendmap_Q)
+    if (allocated(recvmap_Q)) deallocate(recvmap_Q)
+    return
+  END SUBROUTINE deallocateMAPQ
+
+  SUBROUTINE allocateBufQ(max_qr_nsend,nprocs_g)
+    implicit none
+    integer,intent(IN) :: max_qr_nsend,nprocs_g
+    call deallocateBufQ
+    allocate(rbufnl_Q(max_qr_nsend,0:nprocs_g-1)) ; rbufnl_Q=zero
+    allocate(sbufnl_Q(max_qr_nsend,0:nprocs_g-1)) ; sbufnl_Q=zero
+    return
+  END SUBROUTINE allocateBufQ
+
+  SUBROUTINE deallocateBufQ
+    implicit none
+    if (allocated(rbufnl_Q)) deallocate(rbufnl_Q)
+    if (allocated(sbufnl_Q)) deallocate(sbufnl_Q)
+    return
+  END SUBROUTINE deallocateBufQ
 
 END MODULE VarParaPSnonLocG

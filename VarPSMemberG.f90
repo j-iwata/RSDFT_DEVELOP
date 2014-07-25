@@ -11,8 +11,7 @@ use parallel_module, only: myrank
   complex(8),allocatable :: QG(:,:,:)
 
   real(8),allocatable :: QRij(:,:)
-
-
+  
   real(8),allocatable :: ddi(:,:,:,:)
 
   real(8),allocatable :: qqr(:,:,:,:)
