@@ -8,6 +8,7 @@ MODS1 = simc_module.o\
 		RealComplex.o \
         expint_module.o \
         parallel_module.o \
+		VarSysParameter.o \
 		VarPSMember.o \
 		VarPSMemberG.o \
 		VarParaPSnonLocG.o \
@@ -40,6 +41,7 @@ MODS1 = simc_module.o\
         electron_module.o\
         init_occ_electron_module.o \
         wf_module.o \
+		WFDensityG.o \
         density_module.o\
         hartree_mol_module.o \
         esm_rshell_module.o \
@@ -88,6 +90,7 @@ MODS1 = simc_module.o\
         hamiltonian_module.o\
         ewald_module.o\
         gram_schmidt_module.o \
+		GScG.o \
         gram_schmidt_t_module.o \
         xc_pw92_gth_module.o\
         xc_module.o \
