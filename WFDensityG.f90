@@ -1,13 +1,21 @@
 MODULE WFDensityG
   use rgrid_module, only: dV
-  use electron_module, only: occ,Nelectron
+  use electron_module, only: Nelectron
   ! unk(:,n,k,s)
   use wf_module
   use parallel_module, only: COMM_GRID,COMM_BAND,COMM_BZSM,COMM_SPIN
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
   use RealComplex, only: RCProduct
+    use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sbufnl,rbufnl,lma_nsend,sendmap,recvmap,TYPE_MAIN,uVk
+    use pseudopot_module, only: pselect
+    
+    use VarPSMemberG
+    ! N_nzqr,nzqr_pair,MJJ_Q(),JJP_Q(),sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,num_2_rank_Q,uVunk,uVunk0,QRij
+    use VarParaPSnonLocG, only: MJJ_Q,JJP_Q
+    use ParaRGridComm, only: threeWayComm
 
   implicit none
+  include 'mpif.h'
 
   PRIVATE
   PUBLIC :: get_rhonks
@@ -90,23 +98,9 @@ CONTAINS
     !		MJJ_Q(N_nzqr),JJP_Q(MJJ_Q(kk1),kk1),QRij(MJJ_Q(kk1),kk1),
     !		myrank
     ! OUT:	rhonks(:)
-    use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sbufnl,rbufnl,lma_nsend,sendmap,recvmap,TYPE_MAIN,uVk
-    use pseudopot_module, only: pselect
-    
-    
-    
-    
-    use global_variables_u_module, only: uVunk,uVunk0
-    
-    
-    
-    
-    use ps_nloc_u_module, only: N_nzqr,nzqr_pair
-    ! MJJ_Q(),JJP_Q(),sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,num_2_rank_Q
-    use prep_QRij_p12_module, only: MJJ_Q,JJP_Q,QRij
 
     implicit none
-    integer,intent(IN) :: nn1,nn2,nn
+    integer,intent(IN) :: nn1,nn2
     integer,intent(IN) :: n,k,s
     real(8),intent(INOUT) :: rhonks(nn1:nn2)
 #ifdef _DRSDFT_
@@ -134,17 +128,16 @@ CONTAINS
     case ( 1,2,12 )
 
        !----- term1 -----
-       rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s )**2
+       rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s )**2 )
        !===== term1 =====
 
        !----- term2 -----
        !----- get_uVunk -----
-       ib1=n
-       ib2=n
+       ib1=nn1
+       ib2=nn2
        nb = ib2 - ib1 + 1
        allocate( uVunk(nzlma,ib1:ib2)  ) ; uVunk(:,:) =zero
-       allocate( uVunk0(nzlma,ib1:ib2) ) ; uVunk0(:,:)=zero
-       do ib=ib1:ib2
+       do ib=ib1,ib2
           do lma=1,nzlma
              do j=1,MJJ(lma)
                 i=JJP(j,lma)
@@ -157,45 +150,7 @@ CONTAINS
 
 
 ! 3WayComm
-       do i=1,6
-          select case ( i )
-          case ( 1,3,5 )
-             j = i + 1
-             uVunk0(:,:)=uVunk(:,:)
-          case ( 2,4,6 )
-             j = i - 1
-          end select
-          do m=1,nrlma_xyz(i)
-             nreq=0
-             irank = num_2_rank(m,i)
-             jrank = num_2_rank(m,j)
-             if ( irank>=0 ) then
-                i2=0
-                do ib=ib1,ib2
-                   do i1=1,lma_nsend(irank)
-                      i2 = i2 + 1
-                      sbufnl(i2,irank) = uVunk0(sendmap(i1,irank),ib)
-                   end do
-                end do
-                nreq = nreq + 1
-                call MPI_ISEND( sbufnl(1,irank),lma_nsend(irank)*nb,TYPE_MAIN,irank,1,COMM_GRID,ireq(nreq),ierr )
-             end if
-             if ( jrank>=0 ) then
-                nreq = nreq + 1
-                call MPI_IRECV( rbufnl(1,jrank),lma)nsend(jrank)*nb,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
-             end if
-             call MPI_WAITALL( nreq,ireq,istatus,ierr )
-             if ( jrank>=0 ) then
-                i2=0
-                do ib=ib1,ib2
-                   do i1=1,lma_nsend(jrank)
-                      i2 = i2 + 1
-                      uVunk(recvmap(i1,jrank),ib) = uVunk(recvmap(i1,jrank),ib) + rbufnl(i2,jrank)
-                   end do
-                end do
-             end if
-          end do	! m
-       end do	! i
+      call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk)
        !===== term2 =====
 
        !----- get Qrhonks -----
@@ -226,48 +181,47 @@ CONTAINS
        rhonks(nn1:nn2) = rhonks(nn1:nn2) + real( Qrhonks(nn1:nn2) )
        !===== total = term1 + term2 =====
 
-       deallocate( uVunk0 )
        deallocate( uVunk  )
 
-    case ( 3 )
+!    case ( 3 )
 
        !----- term1 -----
-       rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s) )**2
+!       rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s) )**2
        !===== term1 =====
 
        !----- term2 -----
-       do i=1,Mlma
-          p_uVunk2=zero
-          uVunk2=zero
-          do nn=nn1,nn2
-             call RCProduct( uVk(nn,i,s),unk(nn,n,k,s),tmp )
-             p_uVunk2 = p_uVunk2 + tmp
-          end do
-          p_uVunk2 = dV*p_uVunk2
-          call MPI_ALLREDUCE( p_uVunk2,uVunk2,1,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr )
-          uVunk2_z(i) = uVunk2
-       end do
+!       do i=1,Mlma
+!          p_uVunk2=zero
+!          uVunk2=zero
+!          do nn=nn1,nn2
+!             call RCProduct( uVk(nn,i,s),unk(nn,n,k,s),tmp )
+!             p_uVunk2 = p_uVunk2 + tmp
+!          end do
+!          p_uVunk2 = dV*p_uVunk2
+!          call MPI_ALLREDUCE( p_uVunk2,uVunk2,1,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr )
+!          uVunk2_z(i) = uVunk2
+!       end do
 
-       Qrhonks=zero
-       do kk1=1,N_nzqr
-          i=nzqr_pair(kk1,1)
-          j=nzqr_pair(kk1,2)
-          if ( i==j ) then
-             call RCProduct( uVunk2_z(i),uVunk2_z(j),tmp )
-             Qrhonks = Qrhonks + QRij(nn1:nn2,kk1)*tmp
-          else if ( i>j ) then
-             call RCProduct( uVunk2_z(i),uVunk2_z(j),tmp )
-             Qrhonks = Qrhonks + QRij(nn1:nn2,kk1)*tmp
-             call RCProduct( uVunk2_z(j),uVunk2_z(i),tmp )
-             Qrhonks = Qrhonks + QRij(nn1:nn2,kk1)*tmp
-          else
-             stop 'get_rhonks'
-          end if
-       end do
+!       Qrhonks=zero
+!       do kk1=1,N_nzqr
+!          i=nzqr_pair(kk1,1)
+!          j=nzqr_pair(kk1,2)
+!          if ( i==j ) then
+!             call RCProduct( uVunk2_z(i),uVunk2_z(j),tmp )
+!             Qrhonks = Qrhonks + QRij(nn1:nn2,kk1)*tmp
+!          else if ( i>j ) then
+!             call RCProduct( uVunk2_z(i),uVunk2_z(j),tmp )
+!             Qrhonks = Qrhonks + QRij(nn1:nn2,kk1)*tmp
+!             call RCProduct( uVunk2_z(j),uVunk2_z(i),tmp )
+!             Qrhonks = Qrhonks + QRij(nn1:nn2,kk1)*tmp
+!          else
+!             stop 'get_rhonks'
+!          end if
+!       end do
        !===== term2 =====
 
        !----- total = term1 + term2 -----
-       rhonks(nn1:nn2) = rhonks(nn1:nn2) + real( Qrhonks(nn1:nn2) )
+!       rhonks(nn1:nn2) = rhonks(nn1:nn2) + real( Qrhonks(nn1:nn2) )
        !===== total = term1 + term2 =====
 
     end select

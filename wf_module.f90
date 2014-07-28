@@ -7,7 +7,8 @@ MODULE wf_module
   PRIVATE
   PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
-           ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF
+           ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
+           ,Sunk
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
