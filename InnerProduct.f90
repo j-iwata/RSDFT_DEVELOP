@@ -3,21 +3,23 @@ MODULE InnerProduct
   ! Mlma,nzlma,MMJ(lma),JJP(MJJ(lma),lma),TYPE_MAIN,lma_nsend(irank),sendmap(i1,irank),
   ! sbufnl(i2,irank),rbufnl(1,jrank),uVk(MJJ(lma),lma,k),
   ! nrlma_xyz(1:6),num_2_rank(nrlma_xyz(:),1:6)
-  use ps_nloc2_variables
+  use ps_nloc2_variables, only: nzlma,nrlma_xyz,lma_nsend,num_2_rank,sendmap,recvmap,MJJ,JJP,uVk,sbufnl,rbufnl,TYPE_MAIN,Mlma
   use pseudopot_module, only: pselect
   use rgrid_module, only: dV
   use parallel_module, only: COMM_GRID
   ! N_nlop,nlop_pair(1:2,:),qij(m)
-  use VarPSMemberG, only: N_nlop,nlop_pair,qij
+  use VarPSMemberG, only: N_nlop,nlop_pair,qij,uVunk,uVunk0
   ! unk(nn1,n,k,s)
   use wf_module, only: unk,Sunk
   ! Sunk(nn1,n)
-  use RealComplex, only: zero,RCProduct
+  use RealComplex, only: RCProduct,zero
   
   use ParaRGridComm, only: threeWayComm
 
+  include 'mpif.h'
   PRIVATE
   PUBLIC :: dot_product,get_Sf,get_gf,get_gSf,get_Sunk_Mat
+
 
 CONTAINS
 
@@ -76,15 +78,13 @@ CONTAINS
     real(8) :: p_uVunk2
     real(8) :: uVunk2
     real(8) :: uVunk_z(Mlma)
-    real(8),parameter :: zero=0.d0
     real(8) :: tmp
 #else
     complex(8),intent(IN) :: fin(nn1:nn2)
     complex(8),intent(OUT) :: Sf(nn1:nn2)
     complex(8) :: p_uVunk2
-    complex(8) :: uVnk2
-    complex(8) :: uVnk_z(Mlma)
-    complex(8),parameter :: zero=(0.d0,0.d0)
+    complex(8) :: uVunk2
+    complex(8) :: uVunk_z(Mlma)
     complex(8) :: tmp
 #endif
     integer :: kk1,i,j,ierr,ii
@@ -109,7 +109,7 @@ CONTAINS
 !$OMP end parallel do
 
 !----- get uVunk (=<uV|fin>) -----
-       allocate( uVunk(nzlma,ib1:ib2),uVunk0(nzlma,ib1:ib2) )
+       allocate( uVunk(nzlma,ib1:ib2) ) ; uVunk=zero
 !----- within mygrid -----
 #ifndef _OMP_
        do ib=ib1,ib2
@@ -184,7 +184,7 @@ CONTAINS
 #endif
 !===== total = term1 + term2 =====
 
-       deallocate( uVunk0,uVunk )
+       deallocate( uVunk )
 
     case ( 3 )
 !----- term1 -----
@@ -264,7 +264,7 @@ CONTAINS
     gf_0 = dV*gf_0
 
     if ( switch_zp==1 ) then
-       call MPI_ALLREDUCE(gt_0,gf,1,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr)
+       call MPI_ALLREDUCE(gf_0,gf,1,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr)
     else
        gf = gf_0
     end if

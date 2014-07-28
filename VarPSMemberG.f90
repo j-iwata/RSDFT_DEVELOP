@@ -45,6 +45,12 @@ use parallel_module, only: myrank
 
   integer :: max_Rref=0,max_Lref=0,max_k2=0,max_qgrd=0
 
+#ifdef _DRSDFT_
+  real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
+#else
+  complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
+#endif
+
 
 CONTAINS
 !------------------------------------------
