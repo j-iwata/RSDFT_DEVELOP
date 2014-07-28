@@ -7,17 +7,17 @@ MODULE CGG
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
   use InnerProduct, only: get_Sf,get_gf,get_gSf
-  use RealComplex, only: TYPE_MAIN,zero
+  use RealComplex, only: TYPE_MAIN,zero,RCProduct
 
   implicit none
 
   PRIVATE
-  PUBLIC :: CGG
+  PUBLIC :: ConjugateGradientG
 
 CONTAINS
 
 !---------------------------------------------------------------------------------------
-  SUBROUTINE CGG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+  SUBROUTINE ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     integer,intent(IN) :: Ncg,iswitch_gs
@@ -35,6 +35,12 @@ CONTAINS
     complex(8),allocatable :: pk(:,:),pko(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:)
+
+#ifdef _DRSDFT_
+    real(8) :: tmp
+#else
+    complex(8) :: tmp
+#endif
     
 !----- _USPP_ -----
     complex(8) :: gSf
@@ -93,7 +99,7 @@ CONTAINS
 
        do n=1,nn
 !----- _USPP_ -----
-          call get_Sf( unk(n1,n+ns-1,k,s),n1,n2,k,Sf )
+          call get_Sf( unk(n1,n+ns-1),n1,n2,k,Sf )
 !$OMP parallel do
           do i=n1,n2
              gk(i,n)=-c1*(hxk(i,n)-E(n)*Sf(i))
@@ -185,10 +191,10 @@ CONTAINS
 ! need omp_parallel
 !             call get_gSf( unk(n1,m,k,s),unk(n1,m,k,s),n1,n2,k,vtmp2(1:n),0 )
 !             call get_gSf( pk(n1,n),unk(n1,m,k,s),n1,n2,k,vtmp2(2:n),0 )
-             call get_Sf( unk(n1,m,k,s),n1,n2,k,Sf )
+             call get_Sf( unk(n1,m),n1,n2,k,Sf )
              gSf=zero
              do i=n1,n2
-                call RCProduct( unk(i,m,k,s),Sf(i),tmp )
+                call RCProduct( unk(i,m),Sf(i),tmp )
                 gSf = gSf + tmp
              end do
 ! WARNING zdV or dV
@@ -269,7 +275,7 @@ CONTAINS
 !$OMP end do
 !----- _USPP_ -----
              do i=n1,n2
-                unk_tmp(i) = utmp2(1,1)*unk(i,m,s,k) + utmp2(2,1)*pk(i,n)
+                unk_tmp(i) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
              end do
              call get_Sf( unk_tmp,n1,n2,k,Sf )
 !$OMP do
@@ -331,9 +337,8 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE ConjugateGradientG
 
-#endif
 
 !---------------------------------------------------------------------------------------
 #ifdef TEST
