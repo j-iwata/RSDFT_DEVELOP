@@ -1,11 +1,12 @@
-MODULE GramSchmidtG
+MODULE GScG
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk
+  use wf_module, only: unk,Sunk
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
-  use parallel_module, only: COMM_GRID,COMM_BAND,ir_band,id_band,id_class
-  use GlobalVar_uspp, only: Sunk
+  use parallel_module, only: COMM_GRID,COMM_BAND,ir_band,id_band,id_class,myrank,np_band,myrank_b
+  use RealComplex, only: zero,one,TYPE_MAIN,TRANSA,TRANSB
+  use InnerProduct
   implicit none
-
+  include 'mpif.h'
   PRIVATE
   PUBLIC :: GramSchmidtG
 
@@ -17,7 +18,7 @@ CONTAINS
   SUBROUTINE GramSchmidtG(n0,n1,k,s,NBLK,NBLK1)
     implicit none
     integer,intent(IN) :: n0,n1,k,s
-    integer,intent(IN) :: NBLK,NBLK1
+    integer,intent(INOUT) :: NBLK,NBLK1
     
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
@@ -27,6 +28,7 @@ CONTAINS
     integer :: nn,cc1,cc2
     integer :: nn1,nn2
     integer :: mm1,mm2
+write(400+myrank,*) ">>>>>>>> GramSchmidtG"
 
     ML0 = ML_1 - ML_0 + 1
     mrnk = id_class(myrank,4)
@@ -48,9 +50,11 @@ CONTAINS
        ns = NBAND_BLK*(k1-1) + 1
        ne = min(ns+NBAND_BLK-1,MB)
 
-       allocate( Sunk(n1:n2,ns:ne) )
-       call get_Sunk_Mat( n1,n2,ns,ne,k,s )
+       allocate( Sunk(n0:n1,ns:ne) )
+write(400+myrank,*) "GramSchmidtG",k1
+       call get_Sunk_Mat( n0,n1,ns,ne,k,s )
        if ( id_class(myrank,4)==irank_b ) then
+write(400+myrank,*) "GramSchmidtG",k1,"Rec"
           call GramSchmidtGSub(ns,ne,ns,ne,NBLK,k,s,NBLK,NBLK1)
        end if
        n=ML0*(ne-ns+1)
@@ -62,6 +66,7 @@ CONTAINS
                 ms=NBAND_BLK*(nbss-1)+1
                 me=min(ms+NBAND_BLK-1,MB)
                 if ( ms<=me ) then
+write(400+myrank,*) "GramSchmidtG",k1,ib,"Rec"
                    call GramSchmidtGSub(ms,me,ns,ne,NBLK,k,s,NBLK,NBLK1)
                 end if
              end if
@@ -70,6 +75,7 @@ CONTAINS
        deallocate(Sunk)
     end do ! k1
     deallocate( id,ir )
+write(400+myrank,*) "<<<<<<<< GramSchmidtG"
 
     return
   END SUBROUTINE GramSchmidtG
@@ -82,14 +88,16 @@ CONTAINS
     integer,intent(IN) :: NBLK,NBLK1
     integer :: n,ns,ne,m,ms,me,m1,m2,mm,nn,MBLKH,ierr
     integer :: ML0,i
-    real(8) :: c,d
 #ifdef _DRSDFT_
     real(8),allocatable :: utmp2(:,:),vtmp2(:,:),utmp(:),vtmp(:)
+    real(8) :: c,d
 #else
     complex(8),allocatable :: utmp2(:,:),vtmp2(:,:),utmp(:),vtmp(:)
+    complex(8) :: c,d
 #endif
 
-    ML0 = ML1-ML_0+1
+write(400+myrank,*) ">>>>>> GramSchmidtGSub"
+    ML0 = ML_1-ML_0+1
 
     do ms=mm1,mm2,MBLK
        me=min(ms+MBLK-1,mm2)
@@ -100,6 +108,7 @@ CONTAINS
           nn=ne-ns+1
           if ( nn<=0 ) cycle
           if ( ms>=ne+1 ) then
+write(400+myrank,*) "GramSchmidtGSub IF1"
              allocate( utmp2(ns:ne,ms:me),vtmp2(ns:ne,ms:me) )
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,nn,mm,ML0, -dV,unk(ML_0,ns,k,s),ML0,Sunk(ML_0,ms),ML0,zero,utmp2,nn)
@@ -117,6 +126,7 @@ CONTAINS
 
              deallocate( vtmp2,utmp2 )
              if ( ms==ne+1 ) then
+write(400+myrank,*) "GramSchmidtGSub IF2"
                 call get_gSf(unk(ML_0,ms,k,s),unk(ML_0,ms,k,s),ML_0,ML_1,k,d,0)
                 call MPI_ALLREDUCE( d,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
                 ! ?????????????????????????????? dV????
@@ -155,12 +165,14 @@ CONTAINS
 
           else
              MBLKH=max(MBLK/2,NBLK1)
+write(400+myrank,*) "GramSchmidtGSub Rec"
              call GramSchmidtGSub(ms,me,ns,ne,MBLKH,k,s,NBLK,NBLK1)
           end if
        end do ! ns
     end do ! ms
+write(400+myrank,*) "<<<<<< GramSchmidtGSub"
 
     return
   END SUBROUTINE GramSchmidtGSub
 
-END MODULE GramSchmidtG
+END MODULE GScG
