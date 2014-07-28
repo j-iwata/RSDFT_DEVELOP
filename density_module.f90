@@ -2,6 +2,7 @@ MODULE density_module
 
   use wf_module
   use parallel_module
+  use symmetry_module, only: sym_rho
 
   implicit none
 
@@ -64,6 +65,7 @@ CONTAINS
     end do
     end do
     end do
+    call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
     call reduce_and_gather
   END SUBROUTINE calc_density
 

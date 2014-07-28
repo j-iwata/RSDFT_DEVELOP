@@ -40,6 +40,7 @@ MODS1 = simc_module.o\
         electron_module.o\
         init_occ_electron_module.o \
         wf_module.o \
+        symmetry_module.o \
         density_module.o\
         esm_rshell_module.o \
         ps_local_module.o ps_local_rs_module.o \

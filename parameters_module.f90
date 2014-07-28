@@ -190,6 +190,8 @@ CONTAINS
        end if
     end if
 
+    call read_symmetry( myrank, unit )
+
   END SUBROUTINE read_keywordformat_parameters
 
 

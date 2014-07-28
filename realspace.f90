@@ -52,9 +52,17 @@ PROGRAM Real_Space_Solid
 
   call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
+! --- Symmetry ---
+
+  call init_symmetry( Ngrid,dV,aa,bb, Natom,ki_atom,aa_atom )
+
 ! --- Brillouin Zone sampling ---
 
-  call generate_bz(disp_switch)
+  if ( isymmetry == 0 ) then
+     call generate_bz( disp_switch )
+  else
+     call generate_bz_sym( nsym, rgb, disp_switch )
+  end if
 
 ! --- initial set up for parallel computation ---
 
@@ -67,6 +75,8 @@ PROGRAM Real_Space_Solid
   call InitParallel_Rgrid
 
   call InitParallel_Ggrid( nprocs, myrank )
+
+  call prep_symmetry( Igrid )
 
 !- FD boundary set -
 
@@ -198,6 +208,8 @@ PROGRAM Real_Space_Solid
      deallocate( vtmp )
 
   end if
+
+  call sym_rho( ML_0, ML_1, Nspin, MSP_0, MSP_1, rho )
 
 !-------------------- Hamiltonian Test
 

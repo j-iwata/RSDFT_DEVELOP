@@ -90,6 +90,8 @@ MODULE global_variables
 
   use esp_calc_module
 
+  use symmetry_module
+
   implicit none
 
   integer :: Diter, Nsweep, Ndiag
