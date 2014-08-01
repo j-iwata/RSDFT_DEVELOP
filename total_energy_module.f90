@@ -74,7 +74,19 @@ CONTAINS
     n1 = ML_0
     n2 = ML_1
 
-if (myrank==0) write(400+myrank,*) "before flag_recalc_esp"
+do s=MSP_0,MSP_1
+do k=MBZ_0,MBZ_1
+do n=MB_0,MB_1,MB_d
+nb1=n
+nb2=min(nb1+MB_d-1,MB_1)
+do i=nb1,nb2
+write(570+myrank,*) s,k,n,i,unk(i,n,k,s)
+enddo
+enddo
+enddo
+enddo
+
+write(400+myrank,*) "before flag_recalc_esp"
     if ( flag_recalc_esp ) then
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
@@ -87,8 +99,9 @@ if (myrank==0) write(400+myrank,*) "before flag_recalc_esp"
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
           work=zero
-if (myrank==0) write(400+myrank,*) "before op_kinetic"
+write(400+myrank,*) "before op_kinetic"
           call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+write(400+myrank,*) "after op_kinetic",Ekin
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,1)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -97,8 +110,9 @@ if (myrank==0) write(400+myrank,*) "before op_kinetic"
 #endif
           end do
           work=zero
-if (myrank==0) write(400+myrank,*) "before op_localpot"
+write(400+myrank,*) "before op_localpot"
           call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
+write(400+myrank,*) "after op_localpot",Eloc
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,2)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -107,9 +121,9 @@ if (myrank==0) write(400+myrank,*) "before op_localpot"
 #endif
           end do
           work=zero
-if (myrank==0) write(400+myrank,*) "before op_nonlocal"
-          call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
-if (myrank==0) write(400+myrank,*) "after op_nonlocal"
+write(400+myrank,*) "before op_nonlocal"
+          call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+write(400+myrank,*) "after op_nonlocal",Enlc
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -118,7 +132,7 @@ if (myrank==0) write(400+myrank,*) "after op_nonlocal"
 #endif
           end do
           work=zero
-if (myrank==0) write(400+myrank,*) "before op_fock"
+write(400+myrank,*) "before op_fock"
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_
           esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV
@@ -146,7 +160,7 @@ if (myrank==0) write(400+myrank,*) "before op_fock"
        deallocate( esp0 )
 
     end if
-if (myrank==0) write(400+myrank,*) "after flag_recalc_esp"
+write(400+myrank,*) "after flag_recalc_esp"
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
 

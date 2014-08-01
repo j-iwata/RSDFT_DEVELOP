@@ -1,4 +1,5 @@
 MODULE hamiltonian_module
+use parallel_module, only: myrank
 
   use kinetic_module
   use localpot_module
@@ -49,7 +50,10 @@ CONTAINS
 
 ! --- nonlocal potential ---
 
-    call op_nonlocal(k,tpsi,htpsi,n1,n2,ib1,ib2)
+write(400+myrank,*) '----------------------------hamiltonian'
+write(400+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
+write(400+myrank,*) '----------------------------hamiltonian'
+    call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
 
     call watch(ct1,et1)
     ctt_hamil(3)=ctt_hamil(3)+ct1-ct0 ; ett_hamil(3)=ett_hamil(3)+et1-et0
