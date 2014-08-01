@@ -102,6 +102,15 @@ CONTAINS
           end do
        end do
     end do
+do s=MS_0_WF,MS_1_WF
+do k=MK_0_WF,MK_1_WF
+do n=MB_0_WF,MB_1_WF
+do i=ML_0_WF,ML_1_WF
+write(580+myrank,*) s,k,n,i,unk(i,n,k,s)
+end do
+end do
+end do
+end do
 
   END SUBROUTINE random_initial_wf
 
@@ -138,7 +147,7 @@ CONTAINS
        do n=1,MB_WF
        do m=1,n
           if ( disp_switch ) then
-             write(*,'(1x,i2,i5,2i7,2g25.16)') s,k,m,n,uu(m,n)
+             write(590,'(1x,i2,i5,2i7,2g25.16)') s,k,m,n,uu(m,n)
           end if
        end do ! m
        end do ! n

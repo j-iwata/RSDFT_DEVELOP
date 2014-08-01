@@ -1,7 +1,7 @@
 MODULE density_module
 
   use wf_module
-  use parallel_module, only: comm_grid,comm_band,comm_bzsm,comm_spin,ir_grid,id_grid,ir_spin,id_spin,myrank_g,myrank_s
+  use parallel_module, only: comm_grid,comm_band,comm_bzsm,comm_spin,ir_grid,id_grid,ir_spin,id_spin,myrank_g,myrank_s,myrank
 
 !--------------------------------------------------------------------------- 20140507 HL
 #ifdef _USPP_
@@ -28,6 +28,7 @@ CONTAINS
   SUBROUTINE init_density(Nelectron,dV)
     implicit none
     real(8),intent(IN) :: Nelectron,dV
+integer :: i,s
 
     Nelectron_RHO = Nelectron
     dV_RHO        = dV
@@ -44,6 +45,11 @@ CONTAINS
        call random_number(rho)
        call normalize_density
     end if
+do s=MS_0_RHO,MS_1_RHO
+do i=ML_0_RHO,ML_1_RHO
+write(560+myrank,*) 'rho= ',i,s,rho(i,s)
+enddo
+enddo
   END SUBROUTINE init_density
 
 !---------------------------------------------------------------------------------------
@@ -69,6 +75,8 @@ CONTAINS
     integer :: n1,n2,n0
     real(8),allocatable :: rhonks(:)
 
+    integer :: i
+
     select case ( pp_kind )
     case ( 'NCPP' )
        rho(:,:)=0.d0
@@ -80,6 +88,7 @@ CONTAINS
           end do
        end do
     case ( 'USPP' )
+write(550+myrank,*) 'USPP calc_density'
        n1=ML_0_WF
        n2=ML_1_WF
        n0 = ML_1_WF - ML_0_WF + 1
@@ -93,6 +102,9 @@ CONTAINS
                 rhonks(:)=0.d0
                 call get_rhonks( rhonks,n1,n2,n,k,s )
                 rho(:,s) = rho(:,s) + occ(n,k,s)*rhonks(:)
+do i=n1,n2
+write(550+myrank,*) 'rho= ',i,rho(i,s)
+end do
              end do
           end do
        end do

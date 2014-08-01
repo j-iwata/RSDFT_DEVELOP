@@ -413,7 +413,7 @@ if (myrank==0) write(*,*) "start initPS"
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
-!  call test_on_wf(dV,myrank==0)
+  call test_on_wf(dV,myrank==0)
 
 ! --- Initial occupation ---
 
