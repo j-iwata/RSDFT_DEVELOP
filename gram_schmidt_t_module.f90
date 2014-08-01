@@ -85,10 +85,10 @@ CONTAINS
 !---------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------- 20140507 HL
 #ifdef _USPP_
-  SUBROUTINE gram_schmidt_t(n0,n1,k,s)
+  SUBROUTINE gram_schmidt_t(n,nb,k,s)
     implicit none
-    integer,intent(IN) :: n0,n1,k,s
-    call GramSchmidtG(n0,n1,k,s,NBLK,NBLK1)
+    integer,intent(IN) :: n,nb,k,s
+    call GramSchmidtG(n,nb,k,s,NBLK,NBLK1)
   END SUBROUTINE gram_schmidt_t
 #else
   SUBROUTINE gram_schmidt_t(n0,n1,k,s)

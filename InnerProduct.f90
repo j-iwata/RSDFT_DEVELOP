@@ -6,7 +6,7 @@ MODULE InnerProduct
   use ps_nloc2_variables, only: nzlma,nrlma_xyz,lma_nsend,num_2_rank,sendmap,recvmap,MJJ,JJP,uVk,sbufnl,rbufnl,TYPE_MAIN,Mlma
   use pseudopot_module, only: pselect
   use rgrid_module, only: dV
-  use parallel_module, only: COMM_GRID
+  use parallel_module, only: COMM_GRID,myrank
   ! N_nlop,nlop_pair(1:2,:),qij(m)
   use VarPSMemberG, only: N_nlop,nlop_pair,qij,uVunk,uVunk0
   ! unk(nn1,n,k,s)
@@ -101,12 +101,14 @@ CONTAINS
     nb= ib2 - ib1 + 1
 
     select case ( pselect )
-    case ( 1,2,12 )
+    case ( 1,2,102 )
+write(400+myrank,*) 'get_Sf 1'
 !$OMP parallel do
        do i=nn1,nn2
           Sf(i) = fin(i)
        end do
 !$OMP end parallel do
+write(400+myrank,*) 'get_Sf 2'
 
 !----- get uVunk (=<uV|fin>) -----
        allocate( uVunk(nzlma,ib1:ib2) ) ; uVunk=zero
@@ -143,6 +145,7 @@ CONTAINS
 !$OMP end parallel
 #endif
 !===== within mygrid =====
+write(400+myrank,*) 'get_Sf 3'
 
 !----- summation over all grids -----
        call watch( ctt(0),ett(0) )
@@ -185,6 +188,7 @@ CONTAINS
 !===== total = term1 + term2 =====
 
        deallocate( uVunk )
+write(400+myrank,*) 'get_Sf 4'
 
     case ( 3 )
 !----- term1 -----
@@ -223,6 +227,7 @@ CONTAINS
        end do
 !===== term2 =====
     end select
+write(400+myrank,*) 'get_Sf 5'
 
     return
   END SUBROUTINE get_Sf

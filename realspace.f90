@@ -121,8 +121,8 @@ PROGRAM Real_Space_Solid
 ! --- R-grid and G-grid ---
 
   call construct_rgrid(aa)
-  call get_cutoff_ggrid
-  call construct_NMGL_ggrid
+  call get_cutoff_Ggrid
+  call construct_NMGL_Ggrid
 
   if ( DISP_SWITCH ) then
      write(*,*) "Gcut,Ecut=",Gcut,Ecut

@@ -15,9 +15,9 @@ CONTAINS
 !---------------------------------------------------------------------------------------
   ! Gram-Schmidt orthogonalization
   ! ( Takahashi, Block cyclic )
-  SUBROUTINE GramSchmidtG(n0,n1,k,s,NBLK,NBLK1)
+  SUBROUTINE GramSchmidtG(ni,nb,k,s,NBLK,NBLK1)
     implicit none
-    integer,intent(IN) :: n0,n1,k,s
+    integer,intent(IN) :: ni,nb,k,s
     integer,intent(INOUT) :: NBLK,NBLK1
     
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
@@ -28,10 +28,13 @@ CONTAINS
     integer :: nn,cc1,cc2
     integer :: nn1,nn2
     integer :: mm1,mm2
+    integer :: n0,n1
 write(400+myrank,*) ">>>>>>>> GramSchmidtG"
 
     ML0 = ML_1 - ML_0 + 1
     mrnk = id_class(myrank,4)
+    n0=ML_0
+    n1=ML_1
 
     if ( NBLK  == 0 ) NBLK =MB
     if ( NBLK1 == 0 ) NBLK1=4
@@ -72,6 +75,7 @@ write(400+myrank,*) "GramSchmidtG",k1,ib,"Rec"
              end if
           end do
        end if
+write(530+myrank,*) Sunk
        deallocate(Sunk)
     end do ! k1
     deallocate( id,ir )

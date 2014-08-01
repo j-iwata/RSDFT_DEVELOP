@@ -47,6 +47,7 @@ CONTAINS
     integer :: i,j,k,m,mt,n,ierr,myrank
     real(8),allocatable :: a(:)
     real(8) :: ct,ct0,ct1,ctmin,et,et0,et1,etmin
+ 
     return
     call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ierr)
     n=2**20

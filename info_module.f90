@@ -56,6 +56,10 @@ CONTAINS
        write(*,*) "ZRSDFT(COMPLEX16)"
        write(unit_info,*) "ZRSDFT(COMPLEX16)"
 #endif
+#ifdef _USPP_
+       write(*,*) "USPP"
+       write(unit_info,*) "USPP"
+#endif
 #ifdef _SPLINE_
        write(*,*) "SPLINE(ps_nloc2_module)"
        write(unit_info,*) "SPLINE(ps_nloc2_module)"
