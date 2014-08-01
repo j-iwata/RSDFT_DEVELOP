@@ -36,11 +36,14 @@ MODS1 = simc_module.o\
         strfac_module.o \
         ps_read_yb_module.o \
         pseudopot_module.o \
+		VarPara.o \
+		ParaRGridComm.o \
         ps_gth_module.o \
         ps_local_gth_module.o \
         electron_module.o\
         init_occ_electron_module.o \
         wf_module.o \
+        ps_nloc2_variables.o \
 		WFDensityG.o \
         density_module.o\
         hartree_mol_module.o \
@@ -58,10 +61,7 @@ MODS1 = simc_module.o\
         minimal_box_module.o \
         ps_nloc3_module.o \
         ps_nloc2_init_module.o \
-        ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
-		VarPara.o \
-		ParaRGridComm.o \
         ps_nloc2_module.o \
 		PSQInit.o \
 		PSQRijPrep.o \
@@ -71,6 +71,7 @@ MODS1 = simc_module.o\
         localpot2_variables.o \
         localpot2_module.o \
         localpot_module.o \
+		PSnonLocDij.o \
 		PSnonLocOpG2.o \
         nonlocal_module.o \
         ps_pcc_mol_module.o\
@@ -95,8 +96,8 @@ MODS1 = simc_module.o\
         xc_pw92_gth_module.o\
         xc_module.o \
         subspace_diag_module.o \
-		CGG.o \
         cgpc_module.o \
+		CGG.o \
         cg_module.o \
         fermi_mp_module.o\
         total_energy_module.o \

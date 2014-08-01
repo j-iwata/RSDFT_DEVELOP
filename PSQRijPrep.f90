@@ -12,6 +12,7 @@ MODULE PSQRijPrep
   use minimal_box_module
   use ParaRGridComm
   use watch_module
+  use array_bound_module, only: ML_0
   implicit none
 
   include 'mpif.h'
@@ -394,6 +395,8 @@ write(400+myrank,*) "prepQRijp102 5"
        deallocate( QRij      )
     end if
     allocate( QRij(MMJJ_Q,c_nzqr) ) ; QRij  =0.d0
+    if ( allocated(JJP_Q) ) deallocate( JJP_Q )
+    allocate( JJP_Q(MMJJ_Q,c_nzqr) ) ; JJP_Q=0
 
     call allocateJJMAPQ(c_nzqr)
     ! JJ_MAP_Q,MJJ_MAP_Q,MJJ_Q,nl_rank_map_Q
@@ -424,7 +427,11 @@ write(620+myrank,'(4I5)') ia,ik1,l,MJJ_MAP_Q(iqr)
       do j=1,MJJ_MAP_Q(iqr)
         QRij(j,iqr)         = QRij_tmp(j,ik1,ia)
         JJ_MAP_Q(1:6,j,iqr) = JJ_tmp(1:6,j,ik1,ia)
-write(620+myrank,'(I3,A6,E15.7e2,A8,6I4)') j," QRij=",QRij(j,iqr)," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
+        i1 = JJ_MAP_Q(1,j,iqr)
+        i2 = JJ_MAP_Q(2,j,iqr)
+        i3 = JJ_MAP_Q(3,j,iqr)
+        JJP_Q(j,iqr)        = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
+write(620+myrank,'(I5,A6,E15.7e2,A8,6I4)') j," QRij=",QRij(j,iqr)," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
       end do
     end do
 !!$OMP end parallel do
@@ -498,8 +505,8 @@ write(400+myrank,*) "prepQRijp102 9"
 !===================================================================
 
 !===================================================================
-    if ( allocated(JJP_Q) ) deallocate( JJP_Q )
-    allocate( JJP_Q(MAXMJJ_Q,c_nzqr) ) ; JJP_Q=0
+!    if ( allocated(JJP_Q) ) deallocate( JJP_Q )
+!    allocate( JJP_Q(MAXMJJ_Q,c_nzqr) ) ; JJP_Q=0
 !===================================================================
 
     call watch(ctt(5),ett(5))

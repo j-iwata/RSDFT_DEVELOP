@@ -53,6 +53,9 @@ PROGRAM Real_Space_Solid
 
   use esp_calc_module
 
+#ifdef _USPP_
+  use PSnonLocDij
+#endif
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -450,6 +453,8 @@ if (myrank==0) write(*,*) "start initPS"
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
+
+  call getDij
 
 ! --- Read previous w.f. , density , potentials ---
 
