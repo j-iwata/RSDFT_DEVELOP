@@ -22,7 +22,7 @@ MODULE scf_module
   use density_module
   use watch_module
   use ggrid_module, only: Ecut
-  use rgrid_module, only: dV
+  use rgrid_module, only: dV, Ngrid
   use esp_calc_module
 
   use localpot2_variables, only: vloc_dense,vloc_dense_old,rho_nl &
@@ -250,6 +250,11 @@ CONTAINS
           write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
           write(u(i),'("A3",3f20.15)') aa(1:3,3)/ax
           write(u(i),'("VA",3f20.15)') Va
+          write(u(i),'("NGRID",3i5,i10)') Ngrid(1:3),Ngrid(0)
+          write(u(i),'("ECUT ",f10.5)') Ecut
+          write(u(i),'("XC",a10)') XCtype
+          write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
+          write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
        end if
        write(u(i),'(a4,a6,a20,2a13,1x)') &
             "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
