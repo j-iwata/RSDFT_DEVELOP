@@ -353,7 +353,10 @@ CONTAINS
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
     real(8),intent(INOUT) :: esp(MB),res(MB)
-    
+
+#ifdef _SHOWALL_CG_
+write(200+myrank,*) '----> USPP CG routine'
+#endif
     call ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
   END SUBROUTINE conjugate_gradient
 #else

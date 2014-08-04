@@ -49,6 +49,7 @@ CONTAINS
     real(8) :: ct,ct0,ct1,ctmin,et,et0,et1,etmin
  
     return
+
     call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ierr)
     n=2**20
     allocate( a(n) ) ; a(:)=1.d0

@@ -19,7 +19,9 @@ CONTAINS
     integer :: i,j,ik
     integer :: lma1,lma2,a1,a2,l1,l2,m1,m2,i1,i2,a,l,m
     integer,allocatable :: k1a(:)
-write(400+myrank,*) ">>>>> inside prepNzqr"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) ">>>>> inside prepNzqr"
+#endif
 
 !----- get N_nzqr -----
     kk1=0
@@ -92,7 +94,7 @@ write(400+myrank,*) ">>>>> inside prepNzqr"
 !===== get nzqr_pair, atommap, k1map, kk1map =====
 
     if (myrank==0) write(*,*) "--- Dij00(1:N_nzqr) ---"
-    if (myrank==0) write(*,*) "--- qij_f(1:N_nzqr) ---"
+    if (myrank==0) write(*,*) "  [ qij_f(1:N_nzqr) ]  "
     do kk1=1,N_nzqr
       i=nzqr_pair(kk1,1)
       j=nzqr_pair(kk1,2)
@@ -124,10 +126,10 @@ write(400+myrank,*) ">>>>> inside prepNzqr"
       i2=no(iorbmap(j),ik)
       if (myrank==0) then
         if (i==j) then
-          write(*,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10)') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
+          write(540,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10)') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
         else
-          write(*,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10)') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
-          write(*,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10,"(oginau)")') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
+          write(540,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10)') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
+          write(540,'(1x,i6,2i3,2x,4i4,2x,4i4,f15.10,"(oginau)")') kk1,i,j,a1,l1,m1,i1,a2,l2,m2,i2,Dij00(kk1)
         end if
       end if
     end do
@@ -152,7 +154,7 @@ write(400+myrank,*) ">>>>> inside prepNzqr"
         Dij0(kk1)=ddi(i1,i2,l+1,ik)
 #ifdef _SHOWALL_Q_
         if (myrank==0) then
-          write(*,*) i,lma1,lma2,Dij0(kk1)
+          write(540,*) kk1,lma1,lma2,Dij0(kk1)
         end if
 #endif
         qij(kk1)=qqc(i1,i2,l+1,ik)
@@ -162,7 +164,9 @@ write(400+myrank,*) ">>>>> inside prepNzqr"
       write(*,*) "N_nlop= ",N_nlop,kk1
     end if
 !===== Nlop_type Matrix =====
-write(400+myrank,*) "<<<<< end of prepNzqr"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) "<<<<< end of prepNzqr"
+#endif
 
     return
   END SUBROUTINE prepNzqr

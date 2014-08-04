@@ -25,7 +25,9 @@ CONTAINS
     integer,allocatable :: LLp(:,:)
     integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
 
-write(400+myrank,*) ">>>> prepThreeWayComm"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) ">>>> prepThreeWayComm"
+#endif
     np1=node_partition(1)
     np2=node_partition(2)
     np3=node_partition(3)
@@ -213,7 +215,9 @@ write(400+myrank,*) ">>>> prepThreeWayComm"
     end do
     !===== adjust NRxyz =====
 
+#ifdef _SHOWALL_INIT_
 write(400+myrank,*) "<<<< prepThreeWayComm"
+#endif
     return
   END SUBROUTINE prepThreeWayComm
 
@@ -240,7 +244,7 @@ write(400+myrank,*) "<<<< prepThreeWayComm"
     integer :: nb
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
 
-#ifdef _SHOWALL_
+#ifdef _SHOWALL_COMM_
 write(400+myrank,*) ">>>> threeWayComm"
 #endif
 
@@ -288,8 +292,8 @@ write(400+myrank,*) ">>>> threeWayComm"
     end do
 !!$OMP end single
 
-#ifdef _SHOWALL_
-write(400+myrank,*) ">>>> threeWayComm"
+#ifdef _SHOWALL_COMM_
+write(400+myrank,*) "<<<< threeWayComm"
 #endif
     return
   END SUBROUTINE threeWayComm

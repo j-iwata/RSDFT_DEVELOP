@@ -110,7 +110,7 @@ CONTAINS
           call calc_density ! n_out
           call calc_hartree(ML_0,ML_1,MSP,rho)
           call calc_xc
-          call calc_total_energy(.false.,disp_switch)
+          call calc_total_energy(.false.,disp_switch,iter)
           if ( mod(imix,2) == 0 ) then
              call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,rho(ML_0,MSP_0) ,flag_conv,disp_switch)
              call normalize_density

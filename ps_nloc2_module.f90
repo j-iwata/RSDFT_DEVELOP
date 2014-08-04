@@ -72,8 +72,9 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
-
-write(400+myrank,*) ">>>> prep_ps_nloc2"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) ">>>> prep_ps_nloc2"
+#endif
     ctt=0.0d0 ; ett=0.0d0
 
     call watch(ctt(6),ett(6))
@@ -292,7 +293,6 @@ write(400+myrank,*) ">>>> prep_ps_nloc2"
           end do ! i ( 1 - M_grid_ion )
 
           MJJ_tmp(iorb,a)=j
-write(750+myrank,*) j
 
        end do ! iorb
     end do ! a
@@ -580,7 +580,9 @@ write(750+myrank,*) j
        write(*,*) "time(ps_nloc2_8)",ctt(8)-ctt(7),ett(8)-ett(7)
        write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
-write(400+myrank,*) "<<<<< prep_ps_nloc2"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) "<<<<< prep_ps_nloc2"
+#endif
 
   END SUBROUTINE prep_ps_nloc2
 
@@ -590,7 +592,9 @@ write(400+myrank,*) "<<<<< prep_ps_nloc2"
     integer,allocatable,intent(INOUT) :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:)
     integer :: n,i,i1,i2,i3,j1,j2,j3
     integer :: k,k1,k2,k3,ic1,ic2,ic3,id1,id2,id3
-write(400+myrank,*) ">>>> prepMapsTmp"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) ">>>> prepMapsTmp"
+#endif
     itmp(:,:)=0
     n=-1
     do i3=1,np3
@@ -699,7 +703,9 @@ write(400+myrank,*) ">>>> prepMapsTmp"
         icheck_tmp2(n)=icheck_tmp2(n)+1
       end if
     end do
-write(400+myrank,*) "<<<< prepMapsTmp"
+#ifdef _SHOWALL_INIT_
+write(200+myrank,*) "<<<< prepMapsTmp"
+#endif
     return
   END SUBROUTINE prepMapsTmp
 

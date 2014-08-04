@@ -8,7 +8,8 @@ MODULE wf_module
   PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
-           ,Sunk
+           ,Sunk &
+           ,write_wf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -102,15 +103,17 @@ CONTAINS
           end do
        end do
     end do
+#ifdef _SHOWALL_INIT_WF_
 do s=MS_0_WF,MS_1_WF
 do k=MK_0_WF,MK_1_WF
 do n=MB_0_WF,MB_1_WF
 do i=ML_0_WF,ML_1_WF
-write(580+myrank,*) s,k,n,i,unk(i,n,k,s)
+write(310+myrank,'(4I5,2g20.7)') s,k,n,i,unk(i,n,k,s)
 end do
 end do
 end do
 end do
+#endif
 
   END SUBROUTINE random_initial_wf
 
@@ -147,7 +150,7 @@ end do
        do n=1,MB_WF
        do m=1,n
           if ( disp_switch ) then
-             write(590,'(1x,i2,i5,2i7,2g25.16)') s,k,m,n,uu(m,n)
+             write(320,'(1x,i2,i5,2i7,2g25.16)') s,k,m,n,uu(m,n)
           end if
        end do ! m
        end do ! n
@@ -176,5 +179,25 @@ end do
     id_band(:)=id_band(:)/mm
   END SUBROUTINE gather_wf
 
+  SUBROUTINE write_wf
+    implicit none
+    integer :: s,k,n,i
+    write(300+myrank,*) 'myrank= ',myrank
+    write(300+myrank,'(A18,2I5)') 'MS_0_WF, MS_1_WF= ',MS_0_WF,MS_1_WF
+    write(300+myrank,'(A18,2I5)') 'MK_0_WF, MK_1_WF= ',MK_0_WF,MK_1_WF
+    write(300+myrank,'(A18,2I5)') 'MB_0_WF, MB_1_WF= ',MB_0_WF,MB_1_WF
+    write(300+myrank,'(A18,2I5)') 'ML_0_WF, ML_1_WF= ',ML_0_WF,ML_1_WF
+    do s=MS_0_WF,MS_1_WF
+       do k=MK_0_WF,MK_1_WF
+          do n=MB_0_WF,MB_1_WF
+             do i=ML_0_WF,ML_1_WF
+                write(300+myrank,'(4I4,2g20.7)') s,k,n,i,unk(i,n,k,s)
+             end do
+          end do
+       end do
+    end do
+    return
+
+  END SUBROUTINE write_wf
 
 END MODULE wf_module

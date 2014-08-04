@@ -49,10 +49,11 @@ CONTAINS
     ctt_hamil(2)=ctt_hamil(2)+ct0-ct1 ; ett_hamil(2)=ett_hamil(2)+et0-et1
 
 ! --- nonlocal potential ---
-
-write(400+myrank,*) '----------------------------hamiltonian'
-write(400+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
-write(400+myrank,*) '----------------------------hamiltonian'
+#ifdef _SHOWALL_OP_
+write(200+myrank,*) '----------------------------hamiltonian'
+write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
+write(200+myrank,*) '----------------------------hamiltonian'
+#endif
     call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
 
     call watch(ct1,et1)

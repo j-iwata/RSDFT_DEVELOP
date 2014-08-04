@@ -154,7 +154,7 @@ CONTAINS
 
     if ( iswitch_opt < 2  ) then
 
-       if ( iswitch_opt == 1 ) call calc_total_energy(.false.,disp_switch_loc)
+       if ( iswitch_opt == 1 ) call calc_total_energy(.false.,disp_switch_loc,999)
 
        select case(SYStype)
        case default
@@ -818,7 +818,7 @@ CONTAINS
 
     if ( myrank == 0 ) disp_switch=.true.
 
-    call calc_total_energy(.false.,disp_switch)
+    call calc_total_energy(.false.,disp_switch,999)
 
     deallocate( Force )
     deallocate( aa_atom_0, gi, hi )

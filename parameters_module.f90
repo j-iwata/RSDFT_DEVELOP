@@ -20,6 +20,10 @@ CONTAINS
     character(7) :: label,cbuf,ckey
     real(8) :: Ratom(3),ax_tmp,aa_tmp(3,3)
 
+#ifdef _SHOWALL_
+if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
+#endif
+
     call read_atom(myrank,unit_atom,ax_tmp,aa_tmp)
 
     call read_xc(myrank,unit)
@@ -166,6 +170,9 @@ CONTAINS
           end do
        end if
     end if
+#ifdef _SHOWALL_
+if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
+#endif
 
   END SUBROUTINE read_parameters
 

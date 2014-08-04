@@ -167,6 +167,10 @@ CONTAINS
     real(8),allocatable :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
     real(8),allocatable :: ddi_(:,:,:),qqr_(:,:,:)
 
+#ifdef _SHOWALL_
+if (rank==0) write(200+rank,*) '>>>>>>>> read_pseudopot'
+#endif
+
     if ( rank == 0 ) then
        max_psgrd=0
        max_psorb=0
@@ -203,9 +207,13 @@ CONTAINS
           case(102)
             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-            write(*,*) 'myrank= ',myrank,'normal PSV finished'
+#ifdef _SHOWALL_
+if (rank==0) write(200+rank,*) 'myrank= ',myrank,'normal PSV finished'
+#endif
             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-            write(*,*) 'myrank= ',myrank,'new PSV finished'
+#ifdef _SHOWALL_
+if (rank==0) write(200+rank,*) 'myrank= ',myrank,'new PSV finished'
+#endif
             close(unit_ps)
 
 #endif
@@ -220,13 +228,21 @@ CONTAINS
 #ifdef _USPP_
     elseif (pselect==102) then
       call send_pseudopot(rank)
-      write(*,*) 'myrank= ',myrank,'normal sendPSV finished'
+#ifdef _SHOWALL_
+if (rank==0) write(200+rank,*) 'myrank= ',myrank,'normal sendPSV finished'
+#endif
       call sendPSG(rank,Nelement_PP)
-      write(*,*) 'myrank= ',myrank,'new sendPSV finished'
+#ifdef _SHOWALL_
+if (rank==0) write(200+rank,*) 'myrank= ',myrank,'new sendPSV finished'
+#endif
 #endif
     else
       stop 'pselect must = 2(NCPP),102(USPP)'
     end if
+
+#ifdef _SHOWALL_
+if (rank==0) write(200+rank,*) '<<<<<<<< read_pseudopot'
+#endif
   END SUBROUTINE read_pseudopot
 
 

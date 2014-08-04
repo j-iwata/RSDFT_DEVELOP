@@ -28,11 +28,12 @@ CONTAINS
     complex(8) :: zc
 
     integer :: iqr,lma1,lma2
-
-write(520+myrank,*) ">>>>op_ps_nloc2_uspp"
-write(400+myrank,*) '----------------------------op_ps_nloc2_uspp'
-write(400+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
-write(400+myrank,*) '----------------------------op_ps_nloc2_uspp'
+#ifdef _SHOWALL_OP_
+write(200+myrank,*) ">>>>op_ps_nloc2_uspp"
+write(200+myrank,*) '----------------------------op_ps_nloc2_uspp'
+write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
+write(200+myrank,*) '----------------------------op_ps_nloc2_uspp'
+#endif
     nb = ib2-ib1+1
 
     if ( Mlma <= 0 ) return
@@ -61,14 +62,12 @@ write(400+myrank,*) '----------------------------op_ps_nloc2_uspp'
 !    select case( iswitch_eqdiv )
 !    case default
     
-write(520+myrank,*) ">>>>op_ps_nloc2_uspp 1"
       call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
 !    case( 2 )
 !       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
 !    end select
 
-write(520+myrank,*) ">>>>op_ps_nloc2_uspp 2"
     do ib=ib1,ib2
       do iqr=1,N_nzqr
         lma1=nzqr_pair(iqr,1)
@@ -92,9 +91,12 @@ write(520+myrank,*) ">>>>op_ps_nloc2_uspp 2"
       end do
     end do
 !!$OMP end parallel
-write(520+myrank,*) ">>>>op_ps_nloc2_uspp 3"
 
     deallocate( uVunk0,uVunk )
+#ifdef _SHOWALL_OP_
+write(200+myrank,*) ">>>>op_ps_nloc2_uspp"
+#endif
+
 
     return
   END SUBROUTINE op_ps_nloc2_uspp

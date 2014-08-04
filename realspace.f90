@@ -56,6 +56,10 @@ PROGRAM Real_Space_Solid
 #ifdef _USPP_
   use PSnonLocDij
 #endif
+
+use WFtest
+use PStest
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -90,6 +94,9 @@ PROGRAM Real_Space_Solid
      write(*,*) "DRSDFT(REAL8)"
 #else
      write(*,*) "RSDFT(COMPLEX16)"
+#endif
+#ifdef _USPP_
+     write(*,*) "USPP"
 #endif
 #ifdef _SPLINE_
      write(*,*) "SPLINE(ps_nloc2_module)"
@@ -406,6 +413,7 @@ if (myrank==0) write(*,*) "start initPS"
 ! --- Initial wave functions ---
 
   call init_wf
+  call check_all_ps(myrank)
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
@@ -414,6 +422,9 @@ if (myrank==0) write(*,*) "start initPS"
   end do
   end do
   call test_on_wf(dV,myrank==0)
+  call test_orthnorm_wf(myrank)
+
+  call write_wf
 
 ! --- Initial occupation ---
 
@@ -494,8 +505,8 @@ if (myrank==0) write(*,*) "start initPS"
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
-if (myrank==0) write(400+myrank,*) "before calc_total_energy"
-  call calc_total_energy(.true.,disp_switch)
+write(200+myrank,*) "before calc_total_energy"
+  call calc_total_energy(.true.,disp_switch,999)
 
   if ( mod(imix,2) == 0 ) then
      call init_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1, rho(ML_0,MSP_0))
@@ -508,6 +519,7 @@ if (myrank==0) write(400+myrank,*) "before calc_total_energy"
   flag_exit = .false.
   flag_scf  = .false.
 
+!----------------------------------------------------------------------SCF
   do iter=1,Diter
 
      if ( disp_switch ) write(*,'(a40," iter=",i4)') repeat("-",40),iter
@@ -582,7 +594,7 @@ if (myrank==0) write(400+myrank,*) "before calc_total_energy"
         call calc_hartree(ML_0,ML_1,MSP,rho)
         call watcht(disp_switch,"hartree",1)
         call calc_xc
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,iter)
         if ( mod(imix,2) == 0 ) then
            call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,rho(ML_0,MSP_0),flag_conv,disp_switch)
            call normalize_density
@@ -642,6 +654,7 @@ if (myrank==0) write(400+myrank,*) "before calc_total_energy"
      if ( flag_exit ) exit
 
   end do ! iter
+!======================================================================SCF
 
   if ( disp_switch ) then
      write(*,*) "------------ SCF result ----------"
@@ -659,13 +672,13 @@ if (myrank==0) write(400+myrank,*) "before calc_total_energy"
           "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
      do k=1,Nbzsm
      do n=1,Nband
-        write(98,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+        write(98,'(i4,i6,2(f20.15,2g20.5,1x))') k,n &
              ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
      end do
      end do
   end if
 
-  call calc_total_energy(.true.,disp_switch)
+  call calc_total_energy(.true.,disp_switch,999)
 
   if ( flag_end ) then
      if ( disp_switch ) write(*,*) "flag_end=",flag_end
@@ -680,7 +693,7 @@ if (myrank==0) write(400+myrank,*) "before calc_total_energy"
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
-  call calc_total_energy(.true.,disp_switch)
+  call calc_total_energy(.true.,disp_switch,999)
 
 !
 ! --- force calculation ---

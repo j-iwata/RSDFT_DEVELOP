@@ -93,12 +93,9 @@ CONTAINS
     integer,intent(IN) :: k2max,nki,Rrefmax,Lrefmax
     integer,intent(INOUT) :: k1max
     
-if (myrank==0) write(400+myrank,*) "allocateKtoK 1"
     if ( allocated(k1_to_k2) ) then
       call deallocateKtoK
     end if
-if (myrank==0) write(400+myrank,*) "allocateKtoK 2"
-if (myrank==0) write(400+myrank,*) "---- k1max,k2max,k3max,lpsmax are calculated here ----"
 k1max=(Rrefmax*(Lrefmax**2))*(Rrefmax*(Lrefmax**2)+1)/2
 lpsmax=max_Rref*max_Lref
 k3max=(max_Lref**2)*(max_Lref**2+1)/2
@@ -115,7 +112,6 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
 
 !    allocate( qqc(Rrefmax,Rrefmax,Lrefmax,nki) ) ; qqc(:,:,:,:)=0.d0
 
-if (myrank==0) write(400+myrank,*) "allocateKtoK 3"
     return
   END SUBROUTINE allocateKtoK
 

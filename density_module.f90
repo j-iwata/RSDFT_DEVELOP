@@ -28,7 +28,9 @@ CONTAINS
   SUBROUTINE init_density(Nelectron,dV)
     implicit none
     real(8),intent(IN) :: Nelectron,dV
+#ifdef _SHOWALL_RHO_
 integer :: i,s
+#endif
 
     Nelectron_RHO = Nelectron
     dV_RHO        = dV
@@ -45,11 +47,13 @@ integer :: i,s
        call random_number(rho)
        call normalize_density
     end if
+#ifdef _SHOWALL_RHO_
 do s=MS_0_RHO,MS_1_RHO
 do i=ML_0_RHO,ML_1_RHO
-write(560+myrank,*) 'rho= ',i,s,rho(i,s)
+write(410+myrank,*) 'rho= ',i,s,rho(i,s)
 enddo
 enddo
+#endif
   END SUBROUTINE init_density
 
 !---------------------------------------------------------------------------------------

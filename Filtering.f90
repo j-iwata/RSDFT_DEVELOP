@@ -4,8 +4,10 @@ use parallel_module, only: myrank
   PRIVATE
   PUBLIC :: opFiltering
 
+#ifdef _SHOWALL_F_
   integer :: count_
   logical :: flag_init=.true.
+#endif
 
 CONTAINS
 
@@ -23,16 +25,18 @@ CONTAINS
     real(8),allocatable :: tmp(:)
     real(8),parameter :: const=2.d0/acos(-1.d0) ! HERE
 
-write(400+myrank,*) ">>>> opFiltering"
+#ifdef _SHOWALL_F_
+write(200+myrank,*) ">>>> opFiltering"
 
     if (flag_init) then
       count_=0
       flag_init=.false.
     endif
     count_=count_+1
-    
-write(800+myrank,*) "count_= ",count_
-write(800+myrank,*) "L= ",L
+
+write(200+myrank,*) "count_= ",count_
+write(200+myrank,*) "L= ",L
+#endif
 
     allocate( tmp(NRc) ) ; tmp(:)=0.d0
     do i=1,NRps
@@ -182,7 +186,7 @@ write(800+myrank,*) "L= ",L
        end select
        tmp(1:NRc)=tmp(1:NRc)*vrad(1:NRc)
        call simp(tmp(1:NRc),sum0,NRc,2)
-#ifdef _SHOWALL_
+#ifdef _SHOWALL_F_
 do j=1,10
 write(800+myrank,'(I5,A14,2E15.7e2)') j,"tmp,vrad= ",tmp(j),vrad(j)
 enddo
@@ -193,12 +197,14 @@ write(800+myrank,'(I5,A14,E15.7e2)') i,"tarIN(i)(b)= ",tarIN(i)
 write(800+myrank,'(I5,A14,E15.7e2)') i,"sum0       = ",sum0
 #endif
        tarIN(i)=sum0*const
-#ifdef _SHOWALL_
+#ifdef _SHOWALL_F_
 write(800+myrank,'(I5,A14,E15.7e2)') i,"tarIN(i)(a)= ",tarIN(i)
 #endif
     end do	! i
 
-write(400+myrank,*) "<<<< opFiltering"
+#ifdef _SHOWALL_F_
+write(200+myrank,*) "<<<< opFiltering"
+#endif
     return
   END SUBROUTINE opFiltering
 

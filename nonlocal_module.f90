@@ -29,19 +29,17 @@ CONTAINS
 #endif
     select case( pselect )
     case(2,4)
-!if (myrank==0) write(400+myrank,*) "before op_ps_nloc2"
        call op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(3)
-!if (myrank==0) write(400+myrank,*) "before op_ps_nloc3"
        call op_ps_nloc3(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(5)
-!if (myrank==0) write(400+myrank,*) "before op_ps_nloc_mr"
        call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(102)
-if (myrank==0) write(400+myrank,*) "before op_ps_nloc_uspp"
-write(400+myrank,*) '----------------------------op_nonlocal'
-write(400+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
-write(400+myrank,*) '----------------------------op_nonlocal'
+#ifdef _SHOWALL_OP_
+write(200+myrank,*) '----------------------------op_nonlocal'
+write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
+write(200+myrank,*) '----------------------------op_nonlocal'
+#endif
       call op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
     case default
        stop "pselect/=2,4,5,102 are not implemented"

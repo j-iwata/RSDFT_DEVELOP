@@ -68,6 +68,7 @@ MODS1 = simc_module.o\
 		PSnonLocPrepG.o \
 		pseudopotentials.o \
 		InnerProduct.o \
+	WFtest.o \
         localpot2_variables.o \
         localpot2_module.o \
         localpot_module.o \
@@ -116,6 +117,7 @@ MODS1 = simc_module.o\
         test_hpsi2_module.o \
         test_force_module.o \
         esp_calc_module.o \
+		PStest.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \

@@ -74,7 +74,7 @@ CONTAINS
 #endif
 
        work=zero
-       call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,n,n)
+       call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,n,n)
 #ifdef _DRSDFT_
        esp0(n,k,s,3)=sum( unk(:,n,k,s)*work(:,1) )*dV
 #else

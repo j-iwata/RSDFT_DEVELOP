@@ -5,7 +5,7 @@ MODULE total_energy_module
   use hartree_module, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
   use ewald_module, only: Eewald
-  use wf_module, only: unk,esp,occ
+  use wf_module, only: unk,esp,occ,ML_0_WF,ML_1_WF
   use localpot_module, only: Vloc
   use ps_local_module, only: Vion
   use density_module, only: rho
@@ -48,9 +48,10 @@ MODULE total_energy_module
 CONTAINS
 
 
-  SUBROUTINE calc_total_energy(flag_recalc_esp,disp_switch)
+  SUBROUTINE calc_total_energy(flag_recalc_esp,disp_switch,scf_iter)
     implicit none
     logical,intent(IN) :: flag_recalc_esp,disp_switch
+    integer,intent(IN) :: scf_iter
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2
     real(8) :: s0(4),s1(4),uu
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
@@ -73,20 +74,18 @@ CONTAINS
 
     n1 = ML_0
     n2 = ML_1
-
+#ifdef _SHOWALL_WF_
 do s=MSP_0,MSP_1
 do k=MBZ_0,MBZ_1
 do n=MB_0,MB_1,MB_d
-nb1=n
-nb2=min(nb1+MB_d-1,MB_1)
-do i=nb1,nb2
-write(570+myrank,*) s,k,n,i,unk(i,n,k,s)
+do i=ML_0_WF,ML_1_WF
+write(300+myrank,*) s,k,n,i,unk(i,n,k,s)
 enddo
 enddo
 enddo
 enddo
+#endif
 
-write(400+myrank,*) "before flag_recalc_esp"
     if ( flag_recalc_esp ) then
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
@@ -99,9 +98,12 @@ write(400+myrank,*) "before flag_recalc_esp"
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
           work=zero
-write(400+myrank,*) "before op_kinetic"
+#ifdef _SHOWALL_ESP_
+do i=n1,n2
+write(350+myrank,'(5I5,2g20.8)') scf_iter,s,k,n,i,unk(i,n,k,s)
+enddo
+#endif
           call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
-write(400+myrank,*) "after op_kinetic",Ekin
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,1)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -110,9 +112,7 @@ write(400+myrank,*) "after op_kinetic",Ekin
 #endif
           end do
           work=zero
-write(400+myrank,*) "before op_localpot"
           call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
-write(400+myrank,*) "after op_localpot",Eloc
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,2)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -121,9 +121,7 @@ write(400+myrank,*) "after op_localpot",Eloc
 #endif
           end do
           work=zero
-write(400+myrank,*) "before op_nonlocal"
           call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
-write(400+myrank,*) "after op_nonlocal",Enlc
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -132,12 +130,17 @@ write(400+myrank,*) "after op_nonlocal",Enlc
 #endif
           end do
           work=zero
-write(400+myrank,*) "before op_fock"
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_
           esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV
 #else
           esp0(n,k,s,4)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+#endif
+
+#ifdef _SHOWALL_ESP_
+do i=nb1,nb2
+write(450+myrank,'(5I5,4g20.8)') scf_iter,s,k,n,i,esp0(i,k,s,1:4)
+enddo
 #endif
        end do
        end do
@@ -160,7 +163,6 @@ write(400+myrank,*) "before op_fock"
        deallocate( esp0 )
 
     end if
-write(400+myrank,*) "after flag_recalc_esp"
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
 
@@ -210,6 +212,7 @@ write(400+myrank,*) "after flag_recalc_esp"
        write(*,*) '(efermi)  ',efermi, efermi-efermi_0
        write(*,*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
        write(*,*) '(FreeEne) ',Fene,Fene-Fene_0
+       write(920,'(I4,12f15.7)') scf_iter,Etot,Eewald,Ekin,Eloc,Enlc,Eion,E_hartree,Exc,E_exchange,E_correlation,Eeig,Ehwf
     end if
 
     Etot_0 = Etot
