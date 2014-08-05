@@ -1,6 +1,6 @@
 MODULE nonlocal_module
 
-  use pseudopot_module, only: pselect
+  use pseudopot_module, only: pselect, ps_type
   use ps_nloc1_module
   use ps_nloc2_module
   use ps_nloc3_module
@@ -25,7 +25,11 @@ CONTAINS
 #endif
     select case( pselect )
     case(2,4)
-       call op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       if ( ps_type == 1 ) then
+          call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       else
+          call op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       end if
     case(3)
        call op_ps_nloc3(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(5)

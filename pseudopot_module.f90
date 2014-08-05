@@ -1,25 +1,29 @@
 MODULE pseudopot_module
 
   use ps_read_YB_module
+  use ps_read_UPF_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: pselect,ippform,file_ps,inorm,NRps,norb,Npseudopot &
-           ,Mr,lo,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
+           ,Mr,lo,no,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
+           ,hnml,knml,cdd_coef,ps_type &
            ,read_ppname_pseudopot,read_pseudopot &
-           ,cdd_coef,read_param_pseudopot,read_param_oldformat_pseudopot &
+           ,read_param_pseudopot,read_param_oldformat_pseudopot &
            ,read_ppname_oldformat_pseudopot
 
   integer :: pselect,Npseudopot
   integer,allocatable :: ippform(:)
   character(30),allocatable :: file_ps(:)
-  integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:)
+  integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:),no(:,:)
   real(8),allocatable :: vql(:,:),cdd(:,:),cdc(:,:),rad(:,:),parloc(:,:)
   real(8),allocatable :: anorm(:,:),viod(:,:,:),Rps(:,:),Zps(:),rab(:,:)
-  real(8),allocatable :: cdd_coef(:,:,:)
+  real(8),allocatable :: cdd_coef(:,:,:),hnml(:,:,:,:),knml(:,:,:,:)
   integer :: unit_ps,ielm,Nelement_PP
   integer :: max_psgrd=0, max_psorb=0, max_ngauss=0
+
+  integer :: ps_type = 0
 
 CONTAINS
 
@@ -77,6 +81,7 @@ CONTAINS
     Npseudopot =MKI
   END SUBROUTINE read_ppname_pseudopot
 
+
   SUBROUTINE read_ppname_oldformat_pseudopot(MKI,rank,unit)
     implicit none
     integer,intent(IN) :: MKI,rank,unit
@@ -96,6 +101,7 @@ CONTAINS
     call send_ppname_2(0)
   END SUBROUTINE read_ppname_oldformat_pseudopot
 
+
   SUBROUTINE send_ppname_1(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -103,6 +109,7 @@ CONTAINS
     include 'mpif.h'
     call mpi_bcast(Nelement_PP,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)    
   END SUBROUTINE send_ppname_1
+
 
   SUBROUTINE send_ppname_2(rank)
     implicit none
@@ -136,6 +143,7 @@ CONTAINS
     call send_param_pseudopot(0)
   END SUBROUTINE read_param_pseudopot
 
+
   SUBROUTINE read_param_oldformat_pseudopot(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -145,6 +153,7 @@ CONTAINS
     end if
     call send_param_pseudopot(0)
   END SUBROUTINE read_param_oldformat_pseudopot
+
 
   SUBROUTINE send_param_pseudopot(rank)
     implicit none
@@ -158,7 +167,9 @@ CONTAINS
   SUBROUTINE read_pseudopot(rank)
     implicit none
     integer,intent(IN) :: rank
+    integer :: i,j,io,jo,lj
     if ( rank == 0 ) then
+       write(*,'(a60," read_pseudopot")') repeat("-",60) 
        max_psgrd=0
        max_psorb=0
        do ielm=1,Nelement_PP
@@ -190,14 +201,69 @@ CONTAINS
              rab(1:Mr(ielm),ielm)     = ps_yb%rx(1:Mr(ielm))
              viod(1:Mr(ielm),1:norb(ielm),ielm) &
                                       = ps_yb%vps(1:Mr(ielm),1:norb(ielm))
+          case(4)
+             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+             call ps_read_UPF(unit_ps)
+             close(unit_ps)
+             call ps_allocate(ps_upf%nrr,ps_upf%norb)
+             Mr(ielm)                 = ps_upf%nrr
+             norb(ielm)               = ps_upf%norb
+             Zps(ielm)                = ps_upf%znuc
+             anorm(1:norb(ielm),ielm) = ps_upf%anorm(1:norb(ielm))
+             inorm(1:norb(ielm),ielm) = ps_upf%inorm(1:norb(ielm))
+             Rps(1:norb(ielm),ielm)   = ps_upf%Rc(1:norb(ielm))
+             NRps(1:norb(ielm),ielm)  = ps_upf%NRc(1:norb(ielm))
+             lo(1:norb(ielm),ielm)    = ps_upf%lo(1:norb(ielm))
+             no(1:norb(ielm),ielm)    = ps_upf%no(1:norb(ielm))
+             vql(1:Mr(ielm),ielm)     = ps_upf%vql(1:Mr(ielm))
+             cdd(1:Mr(ielm),ielm)     = ps_upf%cdd(1:Mr(ielm))
+             cdc(1:Mr(ielm),ielm)     = ps_upf%cdc(1:Mr(ielm))
+             rad(1:Mr(ielm),ielm)     = ps_upf%rr(1:Mr(ielm))
+             rab(1:Mr(ielm),ielm)     = ps_upf%rx(1:Mr(ielm))
+             viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                      = ps_upf%vps(1:Mr(ielm),1:norb(ielm))
+             if ( any( ps_upf%Dij /= 0.0d0 ) ) then
+                ps_type = 1
+                do j=1,norb(ielm)
+                   jo=no(j,ielm)
+                   lj=lo(j,ielm)
+                do i=1,norb(ielm)
+                   io=no(i,ielm)
+                   if ( lo(i,ielm) /= lj ) cycle
+                   hnml(io,jo,lj,ielm) = ps_upf%Dij(i,j)
+                end do
+                end do
+             end if
+
           case default
              stop "ippform error"
           end select
-       end do
-    end if
+       end do ! ielm
+
+       write(*,*) "ps_type = ",ps_type
+
+    end if ! [ rank == 0 ]
+
     call send_pseudopot(rank)
+!    call chk_pot
+
   END SUBROUTINE read_pseudopot
 
+
+  SUBROUTINE chk_pot
+    implicit none
+    integer :: u,ielm,i,j
+    do ielm=1,Nelement_PP
+       u=9+ielm
+       rewind u
+       do i=1,Mr(ielm)
+          write(u,'(1x,5f20.10)') &
+               rad(i,ielm),vql(i,ielm),(viod(i,j,ielm),j=1,norb(ielm))
+       end do
+       write(*,'(1x,"chk_pot: fort.",i2)') u
+    end do
+    stop "stop@chk_pot"
+  END SUBROUTINE chk_pot
 
   SUBROUTINE send_pseudopot(myrank)
     implicit none
@@ -233,8 +299,13 @@ CONTAINS
        if ( myrank /= 0 ) then
           allocate( cdd_coef(3,max_ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
        end if
-       call mpi_bcast(cdd_coef,3*max_ngauss*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+       call mpi_bcast(cdd_coef,size(cdd_coef),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     end if
+!
+    call mpi_bcast(hnml,size(hnml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(knml,size(knml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(ps_type,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+
   END SUBROUTINE send_pseudopot
 
 
@@ -266,6 +337,8 @@ CONTAINS
     real(8),allocatable :: psi(:,:,:),phi(:,:,:),bet(:,:,:)
     real(8),allocatable :: ddi(:,:,:),qqr(:,:,:)
     real(8),allocatable :: a0(:),b0(:),c0(:),cdd_coef_0(:,:,:)
+
+    write(*,'(a40," read_PSV")') repeat("-",40)
 
 ! Check pseudopotential type
 
@@ -578,6 +651,8 @@ CONTAINS
     deallocate( cc,vl,rr )
     deallocate( nr )
 
+    write(*,'(a40," read_PSV(end)")') repeat("-",40)
+
   END SUBROUTINE read_PSV
 
 
@@ -589,6 +664,11 @@ CONTAINS
     real(8),allocatable :: cdc_tmp(:,:),viod_tmp(:,:,:)
     real(8),allocatable :: anorm_tmp(:,:),Rps_tmp(:,:),rab_tmp(:,:)
     integer,allocatable :: inorm_tmp(:,:),lo_tmp(:,:),NRps_tmp(:,:)
+    integer,allocatable :: no_tmp(:,:)
+    if ( .not.allocated(hnml) ) then
+       allocate( hnml(3,3,0:2,Nelement_PP) ) ; hnml=0.0d0
+       allocate( knml(3,3,1:2,Nelement_PP) ) ; knml=0.0d0
+    end if
     if ( max_psgrd==0 .or. max_psorb==0 ) then
        allocate( Mr(Nelement_PP)   ) ; Mr=0
        allocate( norb(Nelement_PP) ) ; norb=0
@@ -599,6 +679,7 @@ CONTAINS
        allocate( Rps(n_orb,Nelement_PP)   ) ; Rps=0.d0
        allocate( NRps(n_orb,Nelement_PP)  ) ; NRps=0
        allocate( lo(n_orb,Nelement_PP)    ) ; lo=0
+       allocate( no(n_orb,Nelement_PP)    ) ; no=0
        allocate( vql(n_grd,Nelement_PP)   ) ; vql=0.d0
        allocate( cdd(n_grd,Nelement_PP)   ) ; cdd=0.d0
        allocate( cdc(n_grd,Nelement_PP)   ) ; cdc=0.d0
@@ -654,26 +735,31 @@ CONTAINS
        allocate( anorm_tmp(mo,Nelement_PP) )
        allocate( inorm_tmp(mo,Nelement_PP) )
        allocate( lo_tmp(mo,Nelement_PP) )
+       allocate( no_tmp(mo,Nelement_PP) )
        allocate( Rps_tmp(mo,Nelement_PP) )
        allocate( NRps_tmp(mo,Nelement_PP) )
        anorm_tmp(1:max_psorb,1:Nelement_PP) = anorm(1:max_psorb,1:Nelement_PP)
        inorm_tmp(1:max_psorb,1:Nelement_PP) = inorm(1:max_psorb,1:Nelement_PP)
        lo_tmp(1:max_psorb,1:Nelement_PP) = lo(1:max_psorb,1:Nelement_PP)
+       no_tmp(1:max_psorb,1:Nelement_PP) = no(1:max_psorb,1:Nelement_PP)
        Rps_tmp(1:max_psorb,1:Nelement_PP) = Rps(1:max_psorb,1:Nelement_PP)
        NRps_tmp(1:max_psorb,1:Nelement_PP) = NRps(1:max_psorb,1:Nelement_PP)
        deallocate( NRps )
        deallocate( Rps )
+       deallocate( no )
        deallocate( lo )
        deallocate( inorm )
        deallocate( anorm )
        allocate( anorm(mo,Nelement_PP) ) ; anorm=0.d0
        allocate( inorm(mo,Nelement_PP) ) ; inorm=0
        allocate( lo(mo,Nelement_PP)    ) ; lo=0
+       allocate( no(mo,Nelement_PP)    ) ; no=0
        allocate( Rps(mo,Nelement_PP)   ) ; Rps=0.d0
        allocate( NRps(mo,Nelement_PP)  ) ; NRps=0
        anorm(:,:) = anorm_tmp(:,:)
        inorm(:,:) = inorm_tmp(:,:)
        lo(:,:) = lo_tmp(:,:)
+       no(:,:) = no_tmp(:,:)
        Rps(:,:) = Rps_tmp(:,:)
        NRps(:,:) = NRps_tmp(:,:)
        deallocate( NRps_tmp )

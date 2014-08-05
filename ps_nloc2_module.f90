@@ -39,13 +39,11 @@ CONTAINS
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
-!    integer,allocatable :: icheck_tmp3(:,:,:)
     integer,allocatable :: icheck_tmp4(:,:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:),ireq(:)
     integer,allocatable :: lma_nsend_tmp(:),maps_tmp(:,:),itmp1(:)
     integer,allocatable :: irad(:,:),nl_rank_map_tmp(:),itmp3(:,:)
     integer,allocatable :: itmp2(:),LLp(:,:)
-!    integer,allocatable :: JJ_tmp(:,:,:,:),MJJ_tmp(:,:)
     integer,allocatable :: jtmp3(:,:,:),mtmp3(:),istatus(:,:)
     integer :: a,i,j,k,L,m,n,mm1,mm2,mm3,m1,m2,ML0,k1,k2,k3
     integer :: i1,i2,i3,j1,j2,j3,ik,ir,m0,iorb,mm,ierr,ir0,irlma
@@ -55,7 +53,6 @@ CONTAINS
     real(8),parameter :: ep=1.d-8
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
-!    real(8),allocatable :: uV_tmp(:,:,:)
     real(8),allocatable :: work(:)
     real(8) :: ctt(0:9),ett(0:9)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
@@ -1227,6 +1224,10 @@ CONTAINS
        return
     else if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
+       return
+    end if
+    if ( ps_type == 1 ) then
+       call calc_force_ps_nloc_mr(MI,force2)
        return
     end if
 

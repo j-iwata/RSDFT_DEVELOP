@@ -143,7 +143,11 @@ PROGRAM Real_Space_Solid
      select case( pselect )
      case( 2 )
         call ps_nloc2_init(Gcut)
-        call prep_ps_nloc2
+        if ( ps_type == 0 ) then
+           call prep_ps_nloc2
+        else if ( ps_type == 1 ) then
+           call prep_ps_nloc_mr
+        end if
      case( 3 )
         call init_ps_nloc3
         call prep_ps_nloc3
