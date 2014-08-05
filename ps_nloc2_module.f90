@@ -450,7 +450,11 @@ write(200+myrank,*) ">>>> prep_ps_nloc2"
     deallocate( nl_rank_map_tmp )
 
     do lma=1,nzlma
+#ifdef _USPP_
+
+#else
        if ( maps_tmp(lma,1) == 0 ) cycle
+#endif
        iuV(lma)     = maps_tmp(lma,2)
        amap(lma)    = maps_tmp(lma,3)
        lmap(lma)    = maps_tmp(lma,4)

@@ -21,12 +21,10 @@ MODULE wf_module
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
 #endif
 
-#ifdef _USPP_
 #ifdef _DRSDFT_
     real(8),allocatable :: Sunk(:,:)
 #else
     complex(8),allocatable :: Sunk(:,:)
-#endif
 #endif
 
   real(8),allocatable :: esp(:,:,:)

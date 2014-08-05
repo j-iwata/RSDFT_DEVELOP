@@ -413,6 +413,9 @@ if (myrank==0) write(*,*) "start initPS"
 ! --- Initial wave functions ---
 
   call init_wf
+!wf OK
+!  call write_wf
+!stop
   call check_all_ps(myrank)
 
   do s=MSP_0,MSP_1
@@ -421,6 +424,8 @@ if (myrank==0) write(*,*) "start initPS"
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
+  call write_wf
+stop
   call test_on_wf(dV,myrank==0)
   call test_orthnorm_wf(myrank)
 
@@ -464,8 +469,9 @@ if (myrank==0) write(*,*) "start initPS"
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
-
+#ifdef _USPP_
   call getDij
+#endif
 
 ! --- Read previous w.f. , density , potentials ---
 

@@ -163,7 +163,7 @@ SUBROUTINE bomd
         disp_switch=(myrank==0)
         call getforce_cpmd(.true.,ltime) ! in 'getforce_cpmd.f90'
         call wf_force ! in 'wf_force.f90'
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,999)
         disp_switch=.false.
      endif
   else
@@ -313,11 +313,11 @@ SUBROUTINE bomd
         call watch(ctime_cpmd(7),etime_cpmd(7))
         call calfke(fke)
         call watch(ctime_cpmd(8),etime_cpmd(8))
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,999)
         call watch(ctime_cpmd(9),etime_cpmd(9))
      else
         call getforce
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,999)
      endif
 
      if ( lmeta ) then

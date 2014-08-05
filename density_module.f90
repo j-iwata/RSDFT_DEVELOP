@@ -124,7 +124,7 @@ end do
     implicit none
     integer :: n,k,s
     rho(:,:)=0.d0
-    do s=MS_0_WF,MP_1_WF
+    do s=MS_0_WF,MS_1_WF
        do k=MK_0_WF,MK_1_WF
           do n=MB_0_WF,MB_1_WF
              rho(:,s)=rho(:,s)+occ(n,k,s)*abs( unk(:,n,k,s) )**2

@@ -108,6 +108,7 @@ write(200+myrank,*) 'get_Sf 1'
 !$OMP parallel do
        do i=nn1,nn2
           Sf(i) = fin(i)
+                                                    write(771,'(I4,2g20.7)') i,Sf(i)
        end do
 !$OMP end parallel do
 #ifdef _SHOWALL_INNER_
@@ -117,6 +118,7 @@ write(200+myrank,*) 'get_Sf 2'
 !----- get uVunk (=<uV|fin>) -----
        allocate( uVunk(nzlma,ib1:ib2) ) ; uVunk=zero
 !----- within mygrid -----
+                                                    write(772,'(g20.7)') dV
 #ifndef _OMP_
        do ib=ib1,ib2
           do lma=1,nzlma
@@ -128,10 +130,12 @@ write(200+myrank,*) 'get_Sf 2'
 #else
               uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*fin(i)
 #endif
+                                                    write(773,'(3I4,2g20.7)') k,lma,j,uVk(j,lma,k)
 !                call RCProduct( uVk(j,lma,k),fin(i),tmp )
 !                uVunk(lma,ib) = uVunk(lma,ib) + tmp
              end do
              uVunk(lma,ib) = dV*uVunk(lma,ib)
+                                                    write(772,'(2I4,2g20.7)') ib,lma,uVunk(lma,ib)
           end do
        end do
 #else
@@ -149,10 +153,12 @@ write(200+myrank,*) 'get_Sf 2'
 #else
                 uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*fin(i)
 #endif
+                                                    write(773,'(3I4,2g20.7)') k,lma,j,uVk(j,lma,k)
 !                call RCProduct( uVk(j,lma,k),fin(i),tmp )
 !                uVunk(lma,ib) = uVunk(lma,ib) + tmp
              end do
              uVunk(lma,ib) = dV*uVunk(lma,ib)
+                                                    write(772,'(2I4,2g20.7)') ib,lma,uVunk(lma,ib)
           end do
 !$OMP end do
        end do
