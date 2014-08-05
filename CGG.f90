@@ -194,17 +194,23 @@ CONTAINS
              call get_Sf( unk(n1,m),n1,n2,k,Sf )
              gSf=zero
              do i=n1,n2
-                call RCProduct( unk(i,m),Sf(i),tmp )
-                gSf = gSf + tmp
+#ifdef _DRSDFT_
+                gSf = gSf + unk(i,m)*Sf(i)
+#else
+                gSf = gSf + conjg(unk(i,m))*Sf(i)
+#endif
              end do
 ! WARNING zdV or dV
-             vtmp2(1,n) = zdV*gSf
+             vtmp2(1,n) = dV*gSf
              gSf=zero
              do i=n1,n2
-                call RCProduct( pk(i,n),Sf(i),tmp )
-                gSf = gSf + tmp
+#ifdef _DRSDFT_
+                gSf = gSf + pk(i,n)*Sf(i)
+#else
+                gSf = gSf + conjg(pk(i,n))*Sf(i)
+#endif
              end do
-             vtmp2(2,n) = zdV*gSf
+             vtmp2(2,n) = dV*gSf
              call get_gSf( pk(n1,n),pk(n1,n),n1,n2,k,vtmp2(3,n),0 )
 !===== _USPP_ =====
              call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
@@ -274,10 +280,14 @@ CONTAINS
              end do
 !$OMP end do
 !----- _USPP_ -----
+!$OMP do
              do i=n1,n2
                 unk_tmp(i) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
              end do
+!$OMP end do
+!$OMP end parallel
              call get_Sf( unk_tmp,n1,n2,k,Sf )
+!$OMP parallel
 !$OMP do
              do i=n1,n2
                 gk(i,n) = -c1*( hxk(i,n) - W(1)*Sf(i) )
