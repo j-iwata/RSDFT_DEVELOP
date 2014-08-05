@@ -71,7 +71,7 @@ CONTAINS
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
     integer,allocatable :: NRps0(:,:)
     real(8),parameter :: dr=2.d-3
-    real(8) :: qc,Rc,sum0,const
+    real(8) :: qc,Rc,sum0,const,pi
     real(8) :: x,y,y0,dy,dy0,maxerr
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),Rps0(:,:),vtmp(:,:,:)
@@ -164,6 +164,7 @@ CONTAINS
     allocate( vrad(NRc),tmp(NRc) )
 
     const=2.d0/acos(-1.d0)
+    pi=acos(-1.0d0)
 
     do ik=1,Nelement
        do iorb=1,norb(ik)
@@ -248,8 +249,30 @@ CONTAINS
                       end if
                    end do
                 end if
+             case(3)
+                if ( r==0.d0 ) then
+                   viod(i,iorb,ik)=0.d0
+                   cycle
+                else
+                   do j=1,NRc
+                      r1=rad(j,ik)
+                      if ( r1 == 0.0d0 ) then
+                         tmp(j) = 0.0d0
+                      else if ( r1 == r ) then
+                         x=qc*r
+                         tmp(j) = r*qc**3/pi &
+                              *( sjbes(L,x)**2 - sjbes(L-1,x)*sjbes(L+1,x) )
+                      else
+                         x=qc*r
+                         y=qc*r1
+                         tmp(j) = 2.0d0*sqrt(r*r1)/pi * qc**2/(r**2-r1**2) &
+                              *( r1*sjbes(L,x)*sjbes(L-1,y) &
+                                -r*sjbes(L-1,x)*sjbes(L,y) )
+                      end if
+                   end do ! j
+                end if
              case default
-                write(*,*) "PP for L>2 is not implemented."
+                write(*,*) "PP for L>3 is not implemented."
                 stop
              end select
              tmp(1:NRc)=tmp(1:NRc)*vrad(1:NRc)
@@ -419,6 +442,78 @@ CONTAINS
     deallocate( g )
     return
   END SUBROUTINE simp
+
+!--------1---------2---------3---------4---------5---------6---------7--
+!
+! Spherical Bessel Function jn(x)
+! (Ref. "Fortran77 ni yoru suuti-keisan software", Maruzen)
+!
+  FUNCTION sjbes(n,x)
+    implicit none
+    real(8) :: sjbes
+    real(8),intent(IN) :: x
+    integer,intent(IN) :: n
+    integer :: i,m,l
+    real(8) :: c,j0,js0,js1,js2,jsn
+
+    if ( x < 0.0d0 .or. n < 0 ) then
+       stop "Bad arguments (stop at sjbes)"
+    end if
+
+    if ( x <= 2.d-8 ) then
+       if ( n == 0 ) then
+          sjbes=1.d0
+       else
+          if( x <= 1.d-77 )then
+             sjbes=0.d0
+          else
+             c=2*n+1
+             do i=2*n-1,1,-2
+                c=c*i
+             end do
+             sjbes=x/c
+          end if
+       end if
+       return
+    end if
+
+    if ( x >= 100.d0 ) then
+       l=int(0.05d0*x+30)
+    else if ( 10.d0 <= x .and. x < 100.d0 ) then
+       l=int(0.15d0*x+20)
+    else if ( 1.0d0 < x .and. x < 10.d0 ) then
+       l=int(x+9)
+    else
+       l=8
+    end if
+    m=max(n,nint(x))+l
+    js2=0.d0 ; js1=1.d-75
+    do i=m,1,-1
+       js0=(2*i+1)/x*js1-js2
+       js2=js1
+       js1=js0
+       if ( i == n+1 ) jsn=js0
+    end do
+    if( x >= 0.2d0 )then
+       j0=sin(x)/x
+    else
+       j0=1.d0-x**2/6.d0+x**4/120.d0-x**6/5040.d0+x**8/362880.d0
+    end if
+    if ( js0 == 0.0d0 ) then
+       sjbes=0.d0
+       if ( abs(jsn) > 1.d-14 ) then
+          write(*,*) "n,x=",n,x
+          write(*,*) "j0 =",j0
+          write(*,*) "js0=",js0
+          write(*,*) "jsn=",jsn
+          stop "sjbes"
+       end if
+    else
+       sjbes=j0/js0*jsn
+    end if
+
+    return
+  END FUNCTION sjbes
 
 
 END MODULE ps_nloc2_init_module
