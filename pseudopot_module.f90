@@ -2,13 +2,14 @@ MODULE pseudopot_module
 
   use ps_read_YB_module
   use ps_read_UPF_module
+  use ps_gth_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: pselect,ippform,file_ps,inorm,NRps,norb,Npseudopot &
            ,Mr,lo,no,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
-           ,hnml,knml,cdd_coef,ps_type &
+           ,cdd_coef,ps_type,Rcloc,hnml,knml,hnl,knl &
            ,read_ppname_pseudopot,read_pseudopot &
            ,read_param_pseudopot,read_param_oldformat_pseudopot &
            ,read_ppname_oldformat_pseudopot
@@ -19,7 +20,10 @@ MODULE pseudopot_module
   integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:),no(:,:)
   real(8),allocatable :: vql(:,:),cdd(:,:),cdc(:,:),rad(:,:),parloc(:,:)
   real(8),allocatable :: anorm(:,:),viod(:,:,:),Rps(:,:),Zps(:),rab(:,:)
-  real(8),allocatable :: cdd_coef(:,:,:),hnml(:,:,:,:),knml(:,:,:,:)
+  real(8),allocatable :: cdd_coef(:,:,:)
+  real(8),allocatable :: hnml(:,:,:,:),knml(:,:,:,:)
+  real(8),allocatable :: hnl(:,:,:),knl(:,:,:)
+  real(8),allocatable :: Rcloc(:)
   integer :: unit_ps,ielm,Nelement_PP
   integer :: max_psgrd=0, max_psorb=0, max_ngauss=0
 
@@ -75,6 +79,7 @@ CONTAINS
     if ( Nelement_PP < MKI ) ierr=-1
     do i=1,Nelement_PP
        if ( ippform(i) <= 0 .or. file_ps(i)=="" ) ierr=-1
+       if ( ippform(1) /= ippform(i) ) ierr=-1
     end do
     if ( ierr == -1 ) stop "stop@read_ppname_pseudopot"
     Nelement_PP=MKI
@@ -141,6 +146,9 @@ CONTAINS
        write(*,*) "pslect=",pselect
     end if
     call send_param_pseudopot(0)
+    if ( .not.( pselect == 2 .or. pselect == 3 ) ) then
+       stop "invalid pselect(stop@read_param_pseudopot)"
+    end if
   END SUBROUTINE read_param_pseudopot
 
 
@@ -168,23 +176,31 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank
     integer :: i,j,io,jo,lj
+
     if ( rank == 0 ) then
+
        write(*,'(a60," read_pseudopot")') repeat("-",60) 
+
        max_psgrd=0
        max_psorb=0
+
        do ielm=1,Nelement_PP
+
           unit_ps=33+ielm
+          open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+
           select case(ippform(ielm))
           case(1)
+
              call read_TM
+
           case(2)
-             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+
              call read_PSV
-             close(unit_ps)
+
           case(3)
-             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+
              call ps_read_YB(unit_ps)
-             close(unit_ps)
              call ps_allocate(ps_yb%nrr,ps_yb%norb)
              Mr(ielm)                 = ps_yb%nrr
              norb(ielm)               = ps_yb%norb
@@ -201,10 +217,28 @@ CONTAINS
              rab(1:Mr(ielm),ielm)     = ps_yb%rx(1:Mr(ielm))
              viod(1:Mr(ielm),1:norb(ielm),ielm) &
                                       = ps_yb%vps(1:Mr(ielm),1:norb(ielm))
-          case(4)
-             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+          case( 4 )
+
+             call read_ps_gth( unit_ps, ippform(ielm) )
+             call ps_allocate(1,ps_gth%norb)
+             norb(ielm)             = ps_gth%norb
+             Zps(ielm)              = ps_gth%znuc
+             Rps(1:norb(ielm),ielm) = ps_gth%Rc(1:norb(ielm))
+             lo(1:norb(ielm),ielm)  = ps_gth%lo(1:norb(ielm))
+             no(1:norb(ielm),ielm)  = ps_gth%no(1:norb(ielm))
+             parloc(1:4,ielm)       = ps_gth%parloc(1:4)
+             Rcloc(ielm)            = ps_gth%Rcloc
+             hnl(:,:,ielm)          = ps_gth%hnl(:,:)
+             knl(:,:,ielm)          = ps_gth%knl(:,:)
+             hnml(:,:,:,ielm)       = ps_gth%hnml(:,:,:)
+             knml(:,:,:,ielm)       = ps_gth%knml(:,:,:)
+             inorm(:,ielm)          = ps_gth%inorm(:)
+
+             if ( any( hnml /= 0.0d0 ) ) ps_type=1
+
+          case( 5 )
+
              call ps_read_UPF(unit_ps)
-             close(unit_ps)
              call ps_allocate(ps_upf%nrr,ps_upf%norb)
              Mr(ielm)                 = ps_upf%nrr
              norb(ielm)               = ps_upf%norb
@@ -238,6 +272,9 @@ CONTAINS
           case default
              stop "ippform error"
           end select
+
+          close(unit_ps)
+
        end do ! ielm
 
        write(*,*) "ps_type = ",ps_type
@@ -287,12 +324,14 @@ CONTAINS
     call mpi_bcast(Rps   ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(NRps  ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(lo    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(no    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(vql   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(cdd   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(cdc   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(rad   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(rab   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(viod  ,m*n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Rcloc ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
 !
     call mpi_bcast(max_ngauss,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     if ( max_ngauss /= 0 ) then
@@ -302,6 +341,8 @@ CONTAINS
        call mpi_bcast(cdd_coef,size(cdd_coef),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     end if
 !
+    call mpi_bcast(hnl ,size(hnl) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(knl ,size(knl) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(hnml,size(hnml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(knml,size(knml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(ps_type,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -665,6 +706,10 @@ CONTAINS
     real(8),allocatable :: anorm_tmp(:,:),Rps_tmp(:,:),rab_tmp(:,:)
     integer,allocatable :: inorm_tmp(:,:),lo_tmp(:,:),NRps_tmp(:,:)
     integer,allocatable :: no_tmp(:,:)
+    if ( .not.allocated(hnl) ) then
+       allocate( hnl(3,0:2,Nelement_PP) ) ; hnl=0.0d0
+       allocate( knl(3,1:2,Nelement_PP) ) ; knl=0.0d0
+    end if
     if ( .not.allocated(hnml) ) then
        allocate( hnml(3,3,0:2,Nelement_PP) ) ; hnml=0.0d0
        allocate( knml(3,3,1:2,Nelement_PP) ) ; knml=0.0d0
@@ -686,6 +731,7 @@ CONTAINS
        allocate( rad(n_grd,Nelement_PP)   ) ; rad=0.d0
        allocate( rab(n_grd,Nelement_PP)   ) ; rab=0.d0
        allocate( viod(n_grd,n_orb,Nelement_PP) ) ; viod=0.d0
+       allocate( Rcloc(Nelement_PP) ) ; Rcloc=0.0d0
        max_psgrd=n_grd
        max_psorb=n_orb
        return

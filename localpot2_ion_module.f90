@@ -1,6 +1,6 @@
 MODULE localpot2_ion_module
 
-  use pseudopot_module
+  use pseudopot_module, only: Zps,rad,rab,NRps,Rps,parloc,norb,Mr,vql
   use aa_module
   use bb_module
   use atom_module
@@ -22,9 +22,6 @@ MODULE localpot2_ion_module
 
   PRIVATE
   PUBLIC :: localpot2_ion, localpot2_calc_eion
-
-  real(8),allocatable :: Rcloc(:)
-  integer,allocatable :: NRcloc(:)
 
   INTERFACE
      FUNCTION bberf(x)
@@ -246,10 +243,6 @@ CONTAINS
 
     MMr=maxval(Mr)
     allocate( vshort(MMr) ) ; vshort=0.0d0
-    if ( .not.allocated(NRcloc) ) then
-       allocate( NRcloc(MKI) ) ; NRcloc=0
-       allocate( Rcloc(MKI)  ) ; Rcloc=0.d0
-    end if
 
     do ik=1,MKI
 
@@ -285,18 +278,7 @@ CONTAINS
              vlong=-Zps(ik)/r*( p1*bberf(p2*r)+p3*bberf(p4*r) )
           end if
           vshort(i)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 
@@ -424,10 +406,6 @@ CONTAINS
 
     MMr=maxval(Mr)
     allocate( vshort(MMr) ) ; vshort=0.0d0
-    if ( .not.allocated(NRcloc) ) then
-       allocate( NRcloc(MKI) ) ; NRcloc=0
-       allocate( Rcloc(MKI)  ) ; Rcloc=0.d0
-    end if
 
     do ik=1,MKI
 
@@ -463,18 +441,7 @@ CONTAINS
              vlong=-Zps(ik)/r*( p1*bberf(p2*r)+p3*bberf(p4*r) )
           end if
           vshort(i)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 

@@ -1,6 +1,6 @@
 MODULE psv_initrho_module
 
-  use pseudopot_module, only: cdd_coef
+  use pseudopot_module, only: cdd_coef, ippform, file_ps
 
   implicit none
 
@@ -29,7 +29,8 @@ CONTAINS
           read(unit,*,END=999) cbuf
           call convert_capital(cbuf,ckey)
           if ( ckey == "INITRHO" ) then
-             iswitch_initrho = 2
+             backspace(unit)
+             read(unit,*) cbuf, iswitch_initrho
              exit
           end if
        end do
@@ -61,6 +62,7 @@ CONTAINS
 
        unit_ps = 34
        do ielm=1,Nelement
+          if ( ippform(ielm) == 2 ) open(unit_ps,file=file_ps(ielm),status="old")
           rewind unit_ps
           do loop=1,max_loop
              read(unit_ps,'(A)') inbuf18
@@ -70,6 +72,7 @@ CONTAINS
                 exit
              end if
           end do ! loop
+          if ( ippform(ielm) == 2 ) close(unit_ps)
           unit_ps = unit_ps + 1
        end do ! ielm
 
@@ -77,13 +80,14 @@ CONTAINS
 
     call mpi_bcast(max_ngauss,1,mpi_integer,0,mpi_comm_world,ierr)
 
-    allocate( cdd_coef(3,max_ngauss,Nelement) )
+    if ( .not.allocated(cdd_coef) ) allocate( cdd_coef(3,max_ngauss,Nelement) )
     cdd_coef=0.0d0
 
     if ( rank == 0 ) then
 
        unit_ps = 34
        do ielm=1,Nelement
+          if ( ippform(ielm) == 2 ) open(unit_ps,file=file_ps(ielm),status="old")
           rewind unit_ps
           do loop=1,max_loop
              read(unit_ps,'(A)') inbuf18
@@ -97,7 +101,8 @@ CONTAINS
                 exit
              end if
           end do ! loop
-          unit_ps=unit_ps+1
+          if ( ippform(ielm) == 2 ) close(unit_ps)
+          unit_ps = unit_ps + 1
        end do! ielm
 
     end if

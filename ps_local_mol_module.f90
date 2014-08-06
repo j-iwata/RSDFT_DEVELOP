@@ -1,6 +1,6 @@
 MODULE ps_local_mol_module
 
-  use pseudopot_module
+  use pseudopot_module, only: Rps,norb,Mr,Npseudopot,NRps,rab,parloc,Zps,vql,rad
   use maskf_module
   use simc_module
 

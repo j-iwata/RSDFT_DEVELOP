@@ -64,6 +64,11 @@ CONTAINS
     integer,allocatable :: indx(:),itmp(:),itmp2(:)
     real(8),allocatable :: tmp(:),tmp2(:)
 
+    if ( any( ippform == 4 ) ) then
+       write(*,*) "ippform=4 & pselect=3 is not implemented yet"
+       stop "stop@init_ps_nloc3"
+    end if
+
     pi4   = 4.0d0*acos(-1.0d0)
     Vcell = abs(va)
     MKI   = Nelement

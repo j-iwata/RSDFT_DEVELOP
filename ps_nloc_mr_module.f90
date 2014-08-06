@@ -8,8 +8,11 @@ MODULE ps_nloc_mr_module
   use pseudopot_module
   use ps_nloc2_init_module, only: rad1,dviod
   use ps_nloc2_variables
-  use ps_gth_module
   use ps_nloc_hgh_module
+  use minimal_box_module
+  use bz_module
+  use watch_module
+  use wf_module
 
   implicit none
 
@@ -29,9 +32,6 @@ CONTAINS
 
 
   SUBROUTINE prep_ps_nloc_mr
-    use minimal_box_module
-    use bz_module
-    use watch_module
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
@@ -73,7 +73,7 @@ CONTAINS
        end do
     end do
 
-    if ( .not.allocated(y2a) .and. pselect /= 5 ) then
+    if ( .not.allocated(y2a) .and. all(ippform /= 4) ) then
        NRc=maxval(NRps)
        n=maxval(norb)
        allocate( y2a(NRc,n,Nelement) )
@@ -86,6 +86,8 @@ CONTAINS
        end do
        end do
     end if
+
+    if ( all(ippform == 4) ) call init_ps_nloc_hgh( disp_switch_parallel ) 
 
     if ( Mlma < nprocs_g ) then
        nzlma_0 = Mlma
@@ -127,10 +129,15 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
-    if ( pselect == 5 ) then
+    if ( any(ippform == 4) ) then
 
        call prep_ps_nloc_hgh(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion &
                             ,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
+
+       if ( .not.all( ippform == 4 ) ) then
+          write(*,*) "Mixed use of different pseudopotenial is forbidden"
+          stop "stop@prep_ps_nloc_mr"
+       end if
 
     else
 
@@ -1144,9 +1151,6 @@ CONTAINS
 
 
   SUBROUTINE calc_force_ps_nloc_mr(MI,force2)
-    use bz_module
-    use wf_module
-    use watch_module
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)

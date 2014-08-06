@@ -12,6 +12,9 @@ MODULE ps_nloc2_module
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
+  use minimal_box_module
+  use bz_module
+  use watch_module
 
   implicit none
 
@@ -33,9 +36,6 @@ CONTAINS
 
 
   SUBROUTINE prep_ps_nloc2
-    use minimal_box_module
-    use bz_module
-    use watch_module
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
@@ -68,6 +68,10 @@ CONTAINS
        END FUNCTION Ylm
     END INTERFACE
 
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," prep_ps_nloc2")') repeat("-",60)
+    end if
+
     ctt=0.0d0 ; ett=0.0d0
 
     call watch(ctt(6),ett(6))
@@ -82,7 +86,7 @@ CONTAINS
 
     if ( Mlma <= 0 ) return
 
-    if ( .not.allocated(y2a) .and. pselect /=4 ) then
+    if ( .not.allocated(y2a) .and. all(ippform /= 4) ) then
        NRc=maxval(NRps)
        n=maxval(norb)
        allocate( y2a(NRc,n,Nelement) )
@@ -91,10 +95,13 @@ CONTAINS
        do iorb=1,norb(ik)
           d1=0.d0
           d2=0.d0
-          call spline(rad1(1,ik),viod(1,iorb,ik),NRps(iorb,ik),d1,d2,y2a(1,iorb,ik))
+          call spline(rad1(1,ik),viod(1,iorb,ik),NRps(iorb,ik) &
+               ,d1,d2,y2a(1,iorb,ik))
        end do
        end do
     end if
+
+    if ( all(ippform == 4) ) call init_ps_nloc_gth(disp_switch_parallel)
 
     if ( Mlma < nprocs_g ) then
        nzlma_0 = Mlma
@@ -142,10 +149,15 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
-    if ( pselect == 4 ) then
+    if ( any( ippform == 4 ) ) then
 
        call prep_ps_nloc_gth(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion &
                             ,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
+
+       if ( .not.all( ippform == 4 ) ) then
+          write(*,*) "Mixed use of different pseudopotenial is forbidden"
+          stop "stop@prep_ps_nloc2"
+       end if
 
     else
 
@@ -300,7 +312,7 @@ CONTAINS
     deallocate( irad )
 #endif
 
-    end if ! pselect
+    end if ! ippform
 
     lma=0
     do a=1,Natom
@@ -1219,10 +1231,7 @@ CONTAINS
        END FUNCTION Ylm
     END INTERFACE
 
-    if ( pselect == 5 ) then
-       call calc_force_ps_nloc_mr(MI,force2)
-       return
-    else if ( pselect == 3 ) then
+    if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
        return
     end if

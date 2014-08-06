@@ -1,6 +1,8 @@
 MODULE ps_nloc2_init_module
 
   use pseudopot_module
+  use atom_module, only: Nelement,Natom,ki_atom
+  use maskf_module
 
   implicit none
 
@@ -64,8 +66,6 @@ CONTAINS
 
 
   SUBROUTINE ps_nloc2_init(qcut)
-    use atom_module, only: Nelement,Natom,ki_atom
-    use maskf_module
     implicit none
     real(8),intent(IN) :: qcut
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
@@ -75,6 +75,8 @@ CONTAINS
     real(8) :: x,y,y0,dy,dy0,maxerr
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),Rps0(:,:),vtmp(:,:,:)
+
+    if ( any( ippform == 4 ) ) return
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
@@ -319,7 +321,6 @@ CONTAINS
 
 
   SUBROUTINE ps_nloc2_init_derivative
-    use atom_module, only: Nelement
     implicit none
     integer :: ik,L,NRc,J,iorb,i,m,m1,m2,lm
     real(8) :: maxerr,y,dy,y0,dy0

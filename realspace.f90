@@ -92,12 +92,7 @@ PROGRAM Real_Space_Solid
 
 ! --- Pseudopotential, initial density, and partial core correction ---
 
-  select case(pselect)
-  case default
-     call read_pseudopot(myrank)
-  case(4,5)
-     call read_ps_gth(myrank)
-  end select
+  call read_pseudopot(myrank)
 
 !-------- init density 
 
@@ -123,20 +118,20 @@ PROGRAM Real_Space_Solid
 
      call watcht(disp_switch,"loc",1)
 
-     if ( pselect /= 4 .and. pselect /= 5 ) then
-        call construct_ps_pcc
-        call watcht(disp_switch,"pcc",1)
+     call construct_ps_pcc
+
+     call watcht(disp_switch,"pcc",1)
+
+     call read_psv_initrho( Nelement, myrank, 1, info )
+     select case( info )
+     case default
         call construct_ps_initrho
-        call normalize_density
-     else if ( pselect == 4 .or. pselect == 5 ) then
-        call read_psv_initrho( Nelement, myrank, 1, info )
-        if ( info == 2 ) then
-           call construct_r_ps_initrho
-        else
-           call construct_RandomInitrho
-        end if
-        call normalize_density
-     end if
+     case( 2 )
+        call construct_r_ps_initrho
+     case( 3 )
+        call construct_RandomInitrho
+     end select
+     call normalize_density
 
      call destruct_strfac !----- structure factor
 
@@ -151,10 +146,6 @@ PROGRAM Real_Space_Solid
      case( 3 )
         call init_ps_nloc3
         call prep_ps_nloc3
-     case( 4 )
-        call prep_ps_nloc2
-     case( 5 )
-        call prep_ps_nloc_mr
      end select
 
 !----------------------- MOL mol -----
@@ -302,16 +293,16 @@ PROGRAM Real_Space_Solid
 
   call init_localpot2( Nelement, Ecut, E_hartree, Exc )
 
+! --- ( the followings are just to get H and XC energies ? )
+
+  call calc_hartree(ML_0,ML_1,MSP,rho)
+  call calc_xc
+
 ! --- Init vdW ---
 
   call read_vdw_grimme(myrank,1)
   call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
   call calc_E_vdw_grimme( Natom, aa_atom )
-
-! --- ( the followings are just to get H and XC energies ? )
-
-  call calc_hartree(ML_0,ML_1,MSP,rho)
-  call calc_xc
 
 ! ---
 

@@ -1,172 +1,166 @@
 MODULE ps_gth_module
 
-  use atom_module, only: Nelement
-  use pseudopot_module
-
   implicit none
 
   PRIVATE
-  PUBLIC :: read_ps_gth,hnl,Rcloc,Rps0
+  PUBLIC :: read_ps_gth, ps_gth
 
-  real(8),allocatable :: Rps0(:,:)
-  real(8),allocatable :: Rcloc(:),hnl(:,:,:),knl(:,:,:)
+  integer :: unit_pp
+  integer,parameter :: lrefmax=6
 
-  integer,parameter :: lrefmax=3
-  integer,parameter :: unit_pp=34
+  TYPE gth
+     integer :: norb
+     integer :: inorm(lrefmax)
+     integer :: lo(lrefmax)
+     integer :: no(lrefmax)
+     real(8) :: znuc
+     real(8) :: Rc(lrefmax)
+     real(8) :: hnl(3,0:2)
+     real(8) :: knl(3,1:2)
+     real(8) :: hnml(3,3,0:2)
+     real(8) :: knml(3,3,1:2)
+     real(8) :: Dij(lrefmax,lrefmax)
+     real(8) :: parloc(4)
+     real(8) :: Rcloc
+  END TYPE gth
+
+  type(gth) :: ps_gth
 
 CONTAINS
 
 
-  SUBROUTINE read_ps_gth(rank)
+  SUBROUTINE read_ps_gth( unit_ps, ippform )
     implicit none
-    integer,intent(IN) :: rank
-    integer :: i,j,ielm,ierr
+    integer,intent(IN) :: unit_ps, ippform
+    integer :: i,j
     integer :: MMr,iorb,L,n
     character(2) :: name
     character(30) :: cbuf
     real(8) :: znuc,rcnl,work1(3),work2(3)
-    real(8) :: pi,rmax,dr,ep,gamma,const1,const2,v,r
-    include 'mpif.h'
+    integer :: norb,lo(lrefmax),no(lrefmax),inorm(lrefmax)
+    real(8) :: Zps,parloc(4),Rcloc,Rps0(lrefmax)
+    real(8) :: hnml(3,3,0:2), knml(3,3,2), hnl(3,0:2), knl(3,2)
+    logical :: iflag_hgh
 
-    allocate( Rcloc(Nelement)        ) ; Rcloc=0.0d0
-    allocate( parloc(1:4,Nelement)   ) ; parloc=0.0d0
-    allocate( Zps(Nelement)          ) ; Zps=0.0d0
-    allocate( norb(Nelement)         ) ; norb=0
-    allocate( lo(6,Nelement)         ) ; lo=0
-    allocate( no(6,Nelement)         ) ; no=0
-    allocate( Rps(6,Nelement)        ) ; Rps=0.0d0
-    allocate( Rps0(6,Nelement)       ) ; Rps0=0.0d0
-    allocate( hnl(3,0:2,Nelement)    ) ; hnl=0.0d0
-    allocate( knl(3,1:2,Nelement)    ) ; knl=0.0d0
-    allocate( inorm(6,Nelement)      ) ; inorm=0
-    allocate( hnml(3,3,0:2,Nelement) ) ; hnml=0.0d0
-    allocate( knml(3,3,1:2,Nelement) ) ; knml=0.0d0
+    unit_pp = unit_ps
 
-    if ( rank == 0 ) then
+    ps_gth%norb     =0
+    ps_gth%znuc     =0.0d0
+    ps_gth%Rc(:)    =0.0d0
+    ps_gth%inorm(:) =0
+    ps_gth%lo(:)    =0
+    ps_gth%no(:)    =0
+    ps_gth%Dij(:,:) =0.0d0
+    ps_gth%parloc(:)=0.0d0
+    ps_gth%Rcloc    =0.0d0
+    ps_gth%hnl(:,:) =0.0d0
+    ps_gth%knl(:,:) =0.0d0
+    ps_gth%hnml(:,:,:) =0.0d0
+    ps_gth%knml(:,:,:) =0.0d0
 
-       write(*,'(a60," read_ps_gth")') repeat("-",60)
+    write(*,'(a60," read_ps_gth")') repeat("-",60)
 
-       do ielm=1,Nelement
+    read(unit_pp,'(a)') cbuf
 
-          open(unit_pp,file=file_ps(ielm),status='old')
+    if ( index( cbuf, "KRACK" ) /= 0 ) then
 
-          read(unit_pp,'(a)') cbuf
+       call Read_KrackFormat( znuc,Zps,Rcloc,parloc,Rps0,lo,no,hnml,norb )
 
-          if ( index( cbuf, "KRACK" ) /= 0 ) then
+    else ! [ Original Format ]
 
-             call Read_KrackFormat( znuc, Zps(ielm), Rcloc(ielm) &
-                  , parloc(1,ielm), Rps0(1,ielm), lo(1,ielm), no(1,ielm) &
-                  , hnml(1,1,0,ielm), norb(ielm) )
+       backspace(unit_pp)
 
-          else
+       read(unit_pp,*) name,znuc,Zps
+       read(unit_pp,*) Rcloc, parloc(1:4)
+       write(*,*) name,znuc,Zps
+       write(*,'(1x,f14.8,4f14.8)') Rcloc,parloc(1:4)
 
-             backspace(unit_pp)
+       j=0
+       do i=1,lrefmax
+          cbuf=""
+          read(unit_pp,'(a)',END=99) cbuf
+          if ( cbuf /= "" ) j=j+1
+       end do
+99     continue
+       if ( j <= 2 ) then
+          iflag_hgh = .false.
+          write(*,*) "GTH format",j
+       else
+          iflag_hgh=.true.
+          write(*,*) "HGH format",j
+       end if
+       do j=1,i
+          backspace(unit_pp)
+       end do
 
-             read(unit_pp,*) name,znuc,Zps(ielm)
-             read(unit_pp,*) Rcloc(ielm),parloc(1:4,ielm)
-             write(*,*) name,znuc,Zps(ielm)
-             write(*,'(1x,f14.8,4f14.8)') Rcloc(ielm),parloc(1:4,ielm)
-             do i=1,lrefmax
-                work1(1:3)=0.0d0
-                work2(1:3)=0.0d0
-                read(unit_pp,*,END=10) rcnl,work1(1:3)
-                if ( pselect == 5 .and. i > 1 ) then
-                   read(unit_pp,*,END=10) work2(1:3)
-                end if
-                do j=1,3
-                   if ( work1(j) /= 0.0d0 ) then
-                      norb(ielm) = norb(ielm) + 1
-                      Rps0(norb(ielm),ielm) = rcnl
-                      lo(norb(ielm),ielm)   = i-1
-                      no(norb(ielm),ielm)   = j
-                      hnl(j,i-1,ielm)       = work1(j)
-                   end if
-                   if ( work2(j) /= 0.0d0 ) then
-                      knl(j,i-1,ielm)=work2(j)
-                   end if
-                end do
-                write(*,'(1x,f14.8,4f14.8)') &
-                     Rps0(norb(ielm),ielm),hnl(1:3,i-1,ielm)
-                if ( i > 1 ) write(*,'(1x,14x,4f14.8)') knl(1:3,i-1,ielm)
-             end do ! i
-10           continue
+       norb=0
+       do i=1,lrefmax
 
-             call calc_nondiagonal( hnl(1,0,ielm), knl(1,1,ielm) &
-                  , hnml(1,1,0,ielm), knml(1,1,1,ielm) )
+          work1(1:3)=0.0d0
+          work2(1:3)=0.0d0
+          read(unit_pp,*,END=10) rcnl,work1(1:3)
 
-          end if ! [ Format ]
+          if ( iflag_hgh .and. i > 1 ) read(unit_pp,*,END=10) work2(1:3)
 
-          close(unit_pp)
+          do j=1,3
+             if ( work1(j) /= 0.0d0 ) then
+                norb       = norb + 1
+                Rps0(norb) = rcnl
+                lo(norb)   = i-1
+                no(norb)   = j
+                hnl(j,i-1) = work1(j)
+             end if
+             if ( work2(j) /= 0.0d0 ) knl(j,i-1)=work2(j)
+          end do
 
-       end do ! ielm
+          write(*,'(1x,f14.8,4f14.8)') Rps0(norb),hnl(1:3,i-1)
+          if ( i > 1 ) write(*,'(1x,14x,4f14.8)') knl(1:3,i-1)
 
-    end if ! [ rank == 0 ]
+       end do ! i
+10     continue
 
-    call MPI_BCAST(Rcloc,Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(parloc,4*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(Zps,Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(norb,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(lo,6*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(no,6*Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(Rps0,6*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(hnl,9*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(knl,6*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(hnml,27*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(knml,18*Nelement,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+       if ( iflag_hgh ) call calc_nondiagonal( hnl, knl, hnml, knml )
 
-    do ielm=1,Nelement
-       do L=0,lrefmax-1
+    end if ! [ Format ]
+
+    if ( iflag_hgh ) then
+
+       do L=0,maxval(lo)
           do j=1,3
           do i=1,j-1
-             hnml(j,i,L,ielm)=hnml(i,j,L,ielm)
-             if ( L >= 1 ) knml(j,i,L,ielm)=knml(i,j,L,ielm)
+             hnml(j,i,L)=hnml(i,j,L)
+             if ( L >= 1 ) knml(j,i,L)=knml(i,j,L)
           end do
           end do
        end do
-    end do ! ielm
 
-    do ielm=1,Nelement
-       do iorb=1,norb(ielm)
-          L=lo(iorb,ielm)
-          n=no(iorb,ielm)
-          if ( hnl(n,L,ielm) < 0.d0 ) then
-             inorm(iorb,ielm)=-1
-             hnl(n,L,ielm) = abs( hnl(n,L,ielm) )
+    else
+
+       do iorb=1,norb
+          L=lo(iorb)
+          n=no(iorb)
+          if ( hnl(n,L) < 0.0d0 ) then
+             inorm(iorb)=-1
+             hnl(n,L) = abs( hnl(n,L) )
           else
-             inorm(iorb,ielm)=1
+             inorm(iorb)=1
           end if
        end do
-    end do ! ielm
 
-    rmax = 30.d0
-    MMr  = 3000
-    dr   = rmax/MMr
-    pi   = acos(-1.d0)
-    ep   = 1.d-10
+    end if
 
-    do ielm=1,Nelement
-    do iorb=1,norb(ielm)
-       n=no(iorb,ielm)
-       L=lo(iorb,ielm)
-       gamma=sqrt(Pi)
-       do i=1,L+2*n-1
-          gamma=gamma*(i-0.5d0)
-       end do
-       const1=sqrt(2.d0)/(Rps0(iorb,ielm)**(L+2*n-0.5d0)*sqrt(gamma))
-       const2=0.5d0/(Rps0(iorb,ielm)*Rps0(iorb,ielm))
-       do i=1,MMr
-          r=i*dr
-          v=const1*r**(L+2*n-2)*exp(-r*r*const2)
-          if ( abs(v) < ep ) then
-             Rps(iorb,ielm)=max( Rps(iorb,ielm),r )
-             exit
-          end if
-       end do
-       if ( rank == 0 ) then
-          write(*,*) ielm,iorb,n,L,Rps(iorb,ielm)
-       end if
-     end do ! iorb
-     end do ! ielm
+    ps_gth%znuc        = Zps
+    ps_gth%parloc(:)   = parloc(:)
+    ps_gth%Rcloc       = Rcloc
+    ps_gth%Rc(:)       = Rps0(:)
+    ps_gth%lo(:)       = lo(:)
+    ps_gth%no(:)       = no(:)
+    ps_gth%norb        = norb
+    ps_gth%hnl(:,:)    = hnl(:,:)
+    ps_gth%knl(:,:)    = knl(:,:)
+    ps_gth%hnml(:,:,:) = hnml(:,:,:)
+    ps_gth%knml(:,:,:) = knml(:,:,:)
+    ps_gth%inorm(:)    = inorm(:)
 
   END SUBROUTINE read_ps_gth
 
@@ -209,13 +203,12 @@ CONTAINS
   END SUBROUTINE calc_nondiagonal
 
 
-  SUBROUTINE Read_KrackFormat( znuc, Zps, Rcloc, parloc, Rps0, lo, no &
-       , hnml, norb )
+  SUBROUTINE Read_KrackFormat( znuc,Zps,Rcloc,parloc,Rps0,lo,no,hnml,norb )
     implicit none
     character(2) :: name
     real(8) :: znuc,Zps,hnml(3,3,0:2)
-    real(8) :: Rcloc,parloc(4),Rps0(6)
-    integer :: lo(6), no(6),norb
+    real(8) :: Rcloc,parloc(4),Rps0(lrefmax)
+    integer :: lo(lrefmax), no(lrefmax),norb
     integer :: i, j, k
     real(8) :: work(3), rcnl
     character(30) :: cbuf
