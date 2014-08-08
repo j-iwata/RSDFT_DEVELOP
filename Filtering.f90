@@ -129,15 +129,15 @@ write(200+myrank,*) "L= ",L
                         -3.d0*qc*sb1x*sb1x/(r*r) &
                         -(qc**2)/r*(  3.d0/(qc*r)*(15.d0/((qc*r)**2)-1.d0 ) &
                         *sb1x*sb1x+5.d0/(qc*r)*sb0x*sb0x &
-                        +(1.d0-30.d0/(qc*r)**2)*sb0x*sb1x)
+                        +(1.d0-30.d0/(qc*r)**2.d0)*sb0x*sb1x)
                 else
                    sb0x=sin(qc*r)/(qc*r)
                    sb0y=sin(qc*r1)/(qc*r1)
                    sb1x=sb0x/(qc*r)-cos(qc*r)/(qc*r)
                    sb1y=sb0y/(qc*r1)-cos(qc*r1)/(qc*r1)
-                   tmp(j)= sb0y*sb1x*( 15.d0/(r1*r*r)+(qc**2)*r1/(r**2-r1**2)) &
-                        +sb0x*sb1y*( 15.d0/(r*r1*r1)-(qc**2)*r/(r**2-r1**2)) &
-                        -45.d0/(qc*r**2*r1**2)*sb1x*sb1y-5.d0*qc/(r*r1)*sb0x*sb0y
+                   tmp(j)= sb0y*sb1x*( 15.d0/(r1*r*r)+(qc**2.d0)*r1/(r**2.d0-r1**2.d0)) &
+                        +sb0x*sb1y*( 15.d0/(r*r1*r1)-(qc**2.d0)*r/(r**2.d0-r1**2.d0)) &
+                        -45.d0/(qc*r**2.d0*r1**2.d0)*sb1x*sb1y-5.d0*qc/(r*r1)*sb0x*sb0y
                 end if
              end do
           end if
@@ -186,6 +186,7 @@ write(200+myrank,*) "L= ",L
        end select
        tmp(1:NRc)=tmp(1:NRc)*vrad(1:NRc)
        call simp(tmp(1:NRc),sum0,NRc,2)
+write(779,'(I5,2g20.7)') L,sum0,const
 #ifdef _SHOWALL_F_
 do j=1,10
 write(800+myrank,'(I5,A14,2E15.7e2)') j,"tmp,vrad= ",tmp(j),vrad(j)

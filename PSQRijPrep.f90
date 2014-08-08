@@ -70,11 +70,11 @@ CONTAINS
     real(8) :: Rx,Ry,Rz
     integer :: ic1,ic2,ic3,id1,id2,id3
     integer :: k1,k2,k3,i1_0,i2_0,i3_0
-    integer :: d1,d2,d3
+    real(8) :: d1,d2,d3
     real(8) :: r2
 
     integer :: ll3,mm,m1,m2,iqr
-    real(8) :: v,v0,err,err0,ep,QRtmp
+    real(8) :: v,v0,err,err0,QRtmp
 
     logical,allocatable :: lcheck_tmp1(:,:)
 
@@ -89,6 +89,8 @@ CONTAINS
     integer,allocatable :: ireq(:)
     integer,allocatable :: istatus(:,:)
     integer :: nl_max_send
+
+    real(8),parameter :: ep=1.d-8
 
 #ifdef _SHOWALL_INIT_
 write(200+myrank,*) ">>>>> prepQRijp102"

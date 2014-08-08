@@ -176,8 +176,13 @@ CONTAINS
     end if
 
     m=maxval(nr(1:nl))
-    allocate( psi_(nsmpl,m,nl),phi_(nsmpl,m,nl),bet_(nsmpl,m,nl) )
+    allocate( psi_(1:nsmpl,m,nl),phi_(1:nsmpl,m,nl),bet_(1:nsmpl,m,nl) )
     allocate( ddi_(m,m,nl), qqr_(m,m,nl) )
+    psi_=0.d0
+    phi_=0.d0
+    bet_=0.d0
+    ddi_=0.d0
+    qqr_=0.d0
 
     do l=1,nl
        read(unit_ps,*)

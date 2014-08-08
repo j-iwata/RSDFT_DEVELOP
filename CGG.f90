@@ -7,7 +7,7 @@ MODULE CGG
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
   use InnerProduct, only: get_Sf,get_gf,get_gSf
-  use RealComplex, only: TYPE_MAIN,zero,RCProduct
+  use RealComplex, only: TYPE_MAIN,zero
 
   implicit none
 
@@ -62,13 +62,15 @@ CONTAINS
     Nhpsi  = 0
     Npc    = 0
 
-    allocate( hxk(n1:n2,MB_d), hpk(n1:n2,MB_d) )
-    allocate( gk(n1:n2,MB_d) , Pgk(n1:n2,MB_d) )
-    allocate( pk(n1:n2,MB_d) , pko(n1:n2,MB_d) )
-    allocate( sb(MB_d),rb(MB_d) )
-    allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
-    allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) )
-    allocate( utmp2(2,2),btmp2(2,2) )
+    allocate( hxk(n1:n2,MB_d), hpk(n1:n2,MB_d) ) ; hxk=zero ; hpk=zero
+    allocate( gk(n1:n2,MB_d) , Pgk(n1:n2,MB_d) ) ; gk=zero ; Pgk=zero
+    allocate( pk(n1:n2,MB_d) , pko(n1:n2,MB_d) ) ; pk=zero ; pko=zero
+    allocate( sb(MB_d),rb(MB_d) ) ; sb=0.d0 ; rb=0.d0
+    allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) ) ; E=0.d0 ; E1=0.d0 ; gkgk=0.d0 ; bk=0.d0
+    allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) ) ; vtmp2=zero ; wtmp2=zero
+    allocate( utmp2(2,2),btmp2(2,2) ) ; utmp2=zero ; btmp2=zero
+    allocate( Sf(n1:n2) ) ; Sf=zero
+    allocate( unk_tmp(n1:n2) ) ; unk_tmp=zero
 
 !$OMP parallel workshare
     res(:)  = 0.d0
@@ -82,19 +84,19 @@ CONTAINS
        E1(:)=1.d10
 
        call watch(ct0,et0)
-
        call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
-
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
+do i=n1,n2
+write(150,'(2I5,4g20.7)') ns,i,unk(i,ns),hxk(i,ns)
+enddo
+stop
 
        do n=1,nn
           call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
        end do
 
        call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
-
        call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
        call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
 
        do n=1,nn
@@ -111,9 +113,7 @@ CONTAINS
        end do
 
        call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
-
        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
        call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
 
        do icg=1,Mcg+1
@@ -135,11 +135,8 @@ CONTAINS
           if ( icg==Mcg+1 ) exit
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
-
 ! --- Preconditioning ---
-
           call preconditioning(E,k,s,nn,ML0,gk,Pgk)
-
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
 ! ---
@@ -157,9 +154,7 @@ CONTAINS
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
-
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
           call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
 
           if ( icg==1 ) then
@@ -179,9 +174,7 @@ CONTAINS
           gkgk(1:nn)=rb(1:nn)
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
-
           call hamiltonian(k,s,pk,hpk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
-
           call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
 
           do n=1,nn
@@ -219,9 +212,7 @@ CONTAINS
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
-
           call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
-
           call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
 
           do n=1,nn
@@ -302,9 +293,7 @@ CONTAINS
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
-
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
           call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
 
           do n=1,nn
@@ -335,6 +324,8 @@ CONTAINS
     deallocate( pko,pk  )
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
+    deallocate( Sf )
+    deallocate( unk_tmp )
 
     if ( disp_switch_parallel ) then
        write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)

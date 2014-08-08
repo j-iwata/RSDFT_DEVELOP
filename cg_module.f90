@@ -346,7 +346,7 @@ CONTAINS
 
   END SUBROUTINE conjugate_gradient
 
-#elseif _USPP_
+#elif defined _USPP_
   SUBROUTINE conjugate_gradient( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
     use CGG
     implicit none

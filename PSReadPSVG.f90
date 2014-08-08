@@ -114,7 +114,7 @@ write(*,*) '>>>>> inside readPSVG'
                         do ll3=1,nl3v_(k2)
                             l3v(ll3,k2,ik)=l3v_(ll3,k2)
                             do i=1,nsmpl
-                                qrL(i,ll3,k2,ik)=qrL_(i+1,ll3,k2)
+                                qrL(i+1,ll3,k2,ik)=qrL_(i,ll3,k2)
                             end do
                         end do ! ll3
                     end do ! i2

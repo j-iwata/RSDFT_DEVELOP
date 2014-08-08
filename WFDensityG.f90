@@ -141,8 +141,11 @@ CONTAINS
           do lma=1,nzlma
              do j=1,MJJ(lma)
                 i=JJP(j,lma)
-                call RCProduct( uVk(j,lma,k),unk(i,ib,k,s),tmp )
-                uVunk(lma,ib) = uVunk(lma,ib) + tmp
+#ifdef _DRSDFT_
+                uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*unk(i,ib,k,s)
+#else
+                uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*unk(i,ib,k,s)
+#endif
              end do
              uVunk(lma,ib) = dV*uVunk(lma,ib)
           end do	! lma
