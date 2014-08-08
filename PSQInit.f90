@@ -140,6 +140,7 @@ k2max=max_k2
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
+qc=4.32987324642663
 
     call allocateQRps( k2max,Nelement_ )
 
@@ -216,6 +217,8 @@ k2max=max_k2
     NRc=maxval(NRps0)
     allocate( vrad(NRc),tmp(NRc) )
 
+write(506,*) 'ik,k2,ll3,i,qrL(i,ll3,k2,ik)'
+write(507,*) 'ik,k2,ll3,i,qrL(i,ll3,k2,ik)'
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
             iorb1=k2_to_iorb(1,k2,ik)
@@ -226,6 +229,10 @@ k2max=max_k2
                 L=l3v(ll3,k2,ik)-1
 
                 vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
+
+do i=1,NRc
+write(506,'(4I5,g20.7)') ik,k2,ll3,i,qrL(i,ll3,k2,ik)
+enddo
 #ifdef _SHOWALL_QR_F_
 write(520+myrank,*) "ik,k2,ll3= ",ik,k2,ll3
 write(520+myrank,*) "    qc L  NRc NRps            rad           rad1            qrL"
@@ -243,18 +250,24 @@ do i=Q_NRps(k2,ik)-10,Q_NRps(k2,ik)
   write(520+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),Q_wm(i,k2,ik),qrL(i,ll3,k2,ik)
 end do
 #endif
+do i=1,NRc
+write(507,'(4I5,g20.7)') ik,k2,ll3,i,qrL(i,ll3,k2,ik)
+enddo
             end do ! ll3
         end do ! k2
     end do ! ik
 
     deallocate( vrad,tmp )
 
+write(508,*) 'ik,k2,ll3,i,qrL(i,ll3,k2,ik),y0',Q_etafac
+write(509,*) 'ik,k2,NRc,Rc'
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
             NRc=Q_NRps(k2,ik)
             Rc=Q_Rps(k2,ik)
             call makemaskf(Q_etafac)
             maxerr=0.d0
+write(509,'(3I5,g20.7)') ik,k2,NRc,Rc
 
             do i=1,NRc
                 x=(i-1)*dr/Rc
@@ -265,7 +278,7 @@ end do
                   dy0=1.d10
                   do m=1,20
                       m1=max(m0-m,1) ; m2=min(m0+m,nmsk)
-                      call polint(xm(m1),maskr(m2),m2-m1+1,x,y,dy)
+                      call polint(xm(m1),maskr(m1),m2-m1+1,x,y,dy)
                       if ( abs(dy)<dy0 ) then
                         y0=y ; dy0=abs(dy)
                       end if
@@ -276,6 +289,7 @@ end do
 
                 do ll3=1,nl3v(k2,ik)
                     qrL(i,ll3,k2,ik)=y0*qrL(i,ll3,k2,ik)
+write(508,'(4I5,2g20.7)') ik,k2,ll3,i,qrL(i,ll3,k2,ik),y0
                 end do
             end do ! i
         end do ! k2

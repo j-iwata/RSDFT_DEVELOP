@@ -424,12 +424,11 @@ if (myrank==0) write(*,*) "start initPS"
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
-  call write_wf
-stop
+!  call write_wf
   call test_on_wf(dV,myrank==0)
+#ifdef _USPP_
   call test_orthnorm_wf(myrank)
-
-  call write_wf
+#endif
 
 ! --- Initial occupation ---
 
@@ -546,7 +545,36 @@ write(200+myrank,*) "before calc_total_energy"
      do s=MSP_0,MSP_1
      do k=MBZ_0,MBZ_1
         call watcht(disp_switch,"",0)
+
+        
+        
+        
+        
+        
+        
+        
+        call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
+                               ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+call write_wf
+stop
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if ( iter == 1 .or. flag_scf ) then
+write(*,*) 'subspace now!!!!!!!'
 #ifdef _LAPACK_
            call subspace_diag_la(k,s)
 #else
@@ -556,6 +584,8 @@ write(200+myrank,*) "before calc_total_energy"
         call watcht(disp_switch,"diag",1)
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
                                ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+call write_wf
+stop
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)
         call watcht(disp_switch,"gs  ",1)

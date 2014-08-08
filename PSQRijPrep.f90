@@ -184,6 +184,10 @@ write(200+myrank,*) ">>>>> prepQRijp102"
 !!$OMP    private( Rx,Ry,Rz,ic1,ic2,ic3,ik,iorb,Rps2,NRc,L,j,i,i1,i2,i3 &
 !!$OMP            ,id1,id2,id3,k1,k2,k3,i1_0,i2_0,i3_0,d1,d2,d3,x,y,z,r2,r &
 !!$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err )
+write(504+myrank,*) 'ia,ik1,i,QRij_tmp(i,ik1,ia)'
+write(505+myrank,*) 'ia,ik1,i,j,ll3,QRtmp,v0,qaL(ik3,ll3)'
+write(510+myrank,*) 'ia,ik1,ik2,ik3,iorb1,iorb2,NRc,Rps2'
+write(511+myrank,*) 'ia,ik1,i,ll3,ir,ir0,r'
     j=0
     do ia=1,Natom
       Rx = aa(1,1)*aa_atom(1,ia)+aa(1,2)*aa_atom(2,ia)+aa(1,3)*aa_atom(3,ia)
@@ -204,6 +208,10 @@ write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
         iorb2 = k1_to_iorb(2,ik1,ik)
         Rps2  = max(Rps(iorb1,ik)**2,Rps(iorb2,ik)**2)
         NRc   = max(NRps(iorb1,ik),NRps(iorb2,ik))
+write(510+myrank,'(7I5,g20.7)') ia,ik1,ik2,ik3,iorb1,iorb2,NRc,Rps2
+write(513+myrank,*) 'ia,ik1,i,k1,k2,k3,i1_0,i2_0,i3_0'
+write(514+myrank,*) 'ia,ik1,i,id1,id2,id3,c1,c2,c3'
+write(515+myrank,*) 'ia,ik1,i,d1,d2,d3'
           do i=1,MMJJ_0
             i1 = map_grid_ion(1,i)
             i2 = map_grid_ion(2,i)
@@ -217,12 +225,15 @@ write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
             i1_0  = id1-k1*ML1
             i2_0  = id2-k2*ML2
             i3_0  = id3-k3*ML3
+write(513+myrank,'(9I5)') ia,ik1,i,k1,k2,k3,i1_0,i2_0,i3_0
+write(514+myrank,'(6I5,3g20.7)') ia,ik1,i,id1,id2,id3,c1,c2,c3
             if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
                 Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
                 Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
               d1 = id1*c1
               d2 = id2*c2
               d3 = id3*c3
+write(515+myrank,'(3I5,3g20.7)') ia,ik1,i,d1,d2,d3
               x  = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
               y  = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
               z  = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
@@ -231,6 +242,7 @@ write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
               j=j+1
 
               r    = sqrt(r2)
+write(512+myrank,'(3I5,4g20.7)') ia,ik1,i,x,y,z,r
 
               call get_qaL(r,x,y,z)
               
@@ -249,6 +261,7 @@ write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
                   do ir=ir0,NRc
                     if ( r<rad1(ir,ik) ) exit
                   end do
+write(511+myrank,'(4I5,3g20.7)') ia,ik1,i,ll3,ir,ir0,r
                   if ( ir <= 2 ) then
                     v0  = qrL(2,ll3,ik2,ik)
                     if ( ir < 1 ) stop "prep_QRij_p102(0)"
@@ -273,11 +286,11 @@ write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
                   maxerr=max(maxerr,err0)
 #endif
                   QRtmp = v0/pi4* real(qaL(ik3,ll3)/(-zi)**L)
+write(505+myrank,'(5I5,4g20.7)') ia,ik1,i,j,ll3,QRtmp,v0,qaL(ik3,ll3)
                 end if ! x,y,z
 
                 QRij_tmp(j,ik1,ia) = QRij_tmp(j,ik1,ia)+QRtmp
               end do ! ll3
-
               JJ_tmp(1,j,ik1,ia) = i1_0
               JJ_tmp(2,j,ik1,ia) = i2_0
               JJ_tmp(3,j,ik1,ia) = i3_0
@@ -289,6 +302,9 @@ write(530+myrank,'(2I5,A8,6I4)') i,j," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
 #endif
             end if ! Igrid
           end do ! i ( 1 - MMJJ_0 )
+do i=1,MMJJ_0
+write(504+myrank,'(3I5,g20.7)') ia,ik1,i,QRij_tmp(i,ik1,ia)
+enddo
           MJJ_tmp_Q(ik1,ia)   = j
 #ifdef _SHOWALL_MAP_Q_
 write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
@@ -400,8 +416,10 @@ write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
     ! JJ_MAP_Q,MJJ_MAP_Q,MJJ_Q,nl_rank_map_Q
 !===================================================================
 
+write(502,*) 'i,nl_rank_map_tmp(i)'
     do i=1,nrqr
        nl_rank_map_Q(i)=nl_rank_map_tmp(i)
+write(502,'(2I5)') i,nl_rank_map_tmp(i)
     end do
     deallocate( nl_rank_map_tmp )
 
@@ -413,6 +431,7 @@ write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
 !    end do
 
 !!$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
+write(503,*) 'iqr,j,JJ_MAP_Q(1:6,j,iqr),QRij(j,iqr)'
     do iqr=1,c_nzqr
       l   = maps_tmp(iqr,1)
       if (l==0) cycle
@@ -430,6 +449,7 @@ write(530+myrank,'(4I5)') ia,ik1,l,MJJ_MAP_Q(iqr)
         i2 = JJ_MAP_Q(2,j,iqr)
         i3 = JJ_MAP_Q(3,j,iqr)
         JJP_Q(j,iqr)        = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
+write(503,'(8I5,g20.7)') iqr,j,JJ_MAP_Q(1:6,j,iqr),QRij(j,iqr)
 #ifdef _SHOWALL_MAP_Q_
 write(520+myrank,'(I5,A6,E15.7e2,A8,6I4)') j," QRij=",QRij(j,iqr)," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
 #endif
