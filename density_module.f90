@@ -48,9 +48,10 @@ integer :: i,s
        call normalize_density
     end if
 #ifdef _SHOWALL_RHO_
+write(410+myrank,*) 'i,s,rho(i,s)'
 do s=MS_0_RHO,MS_1_RHO
 do i=ML_0_RHO,ML_1_RHO
-write(410+myrank,*) 'rho= ',i,s,rho(i,s)
+write(410+myrank,'(2I5,g20.7)') i,s,rho(i,s)
 enddo
 enddo
 #endif

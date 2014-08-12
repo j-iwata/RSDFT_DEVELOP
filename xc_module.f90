@@ -165,6 +165,7 @@ CONTAINS
        end if
        rhoa=max(rhoa,ep*onetwo)
        rhob=max(rhob,ep*onetwo)
+write(152,'(L2,4g20.7)') flag_pcc_0,rho(i,1),rho(i,MSP),rhoa,rhob
 !
 ! --- Exchange ---
 !

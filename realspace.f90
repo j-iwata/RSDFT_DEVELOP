@@ -413,6 +413,7 @@ if (myrank==0) write(*,*) "start initPS"
 ! --- Initial wave functions ---
 
   call init_wf
+  call init_localpot
 !wf OK
 !  call write_wf
 !stop
@@ -428,6 +429,14 @@ if (myrank==0) write(*,*) "start initPS"
   call test_on_wf(dV,myrank==0)
 #ifdef _USPP_
   call test_orthnorm_wf(myrank)
+#endif
+#ifdef _USPP_
+  if ( .true. ) then
+    do s=MSP_0,MSP_1
+      Vloc(ML_0:ML_1,s)=Vion(ML_0:ML_1)
+    end do
+  end if
+  call getDij
 #endif
 
 ! --- Initial occupation ---
@@ -463,14 +472,17 @@ if (myrank==0) write(*,*) "start initPS"
 
   call calc_xc
 
-  call init_localpot
+!  call init_localpot
 
+write(150,*) 's,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)'
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+do i=ML_0,ML_1
+write(150,'(2I5,4g20.7)') s,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)
+end do
   end do
-#ifdef _USPP_
-  call getDij
-#endif
+  stop
+
 
 ! --- Read previous w.f. , density , potentials ---
 
