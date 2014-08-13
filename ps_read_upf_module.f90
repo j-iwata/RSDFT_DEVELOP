@@ -141,6 +141,12 @@ CONTAINS
 
        end if ! </PP_MESH>
 
+       if ( cbuf(1:9) == "<PP_NLCC>" ) then
+
+          read(g,*) ps_upf%cdc(1:nrr)
+
+       end if
+
        if ( cbuf(1:10) == "<PP_LOCAL>" ) then
 
           read(g,*) ps_upf%vql(1:nrr)
@@ -193,6 +199,7 @@ CONTAINS
        ps_upf%rr(i)    = ps_upf%rr(i-1)
        ps_upf%rx(i)    = ps_upf%rx(i-1)
        ps_upf%cdd(i)   = ps_upf%cdd(i-1)
+       ps_upf%cdc(i)   = ps_upf%cdc(i-1)
        ps_upf%vql(i)   = ps_upf%vql(i-1)
        ps_upf%vps(i,:) = ps_upf%vps(i-1,:)
        ps_upf%rr(i)    = ps_upf%rr(i-1)
@@ -200,6 +207,7 @@ CONTAINS
     ps_upf%rr(1)    = 0.0d0
     ps_upf%rx(1)    = 0.0d0
     ps_upf%cdd(1)   = 0.0d0
+    ps_upf%cdc(1)   = 0.0d0
     ps_upf%vql(1)   = ps_upf%vql(2)
     ps_upf%vps(1,:) = 0.0d0
 
@@ -233,6 +241,7 @@ CONTAINS
     write(*,*) "uVu integral (anorm) ="
     write(*,'(1x,8f10.5)') ( ps_upf%inorm(i)*ps_upf%anorm(i),i=1,norb )
     write(*,*) "sum(rhov)=",sum(ps_upf%cdd*ps_upf%rx)
+    write(*,*) "sum(rhoc)=",sum(ps_upf%cdc*ps_upf%rx*(ps_upf%rr)**2)*4*acos(-1.d0)
 
     write(*,'(a40," ps_read_upf_verorg(end)")') repeat("-",40)
 
@@ -323,6 +332,14 @@ CONTAINS
           read(g,*) ps_upf%rx(1:nrr)
 
        end if ! </PP_MESH>
+
+       if ( ckey(1:9) == "<PP_NLCC " ) then
+
+          write(*,*) ckey(1:9)
+
+          read(g,*) ps_upf%cdc(1:nrr)
+
+       end if
 
        if ( ckey(1:10) == "<PP_LOCAL " ) then
 
@@ -461,6 +478,7 @@ CONTAINS
     write(*,*) "Dij ="
     write(*,'(1x,9f10.5)') (( ps_upf%Dij(i,j),i=1,norb ),j=1,norb)
     write(*,*) "sum(rhov)=",sum(ps_upf%cdd*ps_upf%rx)
+    write(*,*) "sum(rhoc)=",sum(ps_upf%cdc*ps_upf%rx*(ps_upf%rr)**2)*4*acos(-1.0d0)
 
     write(*,'(a40," ps_read_upf_ver201(end)")') repeat("-",40)
 

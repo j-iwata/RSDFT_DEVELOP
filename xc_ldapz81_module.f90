@@ -159,8 +159,8 @@ CONTAINS
 
     do i=ML_0,ML_1
 
-       rhoa = rho(i,1  )*factor
-       rhob = rho(i,MSP)*factor
+       rhoa = rho(i,1  )*factor ; rhoa=abs(rhoa)
+       rhob = rho(i,MSP)*factor ; rhob=abs(rhob)
        trho = rhoa + rhob
 
        if ( trho <= 0.0d0 ) cycle

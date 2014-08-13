@@ -79,6 +79,60 @@ CONTAINS
   END SUBROUTINE send_xc
 
 
+  SUBROUTINE chk_density(rho,rhoc)
+    implicit none
+    real(8),optional,intent(IN) :: rho(:,:),rhoc(:)
+    real(8),allocatable :: trho(:,:),sb(:,:),rb(:,:)
+    integer,allocatable :: ic(:,:),jc(:,:)
+    integer :: i,j,m,n,ierr
+
+    if ( present(rho) ) then
+       m=size(rho,1)
+       n=size(rho,2)
+       allocate( trho(m,n) )
+       trho=rho
+    else if ( present(rhoc) ) then
+       m=size(rhoc,1)
+       n=1
+       allocate( trho(m,n) )
+       trho(:,1)=rhoc(:)
+    end if
+
+    allocate( sb(3,n) ) ; sb=0.0d0
+    allocate( rb(3,n) ) ; rb=0.0d0
+    allocate( ic(3,n) ) ; ic=0
+    allocate( jc(3,n) ) ; jc=0
+
+    sb(:,:)=0.0d0
+    do j=1,n
+       do i=1,m
+          sb(1,j) = sb(1,j) + trho(i,j)
+          if ( trho(i,j) > 0.0d0 ) sb(2,j) = sb(2,j) + trho(i,j)
+          if ( trho(i,j) < 0.0d0 ) sb(3,j) = sb(3,j) + trho(i,j)
+       end do
+       ic(1,j)=count( trho(:,j) == 0.0d0 )
+       ic(2,j)=count( trho(:,j) >  0.0d0 )
+       ic(3,j)=count( trho(:,j) <  0.0d0 )
+    end do
+
+    sb=sb*dV
+    call mpi_allreduce(sb,rb,3*n,mpi_real8,mpi_sum,comm_grid,ierr)
+    call mpi_allreduce(ic,jc,3*n,mpi_integer,mpi_sum,comm_grid,ierr)
+
+    if ( disp_switch_parallel ) then
+       do j=1,n
+          write(*,'(1x,"(positive)",i8,2x,2g16.8)') jc(2,j),rb(2,j),rb(1,j)
+          write(*,'(1x,"(negative)",i8,2x,2g16.8)') jc(3,j),rb(3,j),rb(1,j)
+          if ( jc(1,j) /= 0 ) write(*,'(1x,"(zero    )",i8)') jc(1,j)
+       end do
+    end if
+
+    deallocate( jc,ic )
+    deallocate( rb,sb )
+
+  END SUBROUTINE chk_density
+
+
   SUBROUTINE calc_xc
     implicit none
     real(8),allocatable :: rho_tmp(:,:)
@@ -99,7 +153,10 @@ CONTAINS
        do s=1,MSP
           rho_tmp(:,s) = rho_tmp(:,s) + c*rhoc(:)
        end do
+       call chk_density(rho)
+       call chk_density(rhoc=rhoc)
     end if
+    call chk_density(rho_tmp)
        
     select case(XCtype)
     case('LDAPZ81_')

@@ -282,23 +282,32 @@ CONTAINS
     end if ! [ rank == 0 ]
 
     call send_pseudopot(rank)
-!    call chk_pot
+
+!    call chk_pot(1,rank)
 
   END SUBROUTINE read_pseudopot
 
 
-  SUBROUTINE chk_pot
+  SUBROUTINE chk_pot(iflag,rank)
     implicit none
+    integer,intent(IN) :: iflag,rank
     integer :: u,ielm,i,j
-    do ielm=1,Nelement_PP
-       u=9+ielm
-       rewind u
-       do i=1,Mr(ielm)
-          write(u,'(1x,5f20.10)') &
-               rad(i,ielm),vql(i,ielm),(viod(i,j,ielm),j=1,norb(ielm))
+    if ( rank == 0 ) then
+       do ielm=1,Nelement_PP
+          u=9+ielm
+          rewind u
+          do i=1,Mr(ielm)
+             if ( iflag == 2 ) then
+                write(u,'(1x,5f20.10)') &
+                     rad(i,ielm),cdd(i,ielm),cdc(i,ielm)*rad(i,ielm)**2
+             else
+                write(u,'(1x,5f20.10)') &
+                     rad(i,ielm),vql(i,ielm),(viod(i,j,ielm),j=1,norb(ielm))
+             end if
+          end do
+          write(*,'(1x,"chk_pot(",i1,"): fort.",i2)') iflag,u
        end do
-       write(*,'(1x,"chk_pot: fort.",i2)') u
-    end do
+    end if
     stop "stop@chk_pot"
   END SUBROUTINE chk_pot
 
