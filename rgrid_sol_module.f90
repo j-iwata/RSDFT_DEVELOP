@@ -25,6 +25,11 @@ CONTAINS
           if ( ckey(1:5) == "NGRID" ) then
              backspace(unit)
              read(unit,*) cbuf,Ngrid(1:3)
+             if ( Ngrid(2) == 0 .or. Ngrid(3) == 0 ) then
+                Ngrid(2) = Ngrid(1)
+                Ngrid(3) = Ngrid(1)
+                write(*,*) "Ngrid(2:3) is replaced: Ngrid(1:3)=",Ngrid(1:3)
+             end if
           end if
        end do
 999    continue

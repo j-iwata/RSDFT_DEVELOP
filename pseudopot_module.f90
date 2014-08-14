@@ -1,5 +1,6 @@
 MODULE pseudopot_module
 
+  use ps_read_TM_module
   use ps_read_YB_module
   use ps_read_UPF_module
   use ps_gth_module
@@ -192,7 +193,26 @@ CONTAINS
           select case(ippform(ielm))
           case(1)
 
-             call read_TM
+             close(unit_ps)
+             open(unit_ps,FILE=file_ps(ielm),form='unformatted',STATUS='old')
+
+             call ps_read_TM(unit_ps)
+             call ps_allocate(ps_tm%nrr,ps_tm%norb)
+             Mr(ielm)                 = ps_tm%nrr
+             norb(ielm)               = ps_tm%norb
+             Zps(ielm)                = ps_tm%znuc
+             anorm(1:norb(ielm),ielm) = ps_tm%anorm(1:norb(ielm))
+             inorm(1:norb(ielm),ielm) = ps_tm%inorm(1:norb(ielm))
+             Rps(1:norb(ielm),ielm)   = ps_tm%Rc(1:norb(ielm))
+             NRps(1:norb(ielm),ielm)  = ps_tm%NRc(1:norb(ielm))
+             lo(1:norb(ielm),ielm)    = ps_tm%lo(1:norb(ielm))
+             vql(1:Mr(ielm),ielm)     = ps_tm%vql(1:Mr(ielm))
+             cdd(1:Mr(ielm),ielm)     = ps_tm%cdd(1:Mr(ielm))
+             cdc(1:Mr(ielm),ielm)     = ps_tm%cdc(1:Mr(ielm))
+             rad(1:Mr(ielm),ielm)     = ps_tm%rr(1:Mr(ielm))
+             rab(1:Mr(ielm),ielm)     = ps_tm%rx(1:Mr(ielm))
+             viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                      = ps_tm%vps(1:Mr(ielm),1:norb(ielm))
 
           case(2)
 
@@ -298,8 +318,7 @@ CONTAINS
           rewind u
           do i=1,Mr(ielm)
              if ( iflag == 2 ) then
-                write(u,'(1x,5f20.10)') &
-                     rad(i,ielm),cdd(i,ielm),cdc(i,ielm)*rad(i,ielm)**2
+                write(u,'(1x,5f20.10)') rad(i,ielm),cdd(i,ielm),cdc(i,ielm)
              else
                 write(u,'(1x,5f20.10)') &
                      rad(i,ielm),vql(i,ielm),(viod(i,j,ielm),j=1,norb(ielm))
@@ -692,7 +711,7 @@ CONTAINS
     write(*,*) "anorm                   =",anorm(1:norb(ielm),ielm)
     write(*,*) "inorm                   =",inorm(1:norb(ielm),ielm)
     write(*,*) "sum(cdd)                =",sum( cdd(:,ielm)*rab(:,ielm) )
-    write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rab(:,ielm) )*temp
+    write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rab(:,ielm)*rad(:,ielm)**2 )*temp
 
     if ( verpot /= 3 ) deallocate( c0,b0,a0 )
     deallocate( qqr,ddi )

@@ -52,6 +52,16 @@ PROGRAM Real_Space_Solid
 
   call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
+! --- Test ( Egg-Box Effect ) ---
+
+  if ( iswitch_test == 2 ) then
+     aa_atom(1,1) = aa_atom(1,1) + Hgrid(1)*0.5d0/ax
+     if ( disp_switch ) then
+        write(*,*) "--- EGG BOX TEST !!! ---"
+        write(*,*) aa_atom(1,1),aa_atom(1,1)*ax,Hgrid(1)*0.5d0
+     end if
+  end if
+
 ! --- Symmetry ---
 
   call init_symmetry( Ngrid,dV,aa,bb, Natom,ki_atom,aa_atom )
