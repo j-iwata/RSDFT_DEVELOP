@@ -14,6 +14,7 @@ MODULE total_energy_module
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
+  use VarSysParameter
 
   implicit none
 
@@ -55,12 +56,15 @@ CONTAINS
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2
     real(8) :: s0(4),s1(4),uu
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
+    real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_
     real(8),parameter :: zero=0.d0
     real(8),allocatable :: work(:,:)
+    real(8),allocatable :: work00(:,:)
 #else
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8),allocatable :: work(:,:)
+    complex(8),allocatable :: work00(:,:)
 #endif
     include 'mpif.h'
 
@@ -89,8 +93,10 @@ enddo
     if ( flag_recalc_esp ) then
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
+       allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
 
        allocate( work(n1:n2,MB_d) ) ; work=(0.0d0,0.0d0)
+       allocate( work00(n1:n2,MB_d) ) ; work00=(0.0d0,0.0d0)
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
@@ -120,15 +126,21 @@ enddo
           esp0(i,k,s,2)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
           end do
-          work=zero
-          call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,.true.)
-          do i=nb1,nb2
+          if (pp_kind=='USPP') then
+            work=zero
+            work00=zero
+            call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
+            do i=nb1,nb2
 #ifdef _DRSDFT_
-          esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
+            esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
+            esp0_Q(i,k,s)=sum( unk(:,i,k,s)*work00(:,i-nb1+1) )*dV
 #else
-          esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
+            esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
+            esp0_Q(i,k,s)=sum( conjg(unk(:,i,k,s))*work00(:,i-nb1+1) )*dV
 #endif
-          end do
+            end do
+          endif
+
           work=zero
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_
@@ -147,36 +159,59 @@ enddo
        end do
 
        deallocate( work )
+       deallocate( work00 )
 
        allocate( esp1(MB,MBZ,MSP,4) )
+       allocate( esp1_Q(MB,MBZ,MSP) )
 
        n=MB*MBZ*MSP*4
        call mpi_allreduce(esp0,esp1,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+       n=MB*MBZ*MSP
+       call mpi_allreduce(esp0_Q,esp1_Q,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
 
        Ekin = sum( occ(:,:,:)*esp1(:,:,:,1) )
        Eloc = sum( occ(:,:,:)*esp1(:,:,:,2) )
-       Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
-
-       esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
+        
+        if (pp_kind=='USPP') then
+          Enlc = sum( occ(:,:,:)*esp1_Q(:,:,:) )
+        elseif (pp_kind=='NCPP') then
+          Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
+        endif
+        esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
 
        deallocate( esp1 )
        deallocate( esp0 )
+       deallocate( esp1_Q )
+       deallocate( esp0_Q )
 
     end if
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
 
+#ifdef _USPP_
+    s0(:)=0.d0
+    s1(:)=0.d0
+    do s=MSP_0,MSP_1
+      do i=n1,n2
+        s0(1) = s0(1) + rho(i,s)*Vloc(i,s)
+        s0(2) = s0(2) + rho(i,s)*Vion(i)
+        end do
+    end do
+
+    s0(:)=s0(:)*dV
+    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
+#else
     s0(:)=0.d0
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
     do n=MB_0,MB_1
        s1(:)=0.d0
        do i=n1,n2
-          uu=abs( unk(i,n,k,s) )**2
+          uu=rho(i,s)
           s1(1) = s1(1) + uu*Vloc(i,s)
           s1(2) = s1(2) + uu*Vion(i)
-          s1(3) = s1(3) + uu*Vh(i)
-          s1(4) = s1(4) + uu*Vxc(i,s)
+          s1(3) = s1(3) + uu*Vh(i)          ! not used?
+          s1(4) = s1(4) + uu*Vxc(i,s)       ! not used?
        end do
        s0(:)=s0(:)+occ(n,k,s)*s1(:)
     end do
@@ -184,6 +219,7 @@ enddo
     end do
     s0(:)=s0(:)*dV
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
+#endif
 
     Eloc = s1(1)
     Eion = s1(2)

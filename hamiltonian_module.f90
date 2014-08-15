@@ -37,6 +37,13 @@ CONTAINS
     call watch(ct0,et0)
 
     call op_kinetic(k,tpsi,htpsi,n1,n2,ib1,ib2)
+!write(170,*) 'ib,i,tpsi(i,ib),htpsi(i,ib)'
+do ib=ib1,ib2
+do i=n1,n2
+!write(170,'(2I5,4g20.7)') ib,i,tpsi(i,ib),htpsi(i,ib)
+enddo
+enddo
+!stop
 
     call watch(ct1,et1)
     ctt_hamil(1)=ctt_hamil(1)+ct1-ct0 ; ett_hamil(1)=ett_hamil(1)+et1-et0
@@ -44,12 +51,13 @@ CONTAINS
 ! --- local potential ---
 
     call op_localpot(s,n2-n1+1,ib2-ib1+1,tpsi,htpsi)
+!write(170,*) 'ib,i,tpsi(i,ib),htpsi(i,ib)'
 do ib=ib1,ib2
 do i=n1,n2
-write(150,'(2I5,4g20.7)') ib,i,tpsi(i,ib),htpsi(i,ib)
+!write(170,'(2I5,4g20.7)') ib,i,tpsi(i,ib),htpsi(i,ib)
 enddo
 enddo
-stop
+!stop
 
     call watch(ct0,et0)
     ctt_hamil(2)=ctt_hamil(2)+ct0-ct1 ; ett_hamil(2)=ett_hamil(2)+et0-et1
@@ -60,7 +68,7 @@ write(200+myrank,*) '----------------------------hamiltonian'
 write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
 write(200+myrank,*) '----------------------------hamiltonian'
 #endif
-    call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2,.false.)
+    call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
 !write(170,*) 'ib,i,tpsi(i,ib),htpsi(i,ib)'
 do ib=ib1,ib2
 do i=n1,n2
