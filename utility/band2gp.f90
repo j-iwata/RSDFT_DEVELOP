@@ -110,7 +110,7 @@ PROGRAM band_plot
 
 !------------------------------
 
-  call plot_eval(mb1,mb2,evb,HT)
+  call plot_eval(mb1,mb2,esft,HT)
 
 !------------------------------
 
