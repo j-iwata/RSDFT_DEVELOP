@@ -103,12 +103,14 @@ enddo
        do n=MB_0,MB_1,MB_d
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
+!---------------------------------------------------- kinetic
           work=zero
 #ifdef _SHOWALL_ESP_
 do i=n1,n2
 write(350+myrank,'(5I5,2g20.8)') scf_iter,s,k,n,i,unk(i,n,k,s)
 enddo
 #endif
+write(200+myrank,*) "calc_total_energy k"
           call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -117,7 +119,9 @@ enddo
           esp0(i,k,s,1)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
           end do
+!---------------------------------------------------- local
           work=zero
+write(200+myrank,*) "calc_total_energy l"
           call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -126,22 +130,25 @@ enddo
           esp0(i,k,s,2)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
           end do
+!---------------------------------------------------- nonlocal
           if (pp_kind=='USPP') then
             work=zero
             work00=zero
+write(200+myrank,*) "calc_total_energy nl"
             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
             do i=nb1,nb2
 #ifdef _DRSDFT_
-            esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
-            esp0_Q(i,k,s)=sum( unk(:,i,k,s)*work00(:,i-nb1+1) )*dV
+              esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
+              esp0_Q(i,k,s)=sum( unk(:,i,k,s)*work00(:,i-nb1+1) )*dV
 #else
-            esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
-            esp0_Q(i,k,s)=sum( conjg(unk(:,i,k,s))*work00(:,i-nb1+1) )*dV
+              esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
+              esp0_Q(i,k,s)=sum( conjg(unk(:,i,k,s))*work00(:,i-nb1+1) )*dV
 #endif
             end do
           endif
-
+!---------------------------------------------------- fock
           work=zero
+write(200+myrank,*) "calc_total_energy f"
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_
           esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV

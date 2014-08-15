@@ -93,7 +93,6 @@ enddo
           end do
        end do
     case ( 'USPP' )
-write(550+myrank,*) 'USPP calc_density'
        n1=ML_0_WF
        n2=ML_1_WF
        n0 = ML_1_WF - ML_0_WF + 1
@@ -107,9 +106,6 @@ write(550+myrank,*) 'USPP calc_density'
                 rhonks(:)=0.d0
                 call get_rhonks( rhonks,n1,n2,n,k,s )
                 rho(:,s) = rho(:,s) + occ(n,k,s)*rhonks(:)
-do i=n1,n2
-write(550+myrank,*) 'rho= ',i,rho(i,s)
-end do
              end do
           end do
        end do

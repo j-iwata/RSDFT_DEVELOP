@@ -291,7 +291,6 @@ use PStest
 
      call destruct_strfac !----- structure factor
 
-if (myrank==0) write(*,*) "start initPS"
      select case( pselect )
      case( 2 )
         call ps_nloc2_init(Gcut)
@@ -414,9 +413,7 @@ if (myrank==0) write(*,*) "start initPS"
 
   call init_wf
   call init_localpot
-!call write_wf
-!stop
-  call check_all_ps(myrank)
+!  call check_all_ps(myrank)
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
@@ -425,9 +422,9 @@ if (myrank==0) write(*,*) "start initPS"
   end do
   end do
 !  call write_wf
-  call test_on_wf(dV,myrank==0)
+!  call test_on_wf(dV,myrank==0)
 #ifdef _USPP_
-  call test_orthnorm_wf(myrank)
+!  call test_orthnorm_wf(myrank)
 #endif
 #ifdef _USPP_
   if ( .true. ) then
@@ -473,12 +470,8 @@ if (myrank==0) write(*,*) "start initPS"
 
 !  call init_localpot
 
-write(150,*) 's,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)'
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-do i=ML_0,ML_1
-write(150,'(2I5,4g20.7)') s,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)
-end do
   end do
 
 

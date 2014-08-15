@@ -86,10 +86,6 @@ CONTAINS
        call watch(ct0,et0)
        call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
-do i=n1,n2
-write(150,'(2I5,4g20.7)') ns,i,unk(i,ns),hxk(i,ns)
-enddo
-stop
 
        do n=1,nn
           call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)

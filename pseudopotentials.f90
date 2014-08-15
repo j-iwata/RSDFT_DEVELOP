@@ -24,7 +24,6 @@ CONTAINS
         implicit none
         real(8),intent(IN) :: gcut
 write(200+myrank,*) ">>>>>>> initiationPS"
-if (myrank==0) write(*,*) ">>>>>>> initiationPS"
         call init_ps_local
         call init_ps_pcc
         call init_ps_initrho
@@ -60,17 +59,11 @@ write(400+myrank,*) "--- prep_ps_nloc2 ---"
 #ifdef _USPP_
         case( 102 )
 write(200+myrank,*) "----- init PS nonlocal for pselect==102 -----"
-write(200+myrank,*) "--- initKtoKPSQ ---"
             call initKtoKPSQ
-write(200+myrank,*) "--- ps_nloc2_init ---"
             call ps_nloc2_init(gcut)
-write(200+myrank,*) "--- ps_Q_init ---"
             call ps_Q_init(gcut,rcfac,qcfac,etafac)
-write(200+myrank,*) "--- prep_ps_nloc2 ---"
             call prep_ps_nloc2
-write(200+myrank,*) "--- prepNzqr ---"
             call prepNzqr
-write(200+myrank,*) "--- prepQRijp102 ---"
             call prepQRijp102
 #endif
 
@@ -78,7 +71,6 @@ write(200+myrank,*) "--- prepQRijp102 ---"
 !========================================= PSELECT
 
 write(200+myrank,*) "<<<<<<< initiationPS"
-if (myrank==0) write(*,*) "<<<<<<<< initiationPS"
 
         return
     END SUBROUTINE initiationPS

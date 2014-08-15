@@ -86,7 +86,7 @@ write(200+myrank,*) ">>>>> ps_nloc2_init"
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
-qc=4.32987324642663
+!qc=4.32987324642663
     call allocateRps
 
     do ik=1,Nelement_
@@ -173,21 +173,12 @@ qc=4.32987324642663
 
     const=2.d0/acos(-1.d0)
 
-write(779,*) 'L,sum0,const',qc
-write(777,*) 'ik,iorb,i,vrad(i),rad(i,ik),rab(i,ik),wm(i,iorb,ik)'
-write(776,*) 'ik,iorb,i,viod(i,iorb,ik)'
     do ik=1,Nelement_
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
           NRc=NRps0(iorb,ik)
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
-do i=1,NRc
-write(777,'(3I5,4g20.7)') ik,iorb,i,vrad(i),rad(i,ik),rab(i,ik),wm(i,iorb,ik)
-end do
-do i=1,NRps(iorb,ik)
-write(776,'(3I5,2g20.7)') ik,iorb,i,viod(i,iorb,ik)
-end do
 #ifdef _SHOWALL_NONL_F_
 write(630+myrank,*) "ik,iorb= ",ik,iorb
 write(630+myrank,*) "    qc L  NRc NRps            rad           rad1           viod"
@@ -209,8 +200,6 @@ end do
     end do ! ik
     deallocate( vrad )
 
-write(778,*) 'ik,iorb,i,viod(i,iorb,ik)'
-write(775,*) 'ik,iorb,i,viod(i,iorb,ik)'
     do ik=1,Nelement_
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
@@ -234,9 +223,7 @@ write(775,*) 'ik,iorb,i,viod(i,iorb,ik)'
                 end do
              end if
              if ( maxerr<dy0 ) maxerr=dy0
-write(778,'(3I5,2g20.7)') ik,iorb,i,viod(i,iorb,ik)
              viod(i,iorb,ik)=y0*viod(i,iorb,ik)
-write(775,'(3I5,2g20.7)') ik,iorb,i,viod(i,iorb,ik)
           end do
        end do
     end do

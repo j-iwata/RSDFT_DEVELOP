@@ -743,7 +743,6 @@ write(200+myrank,*) "<<<< prepMapsTmp"
 
     pi2 = 2.d0*acos(-1.d0)
 
-write(774,*) 'k,lma,i,uV(i,lma),uVk(j,lma,k)'
     do k=k0,k1
        d1=pi2*kbb(1,k)
        d2=pi2*kbb(2,k)
@@ -771,7 +770,6 @@ write(774,*) 'k,lma,i,uV(i,lma),uVk(j,lma,k)'
              else
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
              end if
-write(774,'(3I5,4g20.7)') k,lma,i,uV(i,lma),uVk(j,lma,k)
           end do
        end do ! lma
     end do ! k

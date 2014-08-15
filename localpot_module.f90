@@ -68,12 +68,10 @@ CONTAINS
 !$OMP DO
           do i=1,mm
              vf(i,n) = vf(i,n) + Vloc(ML_0-1+i,s)*f(i,n)
-write(150,'(2I5,6g20.7)') n,i,Vloc(ML_0-1+i,s),f(i,n),vf(i,n)
           end do
 !$OMP END DO
        end do
 !$OMP END PARALLEL
-stop
 
     end if
 

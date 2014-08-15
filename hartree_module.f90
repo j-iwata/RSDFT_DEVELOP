@@ -92,19 +92,14 @@ CONTAINS
     allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) )
 
     allocate( work(ML) )
-write(153,*) 'ispin,i,work(i),rho(i,ispin)'
     work(n1:n2) = rho(n1:n2,1)
     do ispin=2,n3
        work(n1:n2) = work(n1:n2) + rho(n1:n2,ispin)
-do i=n1,n2
-write(153,'(2I4,2g20.7)') ispin,i,work(i),rho(i,ispin)
-end do
     end do
 
     call mpi_allgatherv(work(n1),n2-n1+1,mpi_real8 &
          ,work,ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
-write(154,*) 'i,j1,j2,j3,work(i),zwork0(j1,j2,j3)'
     i=0
     irank=-1
     do i3=1,node_partition(3)
@@ -116,7 +111,6 @@ write(154,*) 'i,j1,j2,j3,work(i),zwork0(j1,j2,j3)'
        do j1=pinfo_grid(1,irank),pinfo_grid(1,irank)+pinfo_grid(2,irank)-1
           i=i+1
           zwork0(j1,j2,j3)=work(i)
-write(154,'(4I5,3g20.7)') i,j1,j2,j3,work(i),zwork0(j1,j2,j3)
        end do
        end do
        end do
@@ -143,7 +137,6 @@ write(154,'(4I5,3g20.7)') i,j1,j2,j3,work(i),zwork0(j1,j2,j3)
 
     call construct_Ggrid(2)
 
-write(155,*) 'i,j1,j2,j3,g2,zwork0(i1,i2,i3),zwork1(i1,i2,i3)'
     zwork1(:,:,:)=z0
     do i=1,NGgrid(0)
        g2=GG(MGL(i))
@@ -152,7 +145,6 @@ write(155,*) 'i,j1,j2,j3,g2,zwork0(i1,i2,i3),zwork1(i1,i2,i3)'
        i2=LLG(2,i)
        i3=LLG(3,i)
        zwork1(i1,i2,i3)=zwork0(i1,i2,i3)*pi4/g2
-write(155,'(4I5,5g20.7)') i,i1,i2,i3,g2,zwork0(i1,i2,i3),zwork1(i1,i2,i3)
     end do
 
     call destruct_Ggrid
@@ -168,14 +160,12 @@ write(155,'(4I5,5g20.7)') i,i1,i2,i3,g2,zwork0(i1,i2,i3),zwork1(i1,i2,i3)
     deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
     deallocate( zwork0 )
 
-write(156,*) 'i,i1,i2,i3,zwork1(i1,i2,i3),Vh(i)'
     i=n1-1
     do i3=Igrid(1,3),Igrid(2,3)
     do i2=Igrid(1,2),Igrid(2,2)
     do i1=Igrid(1,1),Igrid(2,1)
        i=i+1
        Vh(i)=real( zwork1(i1,i2,i3) )
-write(156,'(4I5,3g20.7)') i,i1,i2,i3,zwork1(i1,i2,i3),Vh(i)
     end do
     end do
     end do

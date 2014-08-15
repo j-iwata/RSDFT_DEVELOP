@@ -138,7 +138,6 @@ CONTAINS
        allocate( viod(n_grd,n_orb,Nelement_PP) ) ; viod(:,:,:)=0.d0
        max_psgrd=n_grd
        max_psorb=n_orb
-if (myrank==0) write(400+myrank,*) "max_psgrd,psorb=",max_psgrd,max_psorb
        return
     end if
     mg = max( max_psgrd, n_grd )
