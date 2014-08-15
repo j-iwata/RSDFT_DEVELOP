@@ -37,8 +37,8 @@ write(200+myrank,*) ">>>>>>> initiationPS"
         
         if (pselect/=4 .and. pselect/=5) then
             call construct_ps_pcc
-!!!!!!            call construct_ps_initrho
-!!!!!!            call normalize_density
+            call construct_ps_initrho
+            call normalize_density
         end if
 
         call destruct_strfac
