@@ -161,6 +161,9 @@ CONTAINS
     s0(2) = Ec_part*dV
     call mpi_allreduce(s0,s1,2,mpi_real8,mpi_sum,comm,ierr)
 
+    s0(1) = s1(1)
+    call mpi_allreduce(s0,s1,1,mpi_real8,mpi_sum,comm_spin,ierr)
+
     Exc_out = s1(1) + s1(2)
 
     if ( present(Ex_out) ) Ex_out=s1(1)

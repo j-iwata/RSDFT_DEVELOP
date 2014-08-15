@@ -58,6 +58,8 @@ CONTAINS
     ps_gth%hnml(:,:,:) =0.0d0
     ps_gth%knml(:,:,:) =0.0d0
 
+    iflag_hgh = .false.
+
     write(*,'(a60," read_ps_gth")') repeat("-",60)
 
     read(unit_pp,'(a)') cbuf
@@ -65,6 +67,8 @@ CONTAINS
     if ( index( cbuf, "KRACK" ) /= 0 ) then
 
        call Read_KrackFormat( znuc,Zps,Rcloc,parloc,Rps0,lo,no,hnml,norb )
+
+       iflag_hgh = .true.
 
     else ! [ Original Format ]
 

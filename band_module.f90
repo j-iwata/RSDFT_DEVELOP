@@ -44,7 +44,7 @@ CONTAINS
     integer :: iktrj_0,iktrj_1,iktrj_2,iktrj_00,iktrj_tmp,ireq
     integer,allocatable :: ir_k(:),id_k(:)
     real(8) :: dak(3),sum0,sum1,max_err,max_err0
-    real(8),allocatable :: ktrj(:,:),esp0(:,:,:),pxyz(:,:,:,:)
+    real(8),allocatable :: ktrj(:,:),pxyz(:,:,:,:)
     real(8),allocatable :: kbb_tmp(:,:),esp_tmp(:,:,:),esp0_tmp(:,:,:)
     complex(8),allocatable :: unk0(:,:,:),unk00(:,:,:)
     logical :: disp_switch_parallel_bak,flag_end
@@ -119,10 +119,7 @@ CONTAINS
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
     allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
     allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
-!    allocate( esp0(MB,MBZ,MSP)               ) ; esp0=0.d0
     allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) ) ; unk0=0.d0
-
-!    k=MBZ_0
 
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
@@ -150,6 +147,8 @@ CONTAINS
 
     call init_sweep( 2, mb2_band, esp_conv_tol )
 
+    MBZ_1 = MBZ_0
+
     loop_iktrj : do iktrj = iktrj_0, iktrj_2
 
        if ( iktrj <= nskip_band ) then
@@ -159,12 +158,18 @@ CONTAINS
 
        iktrj_00 = id_k(0) + iktrj - iktrj_0 + 1
 
-       kbb(1:3,MBZ_0) = ktrj(1:3,min(iktrj,iktrj_1,nktrj))
-       call mpi_allgather(kbb(1,MBZ_0),3,mpi_real8,kbb_tmp,3,mpi_real8,comm_bzsm,ierr)
+       if ( iktrj <= nktrj ) then
+          kbb(1:3,MBZ_0) = ktrj(1:3,iktrj)
+       else
+          kbb(1:3,MBZ_0) = 0.0d0
+       end if
+       call mpi_allgather &
+            (kbb(1,MBZ_0),3,mpi_real8,kbb_tmp,3,mpi_real8,comm_bzsm,ierr)
        if ( myrank == 0 ) then
           write(*,*) "kbb_tmp"
           do ibz=0,np_bzsm-1
-             write(*,'(1x,i8,3f10.5)') id_k(ibz)+iktrj-iktrj_0+1,kbb_tmp(1:3,ibz)
+             iktrj_tmp = id_k(ibz)+iktrj-iktrj_0+1
+             write(*,'(1x,i8,3f10.5)') iktrj_tmp,kbb_tmp(1:3,ibz)
           end do
        endif
 
@@ -224,7 +229,7 @@ CONTAINS
              end if
           end if
           unk0(:,:,s) = unk(:,:,MBZ_0,s)
-       end do
+       end do ! s
 #endif
 
        call prep_rvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
@@ -233,7 +238,7 @@ CONTAINS
        do n=1,mb2_band
           do s=MSP_0,MSP_1
 #ifndef _DRSDFT_
-             call calc_expectval_momentum(MBZ_0,ML_0,ML_1,1,1,unk(ML_0,n,MBZ_0,1),pxyz(1,n,myrank_k,s))
+             call calc_expectval_momentum(MBZ_0,ML_0,ML_1,1,1,unk(ML_0,n,MBZ_0,s),pxyz(1,n,myrank_k,s))
 #endif
           end do ! s
        end do ! n
@@ -254,7 +259,7 @@ CONTAINS
        end do
 
        do ibz=0,np_bzsm-1
-          iktrj_tmp = iktrj_00 + ibz
+          iktrj_tmp = iktrj_00 + id_k(ibz)
           if ( iktrj_tmp > nktrj ) exit
           if ( myrank == 0 ) then
              write(unit_band_eigv,'(1x,2i6,3f20.12,i8)') &
@@ -293,7 +298,6 @@ CONTAINS
     end if
 
     deallocate( unk0 )
-!    deallocate( esp0 )
     deallocate( pxyz )
     deallocate( kbb_tmp )
     deallocate( esp_tmp )

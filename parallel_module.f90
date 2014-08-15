@@ -142,7 +142,7 @@ CONTAINS
     if ( np1>ML1 .or. np2>ML2 .or. np3>ML3 .or. &
          node_partition(4)>Nband .or. node_partition(6)>nspin ) then
        write(*,'(1x,12i6)') node_partition(1:6),ML1,ML2,ML3,MB,nspin
-       stop
+       stop "stop@init_parallel"
     end if
     if ( node_partition(5)>Nbzsm ) then
        write(*,'(1x,i6)') Nbzsm
