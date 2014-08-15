@@ -211,7 +211,7 @@ CONTAINS
              if ( iktrj == iktrj_0 ) then
                 if ( .not.allocated(unk00) ) then
                    allocate( unk00(ML_0:ML_1,MB,MSP_0:MSP_1) )
-                   unk00=0.d0
+                   unk00=0.0d0
                 end if
                 unk00(:,:,s)=unk(:,:,MBZ_0,s)
              end if
@@ -225,7 +225,7 @@ CONTAINS
                    end if
                    call calc_overlap_kpara(ML_0,ML_1,MB_0,MB_1,MB,unk(:,1,MBZ_0,s),unk0(:,1,s))
                 end if
-                if ( allocated(unk00) ) deallocate(unk00)
+!                if ( allocated(unk00) ) deallocate(unk00)
              end if
           end if
           unk0(:,:,s) = unk(:,:,MBZ_0,s)
@@ -297,6 +297,7 @@ CONTAINS
        end if
     end if
 
+    if ( allocated(unk00) ) deallocate( unk00 )
     deallocate( unk0 )
     deallocate( pxyz )
     deallocate( kbb_tmp )
