@@ -235,16 +235,20 @@ CONTAINS
     implicit none
     integer,intent(IN) :: ib1, ib2, iter
     logical,intent(IN) :: disp_switch
-    integer :: s,k,n,nb1,nb2,i,u(2)
-    u(:) = (/ 6, 98 /)
-    do i=1,2
-       nb1 = ib1
-       nb2 = ib2
-       if ( u(i) == 6 .and. .not.disp_switch ) cycle
-       if ( u(i) /= 6 .and. myrank /= 0 ) cycle
-       if ( u(i) /= 6 .and. myrank == 0 ) then
+    integer :: s,k,n,nb1,nb2,i,u(3)
+    u(:) = (/ 6, 98, 99 /)
+    do i=1,3
+       if ( u(i) == 6 ) then
+          nb1 = ib1
+          nb2 = ib2
+       else
           nb1 = 1
           nb2 = Nband
+       end if
+       if ( u(i) == 6  .and. .not.disp_switch ) cycle
+       if ( u(i) /= 6  .and. myrank /= 0 ) cycle
+       if ( u(i) == 98 .and. myrank == 0 ) rewind 98
+       if ( u(i) == 99 .and. myrank == 0 ) then
           write(u(i),'("AX", f20.15)') ax
           write(u(i),'("A1",3f20.15)') aa(1:3,1)/ax
           write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
@@ -264,8 +268,6 @@ CONTAINS
                ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
        end do
        end do
-       write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-       write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
     end do
   END SUBROUTINE write_info_scf
 

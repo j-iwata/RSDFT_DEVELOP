@@ -231,7 +231,7 @@ CONTAINS
     implicit none
     logical,intent(IN) :: disp_switch
     integer :: i,u(2)
-    u(:) = (/ 6, 98 /)
+    u(:) = (/ 6, 99 /)
     do i=1,2
        if ( u(i) == 6 .and. .not.disp_switch ) cycle
        if ( u(i) /= 6 .and. myrank /= 0 ) cycle
