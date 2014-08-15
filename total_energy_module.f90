@@ -121,7 +121,7 @@ enddo
 #endif
           end do
           work=zero
-          call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+          call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,.true.)
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV

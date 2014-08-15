@@ -414,8 +414,7 @@ if (myrank==0) write(*,*) "start initPS"
 
   call init_wf
   call init_localpot
-!wf OK
-!  call write_wf
+!call write_wf
 !stop
   call check_all_ps(myrank)
 
@@ -481,7 +480,6 @@ do i=ML_0,ML_1
 write(150,'(2I5,4g20.7)') s,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)
 end do
   end do
-  stop
 
 
 ! --- Read previous w.f. , density , potentials ---
@@ -541,6 +539,8 @@ write(200+myrank,*) "before calc_total_energy"
 
      if ( disp_switch ) write(*,'(a40," iter=",i4)') repeat("-",40),iter
 
+! Initial sweep will take place first
+! After initial sweep, flag for scf will be turned on
      if ( iter > Nsweep ) then
         if ( iswitch_scf == 1 ) then
            flag_scf = .true.
@@ -551,6 +551,7 @@ write(200+myrank,*) "before calc_total_energy"
 
      call watch(ct0,et0)
 
+!-------------------------------------------------------- step start
      if ( .not. flag_exit ) then
 
      esp0=esp
@@ -558,35 +559,13 @@ write(200+myrank,*) "before calc_total_energy"
      do k=MBZ_0,MBZ_1
         call watcht(disp_switch,"",0)
 
-        
-        
-        
-        
-        
-        
-        
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
                                ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-call write_wf
-stop
+!call write_wf
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+!-------------------------------------------------------- scf step start
+! will do for iter==1
         if ( iter == 1 .or. flag_scf ) then
-write(*,*) 'subspace now!!!!!!!'
 #ifdef _LAPACK_
            call subspace_diag_la(k,s)
 #else
@@ -596,8 +575,6 @@ write(*,*) 'subspace now!!!!!!!'
         call watcht(disp_switch,"diag",1)
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
                                ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-call write_wf
-stop
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)
         call watcht(disp_switch,"gs  ",1)
@@ -662,6 +639,8 @@ stop
            call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,Vloc(ML_0,MSP_0),flag_conv,disp_switch)
         end if
 
+        call getDij
+
 !---------------------------------- LPOT2
         if ( flag_localpot2 ) then
            call localpot2_density(mm1,mm2,mm3,rho_nl)
@@ -677,8 +656,10 @@ stop
 !------------------------------------------
 
      end if ! flag_scf
+!======================================================== scf step end
 
      end if ! .not.flag_exit
+!======================================================== step end
 
      if ( abs(diff_etot) <= 1.d-14 ) then
         if ( iswitch_scf == 1 ) then

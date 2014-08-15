@@ -60,7 +60,14 @@ write(200+myrank,*) '----------------------------hamiltonian'
 write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
 write(200+myrank,*) '----------------------------hamiltonian'
 #endif
-    call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+    call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2,.false.)
+!write(170,*) 'ib,i,tpsi(i,ib),htpsi(i,ib)'
+do ib=ib1,ib2
+do i=n1,n2
+!write(170,'(2I5,4g20.7)') ib,i,tpsi(i,ib),htpsi(i,ib)
+enddo
+enddo
+!stop
 
     call watch(ct1,et1)
     ctt_hamil(3)=ctt_hamil(3)+ct1-ct0 ; ett_hamil(3)=ett_hamil(3)+et1-et0

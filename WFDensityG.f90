@@ -125,66 +125,78 @@ CONTAINS
     integer :: istatus(MPI_STATUS_SIZE,512),ireq(512)
 
     select case ( pselect )
-    case ( 1,2,12 )
+    case ( 1,2,102 )
 
-       !----- term1 -----
-       rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s )**2 )
-       !===== term1 =====
+!----- term1 -----
+      rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s )**2 )
+!===== term1 =====
 
-       !----- term2 -----
-       !----- get_uVunk -----
-       ib1=nn1
-       ib2=nn2
-       nb = ib2 - ib1 + 1
-       allocate( uVunk(nzlma,ib1:ib2)  ) ; uVunk(:,:) =zero
-       do ib=ib1,ib2
-          do lma=1,nzlma
-             do j=1,MJJ(lma)
-                i=JJP(j,lma)
+!----- term2 -----
+!----- get_uVunk -----
+      ib1=n
+      ib2=n
+      nb = ib2 - ib1 + 1
+      allocate( uVunk(nzlma,ib1:ib2)  ) ; uVunk(:,:) =zero
+      do ib=ib1,ib2
+        do lma=1,nzlma
+          do j=1,MJJ(lma)
+            i=JJP(j,lma)
 #ifdef _DRSDFT_
-                uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*unk(i,ib,k,s)
+            uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*unk(i,ib,k,s)
 #else
-                uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*unk(i,ib,k,s)
+            uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*unk(i,ib,k,s)
 #endif
-             end do
-             uVunk(lma,ib) = dV*uVunk(lma,ib)
-          end do	! lma
-       end do	! ib
+          end do
+          uVunk(lma,ib) = dV*uVunk(lma,ib)
+        end do	! lma
+      end do	! ib
 
 
 ! 3WayComm
       call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk)
-       !===== term2 =====
+!===== term2 =====
 
-       !----- get Qrhonks -----
-       Qrhonks=zero
-       do ib=ib1,ib2
-          do kk1=1,N_nzqr
-             lma1=nzqr_pair(kk1,1)
-             lma2=nzqr_pair(kk1,2)
-             if ( lma1<lma2 ) stop 'NZQR_PAIR is stange'
-             if ( lma1==lma2 ) then
-                do j=1,MJJ_Q(kk1)
-                   i=JJP_Q(j,kk1)
-                   if ( i<nn1 .or. nn2<i ) then
-                      write(*,'(A,6I)') 'STOP *****  myrank,i,nn1,nn2,kk1,j=',myrank,i,nn1,nn2,kk1,j
-                      stop
-                   end if
-                   call RCProduct( uVunk(lma1,ib),uVunk(lma2,ib),tmp )
-                   Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*tmp
-                   call RCProduct( uVunk(lma2,ib),uVunk(lma1,ib),tmp )
-                   Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*tmp
-                end do
-             end if
+!----- get Qrhonks -----
+      Qrhonks=zero
+      do ib=ib1,ib2
+        do kk1=1,N_nzqr
+          lma1=nzqr_pair(kk1,1)
+          lma2=nzqr_pair(kk1,2)
+            if ( lma1<lma2 ) stop 'NZQR_PAIR is stange'
+            if ( lma1==lma2 ) then
+              do j=1,MJJ_Q(kk1)
+                i=JJP_Q(j,kk1)
+                if ( i<nn1 .or. nn2<i ) then
+                  write(*,'(A,6I)') 'STOP *****  myrank,i,nn1,nn2,kk1,j=',myrank,i,nn1,nn2,kk1,j
+                  stop
+                end if
+#ifdef _DRSDFT_
+                Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*uVunk(lma1,ib)*uVunk(lma2,ib)
+#else
+                Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*conjg(uVunk(lma1,ib))*uVunk(lma2,ib)
+#endif
+              end do
+            else
+              do j=1,MJJ_Q(kk1)
+                i=JJP_Q(j,kk1)
+#ifdef _DRSDFT_
+                Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*uVunk(lma1,ib)*uVunk(lma2,ib)
+                Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*uVunk(lma2,ib)*uVunk(lma1,ib)
+#else
+                Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*conjg(uVunk(lma1,ib))*uVunk(lma2,ib)
+                Qrhonks(i) = Qrhonks(i) + QRij(j,kk1)*conjg(uVunk(lma2,ib))*uVunk(lma1,ib)
+#endif
+              end do
+            end if
           end do
-       end do	! ib
-       !===== get Qrhonks =====
+        end do	! ib
+!===== get Qrhonks =====
 
-       !----- total = term1 + term2 -----
-       rhonks(nn1:nn2) = rhonks(nn1:nn2) + real( Qrhonks(nn1:nn2) )
-       !===== total = term1 + term2 =====
+!----- total = term1 + term2 -----
+        rhonks(nn1:nn2) = rhonks(nn1:nn2) + real( Qrhonks(nn1:nn2) )
+!===== total = term1 + term2 =====
 
-       deallocate( uVunk  )
+        deallocate( uVunk  )
 
 !    case ( 3 )
 

@@ -11,9 +11,10 @@ use parallel_module, only: myrank
   public :: op_ps_nloc2_uspp
 CONTAINS
 
-  SUBROUTINE op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2,flag_energy)
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
+    logical,intent(IN) :: flag_energy
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
     real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
@@ -68,28 +69,53 @@ write(200+myrank,*) '----------------------------op_ps_nloc2_uspp'
 !       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
 !    end select
 
-    do ib=ib1,ib2
-      do iqr=1,N_nzqr
-        lma1=nzqr_pair(iqr,1)
-        lma2=nzqr_pair(iqr,2)
-        if (lma1<lma2) stop 'NZQR_PAIR is strange'
-        if (lma1==lma2) then
-          do j=1,MJJ(lma1)
-            i=JJP(j,lma1)
-            htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma1,k)*uVunk(lma2,ib)
-          end do
-        else
-          do j=1,MJJ(lma1)
-            i=JJP(j,lma1)
-            htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma1,k)*uVunk(lma2,ib)
-          end do
-          do j=1,MJJ(lma2)
-            i=JJP(j,lma2)
-            htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma2,k)*uVunk(lma1,ib)
-          end do
-        end if
+    if (flag_energy) then
+      do ib=ib1,ib2
+        do iqr=1,N_nzqr
+          lma1=nzqr_pair(iqr,1)
+          lma2=nzqr_pair(iqr,2)
+          if (lma1<lma2) stop 'NZQR_PAIR is strange'
+          if (lma1==lma2) then
+            do j=1,MJJ(lma1)
+              i=JJP(j,lma1)
+              htpsi(i,ib)=htpsi(i,ib)+Dij00(iqr)*uVk(j,lma1,k)*uVunk(lma2,ib)
+            end do
+          else
+            do j=1,MJJ(lma1)
+              i=JJP(j,lma1)
+              htpsi(i,ib)=htpsi(i,ib)+Dij00(iqr)*uVk(j,lma1,k)*uVunk(lma2,ib)
+            end do
+            do j=1,MJJ(lma2)
+              i=JJP(j,lma2)
+              htpsi(i,ib)=htpsi(i,ib)+Dij00(iqr)*uVk(j,lma2,k)*uVunk(lma1,ib)
+            end do
+          end if
+        end do
       end do
-    end do
+    else
+      do ib=ib1,ib2
+        do iqr=1,N_nzqr
+          lma1=nzqr_pair(iqr,1)
+          lma2=nzqr_pair(iqr,2)
+          if (lma1<lma2) stop 'NZQR_PAIR is strange'
+          if (lma1==lma2) then
+            do j=1,MJJ(lma1)
+              i=JJP(j,lma1)
+              htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma1,k)*uVunk(lma2,ib)
+            end do
+          else
+            do j=1,MJJ(lma1)
+              i=JJP(j,lma1)
+              htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma1,k)*uVunk(lma2,ib)
+            end do
+            do j=1,MJJ(lma2)
+              i=JJP(j,lma2)
+              htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma2,k)*uVunk(lma1,ib)
+            end do
+          end if
+        end do
+      end do
+    end if
 !!$OMP end parallel
 
     deallocate( uVunk0,uVunk )

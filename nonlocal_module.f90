@@ -17,9 +17,10 @@ MODULE nonlocal_module
 
 CONTAINS
 
-  SUBROUTINE op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2,flag_energy)
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
+    logical,intent(IN) :: flag_energy
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
     real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
@@ -40,7 +41,7 @@ write(200+myrank,*) '----------------------------op_nonlocal'
 write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
 write(200+myrank,*) '----------------------------op_nonlocal'
 #endif
-      call op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+      call op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2,flag_energy)
     case default
        stop "pselect/=2,4,5,102 are not implemented"
     end select
