@@ -133,13 +133,13 @@ write(650+myrank,*) "<<<<< initKtoKPSQ"
 #ifdef _SHOWALL_INIT_
 write(200+myrank,*) ">>>>> ps_Q_init"
 #endif
-qc=0.d0
 Q_rcfac=rcfac
 Q_etafac=etafac
 k2max=max_k2
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
+if (myrank==0) write(200,*) 'qc(qr)= ',qc
 !qc=4.32987324642663
 
     call allocateQRps( k2max,Nelement_ )

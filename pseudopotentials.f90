@@ -23,7 +23,7 @@ CONTAINS
     SUBROUTINE initiationPS(gcut)
         implicit none
         real(8),intent(IN) :: gcut
-write(200+myrank,*) ">>>>>>> initiationPS"
+!write(200+myrank,*) ">>>>>>> initiationPS"
         call init_ps_local
         call init_ps_pcc
         call init_ps_initrho
@@ -46,9 +46,9 @@ write(200+myrank,*) ">>>>>>> initiationPS"
 !----------------------------------------- PSELECT
         select case( pselect )
         case( 2 )
-write(400+myrank,*) "--- ps_nloc2_init ---"
+!write(400+myrank,*) "--- ps_nloc2_init ---"
             call ps_nloc2_init(gcut)
-write(400+myrank,*) "--- prep_ps_nloc2 ---"
+!write(400+myrank,*) "--- prep_ps_nloc2 ---"
             call prep_ps_nloc2
         case( 3 )
             call init_ps_nloc3
@@ -58,7 +58,7 @@ write(400+myrank,*) "--- prep_ps_nloc2 ---"
 
 #ifdef _USPP_
         case( 102 )
-write(200+myrank,*) "----- init PS nonlocal for pselect==102 -----"
+!write(200+myrank,*) "----- init PS nonlocal for pselect==102 -----"
             call initKtoKPSQ
             call ps_nloc2_init(gcut)
             call ps_Q_init(gcut,rcfac,qcfac,etafac)
@@ -70,7 +70,7 @@ write(200+myrank,*) "----- init PS nonlocal for pselect==102 -----"
         end select
 !========================================= PSELECT
 
-write(200+myrank,*) "<<<<<<< initiationPS"
+!write(200+myrank,*) "<<<<<<< initiationPS"
 
         return
     END SUBROUTINE initiationPS

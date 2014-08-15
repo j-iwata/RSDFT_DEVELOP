@@ -110,7 +110,6 @@ do i=n1,n2
 write(350+myrank,'(5I5,2g20.8)') scf_iter,s,k,n,i,unk(i,n,k,s)
 enddo
 #endif
-write(200+myrank,*) "calc_total_energy k"
           call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -121,7 +120,6 @@ write(200+myrank,*) "calc_total_energy k"
           end do
 !---------------------------------------------------- local
           work=zero
-write(200+myrank,*) "calc_total_energy l"
           call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -134,7 +132,6 @@ write(200+myrank,*) "calc_total_energy l"
           if (pp_kind=='USPP') then
             work=zero
             work00=zero
-write(200+myrank,*) "calc_total_energy nl"
             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
             do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -148,7 +145,6 @@ write(200+myrank,*) "calc_total_energy nl"
           endif
 !---------------------------------------------------- fock
           work=zero
-write(200+myrank,*) "calc_total_energy f"
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_
           esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV

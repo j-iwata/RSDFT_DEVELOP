@@ -513,7 +513,6 @@ use PStest
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
-write(200+myrank,*) "before calc_total_energy"
   call calc_total_energy(.true.,disp_switch,999)
 
   if ( mod(imix,2) == 0 ) then
