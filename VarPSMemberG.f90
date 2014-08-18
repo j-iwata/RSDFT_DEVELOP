@@ -173,12 +173,12 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     call mpi_bcast(maxs,4,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Nelement_PP,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     if ( myrank /= 0 ) then
-       call allocatePSG(maxs(2),maxs(1),maxs(3),maxs(4),Nelement_PP)
+       call allocatePSG(maxs(1),maxs(2),maxs(3),maxs(4),Nelement_PP)
     end if
-    max_Lref=maxs(1)
-    max_Rref=maxs(2)
-    max_k2=maxs(3)
-    max_qgrd=maxs(4)
+!    max_Lref=maxs(1)
+!    max_Rref=maxs(2)
+!    max_k2=maxs(3)
+!    max_qgrd=maxs(4)
     l=maxs(1)*Nelement_PP
     m=maxs(2)*maxs(2)*l
     n=maxs(3)*Nelement_PP

@@ -225,7 +225,6 @@ if (myrank==0) write(200,*) 'qc(qr)= ',qc
 
             do ll3=1,nl3v(k2,ik)
                 L=l3v(ll3,k2,ik)-1
-
                 vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
 
 #ifdef _SHOWALL_QR_F_

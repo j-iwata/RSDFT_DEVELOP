@@ -90,7 +90,7 @@ CONTAINS
         if (npq_/=k2) stop 'ERROR npq/=k2'
         npqmax=npq_
 
-        call allocatePSG( Lrefmax,Rrefmax,npqmax,nsmpl+1,Nelement_PP )
+        call allocatePSG( Lrefmax,Rrefmax,npqmax,max_psgrd,Nelement_PP )
 
         npq(ik)=npq_
         do l=1,nlf(ik)
