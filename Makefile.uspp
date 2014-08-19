@@ -30,8 +30,8 @@ FFLAGS1 = -I../
 #FFLAGS0 = -fast -xHost -cpp
 #FFLAGS0 = -fast -xHost -openmp -cpp
 #FFLAGS0 = -fast -xAVX -openmp -cpp
-#FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_ -D_USPP_
-FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_
+FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_ -D_USPP_
+#FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_
 #FFLAGS0 = -C -cpp
 #LFLAGS = -openmp
 #### for iMac

@@ -137,13 +137,11 @@ write(200+myrank,*) ">>>>> prepQRijp102"
     
     call watch(ctt(8),ett(8))
 
-    if ( .not.allocated(icheck_tmp5) ) then
-      nl3vmax = maxval(nl3v)
-      allocate( icheck_tmp5(k1max,Natom)     ) ; icheck_tmp5=0
-      allocate( JJ_tmp(6,MMJJ_0,k1max,Natom) ) ; JJ_tmp     =0
-      allocate( MJJ_tmp_Q(k1max,Natom)       ) ; MJJ_tmp_Q  =0
-      allocate( QRij_tmp(MMJJ_0,k1max,Natom) ) ; QRij_tmp   =0.d0
-    end if
+    nl3vmax = maxval(nl3v)
+    if ( .not.allocated(icheck_tmp5) ) allocate( icheck_tmp5(k1max,Natom)     ) ; icheck_tmp5=0
+    if ( .not.allocated(JJ_tmp)      ) allocate( JJ_tmp(6,MMJJ_0,k1max,Natom) ) ; JJ_tmp     =0
+    if ( .not.allocated(MJJ_tmp_Q)   ) allocate( MJJ_tmp_Q(k1max,Natom)       ) ; MJJ_tmp_Q  =0
+    if ( .not.allocated(QRij_tmp)    ) allocate( QRij_tmp(MMJJ_0,k1max,Natom) ) ; QRij_tmp   =0.d0
 
     call watch(ctt(0),ett(0))
     
