@@ -7,10 +7,13 @@ MODULE force_module
   use watch_module
   use parallel_module, only: disp_switch_parallel
 
+  use atom_module, only: opt_constrain
+
   implicit none
 
   PRIVATE
   PUBLIC :: calc_force
+  logical :: isConstraint=.true.,firstConstraint=.true.
 
 CONTAINS
 
@@ -56,7 +59,9 @@ CONTAINS
 ! --- constraint & symmetry ---
 
 !    call_symforce
-!    call_constraint
+    if (isConstraint) then
+      call constraint(MI,force)
+    endif
 
     deallocate( work )
 
@@ -67,5 +72,48 @@ CONTAINS
     end if
 
   END SUBROUTINE calc_force
+
+  SUBROUTINE constraint(MI,force_)
+    implicit none
+    integer,intent(IN) :: MI
+    real(8),intent(INOUT) :: force_(3,MI)
+    integer :: m
+    integer :: ia
+    
+    if (firstConstraint) then
+      m=maxval(opt_constrain)
+      if (m==0) then
+        isConstraint=.false.
+        return
+      endif
+      firstConstraint=.false.
+    endif
+
+    do ia=1,MI
+      select case (opt_constrain(ia))
+      case default
+        stop
+      case (0)
+      case (3000)
+        force_(1:3,ia)=0.d0
+      case (1011)
+        force_(1,ia)=0.d0
+      case (1101)
+        force_(2,ia)=0.d0
+      case (1110)
+        force_(3,ia)=0.d0
+      case (2001)
+        force_(1,ia)=0.d0
+        force_(2,ia)=0.d0
+      case (2010)
+        force_(1,ia)=0.d0
+        force_(3,ia)=0.d0
+      case (2100)
+        force_(2,ia)=0.d0
+        force_(3,ia)=0.d0
+      end select
+    enddo
+    return
+  END SUBROUTINE constraint
 
 END MODULE force_module

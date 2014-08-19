@@ -1,7 +1,9 @@
 MODULE VarSysParameter
   implicit none
+#ifdef _USPP_
   character(4) :: pp_kind='USPP'
-!  character(4) :: pp_kind='NCPP'
-
+#else
+  character(4) :: pp_kind='NCPP'
+#endif
 
 END MODULE VarSysParameter

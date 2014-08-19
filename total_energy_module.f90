@@ -93,6 +93,7 @@ enddo
     if ( flag_recalc_esp ) then
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
+! *****_Q can be not compiled for NCPP
        allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
 
        allocate( work(n1:n2,MB_d) ) ; work=(0.0d0,0.0d0)
@@ -142,6 +143,16 @@ enddo
               esp0_Q(i,k,s)=sum( conjg(unk(:,i,k,s))*work00(:,i-nb1+1) )*dV
 #endif
             end do
+          elseif (pp_kind=='NCPP') then
+            work=zero
+            call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+            do i=nb1,nb2
+#ifdef _DRSDFT_
+              esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
+#else
+              esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
+#endif
+            enddo
           endif
 !---------------------------------------------------- fock
           work=zero
@@ -210,7 +221,7 @@ enddo
     do n=MB_0,MB_1
        s1(:)=0.d0
        do i=n1,n2
-          uu=rho(i,s)
+          uu=abs(unk(i,n,k,s))**2
           s1(1) = s1(1) + uu*Vloc(i,s)
           s1(2) = s1(2) + uu*Vion(i)
           s1(3) = s1(3) + uu*Vh(i)          ! not used?

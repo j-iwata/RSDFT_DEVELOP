@@ -630,8 +630,9 @@ use PStest
            end do
            call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,Vloc(ML_0,MSP_0),flag_conv,disp_switch)
         end if
-
+#ifdef _USPP_
         call getDij
+#endif
 
 !---------------------------------- LPOT2
         if ( flag_localpot2 ) then

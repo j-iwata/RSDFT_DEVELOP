@@ -36,6 +36,8 @@ MODULE atomopt_module
   logical :: disp_switch_loc
   integer :: diter_opt
 
+  logical :: flag_opt_constrain
+
 CONTAINS
 
 
@@ -52,6 +54,7 @@ CONTAINS
     eeps      = 1.d-10
     feps      = 5.d-4
     decr      = 1.d-1
+    flag_opt_constrain = .false.
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -66,6 +69,9 @@ CONTAINS
           else if ( ckey(1:8) == "ATOMOPT3" ) then
              backspace(unit)
              read(unit,*) cbuf,diter_opt
+          else if ( ckey(1:8) == "ATOMOPT4" ) then
+             backspace(unit)
+             read(unit,*) cbuf,flag_opt_constrain
           end if
        end do
 999    continue
@@ -73,6 +79,7 @@ CONTAINS
        write(*,*) "okatom, eeps      =",okatom,eeps
        write(*,*) "feps, decr        =",feps,decr
        write(*,*) "diter_opt         =",diter_opt
+       write(*,*) "flag_opt_constrain=",flag_opt_constrain
        if ( diter_opt <= 0 ) then
           diter_opt=50
           write(*,*) "diter_opt         =",diter_opt
@@ -112,6 +119,7 @@ CONTAINS
     call mpi_bcast(feps  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(decr  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(diter_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(flag_opt_constrain,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atomopt
 
 
@@ -612,7 +620,6 @@ CONTAINS
 
           select case(SYStype)
           case default
-
              call calc_ewald(Eewald,disp_switch)
 
              call construct_strfac

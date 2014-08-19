@@ -133,14 +133,12 @@ write(200+myrank,*) ">>>> prep_ps_nloc2"
 
     call watch(ctt(8),ett(8))
 
-    if ( .not.allocated(icheck_tmp3) ) then
     L=maxval(lo)
     n=maxval(norb)
-    allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
-    allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
-    allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
-    allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
-    end if
+    if ( .not.allocated(icheck_tmp3) ) allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
+    if ( .not.allocated(JJ_tmp)      ) allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
+    if ( .not.allocated(MJJ_tmp)     ) allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
+    if ( .not.allocated(uV_tmp)      ) allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
 
     call watch(ctt(0),ett(0))
 
