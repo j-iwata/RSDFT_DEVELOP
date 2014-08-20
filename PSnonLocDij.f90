@@ -34,7 +34,7 @@ CONTAINS
           pIntQV(kk1,s)=dV*pIntQV(kk1,s)
         end do
       end do
-      call threeWayComm( nrqr_xyz,num_2_rank_Q,sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,N_nzqr,MSP_0,MSP_1,pIntQV )
+      call threeWayComm( nrqr_xyz,num_2_rank_Q,sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,N_nzqr,MSP_0,MSP_1,pIntQV,0 )
       IntQV(:,:)=real(pIntQV(:,:))
       do s=MSP_0,MSP_1
         Dij(1:N_nzqr,s)=Dij00(1:N_nzqr)+IntQV(1:N_nzqr,s)

@@ -21,6 +21,8 @@ CONTAINS
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     real(8),allocatable :: work(:,:)
+integer :: a
+real(8),allocatable :: work1(:,:),work2(:,:),work3(:,:)
     real(8) :: ctt(0:3),ett(0:3)
 
     force(:,:) = 0.d0
@@ -29,13 +31,17 @@ CONTAINS
     ett(:)=0.d0
 
     allocate( work(3,MI) )
+allocate( work1(3,MI) ) ; work1=0.d0
+allocate( work2(3,MI) ) ; work2=0.d0
+allocate( work3(3,MI) ) ; work3=0.d0
 
     call watch(ctt(0),ett(0))
 
 #ifdef _FFTE_
     call calc_force_ps_local_ffte(MI,work)
 #else
-    call calc_force_ps_local(MI,work)
+!    call calc_force_ps_local(MI,work)
+call calc_force_ps_local(MI,work1)
 #endif
     force = force + work
 
@@ -46,15 +52,24 @@ CONTAINS
 
     call watch(ctt(1),ett(1))
 
-    call calc_force_ps_nloc2(MI,work)
+!    call calc_force_ps_nloc2(MI,work)
+call calc_force_ps_nloc2(MI,work2)
     force = force + work
 
     call watch(ctt(2),ett(2))
 
-    call calc_force_ewald(MI,work)
+!    call calc_force_ewald(MI,work)
+call calc_force_ewald(MI,work3)
     force = force + work
 
     call watch(ctt(3),ett(3))
+
+do a=1,MI
+if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'local',work1(1:3,a)
+if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,' nloc',work2(1:3,a)
+if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'ewald',work3(1:3,a)
+enddo
+stop
 
 ! --- constraint & symmetry ---
 

@@ -2,6 +2,7 @@ MODULE VarParaPSnonLocG
   implicit none
 
   integer :: Mqr
+  integer :: c_nzqr
   integer :: MMJJ_Q,MMJJ_t_Q
   integer :: MAXMJJ_Q
   integer :: nrqr_xyz(6)
@@ -17,6 +18,8 @@ MODULE VarParaPSnonLocG
 
   integer,allocatable :: num_2_rank_Q(:,:)
 
+  integer,allocatable :: amap_Q(:),k1map_Q(:),lmamap_Q(:,:)
+
 #ifdef _DRSDFT_
   real(8),allocatable :: sbufnl_Q(:,:),rbufnl_Q(:,:)
   real(8),parameter :: zero=0.d0
@@ -27,14 +30,16 @@ MODULE VarParaPSnonLocG
 
 CONTAINS
 
-  SUBROUTINE allocateJJMAPQ(c_nzqr)
+  SUBROUTINE allocateJJMAPQ
     implicit none
-    integer,intent(IN) :: c_nzqr
     call deallocateJJMAPQ
     allocate(JJ_MAP_Q(6,MMJJ_Q,c_nzqr)) ; JJ_MAP_Q      =0
     allocate(MJJ_MAP_Q(c_nzqr)        ) ; MJJ_MAP_Q     =0
     allocate(MJJ_Q(c_nzqr)            ) ; MJJ_Q         =0
     allocate(nl_rank_map_Q(c_nzqr)    ) ; nl_rank_map_Q =0
+    allocate(amap_Q(c_nzqr)           ) ; amap_Q        =0
+    allocate(k1map_Q(c_nzqr)          ) ; k1map_Q       =0
+    allocate(lmamap_Q(c_nzqr,2)       ) ; lmamap_Q      =0
     return
   END SUBROUTINE allocateJJMAPQ
 
@@ -44,16 +49,21 @@ CONTAINS
     if (allocated(MJJ_MAP_Q))     deallocate(MJJ_MAP_Q)
     if (allocated(MJJ_Q)    )     deallocate(MJJ_Q)
     if (allocated(nl_rank_map_Q)) deallocate(nl_rank_map_Q)
+    if (allocated(amap_Q)   ) deallocate(amap_Q)
+    if (allocated(k1map_Q)  ) deallocate(k1map_Q)
+    if (allocated(lmamap_Q) ) deallocate(lmamap_Q)
     return
   END SUBROUTINE deallocateJJMAPQ
 
   SUBROUTINE allocateMAPQ(nl_max_send,nprocs_g)
     implicit none
     integer,intent(IN) :: nl_max_send,nprocs_g
+    integer :: n
     call deallocateMAPQ
-    allocate(qr_nsend(0:nprocs_g-1)             ) ; qr_nsend  =0
-    allocate(sendmap_Q(nl_max_send,0:nprocs_g-1)) ; sendmap_Q =0
-    allocate(recvmap_Q(nl_max_send,0:nprocs_g-1)) ; recvmap_Q =0
+    n=nl_max_send
+    allocate(qr_nsend(0:nprocs_g-1)   ) ; qr_nsend  =0
+    allocate(sendmap_Q(n,0:nprocs_g-1)) ; sendmap_Q =0
+    allocate(recvmap_Q(n,0:nprocs_g-1)) ; recvmap_Q =0
     return
   END SUBROUTINE allocateMAPQ
 
@@ -65,12 +75,14 @@ CONTAINS
     return
   END SUBROUTINE deallocateMAPQ
 
-  SUBROUTINE allocateBufQ(max_qr_nsend,nprocs_g)
+  SUBROUTINE allocateBufQ(max_qr_nsend,nprocs_g,MB_d)
     implicit none
-    integer,intent(IN) :: max_qr_nsend,nprocs_g
+    integer,intent(IN) :: max_qr_nsend,nprocs_g,MB_d
+    integer :: n
     call deallocateBufQ
-    allocate(rbufnl_Q(max_qr_nsend,0:nprocs_g-1)) ; rbufnl_Q=zero
-    allocate(sbufnl_Q(max_qr_nsend,0:nprocs_g-1)) ; sbufnl_Q=zero
+    n=max_qr_nsend*MB_d*3
+    allocate(rbufnl_Q(n,0:nprocs_g-1)) ; rbufnl_Q=zero
+    allocate(sbufnl_Q(n,0:nprocs_g-1)) ; sbufnl_Q=zero
     return
   END SUBROUTINE allocateBufQ
 

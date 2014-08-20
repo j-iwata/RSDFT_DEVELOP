@@ -55,6 +55,7 @@ PROGRAM Real_Space_Solid
 
 #ifdef _USPP_
   use PSnonLocDij
+  use PSQInit
 #endif
 
 use WFtest
@@ -726,6 +727,11 @@ use PStest
      select case( pselect )
      case( 2 )
         call ps_nloc2_init_derivative
+#ifdef _USPP_
+      case(102)
+        call ps_nloc2_init_derivative
+        call ps_Q_init_derivative
+#endif
      end select
   end if
 

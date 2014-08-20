@@ -106,6 +106,7 @@ write(650+myrank,*) "<<<<< initKtoKPSQ"
   END SUBROUTINE initKtoKPSQ
 
 !-----------------------------------------------
+#ifdef _USPP_
   SUBROUTINE ps_Q_init(qcut,rcfac,qcfac,etafac)
     implicit none
     real(8),intent(IN) :: qcut
@@ -289,12 +290,123 @@ write(400+myrank,*) "<<<<< ps_Q_init"
 #endif
     return
   END SUBROUTINE ps_Q_init
+#else
+  SUBROUTINE ps_Q_init(qcut,rcfac,qcfac,etafac)
+    implicit none
+    real(8),intent(IN) :: qcut
+    real(8),intent(IN) :: rcfac,qcfac,etafac
+    return
+  END SUBROUTINE ps_Q_init
+#endif
 
 !-----------------------------------------------
+#ifdef _USPP_
   SUBROUTINE ps_Q_init_derivative
     implicit none
+    integer :: ik,L,NRc,J,i,m,m1,m2,lm,ll3
+    integer :: ik1,k2,k3,iorb1,iorb2,cJ,maxcJ
+    real(8) :: maxerr,y,dy,y0,dy0
+    real(8) :: pi4,const
+    real(8),allocatable :: dwork(:,:,:,:,:)
 
-    stop 'force not implemented'
+    pi4 = 4.d0*acos(-1.d0)
+    maxcJ=0
+    do ik=1,Nelement_
+      do ik1=1,N_k1(ik)
+        k2=k1_to_k2(ik1,ik)
+        do ll3=1,nl3v(k2,ik)
+          L=l3v(ll3,k2,ik)-1
+          cJ=0
+          do J=abs(L-1),L+1
+            cJ=cJ+1
+          enddo
+          maxcJ=max(cJ,maxcJ)
+        enddo
+      enddo
+    enddo
+    NRc=maxval(NRps)
+    k2=max_k2
+    l=max_Lref
+    ik=Nelement_
+    allocate( dqrL(NRc,l,k2,ik,maxcJ) ) ; dqrL=0.d0
+    allocate( dwork(NRc,l,k2,ik,3) ) ; dwork=0.d0
+
+    do ik=1,Nelement_
+      do ik1=1,N_k1(ik)
+        k2=k1_to_k2(ik1,ik)
+        k3=k1_to_k3(ik1,ik)
+        iorb1=k1_to_iorb(1,ik1,ik)
+        iorb2=k1_to_iorb(2,ik1,ik)
+        NRc=max(NRps(iorb1,ik),NRps(iorb2,ik))
+        do ll3=1,nl3v(k2,ik)
+          L=l3v(ll3,k2,ik)-1
+          maxerr=0.d0
+          do i=1,NRc
+            dy0=1.d10
+            do m=1,20
+              m1=max(i-m,1) ; m2=min(i+m,NRc)
+              call dpolint( rad1(m1,ik),qrL(m1,ll3,k2,ik),m2-m1+1,rad1(i,ik),y,dy )
+              if ( abs(dy)<dy0 ) then
+                 y0=y ; dy0=abs(dy)
+              end if
+            end do ! m
+            dqrL(i,ll3,k2,ik,1)=y0
+            maxerr=max(maxerr,dy0)
+          end do ! i
+        enddo ! ll3
+      end do ! ik1
+    end do !ik
+
+    do ik=1,Nelement_
+      do ik1=1,N_k1(ik)
+        k2=k1_to_k2(ik1,ik)
+        k3=k1_to_k3(ik1,ik)
+        iorb1=k1_to_iorb(1,ik1,ik)
+        iorb2=k1_to_iorb(2,ik1,ik)
+        NRc=max(NRps(iorb1,ik),NRps(iorb2,ik))
+        do ll3=1,nl3v(k2,ik)
+          L=l3v(ll3,k2,ik)-1
+          cJ=0
+          do J=abs(L-1),L+1
+            cJ=cJ+1
+            const=0.5d0*(2.d0+L*(L+1)-J*(J+1))
+            do i=1,NRc
+              dwork(i,ll3,k2,ik,cJ)=(rad1(i,ik)**3)*dqrL(i,ll3,k2,ik,1) &
+                     +const*qrL(i,ll3,k2,ik)*(rad1(i,ik)**2)
+            end do
+          end do ! j
+        end do ! ll3
+      enddo ! k1
+    end do ! ik
+
+    const=sqrt(pi4/3.d0)
+    do ik=1,Nelement_
+      do ik1=1,N_k1(ik)
+        k2=k1_to_k2(ik1,ik)
+        k3=k1_to_k3(ik1,ik)
+        iorb1=k1_to_iorb(1,ik1,ik)
+        iorb2=k1_to_iorb(2,ik1,ik)
+        NRc=max(NRps(iorb1,ik),NRps(iorb2,ik))
+        do ll3=1,nl3v(k2,ik)
+          L=l3v(ll3,k2,ik)-1
+          cJ=0
+          do J=abs(L-1),L+1
+            cJ=cJ+1
+            do i=1,NRc
+              dqrL(i,ll3,k2,ik,cJ)=const*dwork(i,ll3,k2,ik,cJ)
+            end do
+          enddo
+        end do
+      end do
+    end do
+
+    deallocate( dwork )
   END SUBROUTINE ps_Q_init_derivative
+#else
+  SUBROUTINE ps_Q_init_derivative
+    implicit none
+    return
+  END SUBROUTINE ps_Q_init_derivative
+#endif
 
 END MODULE PSQInit

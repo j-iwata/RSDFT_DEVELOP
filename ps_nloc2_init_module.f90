@@ -13,7 +13,6 @@ use parallel_module, only: myrank
            ,ps_nloc2_init,ps_nloc2_init_derivative &
            ,rcfac,qcfac,etafac
 
-  real(8),allocatable :: dviod(:,:,:)
   real(8) :: rcfac,qcfac,etafac
 
 CONTAINS

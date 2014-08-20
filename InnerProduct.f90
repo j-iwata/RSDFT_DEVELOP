@@ -164,7 +164,7 @@ write(200+myrank,*) 'get_Sf 3'
 
 ! 3WayComm
 ! uVunk
-       call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
+       call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
 
        call watch( ctt(1),ett(1) )
 !===== summation over all grids =====

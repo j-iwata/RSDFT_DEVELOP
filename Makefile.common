@@ -60,6 +60,10 @@ MODS1 = simc_module.o\
         ps_nloc3_module.o \
         ps_nloc2_init_module.o \
         ps_nloc_mr_module.o \
+        localpot2_variables.o \
+        localpot2_module.o \
+        localpot_module.o \
+		ForcePSnonLoc2.o \
         ps_nloc2_module.o \
 		PSQInit.o \
 		PSQRijPrep.o \
@@ -67,9 +71,6 @@ MODS1 = simc_module.o\
 		pseudopotentials.o \
 		InnerProduct.o \
 	WFtest.o \
-        localpot2_variables.o \
-        localpot2_module.o \
-        localpot_module.o \
 		PSnonLocDij.o \
 		PSnonLocOpG2.o \
         nonlocal_module.o \

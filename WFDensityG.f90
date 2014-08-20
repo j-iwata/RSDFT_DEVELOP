@@ -153,7 +153,7 @@ CONTAINS
 
 
 ! 3WayComm
-      call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk)
+      call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0)
 !===== term2 =====
 
 !----- get Qrhonks -----

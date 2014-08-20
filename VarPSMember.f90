@@ -9,6 +9,7 @@ use parallel_module, only: myrank
   real(8),allocatable :: rad(:,:),rab(:,:),rad1(:,:)
   real(8),allocatable :: rabr2(:,:)
   real(8),allocatable :: vql(:,:),viod(:,:,:)   ! dvql(:,:),dviod(:,:,:)
+  real(8),allocatable :: dviod(:,:,:)
   real(8),allocatable :: cdc(:,:),cdd(:,:)
   real(8),allocatable :: anorm(:,:)
 

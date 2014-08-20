@@ -13,6 +13,9 @@ MODULE ps_nloc2_module
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
   use ParaRGridComm, only: prepThreeWayComm,threeWayComm
+#ifdef _USPP_
+  use ForcePSnonLoc2
+#endif
 
   implicit none
 
@@ -909,7 +912,7 @@ write(200+myrank,*) "<<<< prepMapsTmp"
     select case( iswitch_eqdiv )
     case default
     
-      call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
+      call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
 
     case( 2 )
 
@@ -1038,6 +1041,11 @@ write(200+myrank,*) "<<<< prepMapsTmp"
     else if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
        return
+#ifdef _USPP_
+    else if (pselect==102) then
+      call calcForcePSnonLoc2(MI,force2)
+      return
+#endif
     end if
 
     if ( Mlma <= 0 ) then
@@ -1123,19 +1131,19 @@ write(200+myrank,*) "<<<< prepMapsTmp"
     c3=1.d0/ML3
 
     if ( .not.allocated(ilm1) ) then
-       L1=maxval(lo)+1
-       n=maxval(norb)
-       allocate( ilm1(0:L1,n,Nelement) ) ; ilm1=0
-       do ik=1,Nelement
-          lm1=0
-          do iorb=1,norb(ik)
-             L=lo(iorb,ik)
-             do L1=abs(L-1),L+1
-                lm1=lm1+1
-                ilm1(L1,iorb,ik)=lm1
-             end do
+      L1=maxval(lo)+1
+      n=maxval(norb)
+      allocate( ilm1(0:L1,n,Nelement) ) ; ilm1=0
+      do ik=1,Nelement
+        lm1=0
+        do iorb=1,norb(ik)
+          L=lo(iorb,ik)
+          do L1=abs(L-1),L+1
+            lm1=lm1+1
+            ilm1(L1,iorb,ik)=lm1
           end do
-       end do
+        end do
+      end do
     end if
 
     if ( .not.allocated(y2b) .and. pselect /= 4 ) then
@@ -1450,56 +1458,57 @@ write(200+myrank,*) "<<<< prepMapsTmp"
 
        ib1=n
        ib2=min(ib1+MB_d-1,MB_1)
-       nnn=ib2-ib1+1
+!       nnn=ib2-ib1+1
 
        if ( occ(n,k,s) == 0.d0 ) cycle
-
-       do i=1,6
-          select case(i)
-          case(1,3,5)
-             j=i+1
-             vtmp2(:,:,1:nnn)=wtmp5(:,:,ib1:ib2,k,s)
-          case(2,4,6)
-             j=i-1
-          end select
-          do m=1,nrlma_xyz(i)
-             nreq=0
-             irank=num_2_rank(m,i)
-             jrank=num_2_rank(m,j)
-             if( irank >= 0 )then
-                i1=0
-                do ib=1,nnn
-                do i2=1,lma_nsend(irank)
-                do i3=0,3
-                   i1=i1+1
-                   sbufnl(i1,irank)=vtmp2(i3,sendmap(i2,irank),ib)
-                end do
-                end do
-                end do
-                nreq=nreq+1
-                call mpi_isend(sbufnl(1,irank),4*lma_nsend(irank)*nnn &
-                     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
-             end if
-             if( jrank >= 0 )then
-                nreq=nreq+1
-                call mpi_irecv(rbufnl(1,jrank),4*lma_nsend(jrank)*nnn &
-                     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
-             end if
-             call mpi_waitall(nreq,ireq,istatus,ierr)
-             if( jrank >= 0 )then
-                i1=0
-                do ib=ib1,ib2
-                do i2=1,lma_nsend(jrank)
-                do i3=0,3
-                   i1=i1+1
-                   wtmp5(i3,recvmap(i2,jrank),ib,k,s) &
-                        =wtmp5(i3,recvmap(i2,jrank),ib,k,s)+rbufnl(i1,jrank)
-                end do
-                end do
-                end do
-             end if
-          end do ! m
-       end do ! i
+      
+       call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(1,1,ib1,k,s),3)
+!       do i=1,6
+!          select case(i)
+!          case(1,3,5)
+!             j=i+1
+!             vtmp2(:,:,1:nnn)=wtmp5(:,:,ib1:ib2,k,s)
+!          case(2,4,6)
+!             j=i-1
+!          end select
+!          do m=1,nrlma_xyz(i)
+!             nreq=0
+!             irank=num_2_rank(m,i)
+!             jrank=num_2_rank(m,j)
+!             if( irank >= 0 )then
+!                i1=0
+!                do ib=1,nnn
+!                do i2=1,lma_nsend(irank)
+!                do i3=0,3
+!                   i1=i1+1
+!                   sbufnl(i1,irank)=vtmp2(i3,sendmap(i2,irank),ib)
+!                end do
+!                end do
+!                end do
+!                nreq=nreq+1
+!                call mpi_isend(sbufnl(1,irank),4*lma_nsend(irank)*nnn &
+!                     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+!             end if
+!             if( jrank >= 0 )then
+!                nreq=nreq+1
+!                call mpi_irecv(rbufnl(1,jrank),4*lma_nsend(jrank)*nnn &
+!                     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+!             end if
+!             call mpi_waitall(nreq,ireq,istatus,ierr)
+!             if( jrank >= 0 )then
+!                i1=0
+!                do ib=ib1,ib2
+!                do i2=1,lma_nsend(jrank)
+!                do i3=0,3
+!                   i1=i1+1
+!                   wtmp5(i3,recvmap(i2,jrank),ib,k,s) &
+!                        =wtmp5(i3,recvmap(i2,jrank),ib,k,s)+rbufnl(i1,jrank)
+!                end do
+!                end do
+!                end do
+!             end if
+!          end do ! m
+!       end do ! i
 
        do ib=ib1,ib2
        do lma=1,nzlma

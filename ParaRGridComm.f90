@@ -222,26 +222,27 @@ write(400+myrank,*) "<<<< prepThreeWayComm"
   END SUBROUTINE prepThreeWayComm
 
 !---------------------------------------------------------------------------------------
-  SUBROUTINE threeWayComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
+  SUBROUTINE threeWayComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN,bundle )
     implicit none
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
     integer,allocatable,intent(IN) :: Num2Rank0(:,:)
     integer,allocatable,intent(IN) :: SendMap(:,:),RecvMap(:,:)
     integer,allocatable,intent(INOUT) :: TarNSend(:)
+    integer,intent(IN) :: bundle
     
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: TarIN(nz,ib1:ib2)
+    real(8),intent(INOUT) :: TarIN(0:bundle,nz,ib1:ib2)
     real(8),allocatable,intent(INOUT) :: SbufNL(:,:),RbufNL(:,:)
-    real(8) :: tmp0(nz,ib1:ib2)
+    real(8) :: tmp0(0:bundle,nz,ib1:ib2)
 #else
-    complex(8),intent(INOUT) :: TarIN(nz,ib1:ib2)
+    complex(8),intent(INOUT) :: TarIN(0:bundle,nz,ib1:ib2)
     complex(8),allocatable,intent(INOUT) :: SbufNL(:,:),RbufNL(:,:)
-    complex(8) :: tmp0(nz,ib1:ib2)
+    complex(8) :: tmp0(0:bundle,nz,ib1:ib2)
 #endif
-    integer :: i,j,m,ib,i1,i2
+    integer :: i,j,m,ib,i1,i2,i3
     integer :: irank,jrank
-    integer :: nb
+    integer :: nb,nb_b
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
 
 #ifdef _SHOWALL_COMM_
@@ -249,46 +250,51 @@ write(400+myrank,*) ">>>> threeWayComm"
 #endif
 
     nb=ib2-ib1+1
+    nb_b=nb*(bundle+1)
 
 !!$OMP single    
     do i=1,6
-        select case ( i )
-        case ( 1,3,5 )
-            j=i+1
-            tmp0(:,:) = TarIN(:,:)
-        case ( 2,4,6 )
-            j=i-1
-        end select
-        do m=1,NRxyz(i)
-            nreq=0
-            irank=Num2Rank0(m,i)
-            jrank=Num2Rank0(m,j)
-            if ( irank>=0 ) then
-                i2=0
-                do ib=ib1,ib2
-                    do i1=1,TarNSend(irank)
-                        i2=i2+1
-                        SbufNL(i2,irank)=tmp0(SendMap(i1,irank),ib)
-                    end do
-                end do
-                nreq=nreq+1
-                call MPI_ISEND( SbufNL(1,irank),TarNSend(irank)*nb,TYPE_MAIN,irank,1,COMM_GRID,ireq(nreq),ierr )
-            end if
-            if ( jrank>=0 ) then
-                nreq=nreq+1
-                call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*nb,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
-            end if
-            call MPI_WAITALL( nreq,ireq,istatus,ierr )
-            if ( jrank>=0 ) then
-                i2=0
-                do ib=ib1,ib2
-                    do i1=1,TarNSend(jrank)
-                        i2=i2+1
-                        TarIN(RecvMap(i1,jrank),ib) = TarIN(RecvMap(i1,jrank),ib) + RbufNL(i2,jrank)
-                    end do
-                end do
-            end if
-        end do
+      select case ( i )
+      case ( 1,3,5 )
+        j=i+1
+        tmp0(:,:,:) = TarIN(:,:,:)
+      case ( 2,4,6 )
+        j=i-1
+      end select
+      do m=1,NRxyz(i)
+        nreq=0
+        irank=Num2Rank0(m,i)
+        jrank=Num2Rank0(m,j)
+        if ( irank>=0 ) then
+          i2=0
+          do ib=ib1,ib2
+            do i1=1,TarNSend(irank)
+              do i3=0,bundle
+                i2=i2+1
+                SbufNL(i2,irank)=tmp0(i3,SendMap(i1,irank),ib)
+              enddo
+            end do
+          end do
+          nreq=nreq+1
+          call MPI_ISEND( SbufNL(1,irank),TarNSend(irank)*nb_b,TYPE_MAIN,irank,1,COMM_GRID,ireq(nreq),ierr )
+        end if
+        if ( jrank>=0 ) then
+          nreq=nreq+1
+          call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*nb_b,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
+        end if
+        call MPI_WAITALL( nreq,ireq,istatus,ierr )
+        if ( jrank>=0 ) then
+          i2=0
+          do ib=ib1,ib2
+            do i1=1,TarNSend(jrank)
+              do i3=0,bundle
+                i2=i2+1
+                TarIN(i3,RecvMap(i1,jrank),ib) = TarIN(i3,RecvMap(i1,jrank),ib) + RbufNL(i2,jrank)
+              end do
+            end do
+          end do
+        end if
+      end do
     end do
 !!$OMP end single
 
