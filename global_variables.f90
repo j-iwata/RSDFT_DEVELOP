@@ -29,6 +29,7 @@ MODULE global_variables
   use hartree_variables
   use hartree_module
   use vdw_grimme_module
+  use xc_hybrid_module
   use xc_module
   use scalapack_module
   use subspace_diag_module

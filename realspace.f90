@@ -216,6 +216,14 @@ PROGRAM Real_Space_Solid
 
   call sym_rho( ML_0, ML_1, Nspin, MSP_0, MSP_1, rho )
 
+! --- Initial setup for Hybrid XC functional ---
+
+  call read_xc_hybrid( myrank, 1 )
+
+  call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
+       , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
+       , kbb, bb, Va, SYStype, XCtype, disp_switch )
+
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
@@ -299,11 +307,17 @@ PROGRAM Real_Space_Solid
   call read_data(disp_switch)
   call watcht(disp_switch,"read_data",1)
 
+  if ( GetParam_IO(1) == 1 .or. GetParam_IO(1) >= 3 ) then
+     call control_xc_hybrid(1)
+  end if
+
 ! --- Init Localpot2 ---
 
   call init_localpot2( Nelement, Ecut, E_hartree, Exc )
 
-! --- ( the followings are just to get H and XC energies ? )
+! ---
+! The followings are just to get H and XC energies,
+! but potentials are also recalculated with new rho.
 
   call calc_hartree(ML_0,ML_1,MSP,rho)
   call calc_xc
@@ -342,6 +356,7 @@ PROGRAM Real_Space_Solid
 !
 #ifndef _DRSDFT_
   if ( iswitch_band == 1 ) then
+     call control_xc_hybrid(1)
      call band(nint(Nelectron*0.5d0),disp_switch)
   end if
 #endif

@@ -1,16 +1,19 @@
 MODULE fock_fft_module
 
   use parallel_module
-  use rgrid_module, only: Ngrid,Igrid
-  use ggrid_module, only: NGgrid,Ecut
+  use rgrid_module, only: Ngrid, Igrid
+  use ggrid_module, only: NGgrid, Ecut
   use bb_module, only: bb
-  use xc_hybrid_module
+  use xc_hybrid_module, only: q_fock, R_hf, omega &
+                             ,iflag_lcwpbe, iflag_hse, iflag_hf, iflag_pbe0
   use watch_module
+  use bz_module, only: kbb
+  use fock_ffte_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: fock_fft,ct_fock_fft,et_focK_fft
+  PUBLIC :: ct_fock_fft,et_focK_fft, fock_fft_1, fock_fft
 
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
 
@@ -18,7 +21,189 @@ MODULE fock_fft_module
 
 CONTAINS
 
-  SUBROUTINE fock_fft(n1,n2,k_fock,q_fock,trho,tVh,tr)
+
+  SUBROUTINE Fock_fft( n1, n2, k, q, trho, tVh, t )
+
+    implicit none
+
+    integer,intent(IN) :: n1,n2,k,q,t
+    integer :: i,i1,i2,i3,j1,j2,j3,ierr,irank,a1,a2,a3,b1,b2,b3
+    integer :: ML1,ML2,ML3,ML
+    real(8) :: pi,pi4,g2,const1,const2,k_fock(3)
+    complex(8),parameter :: z0=(0.d0,0.d0)
+    complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
+#ifdef _DRSDFT_
+    real(8),allocatable :: work(:)
+    real(8),intent(IN)    :: trho(n1:n2)
+    real(8),intent(INOUT) :: tVh(n1:n2)
+#else
+    complex(8),allocatable :: work(:)
+    complex(8),intent(IN)    :: trho(n1:n2)
+    complex(8),intent(INOUT) :: tVh(n1:n2)
+#endif
+    integer :: ifacx(30),ifacy(30),ifacz(30)
+    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
+    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+
+#ifdef _FFTE_
+    call fock_ffte( n1, n2, k, q, trho, tVh, t )
+    return
+#endif
+
+    pi  = acos(-1.0d0)
+    pi4 = 4.0d0*pi
+
+    ML  = Ngrid(0)
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+
+    k_fock(1) = bb(1,1)*kbb(1,k) + bb(1,2)*kbb(2,k) + bb(1,3)*kbb(3,k)
+    k_fock(2) = bb(2,1)*kbb(1,k) + bb(2,2)*kbb(2,k) + bb(2,3)*kbb(3,k)
+    k_fock(3) = bb(3,1)*kbb(1,k) + bb(3,2)*kbb(2,k) + bb(3,3)*kbb(3,k)
+
+    allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork0=z0
+
+    allocate( work(ML) ) ; work=z0
+
+    call mpi_allgatherv(trho(n1),ir_grid(myrank_g),TYPE_MAIN &
+         ,work,ir_grid,id_grid,TYPE_MAIN,comm_grid,ierr)
+
+    i=0
+    irank=-1
+    do i3=1,node_partition(3)
+    do i2=1,node_partition(2)
+    do i1=1,node_partition(1)
+       irank=irank+1
+       a1=pinfo_grid(1,irank) ; b1=pinfo_grid(2,irank)+a1-1
+       a2=pinfo_grid(3,irank) ; b2=pinfo_grid(4,irank)+a2-1
+       a3=pinfo_grid(5,irank) ; b3=pinfo_grid(6,irank)+a3-1
+       do j3=a3,b3
+       do j2=a2,b2
+       do j1=a1,b1
+          i=i+1
+          zwork0(j1,j2,j3)=work(i)
+       end do
+       end do
+       end do
+    end do
+    end do
+    end do
+
+    deallocate( work )
+
+!
+! ---
+!
+
+    allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=z0
+
+    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+
+    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
+         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
+         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    zwork1(:,:,:)=z0
+
+    if ( iflag_hf > 0 .or. iflag_pbe0 > 0 ) then
+       do i3=-NGgrid(3),NGgrid(3)
+       do i2=-NGgrid(2),NGgrid(2)
+       do i1=-NGgrid(1),NGgrid(1)
+          g2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3+k_fock(1)-q_fock(1,q,t))**2 &
+            +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3+k_fock(2)-q_fock(2,q,t))**2 &
+            +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3+k_fock(3)-q_fock(3,q,t))**2
+          if ( g2 < 0.0d0 .or. g2 > Ecut ) cycle
+          j1=mod(i1+ML1,ML1)
+          j2=mod(i2+ML2,ML2)
+          j3=mod(i3+ML3,ML3)
+          if ( g2 <= 1.d-10 ) then
+             zwork1(j1,j2,j3)=zwork0(j1,j2,j3)*2.d0*Pi*R_hf**2
+          else
+             zwork1(j1,j2,j3)=zwork0(j1,j2,j3)*pi4*(1.d0-cos(sqrt(g2)*R_hf))/g2
+          end if
+       end do
+       end do
+       end do
+    end if
+
+    if ( iflag_hse > 0 ) then
+       const1 = 0.25d0/(omega*omega)
+       const2 = pi/(omega*omega)
+       do i3=-NGgrid(3),NGgrid(3)
+       do i2=-NGgrid(2),NGgrid(2)
+       do i1=-NGgrid(1),NGgrid(1)
+          g2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3+k_fock(1)-q_fock(1,q,t))**2 &
+            +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3+k_fock(2)-q_fock(2,q,t))**2 &
+            +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3+k_fock(3)-q_fock(3,q,t))**2
+          if ( g2 < 0.0d0 .or. g2 > Ecut ) cycle
+          j1=mod(i1+ML1,ML1)
+          j2=mod(i2+ML2,ML2)
+          j3=mod(i3+ML3,ML3)
+          if ( g2 <= 1.d-10 ) then
+             zwork1(j1,j2,j3)=zwork0(j1,j2,j3)*const2
+          else
+             zwork1(j1,j2,j3)=zwork0(j1,j2,j3)*pi4*(1.0d0-exp(-g2*const1))/g2
+          end if
+       end do
+       end do
+       end do
+    end if
+
+    if ( iflag_lcwpbe > 0 ) then
+       do i3=-NGgrid(3),NGgrid(3)
+       do i2=-NGgrid(2),NGgrid(2)
+       do i1=-NGgrid(1),NGgrid(1)
+          g2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3+k_fock(1)-q_fock(1,q,t))**2 &
+            +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3+k_fock(2)-q_fock(2,q,t))**2 &
+            +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3+k_fock(3)-q_fock(3,q,t))**2
+          if ( g2 < 0.0d0 .or. g2 > Ecut ) cycle
+          j1=mod(i1+ML1,ML1)
+          j2=mod(i2+ML2,ML2)
+          j3=mod(i3+ML3,ML3)
+          if ( g2 <= 1.d-10 ) then
+             zwork1(j1,j2,j3)=zwork0(j1,j2,j3)*(2.d0*Pi*R_hf**2.d0 &
+                  -Pi/(omega**2.d0))
+          else
+             zwork1(j1,j2,j3)=zwork0(j1,j2,j3) &
+                  *pi4*(exp(-0.25d0*g2/(omega**2.d0))-cos(sqrt(g2)*R_hf))/g2
+          end if
+       end do
+       end do
+       end do
+    end if
+
+    call fft3bx(ML1,ML2,ML3,ML,zwork1,zwork0,wsavex,wsavey,wsavez &
+         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    deallocate( wsavez,wsavey,wsavex )
+    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    deallocate( zwork0 )
+
+    i=n1-1
+    do i3=Igrid(1,3),Igrid(2,3)
+    do i2=Igrid(1,2),Igrid(2,2)
+    do i1=Igrid(1,1),Igrid(2,1)
+       i=i+1
+#ifdef _DRSDFT_        
+       tVh(i)=real( zwork1(i1,i2,i3) )
+#else
+       tVh(i)=zwork1(i1,i2,i3)
+#endif
+    end do
+    end do
+    end do
+
+    deallocate( zwork1 )
+
+    return
+  END SUBROUTINE Fock_fft
+
+
+  SUBROUTINE fock_fft_1(n1,n2,k_fock,q_fock,trho,tVh,tr)
     implicit none
     integer,intent(IN) :: n1,n2,tr
     real(8),intent(IN) :: k_fock(3),q_fock(3)
@@ -205,6 +390,7 @@ CONTAINS
 !    end if
 
     return
-  END SUBROUTINE fock_fft
+  END SUBROUTINE fock_fft_1
+
 
 END MODULE fock_fft_module

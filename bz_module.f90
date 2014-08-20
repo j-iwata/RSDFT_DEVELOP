@@ -4,7 +4,7 @@ MODULE bz_module
 
   PRIVATE
   PUBLIC :: nk,mmm,Nbzsm,kbb,weight_bz,read_kgrid_bz,generate_bz &
-           ,read_kgrid_oldformat_bz,generate_bz_sym
+           ,read_kgrid_oldformat_bz,generate_bz_sym, MMBZ
 
   integer :: nk,mmm(3,2)
   integer :: Nbzsm

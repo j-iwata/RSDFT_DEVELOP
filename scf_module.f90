@@ -5,6 +5,7 @@ MODULE scf_module
   use electron_module
   use localpot_module
   use mixing_module
+  use xc_hybrid_module
   use xc_module
   use hartree_variables, only: Vh
   use hartree_module, only: calc_hartree
@@ -62,6 +63,7 @@ CONTAINS
      end if
   END SUBROUTINE init_scf
 
+
   SUBROUTINE calc_scf( Diter, ierr_out, disp_switch )
     implicit none
     integer,intent(IN)  :: Diter
@@ -84,7 +86,7 @@ CONTAINS
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0))
 
-    call init_diff_vrho_scf
+!    call init_diff_vrho_scf
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -133,11 +135,10 @@ CONTAINS
              call watcht(disp_switch,"esp_calc",1)
           end if
 
-
           end do ! idiag
 
-       end do
-       end do
+       end do ! k
+       end do ! s
 
        call watcht(disp_switch,"    ",0)
 
@@ -157,8 +158,10 @@ CONTAINS
 ! ---
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
+       call control_xc_hybrid(1)
        call calc_xc
-       call diff_vrho_scf( disp_switch )
+       call control_xc_hybrid(2)
+!       call diff_vrho_scf( disp_switch )
        call calc_total_energy( .false., disp_switch )
 ! ---
 
@@ -179,6 +182,7 @@ CONTAINS
                (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
           call calc_hartree(ML_0,ML_1,MSP,rho)
           call calc_xc
+          call control_xc_hybrid(1)
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
@@ -211,7 +215,7 @@ CONTAINS
 
     deallocate( esp0 )
 
-    call end_diff_vrho_scf
+!    call end_diff_vrho_scf
 
     ierr_out = iter
 

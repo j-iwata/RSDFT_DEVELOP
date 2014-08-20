@@ -81,11 +81,6 @@ MODS1 = simc_module.o\
         force_nloc2_mol_module.o \
         force_ion_mol_module.o \
         force_local_mol_module.o \
-        xc_hybrid_module.o \
-        fock_fft_module.o \
-        fock_module.o \
-        xc_hse_module.o \
-        hamiltonian_module.o\
         eion_mol_module.o\
         ewald_variables.o \
         ewald_module.o\
@@ -95,10 +90,16 @@ MODS1 = simc_module.o\
         gram_schmidt_t_module.o \
         gram_schmidt_module.o \
         vdw_grimme_module.o \
+        xc_hybrid_module.o \
+        fock_ffte_module.o \
+        fock_fft_module.o \
+        fock_module.o \
+        xc_hse_module.o \
         xc_pw92_gth_module.o\
         xc_ldapz81_module.o \
         xc_ggapbe96_module.o \
         xc_module.o \
+        hamiltonian_module.o\
         cgpc_gausseidel_module.o \
         cgpc_2_module.o \
         cgpc_diag_module.o \

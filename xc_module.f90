@@ -4,10 +4,8 @@ MODULE xc_module
   use density_module, only: rho
   use ps_pcc_module
   use parallel_module
-  use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1
+  use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1
   use pw92_gth_module
-  use xc_hybrid_module
-  use xc_hse_module
   use watch_module
   use aa_module
   use bb_module
@@ -15,10 +13,13 @@ MODULE xc_module
   use kinetic_module, only: SYStype
   use kinetic_variables, only: Md
   use fd_module
-  use electron_module, only: Nspin
+  use electron_module, only: Nspin, Nband, Nelectron
+  use bz_module, only: kbb, MMBZ, Nbzsm
 
   use xc_ldapz81_module
   use xc_ggapbe96_module
+  use xc_hybrid_module
+  use xc_hse_module
 
   implicit none
 
@@ -139,6 +140,10 @@ CONTAINS
     real(8) :: c
     integer :: s
 
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," calc_xc(start)")') repeat("-",60)
+    end if
+
     if ( .not.allocated(Vxc) ) then
        allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
        Vxc=0.0d0
@@ -160,41 +165,80 @@ CONTAINS
        
     select case(XCtype)
     case('LDAPZ81_')
+
        call calc_LDAPZ81_org
+
     case('LDAPZ81')
+
        call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
        call calc_LDAPZ81( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
     case('LDAPW92')
+
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
+
     case('GGAPBE9_')
+
        call calc_GGAPBE96_org
+
     case('GGAPBE96')
+
        call init_GGAPBE96 &
             ( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV ,Md, Hgrid, Ngrid )
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
     case('HF')
+
        stop "HF is not available yet"
+
     case('PBE0')
+
        stop "PBE0 is not available yet"
+
     case('HSE')
-       call calc_xc_hse(ML_0,ML_1,MSP,Vxc,Exc,E_exchange_exx)
-       if ( icount_sweep_hybrid <= Nsweep_hybrid ) then
-          call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
-          if ( DISP_SWITCH_PARALLEL ) then
-             write(*,*) "icount_sweep_hybrid =" &
-                  ,icount_sweep_hybrid,Nsweep_hybrid
+
+!       call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
+!            , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
+!            , kbb, bb, Va, SYStype, XCtype, disp_switch_parallel )
+
+       if ( iflag_hybrid == 0 ) then
+
+          if ( disp_switch_parallel ) then
+             write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
+             write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
           end if
-          icount_sweep_hybrid = icount_sweep_hybrid + 1
+
+          call init_GGAPBE96 &
+               ( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV ,Md, Hgrid, Ngrid )
+          call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+       else
+
+          call init_xc_hse( ML_0, ML_1, MSP,MSP_0,MSP_1 &
+               ,MBZ_0,MBZ_1,MB_0,MB_1,SYStype )
+
+          call calc_xc_hse( iflag_hse, rho, Exc &
+               , Vxc, E_exchange, E_correlation, E_exchange_exx )
+
        end if
+
     case('LCwPBE')
+
        stop "LCwPBE is not available yet"
+
     case default
+
        write(*,*) "Invalid Keyword: XCtype=",XCtype
        stop "stop@calc_xc"
+
     end select
 
     deallocate( rho_tmp )
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," calc_xc(end)")') repeat("-",60)
+    end if
 
   END SUBROUTINE calc_xc
 
