@@ -16,12 +16,15 @@ MODULE io_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_io, write_data, read_data, read_oldformat_io
+  PUBLIC :: read_io, write_data, read_data, read_oldformat_io &
+           ,GetParam_IO, Init_IO
 
   integer :: IO_ctrl=0
   integer :: IC,OC,OC2
   integer :: MBwr1=0
   integer :: MBwr2=0
+  character(30) :: file_wf0   ="wf.dat1"
+  character(30) :: file_vrho0 ="vrho.dat1"
   character(30) :: file_wf1   ="wf.dat1"
   character(30) :: file_vrho1 ="vrho.dat1"
   character(30) :: file_wf2   ="wf.dat1"
@@ -1008,5 +1011,36 @@ CONTAINS
     return
 
   END SUBROUTINE read_data
+
+
+  FUNCTION GetParam_IO(i)
+    implicit none
+    integer :: GetParam_IO
+    integer,intent(IN) :: i
+    select case(i)
+    case( 1 )
+       GetParam_IO = IC
+    case( 2 )
+       GetParam_IO = OC
+    case( 3 )
+       GetParam_IO = OC2
+    case default
+       GetParam_IO = -1
+    end select
+  END FUNCTION GetParam_IO
+
+
+  SUBROUTINE Init_IO( index )
+    implicit none
+    character(*),intent(IN) :: index
+    if ( index /= "" ) then
+       file_wf1   = trim(file_wf0)//"."//index
+       file_vrho1 = trim(file_vrho0)//"."//index
+    else
+       file_wf1   = file_wf0
+       file_vrho1 = file_vrho0
+    end if
+  END SUBROUTINE Init_IO
+
 
 END MODULE io_module

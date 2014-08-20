@@ -8,7 +8,6 @@ MODULE band_module
   use aa_module, only: aa
   use bb_module, only: bb
   use kinetic_module, only: init_kinetic
-  use ps_nloc2_module, only: prep_uvk_ps_nloc2,prep_rvk_ps_nloc2
   use momentum_module
   use wf_module
   use cg_module
@@ -23,6 +22,10 @@ MODULE band_module
        ,esp_conv_tol, mb_band, mb2_band, maxiter_band &
        ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,read_band
   use sweep_module, only: calc_sweep, init_sweep
+  use pseudopot_module, only: pselect
+  use ps_nloc2_module, only: prep_uvk_ps_nloc2, prep_rvk_ps_nloc2
+  use ps_nloc3_module, only: prep_ps_nloc3, init_ps_nloc3
+  use io_module, only: Init_IO
   
   implicit none
 
@@ -147,6 +150,8 @@ CONTAINS
 
     call init_sweep( 2, mb2_band, esp_conv_tol )
 
+    call Init_IO( "band" )
+
     MBZ_1 = MBZ_0
 
     loop_iktrj : do iktrj = iktrj_0, iktrj_2
@@ -174,7 +179,14 @@ CONTAINS
        endif
 
        call init_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
-       call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+
+       select case( pselect )
+       case( 2 )
+          call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+       case( 3 )
+          call init_ps_nloc3
+          call prep_ps_nloc3
+       end select
 
        call calc_sweep( Diter_band, iswitch_gs, ierr, disp_switch )
 
@@ -232,7 +244,12 @@ CONTAINS
        end do ! s
 #endif
 
-       call prep_rvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+       select case( pselect )
+       case( 2 )
+          call prep_rvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+       case( 3 )
+!          call prep_rvk_ps_nloc3(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+       end select
 
        pxyz(:,:,:,:)=0.d0
        do n=1,mb2_band

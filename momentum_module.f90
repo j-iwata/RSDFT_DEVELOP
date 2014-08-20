@@ -9,6 +9,7 @@ MODULE momentum_module
   use bc_module
   use ps_nloc2_variables
   use atom_module
+  use pseudopot_module, only: pselect
 
   implicit none
 
@@ -30,7 +31,12 @@ CONTAINS
     call momentum_kine(n1,n2,b1,b2,tpsi,pxyz)
     pxyz0=pxyz0+pxyz
     pxyz=0.d0
-    call momentum_nloc(k,n1,n2,b1,b2,tpsi,pxyz)
+    select case( pselect )
+    case( 2 )
+       call momentum_nloc(k,n1,n2,b1,b2,tpsi,pxyz)
+    case( 3 )
+!       call momentum_ps_nloc3(k,n1,n2,b1,b2,tpsi,pxyz)
+    end select
     pxyz0=pxyz0+pxyz
     call mpi_allreduce(pxyz0,pxyz,3*(b2-b1+1),mpi_real8,mpi_sum,comm_grid,ierr)
 

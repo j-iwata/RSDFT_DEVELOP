@@ -23,28 +23,18 @@ MODULE ps_nloc3_module
   integer,allocatable :: mapgk(:,:)
   real(8),allocatable :: viodgk2(:,:,:)
 
-!  integer,allocatable :: iuV(:),iorbmap(:),amap(:),lmap(:),mmap(:)
-
-!  integer :: Mlma
-!  integer :: nzlma
   integer :: Mlma_np
 
   integer,allocatable :: icnt(:),idis(:)
   logical :: first_time = .true.
 
 #ifdef _DRSDFT_
-!  integer,parameter :: TYPE_MAIN=MPI_REAL8
-!  real(8),allocatable :: uVk(:,:,:)
   real(8),allocatable :: utmp(:)
   real(8),allocatable :: utmp3(:,:,:)
-!  real(8),parameter :: zero=0.0d0
   real(8),parameter :: one=1.0d0
 #else
-!  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
-!  complex(8),allocatable :: uVk(:,:,:)
   complex(8),allocatable :: utmp(:)
   complex(8),allocatable :: utmp3(:,:,:)
-!  complex(8),parameter :: zero=(0.0d0,0.0d0)
   complex(8),parameter :: one=(1.0d0,0.0d0)
 #endif
 
@@ -74,7 +64,8 @@ CONTAINS
     MKI   = Nelement
     MG    = NGgrid(0)
 
-    allocate( mapgk(MG,MBZ_0:MBZ_1) ) ; mapgk=0
+    if ( .not.allocated(mapgk) ) allocate( mapgk(MG,MBZ_0:MBZ_1) )
+    mapgk=0
     
     call construct_Ggrid(0)
 
@@ -132,10 +123,11 @@ CONTAINS
 
     call destruct_Ggrid
 
-!- allocate --------------------------------
+!- allocate ---------------------------------------
+    if ( allocated(viodgk2) ) deallocate( viodgk2 )
     allocate( viodgk2(m_mapgk,m_norb,MKI) )
     viodgk2=0.0d0
- !------------------------------------------
+ !-------------------------------------------------
 
     NRc=maxval(NRps)
     allocate( tmp(NRc) ) ; tmp=0.d0
