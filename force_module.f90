@@ -43,7 +43,7 @@ allocate( work3(3,MI) ) ; work3=0.d0
 !    call calc_force_ps_local(MI,work)
 call calc_force_ps_local(MI,work1)
 #endif
-    force = force + work
+!    force = force + work
 
     if ( flag_pcc_0 ) then
        call calc_force_ps_pcc(MI,work)
@@ -54,13 +54,13 @@ call calc_force_ps_local(MI,work1)
 
 !    call calc_force_ps_nloc2(MI,work)
 call calc_force_ps_nloc2(MI,work2)
-    force = force + work
+!    force = force + work
 
     call watch(ctt(2),ett(2))
 
 !    call calc_force_ewald(MI,work)
 call calc_force_ewald(MI,work3)
-    force = force + work
+!    force = force + work
 
     call watch(ctt(3),ett(3))
 
@@ -69,7 +69,11 @@ if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'local',work1(1:3,a)
 if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,' nloc',work2(1:3,a)
 if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'ewald',work3(1:3,a)
 enddo
-stop
+!stop
+    force=work1+work2+work3
+do a=1,MI
+if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'total',force(1:3,a)
+enddo
 
 ! --- constraint & symmetry ---
 
@@ -79,6 +83,9 @@ stop
     endif
 
     deallocate( work )
+deallocate( work1 )
+deallocate( work2 )
+deallocate( work3 )
 
     if ( disp_switch_parallel ) then
        write(*,*) "time(force1)",ctt(1)-ctt(0),ett(1)-ett(0)

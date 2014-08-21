@@ -466,7 +466,7 @@ CONTAINS
 
     call calcForceQ(uVunk_tmp,MI,forceQ)
 do a=1,MI
-if (disp_switch_parallel) write(200,'(I5,A9,3g20.7)') a,'Q',forceQ(1:3,a)
+!if (disp_switch_parallel) write(200,'(I5,A9,3g20.7)') a,'Q',forceQ(1:3,a)
 enddo
 
     do a=1,MI
@@ -849,7 +849,7 @@ if (myrank==0) write(250,'(4I5,g20.7)') s,k,n,m,forceQ(1,a)
 
 !$OMP end parallel
 do a=1,MI
-if (myrank==0) write(200,'(I5,3g20.7)') a,forceQ(1:3,a)
+if (myrank==0) write(200,'(I5,A9,3g20.7)') a,'Q',forceQ(1:3,a)
 enddo
 
     return
