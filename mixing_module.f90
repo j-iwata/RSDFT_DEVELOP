@@ -106,13 +106,13 @@ CONTAINS
     beta0      = 1.0d0-beta
     mmix_count = 0
 
+    comm_grid = comm_grid_in
+    comm_spin = comm_spin_in
+
     ML0 = ML0_in
     MSP = MSP_in
     MF0 = MSP*2
     call mpi_allreduce( ML0, ML, 1,MPI_INTEGER,MPI_SUM,comm_grid,ierr )
-
-    comm_grid = comm_grid_in
-    comm_spin = comm_spin_in
 
     dV = dV_in
 
