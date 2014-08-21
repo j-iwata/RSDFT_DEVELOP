@@ -154,24 +154,26 @@ CONTAINS
        const1 = 0.25d0/(omega*omega)
        const2 = pi/(omega*omega)
        do i3=-NGgrid(3),NGgrid(3)
+          j3=mod(i3+ML3,ML3)
+          if ( j3 < a3b .or. b3b < j3 ) cycle
        do i2=-NGgrid(2),NGgrid(2)
+          j2=mod(i2+ML2,ML2)
+          if ( j2 < a2b .or. b2b < j2 ) cycle
        do i1=-NGgrid(1),NGgrid(1)
+          j1=mod(i1+ML1,ML1)
           g2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3+k_fock(1)-q_fock(1,q,t))**2 &
             +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3+k_fock(2)-q_fock(2,q,t))**2 &
             +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3+k_fock(3)-q_fock(3,q,t))**2
           if ( g2 < 0.0d0 .or. g2 > Ecut ) cycle
-          j1=mod(i1+ML1,ML1)
-          j2=mod(i2+ML2,ML2)
-          j3=mod(i3+ML3,ML3)
           if ( g2 <= 1.d-10 ) then
              zwork2_ffte(j1,j2,j3)=zwork1_ffte(j1,j2,j3)*const2
           else
              zwork2_ffte(j1,j2,j3)= &
                   zwork1_ffte(j1,j2,j3)*pi4*(1.0d0-exp(-g2*const1))/g2
           end if
-       end do
-       end do
-       end do
+       end do ! i1
+       end do ! i2
+       end do ! i3
     end if
 
     call watch(ctt(3),ett(3))
