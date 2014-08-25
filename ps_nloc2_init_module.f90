@@ -84,8 +84,28 @@ write(200+myrank,*) ">>>>> ps_nloc2_init"
 #endif
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
+
+
+
+
+
+
+
+
+
+qc=4.32987324642663
 if (myrank==0) write(200,*) 'qc(beta)= ',qc
-!qc=4.32987324642663
+
+
+
+
+
+
+
+
+
+
+
     call allocateRps
 
     do ik=1,Nelement_
@@ -112,7 +132,7 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
           NRc=NRps(iorb,ik)
           Rc=Rps(iorb,ik)
 !write(630+myrank,*) '------------------------'
-!write(630+myrank,'(3I5,2E15.7e2)') ik,iorb,NRc,Rc,etafac
+!write(630+myrank,'(3I5,2g20.7)') ik,iorb,NRc,Rc,etafac
           call makemaskf(etafac)
           maxerr=0.d0
           do i=1,NRc
@@ -179,20 +199,29 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
 #ifdef _SHOWALL_NONL_F_
+write(630+myrank,'(a6,a2,2a5,3a20)') 'qc','L','NRc','NRps','rad','rad1','viod'
+write(630+myrank,'(f6.3,I2,2I5,3g20.7)') qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
+write(630+myrank,*) '--------------------------------------- before filter'
 write(630+myrank,*) "ik,iorb= ",ik,iorb
-write(630+myrank,*) "    qc L  NRc NRps            rad           rad1           viod"
-write(630+myrank,'(f6.3,I2,2I5,3E15.7e2)') qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
+write(630+myrank,'(a5,5a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','wm(i,iorb,ik)','viod(i,iorb,ik)'
+do i=1,50
+  write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+end do
+do i=NRc-50,NRc
+  write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+end do
 #endif
           call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
 
 #ifdef _SHOWALL_NONL_F_
+write(630+myrank,*) '--------------------------------------- after filter'
 write(630+myrank,*) "ik,iorb= ",ik,iorb
-write(630+myrank,*) "       rad      rad1      vrad        wm      viod"
-do i=1,10
-  write(630+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+write(630+myrank,'(a5,4a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','viod(i,iorb,ik)'
+do i=1,50
+  write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
 end do
-do i=NRps(iorb,ik)-10,NRps(iorb,ik)
-  write(630+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+do i=NRc-50,NRc
+  write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
 end do
 #endif
        end do ! iorb
@@ -257,10 +286,10 @@ write(200+myrank,*) "<<<<< ps_nloc2_init"
        end do
        lm=max(m,lm)
     end do
-    NRc=maxval(NRps)
 
-    allocate( dviod(NRc,lm,Nelement_) )
-    dviod=0.d0
+    NRc=max_psgrd
+    allocate( dviod(NRc,lm,Nelement_) ) ; dviod=0.d0
+    allocate( dvrad(NRc,lm,Nelement_) ) ; dvrad=0.d0
 
     do ik=1,Nelement_
        do iorb=1,norb(ik)
@@ -283,8 +312,8 @@ write(200+myrank,*) "<<<<< ps_nloc2_init"
        end do
     end do
 
-    NRc=maxval(NRps)
-    allocate( dvrad(NRc,lm,Nelement_) ) ; dvrad=0.d0
+!    NRc=max_psgrd
+!    allocate( dvrad(NRc,lm,Nelement_) ) ; dvrad=0.d0
 
     do ik=1,Nelement_
        lm=0

@@ -5,7 +5,7 @@ MODULE force_module
   use ps_pcc_module
   use ewald_module
   use watch_module
-  use parallel_module, only: disp_switch_parallel
+  use parallel_module, only: disp_switch_parallel,myrank
 
   use atom_module, only: opt_constrain
 
@@ -65,15 +65,16 @@ call calc_force_ewald(MI,work3)
     call watch(ctt(3),ett(3))
 
 do a=1,MI
-if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'local',work1(1:3,a)
-if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,' nloc',work2(1:3,a)
-if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'ewald',work3(1:3,a)
+if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'local',work1(1:3,a)
+if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,' nloc',work2(1:3,a)
+if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'ewald',work3(1:3,a)
 enddo
-!stop
     force=work1+work2+work3
+if ( myrank==0 ) write(200,*) '--------------------'
 do a=1,MI
-if ( disp_switch_parallel ) write(200,'(I4,A9,3g20.7)') a,'total',force(1:3,a)
+if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'total',force(1:3,a)
 enddo
+if ( myrank==0 ) write(200,*) '--------------------'
 
 ! --- constraint & symmetry ---
 

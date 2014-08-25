@@ -171,6 +171,7 @@ CONTAINS
        select case(SYStype)
        case default
           call calc_force(Natom,Force)
+!return
        case(1,2)
           call calc_force_mol(Natom,Force)
        end select
@@ -835,7 +836,8 @@ CONTAINS
 
     if ( myrank == 0 ) disp_switch=.true.
 
-    call calc_total_energy(.false.,disp_switch,999)
+!    call calc_total_energy(.false.,disp_switch,999)
+    call calc_total_energy(.true.,disp_switch,999)
 
     deallocate( Force )
     deallocate( aa_atom_0, gi, hi )

@@ -122,6 +122,13 @@ write(200+myrank,*) '----------------------------op_ps_nloc2_uspp'
     end if
 !!$OMP end parallel
 
+!if (myrank==0) write(150,'(4i5)') ib1,ib2,n1,n2
+!do ib=ib1,ib2
+!do i=n1,n2
+!if (myrank==0) write(150,'(4g20.7)') htpsi(i,ib),htpsi00(i,ib)
+!enddo
+!enddo
+
     deallocate( uVunk0,uVunk )
 #ifdef _SHOWALL_OP_
 write(200+myrank,*) ">>>>op_ps_nloc2_uspp"

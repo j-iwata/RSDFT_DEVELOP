@@ -53,6 +53,9 @@ CONTAINS
     do s=MSP_0,MSP_1
        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
     end do
+#ifdef _USPP_
+        call getDij
+#endif
 
     do iter=1,Diter
 

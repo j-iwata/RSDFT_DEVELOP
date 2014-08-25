@@ -58,6 +58,11 @@ PROGRAM Real_Space_Solid
   use PSQInit
 #endif
 
+#ifdef _USPP_F_TEST_
+  use VarPSMember
+  use VarPSMemberG
+#endif
+
 use WFtest
 use PStest
 
@@ -463,18 +468,21 @@ use PStest
      end do
   end if
 
-! --- Initial Potential ---
-
+!--- Initial Potential ---
+!call write_rho(1500,myrank) ; goto 900
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
-
   call calc_xc
 
 !  call init_localpot
 
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+!if (myrank==0) write(150,'(2a5,4a20)') 's','i','Vloc(i,s)','Vion(i)','Vh(i)','Vxc(i,s)'
+!do i=ML_0,ML_1
+!if (myrank==0) write(150,'(2I5,4g20.7)') s,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)
+!enddo
   end do
-
+!goto 900
 
 ! --- Read previous w.f. , density , potentials ---
 
@@ -510,11 +518,16 @@ use PStest
 
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
+  
+#ifdef _USPP_
+  call getDij
+#endif
 
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
   call calc_total_energy(.true.,disp_switch,999)
+!goto 900
 
   if ( mod(imix,2) == 0 ) then
      call init_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1, rho(ML_0,MSP_0))
@@ -554,7 +567,7 @@ use PStest
 
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
                                ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-!call write_wf
+!call write_wf ; goto 900
 
 !-------------------------------------------------------- scf step start
 ! will do for iter==1
@@ -718,6 +731,29 @@ use PStest
   end do
   call calc_total_energy(.true.,disp_switch,999)
 
+
+
+
+
+
+
+
+
+!===========================================================
+!call write_rho(1500,myrank)
+!call write_vloc(1600,myrank)
+!===========================================================
+
+
+
+
+
+
+
+
+
+
+
 !
 ! --- force calculation ---
 !
@@ -736,31 +772,55 @@ use PStest
   end if
 
   if ( iswitch_opt == -1 ) then
-
      call test_force(SYStype)
-
   end if
 
-! --- BAND ---
-#ifndef _DRSDFT_
-  if ( iswitch_band == 1 ) then
-     call read_band(myrank,1)
-     call band(nint(Nelectron*0.5d0),disp_switch)
-  end if
-#endif
 
+
+
+
+
+
+
+!===========================================================
+!call write_viod(1700,myrank)
+!call write_dviod(1800,myrank)
+!call write_qrL(1900,myrank,Nelement)
+!call write_dqrL(2000,myrank,Nelement)
+!===========================================================
+
+
+
+
+
+
+
+
+
+!
+! --- geometrical optimization ---
+!
   select case(iswitch_opt)
   case( 1,2 )
      call atomopt(iswitch_opt,disp_switch)
   case( 3 )
-#ifdef _DRSDFT_
 ! --- CPMD ---
+#ifdef _DRSDFT_
      call bomd
 #else
      write(*,*) "RS-CPMD is not available for COMPLEX16"
      write(*,*) "Please re-compile the program"
 #endif
   end select
+
+! --- BAND ---
+#ifndef _DRSDFT_
+!  if ( iswitch_band == 1 ) then
+  if ( iswitch_band==1.and.iswitch_opt/=3 ) then
+     call read_band(myrank,1)
+     call band(nint(Nelectron*0.5d0),disp_switch)
+  end if
+#endif
 
 ! --- finalize ---
 

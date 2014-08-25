@@ -247,4 +247,37 @@ CONTAINS
     max_psorb = mo
   END SUBROUTINE ps_allocate
 
+#ifdef _USPP_F_TEST_
+  subroutine write_viod(unit,rank)
+    implicit none
+    integer,intent(IN) :: unit,rank
+    integer :: i,iorb,ielm
+    if (rank==0) write(200,'(A10,3I7)') 'viod=',Nelement_PP,max_psorb,max_psgrd
+    write(unit+rank,'(3I7)') Nelement_PP,max_psorb,max_psgrd
+    do ielm=1,Nelement_PP
+      do iorb=1,max_psorb
+        do i=1,max_psgrd
+          write(unit+rank,'(g20.12)') viod(i,iorb,ielm)
+        enddo
+      enddo
+    enddo
+  end subroutine write_viod
+
+  subroutine write_dviod(unit,rank)
+    implicit none
+    integer,intent(IN) :: unit,rank
+    integer :: i,iorb,ielm
+    integer :: l
+    l=size(dviod)/(Nelement_PP*max_psgrd)
+    if (rank==0) write(200,'(A10,3I7)') 'dviod=',Nelement_PP,l,max_psgrd
+    write(unit+rank,'(3I7)') Nelement_PP,l,max_psgrd
+    do ielm=1,Nelement_PP
+      do iorb=1,l
+        do i=1,max_psgrd
+          write(unit+rank,'(g20.12)') dviod(i,iorb,ielm)
+        enddo
+      enddo
+    enddo
+  end subroutine write_dviod
+#endif
 END MODULE VarPSMember

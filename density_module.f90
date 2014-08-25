@@ -14,7 +14,9 @@ MODULE density_module
 
   PRIVATE
   PUBLIC :: rho,init_density,normalize_density,calc_density
-
+#ifdef _USPP_F_TEST_
+  PUBLIC :: write_rho
+#endif
   real(8),allocatable :: rho(:,:)
 
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
@@ -148,5 +150,20 @@ enddo
     call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m,mpi_real8,rho,m,mpi_real8 &
          ,comm_spin,ierr)
   END SUBROUTINE reduce_and_gather
+  
+#ifdef _USPP_F_TEST_
+  SUBROUTINE write_rho(unit,rank)
+    implicit none
+    integer,intent(IN) :: unit,rank
+    integer :: s,i
+    if (rank==0) write(200,'(A10,4I7)') 'rho=',MS_0_RHO,MS_1_RHO,ML_0_RHO,ML_1_RHO
+    write(unit+rank,'(4I7)') MS_0_RHO,MS_1_RHO,ML_0_RHO,ML_1_RHO
+    do s=MS_0_RHO,MS_1_RHO
+      do i=ML_0_RHO,ML_1_RHO
+        write(unit+rank,'(g20.12)') rho(i,s)
+      enddo
+    enddo
+  END SUBROUTINE write_rho
+#endif
 
 END MODULE density_module

@@ -140,8 +140,30 @@ k2max=max_k2
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
+
+
+
+
+
+
+
+
+
+
+
+qc=4.32987324642663
 if (myrank==0) write(200,*) 'qc(qr)= ',qc
-!qc=4.32987324642663
+
+
+
+
+
+
+
+
+
+
+
 
     call allocateQRps( k2max,Nelement_ )
 
@@ -304,7 +326,7 @@ write(400+myrank,*) "<<<<< ps_Q_init"
   SUBROUTINE ps_Q_init_derivative
     implicit none
     integer :: ik,L,NRc,J,i,m,m1,m2,lm,ll3
-    integer :: ik1,k2,k3,iorb1,iorb2,cJ,maxcJ
+    integer :: ik1,k2,k3,iorb1,iorb2,cJ
     real(8) :: maxerr,y,dy,y0,dy0
     real(8) :: pi4,const
     real(8),allocatable :: dwork(:,:,:,:,:)
@@ -324,7 +346,7 @@ write(400+myrank,*) "<<<<< ps_Q_init"
         enddo
       enddo
     enddo
-    NRc=maxval(NRps)
+    NRc=max_psgrd
     k2=max_k2
     l=max_Lref
     ik=Nelement_

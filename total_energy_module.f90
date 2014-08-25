@@ -78,17 +78,6 @@ CONTAINS
 
     n1 = ML_0
     n2 = ML_1
-#ifdef _SHOWALL_WF_
-do s=MSP_0,MSP_1
-do k=MBZ_0,MBZ_1
-do n=MB_0,MB_1,MB_d
-do i=ML_0_WF,ML_1_WF
-write(300+myrank,*) s,k,n,i,unk(i,n,k,s)
-enddo
-enddo
-enddo
-enddo
-#endif
 
     if ( flag_recalc_esp ) then
 

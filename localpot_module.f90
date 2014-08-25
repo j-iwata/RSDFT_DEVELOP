@@ -9,6 +9,9 @@ MODULE localpot_module
 
   PRIVATE
   PUBLIC :: Vloc,init_localpot,op_localpot,read_localpot
+#ifdef _USPP_F_TEST_
+  PUBLIC :: write_vloc
+#endif
 
   real(8),allocatable :: Vloc(:,:)
 
@@ -129,4 +132,16 @@ CONTAINS
     deallocate( LL_tmp )
   END SUBROUTINE read_localpot
 
+#ifdef _USPP_F_TEST_
+  subroutine write_vloc(unit,rank)
+    implicit none
+    integer,intent(IN) :: unit,rank
+    integer :: s,i
+    do s=MSP_0,MSP_1
+      do i=ML_0,ML_1
+        write(unit+rank,'(g20.12)') Vloc(i,s)
+      enddo
+    enddo
+  end subroutine write_vloc
+#endif
 END MODULE localpot_module

@@ -6,6 +6,7 @@ use parallel_module, only: myrank
   integer,allocatable :: l3v(:,:,:)
   
   real(8),allocatable :: qrL(:,:,:,:)
+  integer :: maxcJ
   real(8),allocatable :: dqrL(:,:,:,:,:)
 
   complex(8),allocatable :: QG(:,:,:)
@@ -306,5 +307,42 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
 
     return
   END SUBROUTINE allocatePSG
+
+#ifdef _USPP_F_TEST_
+  SUBROUTINE write_qrL(unit,rank,nki)
+    implicit none
+    integer,intent(IN) :: unit,rank,nki
+    integer :: ik,ik2,il,i
+    if (rank==0) write(200,'(A10,4I7)') 'qrL=',nki,max_k2,max_Lref,max_qgrd
+    write(unit+rank,'(4I7)') nki,max_k2,max_Lref,max_qgrd
+    do ik=1,nki
+      do ik2=1,max_k2
+        do il=1,max_Lref
+          do i=1,max_qgrd
+            write(unit+rank,'(g20.12)') qrL(i,il,ik2,ik)
+          enddo
+        enddo
+      enddo
+    enddo
+  END SUBROUTINE write_qrL
+  SUBROUTINE write_dqrL(unit,rank,nki)
+    implicit none
+    integer,intent(IN) :: unit,rank,nki
+    integer :: ik,ik2,il,i,cJ
+    if (rank==0) write(200,'(A10,5I7)') 'dqrL=',maxcJ,nki,max_k2,max_Lref,max_qgrd
+    write(unit+rank,'(5I7)') maxcJ,nki,max_k2,max_Lref,max_qgrd
+    do cJ=1,maxcJ
+      do ik=1,nki
+        do ik2=1,max_k2
+          do il=1,max_Lref
+            do i=1,max_qgrd
+              write(unit+rank,'(g20.12)') dqrL(i,il,ik2,ik,cJ)
+            enddo
+          enddo
+        enddo
+      enddo
+    enddo
+  END SUBROUTINE write_dqrL
+#endif
 
 END MODULE VarPSMemberG
