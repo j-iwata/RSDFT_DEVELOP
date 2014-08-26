@@ -46,10 +46,10 @@ CONTAINS
     integer :: mm,i,ML0,ld,j
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
-    real(8) :: rwork(999),W(999),c,d,r
+    real(8) :: work(999),W(999),c,d,r
     real(8),allocatable :: sb(:),rb(:)
     real(8),allocatable :: E0(:),E1(:)
-    real(8) :: work(999),ztmp,zdV
+    real(8) :: ztmp,zdV
 
     real(8),allocatable :: vv(:,:,:),hv(:,:,:)
     real(8),allocatable :: vt(:,:),ut(:,:),wt(:,:)
@@ -155,10 +155,10 @@ CONTAINS
           call dsyrk( 'U','C',mm,ML0,zdV,vt,ML0,zero,vv0(1,1,1),ld)
           call dsyr2k('U','C',mm,ML0,ztmp,vt,ML0,ut,ML0,zero,vv0(1,1,2),ld)
           call mpi_allreduce &
-               (vv0,vv1,ld*ld*2,MPI_COMPLEX16,mpi_sum,comm_grid,ierr)
+               (vv0,vv1,ld*ld*2,MPI_REAL8,mpi_sum,comm_grid,ierr)
 
           call dsygv &
-          (1,'V','U',mm,vv1(1,1,2),ld,vv1(1,1,1),ld,W,work,999,rwork,ierr)
+          (1,'V','U',mm,vv1(1,1,2),ld,vv1(1,1,1),ld,W,work,999,ierr)
 
           E0(1:nn) = E1(1:nn)
           E1(1:nn) = W(1:nn)
