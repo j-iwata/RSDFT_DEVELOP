@@ -141,29 +141,8 @@ k2max=max_k2
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
-
-
-
-
-
-
-
-
-
-
-qc=4.32987324642663
+!qc=4.32987324642663
 if (myrank==0) write(200,*) 'qc(qr)= ',qc
-
-
-
-
-
-
-
-
-
-
-
 
     call allocateQRps( k2max,Nelement_ )
 
@@ -225,12 +204,20 @@ if (myrank==0) write(200,*) 'qc(qr)= ',qc
 
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
-            Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr
-            if ( Q_NRps(k2,ik)>max_psgrd ) stop
+!            Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr
+            Q_NRps(k2,ik)=Q_Rps(k2,ik)/dr+1
+!            if ( Q_NRps(k2,ik)>max_psgrd ) stop 'Q_NRps too large'
+            if ( (Q_NRps(k2,ik)-1)*dr < Q_Rps(k2,ik) ) then
+              Q_NRps(k2,ik)=Q_NRps(k2,ik)+1
+            endif
         end do 
     end do
 
     MMr=max( maxval(Mr),maxval(Q_NRps) )
+#ifdef _SHOWALL_QINIT_
+    if (myrank==0) write(200,'(A12,I5)') 'rad1(Q)=',MMr
+#endif
+    call allocateRad1(MMr)
     do ik=1,Nelement_
         do i=1,MMr
             rad1(i,ik)=(i-1)*dr

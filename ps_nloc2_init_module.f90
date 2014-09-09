@@ -93,7 +93,7 @@ write(200+myrank,*) ">>>>> ps_nloc2_init"
 
 
 
-qc=4.32987324642663
+!qc=4.32987324642663
 if (myrank==0) write(200,*) 'qc(beta)= ',qc
 
 
@@ -168,6 +168,10 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
        end do
     end do
     MMr=max( maxval(Mr),maxval(NRps) )
+#ifdef _SHOWALL_PSINIT_
+    if (myrank==0) write(200,'(A12,I5)') 'rad1(ps)=',MMr
+#endif
+    call allocateRad1(MMr)
 
     if ( MMr>maxval(Mr) ) then
        m0=size(viod,1)

@@ -45,19 +45,35 @@ CONTAINS
     allocate( Rps0(m,Nelement_)  ) ; Rps0=0.d0
     NRps0(:,:)=NRps(:,:)
     Rps0(:,:)=Rps(:,:)
-
     return
   END SUBROUTINE allocateRps
-
 !------------------------------------------
   SUBROUTINE deallocateRps
     implicit none
-
     deallocate( NRps0 )
     deallocate( Rps0  )
-
     return
   END SUBROUTINE deallocateRps
+!------------------------------------------
+  SUBROUTINE allocateRad1(m)
+    implicit none
+    integer,intent(IN) :: m
+    if (allocated( rad1 )) then
+      if (m>size(rad1(:,1))) then
+        call deallocateRad1
+      else
+        return
+      endif
+    end if
+    allocate( rad1(m,Nelement_)  ) ; rad1=0.d0
+    return
+  END SUBROUTINE allocateRad1
+!------------------------------------------
+  SUBROUTINE deallocateRad1
+    implicit none
+    deallocate( Rad1  )
+    return
+  END SUBROUTINE deallocateRad1
 
 !------------------------------------------
   SUBROUTINE send_pseudopot(myrank)
@@ -133,7 +149,6 @@ CONTAINS
        allocate( cdd(n_grd,Nelement_PP)   ) ; cdd(:,:)=0.d0
        allocate( cdc(n_grd,Nelement_PP)   ) ; cdc(:,:)=0.d0
        allocate( rad(n_grd,Nelement_PP)   ) ; rad(:,:)=0.d0
-       allocate( rad1(n_grd,Nelement_PP)  ) ; rad1(:,:)=0.d0
        allocate( rab(n_grd,Nelement_PP)   ) ; rab(:,:)=0.d0
        allocate( rabr2(n_grd,Nelement_PP) ) ; rabr2(:,:)=0.d0
        allocate( viod(n_grd,n_orb,Nelement_PP) ) ; viod(:,:,:)=0.d0
@@ -160,13 +175,11 @@ CONTAINS
        deallocate( rab )
        deallocate( rabr2 )
        deallocate( rad )
-       deallocate( rad1 )
        deallocate( cdd )
        deallocate( vql )
        allocate( vql(mg,Nelement_PP) ) ; vql(:,:)=0.d0
        allocate( cdd(mg,Nelement_PP) ) ; cdd(:,:)=0.d0
        allocate( rad(mg,Nelement_PP) ) ; rad(:,:)=0.d0
-       allocate( rad1(mg,Nelement_PP) ) ; rad1(:,:)=0.d0
        allocate( rab(mg,Nelement_PP) ) ; rab(:,:)=0.d0
        allocate( rabr2(mg,Nelement_PP) ) ; rabr2(:,:)=0.d0
        allocate( cdc(mg,Nelement_PP) ) ; cdc(:,:)=0.d0
