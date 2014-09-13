@@ -59,7 +59,7 @@ CONTAINS
           write(*,'(1x,"a2=",3f20.15)') aa(1:3,2)
           write(*,'(1x,"a3=",3f20.15)') aa(1:3,3)
        end if
-       read(unit,*) Nelement,Natom, idummy(:)
+       read(unit,*) Nelement,Natom, idummy(1:Nelement)
        write(*,*) "Nelment,Natom=",Nelement,Natom
        allocate( zn_atom(Nelement) ) ; zn_atom=0
        zn_atom(1:Nelement) = idummy(1:Nelement)

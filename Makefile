@@ -71,6 +71,7 @@ MODS1 = simc_module.o\
         localpot2_vh_module.o \
         localpot2_xc_module.o \
         localpot2_module.o \
+        localpot2_Smatrix_module.o \
         localpot_module.o \
         nonlocal_module.o \
         ps_pcc_mol_module.o\
@@ -86,6 +87,7 @@ MODS1 = simc_module.o\
         ewald_module.o\
         eion_module.o \
         force_ewald_module.o \
+        gram_schmidt_u_module.o \
         gram_schmidt_m_module.o \
         gram_schmidt_t_module.o \
         gram_schmidt_module.o \
@@ -105,6 +107,7 @@ MODS1 = simc_module.o\
         cgpc_diag_module.o \
         cgpc_seitsonen_module.o \
         cgpc_module.o \
+        cg_u_module.o \
         cg_lobpcg_module.o \
         cg_module.o \
         fermi_mp_module.o\
