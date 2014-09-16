@@ -164,6 +164,9 @@ write(200+myrank,*) ">>>>> inside prepNzqr"
       write(*,*) "N_nlop= ",N_nlop,kk1
     end if
 !===== Nlop_type Matrix =====
+
+    write(1100+myrank,*) 'N_nzqr= ',N_nzqr
+    write(1100+myrank,*) 'N_nlop= ',N_nlop
 #ifdef _SHOWALL_INIT_
 write(200+myrank,*) "<<<<< end of prepNzqr"
 #endif

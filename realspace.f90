@@ -540,6 +540,8 @@ use PStest
   flag_exit = .false.
   flag_scf  = .false.
 
+goto 900
+
 !----------------------------------------------------------------------SCF
   do iter=1,Diter
 
@@ -828,6 +830,7 @@ use PStest
      write(*,*) "END_PROGRAM : MAIN" 
   end if
 900 continue
+  if (DISP_SWITCH) write(*,*) 'normal end'
   call close_info
   call end_mpi_parallel
 

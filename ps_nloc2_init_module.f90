@@ -85,26 +85,8 @@ write(200+myrank,*) ">>>>> ps_nloc2_init"
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
-
-
-
-
-
-
-
-
 !qc=4.32987324642663
 if (myrank==0) write(200,*) 'qc(beta)= ',qc
-
-
-
-
-
-
-
-
-
-
 
     call allocateRps
 

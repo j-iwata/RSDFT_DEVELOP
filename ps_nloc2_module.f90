@@ -75,46 +75,65 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
-#ifdef _SHOWALL_INIT_
-write(200+myrank,*) ">>>> prep_ps_nloc2"
-#endif
-    ctt=0.0d0 ; ett=0.0d0
 
+#ifdef _SHOWALL_INIT_
+    write(200+myrank,*) ">>>> prep_ps_nloc2"
+#endif
+
+! initiate clock & clock start
+    ctt=0.0d0 ; ett=0.0d0
     call watch(ctt(6),ett(6))
 
+! max atom*orb
     Mlma=0
     do i=1,Natom
-       ik=ki_atom(i)
-       do iorb=1,norb(ik)
-          Mlma=Mlma+2*lo(iorb,ik)+1
-       end do
+      ik=ki_atom(i)
+      do iorb=1,norb(ik)
+        Mlma=Mlma+2*lo(iorb,ik)+1
+      end do
     end do
-
+!------------------------------------------ if no orb return
     if ( Mlma <= 0 ) return
 
     if ( .not.allocated(y2a) .and. pselect /=4 ) then
-       NRc=maxval(NRps)
-       n=maxval(norb)
-       allocate( y2a(NRc,n,Nelement) )
-       y2a=0.d0
-       do ik=1,Nelement
-       do iorb=1,norb(ik)
+      NRc=maxval(NRps)
+      n=maxval(norb)
+      allocate( y2a(NRc,n,Nelement) )
+      y2a=0.d0
+      do ik=1,Nelement
+        do iorb=1,norb(ik)
           d1=0.d0
           d2=0.d0
           call spline(rad1(1,ik),viod(1,iorb,ik),NRps(iorb,ik),d1,d2,y2a(1,iorb,ik))
-       end do
-       end do
+        end do
+      end do
     end if
 
     if ( Mlma < nprocs_g ) then
-       nzlma_0 = Mlma
+      nzlma_0 = Mlma
     else
-       nzlma_0 = min(Mlma*125/nprocs_g,Mlma)
+      nzlma_0 = min(Mlma*125/nprocs_g,Mlma)
     end if
 
 !    ctt(:)=0.d0
 !    ett(:)=0.d0
 
+!
+!      __________
+!     /         /|
+!    /         / |
+!   /         /  |
+!  /b2b      /   |
+!  -----------   |
+!  |    _____|___|
+!  |   /b3b  |   /
+!  |  /      |  /
+!  | /       | /
+!  |/        |/
+!  ----------
+! a1b  ab1  b1b
+! a2b
+! a3b
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
     a2b = Igrid(1,2)
@@ -128,60 +147,72 @@ write(200+myrank,*) ">>>> prep_ps_nloc2"
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
+    c1  = 1.d0/Ngrid(1)
+    c2  = 1.d0/Ngrid(2)
+    c3  = 1.d0/Ngrid(3)
 
     call watch(ctt(7),ett(7))
 
+!----- make_minimal_box -----
+! atom position centered grid
+! minimal box for largest atom
+! MMJJ_0 : total # of grid points
     r=maxval(Rps)+maxval(Hgrid(1:3))+1.d-8
     call make_minimal_box(r,mm1,mm2,mm3,MMJJ_0)
+! IN:   r
+! OUT:  m_grid_ion==MMJJ_0
+!       map_grid_ion(1:3,1:m_grid_ion)
+!       mcube_grid_ion(1_min:2_max,1:3) - max & min value of map_grid_ion
+!       mm1,mm2,mm3 : max of abs(mcube_grid_ion)
 
     call watch(ctt(8),ett(8))
 
     L=maxval(lo)
     n=maxval(norb)
-    if ( .not.allocated(icheck_tmp3) ) allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
-    if ( .not.allocated(JJ_tmp)      ) allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
-    if ( .not.allocated(MJJ_tmp)     ) allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
-    if ( .not.allocated(uV_tmp)      ) allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
+    if ( .not.allocated(icheck_tmp3) ) allocate( icheck_tmp3(Natom,n,2*L+1) )
+    if ( .not.allocated(JJ_tmp)      ) allocate( JJ_tmp(6,MMJJ_0,n,Natom)   )
+    if ( .not.allocated(MJJ_tmp)     ) allocate( MJJ_tmp(n,Natom)           )
+    if ( .not.allocated(uV_tmp)      ) allocate( uV_tmp(MMJJ_0,n,Natom)     )
+    icheck_tmp3 = 0
+    JJ_tmp      = 0
+    MJJ_tmp     = 0
+    uV_tmp      = 0.d0
 
     call watch(ctt(0),ett(0))
 
+!-----------------------------------------------------------------------------pselect==4
     if ( pselect == 4 ) then
-
-       call prep_ps_nloc_gth(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion &
-                            ,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
-
+       call prep_ps_nloc_gth(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
     else
+!=============================================================================pselect==4
+!-----------------------------------------------------------------------------pselect\=4
 
 #ifndef _SPLINE_
     allocate( irad(0:3000,Nelement) ) ; irad=0
     M_irad=0
     do ik=1,Nelement
-       NRc=maxval( NRps(:,ik) )
-       NRc=min( 3000, NRc )
-       m=0
-       irad(0,ik)=1
-       do ir=1,NRc
-          m=int(100.d0*rad1(ir,ik))+1
-          irad( m,ik )=ir
-       end do
-       ir=irad(0,ik)
-       do i=1,m
-          if ( irad(i,ik)==0 ) then
-             irad(i,ik)=ir
-             cycle
-          end if
-          ir=irad(i,ik)
-       end do
-       irad(m+1:,ik)=ir
-       M_irad=max(M_irad,m)
+      NRc=maxval( NRps(:,ik) )
+      NRc=min( 3000, NRc )
+      m=0
+      irad(0,ik)=1
+      do ir=1,NRc
+        m=int(100.d0*rad1(ir,ik))+1
+        irad( m,ik )=ir
+      end do
+      ir=irad(0,ik)
+      do i=1,m
+        if ( irad(i,ik)==0 ) then
+          irad(i,ik)=ir
+          cycle
+        end if
+        ir=irad(i,ik)
+      end do
+      irad(m+1:,ik)=ir
+      M_irad=max(M_irad,m)
     end do
 #endif
 
-    c1                 = 1.d0/Ngrid(1)
-    c2                 = 1.d0/Ngrid(2)
-    c3                 = 1.d0/Ngrid(3)
     maxerr             = 0
-    icheck_tmp3(:,:,:) = 0
     MMJJ               = 0
     nzlma              = 0
     lma                = 0
@@ -192,154 +223,153 @@ write(200+myrank,*) ">>>> prep_ps_nloc2"
 !$OMP            ,id1,id2,id3,k1,k2,k3,i1_0,i2_0,i3_0,d1,d2,d3,x,y,z,r2,r &
 !$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err )
     do a=1,Natom
-
-       Rx = aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
-       Ry = aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
-       Rz = aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
-
-       ic1 = nint( aa_atom(1,a)*Ngrid(1) )
-       ic2 = nint( aa_atom(2,a)*Ngrid(2) )
-       ic3 = nint( aa_atom(3,a)*Ngrid(3) )
-
-       ik = ki_atom(a)
-
-       do iorb=1,norb(ik)
-
-          Rps2 = Rps(iorb,ik)**2
-          NRc  = NRps(iorb,ik)
-          L    = lo(iorb,ik)
-          j    = 0
-
-          do i=1,M_grid_ion
-
-             i1 = map_grid_ion(1,i)
-             i2 = map_grid_ion(2,i)
-             i3 = map_grid_ion(3,i)
-
-             id1 = ic1 + i1
-             id2 = ic2 + i2
-             id3 = ic3 + i3
-
-             k1=id1/ML1 ; if ( id1<0 ) k1=(id1+1)/ML1-1
-             k2=id2/ML2 ; if ( id2<0 ) k2=(id2+1)/ML2-1
-             k3=id3/ML3 ; if ( id3<0 ) k3=(id3+1)/ML3-1
-             i1_0=id1-k1*ML1
-             i2_0=id2-k2*ML2
-             i3_0=id3-k3*ML3
-
-             if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
-                  Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
-                  Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
-
-                d1 = id1*c1
-                d2 = id2*c2
-                d3 = id3*c3
-
-                x  = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
-                y  = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
-                z  = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-                r2 = x*x+y*y+z*z
-
-                if ( r2 > Rps2+1.d-10 ) cycle
-
-                r    = sqrt(r2)
-                v0   = 0.d0
-                err0 = 0.d0
-
-                if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
-                     abs(z)>1.d-14 .or. L==0 ) then
+      ik = ki_atom(a)
+! Rx,Ry,Rz : atom position in real grid
+      Rx = aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
+      Ry = aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
+      Rz = aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+! ic1,ic2,ic3 : atom position in grid point
+      ic1 = nint( aa_atom(1,a)*Ngrid(1) )
+      ic2 = nint( aa_atom(2,a)*Ngrid(2) )
+      ic3 = nint( aa_atom(3,a)*Ngrid(3) )
+! process for each orbit
+      do iorb=1,norb(ik)
+        Rps2 = Rps(iorb,ik)**2
+        NRc  = NRps(iorb,ik)
+        L    = lo(iorb,ik)
+!--------------------------------------------------for minimal box
+! j : counting the # of grids
+! matching minimal box and total grid
+        j    = 0
+        do i=1,M_grid_ion
+! grid point in minimal box
+          i1 = map_grid_ion(1,i)
+          i2 = map_grid_ion(2,i)
+          i3 = map_grid_ion(3,i)
+! grid point in total grid
+          id1 = ic1 + i1
+          id2 = ic2 + i2
+          id3 = ic3 + i3
+! for parallel computation
+! if i1,i2,i3 is negative : for P.B.C.
+          k1=id1/ML1 ; if ( id1<0 ) k1=(id1+1)/ML1-1
+          k2=id2/ML2 ; if ( id2<0 ) k2=(id2+1)/ML2-1
+          k3=id3/ML3 ; if ( id3<0 ) k3=(id3+1)/ML3-1
+          i1_0=id1-k1*ML1
+          i2_0=id2-k2*ML2
+          i3_0=id3-k3*ML3
+! if this point is in this node
+          if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
+                Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
+                Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
+! ratio adjustment
+            d1 = id1*c1
+            d2 = id2*c2
+            d3 = id3*c3
+! get the real grid of this point centered from atom position
+            x  = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3 - Rx
+            y  = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3 - Ry
+            z  = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3 - Rz
+            r2 = x*x+y*y+z*z
+! if this point is out of PS-data then skip
+              if ( r2 > Rps2+1.d-10 ) cycle
+            r    = sqrt(r2)
+            v0   = 0.d0
+            err0 = 0.d0
+! if this point is away from atom position or l==0
+! interpolation is needed
+            if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
+                  abs(z)>1.d-14 .or. L==0 ) then
 #ifdef _SPLINE_
-                   call splint(rad1(1,ik),viod(1,iorb,ik),y2a,NRc,r,v0)
+              call splint(rad1(1,ik),viod(1,iorb,ik),y2a,NRc,r,v0)
 #else
-                   ir0=irad( int(100.d0*r),ik )
-                   do ir=ir0,NRc
-                      if ( r<rad1(ir,ik) ) exit
-                   end do
-                   if ( ir <= 2 ) then
-                      v0=viod(2,iorb,ik)
-                      if ( ir < 1 ) stop "ps_nloc2(0)"
-                   else if ( ir <= NRc ) then
-                      err0=1.d10
-                      do mm=1,20
-                         m1=max(1,ir-mm)
-                         m2=min(ir+mm,NRc)
-                         call polint &
-                              (rad1(m1,ik),viod(m1,iorb,ik),m2-m1+1,r,v,err)
-                         if ( abs(err)<err0 ) then
-                            v0=v
-                            err0=abs(err)
-                            if ( err0<ep ) exit
-                         end if
-                      end do
-                   else
-                      write(*,*) "ps_nloc2(1)",ir,NRc,viod(NRc,iorb,ik)
-                      write(*,*) viod(NRc+1,iorb,ik),r,rad1(ir,ik)
-                      stop
-                   end if
-                   maxerr=max(maxerr,err0)
+              ir0=irad( int(100.d0*r),ik )
+              do ir=ir0,NRc
+                if ( r<rad1(ir,ik) ) exit
+              end do
+              if ( ir <= 2 ) then
+                v0=viod(2,iorb,ik)
+                if ( ir < 1 ) stop "ps_nloc2(0)"
+              else if ( ir <= NRc ) then
+                err0=1.d10
+                do mm=1,20
+                  m1=max(1,ir-mm)
+                  m2=min(ir+mm,NRc)
+                  call polint(rad1(m1,ik),viod(m1,iorb,ik),m2-m1+1,r,v,err)
+                  if ( abs(err)<err0 ) then
+                    v0=v
+                    err0=abs(err)
+                    if ( err0<ep ) exit
+                  end if
+                end do
+              else
+                write(*,*) "ps_nloc2(1)",ir,NRc,viod(NRc,iorb,ik)
+                write(*,*) viod(NRc+1,iorb,ik),r,rad1(ir,ik)
+                stop ' ERROR : abnormal end'
+              end if
+              maxerr=max(maxerr,err0)
 #endif
-                end if
-
-                j=j+1
-                JJ_tmp(1,j,iorb,a) = i1_0
-                JJ_tmp(2,j,iorb,a) = i2_0
-                JJ_tmp(3,j,iorb,a) = i3_0
-                JJ_tmp(4,j,iorb,a) = k1
-                JJ_tmp(5,j,iorb,a) = k2
-                JJ_tmp(6,j,iorb,a) = k3
-                uV_tmp(j,iorb,a)   = v0
-                      
-             end if
-
-          end do ! i ( 1 - M_grid_ion )
-
-          MJJ_tmp(iorb,a)=j
-
-       end do ! iorb
+            end if
+! j : start from 1
+! with i1_0,i2_0,i3_0 k1,k2,k3
+            j=j+1
+            JJ_tmp(1,j,iorb,a) = i1_0
+            JJ_tmp(2,j,iorb,a) = i2_0
+            JJ_tmp(3,j,iorb,a) = i3_0
+            JJ_tmp(4,j,iorb,a) = k1
+            JJ_tmp(5,j,iorb,a) = k2
+            JJ_tmp(6,j,iorb,a) = k3
+            uV_tmp(j,iorb,a)   = v0
+          end if
+        end do ! i ( 1 - M_grid_ion )
+!==================================================for minimal box
+! if there is not point in this node, j==0
+        MJJ_tmp(iorb,a)=j
+      end do ! iorb
     end do ! a
 !$OMP end parallel do
 
 #ifndef _SPLINE_
     deallocate( irad )
 #endif
-
     end if ! pselect
-
-    lma=0
-    do a=1,Natom
-       ik=ki_atom(a)
-       do iorb=1,norb(ik)
-          j=MJJ_tmp(iorb,a)
-          if ( j > 0 ) then
-             L=lo(iorb,ik)
-             nzlma=nzlma+2*L+1
-             do m=1,2*L+1
-                lma=lma+1
-                icheck_tmp3(a,iorb,m)=lma
-             end do
-          end if
-       end do
-    end do
+!=============================================================================pselect\=4
     MMJJ = maxval( MJJ_tmp )
 
-    allocate( lcheck_tmp1(Mlma,0:np_grid-1) )
-    lcheck_tmp1(:,:)=.false.
+! lma : 
     lma=0
     do a=1,Natom
-       ik=ki_atom(a)
-       do iorb=1,norb(ik)
+      ik=ki_atom(a)
+      do iorb=1,norb(ik)
+        j=MJJ_tmp(iorb,a)
+        if ( j > 0 ) then
           L=lo(iorb,ik)
-          j=MJJ_tmp(iorb,a)
+! nzlma : # of atom*orb
+          nzlma=nzlma+2*L+1
           do m=1,2*L+1
-             lma=lma+1
-             if ( j > 0 ) then
-                lcheck_tmp1(lma,myrank_g)=.true.
-             end if
+            lma=lma+1
+            icheck_tmp3(a,iorb,m)=lma
           end do
-       end do
+        end if
+      end do
     end do
-    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical &
-                      ,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+
+    allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
+    lma=0
+    do a=1,Natom
+      ik=ki_atom(a)
+      do iorb=1,norb(ik)
+        L=lo(iorb,ik)
+        j=MJJ_tmp(iorb,a)
+        do m=1,2*L+1
+          lma=lma+1
+          if ( j > 0 ) then
+            lcheck_tmp1(lma,myrank_g)=.true.
+          end if
+        end do
+      end do
+    end do
+    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
 
     call watch(ctt(1),ett(1))
 
@@ -372,48 +402,49 @@ write(200+myrank,*) ">>>> prep_ps_nloc2"
 
     lma=0
     do a=1,Natom
-       ik=ki_atom(a)
-    do iorb=1,norb(ik)
-       L=lo(iorb,ik)
-    do m=-L,L
-       lma=lma+1
+      ik=ki_atom(a)
+      do iorb=1,norb(ik)
+        L=lo(iorb,ik)
+        do m=-L,L
+          lma=lma+1
 
-       icheck_tmp1(:)=0
-       do n=0,np_grid-1
-          if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
-       end do
-       icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
-
-       call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
-
-       if ( icheck_tmp1(myrank_g)/=0 ) then
-          if ( icheck_tmp1(myrank_g)>0 ) then
-             maps_tmp(icheck_tmp2(myrank_g),1)=icheck_tmp1(myrank_g)
-          end if
-          maps_tmp(icheck_tmp2(myrank_g),2)=inorm(iorb,ik)
-          maps_tmp(icheck_tmp2(myrank_g),3)=a
-          maps_tmp(icheck_tmp2(myrank_g),4)=L
-          maps_tmp(icheck_tmp2(myrank_g),5)=m
-          maps_tmp(icheck_tmp2(myrank_g),6)=iorb
-
-          do n=0,nprocs_g-1
-             if ( n==myrank_g .or. icheck_tmp1(n)==0 ) cycle
-             lma_nsend_tmp(n)=lma_nsend_tmp(n)+1  
-             sendmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(myrank_g)
-             recvmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(n)
-             if ( any(nl_rank_map_tmp(0:nrlma)==n) ) cycle
-             nrlma=nrlma+1
-             nl_rank_map_tmp(nrlma)=n
+          icheck_tmp1(:)=0
+          do n=0,np_grid-1
+            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
           end do
-       end if
+          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
-    end do ! m
-    end do ! iorb
+          call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
+
+          if ( icheck_tmp1(myrank_g)/=0 ) then
+            if ( icheck_tmp1(myrank_g)>0 ) then
+              maps_tmp(icheck_tmp2(myrank_g),1)=icheck_tmp1(myrank_g)
+            end if
+            maps_tmp(icheck_tmp2(myrank_g),2)=inorm(iorb,ik)
+            maps_tmp(icheck_tmp2(myrank_g),3)=a
+            maps_tmp(icheck_tmp2(myrank_g),4)=L
+            maps_tmp(icheck_tmp2(myrank_g),5)=m
+            maps_tmp(icheck_tmp2(myrank_g),6)=iorb
+
+            do n=0,nprocs_g-1
+              if ( n==myrank_g .or. icheck_tmp1(n)==0 ) cycle
+              lma_nsend_tmp(n)=lma_nsend_tmp(n)+1  
+              sendmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(myrank_g)
+              recvmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(n)
+              if ( any(nl_rank_map_tmp(0:nrlma)==n) ) cycle
+              nrlma=nrlma+1
+              nl_rank_map_tmp(nrlma)=n
+            end do
+          end if
+
+        end do ! m
+      end do ! iorb
     end do ! a
 
     call watch(ctt(2),ett(2))
 
     nzlma = icheck_tmp2(myrank_g)
+    write(1100+myrank,*) 'nzlma= ',nzlma
 
     deallocate( itmp )
     deallocate( icheck_tmp2 )
