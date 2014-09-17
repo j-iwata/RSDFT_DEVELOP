@@ -489,7 +489,7 @@ CONTAINS
        end do
 
        do n=1,nn
-          call op_localpot2( gk(:,n), Sf(:,n) )
+          call op_localpot2_Smatrix( gk(:,n), Sf(:,n) )
           call dot_product(gk(n1,n),Sf(n1,n),sb(n),dV,mm,1)
        end do
 
@@ -521,7 +521,7 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(:,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
