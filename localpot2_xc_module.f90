@@ -12,11 +12,10 @@ MODULE localpot2_xc_module
 
 CONTAINS
 
-  SUBROUTINE localpot2_xc(m1_0,m2_0,m3_0,n_in,vout,exc)
+  SUBROUTINE localpot2_xc( n_in, vout, exc )
     implicit none
-    integer,intent(IN) :: m1_0,m2_0,m3_0
-    real(8),intent(IN) :: n_in(m1_0,m2_0,m3_0)
-    real(8),intent(OUT) :: vout(m1_0,m2_0,m3_0),exc
+    real(8),intent(IN) :: n_in(:,:,:)
+    real(8),intent(OUT) :: vout(:,:,:), exc
 
     real(8),parameter :: a0=0.4581652932831429d0 ,da0=0.119086804055547d0
     real(8),parameter :: a1=2.217058676663745d0  ,da1=0.6157402568883345d0
@@ -111,7 +110,9 @@ CONTAINS
     d0=Exc*dV*Ngrid(0)/(m1*m2*m3)
     call mpi_allreduce(d0,Exc,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
+    if ( disp_switch_parallel ) then
     call watch(ct1,et1) ; write(*,*) "localpot2_xc",ct1-ct0,et1-et0
+    end if
 
   END SUBROUTINE localpot2_xc
 

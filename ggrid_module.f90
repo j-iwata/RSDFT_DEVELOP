@@ -343,9 +343,10 @@ CONTAINS
   END SUBROUTINE get_cutoff_ggrid_2
 
 
-  SUBROUTINE construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,itype)
+  SUBROUTINE construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,ecut,itype)
     implicit none
     integer,intent(IN) :: mm1,mm2,mm3,MG2,MG2_0,MG2_1,itype
+    real(8),intent(IN) :: ecut
     integer :: ig,i1,i2,i3
     real(8) :: Gx,Gy,Gz,GG
     select case(itype)

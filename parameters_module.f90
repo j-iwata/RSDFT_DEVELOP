@@ -192,6 +192,8 @@ CONTAINS
 
     call read_symmetry( myrank, unit )
 
+    call read_gram_schmidt( myrank, unit )
+
   END SUBROUTINE read_keywordformat_parameters
 
 

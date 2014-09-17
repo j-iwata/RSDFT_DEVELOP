@@ -250,6 +250,11 @@ PROGRAM Real_Space_Solid
 
   call init_subspace_diag( Nband )
 
+! --- Initialize localpot2 ---
+
+  call init_localpot2
+  call init_localpot2_Smatrix( ML, ML_0, ML_1 )
+
 ! --- Initial wave functions ---
 
   call init_wf
@@ -311,16 +316,24 @@ PROGRAM Real_Space_Solid
      call control_xc_hybrid(1)
   end if
 
-! --- Init Localpot2 ---
-
-  call init_localpot2( Nelement, Ecut, E_hartree, Exc )
-
 ! ---
 ! The followings are just to get H and XC energies,
 ! but potentials are also recalculated with new rho.
 
   call calc_hartree(ML_0,ML_1,MSP,rho)
   call calc_xc
+
+! --- Initial potential of Localpot2 ---
+
+  if ( flag_localpot2 ) then
+     call localpot2_ion( Nelement, Ecut, vion_nl )
+     call localpot2_density( rho_nl )
+     call localpot2_vh( Ecut, rho_nl, vh_nl, E_hartree )
+     call localpot2_xc( rho_nl, vxc_nl, Exc )
+     vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
+     vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
+     call test2_localpot2( vloc_dense )
+  end if
 
 ! --- Init vdW ---
 
