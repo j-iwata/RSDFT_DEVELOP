@@ -1,5 +1,6 @@
 PROGRAM Real_Space_Solid
 
+  use VarSysParameter
   use global_variables
   use parameters_module
   use omp_variables
@@ -91,6 +92,7 @@ use PStest
 
 ! --- DISP_SWITCH ---
 
+  call setDispSwitch(myrank,nprocs)
 ! DISP_SWITCH = .true.
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
@@ -269,7 +271,7 @@ use PStest
   if ( SYStype == 0 ) then
 
 #ifdef _MODULEINITPS_
-     call initiationPS(gcut)
+     call initiatePS(gcut)
 #else
 !-----------------------------------------
      call init_ps_local

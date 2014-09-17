@@ -20,10 +20,10 @@ MODULE pseudopotentials
 
 CONTAINS
 
-  SUBROUTINE initiationPS(gcut)
+  SUBROUTINE initiatePS(gcut)
     implicit none
     real(8),intent(IN) :: gcut
-!write(200+myrank,*) ">>>>>>> initiationPS"
+!write(200+myrank,*) ">>>>>>> initiatePS"
     call init_ps_local
     call init_ps_pcc
     call init_ps_initrho
@@ -76,9 +76,9 @@ if (myrank==0) write(200,*) "----- prepQRijp102 -----"
     end select
 !========================================= PSELECT
 
-!write(200+myrank,*) "<<<<<<< initiationPS"
+!write(200+myrank,*) "<<<<<<< initiatePS"
 
     return
-  END SUBROUTINE initiationPS
+  END SUBROUTINE initiatePS
 
 END MODULE pseudopotentials

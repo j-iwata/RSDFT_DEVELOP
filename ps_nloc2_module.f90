@@ -1,5 +1,6 @@
 MODULE ps_nloc2_module
 
+  use VarSysParameter
   use aa_module
   use atom_module
   use rgrid_module
@@ -77,7 +78,7 @@ CONTAINS
     END INTERFACE
 
 #ifdef _SHOWALL_INIT_
-    write(200+myrank,*) ">>>> prep_ps_nloc2"
+    if (isParallelTest) write(200+myrank,*) ">>>> prep_ps_nloc2"
 #endif
 
 ! initiate clock & clock start
@@ -353,6 +354,7 @@ CONTAINS
         end if
       end do
     end do
+    write(1100+myrank,*) 'nzlma= ',nzlma
 
     allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
     lma=0
@@ -409,10 +411,11 @@ CONTAINS
           lma=lma+1
 
           icheck_tmp1(:)=0
-          do n=0,np_grid-1
-            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
-          end do
-          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
+          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
+!          do n=0,np_grid-1
+!            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
+!          end do
+!          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
           call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
 

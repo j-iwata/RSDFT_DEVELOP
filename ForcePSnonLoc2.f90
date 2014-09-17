@@ -537,6 +537,7 @@ enddo
     return
   END SUBROUTINE calcForcePSnonLoc2
 
+#ifdef _USPP_
 #ifdef _USPP_NEW_
   SUBROUTINE calcForceQ(uVunk_tmp,MI,forceQ)
     use bz_module
@@ -942,7 +943,8 @@ enddo
     real(8) :: x,y,z,r,kr,pi2,c
     real(8) :: tmp,tmp0,tmp1
     real(8) :: yy1,yy2,yy3
-    real(8),allocatable :: work2(:,:),dQY(1:3)
+    real(8),allocatable :: work2(:,:)
+    real(8),allocatable :: dQY(1:3)
     real(8) :: rf_Q(1:3)
     integer,allocatable :: icheck_tmpQ(:)
     integer :: JJ_tmp(0:3)
@@ -1141,7 +1143,7 @@ enddo
               end if
             end do ! L1
           enddo ! ll3
-          if (dQY(1)/=0.d0.or.dQY(2)/=0.d0.or.dQY(3)/=0,d0) then
+          if (dQY(1)/=0.d0.or.dQY(2)/=0.d0.or.dQY(3)/=0.d0) then
             rf_Q(1)=rf_Q(1)+dQY(1)
             rf_Q(2)=rf_Q(2)+dQY(2)
             rf_Q(3)=rf_Q(3)-dQY(3)
@@ -1279,6 +1281,24 @@ enddo
 
 !$OMP end parallel
 
+    return
+  END SUBROUTINE calcForceQ
+#endif
+#else
+  SUBROUTINE calcForceQ(uVunk_tmp,MI,forceQ)
+    use bz_module
+    use wf_module
+    use watch_module
+  use VarParaPSnonLocG
+  use ps_nloc2_variables, only: lmap,amap,mmap,nzlma,iorbmap
+    implicit none
+    integer,intent(IN) :: MI
+#ifdef _DRSDFT_
+    real(8),intent(IN) :: uVunk_tmp(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1)
+#else
+    complex(8),intent(IN) :: uVunk_tmp(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1)
+#endif
+    real(8),intent(INOUT) :: forceQ(3,MI)
     return
   END SUBROUTINE calcForceQ
 #endif

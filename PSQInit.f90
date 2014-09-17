@@ -100,6 +100,7 @@ write(650+myrank,'(11I3)') l1,i1,nr1,m1,l2,i2,nr2,m2,k1,k2,k3
       end do
     end do
 
+#ifdef _SHOWALL_KtoK_
     do ik=1,Nelement_
       write(1100+myrank,*) ik,'N_k1(ik)= ',N_k1(ik),'final'
       write(1320+myrank,*) 'k1,k1_to_k2(k1,ik)',ik
@@ -120,6 +121,7 @@ write(650+myrank,'(11I3)') l1,i1,nr1,m1,l2,i2,nr2,m2,k1,k2,k3
         write(1420+myrank,*) k2,k2_to_iorb(2,k2,ik)
       enddo
     enddo
+#endif
 #ifdef _SHOWALL_INIT_
 write(650+myrank,*) "<<<<< initKtoKPSQ"
 #endif

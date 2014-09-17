@@ -331,7 +331,8 @@ write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
 ! for grid-parallel computation
 
     c_nzqr_0 = N_nzqr
-    write(1100+myrank,*) 'c_nzqr= ',c_nzqr_0
+    write(1100+myrank,*) 'c_nzqr=    ',c_nzqr_0
+    write(1100+myrank,*) 'N_k1(max)= ',maxval(N_k1)
 
     n=maxval( node_partition(1:3) )
     allocate( itmp(n,3)                   ) ; itmp            =0
@@ -353,12 +354,15 @@ write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
       do ik1=1,N_k1(ik)
 !        kk1=kk1map(ik1,ia)
         icheck_tmp1(:)=0
-        do n=0,np_grid-1
-          if ( lcheck_tmp1(ik1,n) ) icheck_tmp1(n) = 1
-        end do
-        icheck_tmp1(myrank_g) = icheck_tmp5(ik1,ia)
+        call MPI_ALLGATHER(icheck_tmp5(ik1,ia),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
+!        do n=0,np_grid-1
+!          if ( lcheck_tmp1(ik1,n) ) icheck_tmp1(n) = 1
+!        end do
+!        icheck_tmp1(myrank_g) = icheck_tmp5(ik1,ia)
 
         call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
+
+write(1100+myrank,'(2I4," icheck_tmp2(myrank_g)= ",I5)') ia,ik1,icheck_tmp2(myrank_g)
 
         if ( icheck_tmp1(myrank_g)/=0 ) then
           if ( icheck_tmp1(myrank_g)>0 ) then

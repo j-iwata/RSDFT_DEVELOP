@@ -5,11 +5,21 @@ MODULE atom_module
   PRIVATE
   PUBLIC :: Natom,Nelement,aa_atom,ki_atom,read_atom &
             ,opt_constrain
+#ifdef _OBJECT_
+  PUBLIC :: getAtomPosition
+#endif
 
   integer :: Natom,Nelement
   integer,allocatable :: ki_atom(:)
   real(8),allocatable :: aa_atom(:,:)
   integer,allocatable :: opt_constrain(:)
+
+#ifdef _OBJECT_
+  TYPE AtomPosition
+    real(8) :: Rx,Ry,Rz
+    integer :: ix,iy,iz
+  END TYPE AtomPosition
+#endif
 
 CONTAINS
 
@@ -111,4 +121,21 @@ CONTAINS
     call mpi_bcast(opt_constrain,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_2
 
+#ifdef _OBJECT_
+  SUBROUTINE getAtomPosition(iatom,Ngrid,atomPos)
+    implicit none
+    integer,intent(IN) :: iatom
+    integer,intent(IN) :: Ngrid(3)
+    type(AtomPosition),intent(OUT) :: atomPos
+! Rx,Ry,Rz : atom position in real grid
+    atomPos%Rx = aa(1,1)*aa_atom(1,iatom)+aa(1,2)*aa_atom(2,iatom)+aa(1,3)*aa_atom(3,iatom)
+    atomPos%Ry = aa(2,1)*aa_atom(1,iatom)+aa(2,2)*aa_atom(2,iatom)+aa(2,3)*aa_atom(3,iatom)
+    atomPos%Rz = aa(3,1)*aa_atom(1,iatom)+aa(3,2)*aa_atom(2,iatom)+aa(3,3)*aa_atom(3,iatom)
+! ix,iy,iz : atom position in grid point
+    atomPos%ix = nint( aa_atom(1,iatom)*Ngrid(1) )
+    atomPos%iy = nint( aa_atom(2,iatom)*Ngrid(2) )
+    atomPos%iz = nint( aa_atom(3,iatom)*Ngrid(3) )
+    return
+  END SUBROUTINE getAtomPosition
+#endif
 END MODULE atom_module
