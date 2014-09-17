@@ -213,6 +213,7 @@ CONTAINS
     end do
 #endif
 
+    allocate( icheck_tmp1(0:nprocs_g-1)   ) ; icheck_tmp1=0
     maxerr             = 0
     MMJJ               = 0
     nzlma              = 0
@@ -263,6 +264,7 @@ CONTAINS
           if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
                 Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
                 Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
+            icheck_tmp1(myrank_g)=icheck_tmp1(myrank_g)+1
 ! ratio adjustment
             d1 = id1*c1
             d2 = id2*c2
@@ -330,6 +332,16 @@ CONTAINS
     end do ! a
 !$OMP end parallel do
 
+!goto 221
+    n=maxval(norb)
+    write(1100+myrank,'(2A5,A12)') 'a','iorb','MJJ_tmp'
+    do a=1,Natom
+      do iorb=1,n
+        write(1500+myrank,'(2I5,I12)') a,iorb,MJJ_tmp(iorb,a)
+      enddo
+    enddo
+221 continue
+
 #ifndef _SPLINE_
     deallocate( irad )
 #endif
@@ -337,13 +349,17 @@ CONTAINS
 !=============================================================================pselect\=4
     MMJJ = maxval( MJJ_tmp )
 
+!goto 220
 ! lma : 
     lma=0
+    write(1520+myrank,'(2A5)') 'a','iorb'
     do a=1,Natom
       ik=ki_atom(a)
       do iorb=1,norb(ik)
-        j=MJJ_tmp(iorb,a)
-        if ( j > 0 ) then
+!        j=MJJ_tmp(iorb,a)
+!        if ( j > 0 ) then
+        if (icheck_tmp1(myrank_g)>0) then
+          write(1520+myrank,'(2I5)') a,iorb
           L=lo(iorb,ik)
 ! nzlma : # of atom*orb
           nzlma=nzlma+2*L+1
@@ -355,6 +371,8 @@ CONTAINS
       end do
     end do
     write(1100+myrank,*) 'nzlma= ',nzlma
+    deallocate(icheck_tmp1)
+220 continue
 
     allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
     lma=0
@@ -402,6 +420,17 @@ CONTAINS
     np2 = node_partition(2)
     np3 = node_partition(3)
 
+    L=maxval(lo)
+    n=maxval(norb)
+    write(1100+myrank,'(3A5,A12)') 'a','iorb','m','icheck_tmp3'
+    do a=1,Natom
+      do iorb=1,n
+        do m=1,2*L+1
+          write(1100+myrank,'(3I5,I12)') a,iorb,m,icheck_tmp3(a,iorb,m)
+        enddo
+      enddo
+    enddo
+
     lma=0
     do a=1,Natom
       ik=ki_atom(a)
@@ -411,11 +440,11 @@ CONTAINS
           lma=lma+1
 
           icheck_tmp1(:)=0
-          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
-!          do n=0,np_grid-1
-!            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
-!          end do
-!          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
+!          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
+          do n=0,np_grid-1
+            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
+          end do
+          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
           call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
 

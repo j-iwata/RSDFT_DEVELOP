@@ -542,7 +542,7 @@ use PStest
   flag_exit = .false.
   flag_scf  = .false.
 
-goto 900
+!goto 900
 
 !----------------------------------------------------------------------SCF
   do iter=1,Diter
