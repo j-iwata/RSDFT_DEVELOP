@@ -28,7 +28,18 @@ PROGRAM cubegen_vrho
      read(u2,*) Kion(i),asi(1:3,i)
   end do
 
+! ---
+
   aa(:,:)=ax*aa(:,:)
+
+! ---
+
+!  do i=1,MI
+!     asi(3,i) = asi(3,i) + 0.5d0
+!     if ( asi(3,i) > 1.0d0 ) asi(3,i) = asi(3,i) - 1.0d0
+!  end do
+
+! ---
 
   rsi(:,:)=matmul( aa,asi )
 
@@ -88,10 +99,11 @@ CONTAINS
     integer,intent(IN) :: s
     real(8),intent(IN) :: f(0:,0:,0:)
     character(*),intent(IN) :: fn0
-    integer :: i
+    integer :: i,m3,i1,i2,i3,j3
     character(30) :: name, file_name
     real(8) :: r0(3), aa_del(3,3)
     character(1) :: cs
+    real(8),allocatable :: fsft(:,:,:)
 
     aa_del(:,1)=aa(:,1)/ML1
     aa_del(:,2)=aa(:,2)/ML2
@@ -103,6 +115,17 @@ CONTAINS
     write(cs,'(i1.1)') s
 
     file_name = fn0//"_"//cs//".cub"
+
+!    allocate( fsft(0:ML1-1,0:ML2-1,0:ML3-1) ) ; fsft=0.0d0
+!    m3=ML3/2
+!    do i3=0,ML3-1
+!       j3=mod(i3+m3,ML3)
+!       do i2=0,ML2-1
+!       do i1=0,ML1-1
+!          fsft(i1,i2,j3) = f(i1,i2,i3)
+!       end do
+!       end do
+!    end do
 
     open(iu,file=file_name)
     write(iu,100) name
@@ -116,6 +139,7 @@ CONTAINS
     end do
     do i1=0,ML1-1
        do i2=0,ML2-1
+!          write(iu,*) fsft(i1,i2,:)
           write(iu,*) f(i1,i2,:)
        end do
     end do
@@ -123,6 +147,8 @@ CONTAINS
 
 100 format(a4)
 110 format(i5,4f12.6)
+
+!    deallocate( fsft )
 
   END SUBROUTINE gen_cube
 
