@@ -96,6 +96,7 @@ CONTAINS
 !---------------------------------------------------- kinetic
           work=zero
 #ifdef _SHOWALL_ESP_
+write(350+myrank,'(5A5,1A20)') 'scf_iter','s','k','n','i','unk(i,n,k,s)'
 do i=n1,n2
 write(350+myrank,'(5I5,2g20.8)') scf_iter,s,k,n,i,unk(i,n,k,s)
 enddo
@@ -153,6 +154,7 @@ enddo
 #endif
 
 #ifdef _SHOWALL_ESP_
+write(450+myrank,'(5A5,1A20)') 'scf_iter','s','k','n','i','esp0(i,k,s,1:4)'
 do i=nb1,nb2
 write(450+myrank,'(5I5,4g20.8)') scf_iter,s,k,n,i,esp0(i,k,s,1:4)
 enddo
@@ -188,6 +190,16 @@ enddo
        deallocate( esp0_Q )
 
     end if
+#ifdef _SHOWALL_ESP_
+write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
+do s=MSP_0,MSP_1
+do k=MBZ_0,MBZ_1
+do n=MB_0,MB_1
+write(1800+myrank,'(4I5,1g20.8)') scf_iter,s,k,n,esp(n,k,s)
+enddo
+enddo
+enddo
+#endif
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
 
