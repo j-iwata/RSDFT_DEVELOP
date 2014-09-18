@@ -175,6 +175,12 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
 !write(400+myrank,*) "GramSchmidtGSub IF2"
 #endif
             call get_gSf(unk(ML_0,ms,k,s),unk(ML_0,ms,k,s),ML_0,ML_1,k,d,0)
+!----------------------------------- def is changed
+! make it real!!!
+!            write(2000+myrank,'("C",2g20.7)') d
+!            d=abs(d)
+!            write(2000+myrank,'("R",2g20.7)') d
+!=================================== def is changed
             call MPI_ALLREDUCE( d,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
             ! ?????????????????????????????? dV????
             c=1.d0/sqrt(c)
@@ -211,6 +217,12 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
             end if
             if ( m==1 .or. (n==m-1 .and. m/=ns) ) then
               call get_gSf(unk(ML_0,m,k,s),unk(ML_0,m,k,s),ML_0,ML_1,k,d,0)
+!----------------------------------- def is changed
+! make it real!!!
+!            write(2000+myrank,'("C",2g20.7)') d
+!            d=abs(d)
+!            write(2000+myrank,'("R",2g20.7)') d
+!=================================== def is changed
               call mpi_allreduce(d,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
               c=1.d0/sqrt(c)
 #ifdef _SHOWALL_GS_

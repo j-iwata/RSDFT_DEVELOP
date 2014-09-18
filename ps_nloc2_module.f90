@@ -46,6 +46,7 @@ CONTAINS
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
 !    integer,allocatable :: icheck_tmp3(:,:,:)
+    logical,allocatable :: isInThisNode(:,:)
     integer,allocatable :: icheck_tmp4(:,:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:),ireq(:)
     integer,allocatable :: lma_nsend_tmp(:),maps_tmp(:,:),itmp1(:)
@@ -213,7 +214,9 @@ CONTAINS
     end do
 #endif
 
-    allocate( icheck_tmp1(0:nprocs_g-1)   ) ; icheck_tmp1=0
+!    allocate( icheck_tmp1(0:nprocs_g-1)   ) ; icheck_tmp1=0
+    n=maxval(norb)
+    allocate( isInThisNode(1:Natom,1:n) ) ; isInThisNode=.false.
     maxerr             = 0
     MMJJ               = 0
     nzlma              = 0
@@ -264,7 +267,8 @@ CONTAINS
           if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
                 Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
                 Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
-            icheck_tmp1(myrank_g)=icheck_tmp1(myrank_g)+1
+!            icheck_tmp1(myrank_g)=icheck_tmp1(myrank_g)+1
+            isInThisNode(a,iorb)=.true.
 ! ratio adjustment
             d1 = id1*c1
             d2 = id2*c2
@@ -358,7 +362,8 @@ CONTAINS
       do iorb=1,norb(ik)
 !        j=MJJ_tmp(iorb,a)
 !        if ( j > 0 ) then
-        if (icheck_tmp1(myrank_g)>0) then
+!        if (icheck_tmp1(myrank_g)>0) then
+        if ( isInThisNode(a,iorb) ) then
           write(1520+myrank,'(2I5)') a,iorb
           L=lo(iorb,ik)
 ! nzlma : # of atom*orb
@@ -371,7 +376,8 @@ CONTAINS
       end do
     end do
     write(1100+myrank,*) 'nzlma= ',nzlma
-    deallocate(icheck_tmp1)
+!    deallocate(icheck_tmp1)
+    deallocate( isInThisNode )
 220 continue
 
     allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
@@ -440,11 +446,11 @@ CONTAINS
           lma=lma+1
 
           icheck_tmp1(:)=0
-!          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
-          do n=0,np_grid-1
-            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
-          end do
-          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
+          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
+!          do n=0,np_grid-1
+!            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
+!          end do
+!          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
           call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
 

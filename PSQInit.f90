@@ -273,7 +273,7 @@ write(520+myrank,*) "       rad     rad1      vrad      Q_wm       qrL"
 do i=1,10
   write(520+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),Q_wm(i,k2,ik),qrL(i,ll3,k2,ik)
 end do
-do i=Q_NRps(k2,ik)-10,Q_NRps(k2,ik)
+do i=NRc-10,NRc
   write(520+myrank,'(I5,5E10.2e2)') i,rad(i,ik),rad1(i,ik),vrad(i),Q_wm(i,k2,ik),qrL(i,ll3,k2,ik)
 end do
 #endif

@@ -83,6 +83,7 @@ CONTAINS
     integer,allocatable :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:),icheck_tmp4(:,:,:)
     integer,allocatable :: qr_nsend_tmp(:),nl_rank_map_tmp(:),maps_tmp(:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:)
+    logical,allocatable :: isInThisNode_Q(:,:)
     
     integer :: ierr,nreq
     real(8) :: ctt(0:9),ett(0:9)
@@ -179,6 +180,8 @@ write(200+myrank,*) ">>>>> prepQRijp102"
     MMJJ_Q      = 0
     MMJJ_t_Q    = 0
     c_nzqr_pre  = 0
+    n=maxval(N_k1)
+    allocate( isInThisNode_Q(1:Natom,1:n) ) ; isInThisNode_Q=.false.
 
 !!$OMP parallel do schedule(dynamic) firstprivate( maxerr ) &
 !!$OMP    private( Rx,Ry,Rz,ic1,ic2,ic3,ik,iorb,Rps2,NRc,L,j,i,i1,i2,i3 &
@@ -220,6 +223,7 @@ write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
             if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
                 Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
                 Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
+              isInThisNode_Q(ia,ik1)=.true.
               d1 = id1*c1
               d2 = id2*c2
               d3 = id3*c3
@@ -292,8 +296,8 @@ write(530+myrank,'(2I5,A8,6I4)') i,j," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
 #ifdef _SHOWALL_MAP_Q_
 write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
 #endif
-          c_nzqr_pre          = c_nzqr_pre+1
-          icheck_tmp5(ik1,ia) = c_nzqr_pre
+!          c_nzqr_pre          = c_nzqr_pre+1
+!          icheck_tmp5(ik1,ia) = c_nzqr_pre
        end do ! ik1
     end do ! ia
 !!$OMP end parallel do
@@ -303,13 +307,19 @@ write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
     deallocate( irad )
 #endif
     
+    c_nzqr_pre=0
     Mqr=0
     do ia=1,Natom
       ik=ki_atom(ia)
       do ik1=1,N_k1(ik)
         Mqr=Mqr+1
+        if ( isInThisNode_Q(ia,ik1) ) then
+          c_nzqr_pre = c_nzqr_pre+1
+          icheck_tmp5(ik1,ia) = c_nzqr_pre
+        endif
       end do
     end do
+    deallocate( isInThisNode_Q )
 
     allocate( lcheck_tmp1(Mqr,0:np_grid-1) )
     lcheck_tmp1(:,:)=.false.
@@ -354,11 +364,11 @@ write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
       do ik1=1,N_k1(ik)
 !        kk1=kk1map(ik1,ia)
         icheck_tmp1(:)=0
-!        call MPI_ALLGATHER(icheck_tmp5(ik1,ia),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
-        do n=0,np_grid-1
-          if ( lcheck_tmp1(ik1,n) ) icheck_tmp1(n) = 1
-        end do
-        icheck_tmp1(myrank_g) = icheck_tmp5(ik1,ia)
+        call MPI_ALLGATHER(icheck_tmp5(ik1,ia),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
+!        do n=0,np_grid-1
+!          if ( lcheck_tmp1(ik1,n) ) icheck_tmp1(n) = 1
+!        end do
+!        icheck_tmp1(myrank_g) = icheck_tmp5(ik1,ia)
 
         call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
 

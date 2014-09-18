@@ -78,6 +78,8 @@ use PStest
   logical :: flag_end =.false.
   logical :: flag_scf =.false.
 
+  real(8) :: totalScfTime
+
 ! --- start MPI ---
 
   call start_mpi_parallel
@@ -127,11 +129,12 @@ use PStest
   call construct_bb(aa)
 
 ! --- RSMOL ---
-
+!----------------------------------------------------------------------------SYStype==1
   if ( SYStype == 1 ) then
      call read_rgrid_mol(myrank,2)
      call init_rgrid_mol( Ngrid(1),Hgrid(1),aa,bb,disp_switch )
   end if
+!============================================================================SYStype==1
 
 ! --- R-grid and G-grid ---
 
@@ -164,7 +167,7 @@ use PStest
   call init_bcset(Md)
 
 ! --- parallel computation for RSMOL ---
-
+!----------------------------------------------------------------------------SYStype==1
   if ( SYStype == 1 ) then
 
      select case(iswitch_eqdiv)
@@ -195,9 +198,10 @@ use PStest
      call init_bcset_mol(Md,Ngrid(1),np_grid,myrank_g,comm_grid,pinfo_grid)
 
   end if
+!============================================================================SYStype==1
 
 ! --- ESM esm ---
-
+!----------------------------------------------------------------------------SYStype==3
   if ( SYStype == 3 ) then
 
      call read_esm_rgrid(myrank,1)
@@ -235,6 +239,7 @@ use PStest
      call flush(6)
 
   end if
+!============================================================================SYStype==3
 
 ! --- array bounds ---
 
@@ -313,7 +318,7 @@ use PStest
 #endif
 
 !----------------------- ESM esm -----
-
+!----------------------------------------------------------------------------SYStype==3
   else if ( SYStype == 3 ) then
 
      call ps_nloc2_init(Gcut)
@@ -337,9 +342,10 @@ use PStest
      write(*,'(1x,"sum(rho)*dV",3f15.10)') sum(rho)*dV,minval(rho),maxval(rho)
 
      call flush(6)
+!============================================================================SYStype==3
 
 !----------------------- MOL mol -----
-
+!----------------------------------------------------------------------------SYStype==1
   else if ( SYStype == 1 ) then
 
      call init_ps_local_mol(Gcut)
@@ -358,6 +364,7 @@ use PStest
      call construct_boundary_rgrid_mol(Md)
 
   end if
+!============================================================================SYStype==1
 
 !-------------------- Hamiltonian Test
 
@@ -380,7 +387,7 @@ use PStest
 
 
 ! --- ESM esm ---
-
+!----------------------------------------------------------------------------SYStype==3
   if ( SYStype == 3 ) then
 
      call construct_ps_density_longloc
@@ -392,6 +399,7 @@ use PStest
      deallocate( vtmp )
 
   end if
+!============================================================================SYStype==3
 
 ! --- Ewald sum ---
 
@@ -404,6 +412,7 @@ use PStest
      call calc_ewald(Eewald,disp_switch)
      call watcht(disp_switch,"calc_ewald",1)
 
+!----------------------------------------------------------------------------SYStype==1
   case( 1 )
 
      call watcht(disp_switch,"",0)
@@ -412,28 +421,17 @@ use PStest
      if ( disp_switch ) write(*,*) "Ewld(MOL)=",Eewald
 
   end select 
+!============================================================================SYStype==1
 
 ! --- preparing for subspace diagonalization ---
 
   call prep_subspace_diag(Nband,disp_switch)
 
 ! --- Initial wave functions ---
+!!!!!!!! why not do this when IC\=0????????
 
-  call init_wf
-  call init_localpot
-!  call check_all_ps(myrank)
-
-  do s=MSP_0,MSP_1
-  do k=MBZ_0,MBZ_1
-!     call gram_schmidt_m(1,Nband,k,s)
-     call gram_schmidt_t(1,Nband,k,s)
-  end do
-  end do
-!  call write_wf
-!  call test_on_wf(dV,myrank==0)
-#ifdef _USPP_
-!  call test_orthnorm_wf(myrank)
-#endif
+  call init_wf  !!!!!! this is needed because of allocate(unk)
+  call init_localpot  !!!!!! allocate(Vloc)
 #ifdef _USPP_
   if ( .true. ) then
     do s=MSP_0,MSP_1
@@ -442,6 +440,27 @@ use PStest
   end if
   call getDij
 #endif
+!  call check_all_ps(myrank)
+
+  do s=MSP_0,MSP_1
+  do k=MBZ_0,MBZ_1
+!     call gram_schmidt_m(1,Nband,k,s)
+     call gram_schmidt_t(1,Nband,k,s)
+  end do
+  end do
+!  call write_wf ; goto 900
+!  call test_on_wf(dV,myrank==0)
+#ifdef _USPP_
+!  call test_orthnorm_wf(myrank)
+#endif
+!#ifdef _USPP_
+!  if ( .true. ) then
+!    do s=MSP_0,MSP_1
+!      Vloc(ML_0:ML_1,s)=Vion(ML_0:ML_1)
+!    end do
+!  end if
+!  call getDij
+!#endif
 
 ! --- Initial occupation ---
 
@@ -471,6 +490,8 @@ use PStest
   end if
 
 !--- Initial Potential ---
+!!!!!!!!!!! why not wait till previous 'wf, density, potentials' are read????
+!!!!!!!!!!! those routine are called twice
 !call write_rho(1500,myrank) ; goto 900
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
@@ -520,6 +541,9 @@ use PStest
 
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
+  do s=MSP_0,MSP_1
+    Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+  end do
   
 #ifdef _USPP_
   call getDij
@@ -544,9 +568,13 @@ use PStest
 
 !goto 900
 
+  totalScfTime=0.d0
+  if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
+  if ( isRootRank ) write(920,'(A4,12A15)') 'iter','Etot','Eewald','Ekin','Eloc','Enlc','Eion','E_hartree','Exc','E_exchange','E_correlation','Eeig','Ehwf'
 !----------------------------------------------------------------------SCF
   do iter=1,Diter
 
+     if ( disp_switch ) write(200,'(a40," iter=",i4)') repeat("-",40),iter
      if ( disp_switch ) write(*,'(a40," iter=",i4)') repeat("-",40),iter
 
 ! Initial sweep will take place first
@@ -569,12 +597,10 @@ use PStest
      do k=MBZ_0,MBZ_1
         call watcht(disp_switch,"",0)
 
-        call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
-                               ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-!call write_wf ; goto 900
-
 !-------------------------------------------------------- scf step start
 ! will do for iter==1
+! will not do subspace diag in initial sweep?
+! will not update density in initial sweep
         if ( iter == 1 .or. flag_scf ) then
 #ifdef _LAPACK_
            call subspace_diag_la(k,s)
@@ -583,12 +609,13 @@ use PStest
 #endif
         end if
         call watcht(disp_switch,"diag",1)
-        call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
-                               ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+        call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+!call write_wf ; goto 900
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)
         call watcht(disp_switch,"gs  ",1)
         if ( Ndiag /= 1 ) then
+! doing subspace diag anyway?
            !if ( .not.flag_scf ) then
 #ifdef _LAPACK_
            call subspace_diag_la(k,s)
@@ -629,8 +656,14 @@ use PStest
         call calc_hartree(ML_0,ML_1,MSP,rho)
         call watcht(disp_switch,"hartree",1)
         call calc_xc
-        call calc_total_energy(.false.,disp_switch,iter)
+!        call calc_total_energy(.false.,disp_switch,iter)
+        call calc_total_energy(.true.,disp_switch,iter)
+!-------------------------------------------------------- mixing
         if ( mod(imix,2) == 0 ) then
+! odd : potential mixing
+! even: density mixing
+!   10 to 19 : pulay
+!   0 to 9   : simple
            call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,rho(ML_0,MSP_0),flag_conv,disp_switch)
            call normalize_density
            m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
@@ -648,7 +681,9 @@ use PStest
            end do
            call perform_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1,Vloc(ML_0,MSP_0),flag_conv,disp_switch)
         end if
+!======================================================== mixing
 #ifdef _USPP_
+! Dij needs to be updated when Vloc is updated
         call getDij
 #endif
 
@@ -672,16 +707,24 @@ use PStest
      end if ! .not.flag_exit
 !======================================================== step end
 
+!-------------------------------------------------------- flag management
      if ( abs(diff_etot) <= 1.d-14 ) then
+! when energy converge 
         if ( iswitch_scf == 1 ) then
+! if doSCF then start SCF 
            flag_scf = .true.
         else
+! else sweep is over 
            flag_exit = .true.
         end if
      end if
+!======================================================== flag management
 
      call watch(ct1,et1)
      if ( disp_switch ) write(*,*) "time(scf)",ct1-ct0,et1-et0
+     totalScfTime=totalScfTime+ct1-ct0
+     if ( disp_switch ) write(200,'(1x,A5,A6,2A20)') 'iter','isSCF','thisSCF time','totalSCF time'
+     if ( disp_switch ) write(200,'(1x,I5,L6,2g20.7)') iter,flag_scf,ct1-ct0,totalScfTime
      call global_watch(flag_end)
      flag_exit = (flag_exit.or.flag_conv.or.flag_end.or.(iter==Diter))
 
@@ -735,28 +778,10 @@ use PStest
   end do
   call calc_total_energy(.true.,disp_switch,999)
 
-
-
-
-
-
-
-
-
 !===========================================================
 !call write_rho(1500,myrank)
 !call write_vloc(1600,myrank)
 !===========================================================
-
-
-
-
-
-
-
-
-
-
 
 !
 ! --- force calculation ---
@@ -779,27 +804,13 @@ use PStest
      call test_force(SYStype)
   end if
 
-
-
-
-
-
-
-
 !===========================================================
 !call write_viod(1700,myrank)
 !call write_dviod(1800,myrank)
 !call write_qrL(1900,myrank,Nelement)
 !call write_dqrL(2000,myrank,Nelement)
 !===========================================================
-
-
-
-
-
-
-
-
+!!!!!!!! changed the order of atomopt and band
 
 !
 ! --- geometrical optimization ---
@@ -830,9 +841,11 @@ use PStest
 
   if ( DISP_SWITCH ) then
      write(*,*) "END_PROGRAM : MAIN" 
+     write(200,'(a40)') repeat('=',40)
+     write(200,*) ' normal end : main'
   end if
 900 continue
-  if (DISP_SWITCH) write(*,*) 'normal end'
+  if (DISP_SWITCH) write(*,*) 'intentional end'
   call close_info
   call end_mpi_parallel
 

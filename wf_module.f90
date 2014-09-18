@@ -189,7 +189,7 @@ end do
        do k=MK_0_WF,MK_1_WF
           do n=MB_0_WF,MB_1_WF
              do i=ML_0_WF,ML_1_WF
-                write(300+myrank,'(4I4,2g20.7)') s,k,n,i,unk(i,n,k,s)
+                write(300+myrank,'(4I6,2g20.7)') s,k,n,i,unk(i,n,k,s)
              end do
           end do
        end do
