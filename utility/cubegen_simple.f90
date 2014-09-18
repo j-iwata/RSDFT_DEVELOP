@@ -51,11 +51,9 @@ PROGRAM cubegen_simple
   ML2=1.d0
   ML3=1.d0
 
-  do i=1,3
-     aa_del(1,i)=aa(1,i)/ML1
-     aa_del(2,i)=aa(2,i)/ML2
-     aa_del(3,i)=aa(3,i)/ML3
-  end do
+  aa_del(:,1)=aa(:,1)/ML1
+  aa_del(:,2)=aa(:,2)/ML2
+  aa_del(:,3)=aa(:,3)/ML3
 
 ! --- cube file
 
