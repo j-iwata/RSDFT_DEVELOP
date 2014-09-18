@@ -33,7 +33,7 @@ MODULE scf_module
   use localpot2_vh_module, only: localpot2_vh
   use localpot2_xc_module, only: localpot2_xc
   use localpot2_ion_module, only: localpot2_calc_eion
-  use localpot2_te_module, only: localpot2_te
+  use localpot2_te_module, only: localpot2_te, diff_Etot_lpot2
 
   implicit none
 
@@ -191,7 +191,11 @@ CONTAINS
 
        call watcht(disp_switch,"mixing",1)
 
-       if ( flag_localpot2 ) call sub_localpot2_scf( disp_switch )
+       if ( flag_localpot2 ) then
+          call sub_localpot2_scf( disp_switch )
+          flag_conv=.false.
+          if ( abs(diff_etot_lpot2) < 1.d-10 ) flag_conv=.true.
+       end if
 
        call write_info_scf( ib1, ib2, iter, disp_switch )
 
@@ -281,15 +285,15 @@ CONTAINS
     logical,intent(IN) :: disp_switch
     integer :: mm1,mm2,mm3
     real(8) :: eion_tmp,eh_tmp,exc_tmp
-    call localpot2_density(mm1,mm2,mm3,rho_nl)
-    call localpot2_calc_eion(mm1,mm2,mm3,vion_nl,rho_nl,eion_tmp)
-    call localpot2_vh(mm1,mm2,mm3,Ecut,rho_nl,vh_nl,eh_tmp)
-    call localpot2_xc(mm1,mm2,mm3,rho_nl,vxc_nl,exc_tmp)
+    call localpot2_density( rho_nl )
+    call localpot2_calc_eion( vion_nl, rho_nl, eion_tmp )
+    call localpot2_vh( Ecut, rho_nl, vh_nl, eh_tmp )
+    call localpot2_xc( rho_nl, vxc_nl, exc_tmp )
     vloc_dense=vion_nl+vh_nl+vxc_nl
     vloc_dense=beta*vloc_dense+(1.d0-beta)*vloc_dense_old
     vloc_dense_old=vloc_dense
-    call test2_localpot2(mm1,mm2,mm3,vloc_dense)
-    call localpot2_te(eion_tmp,eh_tmp,exc_tmp,disp_switch)
+    call test2_localpot2( vloc_dense )
+    call localpot2_te( eion_tmp, eh_tmp, exc_tmp, disp_switch )
   END SUBROUTINE sub_localpot2_scf
 
 

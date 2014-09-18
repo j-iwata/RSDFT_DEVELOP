@@ -1,118 +1,49 @@
-MODULE cg_module
+MODULE cg_u_module
 
-  use rgrid_module, only: zdV,dV
   use hamiltonian_module
   use cgpc_module
-  use parallel_module
-  use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
+  use localpot2_Smatrix_module
   use watch_module
-
-  use cg_lobpcg_module, only: init_lobpcg, lobpcg
-  use cg_u_module, only: init_cg_u, cg_u
 
   implicit none
 
   PRIVATE
-  PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs,read_oldformat_cg
+  PUBLIC :: cg_u, init_cg_u
 
-  integer :: Ncg,iswitch_gs
-  integer :: iswitch_cg
+  integer :: ML_0,ML_1
+  integer :: MB_0,MB_1
+  integer :: MB_d
+  real(8) :: dV
+  integer :: comm_grid
+
+  include 'mpif.h'
 
 CONTAINS
 
 
-  SUBROUTINE read_cg(rank,unit)
+  SUBROUTINE init_cg_u( n1,n2, m1,m2, dV_in, MB_d_in, comm_in )
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(4) :: cbuf,ckey
-    Ncg = 2
-    iswitch_gs = 0
-    iswitch_cg = 1
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:3) == "NCG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ncg
-          else if ( ckey(1:4) == "SWGS" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iswitch_gs
-          else if ( ckey(1:3) == "ICG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iswitch_cg
-          end if
-       end do
-999    continue
-       write(*,*) "Ncg=",Ncg
-       write(*,*) "iswitch_gs=",iswitch_gs
-       write(*,*) "iswitch_cg=",iswitch_cg
-    end if
-    call send_cg(0)
-  END SUBROUTINE read_cg
-
-
-  SUBROUTINE read_oldformat_cg(rank,unit)
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) Ncg,iswitch_gs
-       write(*,*) "Ncg=",Ncg
-       write(*,*) "iswitch_gs=",iswitch_gs
-    end if
-    call send_cg(0)
-  END SUBROUTINE read_oldformat_cg
-
-
-  SUBROUTINE send_cg(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    call mpi_bcast(Ncg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iswitch_gs,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iswitch_cg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_cg
-
-
-  SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
-    implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
-    real(8),intent(INOUT) :: esp(MB),res(MB)
-#ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
-#else
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
-#endif
-
-    call init_cgpc(n1,n2,k,s,dV)
-
-    select case( iswitch_cg )
-    case default
-
-    case( 1 )
-       call conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
-    case( 2 )
-       if ( disp_switch_parallel ) write(*,*) "--- LOBPCG ---"
-       call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-       call lobpcg( k,s,Mcg,igs,unk,esp,res )
-    case( 3 )
-       if ( disp_switch_parallel ) write(*,*) "--- CG_U ---"
-       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
-    end select
-
-  END SUBROUTINE conjugate_gradient
-
+    integer,intent(IN) :: n1,n2,m1,m2,MB_d_in,comm_in
+    real(8),intent(IN) :: dV_in
+    ML_0 = n1
+    ML_1 = n2
+    MB_0 = m1
+    MB_1 = m2
+    dV   = dV_in
+    MB_d = MB_d_in
+    comm_grid = comm_in
+  END SUBROUTINE init_cg_u
 
 #ifdef _DRSDFT_
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+
+  SUBROUTINE cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch )
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
-    real(8),intent(INOUT) :: esp(MB),res(MB)
+    integer,intent(IN) :: k,s,Mcg,igs
+    real(8),intent(INOUT) :: unk(ML_0:,:)
+    real(8),intent(INOUT) :: esp(:),res(:)
+    logical,intent(IN) :: disp_switch
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
-    integer :: mm,icmp,i,TYPE_MAIN
+    integer :: mm,icmp,i,TYPE_MAIN,n1,n2
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
@@ -121,9 +52,11 @@ CONTAINS
 
     real(8),parameter :: zero=0.d0
     real(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
-    real(8),allocatable :: pk(:,:),pko(:,:)
+    real(8),allocatable :: pk(:,:),pko(:,:),Sf(:,:)
     real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     real(8),allocatable :: utmp2(:,:),btmp2(:,:)
+    real(8),allocatable :: uSu(:)
+    real(8),allocatable :: unk_tmp(:,:)
 
     TYPE_MAIN = MPI_REAL8
 
@@ -142,6 +75,9 @@ CONTAINS
     Nhpsi  = 0
     Npc    = 0
 
+    n1 = ML_0
+    n2 = ML_1
+
     allocate( hxk(n1:n2,MB_d), hpk(n1:n2,MB_d) )
     allocate( gk(n1:n2,MB_d) , Pgk(n1:n2,MB_d) )
     allocate( pk(n1:n2,MB_d) , pko(n1:n2,MB_d) )
@@ -149,6 +85,9 @@ CONTAINS
     allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
     allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) )
     allocate( utmp2(2,2),btmp2(2,2) )
+    allocate( Sf(n1:n2,MB_d) )
+    allocate( uSu(MB_d) )
+    allocate( unk_tmp(n1:n2,MB_d) )
 
 !$OMP parallel workshare
     res(:)  = 0.d0
@@ -163,7 +102,7 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -177,13 +116,39 @@ CONTAINS
 
        call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
 
+! ---
+
+       do n=1,nn
+          call op_localpot2_Smatrix( unk(:,n+ns-1), Sf(:,n) )
+       end do
+
+       call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
+
+       do n=1,nn
+          call dot_product(unk(n1,n+ns-1),Sf(n1,n),sb(n),dV,mm,1)
+       end do
+
+       call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+
+       call mpi_allreduce(sb,uSu,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+       call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
+
+! ---
+
+       call watch(ct1,et1)
+
        do n=1,nn
 !$OMP parallel do
           do i=n1,n2
-             gk(i,n)=-c1*(hxk(i,n)-E(n)*unk(i,n+ns-1))
+             gk(i,n) = -c1*( hxk(i,n) - E(n)*Sf(i,n) )
           end do
 !$OMP end parallel do
-          call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+       end do
+
+       do n=1,nn
+          call op_localpot2_Smatrix( gk(:,n), Sf(:,n) )
+          call dot_product(gk(n1,n),Sf(n1,n),sb(n),dV,mm,1)
        end do
 
        call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
@@ -216,14 +181,16 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
 ! ---
 
           do n=1,nn
-             call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+             call op_localpot2_Smatrix( Pgk(:,n), Sf(:,n) )
+             call dot_product(Pgk(n1,n),Pgk(n1,n),sb(n),dV,mm,1)
+!             call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -255,14 +222,27 @@ CONTAINS
           call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
 
           do n=1,nn
+             call op_localpot2_Smatrix( unk(:,n+ns-1), Sf(:,n) )
+          end do
+
+          do n=1,nn
              vtmp2(1:6,n)=zero
+          end do
+
+          do n=1,nn
              m=n+ns-1
-             call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
-             call dot_product(pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
-             call dot_product(pk(n1,n),pk(n1,n),vtmp2(3,n),dV,mm,1)
+             call dot_product(unk(n1,m),Sf(n1,n),vtmp2(1,n),dV,mm,1)
+             call dot_product(pk(n1,n),Sf(n1,n),vtmp2(2,n),dV,mm,icmp)
              call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
              call dot_product(pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
              call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+          end do
+
+          do n=1,nn
+             call op_localpot2_Smatrix( pk(:,n), Sf(:,n) )
+          end do
+          do n=1,nn
+             call dot_product(pk(n1,n),Sf(n1,n),vtmp2(3,n),dV,mm,1)
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -320,6 +300,12 @@ CONTAINS
              E1(n)=E(n)
              E(n) =W(1)
 
+             do i=n1,n2
+                unk_tmp(i,n) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
+             end do
+
+             call op_localpot2_Smatrix( unk_tmp(:,n), Sf(:,n) )
+
 !$OMP parallel
 !$OMP do
              do i=n1,n2
@@ -328,15 +314,16 @@ CONTAINS
 !$OMP end do
 !$OMP do
              do i=n1,n2
-                gk(i,n) = -c1*( hxk(i,n) &
-                     -W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)) )
+                gk(i,n) = -c1*( hxk(i,n) - W(1)*Sf(i,n) )
              end do
 !$OMP end do
 !$OMP end parallel
 
-             call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+             call op_localpot2_Smatrix( gk(:,n), Sf(:,n) )
 
-          end do
+             call dot_product(gk(n1,n),Sf(n1,n),sb(n),dV,mm,1)
+
+          end do ! n
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
 
@@ -352,7 +339,7 @@ CONTAINS
              end if
 !$OMP parallel do
              do i=n1,n2
-                unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
+                unk(i,m) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
           end do
@@ -365,6 +352,9 @@ CONTAINS
 
     end do  ! band-loop
 
+    deallocate( unk_tmp )
+    deallocate( uSu )
+    deallocate( Sf )
     deallocate( btmp2,utmp2  )
     deallocate( wtmp2,vtmp2  )
     deallocate( bk,gkgk,E1,E )
@@ -373,28 +363,29 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
-    if ( disp_switch_parallel ) then
+    if ( disp_switch ) then
        write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
        write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
        write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
        write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
        write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+       write(*,*) "time(op_cg_u )",ctt(2),ett(2)
+       write(*,*) "time(com_cg_u)",ctt(3),ett(3)
+       write(*,*) "time(pc_cg_u )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient_1
+  END SUBROUTINE cg_u
 
 #else
 
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+  SUBROUTINE cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch )
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
-    real(8),intent(INOUT) :: esp(MB),res(MB)
+    integer,intent(IN) :: k,s,Mcg,igs
+    complex(8),intent(INOUT) :: unk(ML_0:,:)
+    real(8),intent(INOUT) :: esp(:),res(:)
+    logical,intent(IN) :: disp_switch
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
-    integer :: mm,icmp,i,TYPE_MAIN
+    integer :: mm,icmp,i,TYPE_MAIN,n1,n2
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
@@ -403,9 +394,11 @@ CONTAINS
 
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
-    complex(8),allocatable :: pk(:,:),pko(:,:)
+    complex(8),allocatable :: pk(:,:),pko(:,:),Sf(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:)
+    complex(8),allocatable :: uSu(:)
+    complex(8),allocatable :: unk_tmp(:,:)
 
     TYPE_MAIN = MPI_COMPLEX16
 
@@ -424,6 +417,9 @@ CONTAINS
     Nhpsi  = 0
     Npc    = 0
 
+    n1 = ML_0
+    n2 = ML_1
+
     allocate( hxk(n1:n2,MB_d), hpk(n1:n2,MB_d) )
     allocate( gk(n1:n2,MB_d) , Pgk(n1:n2,MB_d) )
     allocate( pk(n1:n2,MB_d) , pko(n1:n2,MB_d) )
@@ -431,6 +427,9 @@ CONTAINS
     allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
     allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) )
     allocate( utmp2(2,2),btmp2(2,2) )
+    allocate( Sf(n1:n2,MB_d) )
+    allocate( uSu(MB_d) )
+    allocate( unk_tmp(n1:n2,MB_d) )
 
 !$OMP parallel workshare
     res(:)  = 0.d0
@@ -443,9 +442,11 @@ CONTAINS
 
        E1(:)=1.d10
 
+! ---
+
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -459,13 +460,37 @@ CONTAINS
 
        call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
 
+! ---
+
+       do n=1,nn
+          call op_localpot2_Smatrix( unk(:,n+ns-1), Sf(:,n) )
+       end do
+
+       call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
+
+       do n=1,nn
+          call dot_product(unk(n1,n+ns-1),Sf(n1,n),sb(n),dV,mm,1)
+       end do
+
+       call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+
+       call mpi_allreduce(sb,uSu,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+       call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
+
+! ---
+
        do n=1,nn
 !$OMP parallel do
           do i=n1,n2
-             gk(i,n)=-c1*(hxk(i,n)-E(n)*unk(i,n+ns-1))
+             gk(i,n) = -c1*( hxk(i,n) - E(n)*Sf(i,n) )
           end do
 !$OMP end parallel do
-          call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+       end do
+
+       do n=1,nn
+          call op_localpot2( gk(:,n), Sf(:,n) )
+          call dot_product(gk(n1,n),Sf(n1,n),sb(n),dV,mm,1)
        end do
 
        call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
@@ -503,7 +528,9 @@ CONTAINS
 ! ---
 
           do n=1,nn
-             call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+             call op_localpot2_Smatrix( Pgk(:,n), Sf(:,n) )
+             call dot_product(Pgk(n1,n),Sf(n1,n),sb(n),dV,mm,1)
+!             call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -535,14 +562,29 @@ CONTAINS
           call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
 
           do n=1,nn
+             call op_localpot2_Smatrix( unk(:,n+ns-1), Sf(:,n) )
+          end do
+
+          call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
+
+          do n=1,nn
              vtmp2(1:6,n)=zero
+          end do
+
+          do n=1,nn
              m=n+ns-1
-             call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
-             call dot_product(pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
-             call dot_product(pk(n1,n),pk(n1,n),vtmp2(3,n),dV,mm,1)
+             call dot_product(unk(n1,m),Sf(n1,n),vtmp2(1,n),dV,mm,1)
+             call dot_product(pk(n1,n),Sf(n1,n),vtmp2(2,n),dV,mm,icmp)
              call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
              call dot_product(pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
              call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+          end do
+
+          do n=1,nn
+             call op_localpot2_Smatrix( pk(:,n), Sf(:,n) )
+          end do
+          do n=1,nn
+             call dot_product(pk(n1,n),Sf(n1,n),vtmp2(3,n),dV,mm,1)
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -600,6 +642,12 @@ CONTAINS
              E1(n)=E(n)
              E(n) =W(1)
 
+             do i=n1,n2
+                unk_tmp(i,n) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
+             end do
+
+             call op_localpot2_Smatrix( unk_tmp(:,n), Sf(:,n) )
+
 !$OMP parallel
 !$OMP do
              do i=n1,n2
@@ -608,13 +656,14 @@ CONTAINS
 !$OMP end do
 !$OMP do
              do i=n1,n2
-                gk(i,n) = -c1*( hxk(i,n) &
-                     -W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)) )
+                gk(i,n) = -c1*( hxk(i,n) - W(1)*Sf(i,n) )
              end do
 !$OMP end do
 !$OMP end parallel
 
-             call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+             call op_localpot2_Smatrix( gk(:,n), Sf(:,n) )
+
+             call dot_product(gk(n1,n),Sf(n1,n),sb(n),dV,mm,1)
 
           end do
 
@@ -632,7 +681,7 @@ CONTAINS
              end if
 !$OMP parallel do
              do i=n1,n2
-                unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
+                unk(i,m) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
           end do
@@ -645,6 +694,9 @@ CONTAINS
 
     end do  ! band-loop
 
+    deallocate( unk_tmp )
+    deallocate( uSu )
+    deallocate( Sf )
     deallocate( btmp2,utmp2  )
     deallocate( wtmp2,vtmp2  )
     deallocate( bk,gkgk,E1,E )
@@ -653,51 +705,19 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
-    if ( disp_switch_parallel ) then
+    if ( disp_switch ) then
        write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
        write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
        write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
        write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
        write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+       write(*,*) "time(op_cg_u )",ctt(2),ett(2)
+       write(*,*) "time(com_cg_u)",ctt(3),ett(3)
+       write(*,*) "time(pc_cg_u )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient_1
+  END SUBROUTINE cg_u
 
 #endif
 
-
-#ifdef TEST
-  SUBROUTINE dot_product(a,b,c,alpha,n,m)
-    implicit none
-    integer,intent(IN) :: n,m
-    integer :: i
-    real(8) :: a(*),b(*),c(*),alpha,tmp
-
-    c(1:m)=0.d0
-
-    tmp=0.d0
-!$OMP parallel do reduction(+:tmp)
-    do i=1,n
-       tmp=tmp+a(i)*b(i)
-    end do
-!$OMP end parallel do
-    c(1)=tmp*alpha
-
-    if ( m==2 ) then
-       tmp=0.d0
-!$OMP parallel do reduction(+:tmp)
-       do i=1,n-1,2
-          tmp=tmp+a(i)*b(i+1)-a(i+1)*b(i)
-       end do
-!$OMP end parallel do
-       c(m)=tmp*alpha
-    end if
-
-    return
-  END SUBROUTINE dot_product
-#endif
-
-END MODULE cg_module
+END MODULE cg_u_module

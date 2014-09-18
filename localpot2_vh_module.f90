@@ -13,11 +13,10 @@ MODULE localpot2_vh_module
 
 CONTAINS
 
-  SUBROUTINE localpot2_vh(m1_0,m2_0,m3_0,ecut_in,n_in,vout,eh)
+  SUBROUTINE localpot2_vh( ecut_in, n_in, vout, eh )
     implicit none
-    integer,intent(IN) :: m1_0,m2_0,m3_0
-    real(8),intent(IN) :: ecut_in,n_in(m1_0,m2_0,m3_0)
-    real(8),intent(OUT) :: vout(m1_0,m2_0,m3_0),eh
+    real(8),intent(IN) :: ecut_in, n_in(:,:,:)
+    real(8),intent(OUT) :: vout(:,:,:), eh
     integer :: ifacx(30),ifacy(30),ifacz(30),mm,m1,m2,m3
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
@@ -110,7 +109,9 @@ CONTAINS
     c=0.5d0*sum( vout*n_in )*dV*Ngrid(0)/mm
     call mpi_allreduce(c,eh,1,mpi_real8,mpi_sum,comm_grid,ierr)
 
+    if ( disp_switch_parallel ) then
     call watch(ct1,et1) ; write(*,*) "localpot2_vh",ct1-ct0,et1-et0
+    end if
 
   END SUBROUTINE localpot2_vh
 

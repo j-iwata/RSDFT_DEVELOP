@@ -79,6 +79,7 @@ MODULE global_variables
   use localpot2_xc_module
   use localpot2_module
   use localpot2_te_module
+  use localpot2_Smatrix_module
 
   use ps_nloc3_module
 
