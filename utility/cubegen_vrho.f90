@@ -74,6 +74,11 @@ PROGRAM cubegen_vrho
 
      call gen_cube( s, vloc(:,:,:,s), "vloc" )
 
+     if ( s == 2 ) then
+        rho(:,:,:,1) = rho(:,:,:,1) - rho(:,:,:,2)
+        call gen_cube( 1, rho(:,:,:,1), "dspin" )
+     end if
+
      if ( s == 2 ) exit
 
      read(u1,END=10) rtmp
