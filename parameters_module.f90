@@ -53,6 +53,7 @@ CONTAINS
        ax = ax_tmp
        aa(:,:) = aa_tmp(:,:)
        call write_info("ax and aa given in fort.970 are used") 
+       call set_org_aa( ax, aa )
     end if
 
     call read_electron(myrank,unit)
