@@ -604,7 +604,6 @@ use PStest
 ! will not do subspace diag in initial sweep?
 ! will not update density in initial sweep
         if ( iter == 1 .or. flag_scf ) then
-if (isDebug) call calc_total_energy(.true.,disp_switch,1)
 #ifdef _LAPACK_
            call subspace_diag_la(k,s)
 #else
@@ -612,13 +611,10 @@ if (isDebug) call calc_total_energy(.true.,disp_switch,1)
 #endif
         end if
         call watcht(disp_switch,"diag",1)
-if (isDebug) call calc_total_energy(.true.,disp_switch,2)
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-if (isDebug) call calc_total_energy(.true.,disp_switch,3)
 !call write_wf ; goto 900
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)
-if (isDebug) call calc_total_energy(.true.,disp_switch,4)
         call watcht(disp_switch,"gs  ",1)
         if ( Ndiag /= 1 ) then
 ! doing subspace diag anyway?
@@ -636,13 +632,10 @@ if (isDebug) call calc_total_energy(.true.,disp_switch,4)
         call watcht(disp_switch,"diag",1)
      end do
      end do
-if (isDebug) call calc_total_energy(.true.,disp_switch,5)
 
      call esp_gather(Nband,Nbzsm,Nspin,esp)
-if (isDebug) call calc_total_energy(.true.,disp_switch,6)
      call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                     ,esp,weight_bz,occ,disp_switch)
-if (isDebug) call calc_total_energy(.true.,disp_switch,7)
 
      if ( disp_switch ) then
         write(*,'(a4,a6,a20,2a13,1x)') &
@@ -660,16 +653,13 @@ if (isDebug) call calc_total_energy(.true.,disp_switch,7)
      call calc_with_rhoIN_total_energy(disp_switch)
 
      if ( flag_scf ) then
-if (isDebug) call calc_total_energy(.true.,disp_switch,8)
         call calc_density ! n_out
-if (isDebug) call calc_total_energy(.true.,disp_switch,9)
         call watcht(disp_switch,"hartree",0)
         call calc_hartree(ML_0,ML_1,MSP,rho)
         call watcht(disp_switch,"hartree",1)
-if (isDebug) call calc_total_energy(.true.,disp_switch,10)
         call calc_xc
-!        call calc_total_energy(.false.,disp_switch,iter)
-        call calc_total_energy(.true.,disp_switch,iter)
+        call calc_total_energy(.false.,disp_switch,iter)
+!        call calc_total_energy(.true.,disp_switch,iter)
 !-------------------------------------------------------- mixing
         if ( mod(imix,2) == 0 ) then
 ! odd : potential mixing
@@ -774,7 +764,7 @@ if (isDebug) call calc_total_energy(.true.,disp_switch,10)
   end if
 
 ! what is this??
-  call calc_total_energy(.true.,disp_switch,999)
+!  call calc_total_energy(.true.,disp_switch,999)
 
   if ( flag_end ) then
      if ( disp_switch ) write(*,*) "flag_end=",flag_end

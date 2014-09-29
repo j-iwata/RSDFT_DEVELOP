@@ -214,7 +214,6 @@ CONTAINS
     end do
 #endif
 
-!    allocate( icheck_tmp1(0:nprocs_g-1)   ) ; icheck_tmp1=0
     n=maxval(norb)
     allocate( isInThisNode(1:Natom,1:n) ) ; isInThisNode=.false.
     maxerr             = 0
@@ -267,7 +266,6 @@ CONTAINS
           if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
                 Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
                 Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
-!            icheck_tmp1(myrank_g)=icheck_tmp1(myrank_g)+1
             isInThisNode(a,iorb)=.true.
 ! ratio adjustment
             d1 = id1*c1
@@ -338,6 +336,7 @@ CONTAINS
 
 !goto 221
     n=maxval(norb)
+#ifdef _SHOWALL_PSNLOC_
     write(1100+myrank,'(2A5,A12)') 'a','iorb','MJJ_tmp'
     do a=1,Natom
       do iorb=1,n
@@ -345,6 +344,7 @@ CONTAINS
       enddo
     enddo
 221 continue
+#endif
 
 #ifndef _SPLINE_
     deallocate( irad )
@@ -356,15 +356,18 @@ CONTAINS
 !goto 220
 ! lma : 
     lma=0
+#ifdef _SHOWALL_PSNLOC_
     write(1520+myrank,'(2A5)') 'a','iorb'
+#endif
     do a=1,Natom
       ik=ki_atom(a)
       do iorb=1,norb(ik)
-!        j=MJJ_tmp(iorb,a)
-!        if ( j > 0 ) then
-!        if (icheck_tmp1(myrank_g)>0) then
-        if ( isInThisNode(a,iorb) ) then
+        j=MJJ_tmp(iorb,a)
+        if ( j > 0 ) then
+!        if ( isInThisNode(a,iorb) ) then
+#ifdef _SHOWALL_PSNLOC_
           write(1520+myrank,'(2I5)') a,iorb
+#endif
           L=lo(iorb,ik)
 ! nzlma : # of atom*orb
           nzlma=nzlma+2*L+1
@@ -375,8 +378,9 @@ CONTAINS
         end if
       end do
     end do
+#ifdef _SHOWALL_PSNLOC_
     write(1100+myrank,*) 'nzlma= ',nzlma
-!    deallocate(icheck_tmp1)
+#endif
     deallocate( isInThisNode )
 220 continue
 
@@ -426,8 +430,10 @@ CONTAINS
     np2 = node_partition(2)
     np3 = node_partition(3)
 
+#ifdef _SHOWALL_PSNLOC_
     L=maxval(lo)
     n=maxval(norb)
+    write(1100+myrank,*) repeat('-',50),'ps start'
     write(1100+myrank,'(3A5,A12)') 'a','iorb','m','icheck_tmp3'
     do a=1,Natom
       do iorb=1,n
@@ -436,7 +442,13 @@ CONTAINS
         enddo
       enddo
     enddo
+    write(1100+myrank,*) repeat('=',50),'ps end'
+#endif
 
+#ifdef _SHOWALL_PSNLOC_
+    write(1100+myrank,*) repeat('-',50),'icheck_tmp2'
+#endif
+    nrlma   = 0
     lma=0
     do a=1,Natom
       ik=ki_atom(a)
@@ -446,13 +458,17 @@ CONTAINS
           lma=lma+1
 
           icheck_tmp1(:)=0
-          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
-!          do n=0,np_grid-1
-!            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
-!          end do
-!          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
+!          call MPI_ALLGATHER(icheck_tmp3(a,iorb,m+L+1),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
+          do n=0,np_grid-1
+            if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
+          end do
+          icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
           call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
+
+#ifdef _SHOWALL_PSNLOC_
+          write(1100+myrank,'(3I4," icheck_tmp2(myrank_g)= ",I5)') a,iorb,m,icheck_tmp2(myrank_g)
+#endif
 
           if ( icheck_tmp1(myrank_g)/=0 ) then
             if ( icheck_tmp1(myrank_g)>0 ) then
@@ -478,11 +494,16 @@ CONTAINS
         end do ! m
       end do ! iorb
     end do ! a
+#ifdef _SHOWALL_PSNLOC_
+    write(1100+myrank,*) repeat('=',50),'icheck_tmp2'
+#endif
 
     call watch(ctt(2),ett(2))
 
     nzlma = icheck_tmp2(myrank_g)
+#ifdef _SHOWALL_PSNLOC_
     write(1100+myrank,*) 'nzlma= ',nzlma
+#endif
 
     deallocate( itmp )
     deallocate( icheck_tmp2 )
