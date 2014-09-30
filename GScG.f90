@@ -33,6 +33,11 @@ CONTAINS
 write(200+myrank,*) ">>>>>>>> GramSchmidtG"
 #endif
 
+#ifdef _GS_SIMPLE_
+    call gram_schmidt_u(k,s)
+    return
+#endif
+
     ML0 = ML_1 - ML_0 + 1
     mrnk = id_class(myrank,4)
     n0=ML_0_WF
@@ -59,17 +64,20 @@ write(200+myrank,*) ">>>>>>>> GramSchmidtG"
 #ifdef _SHOWALL_GS_
 write(720+myrank,*) "GramSchmidtG",k1
 #endif
+      allocate( Sunk(n0:n1,ns:ne) ) ; Sunk=zero
+      call get_Sunk_Mat( n0,n1,ns,ne,k,s )
 
 !-------------------------------- IF (id_class(myrank,4)==irank_b)
       if ( id_class(myrank,4)==irank_b ) then
 #ifdef _SHOWALL_GS_
 write(720+myrank,*) "GramSchmidtG",k1,"Rec"
 #endif
-        allocate( Sunk(n0:n1,ns:ne) ) ; Sunk=zero
-        call get_Sunk_Mat( n0,n1,ns,ne,k,s )
+!        allocate( Sunk(n0:n1,ns:ne) ) ; Sunk=zero
+!        call get_Sunk_Mat( n0,n1,ns,ne,k,s )
         call GramSchmidtGSub(ns,ne,ns,ne,NBLK,k,s,NBLK,NBLK1)
-        deallocate( Sunk )
+!        deallocate( Sunk )
       end if
+      deallocate( Sunk )
 !================================ IF (id_class(myrank,4)==irank_b)
 
       n=ML0*(ne-ns+1)
@@ -83,16 +91,19 @@ write(720+myrank,*) "GramSchmidtG",k1,"Rec"
           if ( nbss<=ncycle .and. nbss>= k1+1 ) then
             ms=NBAND_BLK*(nbss-1)+1
             me=min(ms+NBAND_BLK-1,MB)
+            allocate( Sunk(n0:n1,ms:me) ) ; Sunk=zero
+            call get_Sunk_Mat( n0,n1,ms,me,k,s )
 
             if ( ms<=me ) then
 #ifdef _SHOWALL_GS_
 write(720+myrank,*) "GramSchmidtG",k1,ib,"Rec"
 #endif
-              allocate( Sunk(n0:n1,ms:me) ) ; Sunk=zero
-              call get_Sunk_Mat( n0,n1,ms,me,k,s )
+!              allocate( Sunk(n0:n1,ms:me) ) ; Sunk=zero
+!              call get_Sunk_Mat( n0,n1,ms,me,k,s )
               call GramSchmidtGSub(ms,me,ns,ne,NBLK,k,s,NBLK,NBLK1)
-              deallocate( Sunk )
+!              deallocate( Sunk )
             end if
+            deallocate( Sunk )
 
           end if
 
@@ -253,5 +264,53 @@ write(730+myrank,'(2g20.7)') d,c
 
     return
   END SUBROUTINE GramSchmidtGSub
+
+#ifdef _GS_SIMPLE_
+  SUBROUTINE gram_schmidt_u(k,s)
+    implicit none
+    integer,intent(IN) :: k,s
+    integer :: m,n,ierr
+#ifdef _DRSDFT_
+    real(8),allocatable :: uu(:)
+#else
+    complex(8),allocatable :: uu(:)
+#endif
+    real(8) :: c,d
+
+    allocate( uu(MB-1) ) ; uu=zero
+
+    allocate( Sunk(ML_0:ML_1,MB) ) ; Sunk=zero
+    call get_Sunk_Mat( ML_0, ML_1, 1, MB, k, s )
+
+    do n=1,MB
+
+       if ( n > 1 ) then
+          do m=1,n-1
+#ifdef _DRSDFT_
+             uu(m) = sum( unk(:,m,k,s)*Sunk(:,n) )*dV
+#else
+             uu(m) = sum( conjg(unk(:,m,k,s))*Sunk(:,n) )*dV
+#endif
+          end do
+          call MPI_ALLREDUCE( MPI_IN_PLACE, uu, n-1, TYPE_MAIN &
+                             ,MPI_SUM, comm_grid, ierr )
+          do m=1,n-1
+             unk(:,n,k,s) = unk(:,n,k,s) - unk(:,m,k,s)*uu(m)
+          end do
+       end if
+
+       call get_gSf( unk(:,n,k,s), unk(:,n,k,s), ML_0, ML_1, k, uu(1), 0 )
+       c=uu(1)
+       call MPI_ALLREDUCE( c,d,1,MPI_REAL8,MPI_SUM,comm_grid,ierr )
+       c=1.0d0/sqrt(d)
+       unk(:,n,k,s) = c*unk(:,n,k,s)
+
+    end do ! n
+
+    deallocate( Sunk )
+    deallocate( uu )
+
+  END SUBROUTINE gram_schmidt_u
+#endif
 
 END MODULE GScG
