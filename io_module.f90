@@ -76,6 +76,9 @@ CONTAINS
           else if ( ckey(1:6) == "IOCTRL" ) then
              backspace(unit)
              read(unit,*) cbuf,IO_ctrl
+          else if ( ckey(1:4) == "MBWR" ) then
+             backspace(unit)
+             read(unit,*) cbuf,MBwr1,MBwr2
           end if
        end do
 999    continue
@@ -83,6 +86,7 @@ CONTAINS
        write(*,*) "OC =",OC
        write(*,*) "OC2=",OC2
        write(*,*) "IO_ctrl=",IO_ctrl
+       write(*,*) "MBwr1,MBwr2=",MBwr1,MBwr2
     end if
     call send_io(0)
   END SUBROUTINE read_io
@@ -104,6 +108,8 @@ CONTAINS
     call mpi_bcast(OC ,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(OC2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(IO_ctrl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(MBwr1,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(MBwr2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_io
 
   SUBROUTINE write_data(disp_switch,flag)
