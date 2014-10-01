@@ -3,10 +3,10 @@ MODULE atom_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,read_atom
+  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom
 
-  integer :: Natom,Nelement
-  integer,allocatable :: ki_atom(:), zn_atom(:)
+  integer :: Natom, Nelement
+  integer,allocatable :: ki_atom(:), zn_atom(:), md_atom(:)
   real(8),allocatable :: aa_atom(:,:)
 
 CONTAINS
@@ -68,27 +68,32 @@ CONTAINS
     call send_atom_1(0,ax,aa)
     allocate( aa_atom(3,Natom) ) ; aa_atom=0.d0
     allocate( ki_atom(Natom)   ) ; ki_atom=0
+    allocate( md_atom(Natom)   ) ; md_atom=0
     if ( .not.allocated(zn_atom) ) then
        allocate( zn_atom(Nelement) ) ; zn_atom=0
     end if
     if ( rank == 0 ) then
        do i=1,Natom
-          read(unit,*) ki_atom(i),aa_atom(1:3,i)
+          read(unit,*) ki_atom(i),aa_atom(1:3,i),md_atom(i)
        end do
-       write(*,'(8x,a7,3a18)') "ki_atom","aa_atom1","aa_atom2","aa_atom3"
+       write(*,'(8x,a7,3a18,2x,a7)') &
+            "ki_atom","aa_atom1","aa_atom2","aa_atom3","md_atom"
        if ( Natom <= 11 ) then
           do i=1,Natom
-             write(*,'(1x,i5,2x,i7,3f18.12)') i,ki_atom(i),aa_atom(:,i)
+             write(*,'(1x,i5,2x,i7,3f18.12,4x,i5)') &
+                  i,ki_atom(i),aa_atom(:,i),md_atom(i)
           end do
        else
           do i=1,min(5,Natom)
-             write(*,'(1x,i5,2x,i7,3f18.12)') i,ki_atom(i),aa_atom(:,i)
+             write(*,'(1x,i5,2x,i7,3f18.12,4x,i5)') &
+                  i,ki_atom(i),aa_atom(:,i),md_atom(i)
           end do
           write(*,'(1x,10x,".")')
           write(*,'(1x,10x,".")')
           write(*,'(1x,10x,".")')
           do i=Natom-5,Natom
-             write(*,'(1x,i5,2x,i7,3f18.12)') i,ki_atom(i),aa_atom(:,i)
+             write(*,'(1x,i5,2x,i7,3f18.12,4x,i5)') &
+                  i,ki_atom(i),aa_atom(:,i),md_atom(i)
           end do
        end if
     end if
@@ -115,6 +120,7 @@ CONTAINS
     call mpi_bcast(ki_atom,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(aa_atom,3*Natom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(zn_atom,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(md_atom,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_2
 
 END MODULE atom_module
