@@ -177,19 +177,26 @@ end do
     id_band(:)=id_band(:)/mm
   END SUBROUTINE gather_wf
 
-  SUBROUTINE write_wf
+  SUBROUTINE write_wf(rankIN)
     implicit none
+    integer,optional :: rankIN
     integer :: s,k,n,i
-    write(300+myrank,*) 'myrank= ',myrank
-    write(300+myrank,'(A18,2I5)') 'MS_0_WF, MS_1_WF= ',MS_0_WF,MS_1_WF
-    write(300+myrank,'(A18,2I5)') 'MK_0_WF, MK_1_WF= ',MK_0_WF,MK_1_WF
-    write(300+myrank,'(A18,2I5)') 'MB_0_WF, MB_1_WF= ',MB_0_WF,MB_1_WF
-    write(300+myrank,'(A18,2I5)') 'ML_0_WF, ML_1_WF= ',ML_0_WF,ML_1_WF
+    integer :: rank
+    if (present(rankIN)) then
+      rank=rankIN+myrank
+    else
+      rank=myrank
+    endif
+    write(300+rank,*) 'myrank= ',rank
+    write(300+rank,'(A18,2I5)') 'MS_0_WF, MS_1_WF= ',MS_0_WF,MS_1_WF
+    write(300+rank,'(A18,2I5)') 'MK_0_WF, MK_1_WF= ',MK_0_WF,MK_1_WF
+    write(300+rank,'(A18,2I5)') 'MB_0_WF, MB_1_WF= ',MB_0_WF,MB_1_WF
+    write(300+rank,'(A18,2I5)') 'ML_0_WF, ML_1_WF= ',ML_0_WF,ML_1_WF
     do s=MS_0_WF,MS_1_WF
        do k=MK_0_WF,MK_1_WF
           do n=MB_0_WF,MB_1_WF
              do i=ML_0_WF,ML_1_WF
-                write(300+myrank,'(4I6,2g20.7)') s,k,n,i,unk(i,n,k,s)
+                write(300+rank,'(4I6,2g20.7)') s,k,n,i,unk(i,n,k,s)
              end do
           end do
        end do

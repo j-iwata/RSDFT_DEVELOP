@@ -30,30 +30,30 @@ FFLAGS1 = -I../
 #FFLAGS0 = -fast -xHost -cpp
 #FFLAGS0 = -fast -xHost -openmp -cpp
 #FFLAGS0 = -fast -xAVX -openmp -cpp
-#SHOW = -D_SHOWALL_PSINIT_ -D_SHOWALL_QINIT_ -D_SHOWALL_MAP_Q_ -D_SHOWALL_QR_F_ -D_SHOWALL_ESP_ -D_PARALLEL_TEST_
-SHOW =
-#### for USPP
-#FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_ -D_USPP_ -D_USPP_NEW_ -D_GS_SIMPLE_ -D_USPP_F_TEST_ $(SHOW)
-#FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_ -D_USPP_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(SHOW)
-#FFLAGS0 = -C -openmp -cpp -D_MODULEINITPS_ -D_USPP_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(SHOW)
-#DLAPACK = -D_LAPACK
+#################### ShowAll Flags #####
+#DSHOW = -D_SHOWALL_PSINIT_ -D_SHOWALL_QINIT_ -D_SHOWALL_MAP_Q_ -D_SHOWALL_QR_F_ -D_SHOWALL_ESP_ -D_PARALLEL_TEST_
+DSHOW =
+#DSHOW = -D_SHOWALL_GS_
+#################### Lapack or ScaLapack #####
+#DLAPACK = -D_LAPACK_
 DLAPACK =
+#################### use BLAS for Gram-Schmidt #####
 #DGRAMSCHMIDT = -D_GS_SIMPLE_
 DGRAMSCHMIDT =
-FFLAGS0 = -C -openmp -cpp -D_MODULEINITPS_ -D_USPP_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(DLAPACK) $(DGRAMSCHMIDT) $(DSHOW)
-#### for NCPP
-#FFLAGS0 = -C -openmp -cpp -D_LAPACK_ -D_MODULEINITPS_ $(SHOW)
+#################### USPP or NCPP #####
+DUSPP = -D_USPP_
+FFLAGS0 = -C -openmp -cpp -D_MODULEINITPS_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(DLAPACK) $(DUSPP) $(DGRAMSCHMIDT) $(DSHOW)
 #FFLAGS0 = -C -cpp
 #LFLAGS = -openmp
 #### for iMac
-#LAPACK_L = -lmkl_lapack95_lp64 -lmkl_blas95_lp64 \
+LAPACK_L = -lmkl_lapack95_lp64 -lmkl_blas95_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lpthread -liomp5
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lguide -lpthread
 #### for matu
-LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
+#LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lpthread -liomp5
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \

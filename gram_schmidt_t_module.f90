@@ -47,7 +47,7 @@ CONTAINS
        do i=1,10000
           read(unit,*,END=999) cbuf
           call convert_capital(cbuf,ckey)
-          if ( ckey(1:4) == "NBLK" ) then
+          if ( ckey(1:5) == "NBLK " ) then
              backspace(unit)
              read(unit,*) cbuf,NBLK
           else if ( ckey(1:5) == "NBLK1" ) then

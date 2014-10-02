@@ -10,6 +10,10 @@ MODULE GScG
   PRIVATE
   PUBLIC :: GramSchmidtG
 
+#ifdef _SHOWALL_GS_
+  integer :: countGS_=0
+#endif
+
 CONTAINS
 
 !---------------------------------------------------------------------------------------
@@ -64,20 +68,17 @@ write(200+myrank,*) ">>>>>>>> GramSchmidtG"
 #ifdef _SHOWALL_GS_
 write(720+myrank,*) "GramSchmidtG",k1
 #endif
-      allocate( Sunk(n0:n1,ns:ne) ) ; Sunk=zero
-      call get_Sunk_Mat( n0,n1,ns,ne,k,s )
 
 !-------------------------------- IF (id_class(myrank,4)==irank_b)
       if ( id_class(myrank,4)==irank_b ) then
 #ifdef _SHOWALL_GS_
 write(720+myrank,*) "GramSchmidtG",k1,"Rec"
 #endif
-!        allocate( Sunk(n0:n1,ns:ne) ) ; Sunk=zero
-!        call get_Sunk_Mat( n0,n1,ns,ne,k,s )
+        allocate( Sunk(n0:n1,ns:ne) ) ; Sunk=zero
+        call get_Sunk_Mat( n0,n1,ns,ne,k,s )
         call GramSchmidtGSub(ns,ne,ns,ne,NBLK,k,s,NBLK,NBLK1)
-!        deallocate( Sunk )
+        deallocate( Sunk )
       end if
-      deallocate( Sunk )
 !================================ IF (id_class(myrank,4)==irank_b)
 
       n=ML0*(ne-ns+1)
@@ -91,19 +92,16 @@ write(720+myrank,*) "GramSchmidtG",k1,"Rec"
           if ( nbss<=ncycle .and. nbss>= k1+1 ) then
             ms=NBAND_BLK*(nbss-1)+1
             me=min(ms+NBAND_BLK-1,MB)
-            allocate( Sunk(n0:n1,ms:me) ) ; Sunk=zero
-            call get_Sunk_Mat( n0,n1,ms,me,k,s )
 
             if ( ms<=me ) then
 #ifdef _SHOWALL_GS_
 write(720+myrank,*) "GramSchmidtG",k1,ib,"Rec"
 #endif
-!              allocate( Sunk(n0:n1,ms:me) ) ; Sunk=zero
-!              call get_Sunk_Mat( n0,n1,ms,me,k,s )
+              allocate( Sunk(n0:n1,ms:me) ) ; Sunk=zero
+              call get_Sunk_Mat( n0,n1,ms,me,k,s )
               call GramSchmidtGSub(ms,me,ns,ne,NBLK,k,s,NBLK,NBLK1)
-!              deallocate( Sunk )
+              deallocate( Sunk )
             end if
-            deallocate( Sunk )
 
           end if
 
@@ -127,19 +125,29 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
     integer,intent(IN) :: NBLK,NBLK1
     integer :: n,ns,ne,m,ms,me,m1,m2,mm,nn,MBLKH,ierr
     integer :: ML0,i
+    integer :: iii,jjj
+! d,c is for get_gSf
+! d is complex because of get_gSf
+! c is real for MPI
+    real(8) :: c
 
 !---------------------------------------------------------------- DRSDFT
 #ifdef _DRSDFT_
     real(8),allocatable :: utmp2(:,:),utmp(:)
-    real(8) :: c,d
+    real(8) :: d
 #else
     complex(8),allocatable :: utmp2(:,:),utmp(:)
-    complex(8) :: c,d
+    complex(8) :: d
 #endif
 !================================================================ DRSDFT
 
 #ifdef _SHOWALL_GS_
-!write(400+myrank,*) ">>>>>> GramSchmidtGSub"
+write(400+myrank,*) ">>>>>> GramSchmidtGSub"
+#endif
+
+#ifdef _SHOWALL_GS_
+countGS_=countGS_+1
+write(2500+myrank,*) repeat('-',20),countGS_
 #endif
 
     ML0 = ML_1-ML_0+1
@@ -156,10 +164,10 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
         if ( ms>=ne+1 ) then
 
 #ifdef _SHOWALL_GS_
-!write(400+myrank,*) "GramSchmidtGSub IF1"
+write(400+myrank,*) "GramSchmidtGSub IF1"
 #endif
 
-          allocate( utmp2(ns:ne,ms:me) )
+          allocate( utmp2(ns:ne,ms:me) ) ; utmp2=zero
 
 !---------------------------------------------------------------- DRSDFT
 #ifdef _DRSDFT_
@@ -168,9 +176,25 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
           call zgemm(TRANSA,TRANSB,nn,mm,ML0,-zdV,unk(ML_0,ns,k,s),ML0,Sunk(ML_0,ms),ML0,zero,utmp2,nn)
 #endif
 !================================================================ DRSDFT
+#ifdef _SHOWALL_GS_
+write(2500+myrank,*) repeat('-',30)
+do iii=ns,ne
+  do jjj=ms,me
+    write(2500+myrank,'(2g20.7)') utmp2(iii,jjj)
+  enddo
+enddo
+#endif
 
           call MPI_ALLREDUCE( MPI_IN_PLACE,utmp2,nn*mm,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr )
 
+#ifdef _SHOWALL_GS_
+write(2500+myrank,*) repeat('-',30)
+do iii=ns,ne
+  do jjj=ms,me
+    write(2500+myrank,'(2g20.7)') utmp2(iii,jjj)
+  enddo
+enddo
+#endif
 !---------------------------------------------------------------- DRSDFT
 #ifdef _DRSDFT_
           call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s),ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
@@ -178,12 +202,20 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
           call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s),ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
 #endif
 !================================================================ DRSDFT
+#ifdef _SHOWALL_GS_
+write(2500+myrank,*) repeat('-',30)
+do iii=ns,ne
+  do jjj=ms,me
+    write(2500+myrank,'(2g20.7)') utmp2(iii,jjj)
+  enddo
+enddo
+#endif
 
           deallocate( utmp2 )
 
           if ( ms==ne+1 ) then
 #ifdef _SHOWALL_GS_
-!write(400+myrank,*) "GramSchmidtGSub IF2"
+write(400+myrank,*) "GramSchmidtGSub IF1-2"
 #endif
             call get_gSf(unk(ML_0,ms,k,s),unk(ML_0,ms,k,s),ML_0,ML_1,k,d,0)
 !----------------------------------- def is changed
@@ -192,9 +224,13 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
 !            d=abs(d)
 !            write(2000+myrank,'("R",2g20.7)') d
 !=================================== def is changed
-            call MPI_ALLREDUCE( d,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
+            c=real(d,kind=8)
+            call MPI_ALLREDUCE( MPI_IN_PLACE,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
             ! ?????????????????????????????? dV????
             c=1.d0/sqrt(c)
+#ifdef _SHOWALL_GS_
+!write(730+myrank,'(4g20.7)') d,c
+#endif
             !c=1.d0/sqrt(c*dV)
             unk(ML_0:ML_1,ms,k,s) = c*unk(ML_0:ML_1,ms,k,s)
           end if
@@ -202,10 +238,16 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
 !================================ IF (ms>=ne+1)
 !-------------------------------- IF (mm<=NBLK1)
         else if ( mm<=NBLK1 ) then
-          allocate( utmp(NBLK1) )
+#ifdef _SHOWALL_GS_
+write(400+myrank,*) "GramSchmidtGSub IF2"
+#endif
+          allocate( utmp(NBLK1) ) ; utmp=zero
           do m=ms,me
             n = min(m-1,ne)
             if ( n-ns+1>0 ) then
+#ifdef _SHOWALL_GS_
+write(400+myrank,*) "GramSchmidtGSub IF2-2"
+#endif
 
 !---------------------------------------------------------------- DRSDFT
 #ifdef _DRSDFT_
@@ -214,8 +256,20 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
               call zgemv(TRANSA,ML0,n-ns+1,-zdV,unk(ML_0,ns,k,s),ML0,Sunk(ML_0,m),1,zero,utmp,1)
 #endif
 !================================================================ DRSDFT
+#ifdef _SHOWALL_GS_
+write(2500+myrank,*) repeat('-',30)
+do iii=1,NBLK1
+  write(2500+myrank,'(2g20.7)') utmp(iii)
+enddo
+#endif
 
               call mpi_allreduce(MPI_IN_PLACE,utmp,n-ns+1,TYPE_MAIN,mpi_sum,comm_grid,ierr)
+#ifdef _SHOWALL_GS_
+write(2500+myrank,*) repeat('-',30)
+do iii=1,NBLK1
+  write(2500+myrank,'(2g20.7)') utmp(iii)
+enddo
+#endif
 
 !---------------------------------------------------------------- DRSDFT
 #ifdef _DRSDFT_
@@ -224,6 +278,12 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
               call zgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s),ML0,utmp,1,one,unk(ML_0,m,k,s),1)
 #endif
 !================================================================ DRSDFT
+#ifdef _SHOWALL_GS_
+write(2500+myrank,*) repeat('-',30)
+do iii=1,NBLK1
+  write(2500+myrank,'(2g20.7)') utmp(iii)
+enddo
+#endif
 
             end if
             if ( m==1 .or. (n==m-1 .and. m/=ns) ) then
@@ -234,10 +294,12 @@ write(200+myrank,*) "<<<<<<<< GramSchmidtG"
 !            d=abs(d)
 !            write(2000+myrank,'("R",2g20.7)') d
 !=================================== def is changed
-              call mpi_allreduce(d,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
+              c=real(d,kind=8)
+              call MPI_ALLREDUCE( MPI_IN_PLACE,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
+!              call mpi_allreduce(d,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
               c=1.d0/sqrt(c)
 #ifdef _SHOWALL_GS_
-write(730+myrank,'(2g20.7)') d,c
+!write(730+myrank,'(4g20.7)') d,c
 #endif
               !c=1.d0/sqrt(c*dV)
               unk(ML_0:ML_1,m,k,s)=c*unk(ML_0:ML_1,m,k,s)
@@ -250,7 +312,7 @@ write(730+myrank,'(2g20.7)') d,c
         else
           MBLKH=max(MBLK/2,NBLK1)
 #ifdef _SHOWALL_GS_
-!write(400+myrank,*) "GramSchmidtGSub Rec"
+write(400+myrank,*) "GramSchmidtGSub Rec"
 #endif
           call GramSchmidtGSub(ms,me,ns,ne,MBLKH,k,s,NBLK,NBLK1)
         end if
@@ -259,7 +321,7 @@ write(730+myrank,'(2g20.7)') d,c
     end do ! ms
 
 #ifdef _SHOWALL_GS_
-!write(400+myrank,*) "<<<<<< GramSchmidtGSub"
+write(400+myrank,*) "<<<<<< GramSchmidtGSub"
 #endif
 
     return

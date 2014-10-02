@@ -444,13 +444,15 @@ use PStest
 #endif
 !  call check_all_ps(myrank)
 
+!  call write_wf(0)
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
 !     call gram_schmidt_m(1,Nband,k,s)
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
-!  call write_wf ; goto 900
+!  call write_wf(0)
+!  call write_wf(10) ; goto 900
 !  call test_on_wf(dV,myrank==0)
 #ifdef _USPP_
 !  call test_orthnorm_wf(myrank)

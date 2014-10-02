@@ -14,7 +14,8 @@ MODULE InnerProduct
   ! Sunk(nn1,n)
   use RealComplex, only: RCProduct,zero
   
-  use ParaRGridComm, only: threeWayComm
+!  use ParaRGridComm, only: threeWayComm
+  use ParaRGridComm, only: do3StepComm
 
   include 'mpif.h'
   PRIVATE
@@ -164,7 +165,8 @@ write(200+myrank,*) 'get_Sf 3'
 
 ! 3WayComm
 ! uVunk
-       call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
+!       call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
+       call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
        call watch( ctt(1),ett(1) )
 !===== summation over all grids =====
@@ -204,42 +206,6 @@ write(200+myrank,*) 'get_Sf 3'
 write(200+myrank,*) 'get_Sf 4'
 #endif
 
-!    case ( 3 )
-!----- term1 -----
-!!$OMP parallel do
-!       do i=nn1,nn2
-!          Sf(i) = fin(i)
-!       end do
-!!$OMP end parallel do
-!===== term1 =====
-
-!----- term2 -----
-!       do i=1,Mlma
-!          uVunk2=zero
-!          p_uVunk2=zero
-!!$OMP parallel do reduction(+:p_uVunk2)
-!          do j=nn1,nn2
-!             call RCProduct( uVk(i,j,k),fin(j),tmp )
-!             p_uVunk2 = p_uVunk2 + tmp
-!          end do
-!!$OMP end parallel do
-!          p_uVunk2 = dV*p_uVunk2
-
-!          call MPI_ALLREDUCE(p_uVunk2,uVunk2,1,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr)
-
-!          uVunk_z(i) = uVunk2
-!       end do
-
-!       do kk1=1,N_nlop
-!          i = nlop_pair(1,m)
-!          j = nlop_pair(2,m)
-!!$OMP parallel do
-!          do ii=nn1,nn2
-!             Sf(ii) = Sf(ii) + uVk(ii,i,k)*qij(kk1)*uVunk_z(j)
-!          end do
-!!$OMP end parallel do
-!       end do
-!===== term2 =====
     end select
 #ifdef _SHOWALL_INNER_
 write(200+myrank,*) 'get_Sf 5'
