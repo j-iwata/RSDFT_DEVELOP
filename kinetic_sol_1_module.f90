@@ -11,7 +11,8 @@ MODULE kinetic_sol_1_module
   implicit none
 
   PRIVATE
-  PUBLIC :: op_kinetic_sol_1, init_kinetic_sol_1
+  PUBLIC :: op_kinetic_sol_1, init_kinetic_sol_1 &
+       , construct_matrix_kinetic_sol_1
 
 CONTAINS
 
@@ -316,6 +317,243 @@ CONTAINS
                   ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
                   ,disp_switch )
   END SUBROUTINE init_kinetic_sol_1
+
+
+  SUBROUTINE construct_matrix_kinetic_sol_1( k, ML, Hmat )
+    implicit none
+    integer,intent(IN) :: k,ML
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: Hmat(ML,ML)
+#else
+    complex(8),intent(INOUT) :: Hmat(ML,ML)
+#endif
+    integer :: i,i1,i2,i3,m,n,j,j1,j2,j3
+    integer :: ML1,ML2,ML3
+    real(8) :: d
+
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+
+    d = coef_lap0 + const_k2(k)
+
+    do i=1,ML
+       Hmat(i,i) = Hmat(i,i) + d
+    end do
+
+    if ( flag_nab ) then
+
+       do i3=0,ML3-1
+       do i2=0,ML2-1
+       do i1=0,ML1-1
+
+          i = 1 + i1 + i2*ML1 + i3*ML1*ML2
+
+          do m=1,Md
+
+             j1 = mod(i1+m+ML1,ML1)
+             j  = 1 + j1 + i2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + zcoef_kin(1,m,k)
+
+             j1 = mod(i1-m+ML1,ML1)
+             j  = 1 + j1 + i2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + conjg( zcoef_kin(1,m,k) )
+
+             j2 = mod(i2+m+ML2,ML2)
+             j  = 1 + i1 + j2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + zcoef_kin(2,m,k)
+
+             j2 = mod(i2-m+ML2,ML2)
+             j  = 1 + i1 + j2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + conjg( zcoef_kin(2,m,k) )
+
+             j3 = mod(i3+m+ML3,ML3)
+             j  = 1 + i1 + i2*ML1 + j3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + zcoef_kin(3,m,k)
+
+             j3 = mod(i3-m+ML3,ML3)
+             j  = 1 + i1 + i2*ML1 + j3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + conjg( zcoef_kin(3,m,k) )
+
+          end do ! m
+
+       end do ! i1
+       end do ! i2
+       end do ! i3
+
+    else
+
+       do i3=0,ML3-1
+       do i2=0,ML2-1
+       do i1=0,ML1-1
+
+          i = 1 + i1 + i2*ML1 + i3*ML1*ML2
+
+          do m=1,Md
+
+             j1 = mod(i1+m+ML1,ML1)
+             j  = 1 + j1 + i2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + coef_lap(1,m)
+
+             j1 = mod(i1-m+ML1,ML1)
+             j  = 1 + j1 + i2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + coef_lap(1,m)
+
+             j2 = mod(i2+m+ML2,ML2)
+             j  = 1 + i1 + j2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + coef_lap(2,m)
+
+             j2 = mod(i2-m+ML2,ML2)
+             j  = 1 + i1 + j2*ML1 + i3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + coef_lap(2,m)
+
+             j3 = mod(i3+m+ML3,ML3)
+             j  = 1 + i1 + i2*ML1 + j3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + coef_lap(3,m)
+
+             j3 = mod(i3-m+ML3,ML3)
+             j  = 1 + i1 + i2*ML1 + j3*ML1*ML2
+             Hmat(i,j) = Hmat(i,j) + coef_lap(3,m)
+
+          end do ! m
+
+       end do ! i1
+       end do ! i2
+       end do ! i3
+
+    end if
+
+    if ( flag_n12 .or. flag_n23 .or. flag_n31 ) then
+
+       if ( flag_n12 ) then
+
+          do i3=0,ML3-1
+          do i2=0,ML2-1
+          do i1=0,ML1-1
+
+             i = 1 + i1 + i2*ML1 + i3*ML1*ML2
+
+             do n=1,Md
+             do m=1,Md
+
+                d = -ggg(4)*coef_nab(1,m)*coef_nab(2,n)
+
+                j1 = mod(i1+m+ML1,ML1)
+                j2 = mod(i2+n+ML2,ML2)
+                j  = 1 + j1 + j2*ML1 + i3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) + d
+
+                j1 = mod(i1-m+ML1,ML1)
+                j2 = mod(i2+n+ML2,ML2)
+                j  = 1 + j1 + j2*ML1 + i3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) - d
+
+                j1 = mod(i1+m+ML1,ML1)
+                j2 = mod(i2-n+ML2,ML2)
+                j  = 1 + j1 + j2*ML1 + i3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) - d
+
+                j1 = mod(i1-m+ML1,ML1)
+                j2 = mod(i2-n+ML2,ML2)
+                j  = 1 + j1 + j2*ML1 + i3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) + d
+
+             end do ! m
+             end do ! n
+
+          end do ! i1
+          end do ! i2
+          end do ! i3
+
+       end if
+
+       if ( flag_n23 ) then
+
+          do i3=0,ML3-1
+          do i2=0,ML2-1
+          do i1=0,ML1-1
+
+             i = 1 + i1 + i2*ML1 + i3*ML1*ML2
+
+             do n=1,Md
+             do m=1,Md
+
+                d = -ggg(5)*coef_nab(2,m)*coef_nab(3,n)
+
+                j2 = mod(i2+m+ML2,ML2)
+                j3 = mod(i3+n+ML3,ML3)
+                j  = 1 + i1 + j2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) + d
+
+                j2 = mod(i2-m+ML2,ML2)
+                j3 = mod(i3+n+ML3,ML3)
+                j  = 1 + i1 + j2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) - d
+
+                j2 = mod(i2+m+ML2,ML2)
+                j3 = mod(i3-n+ML3,ML3)
+                j  = 1 + i1 + j2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) - d
+
+                j2 = mod(i2-m+ML2,ML2)
+                j3 = mod(i3-n+ML3,ML3)
+                j  = 1 + i1 + j2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) + d
+
+             end do ! m
+             end do ! n
+
+          end do ! i1
+          end do ! i2
+          end do ! i3
+
+       end if
+
+       if ( flag_n31 ) then
+
+          do i3=0,ML3-1
+          do i2=0,ML2-1
+          do i1=0,ML1-1
+
+             i = 1 + i1 + i2*ML1 + i3*ML1*ML2
+
+             do n=1,Md
+             do m=1,Md
+
+                d = -ggg(6)*coef_nab(1,m)*coef_nab(3,n)
+
+                j1 = mod(i1+m+ML1,ML1)
+                j3 = mod(i3+n+ML3,ML3)
+                j  = 1 + j1 + i2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) + d
+
+                j1 = mod(i1-m+ML1,ML1)
+                j3 = mod(i3+n+ML3,ML3)
+                j  = 1 + j1 + i2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) - d
+
+                j1 = mod(i1+m+ML1,ML1)
+                j3 = mod(i3-n+ML3,ML3)
+                j  = 1 + j1 + i2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) - d
+
+                j1 = mod(i1-m+ML1,ML1)
+                j3 = mod(i3-n+ML3,ML3)
+                j  = 1 + j1 + i2*ML1 + j3*ML1*ML2
+                Hmat(i,j) = Hmat(i,j) + d
+
+             end do ! m
+             end do ! n
+
+          end do ! i1
+          end do ! i2
+          end do ! i3
+
+       end if
+
+    end if
+ 
+  END SUBROUTINE construct_matrix_kinetic_sol_1
 
 
 END MODULE kinetic_sol_1_module

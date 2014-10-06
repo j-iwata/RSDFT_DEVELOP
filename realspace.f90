@@ -12,6 +12,9 @@ PROGRAM Real_Space_Solid
   use psv_initrho_module
   use random_initrho_module
 
+  use hamiltonian_matrix_module
+  use ps_nloc2_variables, only: uVk
+
   implicit none
 
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
@@ -348,6 +351,9 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
+!  Vloc=0.0d0
+!  uVk=(0.0d0,0.0d0)
+
   if ( Nsweep > 0 ) then
 !     call init_sweep( 2, Nband, 1.d-7 )
      call calc_sweep( Nsweep, iswitch_gs, ierr, disp_switch )
@@ -360,6 +366,15 @@ PROGRAM Real_Space_Solid
      call init_scf( Ndiag ) 
      call calc_scf( Diter, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
+  end if
+
+! ---
+
+  if ( iswitch_scf == -1 ) then
+     if ( nprocs == 1 ) then
+        call construct_hamiltonian_matrix( Ngrid(0) )
+     end if
+     goto 900
   end if
 
 ! ---

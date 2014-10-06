@@ -8,7 +8,8 @@ MODULE localpot_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Vloc,init_localpot,op_localpot,read_localpot
+  PUBLIC :: Vloc,init_localpot,op_localpot,read_localpot &
+       ,construct_matrix_localpot
 
   real(8),allocatable :: Vloc(:,:)
 
@@ -128,5 +129,23 @@ CONTAINS
     deallocate( rtmp3  )
     deallocate( LL_tmp )
   END SUBROUTINE read_localpot
+
+
+  SUBROUTINE construct_matrix_localpot( s, ML, Hmat )
+    implicit none
+    integer,intent(IN) :: s, ML
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: Hmat(ML,ML)
+#else
+    complex(8),intent(INOUT) :: Hmat(ML,ML)
+#endif
+    integer :: i
+
+    do i=1,ML
+       Hmat(i,i) = Hmat(i,i) + Vloc(i,s)
+    end do
+
+  END SUBROUTINE construct_matrix_localpot
+
 
 END MODULE localpot_module

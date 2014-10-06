@@ -29,6 +29,7 @@ MODS1 = simc_module.o\
         kinetic_mol_module.o \
         esm_kinetic_module.o \
         tmp3_omp_variables.o \
+        kinetic_fft_module.o \
         kinetic_sol_0_module.o \
         kinetic_sol_1_module.o \
         kinetic_module.o \
@@ -65,6 +66,7 @@ MODS1 = simc_module.o\
         ps_nloc_mr_module.o \
         ps_nloc3_module.o \
         ps_nloc2_module.o \
+        construct_matrix_ps_nloc2_module.o \
         localpot2_variables.o \
         localpot2_density_module.o \
         localpot2_ion_module.o \
@@ -127,6 +129,7 @@ MODS1 = simc_module.o\
         subspace_diag_variables.o \
         psv_initrho_module.o \
         random_initrho_module.o \
+        hamiltonian_matrix_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \

@@ -6,7 +6,7 @@ MODULE symmetry_module
 
   PRIVATE
   PUBLIC :: init_symmetry, read_symmetry, prep_symmetry, sym_rho, sym_force &
-           ,nsym,isymmetry,rgb
+           ,nsym,isymmetry,rgb,construct_matrix_symmetry
 
   integer :: isymmetry
   character(30) :: file_symdat
@@ -1181,6 +1181,92 @@ stop
 900 stop "stop@chk_sym_mat"
 
   END SUBROUTINE chk_sym_mat
+
+
+  SUBROUTINE construct_matrix_symmetry( isym, ML, SymMat )
+    implicit none
+    integer,intent(IN)  :: isym, ML
+    real(8),intent(OUT) :: SymMat(ML,ML)
+    integer :: i,j,n,m,i1,i2,i3,ierr,n1,n2,ML0
+    integer :: j1,j2,j3,ii1,ii2,ii3,jj1,jj2,jj3,k1,k2,k3
+    integer :: m1,m2,m3,ktmp(3,2),k
+    integer,allocatable :: LLL2(:,:,:)
+    real(8) :: la(3),Rla(3)
+    real(8) :: r0,r1,r2,r3,tmp(3,3),c1
+
+    if ( isymmetry == 0 ) return
+
+    SymMat(:,:) = 0.0d0
+
+    n1  = idisp(myrank)+1
+    n2  = idisp(myrank)+ircnt(myrank)
+    ML0 = n2-n1+1
+    c1  = 1.d0/dble(nnp)
+
+    allocate( LLL2(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL2=0
+
+    n=-1
+    i=0
+    do j3=0,np_2d(3)-1
+    do j2=0,np_2d(2)-1
+    do j1=0,np_2d(1)-1
+       n=n+1
+       ii1=pinfo_grid(1,n) ; jj1=ii1+pinfo_grid(2,n)-1
+       ii2=pinfo_grid(3,n) ; jj2=ii2+pinfo_grid(4,n)-1
+       ii3=pinfo_grid(5,n) ; jj3=ii3+pinfo_grid(6,n)-1
+       do i3=ii3,jj3
+       do i2=ii2,jj2
+       do i1=ii1,jj1
+          i=i+1
+          LLL2(i1,i2,i3)=i
+       end do
+       end do
+       end do
+    end do
+    end do
+    end do
+
+    m1 = ML1/nnp
+    m2 = ML2/nnp
+    m3 = ML3/nnp
+
+    do i3=0,ML3-1
+    do i2=0,ML2-1
+    do i1=0,ML1-1
+
+       i = 1 + i1 + i2*ML1 + i3*ML1*ML2
+
+       la(1) = i1
+       la(2) = i2
+       la(3) = i3
+
+       Rla(1)=sum( rga(1,1:3,isym)*la(1:3) ) + m1*pga(1,isym)
+       Rla(2)=sum( rga(2,1:3,isym)*la(1:3) ) + m2*pga(2,isym)
+       Rla(3)=sum( rga(3,1:3,isym)*la(1:3) ) + m3*pga(3,isym)
+
+       k1=Rla(1)/ML1 ; if ( Rla(1)<0 ) k1=(Rla(1)+1)/ML1-1
+       k2=Rla(2)/ML2 ; if ( Rla(2)<0 ) k2=(Rla(2)+1)/ML2-1
+       k3=Rla(3)/ML3 ; if ( Rla(3)<0 ) k3=(Rla(3)+1)/ML3-1
+       Rla(1)=Rla(1)-k1*ML1
+       Rla(2)=Rla(2)-k2*ML2
+       Rla(3)=Rla(3)-k3*ML3
+       j1=Rla(1)
+       j2=Rla(2)
+       j3=Rla(3)
+
+       j = LLL2(j1,j2,j3)
+
+       SymMat(j,i) = 1.0d0
+
+    end do ! i1
+    end do ! i2
+    end do ! i3
+
+    deallocate( LLL2 )
+
+    return
+
+  END SUBROUTINE construct_matrix_symmetry
 
 
 END MODULE symmetry_module
