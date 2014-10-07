@@ -13,7 +13,6 @@ PROGRAM Real_Space_Solid
   use random_initrho_module
 
   use hamiltonian_matrix_module
-  use ps_nloc2_variables, only: uVk
 
   implicit none
 
@@ -350,9 +349,6 @@ PROGRAM Real_Space_Solid
   call calc_total_energy(.true.,disp_switch)
 
 ! ---
-
-!  Vloc=0.0d0
-!  uVk=(0.0d0,0.0d0)
 
   if ( Nsweep > 0 ) then
 !     call init_sweep( 2, Nband, 1.d-7 )

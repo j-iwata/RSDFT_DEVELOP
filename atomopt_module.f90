@@ -589,17 +589,20 @@ CONTAINS
              write(*,*) 'Trial configuration (see fort.97)'
              if ( Natom <= 11 ) then
                 do a=1,Natom
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              else
                 do a=1,min(5,Natom)
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
                 write(*,'(1x,10x,".")')
                 write(*,'(1x,10x,".")')
                 write(*,'(1x,10x,".")')
                 do a=Natom-5,Natom
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              end if
           end if
@@ -915,7 +918,7 @@ CONTAINS
     case default
 
        do a=1,Natom
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),md_atom(a)
        end do
 
     case( 1 )
@@ -925,7 +928,7 @@ CONTAINS
        aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
        do a=1,Natom
           vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),1
+          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
        end do
 
     end select
