@@ -767,11 +767,11 @@ CONTAINS
     mg = max( max_psgrd, n_grd )
     mo = max( max_psorb, n_orb )
     if ( max_psgrd < mg ) then
-       allocate( vql_tmp(mg,Nelement_PP) )
-       allocate( cdd_tmp(mg,Nelement_PP) )
-       allocate( rad_tmp(mg,Nelement_PP) )
-       allocate( rab_tmp(mg,Nelement_PP) )
-       allocate( cdc_tmp(mg,Nelement_PP) )
+       allocate( vql_tmp(mg,Nelement_PP) ) ; vql_tmp=0.0d0
+       allocate( cdd_tmp(mg,Nelement_PP) ) ; cdd_tmp=0.0d0
+       allocate( rad_tmp(mg,Nelement_PP) ) ; rad_tmp=0.0d0
+       allocate( rab_tmp(mg,Nelement_PP) ) ; rab_tmp=0.0d0
+       allocate( cdc_tmp(mg,Nelement_PP) ) ; cdc_tmp=0.0d0
        vql_tmp(1:max_psgrd,1:Nelement_PP) = vql(1:max_psgrd,1:Nelement_PP)
        cdd_tmp(1:max_psgrd,1:Nelement_PP) = cdd(1:max_psgrd,1:Nelement_PP)
        rad_tmp(1:max_psgrd,1:Nelement_PP) = rad(1:max_psgrd,1:Nelement_PP)
@@ -806,12 +806,12 @@ CONTAINS
        deallocate( viod_tmp )
     end if
     if ( max_psorb < mo ) then
-       allocate( anorm_tmp(mo,Nelement_PP) )
-       allocate( inorm_tmp(mo,Nelement_PP) )
-       allocate( lo_tmp(mo,Nelement_PP) )
-       allocate( no_tmp(mo,Nelement_PP) )
-       allocate( Rps_tmp(mo,Nelement_PP) )
-       allocate( NRps_tmp(mo,Nelement_PP) )
+       allocate( anorm_tmp(mo,Nelement_PP) ) ; anorm_tmp=0.0d0
+       allocate( inorm_tmp(mo,Nelement_PP) ) ; inorm_tmp=0
+       allocate( lo_tmp(mo,Nelement_PP) ) ; lo_tmp=0
+       allocate( no_tmp(mo,Nelement_PP) ) ; no_tmp=0
+       allocate( Rps_tmp(mo,Nelement_PP) ) ; Rps_tmp=0.0d0
+       allocate( NRps_tmp(mo,Nelement_PP) ) ; NRps_tmp=0
        anorm_tmp(1:max_psorb,1:Nelement_PP) = anorm(1:max_psorb,1:Nelement_PP)
        inorm_tmp(1:max_psorb,1:Nelement_PP) = inorm(1:max_psorb,1:Nelement_PP)
        lo_tmp(1:max_psorb,1:Nelement_PP) = lo(1:max_psorb,1:Nelement_PP)
