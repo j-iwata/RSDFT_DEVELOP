@@ -1,7 +1,9 @@
 MODULE ForceSub
   implicit none
   integer :: a1b,a2b,a3b,ab1,ab2,ab3
-  real(8) :: ML1,ML2,ML3,c1,c2,c3
+  integer :: ML1,ML2,ML3
+  real(8) :: c1,c2,c3
+  real(8) :: d1,d2,d3
   logical,allocatable :: isAtomInThisNode(:)
   logical :: notAtom
   integer :: a,L,m,iorb,ik
@@ -23,7 +25,7 @@ CONTAINS
 !-------------------------------------------------------------------------
   SUBROUTINE setConstGridWidth(Ngrid)
     implicit none
-    real(8),intent(IN) :: Ngrid(3)
+    integer,intent(IN) :: Ngrid(3)
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
@@ -40,10 +42,8 @@ CONTAINS
     integer :: ia
     integer :: i1,i2,i3
     real(8) :: k1,k2,k3
-!$OMP parallel
-!$OMP workshare
     allocate( isAtomInThisNode(maxAtom) ) ; isAtomInThisNode=.false.
-!$OMP end workshare
+!$OMP parallel
 !$OMP do private( i1,i2,i3,k1,k2,k3 )
     do ia=1,maxAtom
       i1 = nint( aa_atom(1,ia)*ML1 )
@@ -92,9 +92,11 @@ CONTAINS
   END SUBROUTINE getAtomPosition_real
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomCenteredPositionFrom_lma(lma,j)
+    use ps_nloc2_variables, only: JJ_MAP
+    use aa_module, only: aa
     implicit none
     integer,intent(IN) :: lma,j
-    real(8) :: d1,d2,d3
+!    real(8) :: d1,d2,d3
     d1=c1*JJ_MAP(1,j,lma)+JJ_MAP(4,j,lma)
     d2=c2*JJ_MAP(2,j,lma)+JJ_MAP(5,j,lma)
     d3=c3*JJ_MAP(3,j,lma)+JJ_MAP(6,j,lma)
@@ -102,6 +104,43 @@ CONTAINS
     y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
     z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
     r = sqrt(x*x+y*y+z*z)
-  END SUBROUTINE getGridPosition
+  END SUBROUTINE getAtomCenteredPositionFrom_lma
+!-------------------------------------------------------------------------
+  SUBROUTINE interpolate_dviod
+    use VarPSMember, only: rad1,dviod
+    implicit none
+#ifdef _SPLINE_
+    if ( r < rad1(2,ik) ) then
+      tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
+    else
+      call splint(rad1(1,ik),dviod(1,lm1,ik),y2b,NRc,r,tmp0)
+      tmp0=tmp0/(r*r)
+    end if
+#else
+    if ( ir <= 2 ) then
+      err0=0.d0
+      tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
+      if ( ir < 1 ) stop "calc_force_ps_nloc_uspp"
+    else if ( ir <= NRc ) then
+      err0=1.d10
+      do im=1,20
+        m1=max(1,ir-im)
+        m2=min(ir+im,NRc)
+        call polint(rad1(m1,ik),dviod(m1,lm1,ik),m2-m1+1,r,tmp1,err)
+        if ( abs(err)<err0 ) then
+          tmp0=tmp1
+          err0=abs(err)
+          if ( err0<ep ) exit
+        end if
+      end do
+      tmp0=tmp0/(r*r)
+    else
+      write(*,*) "force_ps_nloc_uspp",ir,NRc
+      stop
+    end if
+    maxerr=max(maxerr,err0)
+#endif
+
+  END SUBROUTINE interpolate_dviod
 
 END MODULE ForceSub

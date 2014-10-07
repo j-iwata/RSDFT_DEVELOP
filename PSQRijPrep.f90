@@ -380,7 +380,7 @@ CONTAINS
       ik  = ki_atom(ia)
       do ik1=1,N_k1(ik)
         iqr=iqr+1
-!        kk1=kk1map(ik1,ia)
+        kk1=kk1map(ik1,ia)
         icheck_tmp1(:)=0
 !        call MPI_ALLGATHER(icheck_tmp5(ik1,ia),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
         do n=0,np_grid-1
@@ -400,8 +400,8 @@ CONTAINS
           end if
           maps_tmp(icheck_tmp2(myrank_g),2) = ia
           maps_tmp(icheck_tmp2(myrank_g),3) = ik1
-!          maps_tmp(icheck_tmp2(myrank_g),4) = nzqr_pair(kk1,1)
-!          maps_tmp(icheck_tmp2(myrank_g),5) = nzqr_pair(kk1,2)
+          maps_tmp(icheck_tmp2(myrank_g),4) = nzqr_pair(kk1,1)
+          maps_tmp(icheck_tmp2(myrank_g),5) = nzqr_pair(kk1,2)
           do n=0,nprocs_g-1
             if ( n==myrank_g .or. icheck_tmp1(n)==0 ) cycle
             qr_nsend_tmp(n)=qr_nsend_tmp(n)+1  
@@ -446,8 +446,8 @@ CONTAINS
       if (maps_tmp(iqr,1)==0) cycle
       amap_Q(iqr) =maps_tmp(iqr,2)
       k1map_Q(iqr)=maps_tmp(iqr,3)
-!      lmamap_Q(iqr,1)=maps_tmp(iqr,4)
-!      lmamap_Q(iqr,2)=maps_tmp(iqr,5)
+      lmamap_Q(iqr,1)=maps_tmp(iqr,4)
+      lmamap_Q(iqr,2)=maps_tmp(iqr,5)
     end do
 
 !!$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )

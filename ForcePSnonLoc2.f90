@@ -55,7 +55,9 @@ CONTAINS
 #endif
     integer :: i0,iorb0
     real(8) :: forceQ(3,MI)
+
     real(8),parameter :: pi2=2.d0*acos(-1.d0)
+    real(8) :: d1,d2
 
     INTERFACE
       FUNCTION Ylm(x,y,z,l,m)
@@ -193,39 +195,18 @@ CONTAINS
         yy3=0.d0
         do L1=abs(L-1),L+1
           lm1=ilm1(L1,iorb,ik)
-          if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 &
-              .or. abs(z)>1.d-14 .or. L1==0 ) then
-#ifdef _SPLINE_
-            if ( r < rad1(2,ik) ) then
-              tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
-            else
-              call splint(rad1(1,ik),dviod(1,lm1,ik),y2b,NRc,r,tmp0)
-              tmp0=tmp0/(r*r)
-            end if
-#else
-            if ( ir <= 2 ) then
-              err0=0.d0
-              tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
-              if ( ir < 1 ) stop "calc_force_ps_nloc_uspp"
-            else if ( ir <= NRc ) then
-              err0=1.d10
-              do im=1,20
-                m1=max(1,ir-im)
-                m2=min(ir+im,NRc)
-                call polint(rad1(m1,ik),dviod(m1,lm1,ik),m2-m1+1,r,tmp1,err)
-                if ( abs(err)<err0 ) then
-                  tmp0=tmp1
-                  err0=abs(err)
-                  if ( err0<ep ) exit
-                end if
-              end do
-              tmp0=tmp0/(r*r)
-            else
-              write(*,*) "force_ps_nloc_uspp",ir,NRc
-              stop
-            end if
-            maxerr=max(maxerr,err0)
-#endif
+          if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. abs(z)>1.d-14 .or. L1==0 ) then
+            call interpolate_dviod()
+            !OUT: 
+
+
+
+
+
+
+
+
+
             do L1z=-L1,L1
               tmp1=tmp0*Ylm(x,y,z,L1,L1z)
               yy1=yy1+tmp1*SH_Y1(L,m,L1,L1z)
@@ -370,7 +351,7 @@ CONTAINS
           lma2=nzqr_pair(m,2)
           a=amap(lma1)
           if ( a <= 0 ) cycle
-          if ( a_rank(a) ) then
+          if ( isAtomInThisNode(a) ) then
             Dij_f(MB_0:MB_1)=Dij(m,s)-esp(MB_0:MB_1,k,s)*qij_f(m)
             const_f(MB_0:MB_1)=Dij_f(MB_0:MB_1)*(-2.d0)*occ(MB_0:MB_1,k,s)*dV*dV
             if (lma1<lma2) stop 'Nzqr_pair is strange'
@@ -458,7 +439,6 @@ enddo
     call mpi_allreduce(work2,force2,3*MI &
          ,mpi_real8,mpi_sum,mpi_comm_world,ierr)
     deallocate( work2 )
-    deallocate( a_rank )
     deallocate( wtmp5 )
 !$OMP end single
 
