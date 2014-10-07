@@ -63,6 +63,7 @@ MODS1 = simc_module.o\
         localpot2_variables.o \
         localpot2_module.o \
         localpot_module.o \
+		ForceSub.o \
 		ForcePSnonLoc2.o \
         ps_nloc2_module.o \
 		PSQInit.o \

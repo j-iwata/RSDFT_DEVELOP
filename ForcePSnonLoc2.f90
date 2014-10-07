@@ -8,6 +8,7 @@ MODULE ForcePSnonLoc2
   use parallel_module
   use localpot_module, only: Vloc
   use ParaRGridComm, only: threeWayComm
+  use ForceSub
   implicit none
   PRIVATE
   PUBLIC :: calcForcePSnonLoc2
@@ -26,17 +27,17 @@ CONTAINS
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
-    integer :: i1,i2,i3,lma1,lma2
+    integer :: lma1,lma2
     integer :: ib1,ib2
-    integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
+    integer :: i,j,k,s,n,ir,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq
-    integer :: a,a0,ik,m,lm0,lm1,lma,im,m1,m2
+    integer :: a0,ik,lm0,lm1,lma,im,m1,m2
     integer :: ierr,M_irad,ir0
     integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
     real(8),parameter :: ep=1.d-8
-    real(8) :: err,err0,maxerr,Rx,Ry,Rz
-    real(8) :: a1,a2,a3,c1,c2,c3,d1,d2,d3
-    real(8) :: x,y,z,r,kr,pi2,c
+    real(8) :: err,err0,maxerr
+    real(8) :: a1,a2,a3
+    real(8) :: kr,c
     real(8) :: tmp,tmp0,tmp1
     real(8) :: ctt(0:4),ett(0:4)
     real(8) :: yy1,yy2,yy3
@@ -52,10 +53,9 @@ CONTAINS
     complex(8),allocatable :: wtmp5(:,:,:,:,:)
     complex(8),allocatable :: uVunk_tmp(:,:,:,:)
 #endif
-    logical,allocatable :: a_rank(:)
-    integer :: ML1,ML2,ML3,i0,iorb0
-    integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
+    integer :: i0,iorb0
     real(8) :: forceQ(3,MI)
+    real(8),parameter :: pi2=2.d0*acos(-1.d0)
 
     INTERFACE
       FUNCTION Ylm(x,y,z,l,m)
@@ -78,26 +78,14 @@ CONTAINS
 
     if ( Mlma <= 0 ) return
 
-    pi2 = 2.d0*acos(-1.d0)
-
     maxerr=0.d0
     ctt(:)=0.d0
     ett(:)=0.d0
 
-    a1b=Igrid(1,1)
-    a2b=Igrid(1,2)
-    a3b=Igrid(1,3)
-    ab1=Igrid(2,1)-Igrid(1,1)+1
-    ab2=Igrid(2,2)-Igrid(1,2)+1
-    ab3=Igrid(2,3)-Igrid(1,3)+1
-
-    ML1 = Ngrid(1)
-    ML2 = Ngrid(2)
-    ML3 = Ngrid(3)
-
-    c1=1.d0/ML1
-    c2=1.d0/ML2
-    c3=1.d0/ML3
+    call setLocalIndexForBoundary(Igrid)
+    !OUT: a1b,a2b,a3b,ab1,ab2,ab3
+    call setConstGridWidth(Ngrid)
+    !OUT: ML1,ML2,ML3,c1,c2,c3
 
     if ( .not.allocated(ilm1) ) then
       L1=maxval(lo)+1
@@ -134,36 +122,16 @@ CONTAINS
     end if
 
     allocate( wtmp5(0:3,nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-    allocate( a_rank(MI) )
     allocate( duVdR(3,MMJJ,nzlma) )
+
+    call setLocalAtoms(MI,aa_atom,Igrid)
 
 !$OMP parallel
 
 !$OMP workshare
     wtmp5=zero
-    a_rank(:)=.false.
     duVdR=0.d0
 !$OMP end workshare
-
-!$OMP do private( i1,i2,i3,k1,k2,k3 )
-    do a=1,MI
-      i1 = nint( aa_atom(1,a)*ML1 )
-      i2 = nint( aa_atom(2,a)*ML2 )
-      i3 = nint( aa_atom(3,a)*ML3 )
-      k1 = i1/ML1 ; if ( i1<0 ) k1=(i1+1)/ML1-1
-      k2 = i2/ML2 ; if ( i2<0 ) k2=(i2+1)/ML2-1
-      k3 = i3/ML3 ; if ( i3<0 ) k3=(i3+1)/ML3-1
-      i1 = i1 - k1*ML1
-      i2 = i2 - k2*ML2
-      i3 = i3 - k3*ML3
-      if ( Igrid(1,1) <= i1 .and. i1 <= Igrid(2,1) .and. &
-          Igrid(1,2) <= i2 .and. i2 <= Igrid(2,2) .and. &
-          Igrid(1,3) <= i3 .and. i3 <= Igrid(2,3) ) then
-        a_rank(a)=.true.
-      end if
-    end do
-!$OMP end do
-
 
 #ifndef _SPLINE_
 !$OMP single
@@ -202,27 +170,18 @@ CONTAINS
 !!$OMP            ,ir,ir0,yy1,yy2,yy3,err0,err,tmp0,tmp1,m1,m2  &
 !!$OMP            ,lma,j,L1,L1z,lm1,im )
     do lma=1,nzlma
-      a    = amap(lma)
-      if ( a <= 0 ) cycle
-      L    = lmap(lma)
-      m    = mmap(lma)
-      iorb = iorbmap(lma)
-      ik   = ki_atom(a)
-      Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
-      Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
-      Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+      call getAtomInfoFrom_lma(lma)
+      !OUT: a,L,m,iorb,ik,notAtom
+      if (notAtom) cycle
+      call getAtomPosition_real
+      !OUT: Rx,Ry,Rz
       NRc=NRps(iorb,ik)
 !!$OMP parallel do firstprivate( maxerr ) &
 !!$OMP             private( d1,d2,d3,x,y,z,r,ir0,yy1,yy2,yy3,lm1,err,err0 &
 !!$OMP                     ,tmp0,tmp1,m1,m2,j,L1,im,L1z )
       do j=1,MJJ_MAP(lma)
-        d1=c1*JJ_MAP(1,j,lma)+JJ_MAP(4,j,lma)
-        d2=c2*JJ_MAP(2,j,lma)+JJ_MAP(5,j,lma)
-        d3=c3*JJ_MAP(3,j,lma)+JJ_MAP(6,j,lma)
-        x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
-        y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
-        z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-        r = sqrt(x*x+y*y+z*z)
+        call getAtomCenteredPosition(lma,j)
+        !OUT: x,y,z,r
 #ifndef _SPLINE_
         ir0=irad( int(100.d0*r),ik )
         do ir=ir0,NRc
