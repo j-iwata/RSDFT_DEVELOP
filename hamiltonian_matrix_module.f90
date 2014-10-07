@@ -91,14 +91,16 @@ CONTAINS
 !          write(*,'(1x,4i5,2f20.15)') i,nint(real(w1(1:3,i))),real(w1(4,i)),r
 !       end do
 
-       w2(:,:)=zero
-       do isym=1,nsym
-          write(*,'(1x,"isym/nsym=",i3," /",i3)') isym,nsym
-          call construct_matrix_symmetry( isym, ML, SymMat )
-          w1(:,:) = matmul( Hmat, transpose(SymMat) )
-          w2(:,:) = w2(:,:) + matmul( SymMat, w1 )
-       end do
-       Hmat(:,:) = c*w2(:,:)
+       if ( isymmetry /= 0 ) then
+          w2(:,:)=zero
+          do isym=1,nsym
+             write(*,'(1x,"isym/nsym=",i3," /",i3)') isym,nsym
+             call construct_matrix_symmetry( isym, ML, SymMat )
+             w1(:,:) = matmul( Hmat, transpose(SymMat) )
+             w2(:,:) = w2(:,:) + matmul( SymMat, w1 )
+          end do
+          Hmat(:,:) = c*w2(:,:)
+       end if
 !       n=count(abs(Hmat)>1.d-10)
 !       write(*,*) n,dble(n)/dble(ML)
 !       do i=1,ML
