@@ -94,6 +94,8 @@ MODULE global_variables
 
   use symmetry_module
 
+  use force_module
+
   implicit none
 
   integer :: Diter, Nsweep, Ndiag

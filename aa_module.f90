@@ -4,7 +4,7 @@ MODULE aa_module
 
   PRIVATE
   PUBLIC :: ax,aa,Va,read_aa,construct_aa,read_oldformat_aa &
-           ,get_org_aa
+           ,get_org_aa,set_org_aa
 
   real(8) :: ax,Va
   real(8) :: aa(3,3)
@@ -50,8 +50,7 @@ CONTAINS
        write(*,'(1x,"aa(1:3,3)=",3F20.15)') aa(:,3)
     end if
     call send_aa(0)
-    ax_org=ax
-    aa_org=aa(:,:)
+    call set_org_aa( ax, aa )
   END SUBROUTINE read_aa
 
 
@@ -93,11 +92,20 @@ CONTAINS
   END SUBROUTINE construct_aa
 
 
+  SUBROUTINE set_org_aa(ax_in,aa_in)
+    implicit none
+    real(8),intent(IN) :: ax_in,aa_in(3,3)
+    ax_org=ax_in
+    aa_org(:,:)=aa_in(:,:)
+  END SUBROUTINE set_org_aa
+
+
   SUBROUTINE get_org_aa(ax_out,aa_out)
     implicit none
     real(8),intent(OUT) :: ax_out,aa_out(3,3)
     ax_out=ax_org
     aa_out(:,:)=aa_org(:,:)
   END SUBROUTINE get_org_aa
+
 
 END MODULE aa_module
