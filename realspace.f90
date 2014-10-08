@@ -8,6 +8,7 @@ PROGRAM Real_Space_Solid
 
   use sweep_module
   use scf_module
+  use scf_chefsi_module
 
   use psv_initrho_module
   use random_initrho_module
@@ -358,20 +359,21 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
-  if ( iswitch_scf == 1 ) then
-     call init_scf( Ndiag ) 
+  select case( iswitch_scf )
+  case( 1 )
+     call init_scf( Ndiag )
      call calc_scf( Diter, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
-  end if
-
-! ---
-
-  if ( iswitch_scf == -1 ) then
+  case( 2 )
+     call init_scf_chefsi( Ndiag, myrank, 1 )
+     call calc_scf_chefsi( Diter, ierr, disp_switch )
+     if ( ierr < 0 ) goto 900
+  case( -1 )
      if ( nprocs == 1 ) then
         call construct_hamiltonian_matrix( Ngrid(0) )
      end if
      goto 900
-  end if
+  end select
 
 ! ---
 
