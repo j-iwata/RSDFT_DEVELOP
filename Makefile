@@ -42,6 +42,7 @@ MODS1 = simc_module.o\
         ps_local_gth_module.o \
         electron_module.o\
         init_occ_electron_module.o \
+        wf_sub_module.o \
         wf_module.o \
         symmetry_module.o \
         density_module.o\
@@ -130,6 +131,7 @@ MODS1 = simc_module.o\
         psv_initrho_module.o \
         random_initrho_module.o \
         hamiltonian_matrix_module.o \
+        ChebyshevFilter_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \
@@ -147,7 +149,8 @@ DIAG_MOD   = subspace_diag_module.o
 
 MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
 MODS2 = momentum_module.o band_variables.o band_sseig_module.o band_module.o
-MODS4 = scf_module.o sweep_module.o atomopt_module.o global_variables.o parameters_module.o
+MODS4 = scf_module.o scf_chefsi_module.o sweep_module.o atomopt_module.o \
+        global_variables.o parameters_module.o
 
 ########################################################################
 ########################################################################
