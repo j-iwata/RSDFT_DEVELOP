@@ -62,6 +62,7 @@ PROGRAM Real_Space_Solid
 #ifdef _USPP_F_TEST_
   use VarPSMember
   use VarPSMemberG
+  use ps_nloc2_variables
 #endif
 
 use WFtest
@@ -818,6 +819,8 @@ use PStest
 !call write_dviod(1800,myrank)
 !call write_qrL(1900,myrank,Nelement)
 !call write_dqrL(2000,myrank,Nelement)
+call checkMapsBeforeForce(myrank)
+call checkAtomData(myrank)
 !===========================================================
 !!!!!!!! changed the order of atomopt and band
 

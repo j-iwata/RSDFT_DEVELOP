@@ -5,6 +5,7 @@ MODULE atom_module
   PRIVATE
   PUBLIC :: Natom,Nelement,aa_atom,ki_atom,read_atom &
             ,opt_constrain
+  PUBLIC :: checkAtomData
 #ifdef _OBJECT_
   PUBLIC :: getAtomPosition
 #endif
@@ -120,6 +121,22 @@ CONTAINS
     call mpi_bcast(aa_atom,3*Natom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(opt_constrain,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_2
+
+  SUBROUTINE checkAtomData(myrank)
+    implicit none
+    integer,intent(IN) :: myrank
+    integer :: iatom
+    write(6000+myrank,'(A7,A10)') 'iatom','ki_atom'
+    write(6100+myrank,'(A7,A20)') 'iatom','aa_atom(1:3)'
+    write(6200+myrank,'(A7,A10)') 'iatom','opt_constrain'
+    do iatom=1,Natom
+      write(6000+myrank,'(I7,I10)') iatom,ki_atom(iatom)
+      write(6100+myrank,'(I7,G20.7)') iatom,aa_atom(1,iatom)
+      write(6100+myrank,'(I7,G20.7)') iatom,aa_atom(2,iatom)
+      write(6100+myrank,'(I7,G20.7)') iatom,aa_atom(3,iatom)
+      write(6200+myrank,'(I7,I10)') iatom,opt_constrain(iatom)
+    enddo
+  END SUBROUTINE checkAtomData
 
 #ifdef _OBJECT_
   SUBROUTINE getAtomPosition(iatom,Ngrid,atomPos)

@@ -36,4 +36,21 @@ CONTAINS
     allocate( rbufnl(n,0:nprocs_g-1) ) ; rbufnl=zero
   END SUBROUTINE allocate_ps_nloc2
 
+  SUBROUTINE checkMapsBeforeForce(myrank)
+    implicit none
+    integer,intent(IN) :: myrank
+    integer :: i
+    write(5000+myrank,'(2A7)') 'nzlma','amap'
+    write(5100+myrank,'(2A7)') 'nzlma','lmap'
+    write(5200+myrank,'(2A7)') 'nzlma','mmap'
+    write(5300+myrank,'(2A7)') 'nzlma','iorbmap'
+    do i=1,nzlma
+      write(5000+myrank,'(2I7)') nzlma,amap(i)
+      write(5100+myrank,'(2I7)') nzlma,lmap(i)
+      write(5200+myrank,'(2I7)') nzlma,mmap(i)
+      write(5300+myrank,'(2I7)') nzlma,iorbmap(i)
+    enddo
+  END SUBROUTINE checkMapsBeforeForce
+
+
 END MODULE ps_nloc2_variables

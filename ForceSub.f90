@@ -1,14 +1,17 @@
 MODULE ForceSub
+use parallel_module, only: myrank
   implicit none
   integer :: a1b,a2b,a3b,ab1,ab2,ab3
   integer :: ML1,ML2,ML3
   real(8) :: c1,c2,c3
   real(8) :: d1,d2,d3
   logical,allocatable :: isAtomInThisNode(:)
-  logical :: notAtom
-  integer :: a,L,m,iorb,ik
+  logical :: noAtomHere
+  integer :: iatom,iL,im,iorb,ikind
   real(8) :: Rx,Ry,Rz
   real(8) :: x,y,z,r
+  real(8) :: tmp0
+  real(8) :: maxerr
 
 CONTAINS
 !-------------------------------------------------------------------------
@@ -70,25 +73,27 @@ CONTAINS
     use atom_module, only: ki_atom
     implicit none
     integer,intent(IN) :: lma
-    notAtom=.false.
-    a     = amap(lma)
-    if (a<=0) then
-      notAtom=.true.
+    noAtomHere=.false.
+    iatom = amap(lma)
+    if (iatom<=0) then
+      noAtomHere=.true.
       return
     endif
-    L     = lmap(lma)
-    m     = mmap(lma)
+    iL    = lmap(lma)
+    im    = mmap(lma)
     iorb  = iorbmap(lma)
-    ik    = ki_atom(a)
+    ikind = ki_atom(iatom)
+write(3000+myrank,'(4A7)') 'iatom','iL','im','ikind'
+write(3000+myrank,'(4I7)') iatom,iL,im,ikind
   END SUBROUTINE getAtomInfoFrom_lma
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomPosition_real
     use atom_module, only: aa_atom
     use aa_module, only: aa
     implicit none
-    Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
-    Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
-    Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+    Rx=aa(1,1)*aa_atom(1,iatom)+aa(1,2)*aa_atom(2,iatom)+aa(1,3)*aa_atom(3,iatom)
+    Ry=aa(2,1)*aa_atom(1,iatom)+aa(2,2)*aa_atom(2,iatom)+aa(2,3)*aa_atom(3,iatom)
+    Rz=aa(3,1)*aa_atom(1,iatom)+aa(3,2)*aa_atom(2,iatom)+aa(3,3)*aa_atom(3,iatom)
   END SUBROUTINE getAtomPosition_real
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomCenteredPositionFrom_lma(lma,j)
@@ -106,27 +111,32 @@ CONTAINS
     r = sqrt(x*x+y*y+z*z)
   END SUBROUTINE getAtomCenteredPositionFrom_lma
 !-------------------------------------------------------------------------
-  SUBROUTINE interpolate_dviod
+  SUBROUTINE interpolate_dviod(lm1,ir,NRc)
     use VarPSMember, only: rad1,dviod
     implicit none
+    integer,intent(IN) :: lm1
+    integer,intent(IN) :: ir,NRc
+    real(8) :: tmp1,err0,err
+    integer :: im,m1,m2
+    real(8),parameter :: ep=1.d-8
 #ifdef _SPLINE_
-    if ( r < rad1(2,ik) ) then
-      tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
+    if ( r < rad1(2,ikind) ) then
+      tmp0=dviod(2,lm1,ikind)/(rad1(2,ikind)**2)
     else
-      call splint(rad1(1,ik),dviod(1,lm1,ik),y2b,NRc,r,tmp0)
+      call splint(rad1(1,ikind),dviod(1,lm1,ikind),y2b,NRc,r,tmp0)
       tmp0=tmp0/(r*r)
     end if
 #else
     if ( ir <= 2 ) then
       err0=0.d0
-      tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
+      tmp0=dviod(2,lm1,ikind)/(rad1(2,ikind)**2)
       if ( ir < 1 ) stop "calc_force_ps_nloc_uspp"
     else if ( ir <= NRc ) then
       err0=1.d10
       do im=1,20
         m1=max(1,ir-im)
         m2=min(ir+im,NRc)
-        call polint(rad1(m1,ik),dviod(m1,lm1,ik),m2-m1+1,r,tmp1,err)
+        call polint(rad1(m1,ikind),dviod(m1,lm1,ikind),m2-m1+1,r,tmp1,err)
         if ( abs(err)<err0 ) then
           tmp0=tmp1
           err0=abs(err)
@@ -140,7 +150,6 @@ CONTAINS
     end if
     maxerr=max(maxerr,err0)
 #endif
-
   END SUBROUTINE interpolate_dviod
 
 END MODULE ForceSub

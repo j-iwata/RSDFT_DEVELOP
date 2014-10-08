@@ -8,7 +8,7 @@ MODULE ForcePSnonLoc2
   use parallel_module
   use localpot_module, only: Vloc
   use ParaRGridComm, only: threeWayComm
-  use ForceSub
+!  use ForceSub
   implicit none
   PRIVATE
   PUBLIC :: calcForcePSnonLoc2
@@ -20,6 +20,7 @@ MODULE ForcePSnonLoc2
 CONTAINS
 
   SUBROUTINE calcForcePSnonLoc2(MI,force2)
+    use ForceSub
     use bz_module
     use wf_module
     use watch_module
@@ -31,14 +32,13 @@ CONTAINS
     integer :: ib1,ib2
     integer :: i,j,k,s,n,ir,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq
-    integer :: a0,ik,lm0,lm1,lma,im,m1,m2
+    integer :: a0,lm0,lm1,lma
+    integer :: a,ik,m,L
     integer :: ierr,M_irad,ir0
     integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
-    real(8),parameter :: ep=1.d-8
-    real(8) :: err,err0,maxerr
     real(8) :: a1,a2,a3
     real(8) :: kr,c
-    real(8) :: tmp,tmp0,tmp1
+    real(8) :: tmp
     real(8) :: ctt(0:4),ett(0:4)
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),duVdR(:,:,:)
@@ -57,7 +57,9 @@ CONTAINS
     real(8) :: forceQ(3,MI)
 
     real(8),parameter :: pi2=2.d0*acos(-1.d0)
-    real(8) :: d1,d2
+! d1,d2 need to be removed from this module, use a different variable name
+!    real(8) :: d1,d2
+    integer :: i1,i2,i3
 
     INTERFACE
       FUNCTION Ylm(x,y,z,l,m)
@@ -127,6 +129,7 @@ CONTAINS
     allocate( duVdR(3,MMJJ,nzlma) )
 
     call setLocalAtoms(MI,aa_atom,Igrid)
+    !OUT: isAtomInThisNode
 
 !$OMP parallel
 
@@ -174,44 +177,44 @@ CONTAINS
     do lma=1,nzlma
       call getAtomInfoFrom_lma(lma)
       !OUT: a,L,m,iorb,ik,notAtom
-      if (notAtom) cycle
+write(3000+myrank,'(" lma=",I7," noAtomHere=",L7,I4)') lma,noAtomHere,ikind
+      if (noAtomHere) cycle
       call getAtomPosition_real
       !OUT: Rx,Ry,Rz
-      NRc=NRps(iorb,ik)
+write(3000+myrank,'(2A7)') 'iorb','ikind'
+write(3000+myrank,'(2I7)') iorb,ikind
+write(3000+myrank,'(4A7)') 'iatom','iL','im','ikind'
+write(3000+myrank,'(4I7)') iatom,iL,im,ikind
+      NRc=NRps(iorb,ikind)
 !!$OMP parallel do firstprivate( maxerr ) &
 !!$OMP             private( d1,d2,d3,x,y,z,r,ir0,yy1,yy2,yy3,lm1,err,err0 &
 !!$OMP                     ,tmp0,tmp1,m1,m2,j,L1,im,L1z )
+write(3100+myrank,'(" lma=",I6," MJJ_MAP(lma)=",I6,A40)') lma,MJJ_MAP(lma),repeat("-",30)
       do j=1,MJJ_MAP(lma)
-        call getAtomCenteredPosition(lma,j)
+        call getAtomCenteredPositionFrom_lma(lma,j)
         !OUT: x,y,z,r
 #ifndef _SPLINE_
-        ir0=irad( int(100.d0*r),ik )
+        ir0=irad( int(100.d0*r),ikind )
+write(3100+myrank,'(2A6,3A20)') 'ir0','NRc','r','rad1(ir0)','rad(NRc)'
+write(3100+myrank,'(2I6,3G20.7)') ir0,NRc,r,rad1(ir0,ikind),rad1(NRc,ikind)
         do ir=ir0,NRc
-          if ( r<rad1(ir,ik) ) exit
+          if ( r<rad1(ir,ikind) ) exit
         end do
+write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
 #endif
         yy1=0.d0
         yy2=0.d0
         yy3=0.d0
-        do L1=abs(L-1),L+1
-          lm1=ilm1(L1,iorb,ik)
+        do L1=abs(iL-1),iL+1
+          lm1=ilm1(L1,iorb,ikind)
           if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. abs(z)>1.d-14 .or. L1==0 ) then
-            call interpolate_dviod()
-            !OUT: 
-
-
-
-
-
-
-
-
-
+            call interpolate_dviod(lm1,ir,NRc)
+            !OUT: tmp0
             do L1z=-L1,L1
-              tmp1=tmp0*Ylm(x,y,z,L1,L1z)
-              yy1=yy1+tmp1*SH_Y1(L,m,L1,L1z)
-              yy2=yy2+tmp1*SH_Y2(L,m,L1,L1z)
-              yy3=yy3+tmp1*SH_Y3(L,m,L1,L1z)
+              tmp=tmp0*Ylm(x,y,z,L1,L1z)
+              yy1=yy1+tmp*SH_Y1(iL,im,L1,L1z)
+              yy2=yy2+tmp*SH_Y2(iL,im,L1,L1z)
+              yy3=yy3+tmp*SH_Y3(iL,im,L1,L1z)
             end do
           end if
         end do ! L1
@@ -235,12 +238,10 @@ CONTAINS
 !$OMP end single
 #endif
 
-
     do s=MSP_0,MSP_1
       do k=MBZ_0,MBZ_1
 !$OMP do schedule(dynamic) private( c,i,d1,d2,d3,kr,ztmp,i1,i2,i3 )
         do n=MB_0,MB_1
-!          if ( occ(n,k,s) == 0.d0 ) cycle
           if ( occ(n,k,s) < 1.d-10 ) cycle
 !          c=-2.d0*occ(n,k,s)*dV*dV
           c=1.d0
@@ -338,7 +339,6 @@ CONTAINS
         do n=MB_0,MB_1,MB_d
           ib1=n
           ib2=min(ib1+MB_d-1,MB_1)
-!          if ( occ(n,k,s) == 0.d0 ) cycle
           if ( occ(n,k,s) < 1.d-10 ) cycle
           call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s),3)
         end do ! n
