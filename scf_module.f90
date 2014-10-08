@@ -261,7 +261,7 @@ CONTAINS
           write(u(i),'("A1",3f20.15)') aa(1:3,1)/ax
           write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
           write(u(i),'("A3",3f20.15)') aa(1:3,3)/ax
-          write(u(i),'("VA",3f25.15)') Va
+          write(u(i),'("VA", f30.15)') Va
           write(u(i),'("NGRID",3i5,i10)') Ngrid(1:3),Ngrid(0)
           write(u(i),'("ECUT ",f10.5)') Ecut
           write(u(i),'("XC",a10)') XCtype
