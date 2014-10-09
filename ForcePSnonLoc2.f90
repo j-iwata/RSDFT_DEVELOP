@@ -130,6 +130,9 @@ CONTAINS
 
     call setLocalAtoms(MI,aa_atom,Igrid)
     !OUT: isAtomInThisNode
+do a=1,MI
+write(3200+myrank,*) a,isAtomInThisNode(a)
+enddo
 
 !$OMP parallel
 
@@ -197,7 +200,8 @@ write(3100+myrank,'(" lma=",I6," MJJ_MAP(lma)=",I6,A40)') lma,MJJ_MAP(lma),repea
         ir0=irad( int(100.d0*r),ikind )
 write(3100+myrank,'(2A6,3A20)') 'ir0','NRc','r','rad1(ir0)','rad(NRc)'
 write(3100+myrank,'(2I6,3G20.7)') ir0,NRc,r,rad1(ir0,ikind),rad1(NRc,ikind)
-        do ir=ir0,NRc
+        do ir=ir0,NRc-1
+!        do ir=ir0,NRc
           if ( r<rad1(ir,ikind) ) exit
         end do
 write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
@@ -208,6 +212,7 @@ write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
         do L1=abs(iL-1),iL+1
           lm1=ilm1(L1,iorb,ikind)
           if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. abs(z)>1.d-14 .or. L1==0 ) then
+write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
             call interpolate_dviod(lm1,ir,NRc)
             !OUT: tmp0
             do L1z=-L1,L1
@@ -324,9 +329,6 @@ write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
 
 !$OMP single
     deallocate( duVdR )
-!    max_nreq=2*maxval( nrlma_xyz )
-!    allocate( ireq(max_nreq) )
-!    allocate( istatus(MPI_STATUS_SIZE,max_nreq) )
 !$OMP end single
 
 !$OMP workshare
@@ -351,9 +353,18 @@ write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
           lma2=nzqr_pair(m,2)
           a=amap(lma1)
           if ( a <= 0 ) cycle
+if (myrank==0) write(150,*) a,isAtomInThisNode(a)
           if ( isAtomInThisNode(a) ) then
-            Dij_f(MB_0:MB_1)=Dij(m,s)-esp(MB_0:MB_1,k,s)*qij_f(m)
-            const_f(MB_0:MB_1)=Dij_f(MB_0:MB_1)*(-2.d0)*occ(MB_0:MB_1,k,s)*dV*dV
+            do n=MB_0,MB_1
+              Dij_f(n)=Dij(m,s)-esp(n,k,s)*qij_f(m)
+              const_f(n)=Dij_f(n)*(-2.d0)*occ(n,k,s)*dV*dV
+            enddo
+if (myrank==0) write(150,'(4a5,6a20)') 's','k','n','m','dV','const_f','Dij_f','Dij(m,s)','esp(n,k,s)','qij_f(m)'
+do n=MB_0,MB_1
+if (myrank==0) write(150,'(4i5,6g20.7)') s,k,n,m,dV,const_f(n),Dij_f(n),Dij(m,s),esp(n,k,s),qij_f(m)
+enddo
+!            Dij_f(MB_0:MB_1)=Dij(m,s)-esp(MB_0:MB_1,k,s)*qij_f(m)
+!            const_f(MB_0:MB_1)=Dij_f(MB_0:MB_1)*(-2.d0)*occ(MB_0:MB_1,k,s)*dV*dV
             if (lma1<lma2) stop 'Nzqr_pair is strange'
             if (lma1==lma2) then
               force2(1,a)=force2(1,a)+sum(const_f(MB_0:MB_1)*real(wtmp5(0,lma1,MB_0:MB_1,k,s)*wtmp5(1,lma2,MB_0:MB_1,k,s),8))
@@ -379,6 +390,8 @@ enddo
         end do ! m
       end do ! k
     end do ! s
+! new version
+! not working ---------------------------------------------------------------------------------------
 !    do s=MSP_0,MSP_1
 !      do k=MBZ_0,MBZ_1
 !        do n=MB_0,MB_1,MB_d
@@ -417,18 +430,8 @@ enddo
 !        end do ! n
 !      end do ! k
 !    end do ! s
+! not working =======================================================================================
 
-!    deallocate( istatus )
-!    deallocate( ireq )
-
-    allocate( work2(3,MI) )
-!$OMP end single
-
-!$OMP workshare
-    work2(:,:)=force2(:,:)
-!$OMP end workshare
-
-!$OMP single
     allocate( uVunk_tmp(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
     uVunk_tmp=zero
 #ifdef _DRSDFT_
@@ -436,9 +439,7 @@ enddo
 #else
     uVunk_tmp(:,:,:,:)=conjg(wtmp5(0,:,:,:,:)*dV)
 #endif
-    call mpi_allreduce(work2,force2,3*MI &
-         ,mpi_real8,mpi_sum,mpi_comm_world,ierr)
-    deallocate( work2 )
+    call mpi_allreduce(MPI_IN_PLACE,force2,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
     deallocate( wtmp5 )
 !$OMP end single
 

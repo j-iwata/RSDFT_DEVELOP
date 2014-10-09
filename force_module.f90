@@ -66,7 +66,11 @@ call calc_force_ewald(MI,work3)
 
 do a=1,MI
 if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'local',work1(1:3,a)
+enddo
+do a=1,MI
 if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,' nloc',work2(1:3,a)
+enddo
+do a=1,MI
 if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'ewald',work3(1:3,a)
 enddo
     force=work1+work2+work3

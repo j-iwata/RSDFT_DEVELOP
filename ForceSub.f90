@@ -28,24 +28,28 @@ CONTAINS
 !-------------------------------------------------------------------------
   SUBROUTINE setConstGridWidth(Ngrid)
     implicit none
-    integer,intent(IN) :: Ngrid(3)
+    integer,intent(IN) :: Ngrid(0:3)
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
     c1=1.d0/ML1
     c2=1.d0/ML2
     c3=1.d0/ML3
+write(3300+myrank,'(6A5)') 'ML1','ML2','ML3','Ngrid(1)','Ngrid(2)','Ngrid(3)'
+write(3300+myrank,'(6I5)') ML1,ML2,ML3,Ngrid(1:3)
   END SUBROUTINE setConstGridWidth
 !-------------------------------------------------------------------------
   SUBROUTINE setLocalAtoms(maxAtom,aa_atom,Igrid)
     implicit none
     integer,intent(IN) :: maxAtom
     real(8),intent(IN) :: aa_atom(3,maxAtom)
-    integer,intent(IN) :: Igrid(2,3)
+    integer,intent(IN) :: Igrid(2,0:3)
     integer :: ia
     integer :: i1,i2,i3
     real(8) :: k1,k2,k3
-    allocate( isAtomInThisNode(maxAtom) ) ; isAtomInThisNode=.false.
+    if (.not. allocated(isAtomInThisNode)) then
+      allocate( isAtomInThisNode(maxAtom) ) ; isAtomInThisNode=.false.
+    endif
 !$OMP parallel
 !$OMP do private( i1,i2,i3,k1,k2,k3 )
     do ia=1,maxAtom
@@ -58,6 +62,8 @@ CONTAINS
       i1 = i1 - k1*ML1
       i2 = i2 - k2*ML2
       i3 = i3 - k3*ML3
+write(3300+myrank,'(6A5,3A20)') 'i1','i2','i3','ML1','ML2','ML3','k1','k2','k3'
+write(3300+myrank,'(6I5,3G20.7)') i1,i2,i3,ML1,ML2,ML3,k1,k2,k3
       if ( Igrid(1,1) <= i1 .and. i1 <= Igrid(2,1) .and. &
           Igrid(1,2) <= i2 .and. i2 <= Igrid(2,2) .and. &
           Igrid(1,3) <= i3 .and. i3 <= Igrid(2,3) ) then
@@ -119,6 +125,7 @@ write(3000+myrank,'(4I7)') iatom,iL,im,ikind
     real(8) :: tmp1,err0,err
     integer :: im,m1,m2
     real(8),parameter :: ep=1.d-8
+write(3100+myrank,'(" ir=",I5)') ir
 #ifdef _SPLINE_
     if ( r < rad1(2,ikind) ) then
       tmp0=dviod(2,lm1,ikind)/(rad1(2,ikind)**2)
