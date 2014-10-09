@@ -9,7 +9,7 @@ MODULE ps_pcc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: rhoc,flag_pcc_0,init_ps_pcc,construct_ps_pcc,calc_force_ps_pcc
+  PUBLIC :: rhoc,flag_pcc_0,init_ps_pcc,construct_ps_pcc,cdcg
 
   real(8),allocatable :: rhoc(:)
   logical :: flag_pcc_0
@@ -192,16 +192,5 @@ CONTAINS
 
   END SUBROUTINE construct_ps_pcc
 
-
-  SUBROUTINE calc_force_ps_pcc(MI,force)
-    implicit none
-    integer,intent(IN) :: MI
-    real(8),intent(OUT) :: force(3,MI)
-
-    stop "PCC force has not been implemnted yet"
-
-    force(:,:)=0.d0
-
-  END SUBROUTINE calc_force_ps_pcc
 
 END MODULE ps_pcc_module

@@ -3,6 +3,7 @@ MODULE force_module
   use ps_local_module
   use ps_nloc2_module
   use ps_pcc_module
+  use ps_pcc_force_module
   use force_ewald_module
   use watch_module
   use parallel_module, only: disp_switch_parallel
@@ -101,7 +102,7 @@ CONTAINS
     force = force + work
 
     if ( flag_pcc_0 ) then
-       call calc_force_ps_pcc(MI,work)
+       call calc_ps_pcc_force( MI, work )
        force = force + work
     end if
 
