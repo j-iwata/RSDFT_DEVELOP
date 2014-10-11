@@ -138,13 +138,13 @@ CONTAINS
 
     MMJJ_0 = M_grid_ion
 
-    if ( .not.allocated(icheck_tmp3) ) then
     L=maxval(lo)
     n=maxval(norb)
-    allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
-    allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
-    allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
-    allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
+    if ( .not.allocated(icheck_tmp3) ) then
+       allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
+       allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
+       allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
+       allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
     end if
 
     call watch(ctt(0),ett(0))
@@ -1389,7 +1389,7 @@ CONTAINS
        end do
     end if
 
-    if ( .not.allocated(y2b) .and. pselect /= 4 ) then
+    if ( .not.allocated(y2b) .and. all(ippform /= 4) ) then
        lm1=maxval(ilm1)
        NRc=maxval(NRps)
        allocate( y2b(NRc,lm1,Nelement) )
@@ -1442,7 +1442,7 @@ CONTAINS
     end do
 !$OMP end do
 
-    if ( pselect == 4 ) then
+    if ( any( ippform == 4 ) ) then
 
 !$OMP master
        call watch(ctt(0),ett(0))

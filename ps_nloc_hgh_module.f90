@@ -10,7 +10,7 @@ MODULE ps_nloc_hgh_module
   PRIVATE
   PUBLIC :: prep_ps_nloc_hgh, init_force_ps_nloc_hgh, init_ps_nloc_hgh
 
-  logical :: flag_init = .true.
+  logical :: flag_init = .false.
   real(8),allocatable :: Rps0(:,:)
 
 CONTAINS
@@ -132,7 +132,8 @@ CONTAINS
     real(8) :: rmax,dr,pi,ep,const1,const2,gamma,r,v
     integer :: MMr,iorb,m,n,ielm,L,i
 
-    flag_init = .false.
+    if ( flag_init ) return
+    flag_init = .true.
 
     rmax = 30.d0
     MMr  = 3000
@@ -178,9 +179,9 @@ CONTAINS
     integer,intent(IN) :: MMJJ,nzlma
     integer,intent(IN) :: amap(nzlma),lmap(nzlma),mmap(nzlma),iorbmap(nzlma)
     integer,intent(IN) :: MJJ_MAP(nzlma),JJ_MAP(6,MMJJ,nzlma)
-    real(8),intent(IN) :: Y1(0:2,-2:2,0:3,-3:3)
-    real(8),intent(IN) :: Y2(0:2,-2:2,0:3,-3:3)
-    real(8),intent(IN) :: Y3(0:2,-2:2,0:3,-3:3)
+    real(8),intent(IN) :: Y1(0:3,-3:3,0:4,-4:4)
+    real(8),intent(IN) :: Y2(0:3,-3:3,0:4,-4:4)
+    real(8),intent(IN) :: Y3(0:3,-3:3,0:4,-4:4)
     real(8),intent(OUT) :: duVdR(3,MMJJ,nzlma)
     integer :: lma
     integer :: a,L,m,iorb,ik,n,j,L1,L1z
