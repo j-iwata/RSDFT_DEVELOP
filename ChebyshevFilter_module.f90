@@ -192,7 +192,11 @@ CONTAINS
 
     call hamiltonian( k, s, v, f, ML_0, ML_1, 1, 1 )
 
+#ifdef _DRSDFT_
+    c(1) = sum( f*v )*dV
+#else
     c(1) = sum( conjg(f)*v )*dV
+#endif
     call MPI_ALLREDUCE(c,alpha,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
     f(:) = f(:) - alpha*v(:)
@@ -212,7 +216,11 @@ CONTAINS
        call hamiltonian( k, s, v, f, ML_0, ML_1, 1, 1 )
        f(:) = f(:) - beta*v0(:)
 
+#ifdef _DRSDFT_
+       c(1) = sum( f*v )*dV
+#else
        c(1) = sum( conjg(f)*v )*dV
+#endif
        call MPI_ALLREDUCE(c,alpha,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
        f(:) = f(:) - alpha*v(:)
