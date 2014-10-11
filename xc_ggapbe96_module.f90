@@ -5,6 +5,7 @@ MODULE xc_ggapbe96_module
   use bc_module
   use parallel_module
   use fd_module
+  use xc_ggapbe96_mol_module
 
   implicit none
 
@@ -24,19 +25,20 @@ MODULE xc_ggapbe96_module
   real(8) :: b(3,3)
 
   integer,allocatable :: LLL2(:,:,:)
-  integer :: Md, Ngrid(0:3),ML,ML1,ML2,ML3
+  integer :: Md,ML,ML1,ML2,ML3
   real(8) :: Hgrid(3)
+  integer :: SYStype
 
 CONTAINS
 
 
   SUBROUTINE init_GGAPBE96 &
        ( Igrid_in,MSP_0_in,MSP_1_in,MSP_in,comm_in,dV_in &
-        ,Md_in,Hgrid_in,Ngrid_in )
+        ,Md_in,Hgrid_in,Ngrid_in,SYStype_in )
     implicit none
     integer,intent(IN) :: Igrid_in(2,0:3),MSP_0_in,MSP_1_in,MSP_in,comm_in
     real(8),intent(IN) :: dV_in, Hgrid_in(3)
-    integer,intent(IN) :: Md_in, Ngrid_in(0:3)
+    integer,intent(IN) :: Md_in, Ngrid_in(0:3), SYStype_in
     real(8) :: aaL(3), Pi
 
     if ( .not.flag_init ) return
@@ -56,6 +58,8 @@ CONTAINS
     ML1 = Ngrid_in(1)
     ML2 = Ngrid_in(2)
     ML3 = Ngrid_in(3)
+
+    SYStype = SYStype_in
 
     aaL(1) = sqrt( sum(aa(1:3,1)**2) )
     aaL(2) = sqrt( sum(aa(1:3,2)**2) )
@@ -101,6 +105,9 @@ CONTAINS
     if ( present(Vx_out)  ) Vx_out =0.0d0
     if ( present(Vc_out)  ) Vc_out =0.0d0
 
+    select case( SYStype )
+    case default
+
     allocate( LLL2(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL2=0
     i=0
     irank=-1
@@ -124,6 +131,24 @@ CONTAINS
     end do
 
     call construct_gradient( rho )
+
+    case( 1,2 )
+
+       m1 = ( ML1-1 )/2 + Md
+       m2 = ( ML2-1 )/2 + Md
+       m3 = ( ML3-1 )/2 + Md
+
+       allocate( LLL2(-m1:m1,-m2:m2,-m3:m3) ) ; LLL2=0
+
+       call get_LLL_mol( m1,m2,m3,LLL2 )
+
+       allocate( gx(ML_0:ML_1) ) ; gx=0.0d0
+       allocate( gy(ML_0:ML_1) ) ; gy=0.0d0
+       allocate( gz(ML_0:ML_1) ) ; gz=0.0d0
+
+       call construct_gradient_mol( Md,nab,rho,gx,gy,gz )
+
+    end select
 
 ! --
 
@@ -235,7 +260,7 @@ CONTAINS
     real(8) :: rhoa,rhob,trho,cm
     real(8),allocatable :: rrrr(:,:),rtmp(:)
     real(8) :: kf, vx_lda, ex_lda, Fx, Pi, g2, factor
-    integer :: i1,i2,i3,j,j1,j2,j3,k1,k2,k3,m
+    integer :: i1,i2,i3,j,j1,j2,j3,k1,k2,k3,m,m1,m2,m3
 
     Pi = acos(-1.0d0)
 
@@ -289,6 +314,9 @@ CONTAINS
        call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8 &
             ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
+       select case( SYStype )
+       case default
+
        do i3=0,ML3-1
        do i2=0,ML2-1
        do i1=0,ML1-1
@@ -327,6 +355,17 @@ CONTAINS
        end do ! i2
        end do ! i3
 
+       case( 1,2 )
+
+          m1 = (ML1-1)/2 + Md
+          m2 = (ML2-1)/2 + Md
+          m3 = (ML3-1)/2 + Md
+
+          call calc_ve_mol &
+               ( ML_0, ML_1, m1,m2,m3, Md, nab, vex(:,ispin), LLL2, rrrr )
+
+       end select
+
     end do ! ispin
 
     Ex = Ex/factor
@@ -349,14 +388,14 @@ CONTAINS
     real(8),parameter :: bt40 =0.49294d0 ,bt41 =0.62517d0 ,bt42 =0.49671d0
     real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
     real(8) :: const1, const2, factor
-    integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr
+    integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr,m1,m2,m3
     real(8) :: trho, rhoa, rhob
     real(8) :: kf, rs, ec_U, ec_P, ec_lda, phi, g2
     real(8) :: dac_dn, dfz_dz, deU_dn, deP_dn, H, A, T, alpc, fz
     real(8) :: dec_dz, dphi_dz, dH_dA, dH_dT, tmp, dH_dphi, Ai
     real(8) :: dA_dn, dec_dn, Hs, zeta
     real(8) :: dz_dn(2), cm
-    real(8),allocatable :: rrrr(:,:), rtmp(:)
+    real(8),allocatable :: rrrr(:,:), rtmp(:), vtmp(:)
     real(8) :: Pi, one, two, fouthr, onethr
     real(8) :: sevthr, twothr, thrtwo, ThrFouPi
 
@@ -503,6 +542,9 @@ CONTAINS
     call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8 &
          ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
+    select case( SYStype )
+    case default
+
     do i3=0,ML3-1
     do i2=0,ML2-1
     do i1=0,ML1-1
@@ -547,6 +589,25 @@ CONTAINS
     end do ! i2
     end do ! i3
 
+    case( 1,2 )
+
+       m1 = (ML1-1)/2 + Md
+       m2 = (ML2-1)/2 + Md
+       m3 = (ML3-1)/2 + Md
+
+       allocate( vtmp(ML_0:ML_1) ) ; vtmp=0.0d0
+
+       call calc_ve_mol &
+            ( ML_0, ML_1, m1,m2,m3, Md, nab, vtmp, LLL2, rrrr )
+
+       do ispin=MSP_0,MSP_1
+          vco(:,ispin) = vco(:,ispin) + vtmp(:)
+       end do
+
+       deallocate( vtmp )
+
+    end select
+
     deallocate( rtmp )
     deallocate( rrrr )
 
@@ -566,7 +627,7 @@ CONTAINS
     real(8),parameter :: bt40 =0.49294d0 ,bt41 =0.62517d0 ,bt42 =0.49671d0
     real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
     real(8) :: const1, const2, factor
-    integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr
+    integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr,m1,m2,m3
     real(8) :: trho, rhoa, rhob
     real(8) :: kf, rs, ec_U, ec_P, ec_lda, phi, g2
     real(8) :: dac_dn, dfz_dz, deU_dn, deP_dn, H, A, T, alpc, fz
@@ -574,7 +635,7 @@ CONTAINS
     real(8) :: dA_dn, dec_dn, Hs, zeta, dT_dphi
     real(8) :: dz_dn(2), cm, rssq
     real(8) :: dac_drs, deP_drs, deU_drs, drs_dn
-    real(8),allocatable :: rrrr(:,:), rtmp(:)
+    real(8),allocatable :: rrrr(:,:), rtmp(:),vtmp(:)
     real(8) :: Pi, one, two, fouthr, onethr
     real(8) :: sevthr, twothr, thrtwo, ThrFouPi
 
@@ -721,6 +782,9 @@ CONTAINS
     call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8 &
          ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
+    select case( SYStype )
+    case default
+
     do i3=0,ML3-1
     do i2=0,ML2-1
     do i1=0,ML1-1
@@ -764,6 +828,25 @@ CONTAINS
     end do ! i1
     end do ! i2
     end do ! i3
+
+    case( 1,2 )
+
+       m1 = (ML1-1)/2 + Md
+       m2 = (ML2-1)/2 + Md
+       m3 = (ML3-1)/2 + Md
+
+       allocate( vtmp(ML_0:ML_1) ) ; vtmp=0.0d0
+
+       call calc_ve_mol &
+            ( ML_0, ML_1, m1,m2,m3, Md, nab, vtmp, LLL2, rrrr )
+
+       do ispin=MSP_0,MSP_1
+          vco(:,ispin) = vco(:,ispin) + vtmp(:)
+       end do
+
+       deallocate( vtmp )
+
+    end select
 
     deallocate( rtmp )
     deallocate( rrrr )

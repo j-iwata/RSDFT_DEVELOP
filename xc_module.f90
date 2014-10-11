@@ -184,8 +184,9 @@ CONTAINS
 
     case('GGAPBE96')
 
-       call init_GGAPBE96 &
-            ( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV ,Md, Hgrid, Ngrid )
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype )
+
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
     case('HF')
@@ -209,8 +210,8 @@ CONTAINS
              write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
           end if
 
-          call init_GGAPBE96 &
-               ( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV ,Md, Hgrid, Ngrid )
+          call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid &
+               , dV ,Md, Hgrid, Ngrid, SYStype )
           call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
        else

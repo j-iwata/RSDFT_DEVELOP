@@ -102,6 +102,7 @@ MODS1 = simc_module.o\
         xc_hse_module.o \
         xc_pw92_gth_module.o\
         xc_ldapz81_module.o \
+        xc_ggapbe96_mol_module.o \
         xc_ggapbe96_module.o \
         xc_module.o \
         ps_pcc_force_module.o \
