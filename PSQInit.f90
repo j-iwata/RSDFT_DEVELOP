@@ -403,8 +403,7 @@ write(400+myrank,*) "<<<<< ps_Q_init"
             cJ=cJ+1
             const=0.5d0*(2.d0+L*(L+1)-J*(J+1))
             do i=1,NRc
-              dwork(i,ll3,k2,ik,cJ)=(rad1(i,ik)**3)*dqrL(i,ll3,k2,ik,1) &
-                     +const*qrL(i,ll3,k2,ik)*(rad1(i,ik)**2)
+              dwork(i,ll3,k2,ik,cJ)=(rad1(i,ik)**3)*dqrL(i,ll3,k2,ik,1)+const*qrL(i,ll3,k2,ik)*(rad1(i,ik)**2)
             end do
           end do ! j
         end do ! ll3
