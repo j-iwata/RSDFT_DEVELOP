@@ -25,7 +25,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
-    integer :: lma1,lma2
+!    integer :: lma1,lma2
     integer :: ib1,ib2
     integer :: i,j,k,s,n,ir,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq
@@ -462,12 +462,12 @@ enddo
 #endif
     real(8),intent(INOUT) :: forceQ(3,MI)
     integer :: i1,i2,i3
-    integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
+    integer :: i,j,k,s,n,ir,L,L1,L1z,NRc,irank,jrank
     integer :: iqr,ll3,cJ
     integer :: ib1,ib2
     real(8) :: yq1,yq2,yq3,tmp2,tmp3
     integer :: nreq,max_nreq
-    integer :: a,a0,ik,m,lm0,lm1,lma,im,m1,m2
+    integer :: a,a0,ik,m,lm0,lm1,lma,m1,m2
     integer :: kk1
     integer :: ierr,ir0
     integer,allocatable :: ireq(:),istatus(:,:)
@@ -476,7 +476,7 @@ enddo
     real(8) :: a1,a2,a3
     real(8) :: kr,c
     real(8),parameter :: pi2=2.d0*acos(-1.d0)
-    real(8) :: tmp,tmp0,tmp1
+    real(8) :: tmp,tmp1
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),dQY(:,:,:)
 #ifdef _DRSDFT_
@@ -516,9 +516,9 @@ enddo
 
 !if (myrank==0) write(220,'(4a5,a20)') 'iqr','j','ll3','L1','tmp0'
 !$OMP do schedule(dynamic) firstprivate( maxerr ) &
-!$OMP    private( a,L,m,iorb,ik,Rx,Ry,Rz,NRc,d1,d2,d3,x,y,z,r  &
-!$OMP            ,ir,ir0,yy1,yy2,yy3,err0,err,tmp0,tmp1,m1,m2  &
-!$OMP            ,lma,j,L1,L1z,lm1,im )
+!$OMP    private( a,L,m,ik,Rx,Ry,Rz,NRc,d1,d2,d3,x,y,z,r  &
+!$OMP            ,ir,ir0,yy1,yy2,yy3,err0,err,tmp1,m1,m2  &
+!$OMP            ,lma,j,L1,L1z,lm1 )
     do iqr=1,N_nzqr
       call getAtomInfoFrom_iqr(iqr)
       !OUT: iatom,ikind,ik1,ikk1,ik2
@@ -535,14 +535,14 @@ enddo
         call getAtomCenteredPositionFrom_iqr(iqr,j)
         !OUT: x,y,z,r
 #ifndef _SPLINE_
-        ir0=irad( int(100.d0*r),ik )
+        ir0=irad( int(100.d0*r),ikind )
         do ir=ir0,NRc
-          if ( r<rad1(ir,ik) ) exit
+          if ( r<rad1(ir,ikind) ) exit
         end do
 #endif
 !if (myrank==0) write(220,'(6a5,a20)') 'cJ','ik','k2','ll3','m1','L1','tmp0'
-        do ll3=1,nl3v(k2,ik)
-          L=l3v(ll3,k2,ik)-1
+        do ll3=1,nl3v(ik2,ikind)
+          L=l3v(ll3,ik2,ikind)-1
           cJ=0
           do L1=abs(L-1),L+1
             cJ=cJ+1
@@ -568,11 +568,11 @@ enddo
                 yy2=yy2+yq2*tmp3
                 yy3=yy3+yq3*tmp3
               end do ! L1z
+              dQY(1,j,iqr)=dQY(1,j,iqr)+tmp0*yy1
+              dQY(2,j,iqr)=dQY(2,j,iqr)+tmp0*yy2
+              dQY(3,j,iqr)=dQY(3,j,iqr)+tmp0*yy3
             end if
           end do ! L1
-          dQY(1,j,iqr)=dQY(1,j,iqr)+tmp0*yy1
-          dQY(2,j,iqr)=dQY(2,j,iqr)+tmp0*yy2
-          dQY(3,j,iqr)=dQY(3,j,iqr)+tmp0*yy3
         enddo ! ll3
       end do ! j
 !!$OMP end parallel do
@@ -596,11 +596,12 @@ enddo
           if ( occ(n,k,s) < 1.d-10 ) cycle
 !          c=-2.d0*occ(n,k,s)*dV*dV
           do iqr=1,N_nzqr
+write(4000+myrank,'(9A6)') 's','k','n','iqr','j','i1','i2','i3','i'
+write(4100+myrank,'(11A6)') 's','k','n','iqr','j','a1b','a2b','a3b','ab1','ab2','ML_0'
             do j=1,MJJ_MAP_Q(iqr)
-              i1=JJ_MAP_Q(1,j,iqr)
-              i2=JJ_MAP_Q(2,j,iqr)
-              i3=JJ_MAP_Q(3,j,iqr)
-              i = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
+              i = JJP_Q(j,iqr)
+write(4000+myrank,'(9I6)') s,k,n,iqr,j,i1,i2,i3,i
+write(4100+myrank,'(11I6)') s,k,n,iqr,j,a1b,a2b,a3b,ab1,ab2,ML_0
               ztmp=Vloc(i,s)
               rtmp5(0,iqr,n,k,s)=rtmp5(0,iqr,n,k,s)+dQY(1,j,iqr)*ztmp
               rtmp5(1,iqr,n,k,s)=rtmp5(1,iqr,n,k,s)+dQY(2,j,iqr)*ztmp
@@ -639,7 +640,7 @@ enddo
           lma2=nzqr_pair(m,2)
           a=amap(lma1)
           if ( a <= 0 ) cycle
-          if ( a_rank(a) ) then
+          if ( isAtomInThisNode(a) ) then
             if (lma1<lma2) stop 'Nzqr_pair is strange'
             tmp1=2.d0*dV
 !            tmp1=-rtmp5(0,m,n,k,s)*dV

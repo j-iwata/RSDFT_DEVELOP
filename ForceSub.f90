@@ -5,6 +5,7 @@ use parallel_module, only: myrank
   real(8),allocatable :: SH_Y1(:,:,:,:),SH_Y2(:,:,:,:),SH_Y3(:,:,:,:)
   real(8),allocatable :: C_ijLM(:,:,:,:,:,:)
   logical :: isFirstSHY=.true.,isFirstC=.true.
+  logical :: isFirst_irad=.true.
 
   integer :: a1b,a2b,a3b,ab1,ab2,ab3
   integer :: ML1,ML2,ML3
@@ -33,6 +34,8 @@ CONTAINS
     ab1=Igrid(2,1)-Igrid(1,1)+1
     ab2=Igrid(2,2)-Igrid(1,2)+1
     ab3=Igrid(2,3)-Igrid(1,3)+1
+write(4100+myrank,'("setIndex",6A6)') 'a1b','a2b','a3b','ab1','ab2','ab3'
+write(4100+myrank,'("setIndex",6I6)') a1b,a2b,a3b,ab1,ab2,ab3
   END SUBROUTINE setLocalIndexForBoundary
 !-------------------------------------------------------------------------
   SUBROUTINE setConstGridWidth(Ngrid)
@@ -56,6 +59,10 @@ write(3300+myrank,'(6I5)') ML1,ML2,ML3,Ngrid(1:3)
     real(8),allocatable,intent(IN) :: rad1(:,:)
     integer :: ik,ir,i,m
     integer :: NRc
+    if (.not.isFirst_irad) then
+      return
+    endif
+    isFirst_irad=.false.
 !$OMP single
     allocate( irad(0:3000,Nelement_) )
     irad=0
@@ -141,8 +148,8 @@ write(3000+myrank,'(4I7)') iatom,iL,im,ikind
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomInfoFrom_iqr(iqr)
     use VarParaPSnonLocG, only: amap_Q,lmamap_Q,k1map_Q
-    use ps_nloc2_variables, only: lmap,iorbmap
-    use VarPSMemberG, only: kk1map
+    use ps_nloc2_variables, only: lmap,iorbmap,mmap
+    use VarPSMemberG, only: kk1map,k1_to_k2
     use atom_module, only: ki_atom
     implicit none
     integer,intent(IN) :: iqr
@@ -262,8 +269,8 @@ write(3000+myrank,'(4I7)') iatom,iL,im,ikind
     integer :: im,m1,m2
     real(8),parameter :: ep=1.d-8
 #ifdef _SPLINE_
-    if ( r < rad1(2,ik) ) then
-      tmp0=dqrL(2,ll3,ik2,ikind,cJ)/(rad1(2,ik)**3)
+    if ( r < rad1(2,ikind) ) then
+      tmp0=dqrL(2,ll3,ik2,ikind,cJ)/(rad1(2,ikind)**3)
     else
       call splint(rad1(1,ikind),dqrL(1,ll3,ik2,ikind,cJ),y2b,NRc,r,tmp0)
       tmp0=tmp0/(r*r)
@@ -297,6 +304,7 @@ write(3000+myrank,'(4I7)') iatom,iL,im,ikind
 
 !-------------------------------------------------------------------------
   SUBROUTINE getSHY
+    use VarPSMemberG, only: max_Lref
     implicit none
     integer :: L,Lp1
     if (.not. isFirstSHY) then
