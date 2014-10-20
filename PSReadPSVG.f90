@@ -14,7 +14,8 @@ CONTAINS
         real(8) :: dif,r2
         integer,allocatable :: nl3v_(:),l3v_(:,:),ncf(:,:),nrin(:,:)
         real(8),allocatable :: rin(:,:),coe(:,:,:)
-        real(8),allocatable :: qrL_(:,:,:),qrad_(:,:,:)
+        real(8),allocatable :: qrL_(:,:,:)
+!        real(8),allocatable :: qrad_(:,:,:)
         real(8),allocatable,intent(IN) :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
         real(8),allocatable,intent(IN) :: ddi_(:,:,:),qqr_(:,:,:)
         ! psi(1:nsmpl-1,Rrefmax,Lrefmax)
@@ -36,7 +37,7 @@ CONTAINS
         allocate( rin(lpsmax,npqmax)        ) ; rin =0.d0
         allocate( coe(ncfmax,lpsmax,npqmax) ) ; coe   =0.d0
         allocate( qrL_(nsmpl+1,lpsmax,npqmax)  ) ; qrL_ =0.d0
-        allocate( qrad_(nsmpl+1,lpsmax,npqmax) ) ; qrad_=0.d0
+!        allocate( qrad_(nsmpl+1,lpsmax,npqmax) ) ; qrad_=0.d0
         
         rewind unit_ps
         do j=1,10000
@@ -75,11 +76,11 @@ CONTAINS
                             end do
                             do i=1,nrin(ll3,k2)
                                 qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*rad(i+1,ik)**(l3v_(ll3,k2)+1)
-                                qrad_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2)-phi_(i,i1,l1)*phi_(i,i2,l2)
+!                                qrad_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2)-phi_(i,i1,l1)*phi_(i,i2,l2)
                             end do
                             do i=nrin(ll3,k2)+1,nsmpl
                                 qrL_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2)-phi_(i,i1,l1)*phi_(i,i2,l2)
-                                qrad_(i,ll3,k2)=qrL_(i,ll3,k2)
+!                                qrad_(i,ll3,k2)=qrL_(i,ll3,k2)
                             end do
                         end do ! ll3
                     end do ! i2
@@ -124,7 +125,8 @@ CONTAINS
 
         deallocate( nl3v_,l3v_ )
         deallocate( ncf,nrin,rin,coe )
-        deallocate( qrL_,qrad_ )
+        deallocate( qrL_ )
+!        deallocate( qrad_ )
 !write(*,*) '>>>>> end of readPSVG'
         return
     END SUBROUTINE readPSVG

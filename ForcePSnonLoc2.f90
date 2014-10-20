@@ -542,9 +542,13 @@ enddo
 #endif
 !if (myrank==0) write(220,'(6a5,a20)') 'cJ','ik','k2','ll3','m1','L1','tmp0'
         do ll3=1,nl3v(ik2,ikind)
+        ! ll3: info of l_1,m_1,l_2,m_2
           L=l3v(ll3,ik2,ikind)-1
+          ! L: {s:0,p:1,d:2,...}
           cJ=0
+          ! cJ is just the index to run L1 which do not start from 1
           do L1=abs(L-1),L+1
+          ! L1: L angular momentum after coupling
             cJ=cJ+1
             tmp0=0.d0
             err0=0.d0
@@ -555,6 +559,8 @@ enddo
               yy2=0.d0
               yy3=0.d0
               do L1z=-L1,L1
+              ! L1z: M
+              ! M summation can be done, for Q depend on L, {l1,m1,l2,m2}
                 yq1=0.d0
                 yq2=0.d0
                 yq3=0.d0

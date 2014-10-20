@@ -340,8 +340,8 @@ write(400+myrank,*) "<<<<< ps_Q_init"
     real(8) :: maxerr,y,dy,y0,dy0
     real(8) :: pi4,const
     real(8),allocatable :: dwork(:,:,:,:,:)
+    real(8),parameter :: sqrt_4pi_3=sqrt(4.d0*acos(-1.d0)/3.d0)
 
-    pi4 = 4.d0*acos(-1.d0)
     maxcJ=0
     do ik=1,Nelement_
       do ik1=1,N_k1(ik)
@@ -410,7 +410,6 @@ write(400+myrank,*) "<<<<< ps_Q_init"
       enddo ! k1
     end do ! ik
 
-    const=sqrt(pi4/3.d0)
     do ik=1,Nelement_
       do ik1=1,N_k1(ik)
         k2=k1_to_k2(ik1,ik)
@@ -424,7 +423,7 @@ write(400+myrank,*) "<<<<< ps_Q_init"
           do J=abs(L-1),L+1
             cJ=cJ+1
             do i=1,NRc
-              dqrL(i,ll3,k2,ik,cJ)=const*dwork(i,ll3,k2,ik,cJ)
+              dqrL(i,ll3,k2,ik,cJ)=sqrt_4pi_3*dwork(i,ll3,k2,ik,cJ)
             end do
           enddo
         end do
