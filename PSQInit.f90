@@ -89,6 +89,7 @@ write(650+myrank,'(11I3)') l1,i1,nr1,m1,l2,i2,nr2,m2,k1,k2,k3
     end do ! ik
 
     do ik=1,Nelement_
+      icheck_k2(k2)=0
       do k1=1,N_k1(ik)
         k2=k1_to_k2(k1,ik)
         if (icheck_k2(k2)==1) cycle

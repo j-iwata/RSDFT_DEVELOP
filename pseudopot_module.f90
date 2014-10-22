@@ -219,8 +219,8 @@ if (rank==0) write(200+rank,*) 'myrank= ',myrank,'new PSV finished'
 #endif
           case default
              stop "ippform error"
-          end select
-       end do
+          end select ! ippform
+       end do ! ielm
     end if
 
     if (pselect==2) then
