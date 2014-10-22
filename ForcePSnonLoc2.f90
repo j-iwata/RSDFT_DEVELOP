@@ -122,7 +122,7 @@ CONTAINS
     call setLocalAtoms(MI,aa_atom,Igrid)
     !OUT: isAtomInThisNode
 do a=1,MI
-write(3200+myrank,*) a,isAtomInThisNode(a)
+!write(3200+myrank,*) a,isAtomInThisNode(a)
 enddo
 
 !$OMP parallel
@@ -148,32 +148,32 @@ enddo
     do lma=1,nzlma
       call getAtomInfoFrom_lma(lma)
       !OUT: a,L,m,iorb,ik,notAtom
-write(3000+myrank,'(" lma=",I7," noAtomHere=",L7,I4)') lma,noAtomHere,ikind
+!write(3000+myrank,'(" lma=",I7," noAtomHere=",L7,I4)') lma,noAtomHere,ikind
       if (noAtomHere) cycle
       call getAtomPosition_real
       !OUT: Rx,Ry,Rz
-write(3000+myrank,'(2A7)') 'iorb','ikind'
-write(3000+myrank,'(2I7)') iorb,ikind
-write(3000+myrank,'(4A7)') 'iatom','iL','im','ikind'
-write(3000+myrank,'(4I7)') iatom,iL,im,ikind
+!write(3000+myrank,'(2A7)') 'iorb','ikind'
+!write(3000+myrank,'(2I7)') iorb,ikind
+!write(3000+myrank,'(4A7)') 'iatom','iL','im','ikind'
+!write(3000+myrank,'(4I7)') iatom,iL,im,ikind
       NRc=NRps(iorb,ikind)
 !!$OMP parallel do firstprivate( maxerr ) &
 !!$OMP             private( d1,d2,d3,x,y,z,r,ir0,yy1,yy2,yy3,lm1,err,err0 &
 !!$OMP                     ,tmp0,tmp1,m1,m2,j,L1,im,L1z )
-write(3100+myrank,'(" lma=",I6," MJJ_MAP(lma)=",I6,A40)') lma,MJJ_MAP(lma),repeat("-",30)
-write(3300+myrank,'(2A6,4A20)') 'lma','j','x','y','z','r'
+!write(3100+myrank,'(" lma=",I6," MJJ_MAP(lma)=",I6,A40)') lma,MJJ_MAP(lma),repeat("-",30)
+!write(3300+myrank,'(2A6,4A20)') 'lma','j','x','y','z','r'
       do j=1,MJJ_MAP(lma)
         call getAtomCenteredPositionFrom_lma(lma,j)
         !OUT: x,y,z,r
-write(3300+myrank,'(2I6,4g20.7)') lma,j,x,y,z,r
+!write(3300+myrank,'(2I6,4g20.7)') lma,j,x,y,z,r
 #ifndef _SPLINE_
         ir0=irad( int(100.d0*r),ikind )
-write(3100+myrank,'(2A6,3A20)') 'ir0','NRc','r','rad1(ir0)','rad(NRc)'
-write(3100+myrank,'(2I6,3G20.7)') ir0,NRc,r,rad1(ir0,ikind),rad1(NRc,ikind)
+!write(3100+myrank,'(2A6,3A20)') 'ir0','NRc','r','rad1(ir0)','rad(NRc)'
+!write(3100+myrank,'(2I6,3G20.7)') ir0,NRc,r,rad1(ir0,ikind),rad1(NRc,ikind)
         do ir=ir0,NRc
           if ( r<rad1(ir,ikind) ) exit
         end do
-write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
+!write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
 #endif
         yy1=0.d0
         yy2=0.d0
@@ -181,7 +181,7 @@ write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
         do L1=abs(iL-1),iL+1
           lm1=ilm1(L1,iorb,ikind)
           if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. abs(z)>1.d-14 .or. L1==0 ) then
-write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
+!write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
             call interpolate_dviod(lm1,ir,NRc)
             !OUT: tmp0
             do L1z=-L1,L1
@@ -322,15 +322,15 @@ write(3100+myrank,'(" j=",I6," ir=",I5)') j,ir
           lma2=nzqr_pair(m,2)
           a=amap(lma1)
           if ( a <= 0 ) cycle
-if (myrank==0) write(150,*) a,isAtomInThisNode(a)
+!if (myrank==0) write(150,*) a,isAtomInThisNode(a)
           if ( isAtomInThisNode(a) ) then
             do n=MB_0,MB_1
               Dij_f(n)=Dij(m,s)-esp(n,k,s)*qij_f(m)
               const_f(n)=Dij_f(n)*(-2.d0)*occ(n,k,s)*dV*dV
             enddo
-if (myrank==0) write(150,'(4a5,6a20)') 's','k','n','m','dV','const_f','Dij_f','Dij(m,s)','esp(n,k,s)','qij_f(m)'
+!if (myrank==0) write(150,'(4a5,6a20)') 's','k','n','m','dV','const_f','Dij_f','Dij(m,s)','esp(n,k,s)','qij_f(m)'
 do n=MB_0,MB_1
-if (myrank==0) write(150,'(4i5,6g20.7)') s,k,n,m,dV,const_f(n),Dij_f(n),Dij(m,s),esp(n,k,s),qij_f(m)
+!if (myrank==0) write(150,'(4i5,6g20.7)') s,k,n,m,dV,const_f(n),Dij_f(n),Dij(m,s),esp(n,k,s),qij_f(m)
 enddo
 !            Dij_f(MB_0:MB_1)=Dij(m,s)-esp(MB_0:MB_1,k,s)*qij_f(m)
 !            const_f(MB_0:MB_1)=Dij_f(MB_0:MB_1)*(-2.d0)*occ(MB_0:MB_1,k,s)*dV*dV
@@ -349,12 +349,12 @@ enddo
             end if
           endif
 !if (myrank==0) write(150,'(4a5,6a20)') 's','k','n','m','dV','const_f','Dij_f','Dij(m,s)','esp(n,k,s)','qij_f(m)'
-if (myrank==0) write(151,'(5a5,a20)') 's','k','n','m','lma1','wtmp5(0:3,lma1,n,k,s)'
-if (myrank==0) write(152,'(5a5,a20)') 's','k','n','m','lma2','wtmp5(0:3,lma2,n,k,s)'
+!if (myrank==0) write(151,'(5a5,a20)') 's','k','n','m','lma1','wtmp5(0:3,lma1,n,k,s)'
+!if (myrank==0) write(152,'(5a5,a20)') 's','k','n','m','lma2','wtmp5(0:3,lma2,n,k,s)'
 do n=MB_0,MB_1
 !if (myrank==0) write(150,'(4i5,6g20.7)') s,k,n,m,dV,const_f(n),Dij_f(n),Dij(m,s),esp(n,k,s),qij_f(m)
-if (myrank==0) write(151,'(5i5,8g20.7)') s,k,n,m,lma1,wtmp5(0:3,lma1,n,k,s)
-if (myrank==0) write(152,'(5i5,8g20.7)') s,k,n,m,lma2,wtmp5(0:3,lma2,n,k,s)
+!if (myrank==0) write(151,'(5i5,8g20.7)') s,k,n,m,lma1,wtmp5(0:3,lma1,n,k,s)
+!if (myrank==0) write(152,'(5i5,8g20.7)') s,k,n,m,lma2,wtmp5(0:3,lma2,n,k,s)
 enddo
         end do ! m
       end do ! k
@@ -531,12 +531,12 @@ enddo
       call getAtomPosition_real
       !OUT: Rx,Ry,Rz
       NRc=max(NRps(iorb1,ikind),NRps(iorb2,ikind))
-write(4300+myrank,'(2A6,A20)') 'j','iqr','dQY(1:3,j,iqr)'
-write(4600+myrank,'(2A6,4A20)') 'iqr','j','x','y','z','r'
+!write(4300+myrank,'(2A6,A20)') 'j','iqr','dQY(1:3,j,iqr)'
+!write(4600+myrank,'(2A6,4A20)') 'iqr','j','x','y','z','r'
       do j=1,MJJ_MAP_Q(iqr)
         call getAtomCenteredPositionFrom_iqr(iqr,j,x,y,z,r)
         !OUT: x,y,z,r
-write(4600+myrank,'(2I6,4g20.7)') iqr,j,x,y,z,r
+!write(4600+myrank,'(2I6,4g20.7)') iqr,j,x,y,z,r
 #ifndef _SPLINE_
         ir0=irad( int(100.d0*r),ikind )
         do ir=ir0,NRc
@@ -584,14 +584,14 @@ write(4600+myrank,'(2I6,4g20.7)') iqr,j,x,y,z,r
         dQY(1,j,iqr)=dQY_tmp(1)
         dQY(2,j,iqr)=dQY_tmp(2)
         dQY(3,j,iqr)=dQY_tmp(3)
-write(4300+myrank,'(2I6,3g20.7)') j,iqr,dQY(1:3,j,iqr)
+!write(4300+myrank,'(2I6,3g20.7)') j,iqr,dQY(1:3,j,iqr)
       end do ! j
     end do ! iqr
 !!$OMP end do
 
 !if (myrank==0) write(230,'(5a5,a20)') 's','k','n','iqr','j','ztmp'
-write(4000+myrank,'(2A8)') 'myrank','N_nzqr'
-write(4000+myrank,'(2I8)') myrank,N_nzqr
+!write(4000+myrank,'(2A8)') 'myrank','N_nzqr'
+!write(4000+myrank,'(2I8)') myrank,N_nzqr
     do s=MSP_0,MSP_1
 !!$OMP do schedule(dynamic) private( i,kr,ztmp )
       do iqr=1,N_nzqr
@@ -599,12 +599,12 @@ write(4000+myrank,'(2I8)') myrank,N_nzqr
           write(200,*) 'myrank= ',myrank,' - memory leakage suspected'
           exit
         endif
-write(4000+myrank,'(4A6)') 's','iqr','j','i'
-write(4100+myrank,'(4A6,2A20)') 's','iqr','j','i','Vloc(i,s)','dQY(1:3,j,iqr)'
+!write(4000+myrank,'(4A6)') 's','iqr','j','i'
+!write(4100+myrank,'(4A6,2A20)') 's','iqr','j','i','Vloc(i,s)','dQY(1:3,j,iqr)'
         do j=1,MJJ_MAP_Q(iqr)
           i=JJP_Q(j,iqr)
-write(4000+myrank,'(4I6)') s,iqr,j,i
-write(4100+myrank,'(4I6,4g20.7)') s,iqr,j,i,Vloc(i,s),dQY(1:3,j,iqr)
+!write(4000+myrank,'(4I6)') s,iqr,j,i
+!write(4100+myrank,'(4I6,4g20.7)') s,iqr,j,i,Vloc(i,s),dQY(1:3,j,iqr)
           ztmp=Vloc(i,s)
           rtmp5(0,iqr,s)=rtmp5(0,iqr,s)+dQY(1,j,iqr)*ztmp
           rtmp5(1,iqr,s)=rtmp5(1,iqr,s)+dQY(2,j,iqr)*ztmp
@@ -618,7 +618,7 @@ write(4100+myrank,'(4I6,4g20.7)') s,iqr,j,i,Vloc(i,s),dQY(1:3,j,iqr)
     do s=MSP_0,MSP_1
       do iqr=1,N_nzqr
         do i=0,2
-          write(4200+myrank+i*20,'(2g20.7)') s,iqr,rtmp5(i,iqr,s)
+!          write(4200+myrank+i*20,'(2g20.7)') s,iqr,rtmp5(i,iqr,s)
         enddo
       enddo
     enddo

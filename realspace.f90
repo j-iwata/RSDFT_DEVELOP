@@ -573,7 +573,7 @@ use PStest
   flag_scf  = .false.
 
 !goto 900
-goto 271
+!goto 271
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
@@ -818,25 +818,27 @@ goto 271
   end if
 
 !===========================================================
-goto 270
-call export_DensityAndWF
-  call calc_hartree(ML_0,ML_1,MSP,rho)
-  call calc_xc
-  do s=MSP_0,MSP_1
-     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-  end do
-  call getDij
-  call calc_total_energy(.true.,disp_switch,999)
-goto 900
-270 continue
-call import_DensityAndWF
-  call calc_hartree(ML_0,ML_1,MSP,rho)
-  call calc_xc
-  do s=MSP_0,MSP_1
-     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-  end do
-  call getDij
-  call calc_total_energy(.true.,disp_switch,999)
+goto 272
+  goto 270
+    call export_DensityAndWF
+      call calc_hartree(ML_0,ML_1,MSP,rho)
+      call calc_xc
+      do s=MSP_0,MSP_1
+         Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+      end do
+      call getDij
+      call calc_total_energy(.true.,disp_switch,999)
+    goto 900
+  270 continue
+  call import_DensityAndWF
+    call calc_hartree(ML_0,ML_1,MSP,rho)
+    call calc_xc
+    do s=MSP_0,MSP_1
+       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+    end do
+    call getDij
+    call calc_total_energy(.true.,disp_switch,999)
+272 continue
 !goto 900
 !call write_viod(1700,myrank)
 !call write_dviod(1800,myrank)
