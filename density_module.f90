@@ -15,7 +15,7 @@ MODULE density_module
   PRIVATE
   PUBLIC :: rho,init_density,normalize_density,calc_density
 #ifdef _USPP_F_TEST_
-  PUBLIC :: write_rho
+  PUBLIC :: write_rho,ML_0_RHO,ML_1_RHO,MS_0_RHO,MS_1_RHO
 #endif
   real(8),allocatable :: rho(:,:)
 

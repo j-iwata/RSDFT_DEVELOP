@@ -63,6 +63,7 @@ PROGRAM Real_Space_Solid
   use VarPSMember
   use VarPSMemberG
   use ps_nloc2_variables
+  use TestModule
 #endif
 
 use WFtest
@@ -572,6 +573,7 @@ use PStest
   flag_scf  = .false.
 
 !goto 900
+goto 271
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
@@ -796,6 +798,7 @@ use PStest
 !
 ! --- force calculation ---
 !
+271 continue
   if ( disp_switch ) write(*,'(a40," Force")') repeat("-",40)
 
   if ( SYStype == 0 ) then
@@ -815,12 +818,32 @@ use PStest
   end if
 
 !===========================================================
+goto 270
+call export_DensityAndWF
+  call calc_hartree(ML_0,ML_1,MSP,rho)
+  call calc_xc
+  do s=MSP_0,MSP_1
+     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+  end do
+  call getDij
+  call calc_total_energy(.true.,disp_switch,999)
+goto 900
+270 continue
+call import_DensityAndWF
+  call calc_hartree(ML_0,ML_1,MSP,rho)
+  call calc_xc
+  do s=MSP_0,MSP_1
+     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+  end do
+  call getDij
+  call calc_total_energy(.true.,disp_switch,999)
+!goto 900
 !call write_viod(1700,myrank)
 !call write_dviod(1800,myrank)
 !call write_qrL(1900,myrank,Nelement)
 !call write_dqrL(2000,myrank,Nelement)
-call checkMapsBeforeForce(myrank)
-call checkAtomData(myrank)
+!call checkMapsBeforeForce(myrank)
+!call checkAtomData(myrank)
 !===========================================================
 !!!!!!!! changed the order of atomopt and band
 
