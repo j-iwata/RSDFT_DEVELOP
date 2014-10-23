@@ -28,8 +28,6 @@ use parallel_module, only: myrank
   integer,allocatable :: k2_to_iorb(:,:,:)
   integer,allocatable :: N_k2(:)
 
-  integer,allocatable :: icheck_k2(:)
-
   integer,allocatable :: Q_NRps(:,:)
   real(8),allocatable :: Q_Rps(:,:)
 
@@ -109,8 +107,6 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     allocate( k2_to_iorb(2,k2max,nki) ) ; k2_to_iorb(:,:,:)=0
     allocate( N_k2(nki)               ) ; N_k2(:)=0
 
-    allocate( icheck_k2(k2max)        ) ; icheck_k2(:)=0
-
 !    allocate( qqc(Rrefmax,Rrefmax,Lrefmax,nki) ) ; qqc(:,:,:,:)=0.d0
 
     return
@@ -127,10 +123,6 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
 
     deallocate( k2_to_iorb )
     deallocate( N_k2 )
-
-    deallocate( icheck_k2 )
-
-!    deallocate( qqc )
 
     return
   END SUBROUTINE deallocateKtoK

@@ -41,8 +41,8 @@ CONTAINS
       call deallocateRps
     end if
     m=max_psorb
-    allocate( NRps0(m,Nelement_) ) ; NRps0=0
-    allocate( Rps0(m,Nelement_)  ) ; Rps0=0.d0
+    allocate( NRps0(1:m,1:Nelement_) ) ; NRps0=0
+    allocate( Rps0(1:m,1:Nelement_)  ) ; Rps0=0.d0
     NRps0(:,:)=NRps(:,:)
     Rps0(:,:)=Rps(:,:)
     return
