@@ -782,6 +782,7 @@ CONTAINS
           if ( icflag >= 0 ) then
              if ( Etot > Etot00 ) then
                 if ( disp_switch_loc ) then
+! why this kind of thing happens?
                    write(*,*) "can not exit linmin !!!"
                    write(*,*) "Etot, Etot00 =",Etot,Etot00
                 end if
