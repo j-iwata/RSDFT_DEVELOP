@@ -210,7 +210,7 @@ enddo
       do i=n1,n2
         s0(1) = s0(1) + rho(i,s)*Vloc(i,s)
         s0(2) = s0(2) + rho(i,s)*Vion(i)
-        end do
+      end do
     end do
 
     s0(:)=s0(:)*dV

@@ -557,6 +557,7 @@ CONTAINS
     c2=1.d0/ML2
     c3=1.d0/ML3
 
+!write(8000+myrank,'(A6,A20)') 'lma','MJJ_MAP(lma)'
 !$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
     do lma=1,nzlma
        if ( maps_tmp(lma,1) == 0 ) cycle
@@ -565,9 +566,11 @@ CONTAINS
        m    = mmap(lma)
        iorb = iorbmap(lma)
        MJJ_MAP(lma) = MJJ_tmp(iorb,a)
+!write(8000+myrank,'(I6,I20)') lma,MJJ_MAP(lma)
        Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
        Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
        Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+!write(8100+myrank,'(2A6,A48)') 'lma','j','JJ_MAP(1:6,j,lma)'
        do j=1,MJJ_MAP(lma)
           i1=JJ_tmp(1,j,iorb,a)
           i2=JJ_tmp(2,j,iorb,a)
@@ -583,6 +586,7 @@ CONTAINS
           z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
           uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
           JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
+!write(8100+myrank,'(2I6,6I8)') lma,j,JJ_MAP(1:6,j,lma)
        end do
     end do
 !$OMP end parallel do

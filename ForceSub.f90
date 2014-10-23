@@ -27,7 +27,7 @@ CONTAINS
 !-------------------------------------------------------------------------
   SUBROUTINE setLocalIndexForBoundary(Igrid)
     implicit none
-    integer,intent(IN) :: Igrid(2,3)
+    integer,intent(IN) :: Igrid(1:2,0:3)
     a1b=Igrid(1,1)
     a2b=Igrid(1,2)
     a3b=Igrid(1,3)

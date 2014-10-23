@@ -221,6 +221,7 @@ enddo
           c=1.d0
           do lma=1,nzlma
             if ( MJJ_MAP(lma) == MJJ(lma) ) then
+!write(3500+myrank,'(6A6)') 's','k','n','lma','j','i','----1'
 #ifdef _DRSDFT_
               do j=1,MJJ(lma)
                 i=JJP(j,lma)
@@ -238,6 +239,7 @@ enddo
               wtmp5(0,lma,n,k,s)=c*wtmp5(0,lma,n,k,s)
               do j=1,MJJ_MAP(lma)
                 i=JJP(j,lma)
+!write(3500+myrank,'(6I6)') s,k,n,lma,j,i
                 d1=c1*JJ_MAP(1,j,lma)+JJ_MAP(4,j,lma)
                 d2=c2*JJ_MAP(2,j,lma)+JJ_MAP(5,j,lma)
                 d3=c3*JJ_MAP(3,j,lma)+JJ_MAP(6,j,lma)
@@ -249,6 +251,7 @@ enddo
               end do
 #endif
             else ! --- MJJ(lma) /= MJJ_MAP(lma) ---
+!write(3500+myrank,'(6A6)') 's','k','n','lma','j','i','----2'
 #ifdef _DRSDFT_
               do j=1,MJJ(lma)
                 i=JJP(j,lma)
@@ -267,6 +270,7 @@ enddo
 #else
               do j=1,MJJ(lma)
                 i=JJP(j,lma)
+!write(3500+myrank,'(6I6)') s,k,n,lma,j,i
                 wtmp5(0,lma,n,k,s)=wtmp5(0,lma,n,k,s)+uVk(j,lma,k)*conjg(unk(i,n,k,s))
               end do
               wtmp5(0,lma,n,k,s)=c*wtmp5(0,lma,n,k,s)
@@ -275,6 +279,8 @@ enddo
                 i2=JJ_MAP(2,j,lma)
                 i3=JJ_MAP(3,j,lma)
                 i = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
+!write(3500+myrank,'(5I6,6I4)') s,k,n,lma,j,JJ_MAP(1:6,j,lma)
+!write(3500+myrank,'(6I6)') s,k,n,lma,j,i
                 d1=c1*i1+JJ_MAP(4,j,lma)
                 d2=c2*i2+JJ_MAP(5,j,lma)
                 d3=c3*i3+JJ_MAP(6,j,lma)

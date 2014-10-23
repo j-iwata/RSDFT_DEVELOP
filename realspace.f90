@@ -788,7 +788,7 @@ use PStest
 ! Dij needs to be updated when Vloc is updated
   call getDij
 #endif
-  call calc_total_energy(.true.,disp_switch,999)
+  call calc_total_energy(.true.,disp_switch,9999)
 
 !===========================================================
 !call write_rho(1500,myrank)
@@ -846,6 +846,7 @@ goto 272
 !call write_dqrL(2000,myrank,Nelement)
 !call checkMapsBeforeForce(myrank)
 !call checkAtomData(myrank)
+!  call write_wf(0)
 !===========================================================
 !!!!!!!! changed the order of atomopt and band
 
