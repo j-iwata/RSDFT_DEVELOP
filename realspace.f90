@@ -275,51 +275,12 @@ use PStest
 
   call init_density(Nelectron,dV)
 
+!----------------------------------------------------------------------------------------initPS
 !----------------------- SOL sol -----
 
   if ( SYStype == 0 ) then
 
-#ifdef _MODULEINITPS_
      call initiatePS(gcut)
-#else
-!-----------------------------------------
-     call init_ps_local
-     call init_ps_pcc
-     call init_ps_initrho
-     call watcht(disp_switch,"strf",0)
-
-     call construct_strfac !----- structure factor
-     call watcht(disp_switch,"strf",1)
-
-#ifndef _FFTE_
-     call construct_ps_local
-#else
-     call construct_ps_local_ffte
-#endif
-     call watcht(disp_switch,"loc&pcc",1)
-     call watcht(disp_switch,"loc",1)
-
-     if ( pselect /= 4 .and. pselect /= 5 ) then
-        call construct_ps_pcc
-        call watcht(disp_switch,"pcc",1)
-        call construct_ps_initrho
-        call normalize_density
-     end if
-
-     call destruct_strfac !----- structure factor
-
-     select case( pselect )
-     case( 2 )
-        call ps_nloc2_init(Gcut)
-        call prep_ps_nloc2
-     case( 3 )
-        call init_ps_nloc3
-        call prep_ps_nloc3
-     case( 5 )
-        call prep_ps_nloc_mr
-     end select
-!=========================================
-#endif
 
 !----------------------- ESM esm -----
 !----------------------------------------------------------------------------SYStype==3
@@ -369,6 +330,7 @@ use PStest
 
   end if
 !============================================================================SYStype==1
+!========================================================================================initPS
 
 !-------------------- Hamiltonian Test
 
@@ -444,6 +406,12 @@ use PStest
   end if
   call getDij
 #endif
+do s=MSP_0,MSP_1
+do i=ML_0,ML_1
+!  write(300+myrank,'(2I6,G20.7)') s,i,Vloc(i,s)
+enddo
+enddo
+!goto 900
 !  call check_all_ps(myrank)
 
 !  call write_wf(0)
@@ -499,6 +467,12 @@ use PStest
 !!!!!!!!!!! why not wait till previous 'wf, density, potentials' are read????
 !!!!!!!!!!! those routine are called twice
 !call write_rho(1500,myrank) ; goto 900
+do s=MSP_0,MSP_1
+do i=ML_0,ML_1
+  write(300+myrank,'(2I6,G20.7)') s,i,rho(i,s)
+enddo
+enddo
+goto 900
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
 
@@ -512,6 +486,12 @@ use PStest
 !enddo
   end do
 !goto 900
+do s=MSP_0,MSP_1
+do i=ML_0,ML_1
+  write(300+myrank,'(2I6,G20.7)') s,i,Vloc(i,s)
+enddo
+enddo
+goto 900
 
 ! --- Read previous w.f. , density , potentials ---
 
@@ -572,12 +552,17 @@ use PStest
   flag_exit = .false.
   flag_scf  = .false.
 
+
+#ifdef _USPP_F_TEST_
+!call check_VarPSMemberG(7000,myrank,Nelement)
+#endif
 !goto 900
-!goto 271
+goto 271
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
   if ( isRootRank ) write(920,'(A4,12A15)') 'iter','Etot','Eewald','Ekin','Eloc','Enlc','Eion','E_hartree','Exc','E_exchange','E_correlation','Eeig','Ehwf'
+!----------------------------------------------------------------------
 !----------------------------------------------------------------------SCF
   do iter=1,Diter
 
@@ -818,7 +803,7 @@ use PStest
   end if
 
 !===========================================================
-goto 272
+!goto 272
   goto 270
     call export_DensityAndWF
       call calc_hartree(ML_0,ML_1,MSP,rho)
@@ -828,7 +813,7 @@ goto 272
       end do
       call getDij
       call calc_total_energy(.true.,disp_switch,999)
-    goto 900
+goto 900
   270 continue
   call import_DensityAndWF
     call calc_hartree(ML_0,ML_1,MSP,rho)
@@ -838,6 +823,7 @@ goto 272
     end do
     call getDij
     call calc_total_energy(.true.,disp_switch,999)
+goto 900
 272 continue
 !goto 900
 !call write_viod(1700,myrank)

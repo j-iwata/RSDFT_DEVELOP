@@ -95,7 +95,6 @@ write(650+myrank,'(11I3)') l1,i1,nr1,m1,l2,i2,nr2,m2,k1,k2,k3
         k2=k1_to_k2(k1,ik)
         if (registered_k2(k2)) cycle
         registered_k2(k2)=.true.
-        
         N_k2(ik)=N_k2(ik)+1
         k2_to_iorb(1,k2,ik)=k1_to_iorb(1,k1,ik)
         k2_to_iorb(2,k2,ik)=k1_to_iorb(2,k1,ik)

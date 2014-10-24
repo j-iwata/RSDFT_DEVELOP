@@ -317,6 +317,7 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
       enddo
     enddo
   END SUBROUTINE write_qrL
+!------------------------------------------
   SUBROUTINE write_dqrL(unit,rank,nki)
     implicit none
     integer,intent(IN) :: unit,rank,nki
@@ -335,6 +336,33 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
       enddo
     enddo
   END SUBROUTINE write_dqrL
+!------------------------------------------
+  SUBROUTINE check_VarPSMemberG(indexNumber,rank,nki)
+    implicit none
+    integer,intent(IN) :: indexNumber,rank
+    integer,intent(IN) :: nki
+    integer :: ik,ik1,ik2
+    write(indexNumber+rank+60,'(A6,A8)') 'ik','N_k1(ik)'
+    write(indexNumber+rank+80,'(A6,A8)') 'ik','N_k2(ik)'
+    do ik=1,nki
+      write(indexNumber+rank,'(2A6,A8)') 'ik','ik1','k1_to_k2(ik1,ik)'
+      write(indexNumber+rank+20,'(2A6,A8)') 'ik','ik1','k1_to_k3(ik1,ik)'
+      write(indexNumber+rank+40,'(2A6,2A8)') 'ik','ik1','k1_to_iorb(1:2,ik1,ik)'
+      do ik1=1,k1max
+        write(indexNumber+rank,'(2I6,I8)') ik,ik1,k1_to_k2(ik1,ik)
+        write(indexNumber+rank+20,'(2I6,I8)') ik,ik1,k1_to_k3(ik1,ik)
+        write(indexNumber+rank+40,'(2I6,2I8)') ik,ik1,k1_to_iorb(1:2,ik1,ik)
+      enddo
+      write(indexNumber+rank+60,'(I6,I8)') ik,N_k1(ik)
+      write(indexNumber+rank+80,'(I6,I8)') ik,N_k2(ik)
+    enddo
+    do ik=1,nki
+      write(indexNumber+rank+100,'(2A6,2A8)') 'ik','ik2','k2_to_iorb(1:2,ik2,ik)'
+      do ik2=1,k2max
+        write(indexNumber+rank+100,'(2I6,2I8)') ik,ik2,k2_to_iorb(1:2,ik2,ik)
+      enddo
+    enddo
+  END SUBROUTINE check_VarPSMemberG
 #endif
 
 END MODULE VarPSMemberG
