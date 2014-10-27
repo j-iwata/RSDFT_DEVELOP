@@ -268,6 +268,7 @@ use PStest
   case(4,5)
      call read_ps_gth(myrank)
   end select
+goto 900
 
   call count_electron
 
@@ -406,12 +407,6 @@ use PStest
   end if
   call getDij
 #endif
-do s=MSP_0,MSP_1
-do i=ML_0,ML_1
-!  write(300+myrank,'(2I6,G20.7)') s,i,Vloc(i,s)
-enddo
-enddo
-!goto 900
 !  call check_all_ps(myrank)
 
 !  call write_wf(0)
@@ -421,20 +416,11 @@ enddo
      call gram_schmidt_t(1,Nband,k,s)
   end do
   end do
-!  call write_wf(0)
 !  call write_wf(10) ; goto 900
 !  call test_on_wf(dV,myrank==0)
 #ifdef _USPP_
 !  call test_orthnorm_wf(myrank)
 #endif
-!#ifdef _USPP_
-!  if ( .true. ) then
-!    do s=MSP_0,MSP_1
-!      Vloc(ML_0:ML_1,s)=Vion(ML_0:ML_1)
-!    end do
-!  end if
-!  call getDij
-!#endif
 
 ! --- Initial occupation ---
 
@@ -466,32 +452,12 @@ enddo
 !--- Initial Potential ---
 !!!!!!!!!!! why not wait till previous 'wf, density, potentials' are read????
 !!!!!!!!!!! those routine are called twice
-!call write_rho(1500,myrank) ; goto 900
-do s=MSP_0,MSP_1
-do i=ML_0,ML_1
-  write(300+myrank,'(2I6,G20.7)') s,i,rho(i,s)
-enddo
-enddo
-goto 900
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
 
-!  call init_localpot
-
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-!if (myrank==0) write(150,'(2a5,4a20)') 's','i','Vloc(i,s)','Vion(i)','Vh(i)','Vxc(i,s)'
-!do i=ML_0,ML_1
-!if (myrank==0) write(150,'(2I5,4g20.7)') s,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)
-!enddo
   end do
-!goto 900
-do s=MSP_0,MSP_1
-do i=ML_0,ML_1
-  write(300+myrank,'(2I6,G20.7)') s,i,Vloc(i,s)
-enddo
-enddo
-goto 900
 
 ! --- Read previous w.f. , density , potentials ---
 
@@ -869,6 +835,7 @@ goto 900
      write(200,*) ' normal end : main'
   end if
 900 continue
+  write(200+myrank,*) 'write?'
   if (DISP_SWITCH) write(*,*) 'intentional end'
   call close_info
   call end_mpi_parallel
