@@ -207,15 +207,8 @@ if (rank==0) write(200+rank,*) '>>>>>>>> read_pseudopot'
           case(102)
             open(unit_ps,FILE=file_ps(ielm),STATUS='old')
             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-#ifdef _SHOWALL_
-if (rank==0) write(200+rank,*) 'myrank= ',myrank,'normal PSV finished'
-#endif
             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-#ifdef _SHOWALL_
-if (rank==0) write(200+rank,*) 'myrank= ',myrank,'new PSV finished'
-#endif
             close(unit_ps)
-
 #endif
           case default
              stop "ippform error"
@@ -228,13 +221,7 @@ if (rank==0) write(200+rank,*) 'myrank= ',myrank,'new PSV finished'
 #ifdef _USPP_
     elseif (pselect==102) then
       call send_pseudopot(rank)
-#ifdef _SHOWALL_
-if (rank==0) write(200+rank,*) 'myrank= ',myrank,'normal sendPSV finished'
-#endif
       call sendPSG(rank,Nelement_PP)
-#ifdef _SHOWALL_
-if (rank==0) write(200+rank,*) 'myrank= ',myrank,'new sendPSV finished'
-#endif
 #endif
     else
       stop 'pselect must = 2(NCPP),102(USPP)'

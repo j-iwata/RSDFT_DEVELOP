@@ -835,9 +835,9 @@ goto 900
      write(200,*) ' normal end : main'
   end if
 900 continue
-  write(200+myrank,*) 'write?'
   if (DISP_SWITCH) write(*,*) 'intentional end'
   call close_info
+  write(200+myrank,*) myrank,DISP_SWITCH,'before MPI_FINALIZE'
   call end_mpi_parallel
 
 END PROGRAM Real_Space_Solid

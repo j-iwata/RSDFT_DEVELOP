@@ -104,20 +104,20 @@ CONTAINS
 
     call allocateQaL
 
-    if ( .not.allocated(y2a) ) then
-      allocate( y2a(max_psgrd,max_Lref,max_k2,Nelement_) )
-      y2a=0.d0
-      do ik=1,Nelement_
-        do ik2=1,max_k2
-          iorb  = k2_to_iorb(2,ik2,ik)
-          do il=1,max_Lref
-            d1=0.d0
-            d2=0.d0
-            call spline(rad1(1,ik),qrL(1,il,ik2,ik),NRps(iorb,ik),d1,d2,y2a(1,il,ik2,ik))
-          end do
-        end do
-      end do
-    end if
+!    if ( .not.allocated(y2a) ) then
+!      allocate( y2a(max_psgrd,max_Lref,max_k2,Nelement_) )
+!      y2a=0.d0
+!      do ik=1,Nelement_
+!        do ik2=1,max_k2
+!          iorb  = k2_to_iorb(2,ik2,ik)
+!          do il=1,max_Lref
+!            d1=0.d0
+!            d2=0.d0
+!            call spline(rad1(1,ik),qrL(1,il,ik2,ik),NRps(iorb,ik),d1,d2,y2a(1,il,ik2,ik))
+!          end do
+!        end do
+!      end do
+!    end if
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)

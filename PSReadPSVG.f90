@@ -21,7 +21,7 @@ CONTAINS
     ! psi(1:nsmpl-1,Rrefmax,Lrefmax)
     integer :: Rrefmax,Lrefmax,lpsmax,npqmax,ncfmax,nsmpl
     integer :: nl3vmax,npq_
-    
+
 !write(*,*) '>>>>> inside readPSVG'
     Lrefmax=nlf(ik)
     Rrefmax=maxval(nrf(:,ik))

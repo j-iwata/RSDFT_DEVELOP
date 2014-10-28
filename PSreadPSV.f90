@@ -175,6 +175,9 @@ CONTAINS
        stop "Radial grid is inconsistent."
     end if
 
+    if (allocated(psi_)) then
+      deallocate( psi_,phi_,bet_,ddi_,qqr_ )
+    endif
     m=maxval(nr(1:nl))
     allocate( psi_(1:nsmpl,m,nl),phi_(1:nsmpl,m,nl),bet_(1:nsmpl,m,nl) )
     allocate( ddi_(m,m,nl), qqr_(m,m,nl) )
@@ -353,8 +356,6 @@ CONTAINS
     write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rab(:,ielm) )*temp
 
     if ( verpot /= 3 ) deallocate( c0,b0,a0 )
-!    deallocate( qqr_,ddi_ )
-!    deallocate( bet_,psi_,phi_ )
     deallocate( r )
     deallocate( cc,vl,rr )
     deallocate( nr )
