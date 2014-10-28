@@ -60,7 +60,7 @@ MODULE global_variables
   use esm_kinetic_module
 
   use rgrid_mol_module
-  use ps_local_mol_module
+  use ps_local_mol_module, only: init_ps_local_mol,construct_ps_local_mol
   use ps_pcc_mol_module
   use ps_initrho_mol_module
   use ps_nloc2_mol_module
