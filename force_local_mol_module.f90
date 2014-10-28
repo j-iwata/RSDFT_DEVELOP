@@ -81,6 +81,8 @@ CONTAINS
 
        Rc = Rcloc(ik)
 
+       NRc = NRcloc(ik)
+
        do i=ML_0,ML_1
 
           i1 = LL(1,i)
