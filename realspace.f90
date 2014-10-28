@@ -268,7 +268,6 @@ use PStest
   case(4,5)
      call read_ps_gth(myrank)
   end select
-goto 900
 
   call count_electron
 
@@ -523,7 +522,7 @@ goto 900
 !call check_VarPSMemberG(7000,myrank,Nelement)
 #endif
 !goto 900
-goto 271
+!goto 271
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
@@ -769,7 +768,7 @@ goto 271
   end if
 
 !===========================================================
-!goto 272
+goto 272
   goto 270
     call export_DensityAndWF
       call calc_hartree(ML_0,ML_1,MSP,rho)
