@@ -18,7 +18,7 @@ MODULE atomopt_module
 
   use kinetic_module, only: SYStype
 
-  use ps_local_mol_module
+  use ps_local_mol_module, only: construct_ps_local_mol
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
