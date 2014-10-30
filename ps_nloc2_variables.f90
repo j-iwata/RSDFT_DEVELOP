@@ -52,5 +52,4 @@ CONTAINS
     enddo
   END SUBROUTINE checkMapsBeforeForce
 
-
 END MODULE ps_nloc2_variables

@@ -72,10 +72,12 @@ CONTAINS
                 do i=1,nrin(ll3,k2)
                   r2=rad(i+1,ik)*rad(i+1,ik)
                   qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*r2+coe(ic,ll3,k2)
+write(5500,'(I6,3G20.7)') ik,r2,qrL_(i,ll3,k2),coe(ic,ll3,k2)
                 end do
               end do
               do i=1,nrin(ll3,k2)
                 qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*rad(i+1,ik)**(l3v_(ll3,k2)+1)
+write(5700,'(2I6,2G20.7,I6)') ik,i,qrL_(i,ll3,k2),rad(i+1,ik),l3v_(ll3,k2)+1
 !                                qrad_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2)-phi_(i,i1,l1)*phi_(i,i2,l2)
               end do
               do i=nrin(ll3,k2)+1,nsmpl
@@ -114,8 +116,9 @@ CONTAINS
             nl3v(k2,ik)=nl3v_(k2)
             do ll3=1,nl3v_(k2)
               l3v(ll3,k2,ik)=l3v_(ll3,k2)
-              do i=1,nsmpl
+              do i=nsmpl,1,-1
                 qrL(i+1,ll3,k2,ik)=qrL_(i,ll3,k2)
+write(5600,*) qrL(i+1,ll3,k2,ik)
               end do
             end do ! ll3
           end do ! i2

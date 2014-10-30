@@ -13,6 +13,7 @@ MODULE VarParaPSnonLocG
   integer,allocatable :: MJJ_Q(:)
   integer,allocatable :: nl_rank_map_Q(:)
 
+  integer :: nl_max_send_Q
   integer,allocatable :: qr_nsend(:)
   integer,allocatable :: sendmap_Q(:,:),recvmap_Q(:,:)
 

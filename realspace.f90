@@ -406,7 +406,7 @@ use PStest
   end if
   call getDij
 #endif
-!  call check_all_ps(myrank)
+!  call check_all_ps(myrank) ; goto 900
 
 !  call write_wf(0)
   do s=MSP_0,MSP_1
@@ -451,12 +451,24 @@ use PStest
 !--- Initial Potential ---
 !!!!!!!!!!! why not wait till previous 'wf, density, potentials' are read????
 !!!!!!!!!!! those routine are called twice
+do s=MSP_0,MSP_1
+  do i=ML_0,ML_1
+!    write(300+myrank,'(2I6,G20.7)') s,i,rho(i,s)
+  enddo
+end do
+!goto 900
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
 
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
+do s=MSP_0,MSP_1
+  do i=ML_0,ML_1
+!    write(300+myrank,'(2I6,G20.7)') s,i,Vloc(i,s)
+  enddo
+end do
+!goto 900
 
 ! --- Read previous w.f. , density , potentials ---
 
@@ -504,7 +516,6 @@ use PStest
 
   call calc_with_rhoIN_total_energy(disp_switch)
   call calc_total_energy(.true.,disp_switch,999)
-!goto 900
 
   if ( mod(imix,2) == 0 ) then
      call init_mixing(ML_1-ML_0+1,MSP_1-MSP_0+1, rho(ML_0,MSP_0))
@@ -523,6 +534,7 @@ use PStest
 #endif
 !goto 900
 !goto 271
+goto 270
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
@@ -613,8 +625,8 @@ use PStest
         call calc_hartree(ML_0,ML_1,MSP,rho)
         call watcht(disp_switch,"hartree",1)
         call calc_xc
-        call calc_total_energy(.false.,disp_switch,iter)
-!        call calc_total_energy(.true.,disp_switch,iter)
+!        call calc_total_energy(.false.,disp_switch,iter)
+        call calc_total_energy(.true.,disp_switch,iter)
 !-------------------------------------------------------- mixing
         if ( mod(imix,2) == 0 ) then
 ! odd : potential mixing
@@ -748,7 +760,7 @@ use PStest
 !
 ! --- force calculation ---
 !
-271 continue
+!271 continue
   if ( disp_switch ) write(*,'(a40," Force")') repeat("-",40)
 
   if ( SYStype == 0 ) then
@@ -786,6 +798,11 @@ goto 900
     do s=MSP_0,MSP_1
        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
     end do
+do s=MSP_0,MSP_1
+  do i=ML_0,ML_1
+    write(300+myrank,'(2I6,4G20.7)') s,i,Vloc(i,s),Vion(i),Vh(i),Vxc(i,s)
+  enddo
+end do
     call getDij
     call calc_total_energy(.true.,disp_switch,999)
 goto 900

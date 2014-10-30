@@ -62,6 +62,7 @@ CONTAINS
     real(8),parameter :: ep=1.d-8
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
+    real(8) :: tmp
 !    real(8),allocatable :: uV_tmp(:,:,:)
     real(8),allocatable :: work(:)
     real(8) :: ctt(0:9),ett(0:9)
@@ -317,6 +318,7 @@ CONTAINS
             end if
 ! j : start from 1
 ! with i1_0,i2_0,i3_0 k1,k2,k3
+            if (abs(v0)<1.d-10) cycle 
             j=j+1
             JJ_tmp(1,j,iorb,a) = i1_0
             JJ_tmp(2,j,iorb,a) = i2_0
@@ -560,7 +562,11 @@ CONTAINS
 !write(8000+myrank,'(A6,A20)') 'lma','MJJ_MAP(lma)'
 !$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
     do lma=1,nzlma
+#ifdef _USPP_
+
+#else
        if ( maps_tmp(lma,1) == 0 ) cycle
+#endif
        a    = amap(lma)
        l    = lmap(lma)
        m    = mmap(lma)
@@ -584,7 +590,11 @@ CONTAINS
           x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
           y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
           z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-          uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
+          tmp = Ylm(x,y,z,l,m)
+          if (abs(tmp)>1.d-10) then
+            uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
+          endif
+write(8100+myrank,'(2I6,3G20.7,3G20.7,I6)') lma,j,uV(j,lma),uV_tmp(j,iorb,a),Ylm(x,y,z,l,m),x,y,z,l
           JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
 !write(8100+myrank,'(2I6,6I8)') lma,j,JJ_MAP(1:6,j,lma)
        end do
@@ -815,8 +825,9 @@ write(200+myrank,*) "<<<< prepMapsTmp"
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
     integer :: i,j,k,j3,lma,i0,i1,i2,i3,m1,m2,m3
     integer,allocatable :: icheck_tmp4(:,:,:)
-    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr
+    real(8) :: c1,c2,c3,d1,d2,d3,kr
     complex(8) :: ztmp0
+    real(8),parameter :: pi2=2.d0*acos(-1.d0)
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -835,8 +846,6 @@ write(200+myrank,*) "<<<< prepMapsTmp"
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
-
-    pi2 = 2.d0*acos(-1.d0)
 
     do k=k0,k1
        d1=pi2*kbb(1,k)
@@ -862,8 +871,10 @@ write(200+myrank,*) "<<<< prepMapsTmp"
                 uVk(j,lma,k)=ztmp0
                 JJP(j,lma) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
 !                JJP(j,lma) = i0
+write(8000+myrank,'(4I6,I8,5g20.7)') k,lma,i,j,JJP(j,lma),uVk(j,lma,k),uV(i,lma),ztmp0
              else
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
+write(8000+myrank,'(4I6,I8,5g20.7)') k,lma,i,j3,JJP(j3,lma),uVk(j3,lma,k),uV(i,lma),ztmp0
              end if
           end do
        end do ! lma

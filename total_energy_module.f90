@@ -85,8 +85,8 @@ CONTAINS
 ! *****_Q can be not compiled for NCPP
        allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
 
-       allocate( work(n1:n2,MB_d) ) ; work=(0.0d0,0.0d0)
-       allocate( work00(n1:n2,MB_d) ) ; work00=(0.0d0,0.0d0)
+       allocate( work(n1:n2,MB_d) ) ; work=zero
+       allocate( work00(n1:n2,MB_d) ) ; work00=zero
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
@@ -183,6 +183,14 @@ enddo
           Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
         endif
         esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
+write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
+do s=MSP_0,MSP_1
+do k=MBZ_0,MBZ_1
+do n=MB_0,MB_1
+write(1800+myrank,'(4I5,5g20.8)') scf_iter,s,k,n,esp(n,k,s),esp1(n,k,s,1:4)
+enddo
+enddo
+enddo
 
        deallocate( esp1 )
        deallocate( esp0 )

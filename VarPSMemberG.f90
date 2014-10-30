@@ -177,7 +177,6 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     call mpi_bcast(nl3v  ,n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(l3v   ,maxs(1)*n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(qrL   ,maxs(4)*maxs(1)*n,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    
     return
 
 ! FOR DEBUG
@@ -241,7 +240,7 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
         allocate( qrL_(mg,ml,mk,nki) ) ; qrL_(:,:,:,:)=0.d0
         nl3v_(1:max_k2,1:nki)=nl3v(1:max_k2,1:nki)
         l3v_(1:max_Lref,1:max_k2,1:nki)=l3v(1:max_Lref,1:max_k2,1:nki)
-        qrL_(1:max_qgrd,1:max_Lref,max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,max_k2,1:nki)
+        qrL_(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)
         deallocate( nl3v,l3v,qrL )
         allocate( nl3v(mk,nki) ) ; nl3v(:,:)=0
         allocate( l3v(ml,mk,nki) ) ; l3v(:,:,:)=0
@@ -256,7 +255,7 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
             allocate( l3v_(ml,mk,nki) ) ; l3v_(:,:,:)=0
             allocate( qrL_(mg,ml,mk,nki) ) ; qrL_(:,:,:,:)=0.d0
             l3v_(1:max_Lref,1:max_k2,1:nki)=l3v(1:max_Lref,1:max_k2,1:nki)
-            qrL_(1:max_qgrd,1:max_Lref,max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,max_k2,1:nki)
+            qrL_(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)
             deallocate( l3v,qrL )
             allocate( l3v(ml,mk,nki) ) ; l3v(:,:,:)=0
             allocate( qrL(mg,ml,mk,nki) ) ; qrL(:,:,:,:)=0.d0
@@ -281,7 +280,7 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     if ( max_qgrd<mg ) then
         if ( max_Lref>=ml .and. max_k2>=mk ) then
             allocate( qrL_(mk,ml,mk,nki) ) ; qrL_(:,:,:,:)=0.d0
-            qrL_(1:max_qgrd,1:max_Lref,max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,max_k2,1:nki)
+            qrL_(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)
             deallocate( qrL )
             allocate( qrL(mg,ml,mk,nki) ) ; qrL(:,:,:,:)=0.d0
             qrL(:,:,:,:)=qrL_(:,:,:,:)
