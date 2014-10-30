@@ -81,20 +81,20 @@ write(200+myrank,*) '----------------------------op_ps_nloc2_uspp'
               i=JJP(j,lma1)
               htpsi00(i,ib)=htpsi00(i,ib)+Dij00(iqr)*uVk(j,lma1,k)*uVunk(lma2,ib)
               htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma1,k)*uVunk(lma2,ib)
-write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),uVk(j,lma1,k),uVk(j,lma2,k),uVunk(lma1,ib),uVunk(lma2,ib)
+!write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),uVk(j,lma1,k),uVk(j,lma2,k),uVunk(lma1,ib),uVunk(lma2,ib)
             end do
           else
             do j=1,MJJ(lma1)
               i=JJP(j,lma1)
               htpsi00(i,ib)=htpsi00(i,ib)+Dij00(iqr)*uVk(j,lma1,k)*uVunk(lma2,ib)
               htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma1,k)*uVunk(lma2,ib)
-write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),uVk(j,lma1,k),uVk(j,lma2,k),uVunk(lma1,ib),uVunk(lma2,ib)
+!write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),uVk(j,lma1,k),uVk(j,lma2,k),uVunk(lma1,ib),uVunk(lma2,ib)
             end do
             do j=1,MJJ(lma2)
               i=JJP(j,lma2)
               htpsi00(i,ib)=htpsi00(i,ib)+Dij00(iqr)*uVk(j,lma2,k)*uVunk(lma1,ib)
               htpsi(i,ib)=htpsi(i,ib)+Dij(iqr,s)*uVk(j,lma2,k)*uVunk(lma1,ib)
-write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),uVk(j,lma1,k),uVk(j,lma2,k),uVunk(lma1,ib),uVunk(lma2,ib)
+!write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),uVk(j,lma1,k),uVk(j,lma2,k),uVunk(lma1,ib),uVunk(lma2,ib)
             end do
           end if
         end do
@@ -125,10 +125,10 @@ write(8500+myrank,'(7I6,12G20.7)') s,ib,iqr,lma1,lma2,j,i,Dij00(iqr),Dij(iqr,s),
     end if
 !!$OMP end parallel
 
-write(7000+myrank,'(4i5)') ib1,ib2,n1,n2
+!write(7000+myrank,'(4i5)') ib1,ib2,n1,n2
 do ib=ib1,ib2
 do i=n1,n2
-  write(7000+myrank,'(4g20.7)') htpsi(i,ib),htpsi00(i,ib)
+!  write(7000+myrank,'(4g20.7)') htpsi(i,ib),htpsi00(i,ib)
 enddo
 enddo
 

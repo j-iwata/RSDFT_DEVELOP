@@ -534,7 +534,7 @@ end do
 #endif
 !goto 900
 !goto 271
-goto 270
+!goto 270
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)

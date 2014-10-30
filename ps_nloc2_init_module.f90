@@ -170,7 +170,7 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
     do ik=1,Nelement_
        do i=1,MMr
           rad1(i,ik)=(i-1)*dr
-write(5800+myrank,'(2I6,G20.7)') ik,i,rad1(i,ik)
+!write(5800+myrank,'(2I6,G20.7)') ik,i,rad1(i,ik)
        end do
     end do
 

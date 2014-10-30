@@ -594,7 +594,7 @@ CONTAINS
           if (abs(tmp)>1.d-10) then
             uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
           endif
-write(8100+myrank,'(2I6,3G20.7,3G20.7,I6)') lma,j,uV(j,lma),uV_tmp(j,iorb,a),Ylm(x,y,z,l,m),x,y,z,l
+!write(8100+myrank,'(2I6,3G20.7,3G20.7,I6)') lma,j,uV(j,lma),uV_tmp(j,iorb,a),Ylm(x,y,z,l,m),x,y,z,l
           JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
 !write(8100+myrank,'(2I6,6I8)') lma,j,JJ_MAP(1:6,j,lma)
        end do
@@ -871,10 +871,10 @@ write(200+myrank,*) "<<<< prepMapsTmp"
                 uVk(j,lma,k)=ztmp0
                 JJP(j,lma) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
 !                JJP(j,lma) = i0
-write(8000+myrank,'(4I6,I8,5g20.7)') k,lma,i,j,JJP(j,lma),uVk(j,lma,k),uV(i,lma),ztmp0
+!write(8000+myrank,'(4I6,I8,5g20.7)') k,lma,i,j,JJP(j,lma),uVk(j,lma,k),uV(i,lma),ztmp0
              else
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
-write(8000+myrank,'(4I6,I8,5g20.7)') k,lma,i,j3,JJP(j3,lma),uVk(j3,lma,k),uV(i,lma),ztmp0
+!write(8000+myrank,'(4I6,I8,5g20.7)') k,lma,i,j3,JJP(j3,lma),uVk(j3,lma,k),uV(i,lma),ztmp0
              end if
           end do
        end do ! lma

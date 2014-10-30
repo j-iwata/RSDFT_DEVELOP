@@ -183,11 +183,11 @@ enddo
           Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
         endif
         esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
-write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
+!write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
 do s=MSP_0,MSP_1
 do k=MBZ_0,MBZ_1
 do n=MB_0,MB_1
-write(1800+myrank,'(4I5,5g20.8)') scf_iter,s,k,n,esp(n,k,s),esp1(n,k,s,1:4)
+!write(1800+myrank,'(4I5,5g20.8)') scf_iter,s,k,n,esp(n,k,s),esp1(n,k,s,1:4)
 enddo
 enddo
 enddo
