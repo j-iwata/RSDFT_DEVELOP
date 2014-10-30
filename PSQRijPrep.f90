@@ -260,7 +260,7 @@ CONTAINS
                     v0  = qrL(2,ll3,ik2,ik)
                     if ( ir < 1 ) stop "prep_QRij_p102(0)"
 !!!!!                  else if ( ir <= NRc ) then
-                  else if ( ir < NRc ) then
+                  else if ( ir <= NRc ) then
                     err0=1.d10
 !if (ik==2) write(5900+myrank,*) repeat('-',40) 
                     do mm=1,20
@@ -276,12 +276,10 @@ CONTAINS
                     end do
 !if (ik==2) write(5900+myrank,'(I6,G20.7)') ik,v0
                   else
-goto 555
                     write(*,*) "prep_QRij_p102(1)",ir,NRc,qrL(NRc,ll3,ik2,ik)
                     write(*,*) qrL(NRc+1,ll3,ik3,ik),r,rad1(ir,ik)
                     stop
                   end if
-555 continue
                   maxerr=max(maxerr,err0)
 #endif
                   QRtmp = v0/pi4* real(qaL(ik3,ll3)/(-zi)**L)

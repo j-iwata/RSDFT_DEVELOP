@@ -12,7 +12,7 @@ MODULE WFDensityG
     use VarPSMemberG
     ! N_nzqr,nzqr_pair,MJJ_Q(),JJP_Q(),sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,num_2_rank_Q,uVunk,uVunk0,QRij
     use VarParaPSnonLocG, only: MJJ_Q,JJP_Q
-    use ParaRGridComm, only: threeWayComm
+    use ParaRGridComm, only: do3StepComm
 
   implicit none
   include 'mpif.h'
@@ -153,7 +153,7 @@ CONTAINS
 
 
 ! 3WayComm
-      call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0)
+      call do3StepComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk)
 !===== term2 =====
 
 !----- get Qrhonks -----

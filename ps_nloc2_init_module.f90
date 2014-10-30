@@ -143,9 +143,9 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
 
     do ik=1,Nelement_
        do iorb=1,norb(ik)
-          NRps(iorb,ik)=Rps(iorb,ik)/dr
+          NRps(iorb,ik)=Rps(iorb,ik)/dr+1
           if ( (NRps(iorb,ik)-1)*dr < Rps(iorb,ik) ) then
-             NRps(iorb,ik)=NRps(iorb,ik)
+             NRps(iorb,ik)=NRps(iorb,ik)+1
           end if
        end do
     end do
