@@ -41,10 +41,6 @@ CONTAINS
     integer :: s,i,m,MSP,ML_0,ML_1,i0,i1,i2,i3
     real(8) :: c
 
-    gx(:)=0.0d0
-    gy(:)=0.0d0
-    gz(:)=0.0d0
-
     ML_0 = id_grid(myrank_g) + 1
     ML_1 = id_grid(myrank_g) + ir_grid(myrank_g)
     MSP  = sum(ir_spin)
@@ -64,9 +60,16 @@ CONTAINS
 
     c = 1.0d0/Hsize
 
+    gx(:)=0.0d0
+    gy(:)=0.0d0
+    gz(:)=0.0d0
+
     i=0
     do i=ML_0,ML_1
        i0=i-ML_0+1
+       i1 = LL(1,i)
+       i2 = LL(2,i)
+       i3 = LL(3,i)
        do m=1,Md
           gx(i0) = gx(i0) - c*nab(m)*( www(i1-m,i2,i3,1) - www(i1+m,i2,i3,1) )
           gy(i0) = gy(i0) - c*nab(m)*( www(i1,i2-m,i3,1) - www(i1,i2+m,i3,1) )
