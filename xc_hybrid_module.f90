@@ -62,6 +62,7 @@ CONTAINS
           end if
        end do
 999    continue
+       if ( omega == 0.0d0 ) omega=0.2d0/0.529177d0 ! (HSE06)
        write(*,*) "----- Parameters for Hybrid_XC -----"
        write(*,*) "HSE Screening parameter: omega =",omega
     end if
@@ -160,7 +161,7 @@ CONTAINS
 
     gamma_hf = 0
 
-    if ( SYStype == 0 .and. MMBZ == 1 .and. all(kbb(:,1)==0.0d0)  ) then
+    if ( MMBZ == 1 .and. all(kbb(:,1)==0.0d0)  ) then
 
        gamma_hf = 1
 
@@ -241,7 +242,7 @@ CONTAINS
     if ( SYStype == 1 ) then
 
 !       if ( iflag_hse /= 0 .or. iflag_lcwpbe /= 0 ) call prep_hse_fock
-       stop "stop@init_xc_hybrid"
+       if ( iflag_hse /= 0 .or. iflag_lcwpbe /= 0 ) stop "stop@init_xc_hybrid"
 
     end if
 

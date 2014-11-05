@@ -1,12 +1,12 @@
 MODULE fock_module
 
-  use xc_hybrid_module
-  use bb_module
-  use bz_module
-  use electron_module
-  use array_bound_module
-  use wf_module
+  use xc_hybrid_module, only: occ_hf, unk_hf, VFunk, iflag_hybrid, alpha_hf &
+                             ,FKMB_0,FKMB_1,FKBZ_0,FKBZ_1,FOCK_0,FOCK_1 &
+                             ,occ_factor,gamma_hf
+  use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
+  use wf_module, only: unk, occ
   use fock_fft_module
+  use fock_cg_module
   use parallel_module
 
   implicit none
@@ -21,6 +21,8 @@ MODULE fock_module
   complex(8),parameter :: zero = (0.0d0,0.0d0)
   integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
 #endif
+
+  integer :: SYStype=0
 
 CONTAINS
 
@@ -136,8 +138,12 @@ CONTAINS
 #endif
           end do
 
-          call Fock_fft(n1,n2,k,q,trho,tvht,1)
-!          call Fock_fft_parallel(n1,n2,k,q,trho,tvht,1)
+          if ( SYStype == 1 ) then
+             call Fock_cg( n1,n2,k,q,trho,tvht,1 )
+          else
+             call Fock_fft(n1,n2,k,q,trho,tvht,1)
+!            call Fock_fft_parallel(n1,n2,k,q,trho,tvht,1)
+          end if
 
           do i=n1,n2
              tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
@@ -173,7 +179,6 @@ CONTAINS
     if ( iflag_hybrid == 0 ) return
 
     if ( iflag_hybrid == 2 ) then
-
        do ib=ib1,ib2
           do i=n1,n2
              htpsi(i,ib)=htpsi(i,ib)+alpha_hf*VFunk(i,ib,k,s)
@@ -191,13 +196,15 @@ CONTAINS
   END SUBROUTINE op_fock
 
 
-  SUBROUTINE UpdateWF_fock
+  SUBROUTINE UpdateWF_fock( SYStype_in )
     implicit none
+    integer,optional,intent(IN) :: SYStype_in
     integer :: s,k,n,m,ierr
+
+    if ( present(SYStype_in) ) SYStype = SYStype_in
 
     occ_hf(:,:,:)   = 0.0d0
     unk_hf(:,:,:,:) = zero
-    VFunk(:,:,:,:)  = zero
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
@@ -238,6 +245,8 @@ CONTAINS
        call MPI_ALLREDUCE( MPI_IN_PLACE, occ_hf(:,:,s), m, MPI_REAL8 &
             ,MPI_SUM, comm_bzsm, ierr )
     end do ! s
+
+    VFunk(:,:,:,:) = zero
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1

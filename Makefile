@@ -98,7 +98,9 @@ MODS1 = simc_module.o\
         xc_hybrid_module.o \
         fock_ffte_module.o \
         fock_fft_module.o \
+        fock_cg_module.o \
         fock_module.o \
+        xc_hf_module.o \
         xc_hse_module.o \
         xc_pw92_gth_module.o\
         xc_ldapz81_module.o \
