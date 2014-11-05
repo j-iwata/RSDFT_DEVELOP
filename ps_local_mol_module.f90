@@ -254,7 +254,7 @@ CONTAINS
     end if
     Vion=0.d0
 
-    const1 = 2.d0/acos(-1.d0)
+    const1 = 2.d0/sqrt(acos(-1.d0))
 
     allocate( irad(0:3000,Nelement) ) ; irad=0
     M_irad=0
