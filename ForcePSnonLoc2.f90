@@ -608,7 +608,10 @@ enddo
 !write(4000+myrank,'(4A6)') 's','iqr','j','i'
 !write(4100+myrank,'(4A6,2A20)') 's','iqr','j','i','Vloc(i,s)','dQY(1:3,j,iqr)'
         do j=1,MJJ_MAP_Q(iqr)
-          i=JJP_Q(j,iqr)
+          i1=JJ_MAP_Q(1,j,iqr)
+          i2=JJ_MAP_Q(2,j,iqr)
+          i3=JJ_MAP_Q(3,j,iqr)
+          i=i1-a1b+(i2-a2b)*ab1+(i3-a3b)*ab1*ab2+ML_0
 !write(4000+myrank,'(4I6)') s,iqr,j,i
 !write(4100+myrank,'(4I6,4g20.7)') s,iqr,j,i,Vloc(i,s),dQY(1:3,j,iqr)
           ztmp=Vloc(i,s)
