@@ -1,7 +1,7 @@
 MODULE ggrid_module
 
   use bb_module, only: bb
-  use Rgrid_module, only: Ngrid,Hgrid
+  use rgrid_module, only: Ngrid,Hgrid
 
   implicit none
 

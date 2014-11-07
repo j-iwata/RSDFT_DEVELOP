@@ -1,5 +1,5 @@
 MODULE hamiltonian_module
-use parallel_module, only: myrank
+  use parallel_module, only: myrank
 
   use kinetic_module
   use localpot_module

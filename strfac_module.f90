@@ -1,6 +1,6 @@
 MODULE strfac_module
 
-  use Ggrid_module
+  use ggrid_module
   use atom_module
 
   implicit none

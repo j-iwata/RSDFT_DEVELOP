@@ -66,8 +66,8 @@ PROGRAM Real_Space_Solid
   use TestModule
 #endif
 
-use WFtest
-use PStest
+  use WFtest
+  use PStest
 
   implicit none
 

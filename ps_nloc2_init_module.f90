@@ -1,5 +1,5 @@
 MODULE ps_nloc2_init_module
-use parallel_module, only: myrank
+  use parallel_module, only: myrank
 
 !  use pseudopot_module
   use VarPSMember

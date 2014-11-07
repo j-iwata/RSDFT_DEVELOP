@@ -1,5 +1,5 @@
 MODULE pseudopot_module
-use parallel_module, only:myrank
+  use parallel_module, only:myrank
   use ps_read_YB_module
   use VarPSMember
   use PSreadPSV

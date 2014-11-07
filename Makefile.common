@@ -1,4 +1,5 @@
-include Makefile.dep
+#include Makefile.dep_o
+#include Makefile.dep_mod
 
 MODS1 = simc_module.o\
         watch_module.o \
@@ -34,7 +35,7 @@ MODS1 = simc_module.o\
         esm_kinetic_module.o \
         kinetic_module.o \
         strfac_module.o \
-        ps_read_yb_module.o \
+        ps_read_YB_module.o \
         pseudopot_module.o \
 		VarPara.o \
 		ParaRGridComm.o \
@@ -137,7 +138,7 @@ DIAGSL_MOD = scalapack_module.o\
              subspace_diag_sl_module.o 
 
 MODS2 = scf_module.o atomopt_module.o global_variables.o parameters_module.o
-MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
+MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig_module.o apply_sseig_module.o
 MODS4 = momentum_module.o band_module.o
 
 ########################################################################

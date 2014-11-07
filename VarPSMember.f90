@@ -1,5 +1,5 @@
 MODULE VarPSMember
-use parallel_module, only: myrank
+  use parallel_module, only: myrank
   implicit none
   PRIVATE
   PUBLIC :: allocateRps

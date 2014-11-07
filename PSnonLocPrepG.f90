@@ -1,5 +1,5 @@
 MODULE PSnonLocPrepG
-use parallel_module, only: myrank
+  use parallel_module, only: myrank
   use VarPSMemberG
   use VarPSMember
   use atom_module, only: Natom,ki_atom

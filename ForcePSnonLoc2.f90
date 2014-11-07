@@ -9,7 +9,6 @@ MODULE ForcePSnonLoc2
   use localpot_module, only: Vloc
   use ParaRGridComm, only: threeWayComm
   use ForceSub
-!  use ForceSub
   implicit none
   PRIVATE
   PUBLIC :: calcForcePSnonLoc2
@@ -54,7 +53,7 @@ CONTAINS
     real(8) :: forceQ(3,MI)
 
     real(8),parameter :: pi2=2.d0*acos(-1.d0)
-! d1,d2 need to be removed from this module, use a different variable name
+! d1,d2 need to be removed from this module, define a different variable name
     real(8) :: d1,d2,d3
     integer :: i1,i2,i3
 

@@ -5,7 +5,7 @@ MODULE xc_module
   use ps_pcc_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1
-  use pw92_gth_module
+  use xc_pw92_gth_module
   use xc_hybrid_module
   use xc_hse_module
   use watch_module
