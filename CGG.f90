@@ -237,7 +237,7 @@ CONTAINS
              utmp2(1,2)=wtmp2(5,n)
              utmp2(2,2)=wtmp2(6,n)
 #ifdef _DRSDFT_
-              call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
+              call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
               if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
                  utmp2(1,1)=utmp2(1,2)
                  utmp2(2,1)=utmp2(2,2)
