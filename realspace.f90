@@ -451,24 +451,12 @@ use PStest
 !--- Initial Potential ---
 !!!!!!!!!!! why not wait till previous 'wf, density, potentials' are read????
 !!!!!!!!!!! those routine are called twice
-do s=MSP_0,MSP_1
-  do i=ML_0,ML_1
-!    write(300+myrank,'(2I6,G20.7)') s,i,rho(i,s)
-  enddo
-end do
-!goto 900
   call calc_hartree(ML_0,ML_1,MSP,rho,SYStype)
   call calc_xc
 
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
-do s=MSP_0,MSP_1
-  do i=ML_0,ML_1
-!    write(300+myrank,'(2I6,G20.7)') s,i,Vloc(i,s)
-  enddo
-end do
-!goto 900
 
 ! --- Read previous w.f. , density , potentials ---
 
@@ -579,7 +567,6 @@ end do
         end if
         call watcht(disp_switch,"diag",1)
         call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-!call calc_total_energy(.true.,disp_switch,999) ; goto 900
 !call write_wf ; goto 900
         call watcht(disp_switch,"cg  ",1)
         call gram_schmidt_t(1,Nband,k,s)

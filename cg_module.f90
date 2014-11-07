@@ -65,7 +65,7 @@ CONTAINS
   END SUBROUTINE send_cg
 
 !---------------------------------------------------------------------------------------
-#ifdef _DRSDFT_
+#ifdef _DRSDFT_FOR_NCPP
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
@@ -351,7 +351,11 @@ CONTAINS
     use CGG
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
     real(8),intent(INOUT) :: esp(MB),res(MB)
 
 #ifdef _SHOWALL_CG_

@@ -37,7 +37,7 @@ CONTAINS
 
 #ifdef _DRSDFT_
     real(8) :: tmp
-    real(8) :: work(9),zphase,ztmp
+    real(8) :: zphase,ztmp
 
     real(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     real(8),allocatable :: pk(:,:),pko(:,:)
