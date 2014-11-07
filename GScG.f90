@@ -29,9 +29,9 @@ CONTAINS
     integer,allocatable :: ir(:),id(:)
 
     ! not used???? or in recursive subroutine
-    integer :: nn,cc1,cc2
-    integer :: nn1,nn2
-    integer :: mm1,mm2
+!    integer :: nn,cc1,cc2
+!    integer :: nn1,nn2
+!    integer :: mm1,mm2
     integer :: n0,n1
 #ifdef _SHOWALL_GS_
 write(200+myrank,*) ">>>>>>>> GramSchmidtG"
@@ -296,7 +296,6 @@ enddo
 !=================================== def is changed
               c=real(d,kind=8)
               call MPI_ALLREDUCE( MPI_IN_PLACE,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
-!              call mpi_allreduce(d,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
               c=1.d0/sqrt(c)
 #ifdef _SHOWALL_GS_
 !write(730+myrank,'(4g20.7)') d,c

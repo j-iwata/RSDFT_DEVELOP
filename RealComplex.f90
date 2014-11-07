@@ -6,7 +6,7 @@ MODULE RealComplex
     
 #ifdef _DRSDFT_
     integer,parameter :: TYPE_MAIN=MPI_REAL8
-    character(1),parameter :: TRANSA='A'
+    character(1),parameter :: TRANSA='T'
     character(1),parameter :: TRANSB='N'
     real(8),parameter :: zero=0.d0
     real(8),parameter :: one=1.d0
@@ -29,12 +29,12 @@ CONTAINS
     real(8),intent(IN) :: INA,INB
     real(8),intent(OUT) :: OUTC
 
-    OUTC = conjg(INA)*INB
+    OUTC = INA*INB
 #else
     complex(8),intent(IN) :: INA,INB
     complex(8),intent(OUT) :: OUTC
 
-    OUTC = INA*INB
+    OUTC = conjg(INA)*INB
 #endif
   END SUBROUTINE RCProduct
 

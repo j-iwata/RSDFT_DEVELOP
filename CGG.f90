@@ -21,7 +21,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     integer,intent(IN) :: Ncg,iswitch_gs
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
     real(8),intent(INOUT) :: esp(MB),res(MB)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i
@@ -29,23 +33,34 @@ CONTAINS
     real(8),parameter :: ep1=1.d-15
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
     real(8),allocatable :: sb(:),rb(:),E(:),E1(:),gkgk(:),bk(:)
+
+
+#ifdef _DRSDFT_
+    real(8) :: tmp
+    real(8) :: work(9),zphase,ztmp
+
+    real(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
+    real(8),allocatable :: pk(:,:),pko(:,:)
+    real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
+    real(8),allocatable :: utmp2(:,:),btmp2(:,:)
+!----- _USPP_ -----
+    real(8) :: gSf
+    real(8),allocatable :: unk_tmp(:),Sf(:)
+!===== _USPP_ =====
+#else
+    complex(8) :: tmp
     complex(8) :: work(9),zphase,ztmp
 
     complex(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     complex(8),allocatable :: pk(:,:),pko(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:)
-
-#ifdef _DRSDFT_
-    real(8) :: tmp
-#else
-    complex(8) :: tmp
-#endif
-    
 !----- _USPP_ -----
     complex(8) :: gSf
     complex(8),allocatable :: unk_tmp(:),Sf(:)
 !===== _USPP_ =====
+#endif
+    
 
     ctt(:)=0.d0
     ett(:)=0.d0
@@ -221,42 +236,41 @@ CONTAINS
              utmp2(2,1)=wtmp2(5,n)
              utmp2(1,2)=wtmp2(5,n)
              utmp2(2,2)=wtmp2(6,n)
-             if (TYPE_MAIN==mpi_complex16) then
-                ztmp=btmp2(1,2)
-                ztmp=conjg(ztmp)
-                btmp2(1,2)=ztmp
-                ztmp=utmp2(1,2)
-                ztmp=conjg(ztmp)
-                utmp2(1,2)=ztmp
-                call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
-                if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                   utmp2(1,1)=utmp2(1,2)
-                   utmp2(2,1)=utmp2(2,2)
-                   W(1)=W(2)
-                end if
+#ifdef _DRSDFT_
+              call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
+              if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
+                 utmp2(1,1)=utmp2(1,2)
+                 utmp2(2,1)=utmp2(2,2)
+                 W(1)=W(2)
+              end if
 !- Fix the phase -
-                ztmp=utmp2(1,1)
-                r=abs(ztmp)
-                c=real(ztmp)/r
-                d=aimag(ztmp)/r
-                zphase=dcmplx(c,-d)
-                utmp2(1,1)=utmp2(1,1)*zphase
-                utmp2(2,1)=utmp2(2,1)*zphase
-             else
-                call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
-                if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                   utmp2(1,1)=utmp2(1,2)
-                   utmp2(2,1)=utmp2(2,2)
-                   W(1)=W(2)
-                end if
+              c=utmp2(1,1)
+              if( c<0.d0 ) then
+                 utmp2(1,1)=-utmp2(1,1)
+                 utmp2(2,1)=-utmp2(2,1)
+              end if
+#else
+              ztmp=btmp2(1,2)
+              ztmp=conjg(ztmp)
+              btmp2(1,2)=ztmp
+              ztmp=utmp2(1,2)
+              ztmp=conjg(ztmp)
+              utmp2(1,2)=ztmp
+              call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
+              if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
+                 utmp2(1,1)=utmp2(1,2)
+                 utmp2(2,1)=utmp2(2,2)
+                 W(1)=W(2)
+              end if
 !- Fix the phase -
-                c=utmp2(1,1)
-                if( c<0.d0 ) then
-                   utmp2(1,1)=-utmp2(1,1)
-                   utmp2(2,1)=-utmp2(2,1)
-                end if
-             end if
-
+              ztmp=utmp2(1,1)
+              r=abs(ztmp)
+              c=real(ztmp)/r
+              d=aimag(ztmp)/r
+              zphase=dcmplx(c,-d)
+              utmp2(1,1)=utmp2(1,1)*zphase
+              utmp2(2,1)=utmp2(2,1)*zphase
+#endif
              E1(n)=E(n)
              E(n) =W(1)
 

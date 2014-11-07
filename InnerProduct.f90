@@ -103,17 +103,11 @@ CONTAINS
 
     select case ( pselect )
     case ( 1,2,102 )
-#ifdef _SHOWALL_INNER_
-write(200+myrank,*) 'get_Sf 1'
-#endif
 !$OMP parallel do
        do i=nn1,nn2
           Sf(i) = fin(i)
        end do
 !$OMP end parallel do
-#ifdef _SHOWALL_INNER_
-write(200+myrank,*) 'get_Sf 2'
-#endif
 
 !----- get uVunk (=<uV|fin>) -----
        allocate( uVunk(nzlma,ib1:ib2) ) ; uVunk=zero
@@ -156,16 +150,12 @@ write(200+myrank,*) 'get_Sf 2'
 !$OMP end parallel
 #endif
 !===== within mygrid =====
-#ifdef _SHOWALL_INNER_
-write(200+myrank,*) 'get_Sf 3'
-#endif
 
 !----- summation over all grids -----
        call watch( ctt(0),ett(0) )
 
 ! 3WayComm
 ! uVunk
-!       call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
        call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
        call watch( ctt(1),ett(1) )
@@ -202,15 +192,8 @@ write(200+myrank,*) 'get_Sf 3'
 !===== total = term1 + term2 =====
 
        deallocate( uVunk )
-#ifdef _SHOWALL_INNER_
-write(200+myrank,*) 'get_Sf 4'
-#endif
 
     end select
-#ifdef _SHOWALL_INNER_
-write(200+myrank,*) 'get_Sf 5'
-#endif
-
     return
   END SUBROUTINE get_Sf
 
@@ -305,7 +288,6 @@ write(200+myrank,*) 'get_Sf 5'
 
     integer,intent(IN) :: nn1,nn2,ns,ne,k,s
     integer :: n
-integer :: i
 
     do n=ns,ne
       call get_Sf( unk(nn1,n,k,s),nn1,nn2,k,Sunk(nn1,n) )
