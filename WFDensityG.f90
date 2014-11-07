@@ -3,7 +3,7 @@ MODULE WFDensityG
   use electron_module, only: Nelectron
   ! unk(:,n,k,s)
   use wf_module
-  use parallel_module, only: COMM_GRID,COMM_BAND,COMM_BZSM,COMM_SPIN
+  use parallel_module, only: COMM_GRID,COMM_BAND,COMM_BZSM,COMM_SPIN,myrank
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
   use RealComplex, only: RCProduct
     use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sbufnl,rbufnl,lma_nsend,sendmap,recvmap,TYPE_MAIN,uVk

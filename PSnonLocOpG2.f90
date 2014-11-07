@@ -1,4 +1,4 @@
-Module PSnonLocOpG2
+MODULE PSnonLocOpG2
 use parallel_module, only: myrank
   use VarPSMember
   use VarPSMemberG
@@ -140,4 +140,4 @@ write(200+myrank,*) ">>>>op_ps_nloc2_uspp"
 
     return
   END SUBROUTINE op_ps_nloc2_uspp
-End Module PSnonLocOpG2
+END MODULE PSnonLocOpG2

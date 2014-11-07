@@ -1,34 +1,45 @@
 MODULE VarPSMember
 use parallel_module, only: myrank
   implicit none
+  PRIVATE
+  PUBLIC :: allocateRps
+  PUBLIC :: deallocateRps
+  PUBLIC :: allocateRad1
+  PUBLIC :: deallocateRad1
+  PUBLIC :: send_pseudopot
+  PUBLIC :: ps_allocate
+#ifdef _USPP_F_TEST_
+  PUBLIC :: write_viod
+  PUBLIC :: write_dviod
+#endif
 
-  integer :: Nelement_PP
-  integer :: Nelement_
-  integer,allocatable :: ippform(:)
-  character(30),allocatable :: file_ps(:)
-  real(8),allocatable :: rad(:,:),rab(:,:),rad1(:,:)
-  real(8),allocatable :: rabr2(:,:)
-  real(8),allocatable :: vql(:,:),viod(:,:,:)   ! dvql(:,:),dviod(:,:,:)
-  real(8),allocatable :: dviod(:,:,:)
-  real(8),allocatable :: cdc(:,:),cdd(:,:)
-  real(8),allocatable :: anorm(:,:)
+  integer,PUBLIC :: Nelement_PP
+  integer,PUBLIC :: Nelement_
+  integer,allocatable,PUBLIC :: ippform(:)
+  character(30),allocatable,PUBLIC :: file_ps(:)
+  real(8),allocatable,PUBLIC :: rad(:,:),rab(:,:),rad1(:,:)
+  real(8),allocatable,PUBLIC :: rabr2(:,:)
+  real(8),allocatable,PUBLIC :: vql(:,:),viod(:,:,:)   ! dvql(:,:),dviod(:,:,:)
+  real(8),allocatable,PUBLIC :: dviod(:,:,:)
+  real(8),allocatable,PUBLIC :: cdc(:,:),cdd(:,:)
+  real(8),allocatable,PUBLIC :: anorm(:,:)
 
-  real(8),allocatable :: Rps(:,:)   ! Rps0(:,:),Rps1(:,:)
-  integer,allocatable :: lo(:,:),inorm(:,:),NRps(:,:)   ! NRps0(:,:),NRps1(:,:)
+  real(8),allocatable,PUBLIC :: Rps(:,:)   ! Rps0(:,:),Rps1(:,:)
+  integer,allocatable,PUBLIC :: lo(:,:),inorm(:,:),NRps(:,:)   ! NRps0(:,:),NRps1(:,:)
 
-  integer,allocatable :: Mr(:),norb(:)
-  real(8),allocatable :: parloc(:,:)
-  real(8),allocatable :: Zps(:),Zelement(:)
-  real(8),allocatable :: cdd_coef(:,:,:)
+  integer,allocatable,PUBLIC :: Mr(:),norb(:)
+  real(8),allocatable,PUBLIC :: parloc(:,:)
+  real(8),allocatable,PUBLIC :: Zps(:),Zelement(:)
+  real(8),allocatable,PUBLIC :: cdd_coef(:,:,:)
 
-  integer,allocatable :: NRps0(:,:)
-  real(8),allocatable :: Rps0(:,:)
+  integer,allocatable,PUBLIC :: NRps0(:,:)
+  real(8),allocatable,PUBLIC :: Rps0(:,:)
 
-  integer :: max_psgrd=0,max_psorb=0,max_ngauss=0
+  integer,PUBLIC :: max_psgrd=0,max_psorb=0,max_ngauss=0
 
-  integer,allocatable :: nlf(:)
-  integer,allocatable :: nrf(:,:)
-  integer,allocatable :: no(:,:)
+  integer,allocatable,PUBLIC :: nlf(:)
+  integer,allocatable,PUBLIC :: nrf(:,:)
+  integer,allocatable,PUBLIC :: no(:,:)
   
 
 

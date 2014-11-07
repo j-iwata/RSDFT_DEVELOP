@@ -1,3 +1,5 @@
+include Makefile.dep
+
 MODS1 = simc_module.o\
         watch_module.o \
         info_module.o \

@@ -15,9 +15,9 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
            $(DIR1)/ext_sub_lapack_c16_2.o \
            $(DIR1)/ext_sub_lapack_aux.o
 #################### Generate COMPLEX16 code #####
-#FFLAGS1 = -I../
+FFLAGS1 = -I../
 #################### Generate REAL8 code #####
-FFLAGS1 = -D_DRSDFT_ -I../
+#FFLAGS1 = -D_DRSDFT_ -I../
 #################### SPLINE interpolation is used in prep_ps #####
 #FFLAGS1 = -D_SPLINE_ -I../
 #FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -I../
@@ -35,26 +35,27 @@ FFLAGS1 = -D_DRSDFT_ -I../
 DSHOW =
 #DSHOW = -D_SHOWALL_GS_
 #################### Lapack or ScaLapack #####
-#DLAPACK = -D_LAPACK_
-DLAPACK =
+DLAPACK = -D_LAPACK_
+#DLAPACK =
 #################### use BLAS for Gram-Schmidt #####
 #DGRAMSCHMIDT = -D_GS_SIMPLE_
 DGRAMSCHMIDT =
 #################### USPP or NCPP #####
 DUSPP = -D_USPP_
-FFLAGS0 = -C -openmp -cpp -D_MODULEINITPS_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(DLAPACK) $(DUSPP) $(DGRAMSCHMIDT) $(DSHOW) $(DREAL)
+# -xAVX -xHost -fast
+FFLAGS0 =  -C -openmp -cpp -D_MODULEINITPS_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(DLAPACK) $(DUSPP) $(DGRAMSCHMIDT) $(DSHOW) $(DREAL)
 #FFLAGS0 = -O2 -openmp -cpp -D_MODULEINITPS_ -D_USPP_NEW_ -D_USPP_F_TEST_ $(DLAPACK) $(DUSPP) $(DGRAMSCHMIDT) $(DSHOW)
 #FFLAGS0 = -C -cpp
 #LFLAGS = -openmp
 #### for iMac
-#LAPACK_L = -lmkl_lapack95_lp64 -lmkl_blas95_lp64 \
+LAPACK_L = -lmkl_lapack95_lp64 -lmkl_blas95_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lpthread -liomp5
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lguide -lpthread
 #### for matu
-LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
+#LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lpthread -liomp5
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
@@ -238,7 +239,7 @@ FFLAGS = $(FFLAGS0) $(FFLAGS1)
 #
 ########################################################################
 .SUFFIXES:
-.SUFFIXES: .o .f .f90
+.SUFFIXES: .o .mod .f .f90
 .f.o :
 	$(FC) $(FFLAGS) -c $<
 .f90.o :

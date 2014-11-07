@@ -1,4 +1,4 @@
-MODULE ps_read_YB_module
+MODULE ps_read_yb_module
 
   implicit none
 
@@ -148,4 +148,4 @@ CONTAINS
      return
    END SUBROUTINE ps_read_YB
 
- END MODULE ps_read_YB_module
+ END MODULE ps_read_yb_module

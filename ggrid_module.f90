@@ -1,4 +1,4 @@
-MODULE Ggrid_module
+MODULE ggrid_module
 
   use bb_module, only: bb
   use Rgrid_module, only: Ngrid,Hgrid
@@ -372,4 +372,4 @@ CONTAINS
   END SUBROUTINE construct_ggrid_2
 
 
-END MODULE Ggrid_module
+END MODULE ggrid_module

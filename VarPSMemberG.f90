@@ -1,53 +1,67 @@
 MODULE VarPSMemberG
 use parallel_module, only: myrank
   implicit none
+  PRIVATE
+  PUBLIC :: allocateNzqr
+  PUBLIC :: deallocateNzqr
+  PUBLIC :: allocateKtoK
+  PUBLIC :: deallocateKtoK
+  PUBLIC :: allocateQRps
+  PUBLIC :: deallocateQRps
+  PUBLIC :: sendPSG
+  PUBLIC :: allocatePSG
+#ifdef _USPP_F_TEST_
+  PUBLIC :: write_qrL
+  PUBLIC :: write_dqrL
+  PUBLIC :: check_VarPSMemberG
+#endif
 
-  integer,allocatable :: nl3v(:,:)
-  integer,allocatable :: l3v(:,:,:)
+  integer,allocatable,PUBLIC :: nl3v(:,:)
+  integer,allocatable,PUBLIC :: l3v(:,:,:)
   
-  real(8),allocatable :: qrL(:,:,:,:)
-  integer :: maxcJ
-  real(8),allocatable :: dqrL(:,:,:,:,:)
+  real(8),allocatable,PUBLIC :: qrL(:,:,:,:)
+  integer,PUBLIC :: maxcJ
+  real(8),allocatable,PUBLIC :: dqrL(:,:,:,:,:)
 
-  complex(8),allocatable :: QG(:,:,:)
+  complex(8),allocatable,PUBLIC :: QG(:,:,:)
 
-  real(8),allocatable :: QRij(:,:)
+  real(8),allocatable,PUBLIC :: QRij(:,:)
   
-  real(8),allocatable :: ddi(:,:,:,:)
+  real(8),allocatable,PUBLIC :: ddi(:,:,:,:)
 
-  real(8),allocatable :: qqr(:,:,:,:)
-  real(8),allocatable :: qqc(:,:,:,:)
+  real(8),allocatable,PUBLIC :: qqr(:,:,:,:)
+  real(8),allocatable,PUBLIC :: qqc(:,:,:,:)
 
-  integer :: k1max,k2max,k3max,lpsmax
+  integer,PUBLIC :: k1max,k2max,k3max,lpsmax
   
-  integer,allocatable :: k1_to_k2(:,:)
-  integer,allocatable :: k1_to_k3(:,:)
-  integer,allocatable :: k1_to_iorb(:,:,:)
-  integer,allocatable :: N_k1(:)
+  integer,allocatable,PUBLIC :: k1_to_k2(:,:)
+  integer,allocatable,PUBLIC :: k1_to_k3(:,:)
+  integer,allocatable,PUBLIC :: k1_to_iorb(:,:,:)
+  integer,allocatable,PUBLIC :: N_k1(:)
 
-  integer,allocatable :: k2_to_iorb(:,:,:)
-  integer,allocatable :: N_k2(:)
+  integer,allocatable,PUBLIC :: k2_to_iorb(:,:,:)
+  integer,allocatable,PUBLIC :: N_k2(:)
 
-  integer,allocatable :: Q_NRps(:,:)
-  real(8),allocatable :: Q_Rps(:,:)
+  integer,allocatable,PUBLIC :: Q_NRps(:,:)
+  real(8),allocatable,PUBLIC :: Q_Rps(:,:)
 
-  integer,allocatable :: npq(:)
+  integer,allocatable,PUBLIC :: npq(:)
 
-  integer :: N_nzqr
-  integer :: N_nlop
+  integer,PUBLIC :: N_nzqr
+  integer,PUBLIC :: N_nlop
 
-  integer,allocatable :: nzqr_pair(:,:)
-  integer,allocatable :: atommap(:),kk1map(:,:),k1map(:)
-  integer,allocatable :: nlop_pair(:,:)
-  real(8),allocatable :: Dij(:,:),Dij00(:),Dij0(:)
-  real(8),allocatable :: qij(:),qij_f(:)
+  integer,allocatable,PUBLIC :: nzqr_pair(:,:)
+  integer,allocatable,PUBLIC :: atommap(:),kk1map(:,:),k1map(:)
+  integer,allocatable,PUBLIC :: nlop_pair(:,:)
+  real(8),allocatable,PUBLIC :: Dij(:,:),Dij00(:),Dij0(:)
+  real(8),allocatable,PUBLIC :: qij(:),qij_f(:)
 
-  integer :: max_Rref=0,max_Lref=0,max_k2=0,max_qgrd=0
+  integer,PUBLIC :: max_Rref=0,max_Lref=0,max_k2=0,max_qgrd=0
 
 #ifdef _DRSDFT_
-  real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
+  real(8),allocatable,PUBLIC :: uVunk(:,:),uVunk0(:,:)
 #else
-  complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
+  complex(8),allocatable,PUBLIC :: uVunk(:,:),uVunk0(:,:)
 #endif
 
 
