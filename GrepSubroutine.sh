@@ -1,5 +1,7 @@
 #!/bin/sh
 
+alias sed='gsed'
+
 DIRPATH=$1
 
 rm SUBLOG
@@ -7,20 +9,15 @@ rm SUBLOG
 for FILE in ${DIRPATH}*.f90
 do
   echo ${FILE}  >> SUBLOG
-  grep 'SUBROUTINE ' ${FILE} >> SUBLOG
-  grep 'subroutine ' ${FILE} >> SUBLOG
-  grep 'Subroutine ' ${FILE} >> SUBLOG
+  grep -i 'SUBROUTINE ' ${FILE} >> SUBLOG
   echo >> SUBLOG
 done
-sed -ie '/ END SUBROUTINE/d' SUBLOG
-sed -ie '/ end subroutine/d' SUBLOG
-sed -ie '/ End Subroutine/d' SUBLOG
-sed -ie '/ End subroutine/d' SUBLOG
 sed -ie '/!/d' SUBLOG
 sed -ie 's///g' SUBLOG
-sed -ie 's/SUBROUTINE//g' SUBLOG
-sed -ie 's/Subroutine//g' SUBLOG
-sed -ie 's/subroutine//g' SUBLOG
+sed -ie 's/END SUBROUTINE/removeThis/i' SUBLOG
+sed -ie '/removeThis/d' SUBLOG
+sed -ie 's/SUBROUTINE//i' SUBLOG
+sed -ie 's/  RECURSIVE /R /i' SUBLOG
 
 exit 0
 

@@ -10,6 +10,9 @@ gsed -i 's///g' module_name.log
 
 diff module_head.log module_name.log
 exit 0
+
+
+
 grep 'f90' use.log1 > USELOG
 flineMax=`wc -l USELOG | tr -d [:alpha:]`
 echo $flineMax
