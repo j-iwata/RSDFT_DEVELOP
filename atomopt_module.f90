@@ -723,7 +723,7 @@ CONTAINS
              do i=nhist0,nhist
                 write(*,'(1x,i3,1x,g13.6,1x,g20.10,1x,3g13.5,i5)') &
                      i-nhist0,alpha_hist(i),Etot_hist(i) &
-                     ,grad_hist(i),Fmax_hist(i),dmax_hist(i),SCF_hist(nhist)
+                     ,grad_hist(i),Fmax_hist(i),dmax_hist(i),SCF_hist(i)
              end do
           end if
 
@@ -787,6 +787,12 @@ CONTAINS
 
        hi(1:3,1:Natom) = signh*hi(1:3,1:Natom)
 
+       most0=1
+
+!  Best structure on a line.
+
+       if ( myrank == 0 ) call write_atomic_coordinates(197)
+
 !
 ! --- Convergence check 3 ---
 !
@@ -809,12 +815,6 @@ CONTAINS
 
        end if
 
-       most0=1
-
-!  Best structure on a line.
-
-       if ( myrank == 0 ) call write_atomic_coordinates(197)
-
     end do opt_ion
 
 999 continue
@@ -829,7 +829,7 @@ CONTAINS
 
     if ( myrank == 0 ) disp_switch=.true.
 
-    call calc_total_energy(.false.,disp_switch)
+    call calc_total_energy(.true.,disp_switch)
 
     deallocate( Force )
     deallocate( aa_atom_0, gi, hi )

@@ -541,12 +541,12 @@ CONTAINS
     complex(8),parameter :: zi=(0.0d0,1.0d0),z0=(0.0d0,0.0d0)
     complex(8),allocatable :: zwork0(:),zwork(:,:,:),fftwork(:)
 #ifdef _DRSDFT_
-    integer,parameter :: TRANSA='T', TRANSB='N'
+    character(1),parameter :: TRANSA='T', TRANSB='N'
     real(8),allocatable :: wtmp3(:,:,:),wtmp4(:,:,:,:)
     real(8),allocatable :: vtmp3(:,:,:)
     real(8),allocatable :: utmp2(:,:)
 #else
-    integer,parameter :: TRANSA='C', TRANSB='N'
+    character(1),parameter :: TRANSA='C', TRANSB='N'
     complex(8),allocatable :: wtmp3(:,:,:),wtmp4(:,:,:,:)
     complex(8),allocatable :: vtmp3(:,:,:)
     complex(8),allocatable :: utmp2(:,:)

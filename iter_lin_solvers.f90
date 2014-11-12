@@ -42,7 +42,8 @@ MODULE iter_lin_solvers
 
   type(itargs), save :: iterative_method_args
 
-  type(solver_info),save, allocatable :: sol_info
+! type(solver_info),save,allocatable :: sol_info  ! -- This may be correct ...
+  type(solver_info),save :: sol_info              ! -- modified Nov 12,2014
 
   real(8) :: seed_val
   integer :: shift_count
