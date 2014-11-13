@@ -36,7 +36,9 @@ CONTAINS
 #endif
     real(8) :: Edummy
 
+#ifdef _DRSDFT_
     call calc_hartree_mol( n1, n2, 1, trho, tVh, Edummy )
+#endif
 
     return
   END SUBROUTINE Fock_cg

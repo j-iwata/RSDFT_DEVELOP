@@ -181,6 +181,7 @@ MDOBJ = $(DIR3)/cpmdio2_module.o\
         $(DIR3)/asign_atom.o\
         $(DIR3)/init_ion.o\
         $(DIR3)/alloc_cpmd.o\
+        $(DIR3)/blue_moon_module.o \
         $(DIR3)/bomd.o\
         $(DIR3)/getforce.o\
         $(DIR3)/getforce_cpmd.o\
