@@ -153,7 +153,7 @@ EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/ylm.o \
           $(DIR2)/dotp.o \
           $(DIR2)/spline.o\
-          $(DIR2)/convert_capital.o\
+          $(DIR2)/convert_capital.o
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o\

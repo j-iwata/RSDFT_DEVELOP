@@ -167,7 +167,7 @@ CONTAINS
               do j=1,MJJ_Q(kk1)
                 i=JJP_Q(j,kk1)
                 if ( i<nn1 .or. nn2<i ) then
-                  write(*,'(A,6I)') 'STOP *****  myrank,i,nn1,nn2,kk1,j=',myrank,i,nn1,nn2,kk1,j
+                  write(*,'(A,6I6)') 'STOP *****  myrank,i,nn1,nn2,kk1,j=',myrank,i,nn1,nn2,kk1,j
                   stop
                 end if
 #ifdef _DRSDFT_

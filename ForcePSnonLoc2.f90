@@ -668,16 +668,25 @@ enddo
             endif
 #else
             if (lma1==lma2) then
-              forceQ(1,a)=forceQ(1,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(0,m,s))*tmp1
-              forceQ(2,a)=forceQ(2,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(1,m,s))*tmp1
-              forceQ(3,a)=forceQ(3,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(2,m,s))*tmp1
+              forceQ(1,a)=forceQ(1,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(0,m,s))*tmp1
+              forceQ(2,a)=forceQ(2,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(1,m,s))*tmp1
+              forceQ(3,a)=forceQ(3,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(2,m,s))*tmp1
             else
-              forceQ(1,a)=forceQ(1,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(0,m,s))*tmp1
-              forceQ(2,a)=forceQ(2,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(1,m,s))*tmp1
-              forceQ(3,a)=forceQ(3,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(2,m,s))*tmp1
-              forceQ(1,a)=forceQ(1,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma2,MB_0:MB_1,k,s))*uVunk_tmp(lma1,MB_0:MB_1,k,s),8)*rtmp5(0,m,s))*tmp1
-              forceQ(2,a)=forceQ(2,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma2,MB_0:MB_1,k,s))*uVunk_tmp(lma1,MB_0:MB_1,k,s),8)*rtmp5(1,m,s))*tmp1
-              forceQ(3,a)=forceQ(3,a)+sum(occ(MB_0:MB_1,k,s)*real(conjg(uVunk_tmp(lma2,MB_0:MB_1,k,s))*uVunk_tmp(lma1,MB_0:MB_1,k,s),8)*rtmp5(2,m,s))*tmp1
+              forceQ(1,a)=forceQ(1,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(0,m,s))*tmp1
+              forceQ(2,a)=forceQ(2,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(1,m,s))*tmp1
+              forceQ(3,a)=forceQ(3,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma1,MB_0:MB_1,k,s))*uVunk_tmp(lma2,MB_0:MB_1,k,s),8)*rtmp5(2,m,s))*tmp1
+              forceQ(1,a)=forceQ(1,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma2,MB_0:MB_1,k,s))*uVunk_tmp(lma1,MB_0:MB_1,k,s),8)*rtmp5(0,m,s))*tmp1
+              forceQ(2,a)=forceQ(2,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma2,MB_0:MB_1,k,s))*uVunk_tmp(lma1,MB_0:MB_1,k,s),8)*rtmp5(1,m,s))*tmp1
+              forceQ(3,a)=forceQ(3,a)+sum(occ(MB_0:MB_1,k,s)* &
+                & real(conjg(uVunk_tmp(lma2,MB_0:MB_1,k,s))*uVunk_tmp(lma1,MB_0:MB_1,k,s),8)*rtmp5(2,m,s))*tmp1
             endif
 #endif
 !if (myrank==0) write(240,'(4I5,7g20.7)') s,k,n,m,tmp1,rtmp5(0,m,n,k,s),occ(n,k,s),dV,uVunk_tmp(lma1,n,k,s)

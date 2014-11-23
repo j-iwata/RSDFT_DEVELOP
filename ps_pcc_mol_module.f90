@@ -8,7 +8,7 @@ CONTAINS
 
   SUBROUTINE init_ps_pcc_mol
     use ps_pcc_module
-    flag_pcc0 = .false.
+    flag_pcc_0= .false.
   END SUBROUTINE init_ps_pcc_mol
 
 

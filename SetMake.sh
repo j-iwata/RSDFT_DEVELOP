@@ -2,6 +2,8 @@
 
 DIRPATH=$1
 
+alias sed=gsed
+
 rm USELOG
 rm Makefile.dep_o
 rm Makefile.dep_mod
@@ -34,19 +36,20 @@ do
       echo >> Makefile.dep_o
       echo >> Makefile.dep_mod
       echo "${moduleName}.o : ${moduleName}.f90" >> Makefile.dep_o
-      echo '	$(FC) $(FFLAGS) -c $<' >> Makefile.dep_o
-      echo "${moduleName}.mod : ${moduleName}.f90 ${moduleName}.o" >> Makefile.dep_mod
-      echo '	$(FC) $(FFLAGS) -c $<' >> Makefile.dep_mod
+      echo '	$(FC) $(FFLAGS) -c $(basename $@).f90 -o $@' >> Makefile.dep_o
+      echo "${moduleName}.mod : ${moduleName}.o" >> Makefile.dep_mod
+      echo '	@true' >> Makefile.dep_mod
     else
       echo "      ${moduleName}.mod" >> Makefile.dep_o
-      echo '	$(FC) $(FFLAGS) -c $<' >> Makefile.dep_o
+      echo '	$(FC) $(FFLAGS) -c $(basename $@).f90 -o $@' >> Makefile.dep_o
     fi
   else
     if `test $kf90 = f901` ; then
       echo >> Makefile.dep_o
       echo >> Makefile.dep_mod
       echo "${moduleName}.o : ${moduleName}.f90 \\" >> Makefile.dep_o
-      echo "${moduleName}.mod : ${moduleName}.f90 ${moduleName}.o" >> Makefile.dep_mod
+      echo "${moduleName}.mod : ${moduleName}.o" >> Makefile.dep_mod
+      echo '	@true' >> Makefile.dep_mod
     else
       echo "      ${moduleName}.mod \\" >> Makefile.dep_o
     fi

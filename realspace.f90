@@ -159,7 +159,7 @@ PROGRAM Real_Space_Solid
 
 ! --- initial set up for parallel computation ---
 
-  call test_bcast
+!  call test_bcast
 
   call prep_0_scalapack(Nband,disp_switch)
 
@@ -526,7 +526,8 @@ PROGRAM Real_Space_Solid
 
   totalScfTime=0.d0
   if ( disp_switch ) write(200,'(a40," start SCF")') repeat("-",40)
-  if ( isRootRank ) write(920,'(A4,12A15)') 'iter','Etot','Eewald','Ekin','Eloc','Enlc','Eion','E_hartree','Exc','E_exchange','E_correlation','Eeig','Ehwf'
+  if ( isRootRank ) write(920,'(A4,12A15)') 'iter','Etot','Eewald','Ekin','Eloc','Enlc', &
+    & 'Eion','E_hartree','Exc','E_exchange','E_correlation','Eeig','Ehwf'
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------SCF
   do iter=1,Diter
