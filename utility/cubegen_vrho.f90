@@ -48,6 +48,7 @@ PROGRAM cubegen_vrho
   open(u1,file='vrho.dat1',status='old',form='unformatted')
 
   read(u1) ML,ML1,ML2,ML3
+  write(*,*) "ML,ML1,ML2,ML3=",ML,ML1,ML2,ML3
 
   allocate( LL(3,ML) ) ; LL=0.0d0
   allocate( rtmp(ML) ) ; rtmp=0.0d0
@@ -77,6 +78,7 @@ PROGRAM cubegen_vrho
      if ( s == 2 ) then
         rho(:,:,:,1) = rho(:,:,:,1) - rho(:,:,:,2)
         call gen_cube( 1, rho(:,:,:,1), "dspin" )
+        write(*,*) "dspin(max,min)=",maxval(rho(:,:,:,1)),minval(rho(:,:,:,1))
      end if
 
      if ( s == 2 ) exit
