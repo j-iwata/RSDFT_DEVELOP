@@ -13,6 +13,8 @@ MODULE io_module
   use rgrid_mol_module, only: LL
   use kinetic_module, only: SYStype
 
+  use io2_module
+
   implicit none
 
   PRIVATE
@@ -548,7 +550,7 @@ CONTAINS
 !
 ! --- Read VRHO ---
 !
-    if ( IC==2 .or. IC==3 .or. IC==5 ) then
+    if ( IC==2 .or. IC==3 .or. IC==5 .or. IC==6 ) then
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
@@ -686,6 +688,13 @@ CONTAINS
 !
 ! --- Read WF ---
 !
+
+    if ( IC == 6 ) then
+       if ( allocated(LL_tmp) ) deallocate(LL_tmp)
+       if ( allocated(LL2) ) deallocate(LL2)
+       call read_data_io2( disp_switch )
+       return
+    end if
 
     if ( IC==1 .or. IC==3 .or. IC==4 .or. IC==5 ) then
 
