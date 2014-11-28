@@ -122,6 +122,7 @@ MODS1 = simc_module.o\
         mixing_broyden_module.o \
         mixing_module.o \
         esp_gather_module.o \
+        io2_module.o \
         io_module.o \
         force_module.o \
         force_mol_module.o \
