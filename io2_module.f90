@@ -70,10 +70,11 @@ CONTAINS
        read(3) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
        read(3) MB_tmp,MB1_tmp,MB2_tmp
        close(3)
-       write(*,*) "MB_0_IO,MB_1_IO=",MB_0_IO,MB_1_IO
+       write(*,*) "MB_0_IO,MB_1_IO=",1,MB_tmp
     end if
+    call mpi_bcast(MB_tmp,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     MB_0_IO=1
-    call mpi_bcast(MB_tmp,MB_1_IO,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    MB_1_IO=MB_tmp
 !---
   END SUBROUTINE read_io2
 
