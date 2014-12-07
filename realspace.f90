@@ -315,6 +315,17 @@ PROGRAM Real_Space_Solid
   call read_data(disp_switch)
   call watcht(disp_switch,"read_data",1)
 
+! the following GS shoule performed when MB1_tmp is smaller than Nband,
+! otherwise not necessary
+
+  do s=MSP_0,MSP_1
+  do k=MBZ_0,MBZ_1
+     call gram_schmidt(1,Nband,k,s)
+  end do
+  end do
+
+! ---
+
   if ( GetParam_IO(1) == 1 .or. GetParam_IO(1) >= 3 ) then
      call control_xc_hybrid(1)
   end if

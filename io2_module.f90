@@ -13,6 +13,7 @@ MODULE io2_module
 
   integer :: nprocs_new, nmax
   integer,allocatable :: nmap(:),iomap(:,:,:)
+  integer :: MB_0_IO, MB_1_IO
 
 CONTAINS
 
@@ -22,6 +23,8 @@ CONTAINS
     integer,intent(IN) :: rank
     integer,parameter  :: unit0=10
     integer :: i,j,ierr,idummy
+    integer :: ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
+    integer :: MB_tmp,MB1_tmp,MB2_tmp
     character(10) :: cbuf
 !---
     if ( rank == 0 ) then
@@ -62,6 +65,16 @@ CONTAINS
     call mpi_bcast(nmap,nprocs_new,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(iomap,size(iomap),mpi_integer,0,mpi_comm_world,ierr)
 !---
+    if ( myrank == 0 ) then
+       open(3,file="wf.dat1",status="old",form="unformatted")
+       read(3) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
+       read(3) MB_tmp,MB1_tmp,MB2_tmp
+       close(3)
+       write(*,*) "MB_0_IO,MB_1_IO=",MB_0_IO,MB_1_IO
+    end if
+    MB_0_IO=1
+    call mpi_bcast(MB_tmp,MB_1_IO,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+!---
   END SUBROUTINE read_io2
 
 
@@ -80,7 +93,7 @@ CONTAINS
     real(8),parameter :: z0=0.0d0
 #else
     complex(8),allocatable :: w(:,:,:)
-    complex(8),allocatable :: z0=(0.0d0,0.0d0)
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
 #endif
     if ( disp_switch_parallel ) then
        write(*,'(a40," read_data_io2")') repeat("-",60)
@@ -123,7 +136,7 @@ CONTAINS
        b3c=min(b3b,b3a)
        do s=MS_0_WF,MS_1_WF
        do k=MK_0_WF,MK_1_WF
-       do n=MB_0_WF,MB_1_WF
+       do n=MB_0_IO,MB_1_IO
           w=z0
           read(u1) w
           do i3=a3c,b3c
