@@ -1,4 +1,7 @@
 MODULE PStest
+!----------------------------------------------------------------------------
+! this module is for checking PS variables
+!----------------------------------------------------------------------------
   use VarPSMember
   use VarPSMemberG
   use VarParaPSnonLocG

@@ -1,4 +1,4 @@
-MODULE GScG
+MODULE GramSchmidt_G
   use rgrid_module, only: dV,zdV
   use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
@@ -374,4 +374,4 @@ write(400+myrank,*) "<<<<<< GramSchmidtGSub"
   END SUBROUTINE gram_schmidt_u
 #endif
 
-END MODULE GScG
+END MODULE GramSchmidt_G

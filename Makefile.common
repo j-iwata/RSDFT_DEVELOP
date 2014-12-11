@@ -1,5 +1,4 @@
-#include Makefile.dep_o
-#include Makefile.dep_mod
+include Makefile.dep.common
 
 MODS1 = simc_module.o\
         watch_module.o \
@@ -95,13 +94,13 @@ MODS1 = simc_module.o\
         hamiltonian_module.o\
         ewald_module.o\
         gram_schmidt_module.o \
-		GScG.o \
+		GramSchmidt_G.o \
         gram_schmidt_t_module.o \
         xc_pw92_gth_module.o\
         xc_module.o \
         subspace_diag_module.o \
         cgpc_module.o \
-		CGG.o \
+		ConjugateGradient_G.o \
         cg_module.o \
         fermi_mp_module.o\
         total_energy_module.o \

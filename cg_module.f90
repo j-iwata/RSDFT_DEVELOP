@@ -348,7 +348,7 @@ CONTAINS
 
 #elif defined _USPP_
   SUBROUTINE conjugate_gradient( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
-    use CGG
+    use ConjugateGradient_G
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
 #ifdef _DRSDFT_

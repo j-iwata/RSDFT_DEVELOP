@@ -7,7 +7,7 @@ MODULE gram_schmidt_t_module
 
 !--------------------------------------------------------------------------- 20140507 HL
 #ifdef _USPP_
-    use GScG, only: GramSchmidtG
+    use GramSchmidt_G, only: GramSchmidtG
 #endif
 !=========================================================================== 20140507 HL
 

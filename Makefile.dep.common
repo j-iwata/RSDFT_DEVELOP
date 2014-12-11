@@ -1,0 +1,1597 @@
+aa_module.mod: aa_module.o
+	@true
+aa_module.o: aa_module.f90
+	$(FC) $(FFLAGS) -c aa_module.f90 -o $@
+
+atom_module.mod: atom_module.o
+	@true
+atom_module.o: atom_module.f90
+	$(FC) $(FFLAGS) -c atom_module.f90 -o $@
+
+bb_module.mod: bb_module.o
+	@true
+bb_module.o: bb_module.f90
+	$(FC) $(FFLAGS) -c bb_module.f90 -o $@
+
+bberf_module.mod: bberf_module.o
+	@true
+bberf_module.o: bberf_module.f90
+	$(FC) $(FFLAGS) -c bberf_module.f90 -o $@
+
+bcast_module.mod: bcast_module.o
+	@true
+bcast_module.o: bcast_module.f90
+	$(FC) $(FFLAGS) -c bcast_module.f90 -o $@
+
+bz_module.mod: bz_module.o
+	@true
+bz_module.o: bz_module.f90
+	$(FC) $(FFLAGS) -c bz_module.f90 -o $@
+
+expint_module.mod: expint_module.o
+	@true
+expint_module.o: expint_module.f90
+	$(FC) $(FFLAGS) -c expint_module.f90 -o $@
+
+fd_module.mod: fd_module.o
+	@true
+fd_module.o: fd_module.f90
+	$(FC) $(FFLAGS) -c fd_module.f90 -o $@
+
+fermi_module.mod: fermi_module.o
+	@true
+fermi_module.o: fermi_module.f90
+	$(FC) $(FFLAGS) -c fermi_module.f90 -o $@
+
+fermi_mp_module.mod: fermi_mp_module.o
+	@true
+fermi_mp_module.o: fermi_mp_module.f90
+	$(FC) $(FFLAGS) -c fermi_mp_module.f90 -o $@
+
+ffte_sub_module.mod: ffte_sub_module.o
+	@true
+ffte_sub_module.o: ffte_sub_module.f90
+	$(FC) $(FFLAGS) -c ffte_sub_module.f90 -o $@
+
+Filtering.mod: Filtering.o
+	@true
+Filtering.o: Filtering.f90
+	$(FC) $(FFLAGS) -c Filtering.f90 -o $@
+
+info_module.mod: info_module.o
+	@true
+info_module.o: info_module.f90
+	$(FC) $(FFLAGS) -c info_module.f90 -o $@
+
+init_occ_electron_module.mod: init_occ_electron_module.o
+	@true
+init_occ_electron_module.o: init_occ_electron_module.f90
+	$(FC) $(FFLAGS) -c init_occ_electron_module.f90 -o $@
+
+localpot2_variables.mod: localpot2_variables.o
+	@true
+localpot2_variables.o: localpot2_variables.f90
+	$(FC) $(FFLAGS) -c localpot2_variables.f90 -o $@
+
+maskf_module.mod: maskf_module.o
+	@true
+maskf_module.o: maskf_module.f90
+	$(FC) $(FFLAGS) -c maskf_module.f90 -o $@
+
+modified_bessel_module.mod: modified_bessel_module.o
+	@true
+modified_bessel_module.o: modified_bessel_module.f90
+	$(FC) $(FFLAGS) -c modified_bessel_module.f90 -o $@
+
+omp_variables.mod: omp_variables.o
+	@true
+omp_variables.o: omp_variables.f90
+	$(FC) $(FFLAGS) -c omp_variables.f90 -o $@
+
+parallel_module.mod: parallel_module.o
+	@true
+parallel_module.o: parallel_module.f90
+	$(FC) $(FFLAGS) -c parallel_module.f90 -o $@
+
+ps_read_YB_module.mod: ps_read_YB_module.o
+	@true
+ps_read_YB_module.o: ps_read_YB_module.f90
+	$(FC) $(FFLAGS) -c ps_read_YB_module.f90 -o $@
+
+RealComplex.mod: RealComplex.o
+	@true
+RealComplex.o: RealComplex.f90
+	$(FC) $(FFLAGS) -c RealComplex.f90 -o $@
+
+rgrid_module.mod: rgrid_module.o
+	@true
+rgrid_module.o: rgrid_module.f90
+	$(FC) $(FFLAGS) -c rgrid_module.f90 -o $@
+
+rsdft_mpi_module.mod: rsdft_mpi_module.o
+	@true
+rsdft_mpi_module.o: rsdft_mpi_module.f90
+	$(FC) $(FFLAGS) -c rsdft_mpi_module.f90 -o $@
+
+simc_module.mod: simc_module.o
+	@true
+simc_module.o: simc_module.f90
+	$(FC) $(FFLAGS) -c simc_module.f90 -o $@
+
+timer_module.mod: timer_module.o
+	@true
+timer_module.o: timer_module.f90
+	$(FC) $(FFLAGS) -c timer_module.f90 -o $@
+
+VarPara.mod: VarPara.o
+	@true
+VarPara.o: VarPara.f90
+	$(FC) $(FFLAGS) -c VarPara.f90 -o $@
+
+VarParaPSnonLocG.mod: VarParaPSnonLocG.o
+	@true
+VarParaPSnonLocG.o: VarParaPSnonLocG.f90
+	$(FC) $(FFLAGS) -c VarParaPSnonLocG.f90 -o $@
+
+VarSysParameter.mod: VarSysParameter.o
+	@true
+VarSysParameter.o: VarSysParameter.f90
+	$(FC) $(FFLAGS) -c VarSysParameter.f90 -o $@
+
+watch_module.mod: watch_module.o
+	@true
+watch_module.o: watch_module.f90
+	$(FC) $(FFLAGS) -c watch_module.f90 -o $@
+
+xc_hybrid_module.mod: xc_hybrid_module.o
+	@true
+xc_hybrid_module.o: xc_hybrid_module.f90
+	$(FC) $(FFLAGS) -c xc_hybrid_module.f90 -o $@
+
+xc_pw92_gth_module.mod: xc_pw92_gth_module.o
+	@true
+xc_pw92_gth_module.o: xc_pw92_gth_module.f90
+	$(FC) $(FFLAGS) -c xc_pw92_gth_module.f90 -o $@
+
+array_bound_module.mod: array_bound_module.o
+	@true
+array_bound_module.o: array_bound_module.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c array_bound_module.f90 -o $@
+
+bc_module.mod: bc_module.o
+	@true
+bc_module.o: bc_module.f90 \
+                 rgrid_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c bc_module.f90 -o $@
+
+esm_rgrid_module.mod: esm_rgrid_module.o
+	@true
+esm_rgrid_module.o: esm_rgrid_module.f90 \
+                 rgrid_module.mod \
+                 aa_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c esm_rgrid_module.f90 -o $@
+
+esm_rshell_module.mod: esm_rshell_module.o
+	@true
+esm_rshell_module.o: esm_rshell_module.f90 \
+                 aa_module.mod
+	$(FC) $(FFLAGS) -c esm_rshell_module.f90 -o $@
+
+esp_gather_module.mod: esp_gather_module.o
+	@true
+esp_gather_module.o: esp_gather_module.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c esp_gather_module.f90 -o $@
+
+ggrid_module.mod: ggrid_module.o
+	@true
+ggrid_module.o: ggrid_module.f90 \
+                 bb_module.mod \
+                 rgrid_module.mod
+	$(FC) $(FFLAGS) -c ggrid_module.f90 -o $@
+
+localpot2_xc_module.mod: localpot2_xc_module.o
+	@true
+localpot2_xc_module.o: localpot2_xc_module.f90 \
+                 parallel_module.mod \
+                 rgrid_module.mod \
+                 localpot2_variables.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c localpot2_xc_module.f90 -o $@
+
+minimal_box_module.mod: minimal_box_module.o
+	@true
+minimal_box_module.o: minimal_box_module.f90 \
+                 aa_module.mod \
+                 rgrid_module.mod
+	$(FC) $(FFLAGS) -c minimal_box_module.f90 -o $@
+
+mixing_module.mod: mixing_module.o
+	@true
+mixing_module.o: mixing_module.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c mixing_module.f90 -o $@
+
+ParaRGridComm.mod: ParaRGridComm.o
+	@true
+ParaRGridComm.o: ParaRGridComm.f90 \
+                 parallel_module.mod \
+                 VarPara.mod
+	$(FC) $(FFLAGS) -c ParaRGridComm.f90 -o $@
+
+ps_nloc2_variables.mod: ps_nloc2_variables.o
+	@true
+ps_nloc2_variables.o: ps_nloc2_variables.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc2_variables.f90 -o $@
+
+scalapack_module.mod: scalapack_module.o
+	@true
+scalapack_module.o: scalapack_module.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c scalapack_module.f90 -o $@
+
+subspace_diag_module.mod: subspace_diag_module.o
+	@true
+subspace_diag_module.o: subspace_diag_module.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c subspace_diag_module.f90 -o $@
+
+VarPSMember.mod: VarPSMember.o
+	@true
+VarPSMember.o: VarPSMember.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c VarPSMember.f90 -o $@
+
+VarPSMemberG.mod: VarPSMemberG.o
+	@true
+VarPSMemberG.o: VarPSMemberG.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c VarPSMemberG.f90 -o $@
+
+wf_module.mod: wf_module.o
+	@true
+wf_module.o: wf_module.f90 \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c wf_module.f90 -o $@
+
+band_analysis_module.mod: band_analysis_module.o
+	@true
+band_analysis_module.o: band_analysis_module.f90 \
+                 wf_module.mod \
+                 parallel_module.mod \
+                 rgrid_module.mod \
+                 aa_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c band_analysis_module.f90 -o $@
+
+esm_kinetic_module.mod: esm_kinetic_module.o
+	@true
+esm_kinetic_module.o: esm_kinetic_module.f90 \
+                 esm_rgrid_module.mod \
+                 rgrid_module.mod \
+                 bc_module.mod \
+                 fd_module.mod
+	$(FC) $(FFLAGS) -c esm_kinetic_module.f90 -o $@
+
+fock_fft_module.mod: fock_fft_module.o
+	@true
+fock_fft_module.o: fock_fft_module.f90 \
+                 parallel_module.mod \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 bb_module.mod \
+                 xc_hybrid_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c fock_fft_module.f90 -o $@
+
+fock_fft_module_pzfft3dv.mod: fock_fft_module_pzfft3dv.o
+	@true
+fock_fft_module_pzfft3dv.o: fock_fft_module_pzfft3dv.f90 \
+                 parallel_module.mod \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 bb_module.mod \
+                 xc_hybrid_module.mod \
+                 watch_module.mod \
+                 bz_module.mod \
+                 omp_variables.mod
+	$(FC) $(FFLAGS) -c fock_fft_module_pzfft3dv.f90 -o $@
+
+ForceSub.mod: ForceSub.o
+	@true
+ForceSub.o: ForceSub.f90 \
+                 parallel_module.mod \
+                 ps_nloc2_variables.mod \
+                 atom_module.mod \
+                 VarParaPSnonLocG.mod \
+                 VarPSMemberG.mod \
+                 aa_module.mod \
+                 VarPSMember.mod
+	$(FC) $(FFLAGS) -c ForceSub.f90 -o $@
+
+func2gp_module.mod: func2gp_module.o
+	@true
+func2gp_module.o: func2gp_module.f90 \
+                 esm_rgrid_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c func2gp_module.f90 -o $@
+
+gram_schmidt_module.mod: gram_schmidt_module.o
+	@true
+gram_schmidt_module.o: gram_schmidt_module.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c gram_schmidt_module.f90 -o $@
+
+localpot2_module.mod: localpot2_module.o
+	@true
+localpot2_module.o: localpot2_module.f90 \
+                 rgrid_module.mod \
+                 localpot2_variables.mod \
+                 watch_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c localpot2_module.f90 -o $@
+
+ps_nloc2_init_module.mod: ps_nloc2_init_module.o
+	@true
+ps_nloc2_init_module.o: ps_nloc2_init_module.f90 \
+                 parallel_module.mod \
+                 VarPSMember.mod \
+                 Filtering.mod \
+                 atom_module.mod \
+                 maskf_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc2_init_module.f90 -o $@
+
+PSnonLocOpG2.mod: PSnonLocOpG2.o
+	@true
+PSnonLocOpG2.o: PSnonLocOpG2.f90 \
+                 parallel_module.mod \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod \
+                 ps_nloc2_variables.mod \
+                 rgrid_module.mod \
+                 ParaRGridComm.mod
+	$(FC) $(FFLAGS) -c PSnonLocOpG2.f90 -o $@
+
+PSQInit.mod: PSQInit.o
+	@true
+PSQInit.o: PSQInit.f90 \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod \
+                 parallel_module.mod \
+                 VarSysParameter.mod \
+                 maskf_module.mod \
+                 Filtering.mod
+	$(FC) $(FFLAGS) -c PSQInit.f90 -o $@
+
+PSreadPSV.mod: PSreadPSV.o
+	@true
+PSreadPSV.o: PSreadPSV.f90 \
+                 VarPSMember.mod
+	$(FC) $(FFLAGS) -c PSreadPSV.f90 -o $@
+
+PSReadPSVG.mod: PSReadPSVG.o
+	@true
+PSReadPSVG.o: PSReadPSVG.f90 \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod
+	$(FC) $(FFLAGS) -c PSReadPSVG.f90 -o $@
+
+PStest.mod: PStest.o
+	@true
+PStest.o: PStest.f90 \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod \
+                 VarParaPSnonLocG.mod \
+                 ps_nloc2_variables.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c PStest.f90 -o $@
+
+rgrid_mol_module.mod: rgrid_mol_module.o
+	@true
+rgrid_mol_module.o: rgrid_mol_module.f90 \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c rgrid_mol_module.f90 -o $@
+
+strfac_module.mod: strfac_module.o
+	@true
+strfac_module.o: strfac_module.f90 \
+                 ggrid_module.mod \
+                 atom_module.mod
+	$(FC) $(FFLAGS) -c strfac_module.f90 -o $@
+
+subspace_rotv_sl_0_module.mod: subspace_rotv_sl_0_module.o
+	@true
+subspace_rotv_sl_0_module.o: subspace_rotv_sl_0_module.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 scalapack_module.mod \
+                 parallel_module.mod \
+                 subspace_diag_module.mod \
+                 array_bound_module.mod \
+                 watch_module.mod \
+                 bcast_module.mod
+	$(FC) $(FFLAGS) -c subspace_rotv_sl_0_module.f90 -o $@
+
+subspace_rotv_sl_module.mod: subspace_rotv_sl_module.o
+	@true
+subspace_rotv_sl_module.o: subspace_rotv_sl_module.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 scalapack_module.mod \
+                 parallel_module.mod \
+                 subspace_diag_module.mod \
+                 array_bound_module.mod \
+                 bcast_module.mod
+	$(FC) $(FFLAGS) -c subspace_rotv_sl_module.f90 -o $@
+
+subspace_solv_sl_module.mod: subspace_solv_sl_module.o
+	@true
+subspace_solv_sl_module.o: subspace_solv_sl_module.f90 \
+                 wf_module.mod \
+                 scalapack_module.mod \
+                 subspace_diag_module.mod
+	$(FC) $(FFLAGS) -c subspace_solv_sl_module.f90 -o $@
+
+bc_mol_module.mod: bc_mol_module.o
+	@true
+bc_mol_module.o: bc_mol_module.f90 \
+                 bc_module.mod \
+                 rgrid_mol_module.mod
+	$(FC) $(FFLAGS) -c bc_mol_module.f90 -o $@
+
+kinetic_mol_module.mod: kinetic_mol_module.o
+	@true
+kinetic_mol_module.o: kinetic_mol_module.f90 \
+                 rgrid_mol_module.mod \
+                 bc_module.mod \
+                 fd_module.mod
+	$(FC) $(FFLAGS) -c kinetic_mol_module.f90 -o $@
+
+localpot2_vh_module.mod: localpot2_vh_module.o
+	@true
+localpot2_vh_module.o: localpot2_vh_module.f90 \
+                 rgrid_module.mod \
+                 bb_module.mod \
+                 localpot2_module.mod \
+                 localpot2_variables.mod \
+                 parallel_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c localpot2_vh_module.f90 -o $@
+
+localpot_module.mod: localpot_module.o
+	@true
+localpot_module.o: localpot_module.f90 \
+                 rgrid_module.mod \
+                 array_bound_module.mod \
+                 localpot2_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c localpot_module.f90 -o $@
+
+pseudopot_module.mod: pseudopot_module.o
+	@true
+pseudopot_module.o: pseudopot_module.f90 \
+                 parallel_module.mod \
+                 ps_read_YB_module.mod \
+                 VarPSMember.mod \
+                 PSreadPSV.mod \
+                 VarPSMemberG.mod \
+                 PSReadPSVG.mod
+	$(FC) $(FFLAGS) -c pseudopot_module.f90 -o $@
+
+eion_mol_module.mod: eion_mol_module.o
+	@true
+eion_mol_module.o: eion_mol_module.f90 \
+                 pseudopot_module.mod \
+                 atom_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c eion_mol_module.f90 -o $@
+
+electron_module.mod: electron_module.o
+	@true
+electron_module.o: electron_module.f90 \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 bz_module.mod
+	$(FC) $(FFLAGS) -c electron_module.f90 -o $@
+
+esm_ion_module.mod: esm_ion_module.o
+	@true
+esm_ion_module.o: esm_ion_module.f90 \
+                 aa_module.mod \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 modified_bessel_module.mod \
+                 esm_rgrid_module.mod
+	$(FC) $(FFLAGS) -c esm_ion_module.f90 -o $@
+
+ewald_module.mod: ewald_module.o
+	@true
+ewald_module.o: ewald_module.f90 \
+                 aa_module.mod \
+                 bb_module.mod \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 parallel_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c ewald_module.f90 -o $@
+
+force_ion_mol_module.mod: force_ion_mol_module.o
+	@true
+force_ion_mol_module.o: force_ion_mol_module.f90 \
+                 atom_module.mod \
+                 pseudopot_module.mod
+	$(FC) $(FFLAGS) -c force_ion_mol_module.f90 -o $@
+
+ForcePSnonLoc2.mod: ForcePSnonLoc2.o
+	@true
+ForcePSnonLoc2.o: ForcePSnonLoc2.f90 \
+                 atom_module.mod \
+                 aa_module.mod \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod \
+                 rgrid_module.mod \
+                 array_bound_module.mod \
+                 parallel_module.mod \
+                 localpot_module.mod \
+                 ParaRGridComm.mod \
+                 ForceSub.mod \
+                 bz_module.mod \
+                 wf_module.mod \
+                 watch_module.mod \
+                 ps_nloc2_variables.mod \
+                 VarParaPSnonLocG.mod
+	$(FC) $(FFLAGS) -c ForcePSnonLoc2.f90 -o $@
+
+InnerProduct.mod: InnerProduct.o
+	@true
+InnerProduct.o: InnerProduct.f90 \
+                 watch_module.mod \
+                 ps_nloc2_variables.mod \
+                 pseudopot_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 VarPSMemberG.mod \
+                 wf_module.mod \
+                 RealComplex.mod \
+                 ParaRGridComm.mod
+	$(FC) $(FFLAGS) -c InnerProduct.f90 -o $@
+
+kinetic_module.mod: kinetic_module.o
+	@true
+kinetic_module.o: kinetic_module.f90 \
+                 rgrid_module.mod \
+                 kinetic_mol_module.mod \
+                 esm_kinetic_module.mod \
+                 fd_module.mod \
+                 bc_module.mod
+	$(FC) $(FFLAGS) -c kinetic_module.f90 -o $@
+
+ps_gth_module.mod: ps_gth_module.o
+	@true
+ps_gth_module.o: ps_gth_module.f90 \
+                 atom_module.mod \
+                 pseudopot_module.mod
+	$(FC) $(FFLAGS) -c ps_gth_module.f90 -o $@
+
+ps_nloc1_module.mod: ps_nloc1_module.o
+	@true
+ps_nloc1_module.o: ps_nloc1_module.f90 \
+                 pseudopot_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc1_module.f90 -o $@
+
+ps_nloc2_mol_module.mod: ps_nloc2_mol_module.o
+	@true
+ps_nloc2_mol_module.o: ps_nloc2_mol_module.f90 \
+                 rgrid_module.mod \
+                 rgrid_mol_module.mod \
+                 atom_module.mod \
+                 array_bound_module.mod \
+                 parallel_module.mod \
+                 pseudopot_module.mod \
+                 ps_nloc2_init_module.mod \
+                 ps_nloc2_variables.mod \
+                 minimal_box_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc2_mol_module.f90 -o $@
+
+ps_pcc_module.mod: ps_pcc_module.o
+	@true
+ps_pcc_module.o: ps_pcc_module.f90 \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 atom_module.mod \
+                 strfac_module.mod \
+                 pseudopot_module.mod
+	$(FC) $(FFLAGS) -c ps_pcc_module.f90 -o $@
+
+PSnonLocDij.mod: PSnonLocDij.o
+	@true
+PSnonLocDij.o: PSnonLocDij.f90 \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 VarPSMemberG.mod \
+                 VarParaPSnonLocG.mod \
+                 ParaRGridComm.mod \
+                 localpot_module.mod \
+                 rgrid_module.mod \
+                 pseudopot_module.mod
+	$(FC) $(FFLAGS) -c PSnonLocDij.f90 -o $@
+
+vloc_rho_mol_module.mod: vloc_rho_mol_module.o
+	@true
+vloc_rho_mol_module.o: vloc_rho_mol_module.f90 \
+                 bberf_module.mod \
+                 rgrid_mol_module.mod \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 bc_module.mod \
+                 array_bound_module.mod \
+                 fd_module.mod
+	$(FC) $(FFLAGS) -c vloc_rho_mol_module.f90 -o $@
+
+cgpc_module.mod: cgpc_module.o
+	@true
+cgpc_module.o: cgpc_module.f90 \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 kinetic_module.mod \
+                 bc_module.mod \
+                 rgrid_mol_module.mod \
+                 array_bound_module.mod \
+                 esm_rgrid_module.mod
+	$(FC) $(FFLAGS) -c cgpc_module.f90 -o $@
+
+fock_module.mod: fock_module.o
+	@true
+fock_module.o: fock_module.f90 \
+                 xc_hybrid_module.mod \
+                 bb_module.mod \
+                 bz_module.mod \
+                 electron_module.mod \
+                 array_bound_module.mod \
+                 wf_module.mod \
+                 fock_fft_module.mod
+	$(FC) $(FFLAGS) -c fock_module.f90 -o $@
+
+force_nloc2_mol_module.mod: force_nloc2_mol_module.o
+	@true
+force_nloc2_mol_module.o: force_nloc2_mol_module.f90 \
+                 parallel_module.mod \
+                 rgrid_module.mod \
+                 rgrid_mol_module.mod \
+                 wf_module.mod \
+                 electron_module.mod \
+                 array_bound_module.mod \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 ps_nloc2_variables.mod \
+                 ps_nloc2_init_module.mod
+	$(FC) $(FFLAGS) -c force_nloc2_mol_module.f90 -o $@
+
+GramSchmidt_G.mod: GramSchmidt_G.o
+	@true
+GramSchmidt_G.o: GramSchmidt_G.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 array_bound_module.mod \
+                 parallel_module.mod \
+                 RealComplex.mod \
+                 InnerProduct.mod
+	$(FC) $(FFLAGS) -c GramSchmidt_G.f90 -o $@
+
+hartree_mol_module.mod: hartree_mol_module.o
+	@true
+hartree_mol_module.o: hartree_mol_module.f90 \
+                 rgrid_mol_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 bc_module.mod \
+                 fd_module.mod \
+                 kinetic_module.mod \
+                 atom_module.mod
+	$(FC) $(FFLAGS) -c hartree_mol_module.f90 -o $@
+
+localpot2_density_module.mod: localpot2_density_module.o
+	@true
+localpot2_density_module.o: localpot2_density_module.f90 \
+                 localpot2_variables.mod \
+                 wf_module.mod \
+                 array_bound_module.mod \
+                 rgrid_module.mod \
+                 electron_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c localpot2_density_module.f90 -o $@
+
+localpot2_ion_module.mod: localpot2_ion_module.o
+	@true
+localpot2_ion_module.o: localpot2_ion_module.f90 \
+                 pseudopot_module.mod \
+                 aa_module.mod \
+                 bb_module.mod \
+                 atom_module.mod \
+                 simc_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 localpot2_module.mod \
+                 array_bound_module.mod \
+                 electron_module.mod \
+                 wf_module.mod \
+                 watch_module.mod \
+                 ggrid_module.mod \
+                 strfac_module.mod \
+                 localpot2_variables.mod
+	$(FC) $(FFLAGS) -c localpot2_ion_module.f90 -o $@
+
+localpot2_iongth_module.mod: localpot2_iongth_module.o
+	@true
+localpot2_iongth_module.o: localpot2_iongth_module.f90 \
+                 pseudopot_module.mod \
+                 ps_gth_module.mod \
+                 aa_module.mod \
+                 bb_module.mod \
+                 atom_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 localpot2_module.mod \
+                 array_bound_module.mod \
+                 electron_module.mod \
+                 wf_module.mod
+	$(FC) $(FFLAGS) -c localpot2_iongth_module.f90 -o $@
+
+momentum_module.mod: momentum_module.o
+	@true
+momentum_module.o: momentum_module.f90 \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 bz_module.mod \
+                 bb_module.mod \
+                 kinetic_module.mod \
+                 bc_module.mod \
+                 ps_nloc2_variables.mod \
+                 atom_module.mod
+	$(FC) $(FFLAGS) -c momentum_module.f90 -o $@
+
+ps_local_gth_module.mod: ps_local_gth_module.o
+	@true
+ps_local_gth_module.o: ps_local_gth_module.f90 \
+                 pseudopot_module.mod \
+                 ps_gth_module.mod \
+                 aa_module.mod
+	$(FC) $(FFLAGS) -c ps_local_gth_module.f90 -o $@
+
+ps_nloc3_module.mod: ps_nloc3_module.o
+	@true
+ps_nloc3_module.o: ps_nloc3_module.f90 \
+                 pseudopot_module.mod \
+                 bb_module.mod \
+                 aa_module.mod \
+                 atom_module.mod \
+                 array_bound_module.mod \
+                 ggrid_module.mod \
+                 bz_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 wf_module.mod \
+                 electron_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc3_module.f90 -o $@
+
+ps_nloc_gth_module.mod: ps_nloc_gth_module.o
+	@true
+ps_nloc_gth_module.o: ps_nloc_gth_module.f90 \
+                 aa_module.mod \
+                 rgrid_module.mod \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 ps_gth_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc_gth_module.f90 -o $@
+
+ps_nloc_hgh_module.mod: ps_nloc_hgh_module.o
+	@true
+ps_nloc_hgh_module.o: ps_nloc_hgh_module.f90 \
+                 aa_module.mod \
+                 rgrid_module.mod \
+                 atom_module.mod \
+                 pseudopot_module.mod \
+                 ps_gth_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc_hgh_module.f90 -o $@
+
+ps_pcc_mol_module.mod: ps_pcc_mol_module.o
+	@true
+ps_pcc_mol_module.o: ps_pcc_mol_module.f90 \
+                 ps_pcc_module.mod
+	$(FC) $(FFLAGS) -c ps_pcc_mol_module.f90 -o $@
+
+PSnonLocPrepG.mod: PSnonLocPrepG.o
+	@true
+PSnonLocPrepG.o: PSnonLocPrepG.f90 \
+                 parallel_module.mod \
+                 VarPSMemberG.mod \
+                 VarPSMember.mod \
+                 atom_module.mod \
+                 ps_nloc2_variables.mod \
+                 electron_module.mod
+	$(FC) $(FFLAGS) -c PSnonLocPrepG.f90 -o $@
+
+WFDensityG.mod: WFDensityG.o
+	@true
+WFDensityG.o: WFDensityG.f90 \
+                 rgrid_module.mod \
+                 electron_module.mod \
+                 wf_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 RealComplex.mod \
+                 ps_nloc2_variables.mod \
+                 pseudopot_module.mod \
+                 VarPSMemberG.mod \
+                 VarParaPSnonLocG.mod \
+                 ParaRGridComm.mod
+	$(FC) $(FFLAGS) -c WFDensityG.f90 -o $@
+
+WFtest.mod: WFtest.o
+	@true
+WFtest.o: WFtest.f90 \
+                 InnerProduct.mod \
+                 wf_module.mod \
+                 parallel_module.mod \
+                 RealComplex.mod
+	$(FC) $(FFLAGS) -c WFtest.f90 -o $@
+
+density_module.mod: density_module.o
+	@true
+density_module.o: density_module.f90 \
+                 wf_module.mod \
+                 parallel_module.mod \
+                 WFDensityG.mod \
+                 VarSysParameter.mod
+	$(FC) $(FFLAGS) -c density_module.f90 -o $@
+
+gram_schmidt_t_module.mod: gram_schmidt_t_module.o
+	@true
+gram_schmidt_t_module.o: gram_schmidt_t_module.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 array_bound_module.mod \
+                 parallel_module.mod \
+                 GramSchmidt_G.mod
+	$(FC) $(FFLAGS) -c gram_schmidt_t_module.f90 -o $@
+
+hartree_cg_module.mod: hartree_cg_module.o
+	@true
+hartree_cg_module.o: hartree_cg_module.f90 \
+                 hartree_mol_module.mod \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 parallel_module.mod \
+                 electron_module.mod \
+                 kinetic_module.mod
+	$(FC) $(FFLAGS) -c hartree_cg_module.f90 -o $@
+
+ps_nloc_mr_module.mod: ps_nloc_mr_module.o
+	@true
+ps_nloc_mr_module.o: ps_nloc_mr_module.f90 \
+                 aa_module.mod \
+                 atom_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 pseudopot_module.mod \
+                 ps_nloc2_init_module.mod \
+                 ps_nloc2_variables.mod \
+                 ps_gth_module.mod \
+                 ps_nloc_hgh_module.mod \
+                 minimal_box_module.mod \
+                 bz_module.mod \
+                 watch_module.mod \
+                 wf_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc_mr_module.f90 -o $@
+
+ps_initrho_module.mod: ps_initrho_module.o
+	@true
+ps_initrho_module.o: ps_initrho_module.f90 \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 atom_module.mod \
+                 strfac_module.mod \
+                 density_module.mod \
+                 pseudopot_module.mod \
+                 electron_module.mod \
+                 parallel_module.mod \
+                 aa_module.mod
+	$(FC) $(FFLAGS) -c ps_initrho_module.f90 -o $@
+
+ps_initrho_mol_module.mod: ps_initrho_mol_module.o
+	@true
+ps_initrho_mol_module.o: ps_initrho_mol_module.f90 \
+                 pseudopot_module.mod \
+                 atom_module.mod \
+                 array_bound_module.mod \
+                 density_module.mod \
+                 rgrid_mol_module.mod
+	$(FC) $(FFLAGS) -c ps_initrho_mol_module.f90 -o $@
+
+ps_local_rs_module.mod: ps_local_rs_module.o
+	@true
+ps_local_rs_module.o: ps_local_rs_module.f90 \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 atom_module.mod \
+                 strfac_module.mod \
+                 bb_module.mod \
+                 density_module.mod \
+                 electron_module.mod \
+                 pseudopot_module.mod \
+                 parallel_module.mod \
+                 aa_module.mod \
+                 esm_rgrid_module.mod \
+                 esm_rshell_module.mod \
+                 simc_module.mod
+	$(FC) $(FFLAGS) -c ps_local_rs_module.f90 -o $@
+
+ps_nloc2_module.mod: ps_nloc2_module.o
+	@true
+ps_nloc2_module.o: ps_nloc2_module.f90 \
+                 VarSysParameter.mod \
+                 aa_module.mod \
+                 atom_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 pseudopot_module.mod \
+                 ps_nloc2_init_module.mod \
+                 ps_nloc2_variables.mod \
+                 ps_nloc_gth_module.mod \
+                 ps_nloc_mr_module.mod \
+                 ps_nloc3_module.mod \
+                 rgrid_mol_module.mod \
+                 ParaRGridComm.mod \
+                 ForcePSnonLoc2.mod \
+                 minimal_box_module.mod \
+                 bz_module.mod \
+                 watch_module.mod \
+                 wf_module.mod \
+                 esm_rgrid_module.mod
+	$(FC) $(FFLAGS) -c ps_nloc2_module.f90 -o $@
+
+TestModule.mod: TestModule.o
+	@true
+TestModule.o: TestModule.f90 \
+                 parallel_module.mod \
+                 wf_module.mod \
+                 density_module.mod \
+                 localpot_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c TestModule.f90 -o $@
+
+xc_hse_module.mod: xc_hse_module.o
+	@true
+xc_hse_module.o: xc_hse_module.f90 \
+                 aa_module.mod \
+                 bb_module.mod \
+                 rgrid_module.mod \
+                 array_bound_module.mod \
+                 kinetic_module.mod \
+                 density_module.mod \
+                 electron_module.mod \
+                 parallel_module.mod \
+                 ps_pcc_module.mod \
+                 bc_module.mod \
+                 xc_hybrid_module.mod \
+                 wf_module.mod \
+                 bz_module.mod \
+                 fd_module.mod \
+                 expint_module.mod \
+                 rsdft_mpi_module.mod \
+                 fock_fft_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c xc_hse_module.f90 -o $@
+
+esm_genpot_module.mod: esm_genpot_module.o
+	@true
+esm_genpot_module.o: esm_genpot_module.f90 \
+                 aa_module.mod \
+                 rgrid_module.mod \
+                 esm_rgrid_module.mod \
+                 ps_local_rs_module.mod \
+                 modified_bessel_module.mod \
+                 parallel_module.mod \
+                 kinetic_module.mod \
+                 bc_module.mod \
+                 fd_module.mod \
+                 pseudopot_module.mod
+	$(FC) $(FFLAGS) -c esm_genpot_module.f90 -o $@
+
+nonlocal_module.mod: nonlocal_module.o
+	@true
+nonlocal_module.o: nonlocal_module.f90 \
+                 pseudopot_module.mod \
+                 ps_nloc1_module.mod \
+                 ps_nloc2_module.mod \
+                 ps_nloc3_module.mod \
+                 ps_nloc_mr_module.mod \
+                 PSnonLocOpG2.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c nonlocal_module.f90 -o $@
+
+PSQRijPrep.mod: PSQRijPrep.o
+	@true
+PSQRijPrep.o: PSQRijPrep.f90 \
+                 parallel_module.mod \
+                 aa_module.mod \
+                 atom_module.mod \
+                 rgrid_module.mod \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod \
+                 VarParaPSnonLocG.mod \
+                 ps_nloc2_module.mod \
+                 pseudopot_module.mod \
+                 minimal_box_module.mod \
+                 ParaRGridComm.mod \
+                 watch_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c PSQRijPrep.f90 -o $@
+
+xc_module.mod: xc_module.o
+	@true
+xc_module.o: xc_module.f90 \
+                 rgrid_module.mod \
+                 density_module.mod \
+                 ps_pcc_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 xc_pw92_gth_module.mod \
+                 xc_hybrid_module.mod \
+                 xc_hse_module.mod \
+                 watch_module.mod \
+                 aa_module.mod \
+                 bb_module.mod \
+                 bc_module.mod \
+                 kinetic_module.mod \
+                 fd_module.mod \
+                 electron_module.mod
+	$(FC) $(FFLAGS) -c xc_module.f90 -o $@
+
+esm_hartree_module.mod: esm_hartree_module.o
+	@true
+esm_hartree_module.o: esm_hartree_module.f90 \
+                 aa_module.mod \
+                 rgrid_module.mod \
+                 esm_rgrid_module.mod \
+                 ps_local_rs_module.mod \
+                 modified_bessel_module.mod \
+                 parallel_module.mod \
+                 esm_genpot_module.mod \
+                 kinetic_module.mod \
+                 bc_module.mod \
+                 fd_module.mod
+	$(FC) $(FFLAGS) -c esm_hartree_module.f90 -o $@
+
+hamiltonian_module.mod: hamiltonian_module.o
+	@true
+hamiltonian_module.o: hamiltonian_module.f90 \
+                 parallel_module.mod \
+                 kinetic_module.mod \
+                 localpot_module.mod \
+                 nonlocal_module.mod \
+                 fock_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c hamiltonian_module.f90 -o $@
+
+localpot2_te_module.mod: localpot2_te_module.o
+	@true
+localpot2_te_module.o: localpot2_te_module.f90 \
+                 wf_module.mod \
+                 array_bound_module.mod \
+                 rgrid_module.mod \
+                 localpot_module.mod \
+                 kinetic_module.mod \
+                 nonlocal_module.mod \
+                 ewald_module.mod \
+                 electron_module.mod
+	$(FC) $(FFLAGS) -c localpot2_te_module.f90 -o $@
+
+ConjugateGradient_G.mod: ConjugateGradient_G.o
+	@true
+ConjugateGradient_G.o: ConjugateGradient_G.f90 \
+                 rgrid_module.mod \
+                 hamiltonian_module.mod \
+                 cgpc_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 watch_module.mod \
+                 InnerProduct.mod \
+                 RealComplex.mod
+	$(FC) $(FFLAGS) -c ConjugateGradient_G.f90 -o $@
+
+esp_calc_module.mod: esp_calc_module.o
+	@true
+esp_calc_module.o: esp_calc_module.f90 \
+                 hamiltonian_module.mod \
+                 rgrid_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c esp_calc_module.f90 -o $@
+
+hartree_module.mod: hartree_module.o
+	@true
+hartree_module.o: hartree_module.f90 \
+                 hartree_mol_module.mod \
+                 esm_hartree_module.mod \
+                 bb_module.mod \
+                 watch_module.mod \
+                 ffte_sub_module.mod \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c hartree_module.f90 -o $@
+
+subspace_diag_la_module.mod: subspace_diag_la_module.o
+	@true
+subspace_diag_la_module.o: subspace_diag_la_module.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 hamiltonian_module.mod \
+                 parallel_module.mod \
+                 subspace_diag_module.mod \
+                 array_bound_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c subspace_diag_la_module.f90 -o $@
+
+subspace_mate_sl_0_module.mod: subspace_mate_sl_0_module.o
+	@true
+subspace_mate_sl_0_module.o: subspace_mate_sl_0_module.f90 \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 hamiltonian_module.mod \
+                 wf_module.mod \
+                 scalapack_module.mod \
+                 subspace_diag_module.mod \
+                 array_bound_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c subspace_mate_sl_0_module.f90 -o $@
+
+subspace_mate_sl_module.mod: subspace_mate_sl_module.o
+	@true
+subspace_mate_sl_module.o: subspace_mate_sl_module.f90 \
+                 rgrid_module.mod \
+                 parallel_module.mod \
+                 hamiltonian_module.mod \
+                 wf_module.mod \
+                 scalapack_module.mod \
+                 subspace_diag_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c subspace_mate_sl_module.f90 -o $@
+
+test_hpsi2_module.mod: test_hpsi2_module.o
+	@true
+test_hpsi2_module.o: test_hpsi2_module.f90 \
+                 array_bound_module.mod \
+                 localpot_module.mod \
+                 hamiltonian_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c test_hpsi2_module.f90 -o $@
+
+cg_module.mod: cg_module.o
+	@true
+cg_module.o: cg_module.f90 \
+                 rgrid_module.mod \
+                 hamiltonian_module.mod \
+                 cgpc_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 watch_module.mod \
+                 ConjugateGradient_G.mod
+	$(FC) $(FFLAGS) -c cg_module.f90 -o $@
+
+io_module.mod: io_module.o
+	@true
+io_module.o: io_module.f90 \
+                 rgrid_module.mod \
+                 wf_module.mod \
+                 density_module.mod \
+                 xc_module.mod \
+                 localpot_module.mod \
+                 hartree_module.mod \
+                 parallel_module.mod \
+                 array_bound_module.mod \
+                 rgrid_mol_module.mod \
+                 kinetic_module.mod
+	$(FC) $(FFLAGS) -c io_module.f90 -o $@
+
+ps_local_module.mod: ps_local_module.o
+	@true
+ps_local_module.o: ps_local_module.f90 \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 atom_module.mod \
+                 strfac_module.mod \
+                 bb_module.mod \
+                 density_module.mod \
+                 electron_module.mod \
+                 pseudopot_module.mod \
+                 parallel_module.mod \
+                 watch_module.mod \
+                 ps_local_gth_module.mod \
+                 simc_module.mod \
+                 ffte_sub_module.mod \
+                 bberf_module.mod \
+                 aa_module.mod \
+                 hartree_module.mod \
+                 kinetic_module.mod \
+                 array_bound_module.mod
+	$(FC) $(FFLAGS) -c ps_local_module.f90 -o $@
+
+subspace_diag_sl_module.mod: subspace_diag_sl_module.o
+	@true
+subspace_diag_sl_module.o: subspace_diag_sl_module.f90 \
+                 scalapack_module.mod \
+                 subspace_mate_sl_module.mod \
+                 subspace_mate_sl_0_module.mod \
+                 subspace_solv_sl_module.mod \
+                 subspace_rotv_sl_module.mod \
+                 subspace_rotv_sl_0_module.mod \
+                 subspace_diag_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c subspace_diag_sl_module.f90 -o $@
+
+esm_cylindrical_test.mod: esm_cylindrical_test.o
+	@true
+esm_cylindrical_test.o: esm_cylindrical_test.f90 \
+                 aa_module.mod \
+                 rgrid_module.mod \
+                 modified_bessel_module.mod \
+                 density_module.mod \
+                 array_bound_module.mod \
+                 parallel_module.mod \
+                 ps_local_module.mod \
+                 ps_local_rs_module.mod \
+                 hartree_module.mod \
+                 kinetic_module.mod \
+                 pseudopot_module.mod \
+                 bc_module.mod \
+                 fd_module.mod
+	$(FC) $(FFLAGS) -c esm_cylindrical_test.f90 -o $@
+
+force_module.mod: force_module.o
+	@true
+force_module.o: force_module.f90 \
+                 ps_local_module.mod \
+                 ps_nloc2_module.mod \
+                 ps_pcc_module.mod \
+                 ewald_module.mod \
+                 watch_module.mod \
+                 parallel_module.mod \
+                 atom_module.mod
+	$(FC) $(FFLAGS) -c force_module.f90 -o $@
+
+ps_local_mol_module.mod: ps_local_mol_module.o
+	@true
+ps_local_mol_module.o: ps_local_mol_module.f90 \
+                 pseudopot_module.mod \
+                 maskf_module.mod \
+                 simc_module.mod \
+                 atom_module.mod \
+                 ps_local_module.mod \
+                 array_bound_module.mod \
+                 rgrid_mol_module.mod
+	$(FC) $(FFLAGS) -c ps_local_mol_module.f90 -o $@
+
+pseudopotentials.mod: pseudopotentials.o
+	@true
+pseudopotentials.o: pseudopotentials.f90 \
+                 strfac_module.mod \
+                 ps_local_module.mod \
+                 ps_pcc_module.mod \
+                 ps_initrho_module.mod \
+                 density_module.mod \
+                 ps_nloc2_init_module.mod \
+                 ps_nloc2_module.mod \
+                 ps_nloc3_module.mod \
+                 ps_nloc_mr_module.mod \
+                 pseudopot_module.mod \
+                 PSQInit.mod \
+                 PSQRijPrep.mod \
+                 PSnonLocPrepG.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c pseudopotentials.f90 -o $@
+
+total_energy_module.mod: total_energy_module.o
+	@true
+total_energy_module.o: total_energy_module.f90 \
+                 rgrid_module.mod \
+                 hamiltonian_module.mod \
+                 hartree_module.mod \
+                 xc_module.mod \
+                 ewald_module.mod \
+                 wf_module.mod \
+                 localpot_module.mod \
+                 ps_local_module.mod \
+                 density_module.mod \
+                 parallel_module.mod \
+                 fermi_module.mod \
+                 array_bound_module.mod \
+                 fock_module.mod \
+                 VarSysParameter.mod
+	$(FC) $(FFLAGS) -c total_energy_module.f90 -o $@
+
+force_local_mol_module.mod: force_local_mol_module.o
+	@true
+force_local_mol_module.o: force_local_mol_module.f90 \
+                 parallel_module.mod \
+                 atom_module.mod \
+                 array_bound_module.mod \
+                 density_module.mod \
+                 electron_module.mod \
+                 bberf_module.mod \
+                 pseudopot_module.mod \
+                 rgrid_mol_module.mod \
+                 ps_local_mol_module.mod \
+                 rgrid_module.mod
+	$(FC) $(FFLAGS) -c force_local_mol_module.f90 -o $@
+
+scf_module.mod: scf_module.o
+	@true
+scf_module.o: scf_module.f90 \
+                 parallel_module.mod \
+                 electron_module.mod \
+                 localpot_module.mod \
+                 mixing_module.mod \
+                 xc_module.mod \
+                 hartree_module.mod \
+                 ps_local_module.mod \
+                 bz_module.mod \
+                 wf_module.mod \
+                 cg_module.mod \
+                 array_bound_module.mod \
+                 gram_schmidt_t_module.mod \
+                 io_module.mod \
+                 total_energy_module.mod \
+                 fermi_module.mod \
+                 subspace_diag_la_module.mod \
+                 subspace_diag_sl_module.mod \
+                 esp_gather_module.mod \
+                 density_module.mod \
+                 watch_module.mod \
+                 PSnonLocDij.mod
+	$(FC) $(FFLAGS) -c scf_module.f90 -o $@
+
+force_mol_module.mod: force_mol_module.o
+	@true
+force_mol_module.o: force_mol_module.f90 \
+                 force_local_mol_module.mod \
+                 force_nloc2_mol_module.mod \
+                 force_ion_mol_module.mod \
+                 watch_module.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c force_mol_module.f90 -o $@
+
+test_force_module.mod: test_force_module.o
+	@true
+test_force_module.o: test_force_module.f90 \
+                 watch_module.mod \
+                 parallel_module.mod \
+                 atom_module.mod \
+                 ps_local_module.mod \
+                 ewald_module.mod \
+                 ps_nloc2_module.mod \
+                 force_local_mol_module.mod \
+                 force_ion_mol_module.mod \
+                 force_nloc2_mol_module.mod
+	$(FC) $(FFLAGS) -c test_force_module.f90 -o $@
+
+atomopt_module.mod: atomopt_module.o
+	@true
+atomopt_module.o: atomopt_module.f90 \
+                 parallel_module.mod \
+                 atom_module.mod \
+                 total_energy_module.mod \
+                 aa_module.mod \
+                 bb_module.mod \
+                 scf_module.mod \
+                 ewald_module.mod \
+                 strfac_module.mod \
+                 ps_local_module.mod \
+                 ps_pcc_module.mod \
+                 pseudopot_module.mod \
+                 ps_nloc2_module.mod \
+                 ps_nloc3_module.mod \
+                 ps_nloc_mr_module.mod \
+                 force_module.mod \
+                 kinetic_module.mod \
+                 ps_local_mol_module.mod \
+                 ps_nloc2_mol_module.mod \
+                 ps_pcc_mol_module.mod \
+                 eion_mol_module.mod \
+                 force_mol_module.mod \
+                 PSQRijPrep.mod \
+                 PSnonLocPrepG.mod
+	$(FC) $(FFLAGS) -c atomopt_module.f90 -o $@
+
+global_variables.mod: global_variables.o
+	@true
+global_variables.o: global_variables.f90 \
+                 aa_module.mod \
+                 bb_module.mod \
+                 atom_module.mod \
+                 rgrid_module.mod \
+                 ggrid_module.mod \
+                 bz_module.mod \
+                 fd_module.mod \
+                 strfac_module.mod \
+                 pseudopot_module.mod \
+                 ps_local_module.mod \
+                 ps_pcc_module.mod \
+                 ps_initrho_module.mod \
+                 ps_nloc1_module.mod \
+                 ps_nloc2_init_module.mod \
+                 ps_nloc2_module.mod \
+                 bc_module.mod \
+                 electron_module.mod \
+                 density_module.mod \
+                 parallel_module.mod \
+                 wf_module.mod \
+                 localpot_module.mod \
+                 nonlocal_module.mod \
+                 ewald_module.mod \
+                 gram_schmidt_module.mod \
+                 gram_schmidt_t_module.mod \
+                 hartree_module.mod \
+                 xc_module.mod \
+                 scalapack_module.mod \
+                 subspace_diag_module.mod \
+                 subspace_diag_la_module.mod \
+                 subspace_diag_sl_module.mod \
+                 subspace_mate_sl_module.mod \
+                 subspace_solv_sl_module.mod \
+                 subspace_rotv_sl_module.mod \
+                 kinetic_module.mod \
+                 hamiltonian_module.mod \
+                 cgpc_module.mod \
+                 cg_module.mod \
+                 total_energy_module.mod \
+                 mixing_module.mod \
+                 esp_gather_module.mod \
+                 fermi_module.mod \
+                 watch_module.mod \
+                 io_module.mod \
+                 array_bound_module.mod \
+                 atomopt_module.mod
+	$(FC) $(FFLAGS) -c global_variables.f90 -o $@
+
+iter_lin_solvers.mod: iter_lin_solvers.o
+	@true
+iter_lin_solvers.o: iter_lin_solvers.f90 \
+                 global_variables.mod \
+                 parallel_module.mod \
+                 hamiltonian_module.mod \
+                 timer_module.mod
+	$(FC) $(FFLAGS) -c iter_lin_solvers.f90 -o $@
+
+parameters_module.mod: parameters_module.o
+	@true
+parameters_module.o: parameters_module.f90 \
+                 global_variables.mod \
+                 info_module.mod
+	$(FC) $(FFLAGS) -c parameters_module.f90 -o $@
+
+sseig.mod: sseig.o
+	@true
+sseig.o: sseig.f90 \
+                 global_variables.mod \
+                 parallel_module.mod \
+                 iter_lin_solvers.mod \
+                 hamiltonian_module.mod \
+                 timer_module.mod
+	$(FC) $(FFLAGS) -c sseig.f90 -o $@
+
+apply_sseig_module.mod: apply_sseig_module.o
+	@true
+apply_sseig_module.o: apply_sseig_module.f90 \
+                 global_variables.mod \
+                 parallel_module.mod \
+                 bc_module.mod \
+                 ps_nloc2_module.mod \
+                 sseig.mod \
+                 iter_lin_solvers.mod \
+                 timer_module.mod \
+                 watch_module.mod
+	$(FC) $(FFLAGS) -c apply_sseig_module.f90 -o $@
+
+prepare_sseig_module.mod: prepare_sseig_module.o
+	@true
+prepare_sseig_module.o: prepare_sseig_module.f90 \
+                 parallel_module.mod \
+                 iter_lin_solvers.mod \
+                 atom_module.mod \
+                 electron_module.mod \
+                 sseig.mod \
+                 timer_module.mod
+	$(FC) $(FFLAGS) -c prepare_sseig_module.f90 -o $@
+
+band_module.mod: band_module.o
+	@true
+band_module.o: band_module.f90 \
+                 watch_module.mod \
+                 prepare_sseig_module.mod \
+                 apply_sseig_module.mod \
+                 sseig.mod \
+                 parallel_module.mod \
+                 rgrid_module.mod \
+                 array_bound_module.mod \
+                 bz_module.mod \
+                 aa_module.mod \
+                 bb_module.mod \
+                 kinetic_module.mod \
+                 ps_nloc2_module.mod \
+                 momentum_module.mod \
+                 wf_module.mod \
+                 cg_module.mod \
+                 gram_schmidt_t_module.mod \
+                 subspace_diag_sl_module.mod \
+                 subspace_diag_la_module.mod \
+                 esp_gather_module.mod \
+                 electron_module.mod \
+                 scalapack_module.mod \
+                 subspace_diag_module.mod \
+                 subspace_mate_sl_0_module.mod \
+                 subspace_rotv_sl_0_module.mod
+	$(FC) $(FFLAGS) -c band_module.f90 -o $@
+
+realspace.mod: realspace.o
+	@true
+realspace.o: realspace.f90 \
+                 VarSysParameter.mod \
+                 global_variables.mod \
+                 parameters_module.mod \
+                 omp_variables.mod \
+                 esm_rgrid_module.mod \
+                 esm_rshell_module.mod \
+                 esm_cylindrical_test.mod \
+                 ps_local_rs_module.mod \
+                 esm_genpot_module.mod \
+                 esm_kinetic_module.mod \
+                 func2gp_module.mod \
+                 rgrid_mol_module.mod \
+                 ps_local_mol_module.mod \
+                 eion_mol_module.mod \
+                 ps_pcc_mol_module.mod \
+                 ps_initrho_mol_module.mod \
+                 ps_nloc2_mol_module.mod \
+                 bc_mol_module.mod \
+                 kinetic_mol_module.mod \
+                 band_module.mod \
+                 ps_gth_module.mod \
+                 ps_nloc_mr_module.mod \
+                 bcast_module.mod \
+                 localpot2_variables.mod \
+                 localpot2_ion_module.mod \
+                 localpot2_density_module.mod \
+                 localpot2_vh_module.mod \
+                 localpot2_xc_module.mod \
+                 localpot2_module.mod \
+                 localpot2_te_module.mod \
+                 ps_nloc3_module.mod \
+                 pseudopotentials.mod \
+                 test_hpsi2_module.mod \
+                 test_force_module.mod \
+                 info_module.mod \
+                 init_occ_electron_module.mod \
+                 esp_calc_module.mod \
+                 PSnonLocDij.mod \
+                 PSQInit.mod \
+                 VarPSMember.mod \
+                 VarPSMemberG.mod \
+                 ps_nloc2_variables.mod \
+                 TestModule.mod \
+                 WFtest.mod \
+                 PStest.mod
+	$(FC) $(FFLAGS) -c realspace.f90 -o $@
+

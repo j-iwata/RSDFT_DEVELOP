@@ -34,8 +34,6 @@ CONTAINS
     ab1=Igrid(2,1)-Igrid(1,1)+1
     ab2=Igrid(2,2)-Igrid(1,2)+1
     ab3=Igrid(2,3)-Igrid(1,3)+1
-!write(4100+myrank,'("setIndex",6A6)') 'a1b','a2b','a3b','ab1','ab2','ab3'
-!write(4100+myrank,'("setIndex",6I6)') a1b,a2b,a3b,ab1,ab2,ab3
   END SUBROUTINE setLocalIndexForBoundary
 !-------------------------------------------------------------------------
   SUBROUTINE setConstGridWidth(Ngrid)
@@ -47,8 +45,6 @@ CONTAINS
     c1=1.d0/ML1
     c2=1.d0/ML2
     c3=1.d0/ML3
-!write(3300+myrank,'(6A5)') 'ML1','ML2','ML3','Ngrid(1)','Ngrid(2)','Ngrid(3)'
-!write(3300+myrank,'(6I5)') ML1,ML2,ML3,Ngrid(1:3)
   END SUBROUTINE setConstGridWidth
 !-------------------------------------------------------------------------
 #ifndef _SPLINE_
@@ -114,8 +110,6 @@ CONTAINS
       i1 = i1 - k1*ML1
       i2 = i2 - k2*ML2
       i3 = i3 - k3*ML3
-!write(3300+myrank,'(6A5,3A20)') 'i1','i2','i3','ML1','ML2','ML3','k1','k2','k3'
-!write(3300+myrank,'(6I5,3G20.7)') i1,i2,i3,ML1,ML2,ML3,k1,k2,k3
       if ( Igrid(1,1) <= i1 .and. i1 <= Igrid(2,1) .and. &
           Igrid(1,2) <= i2 .and. i2 <= Igrid(2,2) .and. &
           Igrid(1,3) <= i3 .and. i3 <= Igrid(2,3) ) then
@@ -142,14 +136,11 @@ CONTAINS
     iorb  = iorbmap(lma)
     ikind = ki_atom(iatom)
     return
-!write(3000+myrank,'(4A7)') 'iatom','iL','im','ikind'
-!write(3000+myrank,'(4I7)') iatom,iL,im,ikind
   END SUBROUTINE getAtomInfoFrom_lma
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomInfoFrom_iqr(iqr)
     use VarParaPSnonLocG, only: amap_Q,lmamap_Q,k1map_Q
     use ps_nloc2_variables, only: lmap,iorbmap,mmap
-!    use VarPSMemberG, only: kk1map,k1_to_k2
     use VarPSMemberG, only: k1_to_k2
     use atom_module, only: ki_atom
     implicit none
@@ -199,23 +190,19 @@ CONTAINS
     return
   END SUBROUTINE getAtomCenteredPositionFrom_lma
 !-------------------------------------------------------------------------
-  SUBROUTINE getAtomCenteredPositionFrom_iqr(iqr,j,x_,y_,z_,r_)
+  SUBROUTINE getAtomCenteredPositionFrom_iqr(iqr,j)
     use VarParaPSnonLocG, only: JJ_MAP_Q
     use aa_module, only: aa
     implicit none
     integer,intent(IN) :: iqr,j
-    real(8),intent(OUT) :: x_,y_,z_,r_
     real(8) :: d1,d2,d3
     d1=c1*JJ_MAP_Q(1,j,iqr)+JJ_MAP_Q(4,j,iqr)
     d2=c2*JJ_MAP_Q(2,j,iqr)+JJ_MAP_Q(5,j,iqr)
     d3=c3*JJ_MAP_Q(3,j,iqr)+JJ_MAP_Q(6,j,iqr)
-!write(4700+myrank,'(8I6)') iqr,j,JJ_MAP_Q(1:6,j,iqr)
-    x_ = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
-    y_ = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
-    z_ = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-!    r = sqrt(x*x+y*y+z*z)
-    r_ = sqrt(x_*x_+y_*y_+z_*z_)
-!write(4600+myrank,'(2I6,4g20.7,"IN")') iqr,j,x_,y_,z_,r_
+    x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
+    y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
+    z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
+    r = sqrt(x*x+y*y+z*z)
     return
   END SUBROUTINE getAtomCenteredPositionFrom_iqr
 !-------------------------------------------------------------------------
@@ -227,7 +214,6 @@ CONTAINS
     real(8) :: tmp1,err0,err
     integer :: im,m1,m2
     real(8),parameter :: ep=1.d-8
-!write(3100+myrank,'(" ir=",I5)') ir
 #ifdef _SPLINE_
     if ( r < rad1(2,ikind) ) then
       tmp0=dviod(2,lm1,ikind)/(rad1(2,ikind)**2)
@@ -299,7 +285,6 @@ CONTAINS
       write(*,*) "force_ps_Q",ir,NRc
       stop
     end if
-!if (myrank==0) write(220,'(6I5,g20.7)') cJ,ik,k2,ll3,m1,L1,tmp0
     maxerr=max(maxerr,err0)
 #endif
   END SUBROUTINE interpolate_dqrL
@@ -322,9 +307,7 @@ CONTAINS
     allocate(SH_Y3(0:L,-L:L,-Lp1:Lp1,-Lp1:Lp1)) ; SH_Y3=0.d0
 
     SH_Y1(  0,  0,  1,  1)=   0.282094791773878d0
-
     SH_Y2(  0,  0,  1, -1)=   0.282094791773878d0
-
     SH_Y3(  0,  0,  1,  0)=   0.282094791773878d0
 
     if (L>=2) then
