@@ -5,12 +5,11 @@ MODULE ps_nloc2_mol_module
   use atom_module
   use array_bound_module, only: ML_0,ML_1
   use parallel_module
-
   use pseudopot_module
   use ps_nloc2_init_module
   use ps_nloc2_variables
-
   use minimal_box_module
+  use ps_nloc_mol_gth_module
 
   implicit none
 
@@ -64,6 +63,12 @@ CONTAINS
           Mlma=Mlma+2*lo(iorb,ik)+1
        end do
     end do
+
+    if ( Mlma <= 0 ) return
+
+    if ( any( ippform == 4 ) ) then
+       call init_ps_nloc_mol_gth( disp_switch_parallel )
+    end if
 
     rmin(:)= 1.d100
     rmax(:)=-1.d100

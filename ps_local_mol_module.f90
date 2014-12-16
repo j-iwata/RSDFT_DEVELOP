@@ -1,12 +1,14 @@
 MODULE ps_local_mol_module
 
-  use pseudopot_module, only: Rps,norb,Mr,Npseudopot,NRps,rab,parloc,Zps,vql,rad
+  use pseudopot_module, only: Rps,norb,Mr,Npseudopot,NRps &
+                             ,rab,parloc,Zps,vql,rad,ippform
   use maskf_module
   use simc_module
   use atom_module, only: Natom,Nelement,aa_atom,ki_atom
   use ps_local_module, only: Vion
   use array_bound_module, only: ML_0,ML_1
   use rgrid_mol_module
+  use ps_local_mol_gth_module
 
   implicit none
 
@@ -34,6 +36,11 @@ CONTAINS
     real(8) :: pi,Rc,c1,c2,p1,p2,p3,p4,r,vlong,qc,eta
     real(8) :: const,fac,maxerr,x,dy0,y,c,y0,r1,dy,sum0
     real(8),allocatable :: vshort(:),wtmp(:),work(:),tmp(:),tmp1(:)
+
+    if ( any( ippform == 4 ) ) then
+       call init_ps_local_mol_gth
+       return
+    end if
 
     MKI = Npseudopot
     qc  = qcut
@@ -248,6 +255,11 @@ CONTAINS
     real(8) :: v,v0,maxerr,err0,err
     integer :: a,ik,i,M_irad,ir,ir0,m,m1,m2,mm,NRc
     integer,allocatable :: irad(:,:)
+
+    if ( any( ippform == 4 ) ) then
+       call construct_ps_local_mol_gth
+       return
+    end if
 
     if ( .not. allocated(Vion) ) then
        allocate( Vion(ML_0:ML_1) )
