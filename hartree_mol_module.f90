@@ -3,21 +3,51 @@ MODULE hartree_mol_module
   use rgrid_mol_module, only: LL,KK
   use rgrid_module, only: dV,Hgrid,Ngrid
   use parallel_module
+  use bc_module
+  use fd_module
+  use atom_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_hartree_mol
+  PUBLIC :: calc_hartree_mol, init_hartree_mol
 
-  logical :: flag_prep = .true.
+  logical :: flag_init = .true.
   integer :: MEO=2, Lmax_ME=4
   integer :: lmmax_ME
   real(8),allocatable :: shf1(:,:),shf2(:,:)
   real(8),allocatable :: lap(:)
   integer :: NMadv
   integer,allocatable :: adv(:),Mdv(:),Ixyz(:,:)
+  integer :: Md
 
 CONTAINS
+
+
+  SUBROUTINE init_hartree_mol( Md_in )
+    implicit none
+    integer,intent(IN) :: Md_in
+
+    Md = Md_in
+
+    if ( allocated(lap) ) deallocate(lap)
+    allocate( lap(-Md:Md) )
+    lap=0.0d0
+    call get_coef_lapla_fd(Md,lap)
+
+    lmmax_ME = (Lmax_ME+1)**2
+
+    select case(MEO)
+    case(1)
+       call prep1_hartree_mol
+    case(2)
+       call prep2_hartree_mol
+    end select
+
+    flag_init = .false.
+
+  END SUBROUTINE init_hartree_mol
+
 
 !--------1---------2---------3---------4---------5---------6---------7--
 !
@@ -26,10 +56,6 @@ CONTAINS
 !                  Phys. Rev. C17, 1682 (1978). )
 !
   SUBROUTINE calc_hartree_mol(n1,n2,n3,rho,Vh,Eh)
-    use bc_module
-    use fd_module
-    use kinetic_module, only: Md
-    use atom_module
     implicit none
     integer,intent(IN)    :: n1,n2,n3
     real(8),intent(IN)    :: rho(n1:n2,n3)
@@ -50,22 +76,9 @@ CONTAINS
     real(8),allocatable :: coef(:),clm(:,:)
     logical :: flag_alloc(2)
 
-    if ( flag_prep ) then
-
-       allocate( lap(-Md:Md) )
-       call get_coef_laplacian_fd(Md,lap)
-
-       lmmax_ME = (Lmax_ME+1)**2
-
-       select case(MEO)
-       case(1)
-          call prep1_hartree_mol
-       case(2)
-          call prep2_hartree_mol
-       end select
-
-       flag_prep = .false.
-
+    if ( flag_init ) then
+       write(*,*) "init_hartree should be called first"
+       stop "stop@calc_hartree_mol"
     end if
 
     Eh  = 0.d0
@@ -434,6 +447,7 @@ CONTAINS
 ! Spherical Harmonic Funciton
 !
   SUBROUTINE prep1_hartree_mol
+    implicit none
     integer :: i,j,k,lm,L,a,m,n,n1,n2,ML0
     integer :: m1,m2
     logical :: flag_alloc(2)
@@ -456,8 +470,10 @@ CONTAINS
     H   = Hgrid(1)
     pi4 = 4.d0*acos(-1.d0)
 
-    allocate( shf1(n1:n2,lmmax_ME) ) ; shf1=0.d0
-    allocate( shf2(lmmax_ME,m1:m2) ) ; shf2=0.d0
+    if ( allocated(shf1) ) deallocate(shf1)
+    if ( allocated(shf2) ) deallocate(shf2)
+    allocate( shf1(n1:n2,lmmax_ME) ) ; shf1=0.0d0
+    allocate( shf2(lmmax_ME,m1:m2) ) ; shf2=0.0d0
 
     do i=n1,n2
        x=LL(1,i)*H ; y=LL(2,i)*H ; z=LL(3,i)*H
@@ -492,7 +508,7 @@ CONTAINS
 ! Division of Area for Multipole Expansion (MEO=2)
 !
   SUBROUTINE prep2_hartree_mol
-    use atom_module
+    implicit none
     real(8),allocatable :: ra(:)
     real(8) :: x,y,z,r2,H
     integer :: i,a,m,n,i1,i2,i3,n1,n2,ierr,maxMdv
@@ -532,6 +548,9 @@ CONTAINS
        write(*,*) "NMadv,maxMdv,ML,sum(jtmp)=",NMadv,maxMdv,Ngrid(0),sum(jtmp)
 !    end if
 
+    if ( allocated(Ixyz) ) deallocate(Ixyz)
+    if ( allocated(Mdv)  ) deallocate(Mdv)
+    if ( allocated(adv)  ) deallocate(adv)
     allocate( Ixyz(maxMdv,NMadv) )
     allocate( Mdv(NMadv) )
     allocate( adv(NMadv) )

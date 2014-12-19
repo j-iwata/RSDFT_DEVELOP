@@ -1,6 +1,5 @@
 MODULE iter_lin_solvers
 
-  use global_variables, only: disp_switch
   use parallel_module
   use hamiltonian_module
   use timer_module
@@ -43,7 +42,8 @@ MODULE iter_lin_solvers
 
   type(itargs), save :: iterative_method_args
 
-  type(solver_info),save, allocatable :: sol_info
+! type(solver_info),save,allocatable :: sol_info  ! -- This may be correct ...
+  type(solver_info),save :: sol_info              ! -- modified Nov 12,2014
 
   real(8) :: seed_val
   integer :: shift_count
@@ -76,7 +76,7 @@ CONTAINS
     epsmin = iterative_method_args%epsmin
     imax   = iterative_method_args%imax
 
-    if ( disp_switch ) write(*,*) "epsmax,epsmin,imax=",epsmax,epsmin,imax
+    if ( disp_switch_parallel ) write(*,*) "epsmax,epsmin,imax=",epsmax,epsmin,imax
 
     call clear_timer(current_solver_timers%total_time)
     call tic(current_solver_timers%total_time,comm_grid)

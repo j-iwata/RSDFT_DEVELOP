@@ -6,7 +6,7 @@ MODULE atomopt_module
   use aa_module
   use bb_module
   use scf_module
-  use ewald_module
+  use eion_module, only: calc_eion
   use strfac_module
   use ps_local_module
   use ps_pcc_module
@@ -18,7 +18,7 @@ MODULE atomopt_module
 
   use kinetic_module, only: SYStype
 
-  use ps_local_mol_module
+  use ps_local_mol_module, only: construct_ps_local_mol
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
@@ -602,17 +602,20 @@ CONTAINS
              write(*,*) 'Trial configuration (see fort.97)'
              if ( Natom <= 11 ) then
                 do a=1,Natom
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              else
                 do a=1,min(5,Natom)
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
                 write(*,'(1x,10x,".")')
                 write(*,'(1x,10x,".")')
                 write(*,'(1x,10x,".")')
                 do a=Natom-5,Natom
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              end if
           end if
@@ -625,7 +628,8 @@ CONTAINS
 
           select case(SYStype)
           case default
-             call calc_ewald(Eewald,disp_switch)
+
+             call calc_eion
 
              call construct_strfac
              call construct_ps_local
@@ -640,7 +644,7 @@ CONTAINS
              case(5)
                 call prep_ps_nloc_mr
 #ifdef _USPP_
-              case(102)
+             case(102)
                 call prep_ps_nloc2
                 call prepNzqr
                 call prepQRijp102
@@ -649,7 +653,7 @@ CONTAINS
 
           case(1)
 
-             call calc_eion_mol(Eewald)
+             call calc_eion
 
              call construct_ps_local_mol
              call construct_ps_pcc_mol
@@ -658,7 +662,15 @@ CONTAINS
           end select
 
           if ( disp_switch ) write(*,*) "SCF start"
-          call calc_scf(diter_opt,0,iter_final,.false.)
+          call calc_scf( diter_opt, ierr, .false. )
+          if ( ierr == -1 ) then
+             if ( myrank == 0 ) write(*,*) "time limit !!!"
+             exit opt_ion
+          end if
+          if ( ierr == -2 ) then
+             if ( myrank == 0 ) write(*,*) "SCF is not converged"
+          end if
+          iter_final=ierr
 
           select case(SYStype)
           case default
@@ -730,7 +742,7 @@ CONTAINS
              do i=nhist0,nhist
                 write(*,'(1x,i3,1x,g13.6,1x,g20.10,1x,3g13.5,i5)') &
                      i-nhist0,alpha_hist(i),Etot_hist(i) &
-                     ,grad_hist(i),Fmax_hist(i),dmax_hist(i),SCF_hist(nhist)
+                     ,grad_hist(i),Fmax_hist(i),dmax_hist(i),SCF_hist(i)
              end do
           end if
 
@@ -795,6 +807,12 @@ CONTAINS
 
        hi(1:3,1:Natom) = signh*hi(1:3,1:Natom)
 
+       most0=1
+
+!  Best structure on a line.
+
+       if ( myrank == 0 ) call write_atomic_coordinates(197)
+
 !
 ! --- Convergence check 3 ---
 !
@@ -817,12 +835,6 @@ CONTAINS
 
        end if
 
-       most0=1
-
-!  Best structure on a line.
-
-       if ( myrank == 0 ) call write_atomic_coordinates(197)
-
     end do opt_ion
 
 999 continue
@@ -837,7 +849,6 @@ CONTAINS
 
     if ( myrank == 0 ) disp_switch=.true.
 
-!    call calc_total_energy(.false.,disp_switch,999)
     call calc_total_energy(.true.,disp_switch,999)
 
     deallocate( Force )
@@ -927,7 +938,7 @@ CONTAINS
     case default
 
        do a=1,Natom
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),md_atom(a)
        end do
 
     case( 1 )
@@ -937,7 +948,7 @@ CONTAINS
        aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
        do a=1,Natom
           vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),1
+          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
        end do
 
     end select

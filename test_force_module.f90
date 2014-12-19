@@ -5,7 +5,7 @@ MODULE test_force_module
   use atom_module
 
   use ps_local_module
-  use ewald_module
+  use force_ewald_module
   use ps_nloc2_module
 
   use force_local_mol_module

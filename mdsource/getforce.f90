@@ -11,15 +11,16 @@ SUBROUTINE getforce
   use ps_nloc2_module
   use ps_nloc3_module
   use ps_nloc_mr_module
-  use ewald_module
+  use eion_module, only: calc_eion
   use force_module
   use cpmd_variables, only: Rion,Force,pmass,iatom,AMU,disp_switch &
        ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
   use scf_module
   use array_bound_module, only: MB_0,MB_1
+  use parallel_module, only: end_mpi_parallel
   implicit none
   real(8) :: c
-  integer :: a,Diter1,iter_final
+  integer :: a,Diter1,ierr
 
   Diter1       = 100
   c            = 1.d0/(2.d0*acos(-1.d0))
@@ -28,14 +29,10 @@ SUBROUTINE getforce
 
   call init_ion
 
-  call calc_ewald(Eewald,disp_switch)
+  call calc_eion
 
   call construct_strfac
-#ifndef _FFTE_
   call construct_ps_local
-#else
-  call construct_ps_local_ffte
-#endif
   call construct_ps_pcc
   call destruct_strfac
 
@@ -51,7 +48,15 @@ SUBROUTINE getforce
   MB_0=MB_0_SCF
   MB_1=MB_1_SCF
 
-  call calc_scf(Diter1,0,iter_final,disp_switch)
+  call calc_scf( Diter1, ierr, disp_switch )
+  if ( ierr == -1 ) then
+     if ( disp_switch ) write(*,*) "time limit !!!"
+     call end_mpi_parallel
+     stop "stop@getforce"
+  end if
+  if ( ierr == -2 ) then
+     if ( disp_switch ) write(*,*) "SCF is not converged"
+  end if
 
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD

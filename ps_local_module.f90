@@ -22,8 +22,7 @@ MODULE ps_local_module
   PUBLIC :: Vion,init_ps_local,construct_ps_local,calc_force_ps_local &
        ,construct_ps_local_ffte,calc_force_ps_local_ffte
 
-  real(8),allocatable :: Rcloc(:),vqlg(:,:),vqlgl(:,:),vqls(:,:)
-  integer,allocatable :: NRcloc(:)
+  real(8),allocatable :: vqlg(:,:),vqlgl(:,:),vqls(:,:)
   real(8),allocatable :: Vion(:)
 
   logical :: first_time1=.true.
@@ -52,22 +51,20 @@ CONTAINS
     Pi    = acos(-1.d0)
     const = 4.d0*Pi/Vcell
 
-    allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.d0
-
-    if ( pselect == 4 .or. pselect == 5 ) then
-       call init_ps_local_gth(NMGL,Nelement,GG,vqlg)
-       return
-    end if
+    allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.0d0
 
     MMr=maxval(Mr)
     allocate( vqls(MMr,MKI)   ) ; vqls=0.d0
     allocate( vqlgl(NMGL,MKI) ) ; vqlgl=0.d0
-    allocate( NRcloc(MKI)     ) ; NRcloc=0
-    allocate( Rcloc(MKI)      ) ; Rcloc=0.d0
 
     allocate( vshort(MMr) )
 
     do ik=1,MKI
+
+       if ( ippform(ik) == 4 ) then
+          call init_ps_local_gth( Vcell, NMGL, ik, GG, vqlg(1,ik) )
+          cycle
+       end if
 
        MMr = Mr(ik)
 
@@ -102,18 +99,7 @@ CONTAINS
           end if
           vshort(i)=vql(i,ik)-vlong
           vqls(i,ik)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 
@@ -208,6 +194,11 @@ CONTAINS
     complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:3),ett(0:3)
+
+#ifdef _FFTE_
+    call construct_ps_local_ffte
+    return
+#endif
 
     MG  = NGgrid(0)
     ML  = Ngrid(0)
@@ -914,6 +905,7 @@ CONTAINS
     complex(8),allocatable :: zrho(:) !, zrho3(:,:,:)
     complex(8),parameter :: z0=(0.d0,0.d0)
     real(8) :: zsum1,zsum2,zsum3,ztmp
+    include 'mpif.h'
 
     force(:,:)=0.d0
 

@@ -7,12 +7,16 @@ MODULE cg_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
 
+  use cg_lobpcg_module, only: init_lobpcg, lobpcg
+  use cg_u_module, only: init_cg_u, cg_u
+
   implicit none
 
   PRIVATE
   PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs,read_oldformat_cg
 
   integer :: Ncg,iswitch_gs
+  integer :: iswitch_cg
 
 CONTAINS
 
@@ -24,6 +28,7 @@ CONTAINS
     character(4) :: cbuf,ckey
     Ncg = 2
     iswitch_gs = 0
+    iswitch_cg = 1
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -35,17 +40,22 @@ CONTAINS
           else if ( ckey(1:4) == "SWGS" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_gs
+          else if ( ckey(1:3) == "ICG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_cg
           end if
        end do
 999    continue
        write(*,*) "Ncg=",Ncg
        write(*,*) "iswitch_gs=",iswitch_gs
+       write(*,*) "iswitch_cg=",iswitch_cg
     end if
     call send_cg(0)
   END SUBROUTINE read_cg
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE read_oldformat_cg(rank,unit)
+    implicit none
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
        read(unit,*) Ncg,iswitch_gs
@@ -62,11 +72,44 @@ CONTAINS
     integer :: ierr
     call mpi_bcast(Ncg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iswitch_gs,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iswitch_cg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_cg
 
 !---------------------------------------------------------------------------------------
 #ifdef _DRSDFT_FOR_NCPP
+
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+    implicit none
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    real(8),intent(INOUT) :: esp(MB),res(MB)
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
+    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
+
+    call init_cgpc(n1,n2,k,s,dV)
+
+    select case( iswitch_cg )
+    case default
+
+    case( 1 )
+       call conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+    case( 2 )
+       if ( disp_switch_parallel ) write(*,*) "--- LOBPCG ---"
+       call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+       call lobpcg( k,s,Mcg,igs,unk,esp,res )
+    case( 3 )
+       if ( disp_switch_parallel ) write(*,*) "--- CG_U ---"
+       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
+    end select
+
+  END SUBROUTINE conjugate_gradient
+
+
+#ifdef _DRSDFT_
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     real(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -111,8 +154,8 @@ CONTAINS
     allocate( utmp2(2,2),btmp2(2,2) )
 
 !$OMP parallel workshare
-    res(:)  = 0.d0
-    esp(:)  = 0.d0
+    res(:) = 0.0d0
+    esp(:) = 0.0d0
 !$OMP end parallel workshare
 
     do ns=MB_0,MB_1
@@ -176,7 +219,7 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
@@ -344,9 +387,10 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE conjugate_gradient_1
 
 #elif defined _USPP_
+
   SUBROUTINE conjugate_gradient( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
     use ConjugateGradient_G
     implicit none
@@ -359,13 +403,14 @@ CONTAINS
     real(8),intent(INOUT) :: esp(MB),res(MB)
 
 #ifdef _SHOWALL_CG_
-write(200+myrank,*) '----> USPP CG routine'
+    write(200+myrank,*) '----> USPP CG routine'
 #endif
     call ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
   END SUBROUTINE conjugate_gradient
+
 #else
 
-  SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -473,7 +518,7 @@ write(200+myrank,*) '----> USPP CG routine'
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
@@ -641,7 +686,7 @@ write(200+myrank,*) '----> USPP CG routine'
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE conjugate_gradient_1
 
 #endif
 

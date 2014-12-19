@@ -4,7 +4,7 @@
       implicit none
       integer,parameter :: MI0=8, NI=200000
       integer,parameter :: MKI=1, nmkd=1
-      integer :: nc1,nc2,nc3,nprocs,u,nc
+      integer :: nc1,nc2,nc3,nprocs,u1,u2,nc
       integer :: a,a0,i,j,k,m,n,m0,n0,MI,MB,ML1,ML2,ML3,ML0,ML
       integer :: NPROW,NPCOL,MBSIZE,NBSIZE,np1,np2,np3,NPCOL0
       integer :: Kion(NI),mkd(NI),Kion0(MI0),mkd0(MI0),np_2d(1:4)
@@ -14,11 +14,13 @@
 !
 ! input
 !
-      Write(*,*) "input size of the unit cell : nc1,nc2,nc3="
+      write(*,*) "input size of the unit cell : nc1,nc2,nc3="
+      write(*,*) "( # of atoms is 8*nc1*nc2*nc3 )"
       read(*,*) nc1,nc2,nc3
 
-      write(*,*) "input # of nodes: np_2d(1:4) ="
-      read(*,*) np_2d(1:4)
+!      write(*,*) "input # of nodes: np_2d(1:4) ="
+!      read(*,*) np_2d(1:4)
+      np_2d(1:4)=1
 
       nprocs=np_2d(1)*np_2d(2)*np_2d(3)*np_2d(4)
 
@@ -27,11 +29,12 @@
 !( If you need more dense grid points, you should make larger the paramter.)
 !
       ML0=16
+!      ML0=32
 !
 ! Lattice constant
 !
-!      ax0 = 10.261d0
-      ax0 = 10.16d0
+      ax0 = 10.261d0
+!      ax0 = 10.16d0
 !
 !( Grid spacings are defined as H1=H2=H3=ax0/ML0. )
 !===========================================================================
@@ -158,56 +161,45 @@
 !
 ! input file
 !
-      u=1
-      rewind u
-      rewind 970
-      write(u,'(a7)') "# RSDFT"
-      write(u,'(a9," /")') "'LDAPZ81'"
-      write(u,*) ax
-      write(u,'(3f10.5)') aa(:,1)
-      write(u,'(3f10.5)') aa(:,2)
-      write(u,'(3f10.5)') aa(:,3)
-      write(970,'(i4,i6,i4)') MKI,MI
+      u1=1
+      u2=970
+      rewind u1
+      write(u1,'(a7)') "# RSDFT"
+      write(u1,'("NBAND",i8," /")') MB
+      write(u1,'("NCG  ",i8," /")') 3
+      write(u1,'("ICG  ",i8," /")') 1
+      write(u1,'("IPC  ",i8," /")') 1
+      write(u1,'("SWGS ",i8," /")') 0
+      write(u1,'("NGRID",3i5)') ML1,ML2,ML3
+      write(u1,'("Md   ",i3)') 6
+      write(u1,'("PP 2 ",a12)') "'Si_psv.dat'"
+      write(u1,'("imix ",i4)') 10
+      write(u1,'("beta ",f10.5)') 1.0
+      write(u1,'("scfconv ",g20.6)') 1.d-15
+      write(u1,'("PROCS",4i5,"  /")') 1,1,1,1
+      write(u1,'("MBd  ",i3)') 0
+      write(u1,'("NBLK ",i3)') 0
+      write(u1,'("NBLK1",i3)') 0
+      write(u1,'("Diter",i5)') 100
+      write(u1,'("Nsweep",i4)') 0
+      write(u1,'("IC   ",i5)') 0
+      write(u1,'("OC   ",i5)') 3
+      write(u1,'("OC2  ",i5)') 100
+      write(u1,'("IOCTRL",i5)') 0
+      write(u1,'("SWSCF ",i5)') 1
+      write(u1,'("SWOPT ",i5)') 0
+      write(u1,'("ETLIMIT",g20.8)') 1.d10
+      write(u1,'("SCL   ",2i5)') 0,0
+      rewind u2
+      write(u2,'("AX  ",f20.15)') ax
+      write(u2,'("A1  ",3f10.5)') aa(:,1)
+      write(u2,'("A2  ",3f10.5)') aa(:,2)
+      write(u2,'("A3  ",3f10.5)') aa(:,3)
+      write(u2,'("AA")')
+      write(u2,'(i4,i6,"  /")') MKI,MI
       do a=1,MI
-         write(970,'(i4,3f15.10,i4)') Kion(a),asi(:,a)
+         write(u2,'(i4,3f15.10,i4,"  /")') Kion(a),asi(:,a),1
       end do
-      write(u,'(3i8,f8.3," /")') MB, 1
-      write(u,'(3i2)') 2,2,2
-      write(u,'(3i2)') 2,2,2
-      write(u,'(3i5,6x,"/Diter,Diter1,Diter2")') 100,100,100
-      write(u,'(6i3)') 3,3,4,4,0,1
-      write(u,'(3i4)') 1,3,0
-      write(u,'(2g11.3)') 1.d-15,1d-15
-!c      do k=1,MKI
-!c         write(u,'(2i4)') 2,2
-!c      end do
-      write(u,'(3i5)') ML1,ML2,ML3
-      write(u,'(i2)') 6
-      do k=1,MKI
-         write(u,'(i2)') 2
-         write(u,'(a12)') "'Si_psv.dat'"
-      end do
-      write(u,'(i2,i3)') 3,4
-      write(u,'(f6.3)') 0.05d0
-      write(u,'(3f6.3)') 2.d0,1.d0,7.d0
-      write(u,'(i2)') 2
-      write(u,*) 1,0
-      do k=1,nmkd
-         write(u,'(3f6.3)') 0.d0,0.d0,0.d0
-         write(u,'(3f6.3)') 0.d0,0.d0,0.d0
-         write(u,'(3f6.3)') 0.d0,0.d0,0.d0
-      end do
-      write(u,'(3i4)') 0,6,5
-      write(u,'(4g10.3)') 0.5d0,1.d-10,1.d-3,1.d-1
-      write(u,'(g10.3," /")') 1.d-4
-      write(u,'(5i5)') 0,100,0,0,0
-      write(u,'(4i3)') 1,0,0,0
-      write(u,'(4i5,12x,"/")') 0,0,0,3
-      write(u,*) 1.d10
-      write(u,'(i2,2x,a12)') 0,"'symdat_e'" 
-      write(u,'(5i4,12x,"/ np_2d(1:5)")') np_2d(1:4),1
-      write(u,'(2i4,2i7,3x,"/ NPROW,NPCOL,MBSIZE,NBSIZE")') NPROW,NPCOL,MBSIZE,NBSIZE
-      write(u,*) 0
 
       stop
       END PROGRAM MAIN

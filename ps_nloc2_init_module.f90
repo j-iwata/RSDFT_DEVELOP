@@ -1,10 +1,11 @@
 MODULE ps_nloc2_init_module
+
   use parallel_module, only: myrank
-
-!  use pseudopot_module
   use VarPSMember
-
   use Filtering, only: opFiltering
+  use pseudopot_module
+  use atom_module, only: Nelement,Natom,ki_atom
+  use maskf_module
 
   implicit none
 
@@ -68,25 +69,25 @@ CONTAINS
 
 
   SUBROUTINE ps_nloc2_init(qcut)
-    use atom_module, only: Natom,ki_atom
-    use maskf_module
     implicit none
     real(8),intent(IN) :: qcut
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
     real(8),parameter :: dr=2.d-3
-    real(8) :: qc,Rc,sum0,const
+    real(8) :: qc,Rc,sum0,const,pi
     real(8) :: x,y,y0,dy,dy0,maxerr
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
 
 #ifdef _SHOWALL_INIT_
-write(200+myrank,*) ">>>>> ps_nloc2_init"
+    write(200+myrank,*) ">>>>> ps_nloc2_init"
 #endif
+
+    if ( any( ippform == 4 ) ) return
+
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
 
-!qc=4.32987324642663
-if (myrank==0) write(200,*) 'qc(beta)= ',qc
+    if ( myrank == 0 ) write(200,*) 'qc(beta)= ',qc
 
     call allocateRps
 
@@ -113,8 +114,6 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
        do iorb=1,norb(ik)
           NRc=NRps(iorb,ik)
           Rc=Rps(iorb,ik)
-!write(630+myrank,*) '------------------------'
-!write(630+myrank,'(3I5,2g20.7)') ik,iorb,NRc,Rc,etafac
           call makemaskf(etafac)
           maxerr=0.d0
           do i=1,NRc
@@ -126,16 +125,13 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
                 dy0=1.d10
                 do m=1,20
                    m1=max(m0-m,1) ; m2=min(m0+m,nmsk)
-!write(630+myrank,'(3I5,E15.7e2)') m,m1,m2,x
                    call polint(xm(m1),maskr(m1),m2-m1+1,x,y,dy)
-!write(630+myrank,'(I5,3E15.7e2)') m,x,y,dy
                    if ( abs(dy)<dy0 ) then
                       y0=y ; dy0=abs(dy)
                    end if
                 end do
              end if
              wm(i,iorb,ik)=y0
-!write(630+myrank,'(3I5,E15.7e2)') ik,iorb,i,wm(i,iorb,ik)
              maxerr=max(maxerr,dy0)
           end do
        end do
@@ -150,9 +146,11 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
        end do
     end do
     MMr=max( maxval(Mr),maxval(NRps) )
+
 #ifdef _SHOWALL_PSINIT_
-    if (myrank==0) write(200,'(A12,I5)') 'rad1(ps)=',MMr
+    if ( myrank == 0 ) write(200,'(A12,I5)') 'rad1(ps)=',MMr
 #endif
+
     call allocateRad1(MMr)
 
     if ( MMr>maxval(Mr) ) then
@@ -170,7 +168,6 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
     do ik=1,Nelement_
        do i=1,MMr
           rad1(i,ik)=(i-1)*dr
-!write(5800+myrank,'(2I6,G20.7)') ik,i,rad1(i,ik)
        end do
     end do
 
@@ -178,6 +175,7 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
     allocate( vrad(NRc) ) ; vrad=0.d0
 
     const=2.d0/acos(-1.d0)
+    pi=acos(-1.0d0)
 
     do ik=1,Nelement_
        do iorb=1,norb(ik)
@@ -185,34 +183,38 @@ if (myrank==0) write(200,*) 'qc(beta)= ',qc
           NRc=NRps0(iorb,ik)
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
+
 #ifdef _SHOWALL_NONL_F_
-write(630+myrank,'(a6,a2,2a5,3a20)') 'qc','L','NRc','NRps','rad','rad1','viod'
-write(630+myrank,'(f6.3,I2,2I5,3g20.7)') qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
-write(630+myrank,*) '--------------------------------------- before filter'
-write(630+myrank,*) "ik,iorb= ",ik,iorb
-write(630+myrank,'(a5,5a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','wm(i,iorb,ik)','viod(i,iorb,ik)'
-do i=1,50
-  write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
-end do
-do i=NRc-50,NRc
-  write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
-end do
+          write(630+myrank,'(a6,a2,2a5,3a20)') 'qc','L','NRc','NRps','rad','rad1','viod'
+          write(630+myrank,'(f6.3,I2,2I5,3g20.7)') qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
+          write(630+myrank,*) '--------------------------------------- before filter'
+          write(630+myrank,*) "ik,iorb= ",ik,iorb
+          write(630+myrank,'(a5,5a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','wm(i,iorb,ik)','viod(i,iorb,ik)'
+          do i=1,50
+             write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+          end do
+          do i=NRc-50,NRc
+             write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
+          end do
 #endif
+
           call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
 
 #ifdef _SHOWALL_NONL_F_
-write(630+myrank,*) '--------------------------------------- after filter'
-write(630+myrank,*) "ik,iorb= ",ik,iorb
-write(630+myrank,'(a5,4a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','viod(i,iorb,ik)'
-do i=1,50
-  write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
-end do
-do i=NRc-50,NRc
-  write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
-end do
+          write(630+myrank,*) '--------------------------------------- after filter'
+          write(630+myrank,*) "ik,iorb= ",ik,iorb
+          write(630+myrank,'(a5,4a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','viod(i,iorb,ik)'
+          do i=1,50
+             write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
+          end do
+          do i=NRc-50,NRc
+             write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
+          end do
 #endif
+
        end do ! iorb
     end do ! ik
+
     deallocate( vrad )
 
     do ik=1,Nelement_
@@ -244,8 +246,9 @@ end do
     end do
 
     deallocate( wm )
+
 #ifdef _SHOWALL_INIT_
-write(200+myrank,*) "<<<<< ps_nloc2_init"
+    write(200+myrank,*) "<<<<< ps_nloc2_init"
 #endif
 
     return
@@ -335,5 +338,118 @@ write(200+myrank,*) "<<<<< ps_nloc2_init"
     deallocate( dvrad )
 
   END SUBROUTINE ps_nloc2_init_derivative
+
+
+  SUBROUTINE simp(f,s,n,m)
+    implicit none
+    integer,intent(IN)  :: n,m
+    real(8),intent(IN)  :: f(n)
+    real(8),intent(OUT) :: s
+    real(8),allocatable :: g(:)
+    integer :: i,nn,nmax
+    nmax=int(n/m)*m
+    do i=0,m
+       nmax=nmax+i ; if ( nmax>=n ) exit
+    end do
+    allocate( g(nmax) ) ; g(1:n)=f ; if ( nmax>n ) g(n+1:)=0.d0
+    select case(m)
+    case default
+       s = 0.5d0*(f(1)+f(n)) + sum(f(2:n-1))
+    case(2)
+       s=0.d0
+       do i=1,nmax-2,2
+          s = s + g(i) + 4.d0*g(i+1) + g(i+2)
+       end do
+       s=s/3.d0
+    case(4)
+       s=0.d0
+       do i=1,nmax-4,4
+          s=s+7*g(i)+32*g(i+1)+12*g(i+2)+32*g(i+3)+7*g(i+4)
+       end do
+       s=s*2.d0/45.d0
+    case(6)
+       s=0.d0
+       do i=1,nmax-6,6
+          s=s+41*g(i)+216*g(i+1)+27*g(i+2)+272*g(i+3) &
+               +27*g(i+4)+216*g(i+5)+41*g(i+6)
+       end do
+       s=s/140.d0
+    end select
+    deallocate( g )
+    return
+  END SUBROUTINE simp
+
+!--------1---------2---------3---------4---------5---------6---------7--
+!
+! Spherical Bessel Function jn(x)
+! (Ref. "Fortran77 ni yoru suuti-keisan software", Maruzen)
+!
+  FUNCTION sjbes(n,x)
+    implicit none
+    real(8) :: sjbes
+    real(8),intent(IN) :: x
+    integer,intent(IN) :: n
+    integer :: i,m,l
+    real(8) :: c,j0,js0,js1,js2,jsn
+
+    if ( x < 0.0d0 .or. n < 0 ) then
+       stop "Bad arguments (stop at sjbes)"
+    end if
+
+    if ( x <= 2.d-8 ) then
+       if ( n == 0 ) then
+          sjbes=1.d0
+       else
+          if( x <= 1.d-77 )then
+             sjbes=0.d0
+          else
+             c=2*n+1
+             do i=2*n-1,1,-2
+                c=c*i
+             end do
+             sjbes=x/c
+          end if
+       end if
+       return
+    end if
+
+    if ( x >= 100.d0 ) then
+       l=int(0.05d0*x+30)
+    else if ( 10.d0 <= x .and. x < 100.d0 ) then
+       l=int(0.15d0*x+20)
+    else if ( 1.0d0 < x .and. x < 10.d0 ) then
+       l=int(x+9)
+    else
+       l=8
+    end if
+    m=max(n,nint(x))+l
+    js2=0.d0 ; js1=1.d-75
+    do i=m,1,-1
+       js0=(2*i+1)/x*js1-js2
+       js2=js1
+       js1=js0
+       if ( i == n+1 ) jsn=js0
+    end do
+    if( x >= 0.2d0 )then
+       j0=sin(x)/x
+    else
+       j0=1.d0-x**2/6.d0+x**4/120.d0-x**6/5040.d0+x**8/362880.d0
+    end if
+    if ( js0 == 0.0d0 ) then
+       sjbes=0.d0
+       if ( abs(jsn) > 1.d-14 ) then
+          write(*,*) "n,x=",n,x
+          write(*,*) "j0 =",j0
+          write(*,*) "js0=",js0
+          write(*,*) "jsn=",jsn
+          stop "sjbes"
+       end if
+    else
+       sjbes=j0/js0*jsn
+    end if
+
+    return
+  END FUNCTION sjbes
+
 
 END MODULE ps_nloc2_init_module

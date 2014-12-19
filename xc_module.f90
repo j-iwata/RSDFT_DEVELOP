@@ -4,11 +4,23 @@ MODULE xc_module
   use density_module, only: rho
   use ps_pcc_module
   use parallel_module
-  use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1
-  use xc_pw92_gth_module
+  use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1
+  use pw92_gth_module
+  use watch_module
+  use aa_module
+  use bb_module
+  use bc_module
+  use kinetic_module, only: SYStype
+  use kinetic_variables, only: Md
+  use fd_module
+  use electron_module, only: Nspin, Nband, Nelectron
+  use bz_module, only: kbb, MMBZ, Nbzsm
+
+  use xc_ldapz81_module
+  use xc_ggapbe96_module
   use xc_hybrid_module
   use xc_hse_module
-  use watch_module
+  use xc_hf_module
 
   implicit none
 
@@ -69,40 +81,192 @@ CONTAINS
   END SUBROUTINE send_xc
 
 
+  SUBROUTINE chk_density(rho,rhoc)
+    implicit none
+    real(8),optional,intent(IN) :: rho(:,:),rhoc(:)
+    real(8),allocatable :: trho(:,:),sb(:,:),rb(:,:)
+    integer,allocatable :: ic(:,:),jc(:,:)
+    integer :: i,j,m,n,ierr
+
+    if ( present(rho) ) then
+       m=size(rho,1)
+       n=size(rho,2)
+       allocate( trho(m,n) )
+       trho=rho
+    else if ( present(rhoc) ) then
+       m=size(rhoc,1)
+       n=1
+       allocate( trho(m,n) )
+       trho(:,1)=rhoc(:)
+    end if
+
+    allocate( sb(3,n) ) ; sb=0.0d0
+    allocate( rb(3,n) ) ; rb=0.0d0
+    allocate( ic(3,n) ) ; ic=0
+    allocate( jc(3,n) ) ; jc=0
+
+    sb(:,:)=0.0d0
+    do j=1,n
+       do i=1,m
+          sb(1,j) = sb(1,j) + trho(i,j)
+          if ( trho(i,j) > 0.0d0 ) sb(2,j) = sb(2,j) + trho(i,j)
+          if ( trho(i,j) < 0.0d0 ) sb(3,j) = sb(3,j) + trho(i,j)
+       end do
+       ic(1,j)=count( trho(:,j) == 0.0d0 )
+       ic(2,j)=count( trho(:,j) >  0.0d0 )
+       ic(3,j)=count( trho(:,j) <  0.0d0 )
+    end do
+
+    sb=sb*dV
+    call mpi_allreduce(sb,rb,3*n,mpi_real8,mpi_sum,comm_grid,ierr)
+    call mpi_allreduce(ic,jc,3*n,mpi_integer,mpi_sum,comm_grid,ierr)
+
+    if ( disp_switch_parallel ) then
+       do j=1,n
+          write(*,'(1x,"(positive)",i8,2x,2g16.8)') jc(2,j),rb(2,j),rb(1,j)
+          write(*,'(1x,"(negative)",i8,2x,2g16.8)') jc(3,j),rb(3,j),rb(1,j)
+          if ( jc(1,j) /= 0 ) write(*,'(1x,"(zero    )",i8)') jc(1,j)
+       end do
+    end if
+
+    deallocate( jc,ic )
+    deallocate( rb,sb )
+
+  END SUBROUTINE chk_density
+
+
   SUBROUTINE calc_xc
     implicit none
+    real(8),allocatable :: rho_tmp(:,:)
+    real(8) :: c
+    integer :: s
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," calc_xc(start)")') repeat("-",60)
+    end if
+
     if ( .not.allocated(Vxc) ) then
        allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
+       Vxc=0.0d0
     end if
+
+    allocate( rho_tmp(ML_0:ML_1,MSP) )
+    rho_tmp(:,:)=rho(:,:)
+
+    if ( flag_pcc_0 ) then
+       c=1.0d0
+       if ( MSP == 2 ) c=0.5d0
+       do s=1,MSP
+          rho_tmp(:,s) = rho_tmp(:,s) + c*rhoc(:)
+       end do
+       call chk_density(rho)
+       call chk_density(rhoc=rhoc)
+    end if
+    call chk_density(rho_tmp)
+       
     select case(XCtype)
+    case('LDAPZ81_')
+
+       call calc_LDAPZ81_org
+
     case('LDAPZ81')
-       call calc_LDAPZ81
+
+       call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
+       call calc_LDAPZ81( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
     case('LDAPW92')
+
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
+
+    case('GGAPBE9_')
+
+       call calc_GGAPBE96_org
+
     case('GGAPBE96')
-       call calc_GGAPBE96
+
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype )
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
     case('HF')
-       stop "HF is not available yet"
-    case('PBE0')
-       stop "PBE0 is not available yet"
-    case('HSE')
-       call calc_xc_hse(ML_0,ML_1,MSP,Vxc,Exc,E_exchange_exx)
-       if ( icount_sweep_hybrid <= Nsweep_hybrid ) then
-          call calc_GGAPBE96
-          if ( DISP_SWITCH_PARALLEL ) then
-             write(*,*) "icount_sweep_hybrid =" &
-                  ,icount_sweep_hybrid,Nsweep_hybrid
+
+       if ( iflag_hybrid == 0 ) then
+
+          if ( disp_switch_parallel ) then
+             write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
+             write(*,*) "LDAPZ81 is called (iflag_hybrid==0)"
           end if
-          icount_sweep_hybrid = icount_sweep_hybrid + 1
+
+          call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
+          call calc_LDAPZ81( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+       else
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+          call calc_xc_hf( E_exchange_exx )
+
+          Vxc(:,:)      = 0.0d0
+          E_exchange    = 0.0d0
+          E_correlation = 0.0d0
+          Exc           = E_exchange_exx
+
        end if
+
+    case('PBE0')
+
+       stop "PBE0 is not available yet"
+
+    case('HSE')
+
+!       call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
+!            , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
+!            , kbb, bb, Va, SYStype, XCtype, disp_switch_parallel )
+
+       if ( iflag_hybrid == 0 ) then
+
+          if ( disp_switch_parallel ) then
+             write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
+             write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
+          end if
+
+          call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid &
+               , dV ,Md, Hgrid, Ngrid, SYStype )
+          call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+       else
+
+          call init_xc_hse( ML_0, ML_1, MSP,MSP_0,MSP_1 &
+               ,MBZ_0,MBZ_1,MB_0,MB_1,SYStype )
+
+          call calc_xc_hse( iflag_hse, rho, Exc &
+               , Vxc, E_exchange, E_correlation, E_exchange_exx )
+
+       end if
+
     case('LCwPBE')
+
        stop "LCwPBE is not available yet"
+
+    case default
+
+       write(*,*) "Invalid Keyword: XCtype=",XCtype
+       stop "stop@calc_xc"
+
     end select
+
+    deallocate( rho_tmp )
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," calc_xc(end)")') repeat("-",60)
+    end if
+
   END SUBROUTINE calc_xc
 
 
-  SUBROUTINE calc_LDAPZ81
+  SUBROUTINE calc_LDAPZ81_org
     implicit none
     real(8),parameter :: gam(1:2)=(/-0.1423d0,-0.0843d0/)
     real(8),parameter :: bet1(1:2)=(/1.0529d0,1.3981d0/)
@@ -238,18 +402,12 @@ CONTAINS
     end if
 
     return
-  END SUBROUTINE calc_LDAPZ81
+  END SUBROUTINE calc_LDAPZ81_org
 
 !============================================================== GGAPBE96
 !--------1---------2---------3---------4---------5---------6---------7--
 
-  SUBROUTINE calc_GGAPBE96
-    use aa_module
-    use bb_module
-    use bc_module
-    use kinetic_module, only: Md,SYStype
-    use fd_module
-    use electron_module, only: Nspin
+  SUBROUTINE calc_GGAPBE96_org
     implicit none
     real(8),parameter :: mu=0.21951d0,Kp=0.804d0
     real(8),parameter :: zero_density=1.d-10
@@ -363,9 +521,7 @@ CONTAINS
     case(1,2)
        stop "stop@GGAPBE96,MOL"
        allocate( LL2(3,ML) ) ; LL2=0
-!       call Make_GridMap_1(LL2,1,ML)
        allocate( LLL2(-Mx:Mx,-My:My,-Mz:Mz) ) ; LLL2=0
-!       call Make_GridMap_3(LLL2,-Mx,Mx,-My,My,-Mz,Mz)
     end select
 
     allocate( rrrr(ML,3) ) ; rrrr=0.d0
@@ -467,7 +623,6 @@ CONTAINS
 
           trho=dble(nspin)*rho(i,ispin) ; if (allocated(rhoc)) trho=trho+rhoc(i)
 
-!          if ( trho==0.d0 ) cycle
           if ( trho <= zero_density ) cycle
 
           kf=(3.d0*Pi*Pi*trho)**(1.d0/3.d0)
@@ -556,10 +711,8 @@ CONTAINS
 
     do i=n1,n2
 
-!       trho=rho(i,ispin) ; if ( allocated(rhoc) ) trho=trho+rhoc(i)
        trho=rho_tmp(i)
 
-!       if ( trho==0.d0 ) cycle
        if ( trho <= zero_density ) cycle
 
        fz=( (1.d0+zeta(i))**(4.d0/3.d0)+(1.d0-zeta(i))**(4.d0/3.d0)-2.d0 )*const1
@@ -747,10 +900,10 @@ CONTAINS
 
     call watch(ctime1,etime1)
     if ( DISP_SWITCH_PARALLEL ) then
-       write(*,*) "TIME(XC_GGAPBE96)",ctime1-ctime0,etime1-etime0
+       write(*,*) "TIME(XC_GGAPBE96_org)",ctime1-ctime0,etime1-etime0
     end if
 
     return
-  END SUBROUTINE CALC_GGAPBE96
+  END SUBROUTINE CALC_GGAPBE96_org
 
 END MODULE xc_module

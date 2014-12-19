@@ -6,15 +6,38 @@ MODULE parameters_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_parameters, read_oldformat_parameters
+  PUBLIC :: read_parameters
 
   integer,parameter :: unit=1, unit_atom=970
 
   integer :: atom_format
+  integer :: param_format=0
 
 CONTAINS
 
+
   SUBROUTINE read_parameters
+    implicit none
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(START)")') repeat("-",60)
+    end if
+
+    select case( param_format )
+    case default
+       call read_keywordformat_parameters
+    case( 1 )
+       call read_oldformat_parameters
+    end select
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(END)")') repeat("-",60)
+    end if
+
+  END SUBROUTINE read_parameters
+
+
+  SUBROUTINE read_keywordformat_parameters
     implicit none
     integer :: i
     character(7) :: label,cbuf,ckey
@@ -34,6 +57,7 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
        ax = ax_tmp
        aa(:,:) = aa_tmp(:,:)
        call write_info("ax and aa given in fort.970 are used") 
+       call set_org_aa( ax, aa )
     end if
 
     call read_electron(myrank,unit)
@@ -42,7 +66,7 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 
     call read_cg(myrank,unit)
 
-    call read_rgrid(myrank,unit)
+    call Read_RgridSol(myrank,unit)
 
     call read_kinetic(myrank,unit)
 
@@ -88,7 +112,7 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 999    continue
        write(*,*) "Diter =",Diter
        write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Ndaig =",Ndiag
+       write(*,*) "Ndiag =",Ndiag
     end if
 
     iswitch_scf  = 1
@@ -174,7 +198,11 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
 #endif
 
-  END SUBROUTINE read_parameters
+    call read_symmetry( myrank, unit )
+
+    call read_gram_schmidt( myrank, unit )
+
+  END SUBROUTINE read_keywordformat_parameters
 
 
   SUBROUTINE read_oldformat_parameters
@@ -207,7 +235,7 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
 
     call read_oldformat_cg(myrank,unit)
 
-    call read_oldformat_rgrid(myrank,unit)
+    call ReadOldformat_RgridSol(myrank,unit)
 
     call read_oldformat_kinetic(myrank,unit)
 

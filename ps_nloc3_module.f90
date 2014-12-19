@@ -12,6 +12,8 @@ MODULE ps_nloc3_module
   use wf_module
   use electron_module
 
+  use ps_nloc2_variables
+
   implicit none
 
   PRIVATE
@@ -21,26 +23,19 @@ MODULE ps_nloc3_module
   integer,allocatable :: mapgk(:,:)
   real(8),allocatable :: viodgk2(:,:,:)
 
-  integer,allocatable :: iuV(:),iorbmap(:),amap(:),lmap(:),mmap(:)
-
-  integer :: Mlma, Mlma_np
-  integer :: nzlma
+  integer :: Mlma_np
 
   integer,allocatable :: icnt(:),idis(:)
   logical :: first_time = .true.
 
 #ifdef _DRSDFT_
-  integer,parameter :: TYPE_MAIN=MPI_REAL8
-  real(8),allocatable :: uVk(:,:,:)
   real(8),allocatable :: utmp(:)
   real(8),allocatable :: utmp3(:,:,:)
-  real(8),parameter :: zero=0.0d0,one=1.0d0
+  real(8),parameter :: one=1.0d0
 #else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
-  complex(8),allocatable :: uVk(:,:,:)
   complex(8),allocatable :: utmp(:)
   complex(8),allocatable :: utmp3(:,:,:)
-  complex(8),parameter :: zero=(0.0d0,0.0d0),one=(1.0d0,0.0d0)
+  complex(8),parameter :: one=(1.0d0,0.0d0)
 #endif
 
 CONTAINS
@@ -59,12 +54,18 @@ CONTAINS
     integer,allocatable :: indx(:),itmp(:),itmp2(:)
     real(8),allocatable :: tmp(:),tmp2(:)
 
+    if ( any( ippform == 4 ) ) then
+       write(*,*) "ippform=4 & pselect=3 is not implemented yet"
+       stop "stop@init_ps_nloc3"
+    end if
+
     pi4   = 4.0d0*acos(-1.0d0)
     Vcell = abs(va)
     MKI   = Nelement
     MG    = NGgrid(0)
 
-    allocate( mapgk(MG,MBZ_0:MBZ_1) ) ; mapgk=0
+    if ( .not.allocated(mapgk) ) allocate( mapgk(MG,MBZ_0:MBZ_1) )
+    mapgk=0
     
     call construct_Ggrid(0)
 
@@ -122,10 +123,11 @@ CONTAINS
 
     call destruct_Ggrid
 
-!- allocate --------------------------------
+!- allocate ---------------------------------------
+    if ( allocated(viodgk2) ) deallocate( viodgk2 )
     allocate( viodgk2(m_mapgk,m_norb,MKI) )
     viodgk2=0.0d0
- !------------------------------------------
+ !-------------------------------------------------
 
     NRc=maxval(NRps)
     allocate( tmp(NRc) ) ; tmp=0.d0

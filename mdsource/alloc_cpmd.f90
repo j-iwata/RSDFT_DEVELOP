@@ -3,13 +3,15 @@
 !-----------------------------------------------------------------------
 
 subroutine alloc_md
-  use cpmd_variables, only: iatom,Rion,Velocity,Force,MI
+  use cpmd_variables, only: iatom,Rion,Rion0,Velocity,Force,MI
   implicit none 
   allocate( iatom(MI) )
   if ( .not.allocated(Rion) ) then
      allocate( Rion(3,MI) )
+     allocate( Rion0(3,MI) )
   end if
   Rion=0.d0
+  Rion0=0.0d0
   call init_ion
   allocate( Velocity(3,MI) ) ; Velocity=0.0d0
   allocate(    Force(3,MI) ) ; Force   =0.0d0
@@ -21,7 +23,7 @@ end subroutine alloc_md
 subroutine dealloc_md
   use cpmd_variables
   implicit none 
-  deallocate(iatom,Rion,Velocity,Force)
+  deallocate(iatom,Rion0,Rion,Velocity,Force)
   return
 end subroutine dealloc_md
 
@@ -114,6 +116,7 @@ subroutine read_cpmd_variables
    read(2,*) lbathnewe
    read(2,*) linitnose
    read(2,*) linitnosee
+   read(2,*) lblue
    close(2)
 
    write(*,*) "nstep =",nstep
@@ -137,6 +140,8 @@ subroutine read_cpmd_variables
    write(*,*) "lforce_fast",lforce_fast
    write(*,*) "linitnose=",linitnose
    write(*,*) "linitnosee=",linitnosee
+   write(*,*) "lblue=",lblue
+   if(lblue) write(*,*) "Constraint ON"
 
    return
 end subroutine read_cpmd_variables
@@ -175,5 +180,6 @@ subroutine send_cpmd_variables
    call mpi_bcast(lrestart_p,1,mpi_logical,0,mpi_comm_world,ierr)
    call mpi_bcast(linitnose,1,mpi_logical,0,mpi_comm_world,ierr)
    call mpi_bcast(linitnosee,1,mpi_logical,0,mpi_comm_world,ierr)
+   call mpi_bcast(lblue,1,mpi_logical,0,mpi_comm_world,ierr)
    return
 end subroutine send_cpmd_variables

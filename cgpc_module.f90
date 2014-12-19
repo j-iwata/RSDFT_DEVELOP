@@ -1,14 +1,26 @@
 MODULE cgpc_module
 
+!$  use omp_lib
   use rgrid_module
   use parallel_module
+  use kinetic_module, only: SYStype
+  use bc_module
+  use kinetic_variables, only: Md, ggg
+  use array_bound_module, only: ML_0,ML_1
+
+  use cgpc_diag_module
+  use cgpc_seitsonen_module
+  use cgpc_2_module
+  use cgpc_gausseidel_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: preconditioning,read_cgpc,read_oldformat_cgpc
+  PUBLIC :: preconditioning,read_cgpc,read_oldformat_cgpc,init_cgpc
 
   integer :: mloop
+  integer :: iswitch_cgpc
+
 #ifdef _DRSDFT_
   real(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
   real(8),parameter :: zero=0.d0
@@ -17,7 +29,9 @@ MODULE cgpc_module
   complex(8),parameter :: zero=(0.d0,0.d0)
 #endif
 
+
 CONTAINS
+
 
   SUBROUTINE read_cgpc(rank,unit)
     implicit none
@@ -25,6 +39,7 @@ CONTAINS
     integer :: i
     character(5) :: cbuf,ckey
     mloop=3
+    iswitch_cgpc=1
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -33,16 +48,21 @@ CONTAINS
           if ( ckey(1:5) == "MLOOP" ) then
              backspace(unit)
              read(unit,*) cbuf,mloop
+          else if ( ckey(1:4) == "IPC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_cgpc
           end if
        end do
 999    continue
        write(*,*) "mloop=",mloop
+       write(*,*) "iswitch_cgpc=",iswitch_cgpc
     end if
     call send_cgpc(0)
   END SUBROUTINE read_cgpc
 
 
   SUBROUTINE read_oldformat_cgpc(rank,unit)
+    implicit none
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
        read(unit,*) mloop
@@ -57,10 +77,66 @@ CONTAINS
     integer,intent(IN) :: rank
     integer :: ierr
     call mpi_bcast(mloop,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iswitch_cgpc,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_cgpc
 
 
-  SUBROUTINE preconditioning(E,k,s,nn,ML0,gk,Pgk)
+  SUBROUTINE init_cgpc(n1,n2,k,s,dV_in)
+    implicit none
+    integer,intent(IN) :: n1,n2,k,s
+    real(8),intent(IN) :: dV_in
+    select case( iswitch_cgpc )
+    case( 0 )
+    case( 1 )
+       if ( disp_switch_parallel ) write(*,*) "--- cgpc_1 ---"
+       if ( mloop == 0 ) mloop=3
+    case( 2 )
+       if ( disp_switch_parallel ) write(*,*) "--- cgpc_2 ---"
+       call init_cgpc_2( mloop, SYStype )
+    case( 3 )
+       if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
+       call init_cgpc_gausseidel(Igrid,Ngrid,Hgrid,ggg,mloop)
+    case( 10 )
+       if ( disp_switch_parallel ) write(*,*) "--- cgpc_diag ---"
+       call init_cgpc_diag(n1,n2,k,s,dV_in)
+    case( 20 )
+       if ( disp_switch_parallel ) write(*,*) "--- cgpc_seitsonen ---"
+       call init_cgpc_seitsonen(n1,n2,comm_grid,dV_in)
+    end select
+  END SUBROUTINE init_cgpc
+
+
+  SUBROUTINE preconditioning(E,k,s,nn,ML0,xk,gk,Pgk)
+    implicit none
+    integer,intent(IN) :: k,s,nn,ML0
+    real(8),intent(IN) :: E(nn)
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
+    real(8),intent(IN) :: xk(ML0,nn)
+#else
+    complex(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
+    complex(8),intent(IN) :: xk(ML0,nn)
+#endif
+
+    select case( iswitch_cgpc )
+    case( 0 )
+       return
+    case( 1 )
+       call preconditioning_1(E,k,s,nn,ML0,gk,Pgk)
+    case( 2 )
+       call preconditioning_2(E,k,s,nn,ML0,gk,Pgk)
+    case( 3 )
+       call cgpc_gausseidel(ML0,nn,Pgk)
+    case( 10 )
+       call cgpc_diag(ML0,nn,Pgk)
+    case( 20 )
+       call cgpc_seitsonen(k,s,ML0,nn,E,xk,Pgk)
+    end select
+
+  END SUBROUTINE preconditioning
+
+
+  SUBROUTINE preconditioning_1(E,k,s,nn,ML0,gk,Pgk)
     implicit none
     integer,intent(IN)    :: k,s,nn,ML0
     real(8),intent(IN)    :: E(nn)
@@ -197,11 +273,10 @@ CONTAINS
 
     return
 
-  END SUBROUTINE preconditioning
+  END SUBROUTINE preconditioning_1
 
 
   SUBROUTINE precond_cg_mat(E,k,s,mm,nn)
-    use kinetic_module, only: SYStype
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
@@ -217,9 +292,7 @@ CONTAINS
 
 
   SUBROUTINE precond_cg_mat_sol(E,k,s,mm,nn)
-    use bc_module
-    use kinetic_module
-!$  use omp_lib
+    implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
     real(8) :: c,c1,c2,c3,d
@@ -317,8 +390,6 @@ CONTAINS
 
   SUBROUTINE precond_cg_mat_mol(E,k,s,mm,nn)
     use rgrid_mol_module
-    use bc_module
-    use array_bound_module, only: ML_0,ML_1
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
@@ -378,8 +449,6 @@ CONTAINS
 
   SUBROUTINE precond_cg_mat_esm(E,k,s,mm,nn)
     use esm_rgrid_module
-    use bc_module
-    use kinetic_module, only: Md
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)

@@ -7,16 +7,27 @@ MODULE esm_hartree_module
   use modified_bessel_module
   use parallel_module
   use esm_genpot_module
-  use kinetic_module
+  use bc_module
+  use fd_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_esm_hartree
+  PUBLIC :: calc_esm_hartree, init_esm_hartree
 
-  complex(8),allocatable :: v_outer(:) 
+  complex(8),allocatable :: v_outer(:)
+  integer :: Md
+  logical :: flag_init=.true.
 
 CONTAINS
+
+
+  SUBROUTINE init_esm_hartree(Md_in)
+    implicit none
+    integer,intent(IN) :: Md_in
+    Md = Md_in
+    flag_init = .false.
+  END SUBROUTINE init_esm_hartree
 
 
   SUBROUTINE calc_esm_hartree(n1,n2,nsp,rho_in,v_inout,e_out)
@@ -34,6 +45,11 @@ CONTAINS
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8) :: phase_k,phase_m
     complex(8) :: fmk_inner,ztmp
+
+    if ( flag_init ) then
+       write(*,*) "init_hartree should be called first"
+       stop "stop@calc_esm_hartree"
+    end if
 
     e_out = 0.d0
 
@@ -98,7 +114,6 @@ CONTAINS
 
        ztmp=fmk_inner
        call mpi_allreduce(ztmp,fmk_inner,1,mpi_complex16,mpi_sum,comm_grid,ierr)
-
 !       write(*,'(1x,i4,2i6,2g20.10)') myrank,ikz,ima,fmk_inner
 !       call flush(6)
 
@@ -159,9 +174,6 @@ CONTAINS
 
 
   SUBROUTINE esm_test3(n1,n2,rho_in,v_inout,e_out)
-    use kinetic_module
-    use bc_module
-    use fd_module
     implicit none
     integer,intent(IN)  :: n1,n2
     real(8),intent(IN)  :: rho_in(n1:n2)
@@ -203,8 +215,8 @@ CONTAINS
     c2  = 1.d0/Hgrid(2)**2
     c3  = 1.d0/Hgrid(3)**2
 
-    allocate( lap(-Md:Md) ) ; lap=0.d0
-    call get_coef_laplacian_fd(Md,lap)
+    allocate( lap(-Md:Md) ) ; lap=0.0d0
+    call get_coef_lapla_fd(Md,lap)
     lap(0)=0.5d0*lap(0)
 
     allocate(  b(n1:n2) )

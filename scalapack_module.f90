@@ -5,7 +5,7 @@ MODULE scalapack_module
   implicit none
 
   PRIVATE
-  PUBLIC :: prep_scalapack,prep_0_scalapack, UPLO &
+  PUBLIC :: prep_scalapack, init_scalapack, UPLO &
            ,NPROW,NPCOL,MBSIZE,NBSIZE,LLD_R,LLD_C,DESCA,DESCB,DESCZ &
            ,NP0,NQ0,NPX,NQX,usermap
 
@@ -22,7 +22,8 @@ MODULE scalapack_module
 
 CONTAINS
 
-  SUBROUTINE read_scalapack(rank,unit)
+
+  SUBROUTINE read_scalapack( rank, unit )
     implicit none
     integer,intent(IN) :: rank,unit
     integer :: ierr,i
@@ -46,10 +47,10 @@ CONTAINS
     call mpi_bcast(NPCOL,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE read_scalapack
 
-  SUBROUTINE prep_scalapack(MB,disp_switch)
+
+  SUBROUTINE prep_scalapack( MB )
     implicit none
     integer,intent(INOUT) :: MB
-    logical,intent(IN) :: disp_switch
     integer :: ierr,NPCOL0,i,j,n,is,ik,m,ib,l,i1,i2,i3
     integer :: MXLLD,MYROW,MYCOL,mm,mchk
     integer,save :: icount_visit=0, ICTXT=0, ICTXT0=0
@@ -98,7 +99,7 @@ CONTAINS
        end if
     end if
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
        write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
     end if
@@ -106,7 +107,7 @@ CONTAINS
     if ( NBSIZE*NPCOL/=MB ) then
        n=max( NBSIZE*NPCOL, MB )
        n=min( n, (NBSIZE+1)*NPCOL )
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,*) "NBSIZE*NPCOL/=MB!"
           write(*,*) "recommended value for MB =",n
           write(*,*) "MB is replaced"
@@ -118,39 +119,35 @@ CONTAINS
 
     if ( .not.allocated(usermap) ) then
 
-    allocate( usermap(0:NPROW-1,0:NPCOL-1,2) )
+       allocate( usermap(0:NPROW-1,0:NPCOL-1,2) )
+       usermap(:,:,:)=MPI_PROC_NULL
 
-    usermap(:,:,:)=MPI_PROC_NULL
-
-    n=-1
-    do is=0,node_partition(6)-1
-    do ik=0,node_partition(5)-1
-       m=-1 ; mchk=-NPROW*NPCOL
-       do ib=0,node_partition(4)-1
-          l=-1
-          do i3=0,node_partition(3)-1
-          do i2=0,node_partition(2)-1
-          do i1=0,node_partition(1)-1
-             n=n+1
-             m=m+1 ; if ( mod(m,NPROW*NPCOL) == 0 ) mchk=mchk+NPROW*NPCOL
-             l=l+1
-!             j=mod(m+NPCOL,NPCOL)
-!!             i=m/NPCOL
-!             i=mod(m/NPCOL,NPROW)
-             i=mod(m+NPROW,NPROW)
-             j=m/NPROW
-             mm=myrank_g+nprocs_g*myrank_b+1
-             if ( id_class(myrank,5)==ik .and. id_class(myrank,6)==is .and. &
-                  mm > mchk ) then
-                usermap(i,j,1)=n
-                usermap(i,j,2)=l
-             end if
-          end do
-          end do
-          end do
-       end do
-    end do
-    end do
+       n=-1
+       do is=0,node_partition(6)-1
+       do ik=0,node_partition(5)-1
+          m=-1 ; mchk=-NPROW*NPCOL
+          do ib=0,node_partition(4)-1
+             l=-1
+             do i3=0,node_partition(3)-1
+             do i2=0,node_partition(2)-1
+             do i1=0,node_partition(1)-1
+                n=n+1
+                m=m+1 ; if ( mod(m,NPROW*NPCOL) == 0 ) mchk=mchk+NPROW*NPCOL
+                l=l+1
+                i=mod(m+NPROW,NPROW)
+                j=m/NPROW
+                mm=myrank_g+nprocs_g*myrank_b+1
+                if ( id_class(myrank,5)==ik .and. id_class(myrank,6)==is &
+                     .and. mm > mchk ) then
+                   usermap(i,j,1)=n
+                   usermap(i,j,2)=l
+                end if
+             end do ! i1
+             end do ! i2
+             end do ! i3
+          end do ! ib
+       end do ! ik
+       end do ! is
 
     end if
 
@@ -174,7 +171,7 @@ CONTAINS
     NPX=NUMROC(MB,MBSIZE,MYROW,0,NPROW)
     NQX=NUMROC(MB,NBSIZE,MYCOL,0,NPCOL)
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "ICTXTX,ICTXT0    =",ICTXT,ICTXT0
        write(*,*) "NPROW,NPCOL      =",NPROW,NPCOL
        write(*,*) "MBSIZE,NBSIZE    =",MBSIZE,NBSIZE
@@ -190,9 +187,9 @@ CONTAINS
   END SUBROUTINE prep_scalapack
 
 
-  SUBROUTINE prep_0_scalapack(MB,disp_switch)
+  SUBROUTINE init_scalapack( MB )
+    implicit none
     integer,intent(INOUT) :: MB
-    logical,intent(IN) :: disp_switch
     integer :: NPCOL0,i,j,n
 
     MBSIZE = 0
@@ -240,7 +237,7 @@ CONTAINS
        end if
     end if
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
        write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
     end if
@@ -254,6 +251,7 @@ CONTAINS
        MB=n
     end if
 
-  END SUBROUTINE prep_0_scalapack
+  END SUBROUTINE init_scalapack
+
 
 END MODULE scalapack_module

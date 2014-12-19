@@ -1,6 +1,7 @@
 MODULE localpot2_density_module
 
-  use localpot2_variables
+  use localpot2_variables, only: Ngrid_dense,Ndens_loc,Igrid_dense &
+       ,nitp_0,nitp_1,Clag1,Clag2,Clag3,dV_dense
   use wf_module
   use array_bound_module
   use rgrid_module
@@ -14,10 +15,9 @@ MODULE localpot2_density_module
 
 CONTAINS
 
-  SUBROUTINE localpot2_density(m1_0,m2_0,m3_0,vout)
+  SUBROUTINE localpot2_density( vout )
     implicit none
-    integer,intent(IN)  :: m1_0,m2_0,m3_0
-    real(8),intent(OUT) :: vout(m1_0,m2_0,m3_0)
+    real(8),intent(OUT) :: vout(:,:,:)
     integer :: ml,mb,mk,ms,ML1,ML2,ML3,m1,m2,m3
     integer :: s,k,n,ic1,ic2,ic3,id1,id2,id3,jd1,jd2,jd3
     integer :: itp1,itp2,itp3,i,jc1,jc2,jc3,ierr
@@ -31,6 +31,7 @@ CONTAINS
     complex(8) :: v
     complex(8),allocatable :: utmp(:)
 #endif
+    real(8) :: c,d
 
     vout(:,:,:)=0.0d0
 
@@ -110,6 +111,12 @@ CONTAINS
     end do
     end do
     end do
+
+    c=sum(vout)*dV_dense
+    call mpi_allreduce(c,d,1,mpi_real8,mpi_sum,comm_grid,ierr)
+    if ( disp_switch_parallel ) then
+       write(*,*) "sum(rho_dense)=",d,minval(vout),maxval(vout)
+    end if
 
     deallocate( utmp )
     deallocate( LLL )

@@ -2,13 +2,11 @@ MODULE density_module
 
   use wf_module
   use parallel_module, only: comm_grid,comm_band,comm_bzsm,comm_spin,ir_grid,id_grid,ir_spin,id_spin,myrank_g,myrank_s,myrank
-
-!--------------------------------------------------------------------------- 20140507 HL
+  use symmetry_module, only: sym_rho
 #ifdef _USPP_
   use WFDensityG, only: get_rhonks
   use VarSysParameter, only: pp_kind
 #endif
-!=========================================================================== 20140507 HL
 
   implicit none
 
@@ -30,9 +28,7 @@ CONTAINS
   SUBROUTINE init_density(Nelectron,dV)
     implicit none
     real(8),intent(IN) :: Nelectron,dV
-#ifdef _SHOWALL_RHO_
-integer :: i,s
-#endif
+    integer :: i,s
 
     Nelectron_RHO = Nelectron
     dV_RHO        = dV
@@ -49,14 +45,16 @@ integer :: i,s
        call random_number(rho)
        call normalize_density
     end if
+
 #ifdef _SHOWALL_RHO_
-write(410+myrank,*) 'i,s,rho(i,s)'
-do s=MS_0_RHO,MS_1_RHO
-do i=ML_0_RHO,ML_1_RHO
-write(410+myrank,'(2I5,g20.7)') i,s,rho(i,s)
-enddo
-enddo
+    write(410+myrank,*) 'i,s,rho(i,s)'
+    do s=MS_0_RHO,MS_1_RHO
+       do i=ML_0_RHO,ML_1_RHO
+          write(410+myrank,'(2I5,g20.7)') i,s,rho(i,s)
+       enddo
+    enddo
 #endif
+
   END SUBROUTINE init_density
 
 !---------------------------------------------------------------------------------------
@@ -72,21 +70,20 @@ enddo
   END SUBROUTINE normalize_density
 
 !---------------------------------------------------------------------------------------
-!--------------------------------------------------------------------------- 20140507 HL
 #ifdef _USPP_
+
   SUBROUTINE calc_density
     ! IN:	unk(:.n.k.s),ML_0,ML_1,MS_0,MS_1
     ! OUT:	rho(n1:n2,s)
     implicit none
-    integer :: n,k,s
+    integer :: n,k,s,i
     integer :: n1,n2,n0
     real(8),allocatable :: rhonks(:)
 
-    integer :: i
-
     select case ( pp_kind )
     case ( 'NCPP' )
-       rho(:,:)=0.d0
+
+       rho(:,:)=0.0d0
        do s=MS_0_WF,MS_1_WF
           do k=MK_0_WF,MK_1_WF
              do n=MB_0_WF ,MB_1_WF
@@ -94,14 +91,16 @@ enddo
              end do
           end do
        end do
+
     case ( 'USPP' )
-       n1=ML_0_WF
-       n2=ML_1_WF
+
+       n1 = ML_0_WF
+       n2 = ML_1_WF
        n0 = ML_1_WF - ML_0_WF + 1
 
-       allocate( rhonks(n1:n2) ) ; rhonks(:)=0.d0
+       allocate( rhonks(n1:n2) ) ; rhonks(:)=0.0d0
 
-       rho(:,:)=0.d0
+       rho(:,:)=0.0d0
        do s=MS_0_WF,MS_1_WF
           do k=MK_0_WF,MK_1_WF
              do n=MB_0_WF,MB_1_WF
@@ -111,6 +110,7 @@ enddo
              end do
           end do
        end do
+
     end select
 
     call reduce_and_gather
@@ -118,11 +118,13 @@ enddo
     deallocate( rhonks )
 
   END SUBROUTINE calc_density
+
 #else
+
   SUBROUTINE calc_density
     implicit none
     integer :: n,k,s
-    rho(:,:)=0.d0
+    rho(:,:)=0.0d0
     do s=MS_0_WF,MS_1_WF
        do k=MK_0_WF,MK_1_WF
           do n=MB_0_WF,MB_1_WF
@@ -130,10 +132,11 @@ enddo
           end do
        end do
     end do
+    call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
     call reduce_and_gather
   END SUBROUTINE calc_density
+
 #endif
-!=========================================================================== 20140507 HL
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE reduce_and_gather
@@ -159,10 +162,10 @@ enddo
     if (rank==0) write(200,'(A10,4I7)') 'rho=',MS_0_RHO,MS_1_RHO,ML_0_RHO,ML_1_RHO
     write(unit+rank,'(4I7)') MS_0_RHO,MS_1_RHO,ML_0_RHO,ML_1_RHO
     do s=MS_0_RHO,MS_1_RHO
-      do i=ML_0_RHO,ML_1_RHO
-        write(unit+rank,'(g20.12)') rho(i,s)
-      enddo
-    enddo
+       do i=ML_0_RHO,ML_1_RHO
+          write(unit+rank,'(g20.12)') rho(i,s)
+       end do
+    end do
   END SUBROUTINE write_rho
 #endif
 

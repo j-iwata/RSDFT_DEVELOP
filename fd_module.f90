@@ -3,34 +3,16 @@ MODULE fd_module
   implicit none
 
   PRIVATE
-  PUBLIC :: get_coef_laplacian_fd,get_coef_nabla_fd
-
-!  integer :: Md
-!  real(8),allocatable :: lap(:),nab(:)
+  PUBLIC :: get_coef_lapla_fd, get_coef_nabla_fd
 
 CONTAINS
 
-!  SUBROUTINE read_fd(unit)
-!    integer,intent(IN) :: unit
-!    read(unit,*) Md
-!    write(*,*) "Md =",Md
-!  END SUBROUTINE read_fd
-
-
-!  SUBROUTINE send_fd(rank)
-!    integer,intent(IN) :: rank
-!    integer :: ierr
-!    include 'mpif.h'
-!    call mpi_bcast(Md,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-!  END SUBROUTINE send_fd
-
-
-  SUBROUTINE get_coef_laplacian_fd(Md,lap)
+  SUBROUTINE get_coef_lapla_fd(Md,lap)
+    implicit none
     integer,intent(IN)  :: Md
     real(8),intent(OUT) :: lap(-Md:Md)
     integer :: i,j,k
     real(8) :: t,s,s0
-!    allocate( lap(-Md:Md) )
     lap=0.d0
     s=0.d0
     do i=-Md,Md
@@ -60,15 +42,14 @@ CONTAINS
        lap( j)=2.d0*s/t
        lap(-j)=lap(j)
     end do
-  END SUBROUTINE get_coef_laplacian_fd
-
+  END SUBROUTINE get_coef_lapla_fd
 
   SUBROUTINE get_coef_nabla_fd(Md,nab)
+    implicit none
     integer,intent(IN)  :: Md
     real(8),intent(OUT) :: nab(-Md:Md)
     integer :: i,j
     real(8) :: t,s
-!    allocate( nab(-Md:Md) )
     nab=0.d0
     do j=1,Md
        t=1.d0

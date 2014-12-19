@@ -2,10 +2,10 @@ MODULE total_energy_module
 
   use rgrid_module, only: dV
   use hamiltonian_module
-  use hartree_module, only: Vh, E_hartree
+  use hartree_variables, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
-  use ewald_module, only: Eewald
-  use wf_module, only: unk,esp,occ,ML_0_WF,ML_1_WF
+  use eion_module, only: Eewald
+  use wf_module, only: unk,esp,occ
   use localpot_module, only: Vloc
   use ps_local_module, only: Vion
   use density_module, only: rho
@@ -15,13 +15,14 @@ MODULE total_energy_module
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
   use VarSysParameter
+  use vdw_grimme_module, only: get_E_vdw_grimme
 
   implicit none
 
   PRIVATE
   PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy,diff_etot
 
-  real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene
+  real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
   real(8) :: Eloc_0=0.d0
@@ -75,6 +76,7 @@ CONTAINS
     Eeig = 0.d0
     Eion = 0.d0
     Fene = 0.d0
+    Evdw = 0.d0
 
     n1 = ML_0
     n2 = ML_1
@@ -247,32 +249,19 @@ enddo
     Eloc = s1(1)
     Eion = s1(2)
 
-    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald - 2*E_exchange_exx
+    call get_E_vdw_grimme( Evdw )
 
-    Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald - 2*E_exchange_exx
+    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
+         - 2*E_exchange_exx + Evdw
+
+    Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
+         - 2*E_exchange_exx + Evdw
 
     Fene = Etot - Eentropy
 
     diff_etot = Etot_0 - Etot
 
-    if ( disp_switch ) then
-       write(*,*) '(EII) ',Eewald
-       write(*,*) '(KIN) ',Ekin, Ekin-Ekin_0
-       write(*,*) '(LOC) ',Eloc, Eloc-Eloc_0
-       write(*,*) '(NLC) ',Enlc, Enlc-Enlc_0
-       write(*,*) '(ION) ',Eion, Eion-Eion_0
-       write(*,*) '(HTR) ',E_hartree, E_hartree-Ehat_0
-       write(*,*) '(EXC) ',Exc,  Exc-Exc_0
-       write(*,*) '(EXG) ',E_exchange, E_exchange-Ex_0
-       write(*,*) '(COR) ',E_correlation, E_correlation-Ec_0
-       write(*,*) '(EIG) ',Eeig, Eeig-Eeig_0
-       write(*,*) '(HWF) ',Ehwf, Ehwf-Etot
-       write(*,*) '(TOT) ',Etot, Etot_0-Etot
-       write(*,*) '(efermi)  ',efermi, efermi-efermi_0
-       write(*,*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
-       write(*,*) '(FreeEne) ',Fene,Fene-Fene_0
-       write(920,'(I4,12f15.7)') scf_iter,Etot,Eewald,Ekin,Eloc,Enlc,Eion,E_hartree,Exc,E_exchange,E_correlation,Eeig,Ehwf
-    end if
+    call write_info_total_energy( disp_switch )
 
     Etot_0 = Etot
     Ekin_0 = Ekin
@@ -292,8 +281,10 @@ enddo
   END SUBROUTINE calc_total_energy
 
 
-  SUBROUTINE calc_with_rhoIN_total_energy(disp_switch)
+  SUBROUTINE calc_with_rhoIN_total_energy(disp_switch,Ehwf_out)
+    implicit none
     logical,intent(IN) :: disp_switch
+    real(8),optional,intent(OUT) :: Ehwf_out
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
     sb(:)=0.d0
@@ -314,7 +305,38 @@ enddo
        write(*,*) '(HWF) ',Ehwf, Ehwf_0-Ehwf
     end if
     Ehwf_0 = Ehwf
+    if ( present(Ehwf_out) ) Ehwf_out=Ehwf
   END SUBROUTINE calc_with_rhoIN_total_energy
+
+
+  SUBROUTINE write_info_total_energy( disp_switch )
+    implicit none
+    logical,intent(IN) :: disp_switch
+    integer :: i,u(2)
+    u(:) = (/ 6, 99 /)
+    do i=1,2
+       if ( u(i) == 6 .and. .not.disp_switch ) cycle
+       if ( u(i) /= 6 .and. myrank /= 0 ) cycle
+       if ( u(i) /= 6 .and. myrank == 0 ) rewind u(i)
+       write(u(i),*) '(EII) ',Eewald
+       write(u(i),*) '(VDW) ',Evdw
+       write(u(i),*) '(KIN) ',Ekin, Ekin-Ekin_0
+       write(u(i),*) '(LOC) ',Eloc, Eloc-Eloc_0
+       write(u(i),*) '(NLC) ',Enlc, Enlc-Enlc_0
+       write(u(i),*) '(ION) ',Eion, Eion-Eion_0
+       write(u(i),*) '(HTR) ',E_hartree, E_hartree-Ehat_0
+       write(u(i),*) '(EXC) ',Exc,  Exc-Exc_0
+       write(u(i),*) '(EXG) ',E_exchange, E_exchange-Ex_0
+       write(u(i),*) '(COR) ',E_correlation, E_correlation-Ec_0
+       write(u(i),*) '(EIG) ',Eeig, Eeig-Eeig_0
+       write(u(i),*) '(HWF) ',Ehwf, Ehwf-Etot
+       write(u(i),*) '(TOT) ',Etot, Etot_0-Etot
+       write(u(i),*) '(efermi)  ',efermi, efermi-efermi_0
+       write(u(i),*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
+       write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0
+       call flush(u(i))
+    end do
+  END SUBROUTINE write_info_total_energy
 
 
 END MODULE total_energy_module

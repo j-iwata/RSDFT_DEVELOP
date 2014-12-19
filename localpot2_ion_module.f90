@@ -1,6 +1,6 @@
 MODULE localpot2_ion_module
 
-  use pseudopot_module
+  use pseudopot_module, only: Zps,rad,rab,NRps,Rps,parloc,norb,Mr,vql
   use aa_module
   use bb_module
   use atom_module
@@ -8,7 +8,8 @@ MODULE localpot2_ion_module
 
   use rgrid_module
   use parallel_module
-  use localpot2_module
+  use localpot2_variables, only: fecut_loc,Ngrid_dense,Igrid_dense,dV_dense &
+       ,Ndens_loc
   use array_bound_module
   use electron_module
   use wf_module
@@ -18,15 +19,10 @@ MODULE localpot2_ion_module
   use ggrid_module
   use strfac_module
 
-  use localpot2_variables
-
   implicit none
 
   PRIVATE
   PUBLIC :: localpot2_ion, localpot2_calc_eion
-
-  real(8),allocatable :: Rcloc(:)
-  integer,allocatable :: NRcloc(:)
 
   INTERFACE
      FUNCTION bberf(x)
@@ -37,11 +33,11 @@ MODULE localpot2_ion_module
 CONTAINS
 
 
-  SUBROUTINE localpot2_ion(m1_0,m2_0,m3_0,MKI,ecut_in,vout)
+  SUBROUTINE localpot2_ion( MKI, ecut_in, vout )
     implicit none
-    integer,intent(IN)  :: m1_0,m2_0,m3_0,MKI
+    integer,intent(IN)  :: MKI
     real(8),intent(IN)  :: ecut_in
-    real(8),intent(OUT) :: vout(m1_0,m2_0,m3_0)
+    real(8),intent(OUT) :: vout(:,:,:)
 
     real(8) :: pi,rloc,const,C1,C2,C3,C4,G,v,ecut
     integer :: ig,ielm,mm1,mm2,mm3,ierr
@@ -88,7 +84,7 @@ CONTAINS
     MG2_0=id(myrank)+1
     MG2_1=id(myrank)+ir(myrank)
 
-    call construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,1)
+    call construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,ecut,1)
 
     call construct_strfac_2(MG2_0,MG2_1)
 
@@ -115,7 +111,7 @@ CONTAINS
     call mpi_allgatherv(vg(MG2_0),ir(myrank),MPI_COMPLEX16 &
          ,vg,ir,id,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
 
-    call construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,0)
+    call construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,ecut,0)
 
     allocate( zw0(0:m1-1,0:m2-1,0:m3-1) )
     zw0=(0.0d0,0.0d0)
@@ -215,11 +211,10 @@ CONTAINS
 
   END SUBROUTINE localpot2_calc_eion
 #else
-  SUBROUTINE localpot2_calc_eion(mm1,mm2,mm3,vin,nin,eout)
+  SUBROUTINE localpot2_calc_eion( vin, nin, eout )
     implicit none
-    integer,intent(IN)  :: mm1,mm2,mm3
-    real(8),intent(IN)  :: vin(mm1,mm2,mm3)
-    real(8),intent(IN)  :: nin(mm1,mm2,mm3)
+    real(8),intent(IN)  :: vin(:,:,:)
+    real(8),intent(IN)  :: nin(:,:,:)
     real(8),intent(OUT) :: eout
     integer :: ierr
     real(8) :: eout0
@@ -248,10 +243,6 @@ CONTAINS
 
     MMr=maxval(Mr)
     allocate( vshort(MMr) ) ; vshort=0.0d0
-    if ( .not.allocated(NRcloc) ) then
-       allocate( NRcloc(MKI) ) ; NRcloc=0
-       allocate( Rcloc(MKI)  ) ; Rcloc=0.d0
-    end if
 
     do ik=1,MKI
 
@@ -287,18 +278,7 @@ CONTAINS
              vlong=-Zps(ik)/r*( p1*bberf(p2*r)+p3*bberf(p4*r) )
           end if
           vshort(i)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 
@@ -426,10 +406,6 @@ CONTAINS
 
     MMr=maxval(Mr)
     allocate( vshort(MMr) ) ; vshort=0.0d0
-    if ( .not.allocated(NRcloc) ) then
-       allocate( NRcloc(MKI) ) ; NRcloc=0
-       allocate( Rcloc(MKI)  ) ; Rcloc=0.d0
-    end if
 
     do ik=1,MKI
 
@@ -465,18 +441,7 @@ CONTAINS
              vlong=-Zps(ik)/r*( p1*bberf(p2*r)+p3*bberf(p4*r) )
           end if
           vshort(i)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 

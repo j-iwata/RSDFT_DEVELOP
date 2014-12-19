@@ -1,17 +1,15 @@
 MODULE ggrid_module
 
-  use bb_module, only: bb
-  use rgrid_module, only: Ngrid,Hgrid
-
   implicit none
 
   PRIVATE
   PUBLIC :: Gcut,Ecut,NGgrid,LLG,MG_0,MG_1,MGL,NMGL,GG &
-           ,allgatherv_Ggrid,construct_NMGL_Ggrid &
-           ,get_cutoff_Ggrid,parallel_Ggrid &
+           ,allgatherv_Ggrid &
            ,construct_Ggrid,destruct_Ggrid &
            ,get_cutoff_ggrid_2,construct_ggrid_2 &
-           ,get_Ggrid
+           ,get_Ggrid &
+           ,Init_Ggrid, InitParallel_Ggrid
+
 
   integer :: NGgrid(0:3),MG_0,MG_1,NMGL
   integer,allocatable :: LLG(:,:),MGL(:)
@@ -20,9 +18,37 @@ MODULE ggrid_module
   real(8) :: Gcut,Ecut
   real(8),allocatable :: GG(:)
 
+  integer :: Ngrid(0:3)
+  real(8) :: bb(3,3)
+  real(8) :: Hgrid(3)
+
 CONTAINS
 
-  SUBROUTINE get_cutoff_Ggrid
+
+  SUBROUTINE Init_Ggrid( Ngrid_in, bb_in, Hgrid_in, disp_switch )
+    implicit none
+    integer,intent(IN) :: Ngrid_in(0:3)
+    real(8),intent(IN) :: bb_in(3,3), Hgrid_in(3)
+    logical,intent(IN) :: disp_switch
+
+    Ngrid(:) = Ngrid_in(:)
+    bb(:,:)  = bb_in(:,:)
+    Hgrid(:) = Hgrid_in(:)
+
+    call CalcCutoff_Ggrid
+    call construct_NMGL_Ggrid
+
+    if ( disp_switch ) then
+       write(*,*) "Ecut,Gcut=",Ecut,Gcut
+       write(*,*) "NGgrid=",NGgrid
+       write(*,*) "NMGL=",NMGL
+       write(*,'(a60," Init_Ggrid(END)")') repeat("-",60)
+    end if
+
+  END SUBROUTINE Init_Ggrid
+
+
+  SUBROUTINE CalcCutoff_Ggrid
     implicit none
     integer :: i,i1,i2,i3,m,n
     real(8) :: b0(3),b1,b2,b3,b12,c,r1,r2,r3
@@ -61,9 +87,60 @@ CONTAINS
     end do
     end do
     NGgrid(0)=n
-    MG_0=1
-    MG_1=NGgrid(0)
-  END SUBROUTINE get_cutoff_Ggrid
+  END SUBROUTINE CalcCutoff_Ggrid
+
+
+  SUBROUTINE construct_NMGL_Ggrid
+    implicit none
+    integer :: i1,i2,i3,n
+    integer,allocatable :: indx(:)
+    real(8) :: s1,s2
+    real(8),allocatable :: g2(:)
+    allocate( MGL(NGgrid(0))  ) ; MGL=0
+    allocate( indx(NGgrid(0)) ) ; indx=0
+    allocate( g2(NGgrid(0))   ) ; g2=0.d0
+    n=0
+    do i3=-NGgrid(3),NGgrid(3)
+    do i2=-NGgrid(2),NGgrid(2)
+    do i1=-NGgrid(1),NGgrid(1)
+       s2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3)**2 &
+         +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3)**2 &
+         +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3)**2
+       if ( s2 < Ecut-ep ) then
+          n=n+1
+          g2(n)=s2
+       end if
+    end do
+    end do
+    end do
+    call indexx(NGgrid(0),g2,indx)
+    s1=0.d0
+    n=1
+    do i1=1,NGgrid(0)
+       i2=indx(i1)
+       s2=g2(i2)
+       if ( abs(s2-s1)>1.d-12 ) then
+          n=n+1
+          s1=s2
+       end if
+       MGL(i2)=n
+    end do
+    NMGL=n
+    allocate( GG(NMGL) ) ; GG=0.d0
+    s1=0.d0
+    n=1
+    do i1=1,NGgrid(0)
+       i2=indx(i1)
+       s2=g2(i2)
+       if ( abs(s2-s1)>1.d-12 ) then
+          n=n+1
+          s1=s2
+       end if
+       GG(n)=s2
+    end do
+    deallocate( g2 )
+    deallocate( indx )
+  END SUBROUTINE construct_NMGL_Ggrid
 
 
   SUBROUTINE construct_Ggrid(itype)
@@ -211,68 +288,14 @@ CONTAINS
   END SUBROUTINE get_Ggrid
 
 
-  SUBROUTINE construct_NMGL_Ggrid
-    implicit none
-    integer :: i1,i2,i3,n
-    integer,allocatable :: indx(:)
-    real(8) :: s1,s2
-    real(8),allocatable :: g2(:)
-    allocate( MGL(NGgrid(0))  ) ; MGL=0
-    allocate( indx(NGgrid(0)) ) ; indx=0
-    allocate( g2(NGgrid(0))   ) ; g2=0.d0
-    n=0
-    do i3=-NGgrid(3),NGgrid(3)
-    do i2=-NGgrid(2),NGgrid(2)
-    do i1=-NGgrid(1),NGgrid(1)
-       s2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3)**2 &
-         +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3)**2 &
-         +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3)**2
-       if ( s2 < Ecut-ep ) then
-          n=n+1
-          g2(n)=s2
-       end if
-    end do
-    end do
-    end do
-    call indexx(NGgrid(0),g2,indx)
-    s1=0.d0
-    n=1
-    do i1=1,NGgrid(0)
-       i2=indx(i1)
-       s2=g2(i2)
-       if ( abs(s2-s1)>1.d-12 ) then
-          n=n+1
-          s1=s2
-       end if
-       MGL(i2)=n
-    end do
-    NMGL=n
-    allocate( GG(NMGL) ) ; GG=0.d0
-    s1=0.d0
-    n=1
-    do i1=1,NGgrid(0)
-       i2=indx(i1)
-       s2=g2(i2)
-       if ( abs(s2-s1)>1.d-12 ) then
-          n=n+1
-          s1=s2
-       end if
-       GG(n)=s2
-    end do
-    deallocate( g2 )
-    deallocate( indx )
-  END SUBROUTINE construct_NMGL_Ggrid
-
-
-  SUBROUTINE parallel_Ggrid(nprocs,myrank)
+  SUBROUTINE InitParallel_Ggrid( nprocs, myrank )
     implicit none
     integer,intent(IN) :: nprocs,myrank
     integer :: i,n
     integer,allocatable :: np(:)
-    allocate( ircntg(0:nprocs-1) )
-    allocate( idispg(0:nprocs-1) )
-    allocate( np(0:nprocs-1) )
-    np=0
+    allocate( ircntg(0:nprocs-1) ) ; ircntg=0
+    allocate( idispg(0:nprocs-1) ) ; idispg=0
+    allocate( np(0:nprocs-1)     ) ; np=0
     do i=1,NGgrid(0)
        n=mod(i-1,nprocs)
        np(n)=np(n)+1
@@ -284,7 +307,7 @@ CONTAINS
     deallocate( np )
     MG_0 = idispg(myrank) + 1
     MG_1 = idispg(myrank) + ircntg(myrank)
-  END SUBROUTINE parallel_Ggrid
+  END SUBROUTINE InitParallel_Ggrid
 
 
   SUBROUTINE allgatherv_Ggrid(f)
@@ -320,9 +343,10 @@ CONTAINS
   END SUBROUTINE get_cutoff_ggrid_2
 
 
-  SUBROUTINE construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,itype)
+  SUBROUTINE construct_ggrid_2(mm1,mm2,mm3,MG2,MG2_0,MG2_1,ecut,itype)
     implicit none
     integer,intent(IN) :: mm1,mm2,mm3,MG2,MG2_0,MG2_1,itype
+    real(8),intent(IN) :: ecut
     integer :: ig,i1,i2,i3
     real(8) :: Gx,Gy,Gz,GG
     select case(itype)

@@ -3,17 +3,15 @@ MODULE atom_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,read_atom &
-            ,opt_constrain
+  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom
   PUBLIC :: checkAtomData
 #ifdef _OBJECT_
   PUBLIC :: getAtomPosition
 #endif
 
-  integer :: Natom,Nelement
-  integer,allocatable :: ki_atom(:)
+  integer :: Natom, Nelement
+  integer,allocatable :: ki_atom(:), zn_atom(:), md_atom(:)
   real(8),allocatable :: aa_atom(:,:)
-  integer,allocatable :: opt_constrain(:)
 
 #ifdef _OBJECT_
   TYPE AtomPosition
@@ -28,8 +26,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     real(8),intent(INOUT) :: ax,aa(3,3)
-    integer :: i,iflag_format
+    integer :: i,iflag_format,idummy(10)
     character(3) :: cbuf,ckey
+    ax=0.0d0
+    aa=0.0d0
+    idummy=0
     if ( rank == 0 ) then
        iflag_format = 0
        rewind unit
@@ -69,31 +70,41 @@ CONTAINS
           write(*,'(1x,"a2=",3f20.15)') aa(1:3,2)
           write(*,'(1x,"a3=",3f20.15)') aa(1:3,3)
        end if
-       read(unit,*) Nelement,Natom
+       read(unit,*) Nelement,Natom, idummy(1:Nelement)
        write(*,*) "Nelment,Natom=",Nelement,Natom
+       allocate( zn_atom(Nelement) ) ; zn_atom=0
+       zn_atom(1:Nelement) = idummy(1:Nelement)
+       write(*,*) "zn_atom=",zn_atom(:)
     end if
     call send_atom_1(0,ax,aa)
     allocate( aa_atom(3,Natom) ) ; aa_atom=0.d0
     allocate( ki_atom(Natom)   ) ; ki_atom=0
-    allocate( opt_constrain(Natom) ) ; opt_constrain=0
+    allocate( md_atom(Natom)   ) ; md_atom=0
+    if ( .not.allocated(zn_atom) ) then
+       allocate( zn_atom(Nelement) ) ; zn_atom=0
+    end if
     if ( rank == 0 ) then
        do i=1,Natom
-          read(unit,*) ki_atom(i),aa_atom(1:3,i),opt_constrain(i)
+          read(unit,*) ki_atom(i),aa_atom(1:3,i),md_atom(i)
        end do
-       write(*,'(8x,a7,3a18,A18)') "ki_atom","aa_atom1","aa_atom2","aa_atom3",'opt_constrain'
+       write(*,'(8x,a7,3a18,2x,a7)') &
+            "ki_atom","aa_atom1","aa_atom2","aa_atom3","md_atom"
        if ( Natom <= 11 ) then
           do i=1,Natom
-             write(*,'(1x,i5,2x,i7,3f18.12,I18)') i,ki_atom(i),aa_atom(:,i),opt_constrain(i)
+             write(*,'(1x,i5,2x,i7,3f18.12,4x,i5)') &
+                  i,ki_atom(i),aa_atom(:,i),md_atom(i)
           end do
        else
           do i=1,min(5,Natom)
-             write(*,'(1x,i5,2x,i7,3f18.12,I18)') i,ki_atom(i),aa_atom(:,i),opt_constrain(i)
+             write(*,'(1x,i5,2x,i7,3f18.12,4x,i5)') &
+                  i,ki_atom(i),aa_atom(:,i),md_atom(i)
           end do
           write(*,'(1x,10x,".")')
           write(*,'(1x,10x,".")')
           write(*,'(1x,10x,".")')
           do i=Natom-5,Natom
-             write(*,'(1x,i5,2x,i7,3f18.12,I18)') i,ki_atom(i),aa_atom(:,i),opt_constrain(i)
+             write(*,'(1x,i5,2x,i7,3f18.12,4x,i5)') &
+                  i,ki_atom(i),aa_atom(:,i),md_atom(i)
           end do
        end if
     end if
@@ -119,7 +130,8 @@ CONTAINS
     include 'mpif.h'
     call mpi_bcast(ki_atom,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(aa_atom,3*Natom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(opt_constrain,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(zn_atom,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(md_atom,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_2
 
   SUBROUTINE checkAtomData(myrank)
@@ -155,4 +167,5 @@ CONTAINS
     return
   END SUBROUTINE getAtomPosition
 #endif
+
 END MODULE atom_module

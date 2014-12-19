@@ -6,9 +6,9 @@ MODULE force_local_mol_module
   use density_module
   use electron_module, only: Nspin
   use bberf_module
-  use pseudopot_module
+  use pseudopot_module, only: parloc, rad, Zps
   use rgrid_mol_module
-  use ps_local_mol_module
+  use ps_local_mol_module, only: NRcloc, Rcloc, vqls
   use rgrid_module
 
   implicit none
@@ -80,6 +80,8 @@ CONTAINS
        Rz = aa_atom(3,a)
 
        Rc = Rcloc(ik)
+
+       NRc = NRcloc(ik)
 
        do i=ML_0,ML_1
 

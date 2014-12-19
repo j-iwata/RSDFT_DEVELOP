@@ -475,7 +475,7 @@ CONTAINS
        if ( irank == myrank_g .or. m <= 0 ) cycle
        i2=0
        do ib=ib1,ib2
-       do i1=1,nzlma
+       do i1=1,lma_nsend(irank)
        do i3=1,4
           i2=i2+1
           sbufnl(i2,irank)=w(i3,sendmap(i1,irank),ib)
@@ -495,7 +495,7 @@ CONTAINS
        if ( irank == myrank_g .or. m <= 0 ) cycle
        i2=0
        do ib=ib1,ib2
-       do i1=1,nzlma
+       do i1=1,lma_nsend(irank)
           i4=recvmap(i1,irank)
        do i3=1,4
           i2=i2+1

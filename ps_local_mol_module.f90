@@ -1,8 +1,12 @@
 MODULE ps_local_mol_module
 
-  use pseudopot_module
+  use pseudopot_module, only: Rps,norb,Mr,Npseudopot,NRps,rab,parloc,Zps,vql,rad
   use maskf_module
   use simc_module
+  use atom_module, only: Natom,Nelement,aa_atom,ki_atom
+  use ps_local_module, only: Vion
+  use array_bound_module, only: ML_0,ML_1
+  use rgrid_mol_module
 
   implicit none
 
@@ -237,11 +241,7 @@ CONTAINS
 
 
   SUBROUTINE construct_ps_local_mol
-    use pseudopot_module
-    use atom_module, only: Natom,Nelement,aa_atom,ki_atom
-    use ps_local_module, only: Vion
-    use array_bound_module, only: ML_0,ML_1
-    use rgrid_mol_module
+    implicit none
     real(8),parameter :: ep=1.d-8
     real(8) :: p1,p2,p3,p4,const1
     real(8) :: Rx,Ry,Rz,r,x,y,z,Rc2,r2
@@ -254,7 +254,7 @@ CONTAINS
     end if
     Vion=0.d0
 
-    const1 = 2.d0/acos(-1.d0)
+    const1 = 2.d0/sqrt(acos(-1.d0))
 
     allocate( irad(0:3000,Nelement) ) ; irad=0
     M_irad=0

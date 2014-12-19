@@ -1,11 +1,12 @@
 MODULE wf_module
 
   use parallel_module
+  use wf_sub_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf &
+  PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
            ,Sunk &
@@ -75,6 +76,10 @@ CONTAINS
     occ=0.0d0
 
     call random_initial_wf
+!    call fft_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
+!        ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
+!    call random_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
+!         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
 
   END SUBROUTINE init_wf
 
@@ -205,5 +210,20 @@ end do
     return
 
   END SUBROUTINE write_wf
+
+  SUBROUTINE gather_b_wf( k, s )
+    implicit none
+    integer,intent(IN) :: k,s
+    integer :: mm,ierr
+    mm=ML_1_WF-ML_0_WF+1
+    ir_band(:)=ir_band(:)*mm
+    id_band(:)=id_band(:)*mm
+    call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
+            ,TYPE_MAIN,unk(ML_0_WF,1,k,s),ir_band,id_band &
+            ,TYPE_MAIN,comm_band,ierr )
+    ir_band(:)=ir_band(:)/mm
+    id_band(:)=id_band(:)/mm
+  END SUBROUTINE gather_b_wf
+
 
 END MODULE wf_module

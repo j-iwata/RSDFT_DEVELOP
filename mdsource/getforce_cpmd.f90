@@ -2,7 +2,8 @@
 !     Evaluate Force for CPMD
 !-----------------------------------------------------------------------
 SUBROUTINE getforce_cpmd(lewald,ltime)
-  use ewald_module
+
+  use eion_module, only: calc_eion
   use atom_module, only: Natom,aa_atom
   use bb_module
   use parallel_module, only: myrank
@@ -17,14 +18,19 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   use array_bound_module, only: MSP_0,MSP_1,MB_0,MB_1,ML_0,ML_1
   use density_module
   use xc_module
-  use hartree_module
+  use hartree_variables, only: Vh
+  use hartree_module, only: calc_hartree
   use cpmd_variables, only: Force,Rion,disp_switch,AMU,pmass,iatom
   use watch_module
   use force_module
+
   implicit none
+
   integer :: i,s,MB_0_BAK,MB_1_BAK
   real(8) :: ctime_force(0:9),etime_force(0:9),c
   logical :: lewald,ltime
+  logical,save :: first_time=.true.
+  integer,save :: icount=0
 
   c=1.d0/(2.d0*acos(-1.d0))
   aa_atom = matmul(transpose(bb),Rion)*c
@@ -35,17 +41,13 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   if ( ltime ) call watch(ctime_force(0),etime_force(0))
 
   if ( lewald ) then
-     call calc_ewald(Eewald,disp_switch)
+     call calc_eion
   end if
 
   if ( ltime ) call watch(ctime_force(1),etime_force(1))
 
   call construct_strfac
-#ifdef _FFTE_
-  call construct_ps_local_ffte
-#else
   call construct_ps_local
-#endif
   call construct_ps_pcc
   call destruct_strfac
 
@@ -83,6 +85,15 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   call calc_force(Natom,Force)
 
   if ( ltime ) call watch(ctime_force(8),etime_force(8))
+
+  if ( myrank == 0 ) then
+     if ( first_time ) open(33,file="force.dat")
+     icount=icount+1
+     write(33,*) "step=",icount
+     do i=1,Natom
+        write(33,'(1x,i8,3f20.15)') i,Force(1:3,i)
+     end do
+  end if
 
   do i=1,Natom
      Force(:,i)=Force(:,i)/(pmass(iatom(i))*AMU)

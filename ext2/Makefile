@@ -1,6 +1,6 @@
 include ../make.inc
 
-OBJ = indexx.o p4sn.o polint.o bberf.o ylm.o dotp.o spline.o convert_capital.o
+OBJ = indexx.o p4sn.o polint.o bberf.o ylm.o dotp.o spline.o convert_capital.o gaussj.o
 
 all : $(OBJ)
 

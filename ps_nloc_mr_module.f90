@@ -8,8 +8,11 @@ MODULE ps_nloc_mr_module
   use pseudopot_module
   use ps_nloc2_init_module, only: rad1,dviod
   use ps_nloc2_variables
-  use ps_gth_module
   use ps_nloc_hgh_module
+  use minimal_box_module
+  use bz_module
+  use watch_module
+  use wf_module
 
   implicit none
 
@@ -29,9 +32,6 @@ CONTAINS
 
 
   SUBROUTINE prep_ps_nloc_mr
-    use minimal_box_module
-    use bz_module
-    use watch_module
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
@@ -73,7 +73,7 @@ CONTAINS
        end do
     end do
 
-    if ( .not.allocated(y2a) .and. pselect /= 5 ) then
+    if ( .not.allocated(y2a) .and. all(ippform /= 4) ) then
        NRc=maxval(NRps)
        n=maxval(norb)
        allocate( y2a(NRc,n,Nelement) )
@@ -86,6 +86,8 @@ CONTAINS
        end do
        end do
     end if
+
+    if ( all(ippform == 4) ) call init_ps_nloc_hgh( disp_switch_parallel ) 
 
     if ( Mlma < nprocs_g ) then
        nzlma_0 = Mlma
@@ -127,10 +129,15 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
-    if ( pselect == 5 ) then
+    if ( any(ippform == 4) ) then
 
        call prep_ps_nloc_hgh(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion &
                             ,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
+
+       if ( .not.all( ippform == 4 ) ) then
+          write(*,*) "Mixed use of different pseudopotenial is forbidden"
+          stop "stop@prep_ps_nloc_mr"
+       end if
 
     else
 
@@ -1144,9 +1151,6 @@ CONTAINS
 
 
   SUBROUTINE calc_force_ps_nloc_mr(MI,force2)
-    use bz_module
-    use wf_module
-    use watch_module
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
@@ -1157,9 +1161,9 @@ CONTAINS
     integer :: ierr,M_irad,ir0
     integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
     real(8),parameter :: ep=1.d-8
-    real(8),save :: Y1(0:2,-2:2,0:3,-3:3)
-    real(8),save :: Y2(0:2,-2:2,0:3,-3:3)
-    real(8),save :: Y3(0:2,-2:2,0:3,-3:3)
+    real(8),save :: Y1(0:3,-3:3,0:4,-4:4)
+    real(8),save :: Y2(0:3,-3:3,0:4,-4:4)
+    real(8),save :: Y3(0:3,-3:3,0:4,-4:4)
     real(8) :: err,err0,maxerr,Rx,Ry,Rz
     real(8) :: a1,a2,a3,c1,c2,c3,d1,d2,d3
     real(8) :: x,y,z,r,kr,pi2,c
@@ -1192,7 +1196,7 @@ CONTAINS
     if ( Mlma <= 0 ) return
 
     if ( flag_Y ) then
-       Y1=0.d0
+       Y1=0.0d0
        Y1( 0, 0, 1, 1) =  0.282094791773878d0
        Y1( 1,-1, 2,-2) = -0.218509686118416d0
        Y1( 1, 0, 2, 1) =  0.218509686118416d0
@@ -1211,7 +1215,27 @@ CONTAINS
        Y1( 2, 2, 1, 1) =  0.218509686118416d0
        Y1( 2, 2, 3, 1) = -0.058399170081902d0
        Y1( 2, 2, 3, 3) =  0.226179013159540d0
-       Y2=0.d0
+       Y1( 3,-3, 2,-2) = -0.226179013159540d0
+       Y1( 3,-1, 2,-2) =  0.058399170081901d0
+       Y1( 3,-2, 2,-1) = -0.184674390922371d0
+       Y1( 3, 1, 2, 0) =  0.202300659403420d0
+       Y1( 3, 0, 2, 1) = -0.143048168102668d0
+       Y1( 3, 2, 2, 1) =  0.184674390922371d0
+       Y1( 3, 1, 2, 2) = -0.058399170081901d0
+       Y1( 3, 3, 2, 2) =  0.226179013159540d0
+       Y1( 3,-3, 4,-4) = -0.230329432980890d0
+       Y1( 3,-2, 4,-3) = -0.199471140200716d0
+       Y1( 3,-3, 4,-2) =  0.043528171377568d0
+       Y1( 3,-1, 4,-2) = -0.168583882836183d0
+       Y1( 3,-2, 4,-1) =  0.075393004386513d0
+       Y1( 3, 1, 4, 0) = -0.150786008773026d0
+       Y1( 3, 0, 4, 1) =  0.194663900273006d0
+       Y1( 3, 2, 4, 1) = -0.075393004386513d0
+       Y1( 3, 1, 4, 2) =  0.168583882836183d0
+       Y1( 3, 3, 4, 2) = -0.043528171377568d0
+       Y1( 3, 2, 4, 3) =  0.199471140200716d0
+       Y1( 3, 3, 4, 4) =  0.230329432980890d0
+       Y2=0.0d0
        Y2( 0, 0, 1,-1) =  0.282094791773878d0
        Y2( 1,-1, 0, 0) =  0.282094791773878d0
        Y2( 1,-1, 2, 0) = -0.126156626101008d0
@@ -1230,8 +1254,28 @@ CONTAINS
        Y2( 2, 2, 1,-1) = -0.218509686118416d0
        Y2( 2, 2, 3,-3) =  0.226179013159540d0
        Y2( 2, 2, 3,-1) =  0.058399170081902d0
-       Y3=0.d0
-       Y3( 0, 0, 1, 0) =  0.282094791773878d0
+       Y2( 3, 1, 2,-2) =  0.058399170081901d0
+       Y2( 3, 3, 2,-2) =  0.226179013159540d0
+       Y2( 3, 0, 2,-1) = -0.143048168102668d0
+       Y2( 3, 2, 2,-1) = -0.184674390922371d0
+       Y2( 3,-1, 2, 0) =  0.202300659403420d0
+       Y2( 3,-2, 2, 1) = -0.184674390922371d0
+       Y2( 3,-3, 2, 2) =  0.226179013159540d0
+       Y2( 3,-1, 2, 2) =  0.058399170081901d0
+       Y2( 3, 3, 4,-4) = -0.230329432980890d0
+       Y2( 3, 2, 4,-3) =  0.199471140200716d0
+       Y2( 3, 1, 4,-2) = -0.168583882836183d0
+       Y2( 3, 3, 4,-2) = -0.043528171377568d0
+       Y2( 3, 0, 4,-1) =  0.194663900273006d0
+       Y2( 3, 2, 4,-1) =  0.075393004386513d0
+       Y2( 3,-1, 4, 0) = -0.150786008773026d0
+       Y2( 3,-2, 4, 1) =  0.075393004386513d0
+       Y2( 3,-3, 4, 2) = -0.043528171377568d0
+       Y2( 3,-1, 4, 2) = -0.168583882836183d0
+       Y2( 3,-2, 4, 3) =  0.199471140200716d0
+       Y2( 3,-3, 4, 4) = -0.230329432980890d0
+       Y3=0.0d0
+        Y3( 0, 0, 1, 0) =  0.282094791773878d0
        Y3( 1,-1, 2,-1) =  0.218509686118416d0
        Y3( 1, 0, 0, 0) =  0.282094791773878d0
        Y3( 1, 0, 2, 0) =  0.252313252202016d0
@@ -1244,6 +1288,18 @@ CONTAINS
        Y3( 2, 1, 1, 1) =  0.218509686118416d0
        Y3( 2, 1, 3, 1) =  0.233596680327607d0
        Y3( 2, 2, 3, 2) =  0.184674390922372d0
+       Y3( 3,-2, 2,-2) =  0.184674390922371d0
+       Y3( 3,-1, 2,-1) =  0.233596680327607d0
+       Y3( 3, 0, 2, 0) =  0.247766695083476d0
+       Y3( 3, 1, 2, 1) =  0.233596680327607d0
+       Y3( 3, 2, 2, 2) =  0.184674390922371d0
+       Y3( 3,-3, 4,-3) =  0.162867503967639d0
+       Y3( 3,-2, 4,-2) =  0.213243618622923d0
+       Y3( 3,-1, 4,-1) =  0.238413613504448d0
+       Y3( 3, 0, 4, 0) =  0.246232521229829d0
+       Y3( 3, 1, 4, 1) =  0.238413613504448d0
+       Y3( 3, 2, 4, 2) =  0.213243618622923d0
+       Y3( 3, 3, 4, 3) =  0.162867503967639d0
        flag_Y = .false.
     end if
 
@@ -1284,7 +1340,7 @@ CONTAINS
        end do
     end if
 
-    if ( .not.allocated(y2b) .and. pselect /= 5 ) then
+    if ( .not.allocated(y2b) .and. all(ippform /= 4) ) then
        lm1=maxval(ilm1)
        NRc=maxval(NRps)
        allocate( y2b(NRc,lm1,Nelement) )
@@ -1333,7 +1389,7 @@ CONTAINS
     end do
 !$OMP end do
 
-    if ( pselect == 5 ) then
+    if ( any(ippform == 4) ) then
 
 !$OMP master
        call watch(ctt(0),ett(0))

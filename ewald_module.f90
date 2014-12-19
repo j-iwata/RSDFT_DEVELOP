@@ -1,8 +1,9 @@
 MODULE ewald_module
 
-  use aa_module
-  use bb_module
-  use atom_module
+  use ewald_variables, only: eta,mg,mr,LG,LR,ipair,mpair
+  use aa_module, only: aa, Va
+  use bb_module, only: bb
+  use atom_module, only: Natom, aa_atom, ki_atom
   use pseudopot_module, only: Zps
   use parallel_module
   use watch_module
@@ -10,29 +11,20 @@ MODULE ewald_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Eewald,test_ewald,calc_ewald,calc_force_ewald,cal_ewald
+  PUBLIC :: test_ewald, calc_ewald, cal_ewald
 
-  real(8) :: Eewald
   real(8),allocatable :: zatom(:)
-  real(8) :: eta,Qtot,Qtot2,rrcut,ecut,Vcell
-  integer :: mg,mr
-  integer,allocatable :: LG(:,:),LR(:,:)
+  real(8) :: Qtot,Qtot2,rrcut,ecut,Vcell
   integer,allocatable :: id(:),ir(:)
-
-  integer :: mpair
-  integer,allocatable :: ipair(:,:)
-
   real(8) :: ewldg_0=0.d0, g_0=0.d0
   real(8) :: ewldr_0=0.d0, r_0=0.d0
 
-  logical :: iswitch_test_ewald = .false.
-
 CONTAINS
 
-  SUBROUTINE cal_ewald(Ewld,disp_switch)
+
+  SUBROUTINE cal_ewald(Ewld)
     implicit none
     real(8),intent(OUT) :: Ewld
-    logical,intent(IN) :: disp_switch
     real(8) :: ewldg,ewldr,pi
     pi=acos(-1.d0)
     call calc_ewldg(mg,LG,ewldg)
@@ -43,10 +35,10 @@ CONTAINS
     Ewld=0.5d0*(ewldg+ewldr)
   END SUBROUTINE cal_ewald
 
-  SUBROUTINE test_ewald(Ewld,disp_switch)
+
+  SUBROUTINE test_ewald(Ewld)
     implicit none
     real(8),intent(OUT) :: Ewld
-    logical,intent(IN) :: disp_switch
     integer,parameter :: maxloop=50,max_loop_r=10,max_loop_g=10
     integer :: loop_eta,loop_g,loop_r,mg0,mr0,i,m1,m2,m3,m,n,j
     integer :: mg_tot_0,mr_tot_0,mr_tot,mg_tot,mr_tmp,mr_dif,ierr
@@ -59,11 +51,6 @@ CONTAINS
     real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
     logical :: flag_conv
     integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
-
-    if ( .not. iswitch_test_ewald ) then
-       Ewld=0.0d0
-       return
-    end if
 
     pi=acos(-1.d0)
 
@@ -166,7 +153,7 @@ CONTAINS
           call mpi_allgather &
                (mg,1,mpi_integer,ir,1,mpi_integer,mpi_comm_world,ierr)
 
-          if ( disp_switch ) then
+          if ( disp_switch_parallel ) then
              write(*,'(1x,2i4,2i8,2g26.15,2g12.5)') &
                   loop_eta,loop_g,mg_tot,mg,ewldg,sqrt(ecut),timg(1:2)
           end if
@@ -207,7 +194,7 @@ CONTAINS
           stop "ewldg is not converged"
        end if
 
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,'(1x,"ewald(G)=",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
        end if
 
@@ -292,7 +279,7 @@ CONTAINS
 
           deallocate( LR_tmp )
 
-          if ( disp_switch ) then
+          if ( disp_switch_parallel ) then
              write(*,'(1x,2i4,3i8,2g26.15,2g12.5)') &
                   loop_eta,loop_r,mr_tot,mr,m,ewldr,sqrt(rrcut),timr(1:2)
           end if
@@ -329,7 +316,7 @@ CONTAINS
           stop "ewldr is not converged"
        end if
 
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,'(1x,"ewald(R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
        end if
 
@@ -338,7 +325,7 @@ CONTAINS
        call mpi_allreduce(timg,timg0,2,mpi_real8,mpi_max,mpi_comm_world,i)
        call mpi_allreduce(timr,timr0,2,mpi_real8,mpi_max,mpi_comm_world,i)
 
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,'(1x,i6,4x,"Ewld=",3g22.15,2i8,2x,3g12.5)') &
                loop_eta,Ewld,eta,eta-eta_0,mg_tot,mr_tot &
                ,timg0(2),timr0(2),timg0(2)+timr0(2)
@@ -613,141 +600,9 @@ CONTAINS
   END SUBROUTINE calc_ewldr
 
 
-  SUBROUTINE calc_force_ewald(MI,force3)
-    implicit none
-    integer,intent(IN) :: MI
-    real(8),intent(OUT) :: force3(3,MI)
-    real(8) :: sqeta,x,y,z,r,rr,ss,const,fewldg(3),fewldr(3)
-    real(8) :: const1,const2,const3
-    real(8) :: GR,c,c1,c2,sum0
-    real(8) :: Vcell,pi,pi2
-    real(8) :: sum1,sum2,sum3,sum_tmp(3)
-    integer :: i,j,k,n,a,b,ab,ierr
-    real(8) :: gg,gx,gy,gz
-    real(8),allocatable :: work(:,:)
-
-    force3(:,:) = 0.d0
-
-    pi    = acos(-1.d0)
-    pi2   = 2.d0*pi
-    Vcell = abs(Va)
-    sqeta = sqrt(eta)
-
-    const1 = 2.d0*sqrt(eta/pi)
-    const2 = 4.d0*pi/Vcell
-    const3 = 1.d0/(4.d0*eta)
-!$OMP parallel do private( sum_tmp,GR,sum0,gx,gy,gz,gg,c,c1 )
-    do b=1,MI
-       sum_tmp(:)=0.d0
-       do i=1,mg
-          if ( all(LG(1:3,i)==0) ) cycle
-          sum0=0.d0
-          do a=1,Natom
-             GR=pi2*( LG(1,i)*(aa_atom(1,a)-aa_atom(1,b)) &
-                     +LG(2,i)*(aa_atom(2,a)-aa_atom(2,b)) &
-                     +LG(3,i)*(aa_atom(3,a)-aa_atom(3,b)) )
-             sum0=sum0+Zps(ki_atom(a))*sin(GR)
-          end do
-          gx=bb(1,1)*LG(1,i)+bb(1,2)*LG(2,i)+bb(1,3)*LG(3,i)
-          gy=bb(2,1)*LG(1,i)+bb(2,2)*LG(2,i)+bb(2,3)*LG(3,i)
-          gz=bb(3,1)*LG(1,i)+bb(3,2)*LG(2,i)+bb(3,3)*LG(3,i)
-          gg=gx*gx+gy*gy+gz*gz
-          c=exp(-const3*gg)/gg
-          sum_tmp(1)=sum_tmp(1)+gx*sum0*c
-          sum_tmp(2)=sum_tmp(2)+gy*sum0*c
-          sum_tmp(3)=sum_tmp(3)+gz*sum0*c
-       end do
-       c1=Zps(ki_atom(b))*const2
-       force3(1,b) = force3(1,b) - sum_tmp(1)*c1
-       force3(2,b) = force3(2,b) - sum_tmp(2)*c1
-       force3(3,b) = force3(3,b) - sum_tmp(3)*c1
-    end do ! b
-!$OMP end parallel do
-!    allocate( work(3,MI) ) ; work=force3
-!    call mpi_allreduce(work,force3,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
-!    deallocate( work )
-
-#ifdef TEST
-    do b=1,MI
-       do a=1,MI
-          if ( a==b ) cycle
-          sum1=0.d0
-          sum2=0.d0
-          sum3=0.d0
-          do i=1,mr
-             x=sum( aa(1,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
-             y=sum( aa(2,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
-             z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
-             rr=x*x+y*y+z*z
-             r=sqrt(rr)
-             c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
-             sum1=sum1+c*x
-             sum2=sum2+c*y
-             sum3=sum3+c*z
-          end do
-          c2=2.d0*Zps(ki_atom(a))*Zps(ki_atom(b))
-          force3(1,b) = force3(1,b) - 0.5d0*sum1*c2
-          force3(2,b) = force3(2,b) - 0.5d0*sum2*c2
-          force3(3,b) = force3(3,b) - 0.5d0*sum3*c2
-       end do
-    end do ! b
-#endif
-    do ab=1,mpair
-       a=ipair(1,ab)
-       b=ipair(2,ab)
-       if ( a == b ) cycle
-       c2=2.d0*Zps(ki_atom(a))*Zps(ki_atom(b))
-       sum1=0.d0
-       sum2=0.d0
-       sum3=0.d0
-!$OMP parallel do private( x,y,z,rr,r,c ) reduction(+:sum1,sum2,sum3)
-       do i=1,mr
-          x=sum( aa(1,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
-          y=sum( aa(2,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
-          z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
-          rr=x*x+y*y+z*z
-          r=sqrt(rr)
-          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
-          sum1=sum1+c*x
-          sum2=sum2+c*y
-          sum3=sum3+c*z
-       end do
-!$OMP end parallel do
-       force3(1,b) = force3(1,b) - 0.5d0*sum1*c2
-       force3(2,b) = force3(2,b) - 0.5d0*sum2*c2
-       force3(3,b) = force3(3,b) - 0.5d0*sum3*c2
-       sum1=0.d0
-       sum2=0.d0
-       sum3=0.d0
-!$OMP parallel do private( x,y,z,rr,r,c ) reduction(+:sum1,sum2,sum3)
-       do i=1,mr
-          x=sum( aa(1,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
-          y=sum( aa(2,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
-          z=sum( aa(3,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
-          rr=x*x+y*y+z*z
-          r=sqrt(rr)
-          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
-          sum1=sum1+c*x
-          sum2=sum2+c*y
-          sum3=sum3+c*z
-       end do
-!$OMP end parallel do
-       force3(1,a) = force3(1,a) - 0.5d0*sum1*c2
-       force3(2,a) = force3(2,a) - 0.5d0*sum2*c2
-       force3(3,a) = force3(3,a) - 0.5d0*sum3*c2
-    end do
-
-    allocate( work(3,MI) ) ; work=force3
-    call mpi_allreduce(work,force3,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
-    deallocate( work )
-
-  END SUBROUTINE calc_force_ewald
-
-
-  SUBROUTINE calc_ewald(Ewld,disp_switch)
+  SUBROUTINE calc_ewald(Ewld)
     implicit none
     real(8),intent(OUT) :: Ewld
-    logical,intent(IN) :: disp_switch
     integer,parameter :: maxloop=50,max_loop_r=10,max_loop_g=10
     integer :: i,m1,m2,m3,m,n,j,loop_g,loop_r
     integer :: mg_tot_0,mr_tot_0,mr_tot,mg_tot,mr_tmp,mr_dif,ierr
@@ -760,7 +615,7 @@ CONTAINS
     real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
     integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
 
-    if ( disp_switch ) write(*,'(a60," calc_ewald")') repeat("-",60)
+    if ( disp_switch_parallel ) write(*,'(a60," calc_ewald")') repeat("-",60)
 
     pi=acos(-1.d0)
 
@@ -848,7 +703,7 @@ CONTAINS
        call mpi_allgather &
             (mg,1,mpi_integer,ir,1,mpi_integer,mpi_comm_world,ierr)
 
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,'(1x,i4,2i8,2g26.15,2g12.5)') &
                loop_g,mg_tot,mg,ewldg,sqrt(ecut),timg(1:2)
        end if
@@ -864,7 +719,7 @@ CONTAINS
 
     end do ! loop_g
 
-    if ( disp_switch ) then
+    if ( disp_switch_parallel ) then
        write(*,'(1x,"ewald(G)=",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
     end if
 
@@ -934,7 +789,7 @@ CONTAINS
 
        deallocate( LR_tmp )
 
-       if ( disp_switch ) then
+       if ( disp_switch_parallel ) then
           write(*,'(1x,i4,3i8,2g26.15,2g12.5)') &
                loop_r,mr_tot,mr,m,ewldr,sqrt(rrcut),timr(1:2)
        end if
@@ -950,7 +805,7 @@ CONTAINS
 
     end do ! loop_r
 
-    if ( disp_switch ) then
+    if ( disp_switch_parallel ) then
        write(*,'(1x,"ewald(R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
     end if
 
@@ -958,5 +813,6 @@ CONTAINS
 
     return
   END SUBROUTINE calc_ewald
+
 
 END MODULE ewald_module

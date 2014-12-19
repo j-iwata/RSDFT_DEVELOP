@@ -1,129 +1,120 @@
 MODULE rgrid_module
 
+  use aa_module
+  use rgrid_variables
+  use rgrid_sol_module
+  use rgrid_mol_module
+  use esm_rgrid_module
+  use parallel_module
+
   implicit none
 
   PRIVATE
-  PUBLIC :: Ngrid,Hgrid,dV,zdV,Igrid &
-           ,read_rgrid,construct_rgrid &
-           ,parallel_rgrid,read_oldformat_rgrid
+  PUBLIC :: Init_Rgrid, InitParallel_Rgrid &
+       ,Igrid,Ngrid,Hgrid,dV,zdV
 
-  integer :: Ngrid(0:3),Igrid(2,0:3)
-  real(8) :: Hgrid(3)
-  real(8) :: dV
-#ifdef _DRSDFT_
-  real(8) :: zdV
-#else
-  complex(8) :: zdV
-#endif
+  integer :: SYStype=0
 
 CONTAINS
 
-  SUBROUTINE read_rgrid(rank,unit)
+
+  SUBROUTINE Init_Rgrid( SYStype_in, Md, unit )
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(5) :: cbuf,ckey
-    Ngrid(:)=0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "NGRID" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ngrid(1:3)
-          end if
-       end do
-999    continue
-       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
+    integer,intent(IN) :: SYStype_in, Md, unit
+
+    SYStype = SYStype_in
+
+    select case( SYStype )
+
+    case(0) ! ----- SOL Sol sol
+
+       call Init_RgridSol(aa)
+
+    case(1) ! ----- MOL Mol mol
+
+       call Read_RgridMol(myrank,unit)
+
+       call GetNumGrids_RgridMol(Ngrid)
+
+       call GetSimBox_RgridMol(aa)
+
+       call GetGridSize_RgridMol(Hgrid)
+
+       ax  = aa(1,1)
+       Va  = aa(1,1)*aa(2,2)*aa(3,3)
+       dV  = Hgrid(1)*Hgrid(2)*Hgrid(3)
+       zdV = dV
+
+    case(2) ! ----- ESM Esm esm
+
+       call Init_RgridSol(aa)
+
+       call Read_RgridESM(myrank,unit)
+
+       call Init_RgridESM(aa,Ngrid,Md)
+
+    end select
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "SYStype=",SYStype
+       write(*,'(1x,"aa",2x,3f15.10)') aa(1:3,1)
+       write(*,'(1x,"  ",2x,3f15.10)') aa(1:3,2)
+       write(*,'(1x,"  ",2x,3f15.10)') aa(1:3,3)
+       write(*,'(1x,"Ngrid(1:3)=",3i5)') Ngrid(1:3)
+       write(*,'(1x,"Ngrid(0)  =",i8 )') Ngrid(0)
+       write(*,'(1x,"Hgrid(1:3)=",3f15.8)') Hgrid(1:3)
+       write(*,'(a60," init_rgrid(END)")') repeat("-",60)
     end if
-    call send_rgrid(0)
-  END SUBROUTINE read_rgrid
+
+  END SUBROUTINE Init_Rgrid
 
 
-  SUBROUTINE read_oldformat_rgrid(rank,unit)
-    integer,intent(IN) :: rank,unit
-    Ngrid(:)=0
-    if ( rank == 0 ) then
-       read(unit,*) Ngrid(1:3)
-       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
-    end if
-    call send_rgrid(0)
-  END SUBROUTINE read_oldformat_rgrid
-
-
-  SUBROUTINE send_rgrid(rank)
+  SUBROUTINE InitParallel_Rgrid
     implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(Ngrid(1),3,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_rgrid
+    integer :: ierr, Nshift(3)
 
+    Nshift(:) = 0
 
-  SUBROUTINE construct_rgrid(aa)
-    implicit none
-    real(8),intent(IN) :: aa(3,3)
-    real(8) :: Vaa
-    Vaa = aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
-         +aa(1,3)*aa(2,1)*aa(3,2)-aa(1,3)*aa(2,2)*aa(3,1) &
-         -aa(1,2)*aa(2,1)*aa(3,3)-aa(1,1)*aa(2,3)*aa(3,2)
-    Ngrid(0)=Ngrid(1)*Ngrid(2)*Ngrid(3)
-    Hgrid(1)=sqrt( sum(aa(1:3,1)**2) )/Ngrid(1)
-    Hgrid(2)=sqrt( sum(aa(1:3,2)**2) )/Ngrid(2)
-    Hgrid(3)=sqrt( sum(aa(1:3,3)**2) )/Ngrid(3)
-    dV=abs(Vaa)/Ngrid(0)
-    zdV=dV
-    Igrid(:,:)=0
-    Igrid(2,1)=Ngrid(1)-1
-    Igrid(2,2)=Ngrid(2)-1
-    Igrid(2,3)=Ngrid(3)-1
-    Igrid(1,0)=1
-    Igrid(2,0)=Ngrid(0)
-  END SUBROUTINE construct_rgrid
+    select case(SYStype)
 
+    case(0) ! ----- SOL sol
 
-  SUBROUTINE parallel_rgrid(np_grid,myrank)
-    implicit none
-    integer,intent(IN) :: np_grid(3),myrank
-    integer :: i,j,n,i1,i2,i3
-    integer,allocatable :: np1(:),np2(:),np3(:)
-    allocate( np1(np_grid(1)) ) ; np1=0
-    allocate( np2(np_grid(2)) ) ; np2=0
-    allocate( np3(np_grid(3)) ) ; np3=0
-    do i=1,Ngrid(1)
-       n=mod(i-1,np_grid(1))+1
-       np1(n)=np1(n)+1
-    end do
-    do i=1,Ngrid(2)
-       n=mod(i-1,np_grid(2))+1
-       np2(n)=np2(n)+1
-    end do
-    do i=1,Ngrid(3)
-       n=mod(i-1,np_grid(3))+1
-       np3(n)=np3(n)+1
-    end do
-    n=-1
-    i=0
-    do i3=1,np_grid(3)
-    do i2=1,np_grid(2)
-    do i1=1,np_grid(1)
-       n=n+1
-       if ( n == myrank ) then
-          Igrid(1,0)=i+1
-          Igrid(2,0)=i+np1(i1)*np2(i2)*np3(i3)
-          Igrid(1,1)=sum(np1(1:i1))-np1(i1)
-          Igrid(2,1)=sum(np1(1:i1))-1
-          Igrid(1,2)=sum(np2(1:i2))-np2(i2)
-          Igrid(2,2)=sum(np2(1:i2))-1
-          Igrid(1,3)=sum(np3(1:i3))-np3(i3)
-          Igrid(2,3)=sum(np3(1:i3))-1
-       end if
-       i=i+np1(i1)*np2(i2)*np3(i3)
-    end do
-    end do
-    end do
-    deallocate( np3,np2,np1 )
-  END SUBROUTINE parallel_rgrid
+       call InitParallel_RgridSol( node_partition, np_grid, pinfo_grid )
+
+    case(1) ! ----- MOL mol
+
+       call InitParallel_RgridMol(node_partition,np_grid,pinfo_grid,myrank==0)
+
+       Nshift(1:3) = -1
+
+    case(2)
+
+       call InitParallel_RgridSol( node_partition, np_grid, pinfo_grid )
+       call InitParallel_RgridESM( np_grid, pinfo_grid, Nshift )
+
+    end select
+
+    Igrid(1,0) = pinfo_grid(7,myrank_g) + 1
+    Igrid(2,0) = pinfo_grid(7,myrank_g) + pinfo_grid(8,myrank_g)
+    Igrid(1,1) = pinfo_grid(1,myrank_g)
+    Igrid(2,1) = pinfo_grid(1,myrank_g) + pinfo_grid(2,myrank_g) - 1
+    Igrid(1,2) = pinfo_grid(3,myrank_g)
+    Igrid(2,2) = pinfo_grid(3,myrank_g) + pinfo_grid(4,myrank_g) - 1
+    Igrid(1,3) = pinfo_grid(5,myrank_g)
+    Igrid(2,3) = pinfo_grid(5,myrank_g) + pinfo_grid(6,myrank_g) - 1
+
+    Igrid(1,1:3) = Igrid(1,1:3) - Nshift(1:3)
+    Igrid(2,1:3) = Igrid(2,1:3) - Nshift(1:3)
+
+    id_grid(:) = pinfo_grid(7,:)
+    ir_grid(:) = pinfo_grid(8,:)
+
+    idisp(myrank) = id_grid(myrank_g)
+    ircnt(myrank) = ir_grid(myrank_g)
+    call mpi_allgather(idisp(myrank),1,mpi_integer,idisp,1,mpi_integer,mpi_comm_world,ierr)
+    call mpi_allgather(ircnt(myrank),1,mpi_integer,ircnt,1,mpi_integer,mpi_comm_world,ierr)
+
+  END SUBROUTINE InitParallel_Rgrid
+
 
 END MODULE rgrid_module

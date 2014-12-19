@@ -64,6 +64,7 @@ CONTAINS
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE read_oldformat_gram_schmidt_t(rank,unit)
+    implicit none
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
        read(unit,*) NBLK,NBLK1

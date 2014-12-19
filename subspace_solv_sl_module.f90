@@ -2,7 +2,7 @@ MODULE subspace_solv_sl_module
 
   use wf_module
   use scalapack_module
-  use subspace_diag_module
+  use subspace_diag_variables
 
   implicit none
 

@@ -1,44 +1,42 @@
 MODULE subspace_diag_module
 
-  use parallel_module
+  use parallel_module, only: np_band, ir_band, id_band, myrank &
+                            ,disp_switch_parallel
+  use subspace_diag_variables
+  use subspace_diag_la_module
+  use subspace_diag_sl_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: prep_subspace_diag,MB_diag,Hsub,Vsub,mat_block &
-           ,NBLK1,NBLK2,zero,one,TYPE_MAIN
-
-  integer,allocatable :: mat_block(:,:)
-
-#ifdef _DRSDFT_
-  integer,parameter :: TYPE_MAIN = MPI_REAL8
-  real(8),allocatable :: Hsub(:,:), Vsub(:,:)
-  real(8),parameter :: zero=0.d0,one=1.d0
-#else
-  integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
-  complex(8),allocatable :: Hsub(:,:), Vsub(:,:)
-  complex(8),parameter :: zero=(0.d0,0.d0),one=(1.d0,0.d0)
-#endif
-  integer :: MB_diag,NBLK1,NBLK2
-
-!  logical :: flag_return = .false.
+  PUBLIC :: subspace_diag, init_subspace_diag
 
 CONTAINS
 
 
-  SUBROUTINE prep_subspace_diag(MB_in,disp_switch)
-    integer,intent(IN) :: MB_in
-    logical,intent(IN) :: disp_switch
-    integer :: i,j,mm,ms,me,nme,ne,nn,je,MB
+  SUBROUTINE subspace_diag(k,s)
+    implicit none
+    integer,intent(IN) :: k,s
+#ifdef _LAPACK_
+    call subspace_diag_la(k,s)
+#else
+    call subspace_diag_sl(k,s,disp_switch_parallel)
+#endif
+  END SUBROUTINE subspace_diag
 
-!    if ( flag_return ) return
-!    flag_return = .true.
+
+  SUBROUTINE init_subspace_diag( MB_in )
+    implicit none
+    integer,intent(IN) :: MB_in
+    integer :: i,j,mm,ms,me,nme,ne,nn,je,MB
 
     MB_diag = MB_in
 
     MB  = MB_diag
     nme = (MB*MB+MB)/2
-    
+
+    call parameter_check(nme,MB)
+
     if ( .not.allocated(mat_block) ) then
        allocate( mat_block(0:np_band-1,0:4) )
     end if
@@ -53,9 +51,9 @@ CONTAINS
        mat_block(i,3)=mat_block(i,0)+mat_block(i,1)*mat_block(i,2)
     end do
 
-    if ( sum(mat_block(:,3))/=nme ) then
+    if ( sum(mat_block(:,3)) /= nme ) then
        write(*,*) sum(mat_block(:,3)),myrank,nme
-       stop "stop@prep_subspace_diag"
+       stop "stop@init_subspace_diag(1)"
     end if
 
     if ( np_band>1 ) then
@@ -74,7 +72,7 @@ CONTAINS
 
        if ( sum(mat_block(:,3))/=nme ) then
           write(*,*) sum(mat_block(:,3)),myrank,nme
-          stop
+          stop "stop@init_subspace_diag(2)"
        end if
 
     end if
@@ -83,13 +81,26 @@ CONTAINS
        mat_block(i,4)=sum( mat_block(0:i,3) )-mat_block(i,3)
     end do
 
-    if ( DISP_SWITCH ) then
+    if ( disp_switch_parallel ) then
        write(*,'(1x,6a10)') "rank_b","tri","m","n","nme","idis"
        do i=0,np_band-1
           write(*,'(1x,6i10)') i,mat_block(i,0:4)
        end do
     end if
 
-  END SUBROUTINE prep_subspace_diag
+  END SUBROUTINE init_subspace_diag
+
+  SUBROUTINE parameter_check(nme,MB)
+    implicit none
+    integer,intent(IN) :: nme,MB
+    real(8) :: d_nme
+    d_nme = ( dble(MB)*dble(MB)+dble(MB) )/2.0d0
+    if ( abs(d_nme-nme) > 1.d-10 ) then
+       write(*,*) "MB,nme,d_nme=",MB,nme,d_nme
+       write(*,*) "MB may be too large"
+       stop "stop@init_subspace_diag"
+    end if
+  END SUBROUTINE parameter_check
+
 
 END MODULE subspace_diag_module

@@ -4,7 +4,7 @@ MODULE subspace_rotv_sl_module
   use wf_module, only: unk
   use scalapack_module
   use parallel_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use bcast_module
 
