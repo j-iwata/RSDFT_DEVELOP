@@ -18,6 +18,8 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
 FFLAGS1 = -I../
 #################### Generate REAL8 code #####
 #FFLAGS1 = -D_DRSDFT_ -I../
+#################### Generate COMPLEX16-USPP code #####
+#FFLAGS1 = -D_USPP_ -I../
 #################### SPLINE interpolation is used in prep_ps #####
 #FFLAGS1 = -D_SPLINE_ -I../
 #FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -I../
