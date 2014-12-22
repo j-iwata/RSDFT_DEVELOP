@@ -49,9 +49,10 @@ MODULE total_energy_module
 CONTAINS
 
 
-  SUBROUTINE calc_total_energy(flag_recalc_esp,disp_switch)
+  SUBROUTINE calc_total_energy(flag_recalc_esp,disp_switch,flag_rewind)
     implicit none
     logical,intent(IN) :: flag_recalc_esp,disp_switch
+    logical,optional,intent(IN) :: flag_rewind
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2
     real(8) :: s0(4),s1(4),uu
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
@@ -179,7 +180,11 @@ CONTAINS
 
     diff_etot = Etot_0 - Etot
 
-    call write_info_total_energy( disp_switch )
+    if ( present(flag_rewind) ) then
+       call write_info_total_energy( disp_switch, flag_rewind )
+    else
+       call write_info_total_energy( disp_switch, .false. )
+    end if
 
     Etot_0 = Etot
     Ekin_0 = Ekin
@@ -227,15 +232,15 @@ CONTAINS
   END SUBROUTINE calc_with_rhoIN_total_energy
 
 
-  SUBROUTINE write_info_total_energy( disp_switch )
+  SUBROUTINE write_info_total_energy( disp_switch, flag_rewind )
     implicit none
-    logical,intent(IN) :: disp_switch
+    logical,intent(IN) :: disp_switch, flag_rewind
     integer :: i,u(2)
     u(:) = (/ 6, 99 /)
     do i=1,2
        if ( u(i) == 6 .and. .not.disp_switch ) cycle
        if ( u(i) /= 6 .and. myrank /= 0 ) cycle
-       if ( u(i) /= 6 .and. myrank == 0 ) rewind u(i)
+       if ( u(i) /= 6 .and. myrank == 0 .and. flag_rewind ) rewind u(i)
        write(u(i),*) '(EII) ',Eewald
        write(u(i),*) '(VDW) ',Evdw
        write(u(i),*) '(KIN) ',Ekin, Ekin-Ekin_0
