@@ -165,7 +165,7 @@ CONTAINS
        call calc_xc
        call control_xc_hybrid(2)
 !       call diff_vrho_scf( disp_switch )
-       call calc_total_energy( .false., disp_switch )
+       call calc_total_energy( .false., disp_switch, iter )
 ! ---
 
        call watcht(disp_switch,"etot",1)

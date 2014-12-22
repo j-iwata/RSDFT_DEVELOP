@@ -21,6 +21,7 @@ CONTAINS
     ! psi(1:nsmpl-1,Rrefmax,Lrefmax)
     integer :: Rrefmax,Lrefmax,lpsmax,npqmax,ncfmax,nsmpl
     integer :: nl3vmax,npq_
+    integer,parameter :: max_loop=1000000
 
 !write(*,*) '>>>>> inside readPSVG'
     Lrefmax=nlf(ik)
@@ -40,10 +41,11 @@ CONTAINS
 !        allocate( qrad_(nsmpl+1,lpsmax,npqmax) ) ; qrad_=0.d0
     
     rewind unit_ps
-    do j=1,10000
+    do j=1,max_loop
       read(unit_ps,'(A)') cbuf9
       if (cbuf9=='#### DATA' ) exit
     end do
+    if ( j > max_loop ) stop "stop@readPSVG(1)" 
     read(unit_ps,*) npq_
     
     k2=0

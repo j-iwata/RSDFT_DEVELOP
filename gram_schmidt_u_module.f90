@@ -1,7 +1,7 @@
 MODULE gram_schmidt_u_module
 
   use rgrid_module
-  use wf_module
+  use wf_module, only: unk
   use parallel_module
   use localpot2_Smatrix_module
 

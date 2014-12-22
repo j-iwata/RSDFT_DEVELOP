@@ -932,7 +932,7 @@ CONTAINS
     write(unit,'("A2",3f20.15)') aa_org(1:3,2)
     write(unit,'("A3",3f20.15)') aa_org(1:3,3)
     write(unit,'("AA")')
-    write(unit,*) Nelement,Natom
+    write(unit,*) Nelement,Natom,zn_atom(:)
 
     select case( SYStype )
     case default

@@ -36,7 +36,7 @@ MODULE pseudopot_module
 !  integer :: unit_ps,ielm,Nelement_PP
 !  integer :: max_psgrd=0, max_psorb=0, max_ngauss=0
 
-  integer :: ps_type = 0
+!  integer :: ps_type = 0
 
 CONTAINS
 
@@ -161,7 +161,7 @@ CONTAINS
        write(*,*) "pslect=",pselect
     end if
     call send_param_pseudopot(0)
-    if ( .not.( pselect == 2 .or. pselect == 3 ) ) then
+    if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
        stop "invalid pselect(stop@read_param_pseudopot)"
     end if
   END SUBROUTINE read_param_pseudopot
@@ -260,16 +260,6 @@ CONTAINS
              viod(1:Mr(ielm),1:norb(ielm),ielm) &
                                       = ps_yb%vps(1:Mr(ielm),1:norb(ielm))
 
-#ifdef _USPP_
-          case(102)
-             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-#endif
-
-          case default
-
-             stop "ippform error"
-
           case( 4 )
 
              call read_ps_gth( unit_ps, ippform(ielm) )
@@ -322,6 +312,12 @@ CONTAINS
                 end do
              end if
 
+#ifdef _USPP_
+          case(102)
+             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
+             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
+#endif
+
           case default
 
              stop "ippform error"
@@ -373,7 +369,7 @@ CONTAINS
   END SUBROUTINE chk_pot
 
 
-  SUBROUTINE send_pseudopot(myrank)
+  SUBROUTINE send_pseudopot_1(myrank)
     implicit none
     integer,intent(IN) :: myrank
     integer :: m,n,ierr
@@ -418,10 +414,10 @@ CONTAINS
     call mpi_bcast(knml,size(knml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(ps_type,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 
-  END SUBROUTINE send_pseudopot
+  END SUBROUTINE send_pseudopot_1
 
 
-  SUBROUTINE ps_allocate(n_grd,n_orb)
+  SUBROUTINE ps_allocate_1(n_grd,n_orb)
     implicit none
     integer,intent(IN) :: n_grd,n_orb
     integer :: mg,mo
@@ -549,7 +545,7 @@ CONTAINS
     end if
     max_psgrd = mg
     max_psorb = mo
-  END SUBROUTINE ps_allocate
+  END SUBROUTINE ps_allocate_1
 
 
 END MODULE pseudopot_module

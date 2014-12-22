@@ -76,7 +76,6 @@ CONTAINS
   END SUBROUTINE send_cg
 
 !---------------------------------------------------------------------------------------
-#ifdef _DRSDFT_FOR_NCPP
 
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
@@ -107,6 +106,7 @@ CONTAINS
 
   END SUBROUTINE conjugate_gradient
 
+#ifndef _USPP_
 
 #ifdef _DRSDFT_
   SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
@@ -389,25 +389,6 @@ CONTAINS
 
   END SUBROUTINE conjugate_gradient_1
 
-#elif defined _USPP_
-
-  SUBROUTINE conjugate_gradient( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
-    use ConjugateGradient_G
-    implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
-#ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
-#else
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
-#endif
-    real(8),intent(INOUT) :: esp(MB),res(MB)
-
-#ifdef _SHOWALL_CG_
-    write(200+myrank,*) '----> USPP CG routine'
-#endif
-    call ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
-  END SUBROUTINE conjugate_gradient
-
 #else
 
   SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
@@ -686,6 +667,26 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
+  END SUBROUTINE conjugate_gradient_1
+#endif
+
+#else
+
+  SUBROUTINE conjugate_gradient_1( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
+    use ConjugateGradient_G
+    implicit none
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
+    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
+    real(8),intent(INOUT) :: esp(MB),res(MB)
+
+#ifdef _SHOWALL_CG_
+    write(200+myrank,*) '----> USPP CG routine'
+#endif
+    call ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
   END SUBROUTINE conjugate_gradient_1
 
 #endif

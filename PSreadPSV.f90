@@ -1,6 +1,11 @@
 MODULE PSreadPSV
+
   use VarPSMember
+
   implicit none
+
+  PRIVATE
+  PUBLIC :: read_PSV
 
 CONTAINS
   

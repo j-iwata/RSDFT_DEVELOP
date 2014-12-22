@@ -14,9 +14,7 @@ PROGRAM Real_Space_Solid
   use psv_initrho_module
   use random_initrho_module
 
-#ifdef _MODULEINITPS_
   use pseudopotentials
-#endif
 
   use hamiltonian_matrix_module
 
@@ -138,7 +136,6 @@ PROGRAM Real_Space_Solid
 
   call init_density(Nelectron,dV)
 
-!----------------------------------------------------------------------------------------initPS
 !----------------------- SOL sol -----
 
   if ( SYStype == 0 ) then
@@ -341,15 +338,16 @@ PROGRAM Real_Space_Solid
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
 
-#ifdef _USPP_
-  call getDij
-#endif
 
 ! --- Read previous w.f. , density , potentials ---
 
   call watcht(disp_switch,"read_data",0)
   call read_data(disp_switch)
   call watcht(disp_switch,"read_data",1)
+
+#ifdef _USPP_
+  call getDij
+#endif
 
 ! the following GS should be performed when MB1_tmp is smaller than Nband,
 ! otherwise not necessary
@@ -394,7 +392,7 @@ PROGRAM Real_Space_Solid
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
-  call calc_total_energy(.true.,disp_switch)
+  call calc_total_energy(.true.,disp_switch,999)
 
 ! ---
 
@@ -443,6 +441,9 @@ PROGRAM Real_Space_Solid
         select case( pselect )
         case( 2 )
            call ps_nloc2_init_derivative
+        case( 102 )
+           call ps_nloc2_init_derivative
+           call ps_Q_init_derivative
         end select
      end if
   end if
@@ -472,7 +473,7 @@ PROGRAM Real_Space_Solid
 
 #ifndef _DRSDFT_
   if ( iswitch_band == 1 .and. iswitch_opt /= 3 ) then
-     call read_band(myrank,1)
+     call control_xc_hybrid(1)
      call band(nint(Nelectron*0.5d0),disp_switch)
   end if
 #endif

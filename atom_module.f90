@@ -140,13 +140,13 @@ CONTAINS
     integer :: iatom
     write(6000+myrank,'(A7,A10)') 'iatom','ki_atom'
     write(6100+myrank,'(A7,A20)') 'iatom','aa_atom(1:3)'
-    write(6200+myrank,'(A7,A10)') 'iatom','opt_constrain'
+    write(6200+myrank,'(A7,A10)') 'iatom','md_atom'
     do iatom=1,Natom
       write(6000+myrank,'(I7,I10)') iatom,ki_atom(iatom)
       write(6100+myrank,'(I7,G20.7)') iatom,aa_atom(1,iatom)
       write(6100+myrank,'(I7,G20.7)') iatom,aa_atom(2,iatom)
       write(6100+myrank,'(I7,G20.7)') iatom,aa_atom(3,iatom)
-      write(6200+myrank,'(I7,I10)') iatom,opt_constrain(iatom)
+      write(6200+myrank,'(I7,I10)') iatom,md_atom(iatom)
     enddo
   END SUBROUTINE checkAtomData
 

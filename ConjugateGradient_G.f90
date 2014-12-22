@@ -150,7 +150,7 @@ CONTAINS
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
 ! --- Preconditioning ---
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
 ! ---

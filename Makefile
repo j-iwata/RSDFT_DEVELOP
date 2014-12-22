@@ -45,11 +45,10 @@ MODS1 = simc_module.o\
         ps_read_tm_module.o \
         ps_read_upf_module.o \
         ps_read_yb_module.o \
+        ps_gth_module.o \
         pseudopot_module.o \
 		VarPara.o \
 		ParaRGridComm.o \
-        ps_gth_module.o \
-        pseudopot_module.o \
         ps_local_gth_module.o \
         electron_module.o\
         init_occ_electron_module.o \
@@ -68,24 +67,6 @@ MODS1 = simc_module.o\
         hartree_mol_module.o \
         esm_hartree_module.o \
         hartree_module.o \
-        ps_nloc_gth_module.o \
-        ps_nloc_hgh_module.o \
-        ps_pcc_module.o \
-        ps_initrho_module.o \
-        ps_nloc1_module.o \
-        maskf_module.o \
-        minimal_box_module.o \
-        ps_nloc2_init_module.o \
-        ps_nloc_mr_module.o \
-        ps_nloc3_module.o \
-        ps_nloc2_module.o \
-		PSQInit.o \
-		PSQRijPrep.o \
-		PSnonLocPrepG.o \
-		pseudopotentials.o \
-		InnerProduct.o \
-	WFtest.o \
-        construct_matrix_ps_nloc2_module.o \
         localpot2_variables.o \
         localpot2_density_module.o \
         localpot2_ion_module.o \
@@ -96,6 +77,26 @@ MODS1 = simc_module.o\
         localpot_module.o \
 		PSnonLocDij.o \
 		PSnonLocOpG2.o \
+        ps_nloc_gth_module.o \
+        ps_nloc_hgh_module.o \
+        ps_pcc_module.o \
+        ps_initrho_module.o \
+        ps_nloc1_module.o \
+        maskf_module.o \
+        minimal_box_module.o \
+        ps_nloc2_init_module.o \
+        ps_nloc_mr_module.o \
+        ps_nloc3_module.o \
+        ForceSub.o \
+        ForcePSnonLoc2.o \
+        ps_nloc2_module.o \
+		PSQInit.o \
+		PSQRijPrep.o \
+		PSnonLocPrepG.o \
+		pseudopotentials.o \
+		InnerProduct.o \
+	WFtest.o \
+        construct_matrix_ps_nloc2_module.o \
         nonlocal_module.o \
         ps_pcc_mol_module.o\
         ps_initrho_mol_module.o\
@@ -112,6 +113,7 @@ MODS1 = simc_module.o\
         force_ewald_module.o \
         gram_schmidt_u_module.o \
         gram_schmidt_m_module.o \
+        GramSchmidt_G.o \
         gram_schmidt_t_module.o \
         gram_schmidt_module.o \
         vdw_grimme_module.o \
@@ -123,10 +125,6 @@ MODS1 = simc_module.o\
         xc_hf_module.o \
         xc_hse_module.o \
         hamiltonian_module.o\
-        ewald_module.o\
-        gram_schmidt_module.o \
-		GScG.o \
-        gram_schmidt_t_module.o \
         xc_pw92_gth_module.o\
         xc_ldapz81_module.o \
         xc_ggapbe96_mol_module.o \
@@ -139,7 +137,7 @@ MODS1 = simc_module.o\
         cgpc_diag_module.o \
         cgpc_seitsonen_module.o \
         cgpc_module.o \
-		CGG.o \
+        ConjugateGradient_G.o \
         cg_u_module.o \
         cg_lobpcg_module.o \
         cg_module.o \
@@ -179,7 +177,8 @@ DIAGSL_MOD = scalapack_module.o\
              subspace_diag_sl_module.o 
 DIAG_MOD   = subspace_diag_module.o
 
-MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
+MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig_module.o \
+        apply_sseig_module.o
 MODS2 = momentum_module.o band_variables.o band_sseig_module.o band_module.o
 MODS4 = scf_module.o scf_chefsi_module.o sweep_module.o atomopt_module.o \
         global_variables.o parameters_module.o
