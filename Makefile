@@ -100,11 +100,14 @@ MODS1 = simc_module.o\
         nonlocal_module.o \
         ps_pcc_mol_module.o\
         ps_initrho_mol_module.o\
+        ps_nloc_mol_gth_module.o \
         ps_nloc2_mol_module.o\
+        ps_local_mol_gth_module.o \
         ps_local_mol_module.o\
         vloc_rho_mol_module.o \
         force_nloc2_mol_module.o \
         force_ion_mol_module.o \
+        force_local_mol_gth_module.o \
         force_local_mol_module.o \
         eion_mol_module.o\
         ewald_variables.o \

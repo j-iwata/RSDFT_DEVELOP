@@ -6,10 +6,11 @@ MODULE force_local_mol_module
   use density_module
   use electron_module, only: Nspin
   use bberf_module
-  use pseudopot_module, only: parloc, rad, Zps
+  use pseudopot_module, only: parloc, rad, Zps, ippform
   use rgrid_mol_module
   use ps_local_mol_module, only: NRcloc, Rcloc, vqls
   use rgrid_module
+  use force_local_mol_gth_module
 
   implicit none
 
@@ -31,16 +32,23 @@ CONTAINS
     integer :: M_irad,NRc,ir0
     integer,allocatable :: irad(:,:)
 
-    pi = acos(-1.0d0)
-    const0 = 2.0d0/sqrt(pi)
-    const1 = 2.0d0/3.0d0*const0
-
-    allocate( ftmp(3,Natom)   ) ; ftmp=0.0d0
     allocate( trho(ML_0:ML_1) ) ; trho=0.0d0
 
     do i=1,Nspin
        trho(:) = trho(:) + rho(:,i)
     end do
+
+    if ( any( ippform == 4 ) ) then
+       call calc_force_local_mol_gth( trho, force )
+       deallocate( trho )
+       return
+    end if
+
+    pi = acos(-1.0d0)
+    const0 = 2.0d0/sqrt(pi)
+    const1 = 2.0d0/3.0d0*const0
+
+    allocate( ftmp(3,Natom) ) ; ftmp=0.0d0
 
     allocate( irad(0:3000,Nelement) ) ; irad=0
     M_irad=0
