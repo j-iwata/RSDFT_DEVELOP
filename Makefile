@@ -127,8 +127,9 @@ MODS1 = simc_module.o\
         esp_gather_module.o \
         io2_module.o \
         io_module.o \
-        force_module.o \
+        force_sol_module.o \
         force_mol_module.o \
+        force_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
         localpot2_te_module.o \

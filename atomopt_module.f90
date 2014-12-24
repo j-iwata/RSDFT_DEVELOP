@@ -22,7 +22,6 @@ MODULE atomopt_module
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
-  use force_mol_module
 
   implicit none
 
@@ -156,12 +155,7 @@ CONTAINS
 
        if ( iswitch_opt == 1 ) call calc_total_energy(.false.,disp_switch_loc)
 
-       select case(SYStype)
-       case default
-          call calc_force(Natom,Force)
-       case(1,2)
-          call calc_force_mol(Natom,Force)
-       end select
+       call calc_force( Natom, Force )
 
        Fmax=0.d0
        do a=1,Natom
@@ -653,12 +647,7 @@ CONTAINS
           end if
           iter_final=ierr
 
-          select case(SYStype)
-          case default
-             call calc_force(Natom,Force)
-          case(1)
-             call calc_force_mol(Natom,Force)
-          end select
+          call calc_force( Natom, Force )
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')

@@ -28,6 +28,7 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
+    work=0.0d0
     call calc_force_local_mol(work)
     force = force + work
 
@@ -38,20 +39,17 @@ CONTAINS
 
     call watch(ctt(1),ett(1))
 
+    work=0.0d0
     call calc_force_nloc2_mol(work)
     force = force + work
 
     call watch(ctt(2),ett(2))
 
+    work=0.0d0
     call calc_force_ion_mol(work)
     force = force + work
 
     call watch(ctt(3),ett(3))
-
-! --- constraint & symmetry ---
-
-!    call_symforce
-!    call_constraint
 
     deallocate( work )
 

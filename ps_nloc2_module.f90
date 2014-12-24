@@ -15,6 +15,7 @@ MODULE ps_nloc2_module
   use minimal_box_module
   use bz_module
   use watch_module
+  use wf_module
 
   implicit none
 
@@ -1188,9 +1189,6 @@ CONTAINS
 
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)
-    use bz_module
-    use wf_module
-    use watch_module
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)

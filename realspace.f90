@@ -402,7 +402,7 @@ PROGRAM Real_Space_Solid
 ! --- Force test, atomopt, CPMD ---
 !
   if ( iswitch_opt /= 0 ) then
-     call init_force( myrank, 1 )
+     call init_force( myrank, 1, SYStype )
      if ( SYStype == 0 ) then
         select case( pselect )
         case( 2 )
