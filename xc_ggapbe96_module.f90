@@ -327,6 +327,8 @@ CONTAINS
              k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
              j1=j1-k1*ML1
              j =LLL2(j1,i2,i3)
+! The potential vex is calculated at j-th grid point rather than i-th.
+! This is because non-transposed nabla matrix Dij is used (See XC.doc).
              if ( ML_0 <= j .and. j <= ML_1 ) then
                 vex(j,ispin) = vex(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
                                                   +rrrr(i,2)*b(2,1) &
@@ -795,6 +797,8 @@ CONTAINS
           k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
           j1=j1-k1*ML1
           j =LLL2(j1,i2,i3)
+! The potential vex is calculated at j-th grid point rather than i-th.
+! This is because non-transposed nabla matrix Dij is used (See XC.doc).
           if ( ML_0 <= j .and. j <= ML_1 ) then
              do ispin=MSP_0,MSP_1
                 vco(j,ispin) = vco(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
