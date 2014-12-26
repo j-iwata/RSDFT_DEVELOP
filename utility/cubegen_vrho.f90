@@ -8,7 +8,7 @@ PROGRAM cubegen_vrho
   real(8),allocatable :: rho(:,:,:,:),vloc(:,:,:,:)
   real(8),allocatable :: vh(:,:,:),vxc(:,:,:),rtmp(:)
   real(8),allocatable :: asi(:,:),rsi(:,:)
-  real(8) :: ax,aa(3,3)
+  real(8) :: ax,aa(3,3),Va,dV
   character(6) :: cbuf
 
 ! ---
@@ -31,6 +31,10 @@ PROGRAM cubegen_vrho
 ! ---
 
   aa(:,:)=ax*aa(:,:)
+
+  Va = aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
+      +aa(1,3)*aa(2,1)*aa(3,2)-aa(1,3)*aa(2,2)*aa(3,1) &
+      -aa(1,2)*aa(2,1)*aa(3,3)-aa(1,1)*aa(2,3)*aa(3,2)
 
 ! ---
 
@@ -59,12 +63,15 @@ PROGRAM cubegen_vrho
 
   read(u1) LL
 
+  dV=abs(Va)/dble(ML)
+
   do s=1,2
 
      read(u1,END=10) rtmp
      do i=1,ML
         rho(LL(1,i),LL(2,i),LL(3,i),s)=rtmp(i)
      end do
+     write(*,*) "for SPIN = ", s, " : sum rho  = ", sum( rho(:,:,:,s) )*dV
 
      call gen_cube( s, rho(:,:,:,s), "rho" )
 
@@ -79,6 +86,8 @@ PROGRAM cubegen_vrho
         rho(:,:,:,1) = rho(:,:,:,1) - rho(:,:,:,2)
         call gen_cube( 1, rho(:,:,:,1), "dspin" )
         write(*,*) "dspin(max,min)=",maxval(rho(:,:,:,1)),minval(rho(:,:,:,1))
+        write(*,*) "sum  dspin  = ", sum( rho(:,:,:,1) )*dV
+        write(*,*) "sum |dspin| = ", sum( abs(rho(:,:,:,1)) )*dV
      end if
 
      if ( s == 2 ) exit
