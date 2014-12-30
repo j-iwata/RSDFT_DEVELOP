@@ -489,7 +489,7 @@ PROGRAM Real_Space_Solid
   if ( DISP_SWITCH ) write(*,*) 'intentional end'
   call global_watch(disp_switch)
   call close_info
-  write(200+myrank,*) myrank,DISP_SWITCH,'before MPI_FINALIZE'
+!  write(200+myrank,*) myrank,DISP_SWITCH,'before MPI_FINALIZE'
   call end_mpi_parallel
 
 END PROGRAM Real_Space_Solid

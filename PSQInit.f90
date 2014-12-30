@@ -90,13 +90,13 @@ write(650+myrank,'(11I3)') l1,i1,nr1,m1,l2,i2,nr2,m2,k1,k2,k3
       N_k1(ik)=k1
     end do ! ik
 
-write(200+myrank,*) myrank,isRootRank
-if (isRootRank) write(200,'(3A6,A5)') 'ik','k1','k2','registered_k2(k2)'
+!write(200+myrank,*) myrank,isRootRank
+!if (isRootRank) write(200,'(3A6,A5)') 'ik','k1','k2','registered_k2(k2)'
     do ik=1,Nelement_
       registered_k2=.false.
       do k1=1,N_k1(ik)
         k2=k1_to_k2(k1,ik)
-if (isRootRank) write(200,'(3I6,L5)') ik,k1,k2,registered_k2(k2)
+!if (isRootRank) write(200,'(3I6,L5)') ik,k1,k2,registered_k2(k2)
         if (registered_k2(k2)) cycle
         registered_k2(k2)=.true.
         N_k2(ik)=N_k2(ik)+1
