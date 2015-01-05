@@ -18,6 +18,9 @@ SUBROUTINE getforce
   use scf_module
   use array_bound_module, only: MB_0,MB_1
   use parallel_module, only: end_mpi_parallel
+
+  use PSnonLocPrepG
+  use PSQRijPrep
   implicit none
   real(8) :: c
   integer :: a,Diter1,ierr
@@ -43,6 +46,12 @@ SUBROUTINE getforce
      call prep_ps_nloc3
   case(5)
      call prep_ps_nloc_mr
+#ifdef _USPP_
+  case(102)
+     call prep_ps_nloc2
+     call prepNzqr
+     call prepQRijp102
+#endif
   end select
 
   MB_0=MB_0_SCF

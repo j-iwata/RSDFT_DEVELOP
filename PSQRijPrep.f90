@@ -119,6 +119,7 @@ CONTAINS
         end do
       end do
     end if
+!    if (myrank==0) write(200,*) 'spline finished'
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
