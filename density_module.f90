@@ -71,8 +71,18 @@ CONTAINS
 
 
   SUBROUTINE reduce_and_gather
+
+!--kuchida_2015_0106
+    use electron_module, only: Nspin
+
     implicit none
     integer :: s,m,ierr
+
+!--kuchida_2015_0106
+    integer :: ispin
+    real(8) :: QQQ1_0, QQQ2_0
+    real(8) :: QQQ1, QQQ2
+
     m=ML_1_RHO-ML_0_RHO+1
     do s=MS_0_RHO,MS_1_RHO
        call mpi_allreduce(MPI_IN_PLACE,rho(ML_0_RHO,s) &
@@ -84,6 +94,22 @@ CONTAINS
     m=m*(MS_1_RHO-MS_0_RHO+1)
     call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m &
          ,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
+
+!--kuchida_2015_0106
+    if (Nspin==2) then
+      QQQ1_0=sum(     rho(:,1)-rho(:,2)  )
+      QQQ2_0=sum( abs(rho(:,1)-rho(:,2)) )
+      QQQ1=0.d0;     call mpi_allreduce( QQQ1_0,QQQ1,1,mpi_real8,mpi_sum,comm_grid,ierr)
+      QQQ2=0.d0;     call mpi_allreduce( QQQ2_0,QQQ2,1,mpi_real8,mpi_sum,comm_grid,ierr)
+      if (myrank==0) then
+!$OMP master
+       Write(*,*) "QQQ1    = ",QQQ1*dV_RHO
+       Write(*,*) "QQQ2    = ",QQQ2*dV_RHO
+!$OMP end master
+      end if
+    end If    
+
   END SUBROUTINE reduce_and_gather
 
 END MODULE density_module
+
