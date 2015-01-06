@@ -1033,6 +1033,11 @@ stop
 
     if ( isymmetry /= 1 ) return
 
+!--kuchida_2015_0106
+    if ( disp_switch_parallel ) then
+       write(*,*) "force is symmetrized."
+    end if
+
     c1 = 1.0d0/dble(nnp)
     c2 = 1.0d0/dble(nsym)
     c3 = 1.0d0/( 2.0d0*acos(-1.0d0) )
