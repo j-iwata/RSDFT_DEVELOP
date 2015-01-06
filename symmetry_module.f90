@@ -75,7 +75,9 @@ CONTAINS
     aa  = aa_in
     bb  = bb_in
 
-    call input_symdat( MI, asi )
+!--kuchida_2015_0106
+!    call input_symdat( MI, asi )
+    call input_symdat( MI, Kion, asi )
 
     call input_symdat_2( MI, Kion, asi )
 !    call input_symdat_3( MI, Kion, asi )
@@ -92,9 +94,15 @@ CONTAINS
 ! "isymmetry>0" assume the atomic coordinates are given within [0,1]
 ! "isymmetry<0" assume the atomic coordinates are given within [-0.5,0.5]
 
-  SUBROUTINE input_symdat( MI, asi )
+!--kuchida_2015_0106
+!  SUBROUTINE input_symdat( MI, asi )
+  SUBROUTINE input_symdat( MI, Kion, asi )
     implicit none
     integer,intent(IN) :: MI
+
+!--kuchida_2015_0106
+    integer,intent(IN) :: Kion(MI)    
+
     real(8),intent(IN) :: asi(3,MI)
     integer,parameter :: u=2
     integer :: i,i1,i2,j,k,n,ierr,flag
@@ -123,7 +131,9 @@ CONTAINS
 !
     if ( myrank == 0 ) then
 
-       open(u,file=file_symdat,status='old')
+!--kuchida_2015_0106
+!       open(u,file=file_symdat,status='old'!
+       if ( abs(isymmetry) .le. 2 )  open(u,file=file_symdat,status='old')
 
        select case( isymmetry )
 !(1)
@@ -204,6 +214,9 @@ CONTAINS
                 flag = 0
 
                 do j=1,MI
+
+!--kuchida_2015_0106
+                   if ( Kion(i) .ne. Kion(j) ) cycle 
 
                    RR1(1:3) = XX(1:3,j)
 
