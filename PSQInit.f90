@@ -140,11 +140,11 @@ write(650+myrank,*) "<<<<< initKtoKPSQ"
     real(8),intent(IN) :: qcut
     real(8),intent(IN) :: rcfac,qcfac,etafac
 
-    integer :: NRc
+    integer :: NRc,Q_NRc
     integer :: MMr
     real(8) :: Rc
 
-    integer :: ik,k2,i,m,m0,m1,m2,ll3,L
+    integer :: ik,k2,i,m,m0,m1,m2,m3,ll3,L
     integer :: iorb1,iorb2
 
     integer :: iloc(1)
@@ -157,7 +157,7 @@ write(650+myrank,*) "<<<<< initKtoKPSQ"
     real(8) :: Q_rcfac,Q_etafac
 
     real(8),allocatable :: Q_wm(:,:,:)
-    real(8),allocatable :: vrad(:),tmp(:)
+    real(8),allocatable :: vrad(:),tmp(:),qrLtmp(:,:,:,:)
 
 #ifdef _SHOWALL_INIT_
 write(200+myrank,*) ">>>>> ps_Q_init"
@@ -254,6 +254,21 @@ if (myrank==0) write(200,*) 'qc(qr)= ',qc
 
     NRc=maxval(NRps0)
     allocate( vrad(NRc),tmp(NRc) )
+
+    Q_NRc=maxval( Q_NRps )
+    Q_NRc=max( Q_NRc, NRc )
+    if ( size(qrL,1) < Q_NRc ) then
+       m0=size(qrL,1)
+       m1=size(qrL,2)
+       m2=size(qrL,3)
+       m3=size(qrL,4)
+       allocate( qrLtmp(m0,m1,m2,m3) ) ; qrLtmp=0.0d0
+       qrLtmp(:,:,:,:)=qrL(:,:,:,:)
+       deallocate( qrL )
+       allocate( qrL(Q_NRc,m1,m2,m3) ) ; qrL=0.0d0
+       qrL(1:m0,1:m1,1:m2,1:m3)=qrLtmp(1:m0,1:m1,1:m2,1:m3)
+       deallocate( qrLtmp )
+    end if
 
     do ik=1,Nelement_
         do k2=1,N_k2(ik)
