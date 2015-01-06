@@ -10,6 +10,7 @@ MODULE ForceSub
   integer :: a1b,a2b,a3b,ab1,ab2,ab3
   integer :: ML1,ML2,ML3
   real(8) :: c1,c2,c3
+  real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
 #ifndef _SPLINE_
   integer,allocatable :: irad(:,:)
   integer :: M_irad

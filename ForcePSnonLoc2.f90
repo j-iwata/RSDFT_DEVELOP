@@ -16,7 +16,6 @@ MODULE ForcePSnonLoc2
   implicit none
   PRIVATE
   PUBLIC :: calcForcePSnonLoc2
-  real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
 
 CONTAINS
 

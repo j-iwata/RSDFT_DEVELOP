@@ -105,20 +105,21 @@ CONTAINS
 
     call allocateQaL
 
-!    if ( .not.allocated(y2a) ) then
-!      allocate( y2a(max_psgrd,max_Lref,max_k2,Nelement_) )
-!      y2a=0.d0
-!      do ik=1,Nelement_
-!        do ik2=1,max_k2
-!          iorb  = k2_to_iorb(2,ik2,ik)
-!          do il=1,max_Lref
-!            d1=0.d0
-!            d2=0.d0
-!            call spline(rad1(1,ik),qrL(1,il,ik2,ik),NRps(iorb,ik),d1,d2,y2a(1,il,ik2,ik))
-!          end do
-!        end do
-!      end do
-!    end if
+    if ( .not.allocated(y2a) ) then
+      allocate( y2a(max_psgrd,max_Lref,max_k2,Nelement_) )
+      y2a=0.d0
+      do ik=1,Nelement_
+        do ik2=1,max_k2
+          iorb  = k2_to_iorb(2,ik2,ik)
+          do il=1,max_Lref
+            d1=0.d0
+            d2=0.d0
+            call spline(rad1(1,ik),qrL(1,il,ik2,ik),NRps(iorb,ik),d1,d2,y2a(1,il,ik2,ik))
+          end do
+        end do
+      end do
+    end if
+!    if (myrank==0) write(200,*) 'spline finished'
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -250,7 +251,7 @@ CONTAINS
                 if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
                      abs(z)>1.d-14 .or. L==0 ) then
 #ifdef _SPLINE_
-                  call splint(rad1(1,ik),qrL(1,l,ik2,ik),y2a(1,l,ik2,ik),NRc,r,v0)
+                  call splint(rad1(1,ik),qrL(1,ll3,ik2,ik),y2a(1,ll3,ik2,ik),NRc,r,v0)
 #else
                   ir0=irad( int(100.d0*r),ik )
                   do ir=ir0,NRc

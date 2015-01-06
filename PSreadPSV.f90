@@ -234,6 +234,8 @@ CONTAINS
 
     i = max( ndlc,nsmpl,ndata ) + 1
     j = max( 1, sum(nr(1:nl)) )
+!    i=8000
+!    j=6
     call ps_allocate(i,j)
 
     iorb=0

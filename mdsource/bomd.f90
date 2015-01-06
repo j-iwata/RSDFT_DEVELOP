@@ -168,7 +168,7 @@ SUBROUTINE bomd
         disp_switch=(myrank==0)
         call getforce_cpmd(.true.,ltime) ! in 'getforce_cpmd.f90'
         call wf_force ! in 'wf_force.f90'
-        call calc_total_energy(.false.,disp_switch,999)
+        call calc_total_energy(.false.,disp_switch,9999)
         disp_switch=.false.
      endif
   else
