@@ -134,7 +134,6 @@ MODS1 = simc_module.o\
         xc_ggapbe96_module.o \
         xc_module.o \
         ps_pcc_force_module.o \
-        hamiltonian_module.o\
         cgpc_gausseidel_module.o \
         cgpc_2_module.o \
         cgpc_diag_module.o \
