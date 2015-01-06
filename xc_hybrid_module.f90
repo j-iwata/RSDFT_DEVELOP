@@ -1,0 +1,306 @@
+MODULE xc_hybrid_module
+
+  implicit none
+
+  PRIVATE
+  PUBLIC :: read_xc_hybrid, init_xc_hybrid, control_xc_hybrid &
+           ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
+           ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
+           ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
+           ,VFunk, unk_hf, occ_hf, occ_factor, npart
+
+  integer :: npart
+  real(8) :: R_hf ,omega
+
+  integer :: iflag_hf     = 0
+  integer :: iflag_pbe0   = 0
+  integer :: iflag_hse    = 0
+  integer :: iflag_lcwpbe = 0
+  integer :: iflag_hybrid = 0
+
+#ifdef _DRSDFT_
+  real(8),allocatable :: VFunk(:,:,:,:)
+  real(8),allocatable :: unk_hf(:,:,:,:)
+  real(8),parameter :: byte = 8.0d0
+#else
+  complex(8),allocatable :: VFunk(:,:,:,:)
+  complex(8),allocatable :: unk_hf(:,:,:,:)
+  real(8),parameter :: byte = 16.0d0
+#endif
+
+  real(8) :: alpha_hf
+  real(8),allocatable :: occ_hf(:,:,:)
+  real(8) :: occ_factor
+
+  real(8),allocatable :: q_fock(:,:,:)
+
+  integer :: gamma_hf
+  integer :: FKBZ_0, FKBZ_1
+  integer :: FKMB_0, FKMB_1
+  integer :: FOCK_0, FOCK_1
+
+  logical :: flag_init = .false.
+
+CONTAINS
+
+
+  SUBROUTINE read_xc_hybrid( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    character(2) :: cbuf,ckey
+    integer :: i,ierr
+    include 'mpif.h'
+    omega=0.0d0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey == "HF" ) then
+             backspace(unit)
+             read(unit,*) cbuf,omega
+          end if
+       end do
+999    continue
+       if ( omega == 0.0d0 ) omega=0.2d0/0.529177d0 ! (HSE06)
+       write(*,*) "----- Parameters for Hybrid_XC -----"
+       write(*,*) "HSE Screening parameter: omega =",omega
+    end if
+    call mpi_bcast(omega,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE read_xc_hybrid
+
+
+  SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ, MBZ, MBZ_0,MBZ_1 &
+       ,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell, SYStype, XCtype, disp_switch )
+    implicit none
+    integer,intent(IN) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
+    integer,intent(IN) :: MSP_0, MSP_1, MB_0, MB_1
+    real(8),intent(IN) :: Ntot, kbb(:,:), bb(3,3), Vcell
+    character(*),intent(IN) :: XCtype
+    logical,intent(IN) :: disp_switch
+
+    integer :: ML0,i,s,k,q,init_num,ierr
+    integer,allocatable :: ir(:),id(:)
+    real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
+    real(8) :: ctime_hf0,ctime_hf1,etime_hf0,etime_hf1
+    real(8) :: Pi
+    real(8),parameter :: eps=1.d-5
+    real(8) :: mem(9)
+
+    if ( flag_init ) return
+
+    if ( disp_switch ) then
+       write(*,'(a41," Hybrid DFT prepearation")') repeat("-",41)
+    end if
+
+    ML0 = n2 - n1 + 1
+
+    Pi = acos(-1.0d0)
+
+!
+! --- set flags ---
+!
+
+    iflag_hf     = 0
+    iflag_hse    = 0
+    iflag_pbe0   = 0
+    iflag_lcwpbe = 0
+    iflag_hybrid   = 0
+
+    select case( XCtype )
+    case( "HF" )
+       iflag_hf     = 1
+       iflag_hybrid = 0
+       alpha_hf     = 1.0d0
+    case( "HSE" )
+       iflag_hse    = 1
+       iflag_hybrid = 0
+       alpha_hf     = 0.25d0
+    case( "PBE0" )
+       iflag_pbe0   = 1
+       iflag_hybrid = 0
+       alpha_hf     = 0.25d0
+    case( "LCwPBE" )
+       iflag_lcwpbe = 1
+       iflag_hybrid = 0
+       alpha_hf     = 1.0d0
+    case default
+       return
+    end select
+
+    if ( disp_switch ) then
+       write(*,*) "XCtype       =",XCtype
+       write(*,*) "iflag_hf     =",iflag_hf
+       write(*,*) "iflag_hse    =",iflag_hse
+       write(*,*) "iflag_pbe0   =",iflag_pbe0
+       write(*,*) "iflag_lcwpbe =",iflag_lcwpbe
+       write(*,*) "iflag_hybrid =",iflag_hybrid
+       write(*,*) "alpha_hf     =",alpha_hf
+    end if
+
+    if ( omega <= 0.0d0 ) then
+       if ( iflag_hse == 1 .or. iflag_lcwpbe == 1 ) then
+          write(*,*) "omega should be greater than zero for HSE or LCwPBE"
+          stop "stop@init_xc_hybrid"
+       end if
+    end if
+
+!
+! --- Coefficient of occupation number in exact exchange ---
+!
+
+    if ( Ntot < 1.0d0+eps ) then
+       occ_factor=0.5d0
+    else
+       occ_factor=0.25d0*dble(Nspin)
+    end if
+
+!
+! --- Switch of hybrid DFT calculation on Gamma-point ---
+!
+
+    gamma_hf = 0
+
+    if ( MMBZ == 1 .and. all(kbb(:,1)==0.0d0)  ) then
+
+       gamma_hf = 1
+
+       if ( disp_switch ) then      
+          write(*,*) "Hybrid DFT calculation on Gamma-point"
+       end if
+
+    end if
+
+!
+! --- temp ---
+!
+
+    FKBZ_0 = 1
+    FKBZ_1 = MBZ
+    FKMB_0 = 1
+    FKMB_1 = MB
+    FOCK_0 = 1
+    FOCK_1 = 2
+
+!
+! --- allocate ---
+!
+
+    mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1)*(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
+    mem(2)=byte*(n2-n1+1)*(MB_1-MB_0+1)*(MBZ_1-MBZ_0+1)*(MSP_1-MSP_0+1)
+
+    if ( disp_switch ) then
+       write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
+       write(*,*) "size(VFunk )(MB)=",mem(2)/1024.d0**2
+    end if
+
+    allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
+    unk_hf=(0.0d0,0.0d0)
+    allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
+    occ_hf=0.0d0
+    allocate( VFunk(n1:n2,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+    VFunk=(0.0d0,0.0d0)
+
+!
+! --- Coordinates at reciprocal space in hybrid DFT calculation ---
+!
+
+    if ( SYStype == 0 ) then
+
+       allocate( q_fock(3,FKBZ_0:FKBZ_1,2) ) ; q_fock=0.0d0
+
+       do q=FKBZ_0,FKBZ_1
+          q_fock(:,q,1)=bb(:,1)*kbb(1,q)+bb(:,2)*kbb(2,q)+bb(:,3)*kbb(3,q)
+       end do
+
+       q_fock(:,:,2) = -q_fock(:,:,1)
+
+    end if
+
+!
+! --- Truncation cutoff of 1/r for HF, PBE0, and LCwPBE functionals ---
+!
+
+    if ( SYStype == 0 ) then
+
+       if ( iflag_hf /= 0 .or. iflag_pbe0 /= 0 .or. iflag_lcwpbe /= 0 ) then
+
+          R_hf = ( 0.75d0*abs(Vcell)*MMBZ/Pi )**(1.0d0/3.0d0)
+
+          if ( disp_switch ) then
+             write(*,*) "Truncation cutoff of 1/r (Ang.) =",R_hf*0.529177d0
+          end if
+
+       end if
+
+    end if
+
+!
+! Preparation of Fock potential in HSE and LCwPBE hybrid functionals for RSMOL
+!
+
+    if ( SYStype == 1 ) then
+
+!       if ( iflag_hse /= 0 .or. iflag_lcwpbe /= 0 ) call prep_hse_fock
+       if ( iflag_hse /= 0 .or. iflag_lcwpbe /= 0 ) stop "stop@init_xc_hybrid"
+
+    end if
+
+!
+! --- Divided MPI_Allgatherv ---
+!
+
+    npart = 30
+
+!    call gather_wf
+
+!    init_num=min(ML0,nint(size(unk)/1.024d3))
+!    best_time=1.d15
+!    do i=init_num,init_num-4,-1
+!       call bwatch(ctime_hf0,etime_hf0)
+!       do s=MSP_0,MSP_1
+!          do k=MBZ_0,MBZ_1
+!             call rsdft_allgatherv(ML0,MB_0,MB_1,MB,unk(n1,1,k,s),np_band,comm_band,myrank_b,i)
+!          end do
+!          call rsdft_allgatherv(ML0*MB,MBZ_0,MBZ_1,MBZ,unk(n1,1,1,s),np_bzsm,comm_bzsm,myrank_k,i)
+!       end do
+!       call bwatch(ctime_hf1,etime_hf1)
+!       time=ctime_hf1-ctime_hf0
+!       if ( time < best_time ) then
+!          best_time=time
+!          npart=i
+!       end if
+!    end do
+!    call mpi_bcast(npart,1,mpi_integer,0,mpi_comm_world,ierr)
+
+    if ( disp_switch ) then
+       write(*,*) "Division number of mpi_allgatherv =",npart
+!       write(*,*) "Time of divided MPI_Allgatherv (s) =",time
+!       write(*,*) "Optimal division number of mpi_allgatherv =",npart
+!       write(*,*) "Best time of divided MPI_Allgatherv (s) =",best_time
+    end if
+
+    if ( disp_switch ) then
+       write(*,'(a40, " init_xc_hybrid(end)")') repeat("-",40)
+    end if
+
+    flag_init = .true.
+
+    return 
+ 
+  END SUBROUTINE init_xc_hybrid
+
+
+  SUBROUTINE control_xc_hybrid( ictrl )
+    implicit none
+    integer,intent(IN) :: ictrl
+    if ( iflag_hf   == 0 .and. iflag_hse    == 0 .and. &
+         iflag_pbe0 == 0 .and. iflag_lcwpbe == 0 ) then
+       iflag_hybrid = 0
+    else
+       iflag_hybrid = ictrl
+    end if
+  END SUBROUTINE control_xc_hybrid
+
+
+END MODULE xc_hybrid_module
