@@ -426,6 +426,12 @@ CONTAINS
             nrqr=nrqr+1
             nl_rank_map_tmp(nrqr)=n
           end do
+        else ! [ icheck_tmp1(myrank_g) == 0 ]
+           if ( all(icheck_tmp1 == 0) ) then
+              do n=0,nprocs_g-1
+                 icheck_tmp2(n) = icheck_tmp2(n) + 1
+              end do ! n
+           end if
         end if
       end do ! ik
     end do ! ia
@@ -433,6 +439,12 @@ CONTAINS
     call watch(ctt(2),ett(2))
 
     c_nzqr = icheck_tmp2(myrank_g)
+
+    if ( c_nzqr /= N_nzqr ) then
+       write(*,*) "N_nzqr==c_nzqr is neccesary"
+       write(*,*) "N_nzqr,c_nzqr,myrank=",N_nzqr,c_nzqr,myrank
+       stop "stop@prepQRijp102(PSQRijPrep.f90)"
+    end if
 
     deallocate( itmp        )
     deallocate( icheck_tmp1 )
