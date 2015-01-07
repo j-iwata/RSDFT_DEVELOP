@@ -724,13 +724,15 @@ CONTAINS
   SUBROUTINE prepMapsTmp(np1,np2,np3,nprocs_g_,itmp,icheck_tmp1,icheck_tmp2)
     implicit none
     integer,intent(IN) :: np1,np2,np3,nprocs_g_
-    integer,allocatable,intent(INOUT) :: itmp(:,:),icheck_tmp1(:),icheck_tmp2(:)
+    integer,intent(INOUT) :: itmp(:,:),icheck_tmp1(0:),icheck_tmp2(0:)
     integer :: n,i,i1,i2,i3,j1,j2,j3
     integer :: k,k1,k2,k3,ic1,ic2,ic3,id1,id2,id3
 
 #ifdef _SHOWALL_INIT_
     write(200+myrank,*) ">>>> prepMapsTmp"
 #endif
+
+    if ( all(icheck_tmp1 == 0) ) return
 
     itmp(:,:)=0
     n=-1

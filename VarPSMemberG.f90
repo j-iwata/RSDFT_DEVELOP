@@ -293,7 +293,7 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     end if
     if ( max_qgrd<mg ) then
         if ( max_Lref>=ml .and. max_k2>=mk ) then
-            allocate( qrL_(mk,ml,mk,nki) ) ; qrL_(:,:,:,:)=0.d0
+            allocate( qrL_(mg,ml,mk,nki) ) ; qrL_(:,:,:,:)=0.d0
             qrL_(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)=qrL(1:max_qgrd,1:max_Lref,1:max_k2,1:nki)
             deallocate( qrL )
             allocate( qrL(mg,ml,mk,nki) ) ; qrL(:,:,:,:)=0.d0
