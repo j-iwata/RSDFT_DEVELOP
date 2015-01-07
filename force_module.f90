@@ -1,7 +1,8 @@
 MODULE force_module
 
   use parallel_module, only: disp_switch_parallel
-  use atom_module, only: md_atom
+  use atom_module, only: aa_atom, ki_atom, md_atom
+  use symmetry_module, only: sym_force
   use force_sol_module
   use force_mol_module
 
@@ -100,7 +101,8 @@ CONTAINS
 
 ! --- constraint & symmetry ---
 
-!    call symforce
+    call sym_force ( MI, ki_atom, aa_atom, force )
+
     if ( Ntim > 0 ) call constraint_force( MI, force )
 
   END SUBROUTINE calc_force

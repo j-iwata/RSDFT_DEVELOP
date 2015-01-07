@@ -67,6 +67,7 @@ CONTAINS
     end do
     call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
     call reduce_and_gather
+    call write_info_density
   END SUBROUTINE calc_density
 
 
@@ -85,5 +86,22 @@ CONTAINS
     call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m &
          ,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
   END SUBROUTINE reduce_and_gather
+
+
+  SUBROUTINE write_info_density
+    implicit none
+    integer :: ierr
+    real(8) :: QQQ_0(2),QQQ_1(2)
+    if ( MS_RHO == 2 ) then
+       QQQ_0(1)=sum(     rho(:,1)-rho(:,MS_RHO)  )
+       QQQ_0(2)=sum( abs(rho(:,1)-rho(:,MS_RHO)) )
+       call mpi_allreduce( QQQ_0,QQQ_1,2,mpi_real8,mpi_sum,comm_grid,ierr)
+       if ( disp_switch_parallel ) then
+          write(*,*) "QQQ1    = ",QQQ_1(1)*dV_RHO
+          write(*,*) "QQQ2    = ",QQQ_1(2)*dV_RHO
+       end if
+    end if
+  END SUBROUTINE write_info_density
+
 
 END MODULE density_module
