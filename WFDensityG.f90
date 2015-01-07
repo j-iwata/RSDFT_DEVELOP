@@ -128,7 +128,7 @@ CONTAINS
     case ( 1,2,102 )
 
 !----- term1 -----
-      rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s )**2 )
+      rhonks(nn1:nn2) = abs( unk(nn1:nn2,n,k,s) )**2
 !===== term1 =====
 
 !----- term2 -----

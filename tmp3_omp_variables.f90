@@ -44,10 +44,8 @@ CONTAINS
 
     m = n
 
-    k = gcd(ab3,m)
-
-    m = m/k
-
+    k     = gcd(ab3,m)
+    m     = m/k
     nn(3) = ab3/k
 
     if ( m == 1 ) then
@@ -57,10 +55,8 @@ CONTAINS
 
     else
 
-       k = gcd(ab2,m)
-
-       m = m/k
-
+       k     = gcd(ab2,m)
+       m     = m/k
        nn(2) = ab2/k
 
        if ( m == 1 ) then
@@ -69,10 +65,8 @@ CONTAINS
 
        else
 
-          k = gcd(ab1,m)
-
-          m = m/k
-
+          k     = gcd(ab1,m)
+          m     = m/k
           nn(1) = ab1/k
 
           if ( m == 1 ) then
@@ -91,7 +85,7 @@ CONTAINS
 
     if ( m == 1 ) then
 
-       np(1)=m
+       np(1)=ab1/nn(1)
        np(2)=ab2/nn(2)
        np(3)=ab3/nn(3)
 
@@ -132,10 +126,11 @@ CONTAINS
        np(2)=ab2/nn(2)
        np(3)=ab3/nn(3)
 
-       if ( disp_switch ) write(*,*) "np=",np
+       if ( disp_switch ) write(*,*) "np_=",np
 
        n=maxval(np)
        allocate( ntmp(3,n) ) ; ntmp=0
+
        do i=1,ab1
           n=mod(i-1,np(1))+1
           ntmp(1,n)=ntmp(1,n)+1
@@ -157,12 +152,10 @@ CONTAINS
           Ngrid_omp(1,n)=ntmp(1,i)
           Ngrid_omp(2,n)=ntmp(2,j)
           Ngrid_omp(3,n)=ntmp(3,k)
-          if ( disp_switch ) write(*,'(1x,"Ngrid_omp",3i5)') Ngrid_omp(1:3,n)
+          if ( disp_switch ) write(*,'(1x,"Ngrid_omp_",3i5)') Ngrid_omp(1:3,n)
        end do
        end do
        end do
-
-       !deallocate( ntmp )
 
     end if
 
