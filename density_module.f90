@@ -97,8 +97,8 @@ CONTAINS
        QQQ_0(2)=sum( abs(rho(:,1)-rho(:,MS_RHO)) )
        call mpi_allreduce( QQQ_0,QQQ_1,2,mpi_real8,mpi_sum,comm_grid,ierr)
        if ( disp_switch_parallel ) then
-          write(*,*) "QQQ1    = ",QQQ_1(1)*dV_RHO
-          write(*,*) "QQQ2    = ",QQQ_1(2)*dV_RHO
+          write(*,*) "sum  dspin(r)  = QQQ1 = ",QQQ_1(1)*dV_RHO
+          write(*,*) "sum |dspin(r)| = QQQ2 = ",QQQ_1(2)*dV_RHO
        end if
     end if
   END SUBROUTINE write_info_density

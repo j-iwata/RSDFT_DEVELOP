@@ -35,6 +35,8 @@ MODULE atomopt_module
   logical :: disp_switch_loc
   integer :: diter_opt
 
+  integer :: strlog
+
 CONTAINS
 
 
@@ -47,6 +49,7 @@ CONTAINS
     most      = 6
     nrfr      = 5
     diter_opt = 50
+    strlog    = 0
     okatom    = 0.5d0
     eeps      = 1.d-10
     feps      = 5.d-4
@@ -65,6 +68,9 @@ CONTAINS
           else if ( ckey(1:8) == "ATOMOPT3" ) then
              backspace(unit)
              read(unit,*) cbuf,diter_opt
+          else if ( ckey(1:8) == "STRLOG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,strlog
           end if
        end do
 999    continue
@@ -76,6 +82,7 @@ CONTAINS
           diter_opt=50
           write(*,*) "diter_opt         =",diter_opt
        end if
+       write(*,*) "strlog            =",strlog
     end if
     call send_atomopt
   END SUBROUTINE read_atomopt
@@ -111,6 +118,7 @@ CONTAINS
     call mpi_bcast(feps  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(decr  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(diter_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(strlog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atomopt
 
 
@@ -228,6 +236,8 @@ CONTAINS
 
     end if
 
+    call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
+       
     disp_switch = .false.
     disp_switch_parallel = .false.
 
@@ -601,7 +611,7 @@ CONTAINS
              end if
           end if
 
-          if ( myrank == 0 ) call write_atomic_coordinates(97)
+          if ( myrank == 0 ) call write_atomic_coordinates_log(97,icy,itlin,0,iswitch_opt)
 
 !
 ! --- SCF ---
@@ -637,7 +647,9 @@ CONTAINS
           end select
 
           if ( disp_switch ) write(*,*) "SCF start"
+
           call calc_scf( diter_opt, ierr, .false. )
+
           if ( ierr == -1 ) then
              if ( myrank == 0 ) write(*,*) "time limit !!!"
              exit opt_ion
@@ -716,6 +728,8 @@ CONTAINS
              end do
           end if
 
+          if ( myrank == 0 ) call write_atomic_coordinates_log(97,icy,itlin,2,iswitch_opt)
+
 !
 ! --- Convergence check 2 ---
 !
@@ -780,7 +794,9 @@ CONTAINS
 
 !  Best structure on a line.
 
-       if ( myrank == 0 ) call write_atomic_coordinates(197)
+       if ( disp_switch_loc ) write(*,*) 'Best structure on a line (see fort.197)'
+
+       if ( myrank == 0 ) call write_atomic_coordinates_log(197,icy,itlin,1,iswitch_opt)
 
 !
 ! --- Convergence check 3 ---
@@ -885,23 +901,52 @@ CONTAINS
     end if
     return
   END SUBROUTINE parmin
+  
+
+  SUBROUTINE write_atomic_coordinates_log(unit,icy,itlin,flag,iswitch_opt)
+    implicit none
+    integer, intent(IN) :: unit,icy,itlin,flag,iswitch_opt
+    integer :: u1
+
+    call write_atomic_coordinates( unit, .true.  )
+    call write_atomic_coordinates( unit, .false. )
+
+    if ( strlog == 0 .or. flag /= strlog ) return
+
+    u1 = 297
+
+    if ( icy == 0 ) then
+      open(u1,file="strlog.dat")
+      if ( iswitch_opt >= 2 ) return
+      call write_atomic_coordinates( u1, .true. )
+    end if
+
+    write(u1,'("#_STRLOG_",a63," icy, itlin =",2(X,I3))') repeat("-",63),icy,itlin
+
+    call write_atomic_coordinates( u1, .false. )
+
+  END SUBROUTINE write_atomic_coordinates_log  
 
 
-  SUBROUTINE write_atomic_coordinates(unit)
+  SUBROUTINE write_atomic_coordinates(unit,flag_header)
     implicit none
     integer,intent(IN) :: unit
+    logical,intent(IN) :: flag_header
     integer :: a
     real(8) :: ax_org,aa_org(3,3),bb_tmp(3,3),aa_inv(3,3),vtmp(3)
 
     call get_org_aa(ax_org,aa_org)
 
-    rewind unit
-    write(unit,'("AX",1f20.15)') ax_org
-    write(unit,'("A1",3f20.15)') aa_org(1:3,1)
-    write(unit,'("A2",3f20.15)') aa_org(1:3,2)
-    write(unit,'("A3",3f20.15)') aa_org(1:3,3)
-    write(unit,'("AA")')
-    write(unit,*) Nelement,Natom,zn_atom(1:Nelement), " /"
+    if ( flag_header ) then
+       rewind unit
+       write(unit,'("AX",1f20.15)') ax_org
+       write(unit,'("A1",3f20.15)') aa_org(1:3,1)
+       write(unit,'("A2",3f20.15)') aa_org(1:3,2)
+       write(unit,'("A3",3f20.15)') aa_org(1:3,3)
+       write(unit,'("AA")')
+       write(unit,*) Nelement,Natom,zn_atom(1:Nelement), " /"
+       return
+    end if
 
     select case( SYStype )
     case default
@@ -924,5 +969,5 @@ CONTAINS
 
   END SUBROUTINE write_atomic_coordinates
 
-
+   
 END MODULE atomopt_module
