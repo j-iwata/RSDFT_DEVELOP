@@ -355,6 +355,18 @@ PROGRAM Real_Space_Solid
   call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
   call calc_E_vdw_grimme( Natom, aa_atom )
 
+! --- Init force ---
+
+  if ( iswitch_opt /= 0 ) then
+     call init_force( myrank, 1, SYStype )
+     if ( SYStype == 0 ) then
+        select case( pselect )
+        case( 2 )
+           call ps_nloc2_init_derivative
+        end select
+     end if
+  end if
+
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
@@ -401,15 +413,6 @@ PROGRAM Real_Space_Solid
 !
 ! --- Force test, atomopt, CPMD ---
 !
-  if ( iswitch_opt /= 0 ) then
-     call init_force( myrank, 1, SYStype )
-     if ( SYStype == 0 ) then
-        select case( pselect )
-        case( 2 )
-           call ps_nloc2_init_derivative
-        end select
-     end if
-  end if
   select case( iswitch_opt )
   case( -1 )
      if ( disp_switch ) write(*,'(a40," test_force")') repeat("-",40)

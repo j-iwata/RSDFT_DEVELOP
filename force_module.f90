@@ -1,7 +1,7 @@
 MODULE force_module
 
   use parallel_module, only: disp_switch_parallel
-  use atom_module, only: aa_atom, ki_atom, md_atom
+  use atom_module, only: aa_atom, ki_atom, md_atom, Natom
   use symmetry_module, only: sym_force
   use force_sol_module
   use force_mol_module
@@ -9,7 +9,7 @@ MODULE force_module
   implicit none
 
   PRIVATE
-  PUBLIC :: init_force, calc_force
+  PUBLIC :: init_force, calc_force, get_fmax_force
 
   integer :: Ntim
   real(8),allocatable :: tim(:,:,:)
@@ -120,6 +120,30 @@ CONTAINS
        end if
     end do
   END SUBROUTINE constraint_force
+
+
+  SUBROUTINE get_fmax_force( fmax, ierr )
+    implicit none
+    real(8),intent(OUT) :: fmax
+    integer,intent(OUT) :: ierr
+    real(8),allocatable :: force(:,:)
+    real(8) :: ff
+    integer :: a
+    fmax=-1.0d10
+    if ( flag_init ) then
+       ierr=1
+       return
+    end if
+    ierr=0
+    allocate( force(3,Natom) ) ; force=0.0d0
+    call calc_force( Natom, force )
+    do a=1,Natom
+       ff=force(1,a)**2+force(2,a)**2+force(3,a)**2
+       fmax=max(fmax,ff)
+    end do
+    fmax=sqrt(fmax)
+    deallocate( force )
+  END SUBROUTINE get_fmax_force
 
 
 END MODULE force_module

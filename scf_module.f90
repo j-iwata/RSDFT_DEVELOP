@@ -35,6 +35,8 @@ MODULE scf_module
   use localpot2_ion_module, only: localpot2_calc_eion
   use localpot2_te_module, only: localpot2_te, diff_Etot_lpot2
 
+  use force_module, only: get_fmax_force
+
   implicit none
 
   PRIVATE
@@ -49,6 +51,10 @@ MODULE scf_module
 
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
+
+  real(8) :: scf_conv  = 1.d-20
+  real(8) :: fmax_conv = 1.d-4
+  real(8) :: etot_conv = 1.d-15
 
 CONTAINS
 
@@ -72,12 +78,15 @@ CONTAINS
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2
     real(8) :: ct0,et0,ct1,et1
-    logical :: flag_exit,flag_end,flag_conv
+    real(8) :: fmax,fmax0
+    logical :: flag_exit,flag_end,flag_conv,flag_conv_f
 
-    flag_end  = .false.
-    flag_exit = .false.
-    flag_conv = .false.
-    ierr_out  = 0
+    flag_end    = .false.
+    flag_exit   = .false.
+    flag_conv   = .false.
+    flag_conv_f = .false.
+    ierr_out    = 0
+    fmax0       =-1.d10
 
     ML01      = ML_1-ML_0+1
     MSP01     = MSP_1-MSP_0+1
@@ -168,6 +177,17 @@ CONTAINS
        call watcht(disp_switch,"etot",1)
 
 ! ---
+
+       call get_fmax_force( fmax, ierr )
+       if ( ierr == 0 ) then
+          if ( abs(fmax-fmax0) < fmax_conv ) flag_conv_f=.true. 
+          if ( disp_switch ) then
+             write(*,*) "fmax=",fmax,fmax-fmax0,flag_conv_f
+          end if
+          fmax0 = fmax
+       end if
+
+! ---
        do s=MSP_0,MSP_1
           Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
        end do
@@ -204,7 +224,7 @@ CONTAINS
 
        call global_watch(.false.,flag_end)
 
-       flag_exit = (flag_conv.or.flag_end)
+       flag_exit = (flag_conv_f.or.flag_conv.or.flag_end)
 
        call watcht(disp_switch,"",0)
        call write_data(disp_switch,flag_exit)
