@@ -33,6 +33,8 @@ MODULE xc_module
   real(8) :: Exc,E_exchange,E_correlation
   real(8) :: E_exchange_exx
 
+  real(8),allocatable :: Vx(:,:)
+
 CONTAINS
 
 
@@ -217,7 +219,29 @@ CONTAINS
 
     case('PBE0')
 
-       stop "PBE0 is not available yet"
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype )
+
+       call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                       ,MB_0,MB_1, SYStype, dV )
+
+       if ( .not.allocated(Vx) ) then
+          allocate( Vx(ML_0:ML_1,MSP_0:MSP_1) ) ; Vx=0.0d0
+       end if
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation, Vx )
+
+       if ( iflag_hybrid /= 0 ) then
+
+          call calc_xc_hf( E_exchange_exx )
+
+          Vxc(:,:) = Vxc(:,:) - alpha_hf*Vx(:,:)
+
+          E_exchange = (1.0d0-alpha_hf)*E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
+
+       end if
 
     case('HSE')
 

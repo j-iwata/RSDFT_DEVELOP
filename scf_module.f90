@@ -182,11 +182,11 @@ CONTAINS
                (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
           call calc_hartree(ML_0,ML_1,MSP,rho)
           call calc_xc
-          call control_xc_hybrid(1)
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
        end if
+       call control_xc_hybrid(1)
 ! ---
 
        call watcht(disp_switch,"mixing",1)

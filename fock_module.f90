@@ -27,9 +27,9 @@ MODULE fock_module
 CONTAINS
 
 
-  SUBROUTINE Fock( k,s, n1,n2, psi, tpsi )
+  SUBROUTINE Fock( n,k,s, n1,n2, psi, tpsi )
     implicit none
-    integer,intent(IN) :: k,s,n1,n2
+    integer,intent(IN) :: n,k,s,n1,n2
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: psi(n1:n2)
     real(8),intent(INOUT) :: tpsi(n1:n2)
@@ -128,8 +128,6 @@ CONTAINS
 
           if ( abs(occ_hf(m,q,s)) < 1.d-10 ) cycle
 
-          c = occ_factor*occ_hf(m,q,s)*alpha_hf*2.0d0
-
           do i=n1,n2
 #ifdef _DRSDFT_
              trho(i) = unk_hf(i,m,q,s)*psi(i)
@@ -144,6 +142,8 @@ CONTAINS
              call Fock_fft(n1,n2,k,q,trho,tvht,1)
 !            call Fock_fft_parallel(n1,n2,k,q,trho,tvht,1)
           end if
+
+          c = alpha_hf*(2.0d0*occ_factor)*occ_hf(m,q,s)
 
           do i=n1,n2
              tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
@@ -188,7 +188,7 @@ CONTAINS
     else if ( iflag_hybrid > 0 ) then
 
        do ib=ib1,ib2
-          call Fock( k, s, n1, n2, tpsi(n1,ib), htpsi(n1,ib) )
+          call Fock( ib, k, s, n1, n2, tpsi(n1,ib), htpsi(n1,ib) )
        end do
 
     end if
@@ -252,7 +252,7 @@ CONTAINS
     do k=MBZ_0,MBZ_1
     do n=MB_0 ,MB_1
 
-       call Fock( k,s, ML_0,ML_1, unk(ML_0,n,k,s), VFunk(ML_0,n,k,s) )
+       call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), VFunk(ML_0,n,k,s) )
 
     end do ! n
     end do ! k
