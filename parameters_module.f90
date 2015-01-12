@@ -13,6 +13,8 @@ MODULE parameters_module
   integer :: atom_format
   integer :: param_format=0
 
+  integer :: Diter, Ndiag
+
 CONTAINS
 
 
@@ -86,30 +88,6 @@ CONTAINS
     call read_io(myrank,unit)
 
     call read_watch(myrank,unit)
-
-    Diter  = 100
-    Nsweep = 0
-    if ( myrank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "DITER" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Diter
-          else if ( ckey(1:6) == "NSWEEP" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nsweep
-          else if ( ckey(1:6) == "NDIAG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ndiag
-          end if
-       end do
-999    continue
-       write(*,*) "Diter =",Diter
-       write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Ndiag =",Ndiag
-    end if
 
     iswitch_scf  = 1
     iswitch_opt  = 0
@@ -195,6 +173,15 @@ CONTAINS
 
     call read_gram_schmidt( myrank, unit )
 
+    call read_sweep( myrank, unit )
+
+    select case( iswitch_scf )
+    case( 1 )
+       call read_scf( myrank, unit )
+    case( 2 )
+       call read_scf_chefsi( myrank, unit )
+    end select
+
   END SUBROUTINE read_keywordformat_parameters
 
 
@@ -252,7 +239,7 @@ CONTAINS
        read(unit,*) Diter, Nsweep, Ndiag
        write(*,*) "Diter =",Diter
        write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Nsweep=",Ndiag
+       write(*,*) "Ndiag =",Ndiag
     end if
 
     call read_oldformat_io(myrank,unit)

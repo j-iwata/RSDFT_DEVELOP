@@ -40,34 +40,64 @@ MODULE scf_module
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_scf, init_scf
+  PUBLIC :: calc_scf, read_scf, Diter_scf
 
-  integer :: Ndiag=1
+  integer :: Diter_scf   = 100
+  integer :: Ndiag       = 1
+  logical :: second_diag =.false.
+  real(8) :: scf_conv    = 1.d-20
+  real(8) :: fmax_conv   = 0.d0
+  real(8) :: etot_conv   = 0.d0
 
   real(8),allocatable :: esp0(:,:,:)
-
-  logical :: second_diag=.false.
-!  logical :: second_diag=.true.
-
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
-
-  real(8) :: scf_conv  = 1.d-20
-  real(8) :: fmax_conv = 1.d-4
-  real(8) :: etot_conv = 1.d-15
 
 CONTAINS
 
 
-  SUBROUTINE init_scf( Ndiag_in )
-     implicit none
-     integer,intent(IN) :: Ndiag_in
-     if ( Ndiag_in > 0 ) Ndiag=Ndiag_in
-     if ( disp_switch_parallel ) then
-        write(*,*) "Ndiag=",Ndiag
-        write(*,*) "second_diag=",second_diag
-     end if
-  END SUBROUTINE init_scf
+  SUBROUTINE read_scf( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i,ierr
+    character(8) :: cbuf,ckey
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:7) == "SCFCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,scf_conv
+          else if ( ckey(1:8) == "FMAXCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,fmax_conv
+          else if ( ckey(1:8) == "ETOTCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,etot_conv
+          else if ( ckey(1:5) == "DITER" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Diter_scf
+          else if ( ckey(1:5) == "NDIAG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ndiag,second_diag
+          end if
+       end do
+999    continue
+       write(*,*) "scf_conv    =",scf_conv
+       write(*,*) "fmax_conv   =",fmax_conv
+       write(*,*) "etot_conv   =",etot_conv
+       write(*,*) "Diter_scf   =",Diter_scf
+       write(*,*) "Ndiag       =",Ndiag
+       write(*,*) "second_diag =",second_diag
+    end if
+    call mpi_bcast( scf_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(fmax_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(etot_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Diter_scf  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Ndiag      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(second_diag,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE read_scf
 
 
   SUBROUTINE calc_scf( Diter, ierr_out, disp_switch )
@@ -93,7 +123,8 @@ CONTAINS
     ib1       = max(1,nint(Nelectron/2)-20)
     ib2       = min(nint(Nelectron/2)+80,Nband)
 
-    call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0))
+    call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
+                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv)
 
 !    call init_diff_vrho_scf
 
@@ -120,29 +151,29 @@ CONTAINS
 
           do idiag=1,Ndiag
 
-          if ( disp_switch ) then
-             write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
-          end if
+             if ( disp_switch ) then
+                write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
+             end if
 
-          call watcht(disp_switch,"",0)
+             call watcht(disp_switch,"",0)
 
-          call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
-                                 ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+             call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
+                                    ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
 
-          call watcht(disp_switch,"cg  ",1)
+             call watcht(disp_switch,"cg  ",1)
 
-          call gram_schmidt(1,Nband,k,s)
+             call gram_schmidt(1,Nband,k,s)
 
-          call watcht(disp_switch,"gs  ",1)
+             call watcht(disp_switch,"gs  ",1)
 
-          if ( second_diag .or. idiag < Ndiag ) then
-             call subspace_diag(k,s)
-             call watcht(disp_switch,"diag",1)
-          else if ( idiag == Ndiag ) then
-             call esp_calc &
-                  (k,s,unk(ML_0,MB_0,k,s),ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
-             call watcht(disp_switch,"esp_calc",1)
-          end if
+             if ( second_diag .or. idiag < Ndiag ) then
+                call subspace_diag(k,s)
+                call watcht(disp_switch,"diag",1)
+             else if ( idiag == Ndiag ) then
+                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
+                             ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+                call watcht(disp_switch,"esp_calc",1)
+             end if
 
           end do ! idiag
 
@@ -176,15 +207,17 @@ CONTAINS
 
        call watcht(disp_switch,"etot",1)
 
-! ---
+! --- convergence check by Fmax ---
 
-       call get_fmax_force( fmax, ierr )
-       if ( ierr == 0 ) then
-          if ( abs(fmax-fmax0) < fmax_conv ) flag_conv_f=.true. 
-          if ( disp_switch ) then
-             write(*,*) "fmax=",fmax,fmax-fmax0,flag_conv_f
+       if ( fmax_conv > 0.0d0 ) then
+          call get_fmax_force( fmax, ierr )
+          if ( ierr == 0 ) then
+             if ( abs(fmax-fmax0) < fmax_conv ) flag_conv_f=.true. 
+             if ( disp_switch ) then
+                write(*,*) "fmax=",fmax,fmax-fmax0,flag_conv_f
+             end if
+             fmax0 = fmax
           end if
-          fmax0 = fmax
        end if
 
 ! ---
@@ -245,7 +278,7 @@ CONTAINS
 
     if ( flag_end ) then
        ierr_out = -1
-       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "time limit !!"
        return
     end if
 

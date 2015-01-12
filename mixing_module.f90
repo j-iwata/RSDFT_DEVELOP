@@ -35,7 +35,6 @@ CONTAINS
     imix=0
     mmix=4
     beta=1.0d0
-    scf_conv=1.d-15
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -50,9 +49,6 @@ CONTAINS
           else if ( ckey(1:4) == "BETA" ) then
              backspace(unit)
              read(unit,*) cbuf,beta
-          else if ( ckey(1:7) == "SCFCONV" ) then
-             backspace(unit)
-             read(unit,*) cbuf,scf_conv
           end if
        end do
 999    continue
@@ -63,7 +59,6 @@ CONTAINS
           write(*,*) "mmix is replaced to 1 : mmix=",mmix
        end if
        write(*,*) "beta    =",beta
-       write(*,*) "scf_conv=",scf_conv
     end if
     call send_mixing(0)
   END SUBROUTINE read_mixing
@@ -97,10 +92,12 @@ CONTAINS
   END SUBROUTINE send_mixing
 
 
-  SUBROUTINE init_mixing(ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in,dV_in,f,g)
+  SUBROUTINE init_mixing &
+       (ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in,dV_in,f,g,scf_conv_in)
     implicit none
     integer,intent(IN) :: ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in
     real(8),intent(IN) :: dV_in,f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
+    real(8),intent(IN) :: scf_conv_in
     integer :: m,ierr
 
     beta0      = 1.0d0-beta
@@ -115,6 +112,8 @@ CONTAINS
     call mpi_allreduce( ML0, ML, 1,MPI_INTEGER,MPI_SUM,comm_grid,ierr )
 
     dV = dV_in
+
+    scf_conv = scf_conv_in
 
     if ( allocated(Xou)  ) deallocate( Xou )
     if ( allocated(Xin)  ) deallocate( Xin )

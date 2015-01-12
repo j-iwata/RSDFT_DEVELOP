@@ -17,7 +17,9 @@ MODULE sweep_module
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_sweep, init_sweep
+  PUBLIC :: calc_sweep, init_sweep, read_sweep, Nsweep
+
+  integer :: Nsweep
 
   real(8),allocatable :: esp0(:,:,:)
 
@@ -29,6 +31,28 @@ MODULE sweep_module
   integer :: mb_ref
 
 CONTAINS
+
+
+  SUBROUTINE read_sweep( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i,ierr
+    character(8) :: cbuf,ckey
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:6) == "NSWEEP" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Nsweep
+          end if
+       end do
+999    continue
+       write(*,*) "Nsweep =",Nsweep
+    end if
+    call mpi_bcast(Nsweep,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE read_sweep
 
 
   SUBROUTINE init_sweep( iconv_check_in, mb_ref_in, tol_in )

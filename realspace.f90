@@ -5,14 +5,8 @@ PROGRAM Real_Space_Solid
   use func2gp_module
   use band_module
   use band_sseig_module
-
-  use sweep_module
-  use scf_module
-  use scf_chefsi_module
-
   use psv_initrho_module
   use random_initrho_module
-
   use hamiltonian_matrix_module
 
   implicit none
@@ -384,12 +378,10 @@ PROGRAM Real_Space_Solid
 
   select case( iswitch_scf )
   case( 1 )
-     call init_scf( Ndiag )
-     call calc_scf( Diter, ierr, disp_switch )
+     call calc_scf( Diter_scf, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
   case( 2 )
-     call init_scf_chefsi( Ndiag, myrank, 1 )
-     call calc_scf_chefsi( Diter, ierr, disp_switch )
+     call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
   case( -1 )
      if ( nprocs == 1 ) then
