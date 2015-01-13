@@ -256,7 +256,7 @@ CONTAINS
     opt_ion : do icy=ncycl0,ncycl0+ncycl-1
 
        if ( disp_switch_loc ) then
-          write(*,'(a60," ICY (",i2,")")') repeat("-",60),icy
+          write(*,'(a57," ICY (",i5,")")') repeat("-",57),icy
        end if
 
 !
@@ -426,8 +426,8 @@ CONTAINS
        linmin : do itlin=most0,most
 
           if ( disp_switch_loc ) then
-             write(*,'(a60," ICY    (",i2,")")') repeat("-",60),icy
-             write(*,'(a60," LINMIN (",i2,")")') repeat("-",60),itlin
+             write(*,'(a57," ICY    (",i5,")")') repeat("-",57),icy
+             write(*,'(a57," LINMIN (",i5,")")') repeat("-",57),itlin
           end if
 
           Etsave = Etot
