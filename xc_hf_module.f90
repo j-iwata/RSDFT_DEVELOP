@@ -1,6 +1,6 @@
 MODULE xc_hf_module
 
-  use xc_hybrid_module, only: VFunk
+  use xc_hybrid_module, only: VFunk, iflag_hybrid
   use fock_module, only: UpdateWF_fock
   use wf_module, only: unk, occ
   use parallel_module
@@ -61,37 +61,41 @@ CONTAINS
        stop "stop@calc_xc_hf"
     end if
 
-    Ex = 0.0d0
+    if ( iflag_hybrid == 1 ) then
 
-    call UpdateWF_fock( SYStype )
+       call UpdateWF_fock( SYStype )
 
-    sum0=0.0d0
-    do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
-    do n=MB_0 ,MB_1
+       sum0=0.0d0
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+       do n=MB_0 ,MB_1
 
-       if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
+          if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
 
-       c = occ(n,k,s)
+          c = occ(n,k,s)
 
-       do i=ML_0,ML_1
+          do i=ML_0,ML_1
 #ifdef _DRSDFT_
-          sum0 = sum0 + c*unk(i,n,k,s)*VFunk(i,n,k,s)
+             sum0 = sum0 + c*unk(i,n,k,s)*VFunk(i,n,k,s)
 #else
-          sum0 = sum0 + c*conjg(unk(i,n,k,s))*VFunk(i,n,k,s)
+             sum0 = sum0 + c*conjg(unk(i,n,k,s))*VFunk(i,n,k,s)
 #endif
-       end do ! i
+          end do ! i
 
-    end do ! n
-    end do ! k
-    end do ! s
+       end do ! n
+       end do ! k
+       end do ! s
 
-    call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_grid,ierr)
-    call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_band,ierr)
-    call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_bzsm,ierr)
-    call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_spin,ierr)
+       call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_grid,ierr)
+       call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_band,ierr)
+       call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_bzsm,ierr)
+       call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_spin,ierr)
 
-    Ex = 0.5d0*sum0*dV
+       E_exchange = 0.5d0*sum0*dV
+
+    end if
+
+    Ex = E_exchange
 
   END SUBROUTINE calc_xc_hf
 

@@ -44,7 +44,7 @@ MODULE scf_module
 
   integer :: Diter_scf   = 100
   integer :: Ndiag       = 1
-  logical :: second_diag =.false.
+  integer :: second_diag = 2
   real(8) :: scf_conv    = 1.d-20
   real(8) :: fmax_conv   = 0.d0
   real(8) :: etot_conv   = 0.d0
@@ -96,7 +96,7 @@ CONTAINS
     call mpi_bcast(etot_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Diter_scf  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Ndiag      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(second_diag,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(second_diag,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE read_scf
 
 
@@ -149,6 +149,8 @@ CONTAINS
 
           call watcht(disp_switch,"diag",1)
 
+          call control_xc_hybrid(1)
+
           do idiag=1,Ndiag
 
              if ( disp_switch ) then
@@ -166,10 +168,10 @@ CONTAINS
 
              call watcht(disp_switch,"gs  ",1)
 
-             if ( second_diag .or. idiag < Ndiag ) then
+             if ( second_diag == 1 .or. idiag < Ndiag ) then
                 call subspace_diag(k,s)
                 call watcht(disp_switch,"diag",1)
-             else if ( idiag == Ndiag ) then
+             else if ( second_diag == 2 .and. idiag == Ndiag ) then
                 call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
                              ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
                 call watcht(disp_switch,"esp_calc",1)
@@ -239,7 +241,6 @@ CONTAINS
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
        end if
-       call control_xc_hybrid(1)
 ! ---
 
        call watcht(disp_switch,"mixing",1)
