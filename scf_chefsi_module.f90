@@ -122,7 +122,8 @@ CONTAINS
     ib2       = min(nint(Nelectron/2)+80,Nband)
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
-                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv)
+                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
+                    ,ir_grid,id_grid,myrank)
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 

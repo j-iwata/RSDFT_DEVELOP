@@ -6,11 +6,12 @@ MODULE mixing_module
 
   PRIVATE
   PUBLIC :: sqerr_out, imix, beta &
-           ,init_mixing,read_mixing,perform_mixing,read_oldformat_mixing
+           ,init_mixing,read_mixing,perform_mixing,read_oldformat_mixing &
+           ,finalize_mixing, restart_mixing
 
   include 'mpif.h'
 
-  integer :: imix,mmix
+  integer :: imix,mmix,iomix
   real(8) :: beta,scf_conv,sqerr_out(4)
   real(8),allocatable :: Xold(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
@@ -24,6 +25,12 @@ MODULE mixing_module
   real(8) :: dV
   logical :: disp_switch
 
+  integer :: unit=2
+  character(16),parameter :: file_name="vrho_mixing.dat1"
+
+  integer,allocatable :: ir(:),id(:)
+  integer :: myrank
+
 CONTAINS
 
 
@@ -31,10 +38,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     integer :: i
-    character(7) :: cbuf,ckey
+    character(5) :: cbuf,ckey
     imix=0
     mmix=4
     beta=1.0d0
+    iomix=0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -49,6 +57,9 @@ CONTAINS
           else if ( ckey(1:4) == "BETA" ) then
              backspace(unit)
              read(unit,*) cbuf,beta
+          else if ( ckey(1:5) == "IOMIX" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iomix
           end if
        end do
 999    continue
@@ -59,6 +70,7 @@ CONTAINS
           write(*,*) "mmix is replaced to 1 : mmix=",mmix
        end if
        write(*,*) "beta    =",beta
+       write(*,*) "iomix   =",iomix
     end if
     call send_mixing(0)
   END SUBROUTINE read_mixing
@@ -89,13 +101,15 @@ CONTAINS
     call mpi_bcast(mmix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(beta,1,MPI_REAL8  ,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(scf_conv,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iomix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_mixing
 
 
-  SUBROUTINE init_mixing &
-       (ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in,dV_in,f,g,scf_conv_in)
+  SUBROUTINE init_mixing(ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in &
+       ,dV_in,f,g,scf_conv_in,ir_in,id_in,myrank_in)
     implicit none
     integer,intent(IN) :: ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in
+    integer,intent(IN) :: ir_in(0:),id_in(0:),myrank_in
     real(8),intent(IN) :: dV_in,f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
     real(8),intent(IN) :: scf_conv_in
     integer :: m,ierr
@@ -115,6 +129,14 @@ CONTAINS
 
     scf_conv = scf_conv_in
 
+    m=size(ir_in)
+    allocate( ir(0:m-1) ) ; ir=0
+    allocate( id(0:m-1) ) ; id=0
+    ir(:)=ir_in(:)
+    id(:)=id_in(:)
+
+    myrank = myrank_in
+
     if ( allocated(Xou)  ) deallocate( Xou )
     if ( allocated(Xin)  ) deallocate( Xin )
     if ( allocated(Xold) ) deallocate( Xold )
@@ -122,19 +144,29 @@ CONTAINS
     allocate(  Xin(ML0,MSP,mmix) ) ;  Xin=zero
     allocate(  Xou(ML0,MSP,mmix) ) ;  Xou=zero
 
-    m=ML0*(nf2-nf1+1)
-    call mpi_allgather( f(1,nf1),m,MPI_REAL8 &
-         ,Xold(1,1,1),m,MPI_REAL8,comm_spin,ierr )
-    call mpi_allgather( g(1,nf1),m,MPI_REAL8 &
-         ,Xold(1,MSP+1,1),m,MPI_REAL8,comm_spin,ierr )
+    if ( iomix == 2 .or. iomix == 3 ) then
 
-    if ( mod(imix,2) == 0 ) then
-       Xin(:,:,mmix) = Xold(:,1:MSP,1)
-    else if ( mod(imix,2) == 1 ) then
-       Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
+       call restart_mixing
+
+       if ( iomix == 2 ) iomix=0
+
+    else
+
+       m=ML0*(nf2-nf1+1)
+       call mpi_allgather( f(1,nf1),m,MPI_REAL8 &
+            ,Xold(1,1,1),m,MPI_REAL8,comm_spin,ierr )
+       call mpi_allgather( g(1,nf1),m,MPI_REAL8 &
+            ,Xold(1,MSP+1,1),m,MPI_REAL8,comm_spin,ierr )
+
+       if ( mod(imix,2) == 0 ) then
+          Xin(:,:,mmix) = Xold(:,1:MSP,1)
+       else if ( mod(imix,2) == 1 ) then
+          Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
+       end if
+
+       dif0(:) = 0.0d0
+
     end if
-
-    dif0(:) = 0.0d0
 
   END SUBROUTINE init_mixing
 
@@ -532,6 +564,107 @@ CONTAINS
     return
 
   END SUBROUTINE pulay_r2_mixing
+
+
+  SUBROUTINE finalize_mixing
+    implicit none
+    integer :: np,mr,n,m,s,ierr
+    real(8) :: data_size
+    real(8),allocatable :: d(:)
+    complex(8),allocatable :: z(:)
+
+    if ( .not.( iomix == 1 .or. iomix == 3 ) ) return
+
+    data_size = 8.0d0*size(Xold) + 16.0d0*size(Xin) + 16.0d0*size(Xou)
+    if ( myrank == 0 ) then
+       write(*,'(a60," finalize_mmixg")') repeat("-",60)
+       write(*,*) "data_size(MB)=",data_size/1024.d0**2
+    end if
+    if ( myrank == 0 ) then
+       open( unit, file=file_name, form='unformatted' )
+       write(unit) ML,MSP,MF0,mmix,mmix_count
+       write(unit) beta,beta0,dif0
+    end if
+    allocate( d(ML) ) ; d=0.0d0
+    do m=1,mmix
+    do s=1,MF0
+       call mpi_allgatherv( Xold(1,s,m),ML0,MPI_REAL8,d,ir,id, &
+            MPI_REAL8,comm_grid,ierr )
+       if ( myrank == 0 ) write(unit) d
+    end do
+    end do
+    deallocate( d )
+    allocate( z(ML) ) ; z=(0.0d0,0.0d0)
+    do m=1,mmix
+    do s=1,MSP
+       call mpi_allgatherv( Xin(1,s,m),ML0,MPI_COMPLEX16,z,ir,id, &
+            MPI_COMPLEX16,comm_grid,ierr )
+       if ( myrank == 0 ) write(unit) z
+    end do
+    end do
+    do m=1,mmix
+    do s=1,MSP
+       call mpi_allgatherv( Xou(1,s,m),ML0,MPI_COMPLEX16,z,ir,id, &
+            MPI_COMPLEX16,comm_grid,ierr )
+       if ( myrank == 0 ) write(unit) z
+    end do
+    end do
+    deallocate( z )
+    if ( myrank == 0 ) close( unit )
+  END SUBROUTINE finalize_mixing
+
+
+  SUBROUTINE restart_mixing
+    implicit none
+    integer :: m,s,ierr,itmp(5)
+    real(8) :: dtmp(4)
+    real(8),allocatable :: d(:)
+    complex(8),allocatable :: z(:)
+    if ( myrank == 0 ) then
+       write(*,'(a60," restart_mmixg")') repeat("-",60)
+    end if
+    if ( myrank == 0 ) then
+       open( unit, file=file_name, form='unformatted' )
+       read(unit) itmp(1:5)
+       read(unit) dtmp(1:4)
+    end if
+    call mpi_bcast(itmp,5,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(dtmp,4,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    ML=itmp(1)
+    MSP=itmp(2)
+    MF0=itmp(3)
+    mmix=itmp(4)
+    mmix_count=itmp(5)
+    beta=dtmp(1)
+    beta0=dtmp(2)
+    dif0(1:2)=dtmp(3:4)
+    allocate( d(ML) ) ; d=0.0d0
+    do m=1,mmix
+    do s=1,MF0
+       if ( myrank == 0 ) read(unit) d
+       call mpi_scatterv &
+            (d,ir,id,MPI_REAL8,Xold(1,s,m),ML0,MPI_REAL8,0,comm_grid,ierr)
+    end do
+    end do
+    deallocate( d )
+    allocate( z(ML) ) ; z=(0.0d0,0.0d0)
+    do m=1,mmix
+    do s=1,MSP
+       if ( myrank == 0 ) read(unit) z
+       call mpi_scatterv(z,ir,id,MPI_COMPLEX16 &
+                        ,Xin(1,s,m),ML0,MPI_COMPLEX16,0,comm_grid,ierr)
+    end do
+    end do
+    do m=1,mmix
+    do s=1,MSP
+       if ( myrank == 0 ) read(unit) z
+       call mpi_scatterv(z,ir,id,MPI_COMPLEX16 &
+                        ,Xou(1,s,m),ML0,MPI_COMPLEX16,0,comm_grid,ierr)
+    end do
+    end do
+    deallocate( z )
+    if ( myrank == 0 ) close( unit )
+  END SUBROUTINE restart_mixing
 
 
 END MODULE mixing_module

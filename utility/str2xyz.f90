@@ -22,6 +22,9 @@ PROGRAM str2xyz
   integer :: q1_e, q2_e, q3_e
   integer :: i1,i2,i3
   integer :: flag
+  integer :: MIP_count, MI1, MI2
+  integer :: LC=0, il
+  real(8) :: qq1(3),qq2(3)
 
 ! --- input
 
@@ -64,6 +67,22 @@ PROGRAM str2xyz
 !  write(*,*)
 !  write(*,*)
 
+
+! --- length_log
+  open(unit=100,file="length.dat")
+  write(*,*) "MEASURE LENGTH? (0=NO, 1=YES)"
+  read(*,*) il
+  if (il==1) then
+   write(*,*) "ATOM1="
+   read(*,*) MI1
+   write(*,*) "ATOM2="
+   read(*,*) MI2
+  else
+   MI1=0
+   MI2=0
+  end if
+
+
 ! --- target file ---
 
   open(iu,file='str.xyz')
@@ -93,7 +112,6 @@ PROGRAM str2xyz
 !---
 
   read(u1,*,END=999) cbuf
-write(*,*) cbuf(1:9)
   flag=0; if (cbuf(1:9)=="#_STRLOG_") flag=1
   backspace(u1)
 
@@ -155,6 +173,8 @@ write(*,*) cbuf(1:9)
     write(iu,'(A)') "comment"     
   end if
 
+  MIP_count=0
+
   do i1=q1_b,q1_e
   do i2=q2_b,q2_e
   do i3=q3_b,q3_e
@@ -170,13 +190,19 @@ write(*,*) cbuf(1:9)
    if ( (p1_b <= asi2(1,i)) .AND. ( asi2(1,i) < p1_e) .AND. & 
         (p2_b <= asi2(2,i)) .AND. ( asi2(2,i) < p2_e) .AND. & 
         (p3_b <= asi2(3,i)) .AND. ( asi2(3,i) < p3_e) ) then
+      MIP_count=MIP_count+1
       write(iu,'(A2,3(2X,F25.15))') ATOM_NAME(zatom(Kion(i))),rsi(:,i)
+      if (MIP_count==MI1) qq1(:)=rsi(:,i) 
+      if (MIP_count==MI2) qq2(:)=rsi(:,i) 
    end if
   end do
  
   end do !i3
   end do !i2
   end do !i1
+  
+  LC=LC+1
+  if (il==1) Write(100,'(I6,1X,F25.15,2(1X,I6))') LC, sqrt( sum(qq1(:)-qq2(:))**2 ), MI1,MI2
 
   if (flag==1) goto 777
 

@@ -124,7 +124,8 @@ CONTAINS
     ib2       = min(nint(Nelectron/2)+80,Nband)
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
-                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv)
+                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
+                    ,ir_grid,id_grid,myrank)
 
 !    call init_diff_vrho_scf
 
@@ -258,13 +259,17 @@ CONTAINS
 
        call global_watch(.false.,flag_end)
 
-       flag_exit = (flag_conv_f.or.flag_conv.or.flag_end)
+       flag_conv = (flag_conv.or.flag_conv_f)
+       flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call watcht(disp_switch,"",0)
        call write_data(disp_switch,flag_exit)
        call watcht(disp_switch,"io",1)
 
-       if ( flag_exit ) exit
+       if ( flag_exit ) then
+          call finalize_mixing
+          exit
+       end if
 
     end do ! iter
 
@@ -283,7 +288,7 @@ CONTAINS
        return
     end if
 
-    if ( iter > Diter ) then
+    if ( .not.flag_conv ) then
        ierr_out = -2
        if ( myrank == 0 ) write(*,*) "scf not converged"
     end if
