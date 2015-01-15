@@ -11,7 +11,7 @@ MODULE ForcePSnonLoc2
   use array_bound_module
   use parallel_module
   use localpot_module, only: Vloc
-  use ParaRGridComm, only: threeWayComm
+  use ParaRGridComm, only: do3StepComm_F,do3StepComm_dQ
   use ForceSub
   implicit none
   PRIVATE
@@ -298,7 +298,7 @@ CONTAINS
           ib1=n
           ib2=min(ib1+MB_d-1,MB_1)
           if ( occ(n,k,s) < 1.d-10 ) cycle
-          call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s),3)
+          call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))
         end do ! n
       end do ! k
     end do ! s
@@ -412,13 +412,13 @@ CONTAINS
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),dQY(:,:,:)
     real(8) :: dQY_tmp(1:3)
-#ifdef _DRSDFT_
+!#ifdef _DRSDFT_
     real(8) :: ztmp
     real(8),allocatable :: rtmp5(:,:,:),rtmp2(:,:)
-#else
-    complex(8) :: ztmp
-    complex(8),allocatable :: rtmp5(:,:,:),rtmp2(:,:)
-#endif
+!#else
+!    complex(8) :: ztmp
+!    complex(8),allocatable :: rtmp5(:,:,:),rtmp2(:,:)
+!#endif
     integer :: i0,iorb0
     integer :: k1,k2,k3
     integer :: d1,d2,d3
@@ -442,7 +442,8 @@ CONTAINS
 !$OMP parallel
 
 !$OMP workshare
-    rtmp5=zero
+!    rtmp5=zero
+    rtmp5=0.d0
     dQY=0.d0
 !$OMP end workshare
 
@@ -543,7 +544,8 @@ CONTAINS
 
 !$OMP single
     do s=MSP_0,MSP_1
-      call threeWayComm(nrqr_xyz,num_2_rank_Q,sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,N_nzqr,1,1,rtmp5(0,1,1),2)
+!      call threeWayComm(nrqr_xyz,num_2_rank_Q,sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,N_nzqr,1,1,rtmp5(0,1,s),2)
+      call do3StepComm_dQ( nrqr_xyz,num_2_rank_Q,sendmap_Q,recvmap_Q,qr_nsend,N_nzqr,rtmp5(0,1,s) )
     enddo
     do s=MSP_0,MSP_1
       do k=MBZ_0,MBZ_1
@@ -631,6 +633,7 @@ CONTAINS
 #endif
     real(8),intent(INOUT) :: forceQ(3,MI)
 
+    forceQ=0.d0
     return
   END SUBROUTINE calcForceQ
 #endif

@@ -289,15 +289,16 @@ CONTAINS
 !write(5900+myrank,'(6I6,5G20.7,I6)') ia,ik1,ik2,ll3,ir0,ir,x,y,z,r,v0,NRc
 !write(5200+myrank,'(4I6,5G20.7)') ia,ik1,j,ll3,QRtmp,qaL(ik3,ll3),v0
                 end if ! x,y,z
-                if (abs(QRtmp)<1.d-10) cycle
+!                if (abs(QRtmp)<1.d-10) cycle
 
                 QRij_tmp(j,ik1,ia) = QRij_tmp(j,ik1,ia)+QRtmp
               end do ! ll3
-              if (abs(QRij_tmp(j,ik1,ia))<1.d-10) then
-                QRij_tmp(j,ik1,ia)=0.d0
-                j=j-1
-                cycle
-              endif
+!              if (abs(QRij_tmp(j,ik1,ia))<1.d-10) then
+!                if (myrank==0) write(200,*) "some points are deleted"
+!                QRij_tmp(j,ik1,ia)=0.d0
+!                j=j-1
+!                cycle
+!              endif
               JJ_tmp(1,j,ik1,ia) = i1_0
               JJ_tmp(2,j,ik1,ia) = i2_0
               JJ_tmp(3,j,ik1,ia) = i3_0
@@ -443,7 +444,7 @@ CONTAINS
     c_nzqr = icheck_tmp2(myrank_g)
 
     if ( c_nzqr /= N_nzqr ) then
-       write(*,*) "N_nzqr==c_nzqr is neccesary"
+       write(*,*) "N_nzqr==c_nzqr is necessary"
        write(*,*) "N_nzqr,c_nzqr,myrank=",N_nzqr,c_nzqr,myrank
        stop "stop@prepQRijp102(PSQRijPrep.f90)"
     end if

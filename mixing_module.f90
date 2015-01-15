@@ -11,6 +11,7 @@ MODULE mixing_module
   include 'mpif.h'
 
   integer :: imix,mmix
+  integer,private :: myrank_
   real(8) :: beta,scf_conv,sqerr_out(4)
   real(8),allocatable :: Xold(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
@@ -32,6 +33,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i
     character(7) :: cbuf,ckey
+    myrank_=rank
     imix=0
     mmix=4
     beta=1.0d0
@@ -318,6 +320,13 @@ CONTAINS
        else
           write(*,*) "MSP is invalid: MSP=",MSP
           stop "stop@parform_mixing"
+       end if
+    end if
+    if ( myrank_==0 ) then
+       if ( MSP == 1 ) then
+          write(200,'(1x,"RSQERR=",g12.5,3x,"VSQERR=",g12.5)') err(1:2)
+       else if ( MSP == 2 ) then
+          write(200,'(1x,"RSQERR=",2g12.5,3x,"VSQERR=",2g12.5)') err(1:4)
        end if
     end if
 

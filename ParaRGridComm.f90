@@ -5,7 +5,7 @@ MODULE ParaRGridComm
   implicit none
 
   PRIVATE
-  PUBLIC :: prepThreeWayComm,threeWayComm,do3StepComm,do3StepComm_real
+  PUBLIC :: prepThreeWayComm,do3StepComm,do3StepComm_real,do3StepComm_dQ,do3StepComm_F
   
 
 CONTAINS
@@ -222,23 +222,22 @@ write(400+myrank,*) "<<<< prepThreeWayComm"
   END SUBROUTINE prepThreeWayComm
 
 !---------------------------------------------------------------------------------------
-  SUBROUTINE threeWayComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN,bundle )
+  SUBROUTINE do3StepComm_F( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
     implicit none
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
     integer,allocatable,intent(IN) :: Num2Rank0(:,:)
     integer,allocatable,intent(IN) :: SendMap(:,:),RecvMap(:,:)
     integer,allocatable,intent(INOUT) :: TarNSend(:)
-    integer,intent(IN) :: bundle
     
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: TarIN(0:bundle,nz,ib1:ib2)
+    real(8),intent(INOUT) :: TarIN(0:3,nz,ib1:ib2)
     real(8),allocatable,intent(INOUT) :: SbufNL(:,:),RbufNL(:,:)
-    real(8) :: tmp0(0:bundle,nz,ib1:ib2)
+    real(8) :: tmp0(0:3,nz,ib1:ib2)
 #else
-    complex(8),intent(INOUT) :: TarIN(0:bundle,nz,ib1:ib2)
+    complex(8),intent(INOUT) :: TarIN(0:3,nz,ib1:ib2)
     complex(8),allocatable,intent(INOUT) :: SbufNL(:,:),RbufNL(:,:)
-    complex(8) :: tmp0(0:bundle,nz,ib1:ib2)
+    complex(8) :: tmp0(0:3,nz,ib1:ib2)
 #endif
     integer :: i,j,m,ib,i1,i2,i3
     integer :: irank,jrank
@@ -250,7 +249,7 @@ write(400+myrank,*) ">>>> threeWayComm"
 #endif
 
     nb=ib2-ib1+1
-    nb_b=nb*(bundle+1)
+    nb_b=nb*4
 
 !!$OMP single    
     do i=1,6
@@ -269,7 +268,7 @@ write(400+myrank,*) ">>>> threeWayComm"
           i2=0
           do ib=ib1,ib2
             do i1=1,TarNSend(irank)
-              do i3=0,bundle
+              do i3=0,3
                 i2=i2+1
                 SbufNL(i2,irank)=tmp0(i3,SendMap(i1,irank),ib)
               enddo
@@ -282,12 +281,13 @@ write(400+myrank,*) ">>>> threeWayComm"
           nreq=nreq+1
           call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*nb_b,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
         end if
+!write(200+myrank,*) i,irank,jrank
         call MPI_WAITALL( nreq,ireq,istatus,ierr )
         if ( jrank>=0 ) then
           i2=0
           do ib=ib1,ib2
             do i1=1,TarNSend(jrank)
-              do i3=0,bundle
+              do i3=0,3
                 i2=i2+1
                 TarIN(i3,RecvMap(i1,jrank),ib) = TarIN(i3,RecvMap(i1,jrank),ib) + RbufNL(i2,jrank)
               end do
@@ -302,7 +302,87 @@ write(400+myrank,*) ">>>> threeWayComm"
 write(400+myrank,*) "<<<< threeWayComm"
 #endif
     return
-  END SUBROUTINE threeWayComm
+  END SUBROUTINE do3StepComm_F
+
+!---------------------------------------------------------------------------------------
+  SUBROUTINE do3StepComm_dQ( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,nz,TarIN )
+    implicit none
+    integer,intent(IN) :: NRxyz(1:6),nz
+    integer,allocatable,intent(IN) :: Num2Rank0(:,:)
+    integer,allocatable,intent(IN) :: SendMap(:,:),RecvMap(:,:)
+    integer,allocatable,intent(INOUT) :: TarNSend(:)
+    
+!#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: TarIN(0:2,nz)
+    real(8),allocatable :: SbufNL(:,:),RbufNL(:,:)
+    real(8) :: tmp0(0:2,nz)
+    real(8),parameter :: zero=0.d0
+!#else
+!    complex(8),intent(INOUT) :: TarIN(0:2,nz)
+!    complex(8),allocatable :: SbufNL(:,:),RbufNL(:,:)
+!    complex(8) :: tmp0(0:2,nz)
+!    complex(8),parameter :: zero=(0.d0,0.d0)
+!#endif
+    integer :: i,j,m,i1,i2,i3
+    integer :: n
+    integer :: irank,jrank
+    integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
+
+#ifdef _SHOWALL_COMM_
+write(400+myrank,*) ">>>> threeWayComm"
+#endif
+
+    n=maxval(TarNSend)*3
+    allocate(SbufNL(n,0:nprocs_g-1)) ; SbufNL=zero
+    allocate(RbufNL(n,0:nprocs_g-1)) ; RbufNL=zero
+
+!!$OMP single    
+    do i=1,6
+      select case ( i )
+      case ( 1,3,5 )
+        j=i+1
+        tmp0(:,:) = TarIN(:,:)
+      case ( 2,4,6 )
+        j=i-1
+      end select
+      do m=1,NRxyz(i)
+        nreq=0
+        irank=Num2Rank0(m,i)
+        jrank=Num2Rank0(m,j)
+        if ( irank>=0 ) then
+          i2=0
+          do i1=1,TarNSend(irank)
+            do i3=0,2
+              i2=i2+1
+              SbufNL(i2,irank)=tmp0(i3,SendMap(i1,irank))
+            enddo
+          end do
+          nreq=nreq+1
+          call MPI_ISEND( SbufNL(1,irank),TarNSend(irank)*3,MPI_REAL8,irank,1,COMM_GRID,ireq(nreq),ierr )
+        end if
+        if ( jrank>=0 ) then
+          nreq=nreq+1
+          call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*3,MPI_REAL8,jrank,1,COMM_GRID,ireq(nreq),ierr )
+        end if
+        call MPI_WAITALL( nreq,ireq,istatus,ierr )
+        if ( jrank>=0 ) then
+          i2=0
+          do i1=1,TarNSend(jrank)
+            do i3=0,2
+              i2=i2+1
+              TarIN(i3,RecvMap(i1,jrank)) = TarIN(i3,RecvMap(i1,jrank)) + RbufNL(i2,jrank)
+            end do
+          end do
+        end if
+      end do
+    end do
+!!$OMP end single
+
+#ifdef _SHOWALL_COMM_
+write(400+myrank,*) "<<<< threeWayComm"
+#endif
+    return
+  END SUBROUTINE do3StepComm_dQ
 
 !---------------------------------------------------------------------------------------
   SUBROUTINE do3StepComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )

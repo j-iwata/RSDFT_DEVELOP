@@ -13,7 +13,8 @@ MODULE ps_nloc2_module
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
-  use ParaRGridComm, only: prepThreeWayComm,threeWayComm
+!  use ParaRGridComm, only: prepThreeWayComm,threeWayComm
+  use ParaRGridComm, only: prepThreeWayComm,do3StepComm,do3StepComm_F
 #ifdef _USPP_
   use ForcePSnonLoc2
 #endif
@@ -1049,7 +1050,7 @@ CONTAINS
     select case( iswitch_eqdiv )
     case default
     
-      call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
+      call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
     case( 2 )
 
@@ -1651,8 +1652,8 @@ CONTAINS
 
        if ( occ(n,k,s) == 0.d0 ) cycle
       
-       call threeWayComm(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend &
-                        ,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s),3)
+       call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend &
+                        ,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))
 
 #ifdef _TEST_
        nnn=ib2-ib1+1

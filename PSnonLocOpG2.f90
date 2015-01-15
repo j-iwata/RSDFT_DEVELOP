@@ -4,7 +4,8 @@ MODULE PSnonLocOpG2
   use VarPSMemberG
   use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,zero,uVk,iuV
   use rgrid_module, only: dV
-  use ParaRGridComm, only: threeWayComm
+!  use ParaRGridComm, only: threeWayComm
+  use ParaRGridComm, only: do3StepComm
   implicit none
   include 'mpif.h'
   private
@@ -64,7 +65,8 @@ write(200+myrank,*) '----------------------------op_ps_nloc2_uspp'
 !    select case( iswitch_eqdiv )
 !    case default
     
-      call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
+!      call threeWayComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk,0 )
+      call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
 !    case( 2 )
 !       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)

@@ -215,6 +215,7 @@ CONTAINS
 
        call watcht(disp_switch,"",0)
        call write_data(disp_switch,flag_exit)
+       if (myrank==0) write(200,'(A22,I4,A3,I4)') repeat('-',20),iter," / ",Diter
        call watcht(disp_switch,"io",1)
 
        if ( flag_exit ) exit
