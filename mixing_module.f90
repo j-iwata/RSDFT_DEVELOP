@@ -11,7 +11,7 @@ MODULE mixing_module
 
   include 'mpif.h'
 
-  integer :: imix,mmix,iomix
+  integer :: imix,mmix
   real(8) :: beta,scf_conv,sqerr_out(4)
   real(8),allocatable :: Xold(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
@@ -25,9 +25,9 @@ MODULE mixing_module
   real(8) :: dV
   logical :: disp_switch
 
+  integer :: iomix,iochk(2)
   integer :: unit=2
   character(16),parameter :: file_name="vrho_mixing.dat1"
-
   integer,allocatable :: ir(:),id(:)
   integer :: myrank
 
@@ -43,6 +43,7 @@ CONTAINS
     mmix=4
     beta=1.0d0
     iomix=0
+    iochk=0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -60,17 +61,23 @@ CONTAINS
           else if ( ckey(1:5) == "IOMIX" ) then
              backspace(unit)
              read(unit,*) cbuf,iomix
+          else if ( ckey(1:2) == "IC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iochk(1)
+          else if ( ckey(1:3) == "OC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iochk(2)
           end if
        end do
 999    continue
-       write(*,*) "imix    =",imix
-       write(*,*) "mmix    =",mmix
+       write(*,*) "imix       =",imix
+       write(*,*) "mmix       =",mmix
        if ( mmix < 1 ) then
           mmix=1
           write(*,*) "mmix is replaced to 1 : mmix=",mmix
        end if
-       write(*,*) "beta    =",beta
-       write(*,*) "iomix   =",iomix
+       write(*,*) "beta       =",beta
+       write(*,*) "iomix,IC,OC=",iomix,iochk(1:2)
     end if
     call send_mixing(0)
   END SUBROUTINE read_mixing
@@ -102,6 +109,7 @@ CONTAINS
     call mpi_bcast(beta,1,MPI_REAL8  ,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(scf_conv,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iomix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iochk,2,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_mixing
 
 
@@ -144,11 +152,9 @@ CONTAINS
     allocate(  Xin(ML0,MSP,mmix) ) ;  Xin=zero
     allocate(  Xou(ML0,MSP,mmix) ) ;  Xou=zero
 
-    if ( iomix == 2 .or. iomix == 3 ) then
+    if ( iomix == 1 .and. iochk(1) == 3 ) then
 
        call restart_mixing
-
-       if ( iomix == 2 ) iomix=0
 
     else
 
@@ -573,7 +579,7 @@ CONTAINS
     real(8),allocatable :: d(:)
     complex(8),allocatable :: z(:)
 
-    if ( .not.( iomix == 1 .or. iomix == 3 ) ) return
+    if ( iomix == 0 .or. iochk(2) /= 3 ) return
 
     data_size = 8.0d0*size(Xold) + 16.0d0*size(Xin) + 16.0d0*size(Xou)
     if ( myrank == 0 ) then

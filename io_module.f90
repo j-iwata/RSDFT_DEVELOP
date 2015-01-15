@@ -72,7 +72,7 @@ CONTAINS
           else if ( ckey(1:3) == "OC2" ) then
              backspace(unit)
              read(unit,*) cbuf,OC2
-          else if ( ckey(1:2) == "OC" ) then
+          else if ( ckey(1:3) == "OC" ) then
              backspace(unit)
              read(unit,*) cbuf,OC
           else if ( ckey(1:6) == "IOCTRL" ) then
