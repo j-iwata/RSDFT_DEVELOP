@@ -8,15 +8,20 @@ MODULE wf_module
   PRIVATE
   PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
-           ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF
+           ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
+           ,hunk, read_wf, iflag_hunk, workwf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
   real(8),allocatable :: unk(:,:,:,:)
+  real(8),allocatable :: hunk(:,:,:,:)
+  real(8),allocatable :: workwf(:,:)
   integer,parameter :: TYPE_MAIN=MPI_REAL8
 #else
   complex(8),parameter :: zero=(0.d0,0.d0)
   complex(8),allocatable :: unk(:,:,:,:)
+  complex(8),allocatable :: hunk(:,:,:,:)
+  complex(8),allocatable :: workwf(:,:)
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
 #endif
 
@@ -29,7 +34,32 @@ MODULE wf_module
   integer :: MK_WF, MK_0_WF, MK_1_WF
   integer :: MS_WF, MS_0_WF, MS_1_WF
 
+  integer :: iwork_wf=0
+  integer :: iflag_hunk=0
+
 CONTAINS
+
+
+  SUBROUTINE read_wf( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i,ierr
+    character(6) :: cbuf,ckey
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey == "WORKWF" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iwork_wf
+          end if
+       end do
+999    continue
+       write(*,*) "iwork_wf=",iwork_wf
+    end if
+    call mpi_bcast(iwork_wf,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE read_wf
 
 
   SUBROUTINE init_wf
@@ -72,6 +102,12 @@ CONTAINS
 !        ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
 !    call random_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
 !         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
+
+    if ( iwork_wf /= 0 ) then
+       allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
+       hunk=zero
+       iflag_hunk=0
+    end if
 
   END SUBROUTINE init_wf
 
@@ -157,6 +193,11 @@ CONTAINS
        call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
             ,TYPE_MAIN,unk(ML_0_WF,1,k,s),ir_band,id_band &
             ,TYPE_MAIN,comm_band,ierr )
+       if ( allocated(hunk) ) then
+          call mpi_allgatherv( hunk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
+               ,TYPE_MAIN,hunk(ML_0_WF,1,k,s),ir_band,id_band &
+               ,TYPE_MAIN,comm_band,ierr )
+       end if
     end do
     end do
     ir_band(:)=ir_band(:)/mm

@@ -5,7 +5,7 @@ MODULE sweep_module
   use bz_module, only: weight_bz, Nbzsm
   use wf_module
   use cg_module, only: Ncg, conjugate_gradient
-  use array_bound_module, only: ML_0,ML_1,MBZ_0,MBZ_1,MSP_0,MSP_1
+  use array_bound_module, only: ML_0,ML_1,MBZ_0,MBZ_1,MSP_0,MSP_1,MB_0,MB_1
   use gram_schmidt_module
   use io_module
   use total_energy_module, only: calc_with_rhoIN_total_energy
@@ -13,6 +13,7 @@ MODULE sweep_module
   use subspace_diag_module
   use esp_gather_module
   use watch_module
+  use hamiltonian_module
 
   implicit none
 
@@ -86,6 +87,18 @@ CONTAINS
     ierr_out  = 0
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
+
+    if ( allocated(hunk) ) then
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+          do m=MB_0,MB_1,MB_d
+             n=min(m+MB_d-1,MB_1)
+             call hamiltonian &
+                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+          end do
+       end do
+       end do
+    end if
 
     do iter=1,Diter
 

@@ -10,6 +10,8 @@ MODULE cg_module
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
   use cg_u_module, only: init_cg_u, cg_u
 
+  use wf_module, only: hunk
+
   implicit none
 
   PRIVATE
@@ -163,7 +165,13 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       if ( allocated(hunk) ) then
+!$OMP parallel workshare
+          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+!$OMP end parallel workshare
+       else
+          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       end if
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -336,7 +344,7 @@ CONTAINS
 
              call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
 
-          end do
+          end do ! n
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
 
@@ -355,6 +363,13 @@ CONTAINS
                 unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
+             if ( allocated(hunk) ) then
+!$OMP parallel do
+                do i=n1,n2
+                   hunk(i,m,k,s)=hxk(i,n)
+                end do
+!$OMP end parallel do
+             end if
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0

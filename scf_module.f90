@@ -36,6 +36,7 @@ MODULE scf_module
   use localpot2_te_module, only: localpot2_te, diff_Etot_lpot2
 
   use force_module, only: get_fmax_force
+  use hamiltonian_module
 
   implicit none
 
@@ -49,7 +50,7 @@ MODULE scf_module
   real(8) :: fmax_conv   = 0.d0
   real(8) :: etot_conv   = 0.d0
 
-  real(8),allocatable :: esp0(:,:,:)
+  real(8),allocatable :: esp0(:,:,:),Vloc0(:,:)
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
 
@@ -127,9 +128,21 @@ CONTAINS
                     ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
                     ,ir_grid,id_grid,myrank)
 
-!    call init_diff_vrho_scf
-
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
+
+    if ( allocated(hunk) ) then
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+          do m=MB_0,MB_1,MB_d
+             n=min(m+MB_d-1,MB_1)
+             call hamiltonian &
+                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+          end do
+       end do
+       end do
+       allocate( Vloc0(ML_0:ML_1,MSP_0:MSP_1) ) ; Vloc0=0.0d0
+       Vloc0(:,:)=Vloc(:,:)
+    end if
 
     do iter=1,Diter
 
@@ -145,6 +158,19 @@ CONTAINS
        do k=MBZ_0,MBZ_1
 
           call watcht(disp_switch,"",0)
+
+          if ( allocated(hunk) ) then
+!             do m=MB_0,MB_1,MB_d
+!                n=min(m+MB_d-1,MB_1)
+!                call hamiltonian &
+!                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+!             end do
+             do n=MB_0,MB_1
+                hunk(:,n,k,s) = hunk(:,n,k,s) &
+                     + ( Vloc(:,s)-Vloc0(:,s) )*unk(:,n,k,s)
+             end do
+             Vloc0(:,s)=Vloc(:,s)
+          end if
 
           call subspace_diag(k,s)
 
@@ -204,7 +230,6 @@ CONTAINS
        call control_xc_hybrid(1)
        call calc_xc
        call control_xc_hybrid(2)
-!       call diff_vrho_scf( disp_switch )
        call calc_total_energy( .false., disp_switch, .true. )
 ! ---
 
@@ -276,9 +301,8 @@ CONTAINS
     if ( myrank == 0 ) write(*,*) "------------ SCF result ----------"
     call write_info_scf( 1, Nband, iter, myrank==0 )
 
+    if ( allocated(Vloc0) ) deallocate( Vloc0 )
     deallocate( esp0 )
-
-!    call end_diff_vrho_scf
 
     ierr_out = iter
 

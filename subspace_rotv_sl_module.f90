@@ -1,7 +1,7 @@
 MODULE subspace_rotv_sl_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk
+  use wf_module, only: unk,hunk,workwf
   use scalapack_module
   use parallel_module
   use subspace_diag_variables
@@ -38,6 +38,11 @@ CONTAINS
     allocate( utmp(NBLK2,MB_0:MB_1) )
     utmp=zero
 
+    if ( allocated(hunk) ) then
+       allocate( workwf(NBLK2,MB_0:MB_1) )
+       workwf=zero
+    end if
+
     do i=1,maxval(ircnt),NBLK2
        i1=n1+i-1
        i2=min(i1+NBLK2-1,n2)
@@ -67,24 +72,34 @@ CONTAINS
              allocate( utmp2(ms:me,ns:ne) )
 
              if ( iroot1 == myrank ) then
+!$OMP parallel workshare
                 utmp2(ms:me,ns:ne)=Vsub(i0+1:i0+mm,j0+1:j0+nn)
+!$OMP end parallel workshare
                 i0=i0+mm
              end if
 
 !             call mpi_bcast(utmp2(ms,ns),mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #ifdef _DRSDFT_
-          call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+             call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #else
-          call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+             call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #endif
 
              if ( ii>0 ) then
 #ifdef _DRSDFT_
                 call dgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
                      ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                if ( allocated(hunk) ) then
+                   call dgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,workwf(1,ns),NBLK2)
+                endif
 #else
                 call zgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
                      ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                if ( allocated(hunk) ) then
+                   call zgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,workwf(1,ns),NBLK2)
+                end if
 #endif
              end if
 
@@ -97,11 +112,17 @@ CONTAINS
        end do ! ns
 
        if ( ii>0 ) then
+!$OMP parallel workshare
           unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+          if ( allocated(hunk) ) then
+             hunk(i1:i2,MB_0:MB_1,k,s)=workwf(1:ii,MB_0:MB_1)
+          end if
+!$OMP end parallel workshare
        end if
 
     end do ! ii
 
+    if ( allocated(workwf) ) deallocate( workwf )
     deallocate( utmp )
 
   END SUBROUTINE subspace_rotv_sl
