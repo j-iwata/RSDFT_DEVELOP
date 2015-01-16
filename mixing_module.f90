@@ -137,11 +137,13 @@ CONTAINS
 
     scf_conv = scf_conv_in
 
-    m=size(ir_in)
-    allocate( ir(0:m-1) ) ; ir=0
-    allocate( id(0:m-1) ) ; id=0
-    ir(:)=ir_in(:)
-    id(:)=id_in(:)
+    if ( .not.allocated(ir) ) then
+       m=size(ir_in)
+       allocate( ir(0:m-1) ) ; ir=0
+       allocate( id(0:m-1) ) ; id=0
+       ir(:)=ir_in(:)
+       id(:)=id_in(:)
+    end if
 
     myrank = myrank_in
 
