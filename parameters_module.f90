@@ -176,7 +176,7 @@ CONTAINS
     call read_sweep( myrank, unit )
 
     select case( iswitch_scf )
-    case( 1 )
+    case default
        call read_scf( myrank, unit )
     case( 2 )
        call read_scf_chefsi( myrank, unit )
