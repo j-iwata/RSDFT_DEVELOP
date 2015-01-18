@@ -115,11 +115,11 @@ CONTAINS
 !$OMP parallel workshare
           unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
 !$OMP end parallel workshare
-          if ( allocated(hunk) ) then
-!$OMP parallel workshare
-             hunk(i1:i2,MB_0:MB_1,k,s)=workwf(1:ii,MB_0:MB_1)
-!$OMP end parallel workshare
-          end if
+!          if ( allocated(hunk) ) then
+!!$OMP parallel workshare
+!             hunk(i1:i2,MB_0:MB_1,k,s)=workwf(1:ii,MB_0:MB_1)
+!!$OMP end parallel workshare
+!          end if
        end if
 
     end do ! ii

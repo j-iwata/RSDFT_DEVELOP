@@ -4,7 +4,7 @@ MODULE fock_module
                              ,FKMB_0,FKMB_1,FKBZ_0,FKBZ_1,FOCK_0,FOCK_1 &
                              ,occ_factor,gamma_hf
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
-  use wf_module, only: unk, occ
+  use wf_module, only: unk, occ, hunk
   use fock_fft_module
   use fock_cg_module
   use parallel_module
@@ -179,6 +179,7 @@ CONTAINS
     if ( iflag_hybrid == 0 ) return
 
     if ( iflag_hybrid == 2 ) then
+
        do ib=ib1,ib2
           do i=n1,n2
              htpsi(i,ib)=htpsi(i,ib)+alpha_hf*VFunk(i,ib,k,s)
@@ -246,13 +247,13 @@ CONTAINS
             ,MPI_SUM, comm_bzsm, ierr )
     end do ! s
 
-    VFunk(:,:,:,:) = zero
+    hunk(:,:,:,:) = zero
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
     do n=MB_0 ,MB_1
 
-       call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), VFunk(ML_0,n,k,s) )
+       call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
 
     end do ! n
     end do ! k

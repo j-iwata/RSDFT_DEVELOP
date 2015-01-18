@@ -1,8 +1,8 @@
 MODULE xc_hf_module
 
-  use xc_hybrid_module, only: VFunk, iflag_hybrid
+  use xc_hybrid_module, only: iflag_hybrid
   use fock_module, only: UpdateWF_fock
-  use wf_module, only: unk, occ
+  use wf_module, only: unk, occ, hunk
   use parallel_module
 
   implicit none
@@ -76,9 +76,9 @@ CONTAINS
 
           do i=ML_0,ML_1
 #ifdef _DRSDFT_
-             sum0 = sum0 + c*unk(i,n,k,s)*VFunk(i,n,k,s)
+             sum0 = sum0 + c*unk(i,n,k,s)*hunk(i,n,k,s)
 #else
-             sum0 = sum0 + c*conjg(unk(i,n,k,s))*VFunk(i,n,k,s)
+             sum0 = sum0 + c*conjg(unk(i,n,k,s))*hunk(i,n,k,s)
 #endif
           end do ! i
 
@@ -92,6 +92,8 @@ CONTAINS
        call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_spin,ierr)
 
        E_exchange = 0.5d0*sum0*dV
+
+       iflag_hybrid = 2
 
     end if
 
