@@ -144,7 +144,7 @@ CONTAINS
     integer :: s
 
     if ( disp_switch_parallel ) then
-       write(*,'(a60," calc_xc(start)")') repeat("-",60)
+       write(*,'(a40," calc_xc(start)")') repeat("-",40)
     end if
 
     if ( .not.allocated(Vxc) ) then
@@ -284,7 +284,7 @@ CONTAINS
     deallocate( rho_tmp )
 
     if ( disp_switch_parallel ) then
-       write(*,'(a60," calc_xc(end)")') repeat("-",60)
+       write(*,'(a40," calc_xc(end)")') repeat("-",40)
     end if
 
   END SUBROUTINE calc_xc

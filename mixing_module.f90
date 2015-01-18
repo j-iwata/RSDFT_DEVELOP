@@ -347,18 +347,18 @@ CONTAINS
        flag_conv = .false.
     end if
 
-    if ( disp_switch ) then
-       if ( MSP == 1 ) then
-          write(*,'(1x,"RSQERR=",g12.5,3x,"VSQERR=",g12.5)') err(1:2)
-          write(40,*) err(1:2)
-       else if ( MSP == 2 ) then
-          write(*,'(1x,"RSQERR=",2g12.5,3x,"VSQERR=",2g12.5)') err(1:4)
-          write(40,'(1x,4g12.5)') err(1:4)
-       else
-          write(*,*) "MSP is invalid: MSP=",MSP
-          stop "stop@parform_mixing"
-       end if
-    end if
+!    if ( disp_switch ) then
+!       if ( MSP == 1 ) then
+!          write(*,'(1x,"RSQERR=",g12.5,3x,"VSQERR=",g12.5)') err(1:2)
+!          write(40,*) err(1:2)
+!       else if ( MSP == 2 ) then
+!          write(*,'(1x,"RSQERR=",2g12.5,3x,"VSQERR=",2g12.5)') err(1:4)
+!          write(40,'(1x,4g12.5)') err(1:4)
+!       else
+!          write(*,*) "MSP is invalid: MSP=",MSP
+!          stop "stop@parform_mixing"
+!       end if
+!    end if
 
     sqerr_out(1:n)     = err(1:n)
     sqerr_out(n+1:2*n) = err(n+1:2*n)

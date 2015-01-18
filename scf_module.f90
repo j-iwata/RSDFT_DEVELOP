@@ -52,6 +52,8 @@ MODULE scf_module
   real(8),allocatable :: esp0(:,:,:)
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
+  real(8) :: time_scf(4)
+  real(8) :: fmax,fmax0
 
 CONTAINS
 
@@ -108,8 +110,9 @@ CONTAINS
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2
     real(8) :: ct0,et0,ct1,et1
-    real(8) :: fmax,fmax0
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
+
+    if ( myrank == 0 ) write(*,*) "------------ SCF START ----------"
 
     flag_end    = .false.
     flag_exit   = .false.
@@ -118,10 +121,12 @@ CONTAINS
     ierr_out    = 0
     fmax0       =-1.d10
 
-    ML01      = ML_1-ML_0+1
-    MSP01     = MSP_1-MSP_0+1
-    ib1       = max(1,nint(Nelectron/2)-20)
-    ib2       = min(nint(Nelectron/2)+80,Nband)
+    time_scf(:) = 0.0d0
+
+    ML01        = ML_1-ML_0+1
+    MSP01       = MSP_1-MSP_0+1
+    ib1         = max(1,nint(Nelectron/2)-20)
+    ib2         = min(nint(Nelectron/2)+80,Nband)
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
                     ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
@@ -134,7 +139,7 @@ CONTAINS
     do iter=1,Diter
 
        if ( disp_switch ) then
-          write(*,'(a40," scf_iter=",i4)') repeat("-",40),iter
+          write(*,'(a60," scf_iter=",i4)') repeat("-",60),iter
        end if
 
        call watch(ct0,et0)
@@ -215,11 +220,14 @@ CONTAINS
        if ( fmax_conv > 0.0d0 ) then
           call get_fmax_force( fmax, ierr )
           if ( ierr == 0 ) then
-             if ( abs(fmax-fmax0) < fmax_conv ) flag_conv_f=.true. 
              if ( disp_switch ) then
                 write(*,*) "fmax=",fmax,fmax-fmax0,flag_conv_f
              end if
-             fmax0 = fmax
+             if ( abs(fmax-fmax0) < fmax_conv ) then
+                flag_conv_f=.true.
+             else
+                fmax0 = fmax
+             end if
           end if
        end if
 
@@ -252,9 +260,13 @@ CONTAINS
           if ( abs(diff_etot_lpot2) < 1.d-10 ) flag_conv=.true.
        end if
 
-       call write_info_scf( ib1, ib2, iter, disp_switch )
+       call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
 
        call watch(ct1,et1)
+       time_scf(1)=ct1-ct0
+       time_scf(2)=et1-et0
+       time_scf(3)=time_scf(3)+time_scf(1)
+       time_scf(4)=time_scf(4)+time_scf(2)
        if ( disp_switch ) write(*,*) "time(scf)",ct1-ct0,et1-et0
 
        call global_watch(.false.,flag_end)
@@ -273,38 +285,60 @@ CONTAINS
 
     end do ! iter
 
-    if ( myrank == 0 ) write(*,*) "------------ SCF result ----------"
-    call write_info_scf( 1, Nband, iter, myrank==0 )
+    if ( myrank == 0 ) then
+       write(*,*) "------------ SCF result ----------"
+       call write_info_total_energy( myrank==0, .true. )
+       call write_info_scf( 1, Nband, iter, myrank==0, 1 )
+    end if
 
     deallocate( esp0 )
 
 !    call end_diff_vrho_scf
 
-    ierr_out = iter
-
-    if ( flag_end ) then
-       ierr_out = -1
-       if ( myrank == 0 ) write(*,*) "time limit !!"
-       return
-    end if
-
     if ( .not.flag_conv ) then
        ierr_out = -2
        if ( myrank == 0 ) write(*,*) "scf not converged"
+    else
+       ierr_out = iter
+       if ( myrank == 0 ) then
+          if ( flag_conv_f ) then
+             write(*,'(A,2(E12.5,1X))') &
+                  " exit SCF loop:  fmax-fmax0, fmaxconv=",fmax-fmax0,fmax_conv
+          else
+             if ( nspin == 1 ) then
+                write(*,'(2(A,1(E12.5,2X)),A,E12.5)') &
+                     " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
+                     " vsqe=",sqerr_out(nspin+1:nspin*2)," scfconv=",scf_conv
+             else
+                write(*,'(2(A,2(E12.5,1X),1X),1X,A,E12.5)') &
+                     " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
+                     " vsqe=",sqerr_out(nspin+1:nspin*2),"scfconv=",scf_conv
+             end if
+          end if
+       end if
+    end if
+
+    if ( flag_end ) then
+       ierr_out = -1
+       if ( myrank == 0 ) write(*,*) "exit SCF loop: time limit"
+       return
     end if
 
     call gather_wf
 
+    if ( myrank == 0 ) write(*,*) "------------ SCF END ----------"
+
   END SUBROUTINE calc_scf
 
 
-  SUBROUTINE write_info_scf( ib1, ib2, iter, disp_switch )
+  SUBROUTINE write_info_scf( ib1, ib2, iter, disp_switch, flag )
     implicit none
-    integer,intent(IN) :: ib1, ib2, iter
+    integer,intent(IN) :: ib1, ib2, iter, flag
     logical,intent(IN) :: disp_switch
-    integer :: s,k,n,nb1,nb2,i,u(3)
-    u(:) = (/ 6, 98, 99 /)
-    do i=1,3
+    integer :: s,k,n,nb1,nb2,i,u(2)
+    u(:) = (/ 6, 99 /)
+    do i=1,2
+       if ( myrank /= 0 ) cycle
        if ( u(i) == 6 ) then
           nb1 = ib1
           nb2 = ib2
@@ -312,10 +346,42 @@ CONTAINS
           nb1 = 1
           nb2 = Nband
        end if
-       if ( u(i) == 6  .and. .not.disp_switch ) cycle
-       if ( u(i) /= 6  .and. myrank /= 0 ) cycle
-       if ( u(i) == 98 .and. myrank == 0 ) rewind 98
-       if ( u(i) == 99 .and. myrank == 0 ) then
+       if ( u(i) == 99 .or. disp_switch ) then
+          write(u(i),'(a4,a6,a20,2a13,1x)') &
+               "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
+          do k=1,Nbzsm
+          do n=nb1,nb2
+             write(u(i),'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+                  ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
+          end do
+          end do
+          write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
+       end if
+       if ( u(i) == 6 .and. flag == 0 ) then
+          if ( NSPIN == 1 ) then
+             write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X))') &
+                  " iter= ",iter,"  rsqerr= ",sqerr_out(1),&
+                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fmax-fmax0
+          else
+             write(u(i), '(A,I4,4(A,2(E12.5,2x)))') &
+                  " iter= ",iter,"  rsqerr= ",sqerr_out(1:2), &
+                  " vsqerr= ",sqerr_out(3:4)," sum_dspin,|dspin|= ", &
+                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fmax-fmax0
+          end if
+       else
+          if ( NSPIN == 1 ) then
+             write(u(i), '(1X,2(A,E12.5,2X),A,2(E14.5,2X))') &
+                  "RSQERR= ",sqerr_out(1),  " VSQERR= ",sqerr_out(2), &
+                  " FM,FM-FM0= ",fmax,fmax-fmax0
+          else
+             write(u(i), '(1X,4(A,2(E12.5,2x)))') &
+                  "RSQERR= ",sqerr_out(1:2)," VSQERR= ",sqerr_out(3:4), &
+                  " sum_DSPIN,|DSPIN|= ",sum_dspin(1:2), &
+                  " FM,FM-FM0= ",fmax,fmax-fmax0
+          end if
+       end if
+       if ( u(i) == 6 .and. .not.disp_switch ) cycle
+       if ( u(i) == 99 ) then
           write(u(i),'("AX", f20.15)') ax
           write(u(i),'("A1",3f20.15)') aa(1:3,1)/ax
           write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
@@ -323,18 +389,11 @@ CONTAINS
           write(u(i),'("VA", f30.15)') Va
           write(u(i),'("NGRID",3i5,i10)') Ngrid(1:3),Ngrid(0)
        end if
-       write(u(i),'("ECUT ",f10.5)') Ecut
-       write(u(i),'("XC",a10)') XCtype
-       write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-       write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
-       write(u(i),'(a4,a6,a20,2a13,1x)') &
-            "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
-       do k=1,Nbzsm
-       do n=nb1,nb2
-          write(u(i),'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
-               ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
-       end do
-       end do
+       if ( u(i) == 99 .or. flag == 1 ) then
+          write(u(i),'(1X,A,f10.5,2x,A,A,2x,A,i4,2x,2(A,f11.5,2X))') &
+               "ECUT=",Ecut,"XC=",XCtype,"ITER=",iter, &
+               "CTIME=",time_scf(3),"ETIME=",time_scf(4)
+       end if
     end do
   END SUBROUTINE write_info_scf
 
