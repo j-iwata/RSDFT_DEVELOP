@@ -15,7 +15,11 @@ MODULE fock_fft_module
   PRIVATE
   PUBLIC :: ct_fock_fft,et_focK_fft, fock_fft_1, fock_fft
 
+#ifdef _DRSDFT_
+  integer,parameter :: TYPE_MAIN=MPI_REAL8
+#else
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+#endif
 
   real(8) :: ct_fock_fft(10),et_fock_fft(10)
 
