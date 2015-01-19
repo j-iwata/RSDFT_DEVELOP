@@ -4,6 +4,7 @@ MODULE xc_hf_module
   use fock_module, only: UpdateWF_fock
   use wf_module, only: unk, occ, hunk, allocate_work_wf
   use parallel_module
+  use watch_module
 
   implicit none
 
@@ -65,7 +66,9 @@ CONTAINS
 
     if ( iflag_hybrid == 1 ) then
 
+       call watcht(disp_switch_parallel,"",0)
        call UpdateWF_fock( SYStype )
+       call watcht(disp_switch_parallel,"UpdateWF_fock",1)
 
        sum0=0.0d0
        do s=MSP_0,MSP_1

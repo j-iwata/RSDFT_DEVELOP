@@ -253,15 +253,116 @@ CONTAINS
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-    do n=MB_0 ,MB_1
-
-       call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
-
-    end do ! n
+#ifdef _DRSDFT_
+       call Fock_2( k,s,ML_0,ML_1 )
+#else
+       do n=MB_0 ,MB_1
+          call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
+       end do ! n
+#endif
     end do ! k
     end do ! s
 
   END SUBROUTINE UpdateWF_fock
+
+
+  SUBROUTINE Fock_2( k,s,n1,n2 )
+    implicit none
+    integer,intent(IN) :: k,s,n1,n2
+#ifdef _DRSDFT_
+    real(8),allocatable :: trho(:),tvht(:)
+#else
+    complex(8),allocatable :: trho(:),tvht(:)
+#endif
+    real(8) :: c
+    integer :: m,n,i
+
+    allocate( trho(n1:n2) ) ; trho=zero
+    allocate( tvht(n1:n2) ) ; tvht=zero
+
+! --- occupied oribitals
+
+    do n=MB_0,MB_1
+
+       if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
+
+       do m=MB_0,n
+
+          if ( abs(occ(m,k,s)) < 1.d-10 ) cycle
+
+          do i=n1,n2
+#ifdef _DRSDFT_
+             trho(i) = unk(i,m,k,s)*unk(i,n,k,s)
+#else   
+             trho(i) = conjg(unk(i,m,k,s))*unk(i,n,k,s)
+#endif
+          end do
+
+          if ( SYStype == 1 ) then
+             call Fock_cg( n1,n2,k,k,trho,tvht,1 )
+          else
+             call Fock_fft(n1,n2,k,k,trho,tvht,1)
+          end if
+
+          c = alpha_hf*(2.0d0*occ_factor)*occ(m,k,s)
+          do i=n1,n2
+             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk(i,m,k,s)
+          end do
+
+          if ( m == n ) cycle
+
+          c = alpha_hf*(2.0d0*occ_factor)*occ(n,k,s)
+          do i=n1,n2
+#ifdef _DRSDFT_
+             hunk(i,m,k,s)=hunk(i,m,k,s)-c*tvht(i)*unk(i,n,k,s)
+#else
+             hunk(i,m,k,s)=hunk(i,m,k,s)-c*conjg(tvht(i))*unk(i,n,k,s)
+#endif
+          end do
+
+       end do ! m
+
+    end do ! n
+
+! --- unoccupied orbitals
+
+    do n=MB_0,MB_1
+
+       if ( abs(occ(n,k,s)) >= 1.d-10 ) cycle
+
+       do m=MB_0,MB_1
+
+          if ( abs(occ(m,k,s)) < 1.d-10 ) cycle
+
+          do i=n1,n2
+#ifdef _DRSDFT_
+             trho(i) = unk(i,m,k,s)*unk(i,n,k,s)
+#else   
+             trho(i) = conjg(unk(i,m,k,s))*unk(i,n,k,s)
+#endif
+          end do
+
+          if ( SYStype == 1 ) then
+             call Fock_cg( n1,n2,k,k,trho,tvht,1 )
+          else
+             call Fock_fft(n1,n2,k,k,trho,tvht,1)
+          end if
+
+          c = alpha_hf*(2.0d0*occ_factor)*occ(m,k,s)
+          do i=n1,n2
+             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk(i,m,k,s)
+          end do
+
+       end do ! m
+
+    end do ! n
+
+    deallocate( tvht ) 
+    deallocate( trho )
+
+    return
+
+  END SUBROUTINE Fock_2
 
 
 END MODULE fock_module
