@@ -1,6 +1,6 @@
 MODULE fock_module
 
-  use xc_hybrid_module, only: occ_hf, unk_hf, VFunk, iflag_hybrid, alpha_hf &
+  use xc_hybrid_module, only: occ_hf, unk_hf, iflag_hybrid, alpha_hf &
                              ,FKMB_0,FKMB_1,FKBZ_0,FKBZ_1,FOCK_0,FOCK_1 &
                              ,occ_factor,gamma_hf
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
@@ -182,7 +182,7 @@ CONTAINS
 
        do ib=ib1,ib2
           do i=n1,n2
-             htpsi(i,ib)=htpsi(i,ib)+alpha_hf*VFunk(i,ib,k,s)
+             htpsi(i,ib)=htpsi(i,ib)+alpha_hf*hunk(i,ib,k,s)
           end do
        end do
 
@@ -203,6 +203,8 @@ CONTAINS
     integer :: s,k,n,m,ierr
 
     if ( present(SYStype_in) ) SYStype = SYStype_in
+
+    if ( disp_switch_parallel ) write(*,*) "UpdateWF_fock"
 
     occ_hf(:,:,:)   = 0.0d0
     unk_hf(:,:,:,:) = zero

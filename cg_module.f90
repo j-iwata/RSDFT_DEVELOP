@@ -10,7 +10,7 @@ MODULE cg_module
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
   use cg_u_module, only: init_cg_u, cg_u
 
-  use wf_module, only: hunk
+  use wf_module, only: hunk, iflag_hunk
 
   implicit none
 
@@ -165,7 +165,7 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       if ( allocated(hunk) ) then
+       if ( iflag_hunk >= 1 ) then
 !$OMP parallel workshare
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
@@ -363,7 +363,7 @@ CONTAINS
                 unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
-             if ( allocated(hunk) ) then
+             if ( iflag_hunk >= 1 ) then
 !$OMP parallel do
                 do i=n1,n2
                    hunk(i,m,k,s)=hxk(i,n)

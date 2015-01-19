@@ -1,7 +1,7 @@
 MODULE subspace_rotv_sl_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk,hunk,workwf
+  use wf_module, only: unk,hunk,iflag_hunk
   use scalapack_module
   use parallel_module
   use subspace_diag_variables
@@ -25,8 +25,8 @@ CONTAINS
   SUBROUTINE subspace_rotv_sl(k,s)
     implicit none
     integer,intent(IN) :: k,s
-    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm
-    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB
+    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,loop
+    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,n_loop
 
     n1  = ML_0
     n2  = ML_1
@@ -38,10 +38,12 @@ CONTAINS
     allocate( utmp(NBLK2,MB_0:MB_1) )
     utmp=zero
 
-    if ( allocated(hunk) ) then
-       allocate( workwf(NBLK2,MB_0:MB_1) )
-       workwf=zero
+    n_loop=1
+    if ( iflag_hunk >= 1 ) then
+       n_loop=2
     end if
+
+    do loop=1,n_loop
 
     do i=1,maxval(ircnt),NBLK2
        i1=n1+i-1
@@ -87,18 +89,20 @@ CONTAINS
 
              if ( ii>0 ) then
 #ifdef _DRSDFT_
-                call dgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
-                     ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
-                if ( allocated(hunk) ) then
+                if ( loop == 1 ) then
+                   call dgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                else if ( loop == 2 ) then
                    call dgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
-                        ,ML0,utmp2(ms,ns),mm,one,workwf(1,ns),NBLK2)
-                endif
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                end if
 #else
-                call zgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
-                     ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
-                if ( allocated(hunk) ) then
+                if ( loop == 1 ) then
+                   call zgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                else if ( loop == 2 ) then
                    call zgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
-                        ,ML0,utmp2(ms,ns),mm,one,workwf(1,ns),NBLK2)
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
                 end if
 #endif
              end if
@@ -111,20 +115,22 @@ CONTAINS
 
        end do ! ns
 
-       if ( ii>0 ) then
+       if ( ii > 0 ) then
+          if ( loop == 1 ) then
 !$OMP parallel workshare
-          unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+             unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
 !$OMP end parallel workshare
-!          if ( allocated(hunk) ) then
-!!$OMP parallel workshare
-!             hunk(i1:i2,MB_0:MB_1,k,s)=workwf(1:ii,MB_0:MB_1)
-!!$OMP end parallel workshare
-!          end if
+          else if ( loop == 2 ) then
+!$OMP parallel workshare
+             hunk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+!$OMP end parallel workshare
+          end if
        end if
 
     end do ! ii
 
-    if ( allocated(workwf) ) deallocate( workwf )
+    end do ! loop
+
     deallocate( utmp )
 
   END SUBROUTINE subspace_rotv_sl

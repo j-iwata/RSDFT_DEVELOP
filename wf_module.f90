@@ -9,7 +9,7 @@ MODULE wf_module
   PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
-           ,hunk, read_wf, iflag_hunk, workwf
+           ,hunk, read_wf, iflag_hunk, workwf, allocate_work_wf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -103,11 +103,7 @@ CONTAINS
 !    call random_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
 !         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
 
-    if ( iwork_wf /= 0 ) then
-       allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
-       hunk=zero
-       iflag_hunk=0
-    end if
+    if ( iwork_wf == 1 ) call allocate_work_wf( iwork_wf )
 
   END SUBROUTINE init_wf
 
@@ -218,6 +214,34 @@ CONTAINS
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
   END SUBROUTINE gather_b_wf
+
+
+  SUBROUTINE allocate_work_wf( iflag )
+    implicit none
+    integer,intent(IN) :: iflag
+
+    iflag_hunk=iflag
+    if ( iwork_wf == 0 ) iflag_hunk=0
+
+    if ( myrank == 0 ) then
+       write(*,*) "---- allocate_work_wf"
+       write(*,*) "iflag,iwork_wf,iflag_hunk=",iflag,iwork_wf
+       write(*,*) "iflag_hunk=",iflag_hunk
+       if ( TYPE_MAIN == MPI_COMPLEX16 ) then
+          write(*,*) "size(hunk)(MB)=",size(hunk)*16.d0/1024.d0**2
+       else if ( TYPE_MAIN == MPI_REAL8 ) then
+          write(*,*) "size(hunk)(MB)=",size(hunk)*8.d0/1024.d0**2
+       end if
+    end if
+    if ( allocated(hunk) ) then
+       if ( myrank == 0 ) write(*,*) "hunk is already allocated"
+       return
+    end if
+
+    allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
+    hunk=zero
+
+  END SUBROUTINE allocate_work_wf
 
 
 END MODULE wf_module

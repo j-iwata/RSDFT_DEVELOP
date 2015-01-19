@@ -88,7 +88,7 @@ CONTAINS
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
-    if ( allocated(hunk) ) then
+    if ( iflag_hunk == 1 ) then
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
           do m=MB_0,MB_1,MB_d

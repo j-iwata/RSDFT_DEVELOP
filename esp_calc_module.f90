@@ -3,7 +3,7 @@ MODULE esp_calc_module
   use hamiltonian_module
   use rgrid_module, only: dV
   use parallel_module
-  use wf_module, only: hunk
+  use wf_module, only: hunk, iflag_hunk
 
   implicit none
 
@@ -30,7 +30,7 @@ CONTAINS
     allocate( hwf(n1:n2,1) ) ; hwf=0.0d0
 
     do n=ns,ne
-       if ( allocated(hunk) ) then
+       if ( iflag_hunk >= 1 ) then
           hwf(:,1)=hunk(:,n,k,s)
        else
           call hamiltonian(k,s,wf(n1,n),hwf,n1,n2,n,n)

@@ -2,7 +2,7 @@ MODULE xc_hf_module
 
   use xc_hybrid_module, only: iflag_hybrid
   use fock_module, only: UpdateWF_fock
-  use wf_module, only: unk, occ, hunk
+  use wf_module, only: unk, occ, hunk, allocate_work_wf
   use parallel_module
 
   implicit none
@@ -33,6 +33,8 @@ CONTAINS
     real(8),intent(IN) :: dV_in
 
     if ( flag_init ) return
+
+    call allocate_work_wf( 2 )
 
     ML_0       = ML_0_in
     ML_1       = ML_1_in
@@ -92,8 +94,6 @@ CONTAINS
        call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_spin,ierr)
 
        E_exchange = 0.5d0*sum0*dV
-
-       iflag_hybrid = 2
 
     end if
 

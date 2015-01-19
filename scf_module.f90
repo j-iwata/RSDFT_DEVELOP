@@ -135,21 +135,24 @@ CONTAINS
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
-!    if ( allocated(hunk) ) then
-!       allocate( workwf2(ML_0:ML_1,MB_d) ) ; workwf2=0.0d0
-!       hunk(:,:,:,:)=0.0d0
-!       do s=MSP_0,MSP_1
-!       do k=MBZ_0,MBZ_1
-!          do m=MB_0,MB_1,MB_d
-!             n=min(m+MB_d-1,MB_1)
-!!             call hamiltonian &
-!!                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
-!          end do
-!       end do
-!       end do
-!       allocate( Vloc0(ML_0:ML_1,MSP_0:MSP_1) ) ; Vloc0=0.0d0
-!       Vloc0(:,:)=Vloc(:,:)
-!    end if
+    if ( iflag_hunk == 1 ) then
+
+       hunk(:,:,:,:)=0.0d0
+
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+          do m=MB_0,MB_1,MB_d
+             n=min(m+MB_d-1,MB_1)
+             call hamiltonian &
+                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+          end do
+       end do
+       end do
+
+       allocate( Vloc0(ML_0:ML_1,MSP_0:MSP_1) ) ; Vloc0=0.0d0
+       Vloc0(:,:)=Vloc(:,:)
+
+    end if
 
     do iter=1,Diter
 
@@ -166,28 +169,35 @@ CONTAINS
 
           call watcht(disp_switch,"",0)
 
-!          if ( allocated(hunk) ) then
-!             do m=MB_0,MB_1,MB_d
-!                n=min(m+MB_d-1,MB_1)
-!                workwf2(:,1:n-m+1)=hunk(:,m:n,k,s)
-!                call hamiltonian &
-!                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
-!                hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf2(:,1:n-m+1)
-!             end do
-!!             do n=MB_0,MB_1
-!!                hunk(:,n,k,s) = hunk(:,n,k,s) &
-!!                     + ( Vloc(:,s)-Vloc0(:,s) )*unk(:,n,k,s)
-!!             end do
-!             Vloc0(:,s)=Vloc(:,s)
-!          end if
+          if ( iflag_hunk == 1 ) then
 
-          call control_xc_hybrid(1)
+             do n=MB_0,MB_1
+                hunk(:,n,k,s) = hunk(:,n,k,s) &
+                     + ( Vloc(:,s)-Vloc0(:,s) )*unk(:,n,k,s)
+             end do
+             Vloc0(:,s)=Vloc(:,s)
+
+          else if ( iflag_hunk == 2 ) then
+
+             call control_xc_hybrid(0)
+
+             allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
+             do m=MB_0,MB_1,MB_d
+                n=min(m+MB_d-1,MB_1)
+                workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
+                call hamiltonian &
+                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
+             end do
+             deallocate( workwf )
+
+          end if
 
           call subspace_diag(k,s)
 
-          call watcht(disp_switch,"diag",1)
-
           call control_xc_hybrid(1)
+
+          call watcht(disp_switch,"diag",1)
 
           do idiag=1,Ndiag
 
@@ -238,8 +248,8 @@ CONTAINS
 ! ---
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
-       call control_xc_hybrid(1)
        call calc_xc
+       call control_xc_hybrid(2)
        call calc_total_energy( .false., disp_switch, .true. )
 ! ---
 

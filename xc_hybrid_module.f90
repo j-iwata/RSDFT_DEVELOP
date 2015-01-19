@@ -191,15 +191,15 @@ CONTAINS
 
     if ( disp_switch ) then
        write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
-       write(*,*) "size(VFunk )(MB)=",mem(2)/1024.d0**2
+!       write(*,*) "size(VFunk )(MB)=",mem(2)/1024.d0**2
     end if
 
     allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
     unk_hf=(0.0d0,0.0d0)
     allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
     occ_hf=0.0d0
-    allocate( VFunk(n1:n2,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-    VFunk=(0.0d0,0.0d0)
+!    allocate( VFunk(n1:n2,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+!    VFunk=(0.0d0,0.0d0)
 
 !
 ! --- Coordinates at reciprocal space in hybrid DFT calculation ---
