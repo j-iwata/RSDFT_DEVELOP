@@ -1,6 +1,6 @@
 MODULE force_sol_module
 
-  use ps_local_module, only: calc_force_ps_local
+  use ps_local_module, only: calc_force_ps_local,calc_force_ps_local_ffte
   use ps_nloc2_module, only: calc_force_ps_nloc2
   use ps_pcc_module, only: flag_pcc_0
   use ps_pcc_force_module, only: calc_ps_pcc_force
