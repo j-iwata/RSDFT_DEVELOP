@@ -227,12 +227,8 @@ CONTAINS
        write(*,*) "---- allocate_work_wf"
        write(*,*) "iflag,iwork_wf,iflag_hunk=",iflag,iwork_wf
        write(*,*) "iflag_hunk=",iflag_hunk
-       if ( TYPE_MAIN == MPI_COMPLEX16 ) then
-          write(*,*) "size(hunk)(MB)=",size(hunk)*16.d0/1024.d0**2
-       else if ( TYPE_MAIN == MPI_REAL8 ) then
-          write(*,*) "size(hunk)(MB)=",size(hunk)*8.d0/1024.d0**2
-       end if
     end if
+
     if ( allocated(hunk) ) then
        if ( myrank == 0 ) write(*,*) "hunk is already allocated"
        return
@@ -240,6 +236,14 @@ CONTAINS
 
     allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
     hunk=zero
+
+    if ( myrank == 0 ) then
+       if ( TYPE_MAIN == MPI_COMPLEX16 ) then
+          write(*,*) "size(hunk)(MB)=",size(hunk)*16.d0/1024.d0**2
+       else if ( TYPE_MAIN == MPI_REAL8 ) then
+          write(*,*) "size(hunk)(MB)=",size(hunk)*8.d0/1024.d0**2
+       end if
+    end if
 
   END SUBROUTINE allocate_work_wf
 

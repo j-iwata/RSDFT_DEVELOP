@@ -3,7 +3,7 @@ MODULE fock_module
   use xc_hybrid_module, only: occ_hf, unk_hf, iflag_hybrid, alpha_hf &
                              ,FKMB_0,FKMB_1,FKBZ_0,FKBZ_1,FOCK_0,FOCK_1 &
                              ,occ_factor,gamma_hf
-  use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
+  use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
   use wf_module, only: unk, occ, hunk
   use fock_fft_module
   use fock_cg_module
@@ -250,11 +250,14 @@ CONTAINS
     end do ! s
 
     hunk(:,:,:,:) = zero
+    ct_fock_fft(:)=0.0d0
+    et_fock_fft(:)=0.0d0
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
 #ifdef _DRSDFT_
-       call Fock_2( k,s,ML_0,ML_1 )
+!       call Fock_2( k,s,ML_0,ML_1 )
+       call Fock_4( k,s,ML_0,ML_1 )
 #else
        do n=MB_0 ,MB_1
           call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
@@ -262,6 +265,14 @@ CONTAINS
 #endif
     end do ! k
     end do ! s
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "time(fock_fft1)=",ct_fock_fft(1),et_fock_fft(1)
+       write(*,*) "time(fock_fft2)=",ct_fock_fft(2),et_fock_fft(2)
+       write(*,*) "time(fock_fft3)=",ct_fock_fft(3),et_fock_fft(3)
+       write(*,*) "time(fock_fft4)=",ct_fock_fft(4),et_fock_fft(4)
+       write(*,*) "time(fock_fft5)=",ct_fock_fft(5),et_fock_fft(5)
+    end if
 
   END SUBROUTINE UpdateWF_fock
 
@@ -363,6 +374,116 @@ CONTAINS
     return
 
   END SUBROUTINE Fock_2
+
+
+  SUBROUTINE Fock_4( k,s,n1,n2 )
+    implicit none
+    integer,intent(IN) :: k,s,n1,n2
+#ifdef _DRSDFT_
+    real(8),allocatable :: trho(:),tvht(:)
+#else
+    complex(8),allocatable :: trho(:),tvht(:)
+#endif
+    real(8) :: c
+    integer :: m,n,i,j,nwork,iwork,ierr
+    integer,allocatable :: mapwork(:,:)
+
+! ---
+
+    nwork=0
+    i=0
+    do n=1,MB
+       do m=1,n
+          if ( abs(occ(n,k,s))<1.d-10 .and. abs(occ(m,k,s))<1.d-10 ) cycle
+          i=i+1
+          j=mod(i-1,np_band)
+          if ( j == myrank_b ) nwork=nwork+1
+       end do
+    end do
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "total # of me    =",i
+       write(*,*) "# of me of rank0 =",nwork
+    end if
+
+    allocate( mapwork(2,nwork) ) ; mapwork=0
+
+    nwork=0
+    i=0
+    do n=1,MB
+       do m=1,n
+          if ( abs(occ(n,k,s))<1.d-10 .and. abs(occ(m,k,s))<1.d-10 ) cycle
+          i=i+1
+          j=mod(i-1,np_band)
+          if ( j == myrank_b ) then
+             nwork=nwork+1
+             mapwork(1,nwork)=m
+             mapwork(2,nwork)=n
+          end if
+       end do
+    end do
+
+! ---
+
+    allocate( trho(n1:n2) ) ; trho=zero
+    allocate( tvht(n1:n2) ) ; tvht=zero
+
+! ---
+
+    do iwork=1,nwork
+
+       m = mapwork(1,iwork)
+       n = mapwork(2,iwork)
+
+       do i=n1,n2
+#ifdef _DRSDFT_
+          trho(i) = unk(i,m,k,s)*unk(i,n,k,s)
+#else   
+          trho(i) = conjg(unk(i,m,k,s))*unk(i,n,k,s)
+#endif
+       end do
+
+       if ( SYStype == 1 ) then
+          call Fock_cg( n1,n2,k,k,trho,tvht,1 )
+       else
+          call Fock_fft( n1,n2,k,k,trho,tvht,1 )
+       end if
+
+       if ( abs(occ(m,k,s)) >= 1.d-10 ) then
+          c = alpha_hf*(2.0d0*occ_factor)*occ(m,k,s)
+          do i=n1,n2
+             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk(i,m,k,s)
+          end do
+       end if
+
+       if ( m == n ) cycle
+
+       if ( abs(occ(n,k,s)) >= 1.d-10 ) then
+          c = alpha_hf*(2.0d0*occ_factor)*occ(n,k,s)
+          do i=n1,n2
+#ifdef _DRSDFT_
+             hunk(i,m,k,s)=hunk(i,m,k,s)-c*tvht(i)*unk(i,n,k,s)
+#else
+             hunk(i,m,k,s)=hunk(i,m,k,s)-c*conjg(tvht(i))*unk(i,n,k,s)
+#endif
+          end do
+       end if
+
+    end do ! iwork
+
+    deallocate( tvht ) 
+    deallocate( trho )
+
+    deallocate( mapwork )
+
+! ---
+
+    call mpi_allreduce( MPI_IN_PLACE,hunk(n1,1,k,s),MB*(n2-n1+1) &
+                       ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
+
+    return
+
+  END SUBROUTINE Fock_4
 
 
 END MODULE fock_module

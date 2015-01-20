@@ -53,6 +53,10 @@ CONTAINS
 
     call mpi_allgatherv(unk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN &
                        ,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    if ( iflag_hunk >= 1 ) then
+       call mpi_allgatherv(hunk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN &
+                          ,hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    end if
 
     deallocate( ir,id )
 

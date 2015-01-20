@@ -50,7 +50,11 @@ CONTAINS
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
 
 #ifdef _FFTE_
+    ct_fock_ffte(:)=0.0d0
+    et_fock_ffte(:)=0.0d0
     call fock_ffte( n1, n2, k, q, trho, tVh, t )
+    ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+    et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
     return
 #endif
 

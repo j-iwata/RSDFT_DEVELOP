@@ -120,6 +120,9 @@ CONTAINS
 
        n=ML0*(ne-ns+1)
        call mpi_bcast(unk(ML_0,ns,k,s),n,TYPE_MAIN,irank_b,comm_band,ierr)
+       if ( iflag_hunk >= 0 ) then
+          call mpi_bcast(hunk(ML_0,ns,k,s),n,TYPE_MAIN,irank_b,comm_band,ierr)
+       end if
 
        if ( ns <= MB-NBAND_BLK ) then
 

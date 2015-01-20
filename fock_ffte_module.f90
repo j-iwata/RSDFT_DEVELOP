@@ -150,6 +150,33 @@ CONTAINS
 !       i3=LGHT(3,i)
 !       zwork2_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)*GGHT(i)
 !    end do
+
+    if ( iflag_hf > 0 .or. iflag_pbe0 > 0 ) then
+       do i3=-NGgrid(3),NGgrid(3)
+          j3=mod(i3+ML3,ML3)
+          if ( j3 < a3b .or. b3b < j3 ) cycle
+       do i2=-NGgrid(2),NGgrid(2)
+          j2=mod(i2+ML2,ML2)
+          if ( j2 < a2b .or. b2b < j2 ) cycle
+       do i1=-NGgrid(1),NGgrid(1)
+          j1=mod(i1+ML1,ML1)
+          g2=(bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3+k_fock(1)-q_fock(1,q,t))**2 &
+            +(bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3+k_fock(2)-q_fock(2,q,t))**2 &
+            +(bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3+k_fock(3)-q_fock(3,q,t))**2
+          if ( g2 < 0.0d0 .or. g2 > Ecut ) cycle
+          j1=mod(i1+ML1,ML1)
+          j2=mod(i2+ML2,ML2)
+          j3=mod(i3+ML3,ML3)
+          if ( g2 <= 1.d-10 ) then
+             zwork2_ffte(j1,j2,j3)=zwork1_ffte(j1,j2,j3)*2.d0*Pi*R_hf**2
+          else
+             zwork2_ffte(j1,j2,j3)=zwork1_ffte(j1,j2,j3)*pi4*(1.d0-cos(sqrt(g2)*R_hf))/g2
+          end if
+       end do
+       end do
+       end do
+    end if
+
     if ( iflag_hse > 0 ) then
        const1 = 0.25d0/(omega*omega)
        const2 = pi/(omega*omega)
@@ -199,6 +226,17 @@ CONTAINS
 !$OMP end parallel do
 
     call watch(ctt(5),ett(5))
+
+    ct_fock_ffte(1) = ctt(1) - ctt(0)
+    et_fock_ffte(1) = ett(1) - ett(0)
+    ct_fock_ffte(2) = ctt(2) - ctt(1)
+    et_fock_ffte(2) = ett(2) - ett(1)
+    ct_fock_ffte(3) = ctt(3) - ctt(2)
+    et_fock_ffte(3) = ett(3) - ett(2)
+    ct_fock_ffte(4) = ctt(4) - ctt(3)
+    et_fock_ffte(4) = ett(4) - ett(3)
+    ct_fock_ffte(5) = ctt(5) - ctt(4)
+    et_fock_ffte(5) = ett(5) - ett(4)
 
 !    if ( disp_switch_parallel ) then
 !       write(*,*) "time(fock_ffte)=",ctt(1)-ctt(0),ett(1)-ett(0)
