@@ -7,7 +7,8 @@ MODULE xc_hybrid_module
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
            ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
-           ,VFunk, unk_hf, occ_hf, occ_factor, npart
+           ,VFunk, unk_hf, occ_hf, occ_factor, npart &
+           ,n_kq_fock, i_kq_fock, kq_fock
 
   integer :: npart
   real(8) :: R_hf ,omega
@@ -38,6 +39,10 @@ MODULE xc_hybrid_module
   integer :: FKBZ_0, FKBZ_1
   integer :: FKMB_0, FKMB_1
   integer :: FOCK_0, FOCK_1
+
+  integer :: n_kq_fock
+  integer,allocatable :: i_kq_fock(:,:,:)
+  real(8),allocatable :: kq_fock(:,:)
 
   logical :: flag_init = .false.
 
@@ -79,13 +84,13 @@ CONTAINS
     character(*),intent(IN) :: XCtype
     logical,intent(IN) :: disp_switch
 
-    integer :: ML0,i,s,k,q,init_num,ierr
+    integer :: ML0,i,s,k,q,init_num,ierr,m,t
     integer,allocatable :: ir(:),id(:)
     real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
     real(8) :: ctime_hf0,ctime_hf1,etime_hf0,etime_hf1
-    real(8) :: Pi
     real(8),parameter :: eps=1.d-5
-    real(8) :: mem(9)
+    real(8) :: mem(9),qtry(3),c,Pi
+    real(8),allocatable :: qtmp(:,:)
 
     if ( flag_init ) return
 
@@ -214,6 +219,54 @@ CONTAINS
        end do
 
        q_fock(:,:,2) = -q_fock(:,:,1)
+
+! ---
+
+       allocate( i_kq_fock(FKBZ_0:FKBZ_1,FKBZ_0:FKBZ_1,2) )
+       i_kq_fock=0
+
+       m=2*(FKBZ_1-FKBZ_0+1)**2
+       allocate( qtmp(3,m) ) ; qtmp=0.0d0
+
+       i=0
+       do k=FKBZ_0,FKBZ_1
+       do q=FKBZ_0,FKBZ_1
+          do t=1,2
+             qtry(1:3)=q_fock(:,k,1)-q_fock(:,q,t)
+             if ( i == 0 ) then
+                i=i+1
+                qtmp(:,i)=qtry(:)
+                i_kq_fock(k,q,t)=i
+             else
+                do s=1,i
+                   c=sum((qtry(:)-qtmp(:,s))**2)
+                   if ( c < 1.d-12 ) then
+                      i_kq_fock(k,q,t)=s
+                      exit
+                   end if
+                end do
+                if ( s > i ) then
+                   i=i+1
+                   qtmp(:,i)=qtry(:)
+                   i_kq_fock(k,q,t)=i
+                end if
+             end if
+          end do ! t
+       end do ! q
+       end do ! k
+
+       n_kq_fock = i
+       allocate( kq_fock(3,n_kq_fock) ) ; kq_fock=0.0d0
+       kq_fock(:,1:s) = qtmp(:,1:s)
+
+       if ( disp_switch ) then
+          write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
+          do i=1,n_kq_fock
+             write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
+          end do
+       end if
+
+       deallocate( qtmp )
 
     end if
 

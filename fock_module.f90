@@ -3,11 +3,13 @@ MODULE fock_module
   use xc_hybrid_module, only: occ_hf, unk_hf, iflag_hybrid, alpha_hf &
                              ,FKMB_0,FKMB_1,FKBZ_0,FKBZ_1,FOCK_0,FOCK_1 &
                              ,occ_factor,gamma_hf
-  use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
+  use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1,MBZ,MBZ_0,MBZ_1 &
+                               ,MSP_0,MSP_1
   use wf_module, only: unk, occ, hunk
   use fock_fft_module
   use fock_cg_module
   use parallel_module
+  use watch_module
 
   implicit none
 
@@ -50,65 +52,53 @@ CONTAINS
     allocate( tvht(n1:n2) ) ; tvht=zero
 
     if ( gamma_hf == 0 ) then
-
+#ifdef _DRSDFT_
+       stop "stop@Fock: This routine is only for COMPLEX16 calculations"
+#else
        do t=FOCK_0,FOCK_1
 
           if ( t == 1 ) then
 
              do q=FKBZ_0,FKBZ_1
+             do m=FKMB_0,FKMB_1
 
-                do m=FKMB_0,FKMB_1
+                if ( abs(occ_hf(m,q,s)) < 1.d-10 ) cycle
 
-                   if ( abs(occ_hf(m,q,s)) < 1.d-10 ) cycle
+                do i=n1,n2
+                   trho(i) = conjg(unk_hf(i,m,q,s))*psi(i)
+                end do ! i
 
-                   c = occ_factor*occ_hf(m,q,s)*alpha_hf
+                call Fock_fft(n1,n2,k,q,trho,tvht,t)
 
-                   do i=n1,n2
-#ifdef _DRSDFT_
-                      trho(i) = unk_hf(i,m,q,s)*psi(i)
-#else   
-                      trho(i) = conjg(unk_hf(i,m,q,s))*psi(i)
-#endif
-                   end do ! i
+                c = occ_factor*occ_hf(m,q,s)*alpha_hf
 
-                   call Fock_fft(n1,n2,k,q,trho,tvht,t)
-!                   call Fock_fft_parallel(n1,n2,k,q,trho,tvht,t)
+                do i=n1,n2
+                   tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
+                end do
 
-                   do i=n1,n2
-                      tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
-                   end do
-
-                end do ! m
-
+             end do ! m
              end do ! q
 
           else ! [ t /= 1 ]
 
              do q=FKBZ_0,FKBZ_1
+             do m=FKMB_0,FKMB_1
 
-                do m=FKMB_0,FKMB_1
+                if ( abs(occ_hf(m,q,s))<1.d-10 ) cycle
 
-                   if ( abs(occ_hf(m,q,s))<1.d-10 ) cycle
+                do i=n1,n2
+                   trho(i)=unk_hf(i,m,q,s)*psi(i)
+                end do
 
-                   c = occ_factor*occ_hf(m,q,s)*alpha_hf
+                call Fock_fft(n1,n2,k,q,trho,tvht,t)
 
-                   do i=n1,n2
-                      trho(i)=unk_hf(i,m,q,s)*psi(i)
-                   end do
+                c = occ_factor*occ_hf(m,q,s)*alpha_hf
 
-                   call Fock_fft(n1,n2,k,q,trho,tvht,t)
-!                   call Fock_fft_parallel(n1,n2,k,q,trho,tvht,t)
+                do i=n1,n2
+                   tpsi(i)=tpsi(i)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
+                end do ! i
 
-                   do i=n1,n2
-#ifdef _DRSDFT_
-                      tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
-#else
-                      tpsi(i)=tpsi(i)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
-#endif
-                   end do ! i
-
-                end do ! m
-
+             end do ! m
              end do ! q
 
           end if ! [ t ]
@@ -119,7 +109,7 @@ CONTAINS
 !       call mpi_allreduce(trho,tpsi,ML0,TYPE_MAIN,mpi_sum,comm_fkmb,ierr)
 !       call mpi_allreduce(tpsi,trho,ML0,TYPE_MAIN,mpi_sum,comm_fkbz,ierr)
 !       call mpi_allreduce(trho,tpsi,ML0,TYPE_MAIN,mpi_sum,comm_fock,ierr)
-
+#endif
     else ! [ gamma_hf /= 0 ]
 
        q = k
@@ -140,7 +130,6 @@ CONTAINS
              call Fock_cg( n1,n2,k,q,trho,tvht,1 )
           else
              call Fock_fft(n1,n2,k,q,trho,tvht,1)
-!            call Fock_fft_parallel(n1,n2,k,q,trho,tvht,1)
           end if
 
           c = alpha_hf*(2.0d0*occ_factor)*occ_hf(m,q,s)
@@ -254,16 +243,19 @@ CONTAINS
     et_fock_fft(:)=0.0d0
 
     do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
-#ifdef _DRSDFT_
-!       call Fock_2( k,s,ML_0,ML_1 )
-       call Fock_4( k,s,ML_0,ML_1 )
-#else
-       do n=MB_0 ,MB_1
-          call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
-       end do ! n
-#endif
-    end do ! k
+       if ( gamma_hf == 1 ) then
+          do k=MBZ_0,MBZ_1
+             !call Fock_2( k,s,ML_0,ML_1 )
+             call Fock_4( k,s,ML_0,ML_1 )
+          end do ! k
+       else
+!          do k=MBZ_0,MBZ_1
+!          do n=MB_0 ,MB_1
+!             call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
+!          end do ! n
+!          end do ! k
+          call Fock_5( s,ML_0,ML_1 )
+       end if
     end do ! s
 
     if ( disp_switch_parallel ) then
@@ -272,6 +264,9 @@ CONTAINS
        write(*,*) "time(fock_fft3)=",ct_fock_fft(3),et_fock_fft(3)
        write(*,*) "time(fock_fft4)=",ct_fock_fft(4),et_fock_fft(4)
        write(*,*) "time(fock_fft5)=",ct_fock_fft(5),et_fock_fft(5)
+       write(*,*) "time(fock_fft6)=",ct_fock_fft(6),et_fock_fft(6)
+       write(*,*) "time(fock_fft7)=",ct_fock_fft(7),et_fock_fft(7)
+       write(*,*) "time(fock_fft8)=",ct_fock_fft(8),et_fock_fft(8)
     end if
 
   END SUBROUTINE UpdateWF_fock
@@ -484,6 +479,178 @@ CONTAINS
     return
 
   END SUBROUTINE Fock_4
+
+
+  SUBROUTINE Fock_5( s,n1,n2 )
+    implicit none
+    integer,intent(IN) :: s,n1,n2
+#ifdef _DRSDFT_
+    stop "stop@Fock_5: This routine is only for COMPLEX16 calculations"
+#else
+    complex(8),allocatable :: trho(:),tvht(:)
+    real(8) :: c,ctt(0:3),ett(0:3)
+    integer :: m,n,q,k,i,j,a,b,nwork,iwork,ierr
+    integer,allocatable :: mapnk(:,:),mapwork(:,:)
+
+    call watch(ctt(0),ett(0))
+
+! ---
+
+    allocate( mapnk(2,MB*MBZ) ) ; mapnk=0
+
+    i=0
+    do k=1,MBZ
+       do n=1,MB
+          i=i+1
+          mapnk(1,i)=n
+          mapnk(2,i)=k
+       end do
+    end do
+
+! ---
+
+    nwork=0
+    a=0
+    do j=1,MB*MBZ
+       do i=1,j
+          m=mapnk(1,i)
+          q=mapnk(2,i)
+          n=mapnk(1,j)
+          k=mapnk(2,j)
+          if ( abs(occ(n,k,s))<1.d-10 .and. abs(occ(m,q,s))<1.d-10 ) cycle
+          a=a+1
+          b=mod(a-1,np_band*np_bzsm)
+          if ( b == myrank_k+myrank_b*np_bzsm ) nwork=nwork+1
+       end do
+    end do
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "total # of me    =",a
+       write(*,*) "# of me of rank0 =",nwork
+    end if
+
+    allocate( mapwork(2,nwork) ) ; mapwork=0
+
+    nwork=0
+    a=0
+    do j=1,MB*MBZ
+       do i=1,j
+          m=mapnk(1,i)
+          q=mapnk(2,i)
+          n=mapnk(1,j)
+          k=mapnk(2,j)
+          if ( abs(occ(n,k,s))<1.d-10 .and. abs(occ(m,q,s))<1.d-10 ) cycle
+          a=a+1
+          b=mod(a-1,np_band*np_bzsm)
+          if ( b == myrank_k+myrank_b*np_bzsm ) then
+             nwork=nwork+1
+             mapwork(1,nwork)=i
+             mapwork(2,nwork)=j
+          end if
+       end do ! i
+    end do ! j
+
+! ---
+
+    allocate( trho(n1:n2) ) ; trho=zero
+    allocate( tvht(n1:n2) ) ; tvht=zero
+
+    call watch(ctt(1),ett(1))
+
+! ---
+
+    do iwork=1,nwork
+
+       a = mapwork(1,iwork)
+       b = mapwork(2,iwork)
+       m = mapnk(1,a)
+       q = mapnk(2,a)
+       n = mapnk(1,b)
+       k = mapnk(2,b)
+
+! - normal part -
+
+       do i=n1,n2
+          trho(i) = conjg(unk_hf(i,m,q,s))*unk_hf(i,n,k,s)
+       end do
+
+       call Fock_fft( n1,n2,k,q,trho,tvht,1 )
+
+       if ( abs(occ(m,q,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ(m,q,s)
+          do i=n1,n2
+             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk_hf(i,m,q,s)
+          end do
+       end if
+
+       if ( a /= b .and. abs(occ(n,k,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ(n,k,s)
+          do i=n1,n2
+             hunk(i,m,q,s)=hunk(i,m,q,s)-c*conjg(tvht(i))*unk_hf(i,n,k,s)
+          end do
+       end if
+
+! - time-reversal part -
+
+       do i=n1,n2
+          trho(i) = unk_hf(i,m,q,s)*unk_hf(i,n,k,s)
+       end do
+
+       call Fock_fft( n1,n2,k,q,trho,tvht,2 )
+
+       if ( abs(occ(m,q,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ(m,q,s)
+          do i=n1,n2
+             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
+          end do
+       end if
+
+       if ( a /= b .and. abs(occ(n,k,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ(n,k,s)
+          do i=n1,n2
+             hunk(i,m,q,s)=hunk(i,m,q,s)-c*tvht(i)*conjg(unk_hf(i,n,k,s))
+          end do
+       end if
+
+    end do ! iwork
+
+    call watch(ctt(2),ett(2))
+
+! ---
+
+    m=size( hunk,1 )*size( hunk,2 )
+    do k=MBZ_0,MBZ_1
+       call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
+                           MPI_SUM, comm_band, ierr )
+    end do
+    m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
+    call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
+                        MPI_SUM, comm_bzsm, ierr )
+
+    call watch(ctt(3),ett(3))
+
+    ct_focK_fft(6) = ctt(1) - ctt(0)
+    et_focK_fft(6) = ett(1) - ett(0)
+    ct_focK_fft(7) = ctt(2) - ctt(1)
+    et_focK_fft(7) = ett(2) - ett(1)
+    ct_focK_fft(8) = ctt(3) - ctt(2)
+    et_focK_fft(8) = ett(3) - ett(2)
+
+! ---
+
+    deallocate( tvht ) 
+    deallocate( trho )
+
+    deallocate( mapwork )
+    deallocate( mapnk )
+
+!    deallocate( hunk_hf )
+
+! ---
+
+    return
+#endif
+  END SUBROUTINE Fock_5
 
 
 END MODULE fock_module

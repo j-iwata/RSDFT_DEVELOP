@@ -229,13 +229,24 @@ CONTAINS
        write(*,*) "iflag_hunk=",iflag_hunk
     end if
 
-    if ( allocated(hunk) ) then
-       if ( myrank == 0 ) write(*,*) "hunk is already allocated"
-       return
+    if ( iflag == 1 ) then
+
+       if ( allocated(hunk) ) then
+          if ( myrank == 0 ) write(*,*) "hunk is already allocated"
+          return
+       end if
+
+       allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
+
+    else if ( iflag == 2 ) then
+
+       if ( allocated(hunk) ) deallocate(hunk)
+
+       allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_WF,MS_0_WF:MS_1_WF) )
+
     end if
 
-    allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
-    hunk=zero
+    hunk(:,:,:,:)=zero
 
     if ( myrank == 0 ) then
        if ( TYPE_MAIN == MPI_COMPLEX16 ) then
