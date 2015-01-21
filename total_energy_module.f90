@@ -22,6 +22,8 @@ MODULE total_energy_module
   PRIVATE
   PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy,diff_etot
 
+  integer :: scf_iter_
+
   real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
@@ -78,6 +80,8 @@ CONTAINS
     Eion = 0.d0
     Fene = 0.d0
     Evdw = 0.d0
+
+    scf_iter_=scf_iter
 
     n1 = ML_0
     n2 = ML_1
@@ -200,7 +204,7 @@ enddo
        deallocate( esp1_Q )
        deallocate( esp0_Q )
 
-    end if
+    end if ! flag_recalc_esp
 #ifdef _SHOWALL_ESP_
 write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
 do s=MSP_0,MSP_1
@@ -341,6 +345,7 @@ enddo
        write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0
        call flush(u(i))
     end do
+    if (myrank==0) write(920,'(I4,12f15.7)') scf_iter_,Etot,Eewald,Ekin,Eloc,Enlc,Eion,E_hartree,Exc,E_exchange,E_correlation,Eeig,Ehwf
   END SUBROUTINE write_info_total_energy
 
 

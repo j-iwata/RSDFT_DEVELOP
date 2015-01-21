@@ -672,6 +672,11 @@ CONTAINS
           end if
           iter_final=ierr
 
+! WARNING: this is not necessary
+! just to check if the total energy is correct
+! after each trial structure
+          call calc_total_energy(.true.,disp_switch,999)
+
           select case(SYStype)
           case default
              call calc_force(Natom,Force)
