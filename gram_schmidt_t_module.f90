@@ -200,7 +200,7 @@ CONTAINS
 #else
              call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
                   ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
-             if ( allocated(hunk) ) then
+             if ( iflag_hunk >= 1 ) then
                 call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,hunk(ML_0,ns,k,s) &
                      ,ML0,utmp2,nn,one,hunk(ML_0,ms,k,s),ML0)
              end if
@@ -261,7 +261,7 @@ CONTAINS
 #else
                    call zgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s) &
                         ,ML0,vtmp,1,one,unk(ML_0,m,k,s),1)
-                   if ( iflag_hunk == 1 ) then
+                   if ( iflag_hunk >= 1 ) then
                       call zgemv(TRANSB,ML0,n-ns+1,one,hunk(ML_0,ns,k,s) &
                            ,ML0,vtmp,1,one,hunk(ML_0,m,k,s),1)
                    end if
