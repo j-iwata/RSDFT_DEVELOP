@@ -54,7 +54,7 @@ MODULE scf_module
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
   real(8) :: time_scf(4)
-  real(8) :: fmax,fmax0
+  real(8) :: fmax,fmax0,fdiff
 
 CONTAINS
 
@@ -121,6 +121,7 @@ CONTAINS
     flag_conv_f = .false.
     ierr_out    = 0
     fmax0       =-1.d10
+    fdiff       =-1.d10
 
     time_scf(:) = 0.0d0
 
@@ -261,11 +262,12 @@ CONTAINS
 
        if ( fmax_conv > 0.0d0 ) then
           call get_fmax_force( fmax, ierr )
+          fdiff=fmax-fmax0
           if ( ierr == 0 ) then
              if ( disp_switch ) then
-                write(*,*) "fmax=",fmax,fmax-fmax0,flag_conv_f
+                write(*,*) "fmax=",fmax,fdiff,flag_conv_f
              end if
-             if ( abs(fmax-fmax0) < fmax_conv ) then
+             if ( abs(fdiff) < fmax_conv ) then
                 flag_conv_f=.true.
              else
                 fmax0 = fmax
@@ -279,7 +281,7 @@ CONTAINS
        end do
 
        call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-                           ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
+            ,Vloc(ML_0,MSP_0), flag_conv_f, flag_conv, disp_switch )
 
        if ( mod(imix,2) == 0 ) then
           call normalize_density
@@ -344,16 +346,16 @@ CONTAINS
        if ( myrank == 0 ) then
           if ( flag_conv_f ) then
              write(*,'(A,2(E12.5,1X))') &
-                  " exit SCF loop:  fmax-fmax0, fmaxconv=",fmax-fmax0,fmax_conv
+                  " exit SCF loop:  fmax-fmax0, fmaxconv= ",fdiff,fmax_conv
           else
              if ( nspin == 1 ) then
                 write(*,'(2(A,1(E12.5,2X)),A,E12.5)') &
                      " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
-                     " vsqe=",sqerr_out(nspin+1:nspin*2)," scfconv=",scf_conv
+                     " vsqe=",sqerr_out(nspin+1:nspin*2)," scfconv= ",scf_conv
              else
                 write(*,'(2(A,2(E12.5,1X),1X),1X,A,E12.5)') &
                      " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
-                     " vsqe=",sqerr_out(nspin+1:nspin*2),"scfconv=",scf_conv
+                     " vsqe=",sqerr_out(nspin+1:nspin*2),"scfconv= ",scf_conv
              end if
           end if
        end if
@@ -402,23 +404,23 @@ CONTAINS
           if ( NSPIN == 1 ) then
              write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X))') &
                   " iter= ",iter,"  rsqerr= ",sqerr_out(1),&
-                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fmax-fmax0
+                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fdiff
           else
              write(u(i), '(A,I4,4(A,2(E12.5,2x)))') &
                   " iter= ",iter,"  rsqerr= ",sqerr_out(1:2), &
                   " vsqerr= ",sqerr_out(3:4)," sum_dspin,|dspin|= ", &
-                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fmax-fmax0
+                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fdiff
           end if
        else
           if ( NSPIN == 1 ) then
              write(u(i), '(1X,2(A,E12.5,2X),A,2(E14.5,2X))') &
                   "RSQERR= ",sqerr_out(1),  " VSQERR= ",sqerr_out(2), &
-                  " FM,FM-FM0= ",fmax,fmax-fmax0
+                  " FM,FM-FM0= ",fmax,fdiff
           else
              write(u(i), '(1X,4(A,2(E12.5,2x)))') &
                   "RSQERR= ",sqerr_out(1:2)," VSQERR= ",sqerr_out(3:4), &
                   " sum_DSPIN,|DSPIN|= ",sum_dspin(1:2), &
-                  " FM,FM-FM0= ",fmax,fmax-fmax0
+                  " FM,FM-FM0= ",fmax,fdiff
           end if
        end if
        if ( u(i) == 6 .and. .not.disp_switch ) cycle

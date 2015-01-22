@@ -179,10 +179,12 @@ CONTAINS
   END SUBROUTINE init_mixing
 
 
-  SUBROUTINE perform_mixing( m, n1, n2, f_io, g_io, flag_conv, disp_sw_in )
+  SUBROUTINE perform_mixing &
+       ( m, n1, n2, f_io, g_io, flag_conv_f, flag_conv, disp_sw_in )
     implicit none
     integer,intent(IN)    :: m,n1,n2
     real(8),intent(INOUT) :: f_io(m,n1:n2),g_io(m,n1:n2)
+    logical,intent(IN)    :: flag_conv_f
     logical,intent(OUT)   :: flag_conv
     logical,optional,intent(IN) :: disp_sw_in
     real(8) :: err0(2),err(2),sum0(2),beta_bak,beta_min,dif_min(2)
@@ -203,7 +205,7 @@ CONTAINS
     call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
 
     call calc_sqerr( ML0, MSP, f, g, flag_conv )
-    if ( flag_conv ) then
+    if ( flag_conv .or. flag_conv_f ) then
        deallocate( g,f )
        return
     end if
