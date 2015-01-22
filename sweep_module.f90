@@ -14,6 +14,7 @@ MODULE sweep_module
   use esp_gather_module
   use watch_module
   use hamiltonian_module
+  use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
 
   implicit none
 
@@ -76,9 +77,11 @@ CONTAINS
     integer,intent(IN)  :: Diter,isw_gs
     integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
-    integer :: iter,s,k,n,m
+    integer :: iter,s,k,n,m,iflag_hybrid
     real(8) :: ct0,et0,ct1,et1
     logical :: flag_exit, flag_end, flag_conv
+
+    if ( disp_switch ) write(*,*) "------------ SWEEP START ----------"
 
     flag_end  = .false.
     flag_exit = .false.
@@ -88,17 +91,46 @@ CONTAINS
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
-    if ( iflag_hunk == 1 ) then
-       do s=MSP_0,MSP_1
-       do k=MBZ_0,MBZ_1
-          do m=MB_0,MB_1,MB_d
-             n=min(m+MB_d-1,MB_1)
-             call hamiltonian &
-                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+    call get_flag_xc_hybrid( iflag_hybrid )
+
+    if ( iflag_hybrid == 0 .or. iflag_hybrid == 1 ) then
+
+       if ( iflag_hunk >= 1 ) then
+          do s=MSP_0,MSP_1
+          do k=MBZ_0,MBZ_1
+             do m=MB_0,MB_1,MB_d
+                n=min(m+MB_d-1,MB_1)
+                call hamiltonian &
+                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+             end do
           end do
-       end do
-       end do
+          end do
+       end if
+
+    else if ( iflag_hybrid == 2 ) then
+
+       if ( iflag_hunk >= 1 ) then
+          call control_xc_hybrid(0)
+          allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
+          do s=MSP_0,MSP_1
+          do k=MBZ_0,MBZ_1
+             do m=MB_0,MB_1,MB_d
+                n=min(m+MB_d-1,MB_1)
+                workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
+                call hamiltonian &
+                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
+             end do ! m
+          end do ! k
+          end do ! s
+          deallocate( workwf )
+       end if
+
+       call control_xc_hybrid(1)
+
     end if
+
+    call calc_with_rhoIN_total_energy( .false., Echk )
 
     do iter=1,Diter
 
@@ -163,6 +195,8 @@ CONTAINS
 
     call gather_wf
 
+    if ( disp_switch ) write(*,*) "------------ SWEEP END ----------"
+
   END SUBROUTINE calc_sweep
 
 
@@ -182,7 +216,6 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: iter
     logical,intent(OUT) :: flag_conv
-    if ( iter == 1 ) Echk0=0.0d0
     flag_conv=.false.
     if ( abs(Echk-Echk0) < tol_Echk ) flag_conv=.true.
   END SUBROUTINE conv_check_1

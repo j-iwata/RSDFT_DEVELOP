@@ -5,7 +5,7 @@ MODULE scf_module
   use electron_module
   use localpot_module
   use mixing_module
-  use xc_hybrid_module
+  use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use xc_module
   use hartree_variables, only: Vh
   use hartree_module, only: calc_hartree
@@ -109,7 +109,7 @@ CONTAINS
     integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
     integer :: iter,s,k,n,m,ierr,idiag
-    integer :: ML01,MSP01,ib1,ib2
+    integer :: ML01,MSP01,ib1,ib2,iflag_hybrid
     real(8) :: ct0,et0,ct1,et1
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
 
@@ -179,17 +179,20 @@ CONTAINS
 
           else if ( iflag_hunk == 2 ) then
 
-             call control_xc_hybrid(0)
+             call get_flag_xc_hybrid( iflag_hybrid )
 
-             allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
-             do m=MB_0,MB_1,MB_d
-                n=min(m+MB_d-1,MB_1)
-                workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
-                call hamiltonian &
-                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
-                hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
-             end do
-             deallocate( workwf )
+             if ( iflag_hybrid == 2 ) then
+                call control_xc_hybrid(0)
+                allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
+                do m=MB_0,MB_1,MB_d
+                   n=min(m+MB_d-1,MB_1)
+                   workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
+                   call hamiltonian &
+                        (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                   hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
+                end do
+                deallocate( workwf )
+             end if
 
           end if
 
@@ -249,7 +252,6 @@ CONTAINS
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
        call calc_xc
-       call control_xc_hybrid(2)
        call calc_total_energy( .false., disp_switch, .true. )
 ! ---
 

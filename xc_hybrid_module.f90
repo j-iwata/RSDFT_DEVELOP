@@ -4,6 +4,7 @@ MODULE xc_hybrid_module
 
   PRIVATE
   PUBLIC :: read_xc_hybrid, init_xc_hybrid, control_xc_hybrid &
+           ,get_flag_xc_hybrid &
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
            ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
@@ -354,6 +355,13 @@ CONTAINS
        iflag_hybrid = ictrl
     end if
   END SUBROUTINE control_xc_hybrid
+
+
+  SUBROUTINE get_flag_xc_hybrid( iflag )
+    implicit none
+    integer,intent(OUT) :: iflag
+    iflag = iflag_hybrid
+  END SUBROUTINE get_flag_xc_hybrid
 
 
 END MODULE xc_hybrid_module
