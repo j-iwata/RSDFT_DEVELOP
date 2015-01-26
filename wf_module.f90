@@ -9,7 +9,8 @@ MODULE wf_module
   PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
-           ,hunk, read_wf, iflag_hunk, workwf, allocate_work_wf
+           ,hunk, read_wf, iflag_hunk, workwf &
+           ,allocate_work_wf, deallocate_work_wf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -231,10 +232,7 @@ CONTAINS
 
     if ( iflag == 1 ) then
 
-       if ( allocated(hunk) ) then
-          if ( myrank == 0 ) write(*,*) "hunk is already allocated"
-          return
-       end if
+       if ( allocated(hunk) ) deallocate(hunk)
 
        allocate( hunk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
 
@@ -257,6 +255,12 @@ CONTAINS
     end if
 
   END SUBROUTINE allocate_work_wf
+
+
+  SUBROUTINE deallocate_work_wf
+    implicit none
+    if ( allocated(hunk) ) deallocate(hunk)
+  END SUBROUTINE deallocate_work_wf
 
 
 END MODULE wf_module

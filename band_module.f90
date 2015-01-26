@@ -113,10 +113,16 @@ CONTAINS
        write(*,*) "sum(ir_k),nktrj=",sum(ir_k),nktrj
     end if
 
+! ---
+
+    if ( iflag_hunk == 0 ) call deallocate_work_wf
+
     if ( MB < mb_band ) then
        call modify_mb
        call modify_arraysize
     end if
+
+! ---
 
     allocate( esp0_tmp(MB,0:np_bzsm-1,MSP)   ) ; esp0_tmp=0.d0
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
