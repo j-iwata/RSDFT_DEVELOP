@@ -98,6 +98,8 @@ MODS1 = simc_module.o\
         gram_schmidt_t_module.o \
         gram_schmidt_module.o \
         vdw_grimme_module.o \
+        fock_parallel_module.o \
+        xc_hybrid_io_module.o \
         xc_hybrid_module.o \
         fock_ffte_module.o \
         fock_fft_module.o \
@@ -125,6 +127,8 @@ MODS1 = simc_module.o\
         mixing_broyden_module.o \
         mixing_module.o \
         esp_gather_module.o \
+        io_read_module.o \
+        io_write_module.o \
         io2_module.o \
         io_module.o \
         force_sol_module.o \

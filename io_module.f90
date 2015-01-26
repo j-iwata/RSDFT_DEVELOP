@@ -14,6 +14,8 @@ MODULE io_module
   use kinetic_module, only: SYStype
 
   use io2_module
+  use io_read_module
+  use io_write_module
 
   implicit none
 
@@ -58,7 +60,7 @@ CONTAINS
     integer :: i
     character(6) :: cbuf,ckey
     IC  = 0
-    OC  = 3
+    OC  = 0
     OC2 = 100
     IO_ctrl = 0
     if ( rank == 0 ) then
@@ -128,7 +130,7 @@ CONTAINS
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
 
-    if ( OC2<1 .or. OC<1 .or. OC>5 ) return
+    if ( OC2 < 1 .or. OC < 1 .or. OC > 13 ) return
 
     icount=icount+1
     if ( .not.(flag .or. icount==OC2) ) return
@@ -189,7 +191,7 @@ CONTAINS
 ! --- density and potentials ---
 !
 
-    if ( OC==2 .or. OC==3 .or. OC==5 ) then
+    if ( OC == 2 .or. OC == 3 .or. OC == 5 .or. OC == 13 ) then
 
        allocate( rtmp(ML) )
 
@@ -306,9 +308,15 @@ CONTAINS
 !
 ! --- Wave function ---
 !
+    
 
-    if ( OC==1 .or. OC==3 .or. OC==4 .or. OC==5 ) then
+    if ( OC == 1  .or. OC == 3 .or. OC == 4 .or. OC == 5 .or. &
+         OC == 11 .or. OC == 13 ) then
 
+       call simple_wf_io_write &
+            ( file_wf1, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
+
+goto 100
        if (DISP_SWITCH) then
           select case(OC)
 #ifdef _DRSDFT_
@@ -335,7 +343,11 @@ CONTAINS
        if ( myrank==0 ) then
           open(1,file=file_wf1,form="unformatted")
           write(1) ML,ML1,ML2,ML3
-          write(1) MB,MBwr1,MBwr2
+          if ( OC > 10 ) then
+             write(1) MB,MBwr1,MBwr2,MBZ,MSP
+          else
+             write(1) MB,MBwr1,MBwr2
+          end if
           write(1) LL2(:,:)
           write(1) occ(:,:,:)
        end if
@@ -460,6 +472,7 @@ CONTAINS
 
        if ( allocated(utmpSP) ) deallocate( utmpSP )
        deallocate( utmp )
+100 continue
 
     end if
 
@@ -491,7 +504,7 @@ CONTAINS
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
 
-    if ( IC<=0 ) return
+    if ( IC <= 0 ) return
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -550,7 +563,7 @@ CONTAINS
 !
 ! --- Read VRHO ---
 !
-    if ( IC==2 .or. IC==3 .or. IC==5 .or. IC==6 ) then
+    if ( IC==2 .or. IC==3 .or. IC==5 .or. IC==6 .or. IC==13 ) then
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
@@ -688,6 +701,12 @@ CONTAINS
 !
 ! --- Read WF ---
 !
+
+    if ( IC == 2 ) return
+
+    call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+
+goto 100
 
     if ( IC == 6 ) then
        if ( allocated(LL_tmp) ) deallocate(LL_tmp)
@@ -1019,6 +1038,8 @@ CONTAINS
        end if
 
     end if
+
+100 continue
 
     deallocate( LL_tmp )
     deallocate( LL2 )
