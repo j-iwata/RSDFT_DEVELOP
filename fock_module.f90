@@ -8,6 +8,7 @@ MODULE fock_module
   use wf_module, only: unk, occ, hunk
   use fock_fft_module
   use fock_cg_module
+  use fock_parallel_module
   use parallel_module
   use watch_module
 
@@ -258,7 +259,10 @@ CONTAINS
        end if
     end do ! s
 
+    iflag_hybrid = 2
+
     if ( disp_switch_parallel ) then
+       write(*,'(1x,"iflag_hybrid=",i2)') iflag_hybrid
        write(*,*) "time(fock_fft1)=",ct_fock_fft(1),et_fock_fft(1)
        write(*,*) "time(fock_fft2)=",ct_fock_fft(2),et_fock_fft(2)
        write(*,*) "time(fock_fft3)=",ct_fock_fft(3),et_fock_fft(3)
@@ -517,7 +521,7 @@ CONTAINS
           q=mapnk(2,i)
           n=mapnk(1,j)
           k=mapnk(2,j)
-          if ( abs(occ(n,k,s))<1.d-10 .and. abs(occ(m,q,s))<1.d-10 ) cycle
+          if ( abs(occ_hf(n,k,s))<1.d-10 .and. abs(occ_hf(m,q,s))<1.d-10 ) cycle
           a=a+1
           b=mod(a-1,np_band*np_bzsm)
           if ( b == myrank_k+myrank_b*np_bzsm ) nwork=nwork+1
@@ -539,7 +543,7 @@ CONTAINS
           q=mapnk(2,i)
           n=mapnk(1,j)
           k=mapnk(2,j)
-          if ( abs(occ(n,k,s))<1.d-10 .and. abs(occ(m,q,s))<1.d-10 ) cycle
+          if ( abs(occ_hf(n,k,s))<1.d-10 .and. abs(occ_hf(m,q,s))<1.d-10 ) cycle
           a=a+1
           b=mod(a-1,np_band*np_bzsm)
           if ( b == myrank_k+myrank_b*np_bzsm ) then
@@ -576,15 +580,15 @@ CONTAINS
 
        call Fock_fft( n1,n2,k,q,trho,tvht,1 )
 
-       if ( abs(occ(m,q,s)) >= 1.d-10 ) then
-          c = alpha_hf*occ_factor*occ(m,q,s)
+       if ( abs(occ_hf(m,q,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ_hf(m,q,s)
           do i=n1,n2
              hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk_hf(i,m,q,s)
           end do
        end if
 
-       if ( a /= b .and. abs(occ(n,k,s)) >= 1.d-10 ) then
-          c = alpha_hf*occ_factor*occ(n,k,s)
+       if ( a /= b .and. abs(occ_hf(n,k,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ_hf(n,k,s)
           do i=n1,n2
              hunk(i,m,q,s)=hunk(i,m,q,s)-c*conjg(tvht(i))*unk_hf(i,n,k,s)
           end do
@@ -598,15 +602,15 @@ CONTAINS
 
        call Fock_fft( n1,n2,k,q,trho,tvht,2 )
 
-       if ( abs(occ(m,q,s)) >= 1.d-10 ) then
-          c = alpha_hf*occ_factor*occ(m,q,s)
+       if ( abs(occ_hf(m,q,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ_hf(m,q,s)
           do i=n1,n2
              hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
           end do
        end if
 
-       if ( a /= b .and. abs(occ(n,k,s)) >= 1.d-10 ) then
-          c = alpha_hf*occ_factor*occ(n,k,s)
+       if ( a /= b .and. abs(occ_hf(n,k,s)) >= 1.d-10 ) then
+          c = alpha_hf*occ_factor*occ_hf(n,k,s)
           do i=n1,n2
              hunk(i,m,q,s)=hunk(i,m,q,s)-c*tvht(i)*conjg(unk_hf(i,n,k,s))
           end do
@@ -618,14 +622,18 @@ CONTAINS
 
 ! ---
 
-    m=size( hunk,1 )*size( hunk,2 )
-    do k=MBZ_0,MBZ_1
-       call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
-                           MPI_SUM, comm_band, ierr )
-    end do
+!    m=size( hunk,1 )*size( hunk,2 )
+!    do k=MBZ_0,MBZ_1
+!       call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
+!                           MPI_SUM, comm_band, ierr )
+!    end do
+!    m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
+!    call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
+!                        MPI_SUM, comm_bzsm, ierr )
+
     m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
     call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
-                        MPI_SUM, comm_bzsm, ierr )
+                        MPI_SUM, comm_fock, ierr )
 
     call watch(ctt(3),ett(3))
 

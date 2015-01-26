@@ -98,12 +98,6 @@ CONTAINS
 
        E_exchange = 0.5d0*sum0*dV
 
-       iflag_hybrid = 2
-
-       if ( disp_switch_parallel ) then
-          write(*,'(1x,"iflag_hybrid=",i2)') iflag_hybrid
-       end if
-
     end if
 
     Ex = E_exchange
