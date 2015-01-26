@@ -226,8 +226,7 @@ CONTAINS
 
     if ( myrank == 0 ) then
        write(*,*) "---- allocate_work_wf"
-       write(*,*) "iflag,iwork_wf,iflag_hunk=",iflag,iwork_wf
-       write(*,*) "iflag_hunk=",iflag_hunk
+       write(*,*) "iflag,iwork_wf,iflag_hunk=",iflag,iwork_wf,iflag_hunk
     end if
 
     if ( iflag == 1 ) then

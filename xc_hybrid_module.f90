@@ -196,6 +196,7 @@ CONTAINS
 ! --- temp ---
 !
 
+    FKBZ   = MBZ
     FKBZ_0 = 1
     FKBZ_1 = MBZ
     FKMMBZ = MMBZ

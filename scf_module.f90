@@ -109,7 +109,7 @@ CONTAINS
     integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
     integer :: iter,s,k,n,m,ierr,idiag
-    integer :: ML01,MSP01,ib1,ib2,iflag_hybrid
+    integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     real(8) :: ct0,et0,ct1,et1
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
 
@@ -165,10 +165,14 @@ CONTAINS
 
        esp0=esp
 
+       call get_flag_xc_hybrid( iflag_hybrid_0 )
+
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
           call watcht(disp_switch,"",0)
+
+          call control_xc_hybrid( iflag_hybrid_0 )
 
           if ( iflag_hunk == 1 ) then
 
