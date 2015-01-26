@@ -1,5 +1,8 @@
 MODULE xc_hybrid_module
 
+  use xc_hybrid_io_module
+  use fock_parallel_module
+
   implicit none
 
   PRIVATE
@@ -34,11 +37,12 @@ MODULE xc_hybrid_module
   real(8),allocatable :: occ_hf(:,:,:)
   real(8) :: occ_factor
 
+  real(8),allocatable :: kbb_hf(:,:)
   real(8),allocatable :: q_fock(:,:,:)
 
   integer :: gamma_hf
-  integer :: FKBZ_0, FKBZ_1
-  integer :: FKMB_0, FKMB_1
+  integer :: FKBZ,FKBZ_0,FKBZ_1,FKMMBZ
+  integer :: FKMB,FKMB_0,FKMB_1
   integer :: FOCK_0, FOCK_1
 
   integer :: n_kq_fock
@@ -47,16 +51,21 @@ MODULE xc_hybrid_module
 
   logical :: flag_init = .false.
 
+  integer :: IC, IO_ctrl
+  character(30) :: file_wf2="wf.dat1"
+
 CONTAINS
 
 
   SUBROUTINE read_xc_hybrid( rank, unit )
     implicit none
     integer,intent(IN) :: rank,unit
-    character(2) :: cbuf,ckey
+    character(6) :: cbuf,ckey
     integer :: i,ierr
     include 'mpif.h'
     omega=0.0d0
+    IC=0
+    IO_ctrl=0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -65,22 +74,32 @@ CONTAINS
           if ( ckey == "HF" ) then
              backspace(unit)
              read(unit,*) cbuf,omega
+          else if ( ckey == "IC" ) then
+             backspace(unit)
+             read(unit,*) cbuf,IC
+          else if ( ckey == "IOCTRL" ) then
+             backspace(unit)
+             read(unit,*) cbuf,IO_ctrl
           end if
        end do
 999    continue
        if ( omega == 0.0d0 ) omega=0.2d0/0.529177d0 ! (HSE06)
        write(*,*) "----- Parameters for Hybrid_XC -----"
        write(*,*) "HSE Screening parameter: omega =",omega
+       write(*,*) "IC, IO_ctrl =",IC,IO_ctrl
     end if
-    call mpi_bcast(omega,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(omega  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(IC     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(IO_ctrl,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE read_xc_hybrid
 
 
-  SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ, MBZ, MBZ_0,MBZ_1 &
-       ,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell, SYStype, XCtype, disp_switch )
+  SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
+       , MBZ,MBZ_0,MBZ_1, MSP,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell &
+       , SYStype, XCtype, disp_switch )
     implicit none
     integer,intent(IN) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
-    integer,intent(IN) :: MSP_0, MSP_1, MB_0, MB_1
+    integer,intent(IN) :: MSP, MSP_0, MSP_1, MB_0, MB_1
     real(8),intent(IN) :: Ntot, kbb(:,:), bb(3,3), Vcell
     character(*),intent(IN) :: XCtype
     logical,intent(IN) :: disp_switch
@@ -90,7 +109,7 @@ CONTAINS
     real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
     real(8) :: ctime_hf0,ctime_hf1,etime_hf0,etime_hf1
     real(8),parameter :: eps=1.d-5
-    real(8) :: mem(9),qtry(3),c,Pi
+    real(8) :: mem(9),qtry(3),c,Pi,k_fock(3)
     real(8),allocatable :: qtmp(:,:)
 
     if ( flag_init ) return
@@ -111,24 +130,20 @@ CONTAINS
     iflag_hse    = 0
     iflag_pbe0   = 0
     iflag_lcwpbe = 0
-    iflag_hybrid   = 0
+    iflag_hybrid = 0
 
     select case( XCtype )
     case( "HF" )
        iflag_hf     = 1
-       iflag_hybrid = 0
        alpha_hf     = 1.0d0
     case( "HSE" )
        iflag_hse    = 1
-       iflag_hybrid = 0
        alpha_hf     = 0.25d0
     case( "PBE0" )
        iflag_pbe0   = 1
-       iflag_hybrid = 0
        alpha_hf     = 0.25d0
     case( "LCwPBE" )
        iflag_lcwpbe = 1
-       iflag_hybrid = 0
        alpha_hf     = 1.0d0
     case default
        return
@@ -183,6 +198,7 @@ CONTAINS
 
     FKBZ_0 = 1
     FKBZ_1 = MBZ
+    FKMMBZ = MMBZ
     FKMB_0 = 1
     FKMB_1 = MB
     FOCK_0 = 1
@@ -192,20 +208,47 @@ CONTAINS
 ! --- allocate ---
 !
 
-    mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1)*(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
-    mem(2)=byte*(n2-n1+1)*(MB_1-MB_0+1)*(MBZ_1-MBZ_0+1)*(MSP_1-MSP_0+1)
+    if ( IC == 0 ) then
 
-    if ( disp_switch ) then
-       write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
-!       write(*,*) "size(VFunk )(MB)=",mem(2)/1024.d0**2
+       mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1) &
+            *(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
+       !mem(2)=byte*(n2-n1+1)*(MB_1-MB_0+1) &
+       !     *(MBZ_1-MBZ_0+1)*(MSP_1-MSP_0+1)
+
+       if ( disp_switch ) then
+          write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
+          !write(*,*) "size(VFunk )(MB)=",mem(2)/1024.d0**2
+       end if
+
+       allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
+       unk_hf=(0.0d0,0.0d0)
+       allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP) )
+       occ_hf=0.0d0
+       !allocate( VFunk(n1:n2,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+       !VFunk=(0.0d0,0.0d0)
+
+    else if ( IC > 0 ) then
+
+       call read_xc_hybrid_io( file_wf2, SYStype, IO_ctrl, disp_switch &
+            ,n1,n2, MSP_0,MSP_1, unk_hf, occ_hf, kbb_hf &
+            ,FKMB,FKMB_0,FKMB_1,FKBZ,FKBZ_0,FKBZ_1,FKMMBZ )
+
     end if
 
-    allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
-    unk_hf=(0.0d0,0.0d0)
-    allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
-    occ_hf=0.0d0
-!    allocate( VFunk(n1:n2,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-!    VFunk=(0.0d0,0.0d0)
+! ---
+
+    if ( .not.allocated(kbb_hf) ) then
+
+       allocate( kbb_hf(3,FKBZ_0:FKBZ_1) ) ; kbb_hf=0.0d0
+       kbb_hf(1:3,FKBZ_0:FKBZ_1)=kbb(1:3,FKBZ_0:FKBZ_1)
+
+    else
+
+       do k=FKBZ_0,FKBZ_1
+          if ( disp_switch ) write(*,'(1x,i4,3f20.15)') k,kbb_hf(1:3,k)
+       end do
+
+    end if
 
 !
 ! --- Coordinates at reciprocal space in hybrid DFT calculation ---
@@ -216,51 +259,99 @@ CONTAINS
        allocate( q_fock(3,FKBZ_0:FKBZ_1,2) ) ; q_fock=0.0d0
 
        do q=FKBZ_0,FKBZ_1
-          q_fock(:,q,1)=bb(:,1)*kbb(1,q)+bb(:,2)*kbb(2,q)+bb(:,3)*kbb(3,q)
+          q_fock(:,q,1) = bb(:,1)*kbb_hf(1,q) &
+                        + bb(:,2)*kbb_hf(2,q) &
+                        + bb(:,3)*kbb_hf(3,q)
        end do
 
        q_fock(:,:,2) = -q_fock(:,:,1)
 
 ! ---
 
-       allocate( i_kq_fock(FKBZ_0:FKBZ_1,FKBZ_0:FKBZ_1,2) )
-       i_kq_fock=0
+       if ( FKBZ == MBZ ) then
 
-       m=2*(FKBZ_1-FKBZ_0+1)**2
-       allocate( qtmp(3,m) ) ; qtmp=0.0d0
+          allocate( i_kq_fock(FKBZ_0:FKBZ_1,FKBZ_0:FKBZ_1,2) )
+          i_kq_fock=0
 
-       i=0
-       do k=FKBZ_0,FKBZ_1
-       do q=FKBZ_0,FKBZ_1
-          do t=1,2
-             qtry(1:3)=q_fock(:,k,1)-q_fock(:,q,t)
-             if ( i == 0 ) then
-                i=i+1
-                qtmp(:,i)=qtry(:)
-                i_kq_fock(k,q,t)=i
-             else
-                do s=1,i
-                   c=sum((qtry(:)-qtmp(:,s))**2)
-                   if ( c < 1.d-12 ) then
-                      i_kq_fock(k,q,t)=s
-                      exit
-                   end if
-                end do
-                if ( s > i ) then
+          m=2*(FKBZ_1-FKBZ_0+1)**2
+          allocate( qtmp(3,m) ) ; qtmp=0.0d0
+
+          i=0
+          do k=FKBZ_0,FKBZ_1
+          do q=FKBZ_0,FKBZ_1
+             do t=1,2
+                qtry(1:3)=q_fock(:,k,1)-q_fock(:,q,t)
+                if ( i == 0 ) then
                    i=i+1
                    qtmp(:,i)=qtry(:)
                    i_kq_fock(k,q,t)=i
+                else
+                   do s=1,i
+                      c=sum((qtry(:)-qtmp(:,s))**2)
+                      if ( c < 1.d-12 ) then
+                         i_kq_fock(k,q,t)=s
+                         exit
+                      end if
+                   end do
+                   if ( s > i ) then
+                      i=i+1
+                      qtmp(:,i)=qtry(:)
+                      i_kq_fock(k,q,t)=i
+                   end if
                 end if
-             end if
-          end do ! t
-       end do ! q
-       end do ! k
+             end do ! t
+          end do ! q
+          end do ! k
+
+       else if ( FKBZ /= MBZ ) then
+
+          allocate( i_kq_fock(MBZ_0:MBZ_1,FKBZ_0:FKBZ_1,2) )
+          i_kq_fock=0
+
+          m=2*(MBZ_1-MBZ_0+1)*(FKBZ_1-FKBZ_0+1)
+          allocate( qtmp(3,m) ) ; qtmp=0.0d0
+
+          i=0
+          do k=MBZ_0 ,MBZ_1
+             k_fock(:)=bb(:,1)*kbb(1,k)+bb(:,2)*kbb(2,k)+bb(:,3)*kbb(3,k)
+          do q=FKBZ_0,FKBZ_1
+             do t=1,2
+                qtry(1:3)=k_fock(:)-q_fock(:,q,t)
+                if ( i == 0 ) then
+                   i=i+1
+                   qtmp(:,i)=qtry(:)
+                   i_kq_fock(k,q,t)=i
+                else
+                   do s=1,i
+                      c=sum((qtry(:)-qtmp(:,s))**2)
+                      if ( c < 1.d-12 ) then
+                         i_kq_fock(k,q,t)=s
+                         exit
+                      end if
+                   end do
+                   if ( s > i ) then
+                      i=i+1
+                      qtmp(:,i)=qtry(:)
+                      i_kq_fock(k,q,t)=i
+                   end if
+                end if
+             end do ! t
+          end do ! q
+          end do ! k
+
+          if ( FKBZ /= MBZ ) then
+             iflag_hybrid = 3
+             if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
+          end if
+
+       end if
 
        n_kq_fock = i
        allocate( kq_fock(3,n_kq_fock) ) ; kq_fock=0.0d0
        kq_fock(:,1:s) = qtmp(:,1:s)
 
        if ( disp_switch ) then
+          write(*,*) "n_kq_fock",n_kq_fock,s,i
           write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
           do i=1,n_kq_fock
              write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
@@ -279,7 +370,7 @@ CONTAINS
 
        if ( iflag_hf /= 0 .or. iflag_pbe0 /= 0 .or. iflag_lcwpbe /= 0 ) then
 
-          R_hf = ( 0.75d0*abs(Vcell)*MMBZ/Pi )**(1.0d0/3.0d0)
+          R_hf = ( 0.75d0*abs(Vcell)*FKMMBZ/Pi )**(1.0d0/3.0d0)
 
           if ( disp_switch ) then
              write(*,*) "Truncation cutoff of 1/r (Ang.) =",R_hf*0.529177d0
@@ -334,6 +425,12 @@ CONTAINS
 !       write(*,*) "Best time of divided MPI_Allgatherv (s) =",best_time
     end if
 
+! ---
+
+    call init_fock_parallel
+
+! ---
+
     if ( disp_switch ) then
        write(*,'(a40, " init_xc_hybrid(end)")') repeat("-",40)
     end if
@@ -348,6 +445,7 @@ CONTAINS
   SUBROUTINE control_xc_hybrid( ictrl )
     implicit none
     integer,intent(IN) :: ictrl
+    if ( iflag_hybrid == 3 ) return
     if ( iflag_hf   == 0 .and. iflag_hse    == 0 .and. &
          iflag_pbe0 == 0 .and. iflag_lcwpbe == 0 ) then
        iflag_hybrid = 0

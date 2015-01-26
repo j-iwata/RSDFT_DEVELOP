@@ -218,7 +218,7 @@ PROGRAM Real_Space_Solid
   call read_xc_hybrid( myrank, 1 )
 
   call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
-       , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
+       , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP, MSP_0, MSP_1, MB_0, MB_1 &
        , kbb, bb, Va, SYStype, XCtype, disp_switch )
 
 !-------------------- Hamiltonian Test
@@ -323,6 +323,7 @@ PROGRAM Real_Space_Solid
 
   if ( GetParam_IO(1) == 1 .or. GetParam_IO(1) >= 3 ) then
      call control_xc_hybrid(1)
+     if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
   end if
 
 ! ---
