@@ -93,7 +93,8 @@ CONTAINS
 
     call get_flag_xc_hybrid( iflag_hybrid )
 
-    if ( iflag_hybrid == 0 .or. iflag_hybrid == 1 ) then
+    select case( iflag_hybrid )
+    case(0,1,3)
 
        if ( iflag_hunk >= 1 ) then
           do s=MSP_0,MSP_1
@@ -107,7 +108,7 @@ CONTAINS
           end do
        end if
 
-    else if ( iflag_hybrid == 2 ) then
+    case( 2 )
 
        if ( iflag_hunk >= 1 ) then
           call control_xc_hybrid(0)
@@ -128,7 +129,7 @@ CONTAINS
 
        call control_xc_hybrid(1)
 
-    end if
+    end select
 
     call calc_with_rhoIN_total_energy( .false., Echk )
 
