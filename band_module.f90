@@ -136,6 +136,8 @@ CONTAINS
     allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
     allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) ) ; unk0=0.d0
 
+! ---
+
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
        open(unit_band_dedk,file="band_dedk")
@@ -155,6 +157,8 @@ CONTAINS
           open(unit_band_ovlp,file=file_ovlp)
        end if
     end if
+
+! ---
 
     iktrj_0 = id_k(myrank_k)+1
     iktrj_1 = id_k(myrank_k)+ir_k(myrank_k)
@@ -202,7 +206,7 @@ CONTAINS
 
        if ( iflag_hybrid > 0 ) then
           if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
-          call prep_kq_xc_hybrid(Nbzsm,MBZ_0,MBZ_1,kbb,bb,disp_switch)
+          call prep_kq_xc_hybrid(Nbzsm,MBZ_0,MBZ_0,kbb,bb,disp_switch)
           call init_fock_ffte
        end if
 
