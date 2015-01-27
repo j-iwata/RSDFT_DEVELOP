@@ -26,6 +26,8 @@ MODULE band_module
   use ps_nloc2_module, only: prep_uvk_ps_nloc2, prep_rvk_ps_nloc2
   use ps_nloc3_module, only: prep_ps_nloc3, init_ps_nloc3
   use io_module, only: Init_IO
+  use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
+  use fock_ffte_module, only: init_fock_ffte
   
   implicit none
 
@@ -67,6 +69,8 @@ CONTAINS
     if ( MBV < 1 .or. mb_band < MBV ) MBV=1
     if ( disp_switch_parallel ) write(*,*) "MBV=",MBV
 
+! ---
+
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1
 
@@ -92,6 +96,8 @@ CONTAINS
           write(*,'(1x,i4,2x,3f15.10,2x,3f15.10)') k,ktrj(1:6,k)
        end do
     end if
+
+! ---
 
     allocate( ir_k(0:np_bzsm-1),id_k(0:np_bzsm-1) )
     id_k(:)=0
@@ -194,7 +200,17 @@ CONTAINS
           call prep_ps_nloc3
        end select
 
+       if ( iflag_hybrid > 0 ) then
+          if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
+          call prep_kq_xc_hybrid(Nbzsm,MBZ_0,MBZ_1,kbb,bb,disp_switch)
+          call init_fock_ffte
+       end if
+
+! --- sweep ---
+
        call calc_sweep( Diter_band, iswitch_gs, ierr, disp_switch )
+
+! ---
 
        if ( ierr == -1 ) then
           if ( myrank == 0 ) write(*,*) "etime limit !!!"

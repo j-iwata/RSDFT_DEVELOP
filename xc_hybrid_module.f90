@@ -12,7 +12,7 @@ MODULE xc_hybrid_module
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
            ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
            ,VFunk, unk_hf, occ_hf, occ_factor, npart &
-           ,n_kq_fock, i_kq_fock, kq_fock
+           ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
 
   integer :: npart
   real(8) :: R_hf ,omega
@@ -177,22 +177,6 @@ CONTAINS
     end if
 
 !
-! --- Switch of hybrid DFT calculation on Gamma-point ---
-!
-
-    gamma_hf = 0
-
-    if ( MMBZ == 1 .and. all(kbb(:,1)==0.0d0)  ) then
-
-       gamma_hf = 1
-
-       if ( disp_switch ) then      
-          write(*,*) "Hybrid DFT calculation on Gamma-point"
-       end if
-
-    end if
-
-!
 ! --- temp ---
 !
 
@@ -267,99 +251,23 @@ CONTAINS
 
        q_fock(:,:,2) = -q_fock(:,:,1)
 
-! ---
+       call prep_kq_xc_hybrid( MBZ, MBZ_0, MBZ_1, kbb, bb, disp_switch )
 
-       if ( FKBZ == MBZ ) then
+    end if
 
-          allocate( i_kq_fock(FKBZ_0:FKBZ_1,FKBZ_0:FKBZ_1,2) )
-          i_kq_fock=0
+!
+! --- Switch of hybrid DFT calculation on Gamma-point ---
+!
 
-          m=2*(FKBZ_1-FKBZ_0+1)**2
-          allocate( qtmp(3,m) ) ; qtmp=0.0d0
+    gamma_hf = 0
 
-          i=0
-          do k=FKBZ_0,FKBZ_1
-          do q=FKBZ_0,FKBZ_1
-             do t=1,2
-                qtry(1:3)=q_fock(:,k,1)-q_fock(:,q,t)
-                if ( i == 0 ) then
-                   i=i+1
-                   qtmp(:,i)=qtry(:)
-                   i_kq_fock(k,q,t)=i
-                else
-                   do s=1,i
-                      c=sum((qtry(:)-qtmp(:,s))**2)
-                      if ( c < 1.d-12 ) then
-                         i_kq_fock(k,q,t)=s
-                         exit
-                      end if
-                   end do
-                   if ( s > i ) then
-                      i=i+1
-                      qtmp(:,i)=qtry(:)
-                      i_kq_fock(k,q,t)=i
-                   end if
-                end if
-             end do ! t
-          end do ! q
-          end do ! k
+    if ( FKMMBZ == 1 .and. all(kbb(:,1)==0.0d0)  ) then
 
-       else if ( FKBZ /= MBZ ) then
+       gamma_hf = 1
 
-          allocate( i_kq_fock(MBZ_0:MBZ_1,FKBZ_0:FKBZ_1,2) )
-          i_kq_fock=0
-
-          m=2*(MBZ_1-MBZ_0+1)*(FKBZ_1-FKBZ_0+1)
-          allocate( qtmp(3,m) ) ; qtmp=0.0d0
-
-          i=0
-          do k=MBZ_0 ,MBZ_1
-             k_fock(:)=bb(:,1)*kbb(1,k)+bb(:,2)*kbb(2,k)+bb(:,3)*kbb(3,k)
-          do q=FKBZ_0,FKBZ_1
-             do t=1,2
-                qtry(1:3)=k_fock(:)-q_fock(:,q,t)
-                if ( i == 0 ) then
-                   i=i+1
-                   qtmp(:,i)=qtry(:)
-                   i_kq_fock(k,q,t)=i
-                else
-                   do s=1,i
-                      c=sum((qtry(:)-qtmp(:,s))**2)
-                      if ( c < 1.d-12 ) then
-                         i_kq_fock(k,q,t)=s
-                         exit
-                      end if
-                   end do
-                   if ( s > i ) then
-                      i=i+1
-                      qtmp(:,i)=qtry(:)
-                      i_kq_fock(k,q,t)=i
-                   end if
-                end if
-             end do ! t
-          end do ! q
-          end do ! k
-
-          if ( FKBZ /= MBZ ) then
-             iflag_hybrid = 3
-             if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
-          end if
-
+       if ( disp_switch ) then      
+          write(*,*) "Hybrid DFT calculation on Gamma-point"
        end if
-
-       n_kq_fock = i
-       allocate( kq_fock(3,n_kq_fock) ) ; kq_fock=0.0d0
-       kq_fock(:,1:s) = qtmp(:,1:s)
-
-       if ( disp_switch ) then
-          write(*,*) "n_kq_fock",n_kq_fock,s,i
-          write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
-          do i=1,n_kq_fock
-             write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
-          end do
-       end if
-
-       deallocate( qtmp )
 
     end if
 
@@ -461,6 +369,111 @@ CONTAINS
     integer,intent(OUT) :: iflag
     iflag = iflag_hybrid
   END SUBROUTINE get_flag_xc_hybrid
+
+
+  SUBROUTINE prep_kq_xc_hybrid( MBZ, MBZ_0, MBZ_1, kbb, bb, disp_switch )
+    implicit none
+    integer,intent(IN) :: MBZ,MBZ_0,MBZ_1
+    real(8),intent(IN) :: kbb(3,MBZ), bb(3,3)
+    logical,intent(IN) :: disp_switch
+    integer :: m,i,k,q,t,s
+    real(8) :: qtry(3),k_fock(3),c
+    real(8),allocatable :: qtmp(:,:)
+
+    if ( allocated(i_kq_fock) ) deallocate( i_kq_fock )
+    if ( allocated(kq_fock) ) deallocate( kq_fock )
+
+    if ( FKBZ == MBZ ) then
+
+       allocate( i_kq_fock(FKBZ_0:FKBZ_1,FKBZ_0:FKBZ_1,2) )
+       i_kq_fock=0
+
+       m=2*(FKBZ_1-FKBZ_0+1)**2
+       allocate( qtmp(3,m) ) ; qtmp=0.0d0
+
+       i=0
+       do k=FKBZ_0,FKBZ_1
+       do q=FKBZ_0,FKBZ_1
+          do t=1,2
+             qtry(1:3)=q_fock(:,k,1)-q_fock(:,q,t)
+             if ( i == 0 ) then
+                i=i+1
+                qtmp(:,i)=qtry(:)
+                i_kq_fock(k,q,t)=i
+             else
+                do s=1,i
+                   c=sum((qtry(:)-qtmp(:,s))**2)
+                   if ( c < 1.d-12 ) then
+                      i_kq_fock(k,q,t)=s
+                      exit
+                   end if
+                end do
+                if ( s > i ) then
+                   i=i+1
+                   qtmp(:,i)=qtry(:)
+                   i_kq_fock(k,q,t)=i
+                end if
+             end if
+          end do ! t
+       end do ! q
+       end do ! k
+
+    else if ( FKBZ /= MBZ ) then
+
+       allocate( i_kq_fock(MBZ_0:MBZ_1,FKBZ_0:FKBZ_1,2) )
+       i_kq_fock=0
+
+       m=2*(MBZ_1-MBZ_0+1)*(FKBZ_1-FKBZ_0+1)
+       allocate( qtmp(3,m) ) ; qtmp=0.0d0
+
+       i=0
+       do k=MBZ_0 ,MBZ_1
+          k_fock(:)=bb(:,1)*kbb(1,k)+bb(:,2)*kbb(2,k)+bb(:,3)*kbb(3,k)
+       do q=FKBZ_0,FKBZ_1
+          do t=1,2
+             qtry(1:3)=k_fock(:)-q_fock(:,q,t)
+             if ( i == 0 ) then
+                i=i+1
+                qtmp(:,i)=qtry(:)
+                i_kq_fock(k,q,t)=i
+             else
+                do s=1,i
+                   c=sum((qtry(:)-qtmp(:,s))**2)
+                   if ( c < 1.d-12 ) then
+                      i_kq_fock(k,q,t)=s
+                      exit
+                   end if
+                end do
+                if ( s > i ) then
+                   i=i+1
+                   qtmp(:,i)=qtry(:)
+                   i_kq_fock(k,q,t)=i
+                end if
+             end if
+          end do ! t
+       end do ! q
+       end do ! k
+
+       iflag_hybrid = 3
+       if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
+
+    end if
+
+    n_kq_fock = i
+    allocate( kq_fock(3,n_kq_fock) ) ; kq_fock=0.0d0
+    kq_fock(:,1:s) = qtmp(:,1:s)
+
+    if ( disp_switch ) then
+       write(*,*) "n_kq_fock",n_kq_fock,s,i
+       write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
+       do i=1,n_kq_fock
+          write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
+       end do
+    end if
+
+    deallocate( qtmp )
+
+  END SUBROUTINE prep_kq_xc_hybrid
 
 
 END MODULE xc_hybrid_module

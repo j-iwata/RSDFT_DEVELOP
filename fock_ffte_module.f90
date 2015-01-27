@@ -15,7 +15,7 @@ MODULE fock_ffte_module
   implicit none
 
   PRIVATE
-  PUBLIC :: ct_fock_ffte,et_fock_ffte, fock_ffte
+  PUBLIC :: ct_fock_ffte,et_fock_ffte, fock_ffte, init_fock_ffte
 
   real(8) :: ct_fock_ffte(10),et_fock_ffte(10)
 
@@ -32,7 +32,6 @@ CONTAINS
     implicit none
     integer :: n,i,i1,i2,i3,j1,j2,j3,a2b,b2b,a3b,b3b
     real(8) :: g2,pi
-    if ( .not.first_time ) return
     pi  = acos(-1.0d0)
     a2b = Igrid(1,2)
     b2b = Igrid(2,2)
@@ -48,6 +47,9 @@ CONTAINS
           n=n+1
        end if
     end do ! i
+    if ( allocated(GGHT) ) deallocate( GGHT )
+    if ( allocated(GXYZ) ) deallocate( GXYZ )
+    if ( allocated(LGHT) ) deallocate( LGHT )
     allocate( LGHT(3,n) ) ; LGHT=0
     allocate( GXYZ(3,n) ) ; GXYZ=0.0d0
     allocate( GGHT(n,n_kq_fock) ) ; GGHT=0.0d0
@@ -136,8 +138,7 @@ CONTAINS
     ab1 = (b1b-a1b+1)
     ab12= (b1b-a1b+1)*(b2b-a2b+1)
 
-    call init_fock_ffte
-
+    if ( first_time ) call init_fock_ffte
     if ( first_time ) then
        call construct_Ggrid(0)
        n=0
