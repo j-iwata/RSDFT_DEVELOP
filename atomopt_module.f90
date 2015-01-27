@@ -943,7 +943,11 @@ CONTAINS
        write(unit,'("A1",3f20.15)') aa_org(1:3,1)
        write(unit,'("A2",3f20.15)') aa_org(1:3,2)
        write(unit,'("A3",3f20.15)') aa_org(1:3,3)
-       write(unit,'("AA")')
+       if ( atom_format == 1 ) then
+          write(unit,'("AA")')
+       else if ( atom_format == 2 ) then
+          write(unit,'("XYZ")')
+       end if
        write(unit,*) Nelement,Natom,zn_atom(1:Nelement), " /"
        return
     end if
@@ -951,19 +955,43 @@ CONTAINS
     select case( SYStype )
     case default
 
-       do a=1,Natom
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),md_atom(a)
-       end do
+       if ( atom_format == 1 ) then
+
+          do a=1,Natom
+             write(unit,'(1x,i5,3f20.12,i4)') &
+                  ki_atom(a),aa_atom(:,a),md_atom(a)
+          end do
+
+       else if ( atom_format == 2 ) then
+
+          aa_org(:,:)=ax_org*aa_org(:,:)
+          do a=1,Natom
+             vtmp(:) = matmul( aa_org,aa_atom(:,a) )
+             write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
+          end do
+
+       end if
 
     case( 1 )
 
-       aa_org(:,:)=ax_org*aa_org(:,:)
-       call calc_bb(aa_org,bb_tmp)
-       aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
-       do a=1,Natom
-          vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
-       end do
+       if ( atom_format == 1 ) then
+
+          aa_org(:,:)=ax_org*aa_org(:,:)
+          call calc_bb(aa_org,bb_tmp)
+          aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
+          do a=1,Natom
+             vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
+             write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
+          end do
+
+       else if ( atom_format == 2 ) then
+
+          do a=1,Natom
+             write(unit,'(1x,i5,3f20.12,i4)') &
+                  ki_atom(a),aa_atom(:,a),md_atom(a)
+          end do
+
+       end if
 
     end select
 

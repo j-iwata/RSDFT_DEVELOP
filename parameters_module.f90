@@ -10,7 +10,6 @@ MODULE parameters_module
 
   integer,parameter :: unit=1, unit_atom=970
 
-  integer :: atom_format
   integer :: param_format=0
 
   integer :: Diter, Ndiag
@@ -41,7 +40,7 @@ CONTAINS
 
   SUBROUTINE read_keywordformat_parameters
     implicit none
-    integer :: i
+    integer :: i,iformat
     character(7) :: label,cbuf,ckey
     real(8) :: Ratom(3),ax_tmp,aa_tmp(3,3)
 
@@ -118,19 +117,22 @@ CONTAINS
        write(*,*) "iswitch_test=",iswitch_test
     end if
 
-    atom_format = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
           read(unit,*,END=980) cbuf
           call convert_capital(cbuf,ckey)
           if ( ckey(1:3) == "XYZ" ) then
-             atom_format = 1
-             write(*,*) "atom_format=",atom_format,ckey(1:3)
+             atom_format = 2
              exit
           end if
        end do
 980    continue
+       if ( atom_format == 1 ) then
+          write(*,*) "atomic coordinates are assumed as lattice format"
+       else if ( atom_format == 2 ) then
+          write(*,*) "atomic coordinates are assumed as XYZ format"
+       end if
     end if
 
     call send_parameters(0)
@@ -138,7 +140,7 @@ CONTAINS
     call read_atomopt(myrank,unit)
 
     if ( SYStype == 1 ) then
-       if ( atom_format == 0 ) then
+       if ( atom_format == 1 ) then
           aa=ax*aa
           do i=1,Natom
              Ratom(1:3) = matmul( aa, aa_atom(:,i) )
@@ -157,7 +159,7 @@ CONTAINS
           call write_info("aa & aa_atom are modified")
        end if
     else if ( SYStype == 0 ) then
-       if ( atom_format == 1 ) then
+       if ( atom_format == 2 ) then
           call construct_bb(aa)
           bb(:,:)=transpose(bb(:,:))/(ax*2.0d0*acos(-1.0d0))
           do i=1,Natom

@@ -3,11 +3,13 @@ MODULE atom_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom
+  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom &
+           ,atom_format
 
   integer :: Natom, Nelement
   integer,allocatable :: ki_atom(:), zn_atom(:), md_atom(:)
   real(8),allocatable :: aa_atom(:,:)
+  integer :: atom_format
 
 CONTAINS
 
@@ -15,13 +17,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     real(8),intent(INOUT) :: ax,aa(3,3)
-    integer :: i,iflag_format,idummy(10)
+    integer :: i,iflag_latvec,idummy(10)
     character(3) :: cbuf,ckey
     ax=0.0d0
     aa=0.0d0
     idummy=0
+    atom_format=0
+    iflag_latvec=0
     if ( rank == 0 ) then
-       iflag_format = 0
        rewind unit
        do i=1,10000
           read(unit,*,END=999) cbuf
@@ -29,35 +32,41 @@ CONTAINS
           if ( ckey(1:2) == "AX" ) then
              backspace(unit)
              read(unit,*) cbuf,ax
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:2) == "A1" ) then
              backspace(unit)
              read(unit,*) cbuf,aa(1:3,1)
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:2) == "A2" ) then
              backspace(unit)
              read(unit,*) cbuf,aa(1:3,2)
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:2) == "A3" ) then
              backspace(unit)
              read(unit,*) cbuf,aa(1:3,3)
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:3) == "XYZ" ) then
-             iflag_format=2
+             atom_format=2
              exit
           else if ( ckey(1:2) == "AA" ) then
+             atom_format=1
              exit
           end if
        end do
 999    continue
-       if ( iflag_format == 0 ) then
+       if ( iflag_latvec == 0 .and. atom_format == 0 ) then
           rewind unit
-       else
-          write(*,*) "iflag_format=",iflag_format
+       else if ( iflag_latvec == 1 ) then
           write(*,*) "ax=",ax
           write(*,'(1x,"a1=",3f20.15)') aa(1:3,1)
           write(*,'(1x,"a2=",3f20.15)') aa(1:3,2)
           write(*,'(1x,"a3=",3f20.15)') aa(1:3,3)
+       end if
+       if ( atom_format == 0 .or. atom_format == 1 ) then
+          write(*,*) "Lattice coordinates are assumed"
+          atom_format=1
+       else if ( atom_format == 2 ) then
+          write(*,*) "XYZ coordinates are assumed"
        end if
        read(unit,*) Nelement,Natom, idummy(1:Nelement)
        write(*,*) "Nelment,Natom=",Nelement,Natom
@@ -110,6 +119,7 @@ CONTAINS
     call mpi_bcast(Nelement,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(ax,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(aa,9,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(atom_format,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_1
 
   SUBROUTINE send_atom_2(myrank)
