@@ -172,7 +172,7 @@ CONTAINS
 
        do ib=ib1,ib2
           do i=n1,n2
-             htpsi(i,ib)=htpsi(i,ib)+alpha_hf*hunk(i,ib,k,s)
+             htpsi(i,ib)=htpsi(i,ib)+hunk(i,ib,k,s)
           end do
        end do
 

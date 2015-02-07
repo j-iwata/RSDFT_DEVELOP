@@ -222,9 +222,6 @@ CONTAINS
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
 
-       call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
-                       ,MB_0,MB_1, SYStype, dV )
-
        if ( .not.allocated(Vx) ) then
           allocate( Vx(ML_0:ML_1,MSP_0:MSP_1) ) ; Vx=0.0d0
        end if
@@ -232,6 +229,9 @@ CONTAINS
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation, Vx )
 
        if ( iflag_hybrid /= 0 ) then
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
 
           call calc_xc_hf( E_exchange_exx )
 
