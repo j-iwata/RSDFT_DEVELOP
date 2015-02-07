@@ -1084,7 +1084,7 @@ CONTAINS
 
     call watch(ctt(9),ett(9))
 
-    if ( myrank == 0 ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force_local_ffte2)=",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force_local_ffte3)=",ctt(3)-ctt(2),ett(3)-ett(2)
