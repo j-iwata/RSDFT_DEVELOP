@@ -389,14 +389,14 @@ CONTAINS
     deallocate( hpk,hxk )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
   END SUBROUTINE conjugate_gradient_1
@@ -682,14 +682,14 @@ CONTAINS
     deallocate( hpk,hxk )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
   END SUBROUTINE conjugate_gradient_1

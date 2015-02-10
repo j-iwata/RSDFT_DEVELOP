@@ -110,7 +110,7 @@ CONTAINS
     logical,intent(IN) :: disp_switch
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
-    real(8) :: ct0,et0,ct1,et1
+    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3)
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
 
     if ( myrank == 0 ) write(*,*) "------------ SCF START ----------"
@@ -167,10 +167,11 @@ CONTAINS
 
        call get_flag_xc_hybrid( iflag_hybrid_0 )
 
+       ct(:)=0.0d0
+       et(:)=0.0d0
+
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
-
-          call watcht(disp_switch,"",0)
 
           call control_xc_hybrid( iflag_hybrid_0 )
 
@@ -201,42 +202,51 @@ CONTAINS
 
           end if
 
+          call watchs(ct(0),et(0),0)
+
           call subspace_diag(k,s)
+
+          call watchs(ct(0),et(0),1)
 
           call control_xc_hybrid(1)
 
-          call watcht(disp_switch,"diag",1)
-
           do idiag=1,Ndiag
 
-             if ( disp_switch ) then
+             if ( Ndiag > 1 .and. disp_switch ) then
                 write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
              end if
 
-             call watcht(disp_switch,"",0)
+             call watchs(ct(1),et(1),0)
 
              call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
                                     ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
 
-             call watcht(disp_switch,"cg  ",1)
+             call watchs(ct(1),et(1),1)
 
              call gram_schmidt(1,Nband,k,s)
 
-             call watcht(disp_switch,"gs  ",1)
+             call watchs(ct(2),et(2),1)
 
              if ( second_diag == 1 .or. idiag < Ndiag ) then
                 call subspace_diag(k,s)
-                call watcht(disp_switch,"diag",1)
              else if ( second_diag == 2 .and. idiag == Ndiag ) then
                 call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
                              ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
-                call watcht(disp_switch,"esp_calc",1)
              end if
+
+             call watchs(ct(3),et(3),1)
 
           end do ! idiag
 
        end do ! k
        end do ! s
+
+       if ( disp_switch ) then
+          write(*,*) "time(diag)    =",ct(0),et(0)
+          write(*,*) "time(cg)      =",ct(1),et(1)
+          write(*,*) "time(gs)      =",ct(2),et(2)
+          write(*,*) "time(esp/diag)=",ct(3),et(3)
+       end if
 
        call watcht(disp_switch,"    ",0)
 

@@ -78,7 +78,7 @@ CONTAINS
     integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
     integer :: iter,s,k,n,m,iflag_hybrid
-    real(8) :: ct0,et0,ct1,et1
+    real(8) :: ct0,et0,ct1,et1,ct(0:2),et(0:2)
     logical :: flag_exit, flag_end, flag_conv
 
     if ( disp_switch ) write(*,*) "------------ SWEEP START ----------"
@@ -141,20 +141,29 @@ CONTAINS
 
        call watch(ct0,et0)
 
+       ct(:)=0.0d0
+       et(:)=0.0d0
+
        Echk0=Echk
        esp0 =esp
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
-          call watcht(disp_switch,"",0)
+          call watchs(ct(0),et(0),0)
           call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,isw_gs &
                                  ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-          call watcht(disp_switch,"cg",1)
+          call watchs(ct(0),et(0),1)
           call gram_schmidt(1,Nband,k,s)
-          call watcht(disp_switch,"gs",1)
+          call watchs(ct(1),et(1),1)
           call subspace_diag(k,s)
-          call watcht(disp_switch,"diag",1)
+          call watchs(ct(2),et(2),1)
        end do
        end do
+
+       if ( disp_switch ) then
+          write(*,*) "time(diag)=",ct(0),et(0)
+          write(*,*) "time(cg)  =",ct(1),et(1)
+          write(*,*) "time(gs)  =",ct(2),et(2)
+       end if
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 

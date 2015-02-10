@@ -88,10 +88,10 @@ CONTAINS
     select case( iswitch_cgpc )
     case( 0 )
     case( 1 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_1 ---"
+!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_1 ---"
        if ( mloop == 0 ) mloop=3
     case( 2 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_2 ---"
+!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_2 ---"
        call init_cgpc_2( mloop, SYStype )
     case( 3 )
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
