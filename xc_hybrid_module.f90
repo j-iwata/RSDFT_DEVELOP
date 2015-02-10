@@ -461,10 +461,10 @@ CONTAINS
 
     n_kq_fock = i
     allocate( kq_fock(3,n_kq_fock) ) ; kq_fock=0.0d0
-    kq_fock(:,1:s) = qtmp(:,1:s)
+    kq_fock(:,1:n_kq_fock) = qtmp(:,1:n_kq_fock)
 
     if ( disp_switch ) then
-       write(*,*) "n_kq_fock",n_kq_fock,s,i
+       write(*,*) "n_kq_fock",n_kq_fock
        write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
        do i=1,n_kq_fock
           write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
