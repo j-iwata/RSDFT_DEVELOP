@@ -41,10 +41,19 @@ CONTAINS
              read(unit,*) cbuf,kinteg
           else if ( ckey(1:6) == "SETOCC" ) then
              backspace(unit)
-             read(unit,*) cbuf,n1,n2,setocc(1:n2-n1+1)
-             nsetocc=n2-n1+1
-             isetocc(1)=n1
-             isetocc(2)=n2
+             read(unit,*) cbuf,n1,n2,setocc(nsetocc+1:nsetocc+n2-n1+1)
+             nsetocc=nsetocc+n2-n1+1
+             if ( all( isetocc(:) == 0 ) ) then
+                isetocc(1)=n1
+                isetocc(2)=n2
+             else
+                if ( isetocc(1) /= n1 .or. isetocc(2) /= n2 ) then
+                   write(*,*) "isetocc(:) are different !!!"
+                   write(*,*) "isetocc(:)=",isetocc(:)
+                   write(*,*) " /= n1,n2 =",n1,n2
+                   stop "stop@read_fermi"
+                end if
+             end if
           end if
        end do
 999    continue
@@ -90,7 +99,7 @@ CONTAINS
     real(8),intent(IN)  :: esp(MB,MBZ,MSP),wbz(MBZ),znel,dspn
     real(8),intent(OUT) :: occ(MB,MBZ,MSP)
     real(8) :: ef1,ef2,ef,ef0
-    integer :: ib,id,n,k,s,efconv
+    integer :: ib,id,n,k,s,efconv,nn
     real(8) :: zne,octmp,ff,xx
     real(8),parameter :: eps=0.d0
     integer,parameter :: mxcycl=1000
@@ -99,12 +108,13 @@ CONTAINS
        mb1=1
        mb2=MB
        occ(:,:,:)=0.0d0
+       nn=nsetocc/MSP
        do s=1,MSP
        do k=1,MBZ
           do n=1,isetocc(1)-1
              occ(n,k,s)=1.0d0
           end do
-          occ(isetocc(1):isetocc(2),k,s) = setocc(1:nsetocc)
+          occ(isetocc(1):isetocc(2),k,s) = setocc(1+nn*(s-1):nn+nn*(s-1))
        end do
        end do
        ef=maxval( esp(isetocc(2),1:MBZ,1:MSP) )
