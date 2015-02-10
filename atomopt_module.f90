@@ -173,7 +173,7 @@ CONTAINS
        Fmax=sqrt(Fmax)
 
        Etot_save = 0.d0
-       dif       = Etot - Etot_save
+       dif       = 0.0d0
 
        nhist                = 1
        Etot_hist(nhist)     = Etot
@@ -274,6 +274,8 @@ CONTAINS
           gamma=0.d0
           if ( icy>1 .and. disp_switch_loc ) then
              write(*,*) 'CG-direction is refreshed !!!'
+          else
+             if ( disp_switch_loc ) write(*,*) 'The first CG step !'
           end if
 
        else
@@ -296,6 +298,7 @@ CONTAINS
        hh        = sqrt( sum(hi(:,:)*hi(:,:)) )
        gh        = sum( gi(:,:)*hi(:,:) )
        alpha     = 2.d0*abs(dif/gh)
+       if ( dif == 0.0d0 ) alpha = 0.5d0
 
 !
 ! --- Check alpha ---
