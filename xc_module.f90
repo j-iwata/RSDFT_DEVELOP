@@ -245,10 +245,6 @@ CONTAINS
 
     case('HSE')
 
-!       call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
-!            , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
-!            , kbb, bb, Va, SYStype, XCtype, disp_switch_parallel )
-
        if ( iflag_hybrid == 0 ) then
 
           if ( disp_switch_parallel ) then
@@ -266,7 +262,16 @@ CONTAINS
                ,MBZ_0,MBZ_1,MB_0,MB_1,SYStype )
 
           call calc_xc_hse( iflag_hse, rho, Exc &
-               , Vxc, E_exchange, E_correlation, E_exchange_exx )
+               , Vxc, E_exchange, E_correlation )
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+
+          call calc_xc_hf( E_exchange_exx )
+
+          E_exchange = E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
 
        end if
 

@@ -83,7 +83,7 @@ CONTAINS
           end if
        end do
 999    continue
-       if ( omega == 0.0d0 ) omega=0.2d0/0.529177d0 ! (HSE06)
+       if ( omega == 0.0d0 ) omega=0.11d0 ! (HSE06)
        write(*,*) "----- Parameters for Hybrid_XC -----"
        write(*,*) "HSE Screening parameter: omega =",omega
        write(*,*) "IC, IO_ctrl =",IC,IO_ctrl
