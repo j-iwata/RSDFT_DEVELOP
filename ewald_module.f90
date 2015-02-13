@@ -195,7 +195,7 @@ CONTAINS
        end if
 
        if ( disp_switch_parallel ) then
-          write(*,'(1x,"ewald(G)=",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
+          write(*,'(1x,"ewald(G)  =",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
        end if
 
 !--- R
@@ -317,7 +317,7 @@ CONTAINS
        end if
 
        if ( disp_switch_parallel ) then
-          write(*,'(1x,"ewald(R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
+          write(*,'(1x,"ewald(G+R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
        end if
 
        Ewld=0.5d0*(ewldr+ewldg)
@@ -720,7 +720,7 @@ CONTAINS
     end do ! loop_g
 
     if ( disp_switch_parallel ) then
-       write(*,'(1x,"ewald(G)=",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
+       write(*,'(1x,"ewald(G)  =",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
     end if
 
 !--- R
@@ -806,7 +806,7 @@ CONTAINS
     end do ! loop_r
 
     if ( disp_switch_parallel ) then
-       write(*,'(1x,"ewald(R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
+       write(*,'(1x,"ewald(G+R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
     end if
 
     Ewld=0.5d0*(ewldr+ewldg)
