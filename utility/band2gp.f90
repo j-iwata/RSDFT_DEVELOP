@@ -140,6 +140,8 @@ CONTAINS
     unit=unit0
     write(unit0,'(1x,"set nokey")')
 
+    write(unit0,*) "set xrange[0:",dk_bz(4,nbk),"]"
+
     do s=1,msp
     write(unit0,*) "set title ","'spin",s,"'"
     do i0=mb1,mb2,50
