@@ -126,7 +126,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: iswitch_opt
     logical,intent(INOUT) :: disp_switch
-    integer,parameter :: max_nhist=1000
+    integer,parameter :: max_nhist=100000
     integer :: SCF_hist(max_nhist),ICY_hist(max_nhist)
     integer :: LIN_hist(max_nhist)
     integer :: a,nhist,most0,ncycl0,ifar,ierr,icy,nhist0
