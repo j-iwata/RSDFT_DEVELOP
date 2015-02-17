@@ -46,7 +46,7 @@ MODULE scf_module
   integer :: Diter_scf   = 100
   integer :: Ndiag       = 1
   integer :: second_diag = 2
-  real(8) :: scf_conv    = 1.d-20
+  real(8) :: scf_conv(2) = 0.0d0
   real(8) :: fmax_conv   = 0.d0
   real(8) :: etot_conv   = 0.d0
 
@@ -64,6 +64,8 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i,ierr
     character(8) :: cbuf,ckey
+    scf_conv(1) = 1.d-20
+    scf_conv(2) = 0.0d0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -94,7 +96,7 @@ CONTAINS
        write(*,*) "Ndiag       =",Ndiag
        write(*,*) "second_diag =",second_diag
     end if
-    call mpi_bcast( scf_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast( scf_conv  ,2,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(fmax_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(etot_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Diter_scf  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -363,11 +365,11 @@ CONTAINS
                   " exit SCF loop:  fmax-fmax0, fmaxconv= ",fdiff,fmax_conv
           else
              if ( nspin == 1 ) then
-                write(*,'(2(A,1(E12.5,2X)),A,E12.5)') &
+                write(*,'(2(A,1(E12.5,2X)),A,2E12.5)') &
                      " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
                      " vsqe=",sqerr_out(nspin+1:nspin*2)," scfconv= ",scf_conv
              else
-                write(*,'(2(A,2(E12.5,1X),1X),1X,A,E12.5)') &
+                write(*,'(2(A,2(E12.5,1X),1X),1X,A,2E12.5)') &
                      " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
                      " vsqe=",sqerr_out(nspin+1:nspin*2),"scfconv= ",scf_conv
              end if

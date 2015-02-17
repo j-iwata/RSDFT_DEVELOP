@@ -12,7 +12,7 @@ MODULE mixing_module
   include 'mpif.h'
 
   integer :: imix,mmix
-  real(8) :: beta,scf_conv,sqerr_out(4)
+  real(8) :: beta,scf_conv(2),sqerr_out(4)
   real(8),allocatable :: Xold(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
   real(8) :: beta0
@@ -119,7 +119,7 @@ CONTAINS
     integer,intent(IN) :: ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in
     integer,intent(IN) :: ir_in(0:),id_in(0:),myrank_in
     real(8),intent(IN) :: dV_in,f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
-    real(8),intent(IN) :: scf_conv_in
+    real(8),intent(IN) :: scf_conv_in(2)
     integer :: m,ierr
 
     beta0      = 1.0d0-beta
@@ -343,10 +343,11 @@ CONTAINS
     end do
     call mpi_allreduce(err0,err,2*n,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
-    if ( all( err(n+1:2*n) <= scf_conv ) ) then
+    if ( all( err(n+1:2*n) <= scf_conv(1) ) ) then
        flag_conv = .true.
     else
        flag_conv = .false.
+       if ( all( err(1:n) <= scf_conv(2) ) ) flag_conv = .true.
     end if
 
 !    if ( disp_switch ) then
