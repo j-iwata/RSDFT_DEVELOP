@@ -45,7 +45,7 @@ MODULE scf_chefsi_module
   integer :: Diter_scf_chefsi = 100
   integer :: Ndiag            = 1
   logical :: second_diag      =.false.
-  real(8) :: scf_conv         = 1.d-15
+  real(8) :: scf_conv(2)      = 0.0d0
   real(8) :: fmax_conv        = 0.0d0
   real(8) :: etot_conv        = 0.0d0
 
@@ -59,6 +59,8 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i,ierr
     character(8) :: cbuf,ckey
+    scf_conv(1)=1.d-15
+    scf_conv(2)=0.0d0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -89,7 +91,7 @@ CONTAINS
        write(*,*) "Ndiag            =",Ndiag
        write(*,*) "second_diag      =",second_diag
     end if
-    call mpi_bcast( scf_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast( scf_conv  ,2,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(fmax_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(etot_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Diter_scf_chefsi,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
