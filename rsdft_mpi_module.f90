@@ -86,7 +86,49 @@ CONTAINS
   END SUBROUTINE rsdft_allgatherv
 
 
-  SUBROUTINE rsdft_allreduce(comm1,comm2,reduce1,n_size,num)
+  SUBROUTINE rsdft_allreduce(comm,reduce1,n_size,num)
+    implicit none
+    integer,intent(IN) :: comm
+    integer :: i,reduce_id,reduce_ir,n_size,num,ierr
+#ifdef _DRSDFT_
+    real(8) :: reduce1(n_size)
+    real(8),allocatable :: reduce2(:)
+#else
+    complex(8) :: reduce1(n_size)
+    complex(8),allocatable :: reduce2(:)
+#endif
+
+    ierr=0
+    if ( num<=1 ) then  
+       allocate( reduce2(n_size) ) ; reduce2=(0.0d0,0.0d0)
+       call mpi_allreduce(reduce1(1),reduce2(1),n_size,TYPE_MAIN &
+            ,mpi_sum,comm,ierr)
+    else
+       allocate( reduce2(n_size/num) ) ; reduce2=(0.0d0,0.0d0)
+       reduce_ir=n_size/num
+       do i=0,num
+          if ( i == num ) then
+             if ( mod(n_size,num)==0 ) then
+                exit
+             else
+                reduce_ir=mod(n_size,num)
+             end if
+          end if
+          reduce_id=n_size/num*i+1
+          call mpi_allreduce(reduce1(reduce_id),reduce2,reduce_ir &
+               ,TYPE_MAIN,mpi_sum,comm,ierr)
+          reduce1(reduce_id:reduce_id+reduce_ir-1)=reduce2(1:reduce_ir)
+       end do
+    end if
+
+    deallocate( reduce2 )
+
+    return
+
+  END SUBROUTINE rsdft_allreduce
+
+
+  SUBROUTINE rsdft_allreduce_old(comm1,comm2,reduce1,n_size,num)
     implicit none
     integer,intent(IN) :: comm1,comm2
     integer :: i,reduce_id,reduce_ir,n_size,num,ierr
@@ -131,7 +173,7 @@ CONTAINS
 
     return
 
-  END SUBROUTINE rsdft_allreduce
+  END SUBROUTINE rsdft_allreduce_old
 
 
 END MODULE rsdft_mpi_module

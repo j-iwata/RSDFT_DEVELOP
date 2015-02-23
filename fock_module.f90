@@ -11,6 +11,7 @@ MODULE fock_module
   use fock_parallel_module
   use parallel_module
   use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -218,8 +219,10 @@ CONTAINS
     do k=MBZ_0,MBZ_1
        call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,k,s), m, TYPE_MAIN &
             ,MPI_SUM, comm_band, ierr )
+!       call rsdft_allreduce( comm_band, unk_hf(:,:,k,s), m, 512 )
     end do ! k
     end do ! s
+
     m = size( unk_hf(:,:,:,MSP_0) )
     do s=MSP_0,MSP_1
        call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,:,s), m, TYPE_MAIN &
@@ -479,6 +482,7 @@ CONTAINS
 
     call mpi_allreduce( MPI_IN_PLACE,hunk(n1,1,k,s),MB*(n2-n1+1) &
                        ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
+!    call rsdft_allreduce( comm_band, hunk(n1,1,k,s), MB*(n2-n1+1), 512 )
 
     return
 
