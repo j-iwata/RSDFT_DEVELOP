@@ -19,8 +19,8 @@ MODULE band_module
   use subspace_mate_sl_0_module, only: reset_subspace_mate_sl_0
   use subspace_rotv_sl_0_module, only: reset_subspace_rotv_sl_0
   use band_variables, only: nfki,nbk,ak,nskip_band &
-       ,esp_conv_tol, mb_band, mb2_band, maxiter_band &
-       ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,read_band
+       ,esp_conv_tol, mb_band, mb2_band, maxiter_band, read_band &
+       ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,unit_band_ufld
   use sweep_module, only: calc_sweep, init_sweep
   use pseudopot_module, only: pselect
   use ps_nloc2_module, only: prep_uvk_ps_nloc2, prep_rvk_ps_nloc2
@@ -28,6 +28,7 @@ MODULE band_module
   use io_module, only: Init_IO
   use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
   use fock_ffte_module, only: init_fock_ffte
+  use band_unfold_module
   
   implicit none
 
@@ -42,7 +43,6 @@ CONTAINS
   SUBROUTINE band( MBV_in, disp_switch )
 
     implicit none
-
     integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
     integer :: MBV,nktrj,i,j,k,s,n,ibz,ierr,iktrj,iter,Diter_band
@@ -74,20 +74,30 @@ CONTAINS
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1
 
-    allocate( ktrj(6,nktrj) )
+    allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
 
-    k=0
-    do i=1,nbk
-       dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
-       do j=1,nfki(i)
-          k=k+1
-          ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
-          ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+    call read_band_unfold( myrank, unit )
+
+    if ( iswitch_banduf ) then
+
+       call init_band_unfold( nktrj, ktrj, unit_band_ufld, disp_switch )
+
+    else
+
+       k=0
+       do i=1,nbk
+          dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
+          do j=1,nfki(i)
+             k=k+1
+             ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
+             ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+          end do
        end do
-    end do
-    if ( nktrj > 1 ) then
-       ktrj(1:3,k+1) = ak(1:3,nbk+1)
-       ktrj(4:6,k+1) = 0.d0
+       if ( nktrj > 1 ) then
+          ktrj(1:3,k+1) = ak(1:3,nbk+1)
+          ktrj(4:6,k+1) = 0.d0
+       end if
+
     end if
 
     if ( disp_switch ) then
@@ -225,6 +235,12 @@ CONTAINS
           return
        end if
 
+! --- band unfolding ---
+
+       call band_unfold( iktrj, disp_switch )
+
+! ---
+
 #ifndef _DRSDFT_
        if ( iktrj_0 < iktrj ) then
           if ( np_bzsm == 1 ) then
@@ -351,6 +367,8 @@ CONTAINS
     deallocate( ktrj )
 
     disp_switch_parallel = disp_switch_parallel_bak
+
+    call finalize_band_unfold
 
   END SUBROUTINE band
 
