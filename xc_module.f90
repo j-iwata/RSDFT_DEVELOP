@@ -1,7 +1,7 @@
 MODULE xc_module
 
   use rgrid_module
-  use density_module, only: rho
+  use density_module, only: rho, density, init_type_density
   use ps_pcc_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1
@@ -16,11 +16,14 @@ MODULE xc_module
   use electron_module, only: Nspin, Nband, Nelectron
   use bz_module, only: kbb, MMBZ, Nbzsm
 
+  use grid_module, only: grid, init_grid
+  use xc_variables, only: xc, init_type_xc
   use xc_ldapz81_module
   use xc_ggapbe96_module
   use xc_hybrid_module
   use xc_hse_module
   use xc_hf_module
+  use xc_vdw_module
 
   implicit none
 
@@ -142,6 +145,9 @@ CONTAINS
     real(8),allocatable :: rho_tmp(:,:)
     real(8) :: c
     integer :: s
+    type(grid) :: rgrid
+    type(xc) :: vdw
+    type(density) :: rho_v
 
     if ( disp_switch_parallel ) then
        write(*,'(a40," calc_xc(start)")') repeat("-",40)
@@ -278,6 +284,23 @@ CONTAINS
     case('LCwPBE')
 
        stop "LCwPBE is not available yet"
+
+    case('VDWDF')
+
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype )
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+       call init_grid( rgrid )
+       call init_type_density( rho_v )
+       rho_v%rho(:,:) = rho_tmp(:,:)
+       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, vdw )
+
+       call check_disp_switch( disp_switch_parallel, 1 )
+
+       call init_xc_vdw
+       call calc_xc_vdw( rgrid, rho_v, vdw )
 
     case default
 

@@ -11,6 +11,7 @@ MODS1 = simc_module.o\
         bcast_module.o \
         array_bound_module.o\
         ffte_sub_module.o \
+        lattice_module.o \
         aa_module.o \
         bb_module.o \
         atom_module.o \
@@ -99,6 +100,9 @@ MODS1 = simc_module.o\
         gram_schmidt_module.o \
         vdw_grimme_module.o \
         fock_parallel_module.o \
+        grid_module.o \
+        gradient_module.o \
+        xc_variables.o \
         xc_hybrid_io_module.o \
         xc_hybrid_module.o \
         fock_ffte_module.o \
@@ -111,6 +115,7 @@ MODS1 = simc_module.o\
         xc_ldapz81_module.o \
         xc_ggapbe96_mol_module.o \
         xc_ggapbe96_module.o \
+        xc_vdw_module.o \
         xc_module.o \
         ps_pcc_force_module.o \
         hamiltonian_module.o\
@@ -184,6 +189,7 @@ EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/spline.o\
           $(DIR2)/convert_capital.o\
           $(DIR2)/gaussj.o\
+          $(DIR2)/write_info.o\
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o\

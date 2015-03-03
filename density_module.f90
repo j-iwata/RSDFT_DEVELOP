@@ -7,7 +7,8 @@ MODULE density_module
   implicit none
 
   PRIVATE
-  PUBLIC :: rho,sum_dspin,init_density,normalize_density,calc_density
+  PUBLIC :: rho,sum_dspin,init_density,normalize_density,calc_density &
+           ,density, init_type_density
 
   real(8),allocatable :: rho(:,:)
   real(8) :: sum_dspin(2)
@@ -16,6 +17,12 @@ MODULE density_module
   integer :: MS_RHO, MS_0_RHO, MS_1_RHO
 
   real(8) :: Nelectron_RHO, dV_RHO
+
+  type density
+     integer :: mm,m0,m1
+     integer :: nn,n0,n1
+     real(8),allocatable :: rho(:,:)
+  end type density
 
 CONTAINS
 
@@ -104,6 +111,24 @@ CONTAINS
 !       end if
     end if
   END SUBROUTINE calc_sum_dspin
+
+
+  SUBROUTINE init_type_density( rho )
+    implicit none
+    type(density) :: rho
+    rho%mm = ML_RHO
+    rho%m0 = ML_0_RHO
+    rho%m1 = ML_1_RHO
+    rho%nn = MS_RHO
+    rho%n0 = MS_0_RHO
+    rho%n1 = MS_1_RHO
+    if ( .not.allocated(rho%rho) ) then
+       allocate( rho%rho(rho%m0:rho%m1,rho%nn) )
+    else
+       stop "stop@init_type_density"
+    end if
+    rho%rho(:,:)=0.0d0
+  END SUBROUTINE init_type_density
 
 
 END MODULE density_module
