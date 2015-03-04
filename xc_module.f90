@@ -143,7 +143,7 @@ CONTAINS
   SUBROUTINE calc_xc
     implicit none
     real(8),allocatable :: rho_tmp(:,:)
-    real(8) :: c
+    real(8) :: c,mu,kappa
     integer :: s
     type(grid) :: rgrid
     type(xc) :: vdw
@@ -195,6 +195,24 @@ CONTAINS
 
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+    case('PBEsol')
+
+       mu = 10.0d0/81.0d0
+
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype, mu_in=mu )
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+    case('revPBE')
+
+       kappa = 1.245d0
+
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
