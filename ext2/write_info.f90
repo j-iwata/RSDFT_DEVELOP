@@ -4,12 +4,14 @@ SUBROUTINE write_border(n,indx)
   integer,intent(IN) :: n
   character(*),intent(IN) :: indx
   character(80) :: axx
+  logical :: disp
 
   write(axx,'(i2)') n
   axx=adjustl(axx)
   axx="(a"//axx(1:len_trim(axx))//",a)"
 
-  write(*,axx) repeat("-",n),indx
+  call check_disp_switch( disp, 0 )
+  if ( disp ) write(*,axx) repeat("-",n),indx
 
 END SUBROUTINE write_border
 

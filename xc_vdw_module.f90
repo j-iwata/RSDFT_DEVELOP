@@ -6,7 +6,7 @@ MODULE xc_vdw_module
   use ggrid_module, only: NMGL, MGL, GG, NGgrid, LLG, MG_0, MG_1 &
                          ,construct_ggrid, destruct_ggrid
   use gradient_module, only: gradient, construct_gradient, destruct_gradient
-  use parallel_module, only: comm_grid
+  use parallel_module, only: comm_grid, myrank, nprocs
 
   implicit none
 
@@ -15,7 +15,7 @@ MODULE xc_vdw_module
 
   real(8) :: Qmax=5.0d0
   real(8) :: Qmin=0.0d0
-  integer :: NumQgrid=20
+  integer :: NumQgrid=10
   real(8) :: SizeQgrid
   real(8),allocatable :: Qgrid(:)
   real(8) :: Dmax=48.6d0
@@ -26,6 +26,8 @@ MODULE xc_vdw_module
   real(8),parameter :: zero_density = 1.d-10
   logical :: flag_init=.false.
 
+  real(8) :: Ex_LDA, Ec_LDA
+
   include 'mpif.h'
 
 CONTAINS
@@ -33,7 +35,7 @@ CONTAINS
 
   SUBROUTINE init_xc_vdw
     implicit none
-    integer :: i,j
+    integer :: i,j,n,np,info
 
     if ( flag_init ) return
 
@@ -48,8 +50,13 @@ CONTAINS
     allocate( phiG(NMGL,0:NumQgrid,0:NumQgrid) )
     phiG=0.0d0
 
+    np=( NumQgrid*(NumQgrid+1) )/2
+    n=0
     do j=1,NumQgrid
     do i=j,NumQgrid
+
+       n = n + 1
+       if ( np-1 < myrank .or. mod(n-1,nprocs) /= myrank ) cycle
 
        call calc_phiG( Qgrid(i), Qgrid(j), phiG(1,i,j) )
 
@@ -57,6 +64,9 @@ CONTAINS
 
     end do ! i
     end do ! j
+
+    call MPI_ALLREDUCE( MPI_IN_PLACE, phiG, size(phiG), MPI_REAL8 &
+         ,MPI_SUM, MPI_COMM_WORLD, info )
 
     call init1_xc_vdw ! coefficients of 3rd spline
 
@@ -72,23 +82,44 @@ CONTAINS
     real(8),intent(IN)  :: qi,qj
     real(8),intent(OUT) :: phiG(NMGL)
     integer :: nr,ig,i
-    real(8) :: rmax,dr,r,pi4,G,sum0
-    real(8),allocatable :: phi(:)
+    real(8) :: rmax,dr,r,pi4,G,sum0,ct0,ct1,sum1
+    real(8),allocatable :: phi(:), phiG0(:)
+
+    phiG = 0.0d0
 
     rmax = Dmax/max( qi, qj )
     nr   = 400
     dr   = rmax/nr
 
-    pi4  = 4.0d0*acos(-1.0d0)
-
-    allocate( phi(0:nr) ) ; phi=0.0d0
+    allocate( phi(0:nr)   ) ; phi=0.0d0
+    allocate( phiG0(NMGL) ) ; phiG0=0.0d0
 
     do i=1,nr
-       r = i*dr
-       call calc_phi( qi*r, qj*r, phi(i) )
-    end do ! ir
 
-    phiG=0.0d0
+       r = i*dr
+       call calc_phi_b( qi*r, qj*r, phi(i) )
+
+       call check_phiG( i, dr, phi(1), phiG )
+       sum0=sum((phiG-phiG0)**2)
+       if ( sum0 <= 1.d-10 ) exit
+       phiG0(:)=phiG(:)
+
+    end do ! i
+
+    deallocate( phiG0 )
+    deallocate( phi )
+
+  END SUBROUTINE calc_phiG
+
+  SUBROUTINE check_phiG( nr, dr, phi, phiG )
+    implicit none
+    integer,intent(IN) :: nr
+    real(8),intent(IN) :: dr, phi(nr)
+    real(8),intent(OUT) :: phiG(:)
+    integer :: i,ig
+    real(8) :: r,G,sum0,pi4
+
+    pi4 = 4.0d0*acos(-1.0d0)
 
     do ig=1,NMGL
 
@@ -116,90 +147,299 @@ CONTAINS
 
     end do ! ig
 
-    deallocate( phi )
+  END SUBROUTINE check_phiG
 
-  END SUBROUTINE calc_phiG
-
-
-  SUBROUTINE calc_phi( di, dj, phi )
+  SUBROUTINE calc_phi_b( di, dj, phi )
     implicit none
     real(8),intent(IN)  :: di,dj
     real(8),intent(OUT) :: phi
-    real(8) :: rmax,dr,dt,r,t,a,b,gamma,pi,WWW,TTT
+    integer :: nt,nt0,it,loop
+    real(8) :: sum1,phi0,t,dt,dt0,pi
+    real(8),parameter :: tol=1.d-5
+
+    pi = acos(-1.0d0)
+
+    nt0 = 8
+    dt0 = 0.5d0*pi / nt0
+
+    phi  = 0.0d0
+    phi0 = 0.0d0
+
+    nt = nt0/2 ! Interval [0,pi/4] is enough due to symmetry 
+    dt = dt0
+
+    call Int_RadialPart( 0.25d0*pi, di, dj, sum1 )
+
+    phi = 0.5d0*( 0.0d0 + sum1 )
+
+    do it=1,nt-1
+       t = it*dt
+       call Int_RadialPart( t, di, dj, sum1 )
+       phi = phi + sum1
+    end do ! it
+!    write(*,*) 0,phi*dt
+
+    nt = nt/2
+
+    do loop=1,10
+
+       nt = nt*2
+       dt = dt*0.5d0
+
+       do it=1,nt
+          t = (2*it-1)*dt
+          call Int_RadialPart( t, di, dj, sum1 )
+          phi = phi + sum1
+       end do ! it
+
+!       write(*,*) loop,nt,phi*dt,phi*dt-phi0
+       if ( abs(phi*dt-phi0) <= tol ) exit
+
+       phi0 = phi*dt
+
+    end do ! loop
+
+    phi = 2.0d0*(2.0d0/pi**2)*phi*dt
+
+  END SUBROUTINE calc_phi_b
+
+  SUBROUTINE Int_RadialPart( t, di, dj, sum_rad )
+    implicit none
+    real(8),intent(IN)  :: t,di,dj
+    real(8),intent(OUT) :: sum_rad
+    integer :: nx0,nx,ix,loop
+    real(8) :: sum0,sum1,const
+    real(8) :: xmin,xmax,dx,dx0,x,coshx,sinhx,r
+    real(8),parameter :: tol=1.d-8
+
+    xmax = 3.0d0
+    xmin =-3.0d0
+    nx0  = 50
+    dx0  = (xmax-xmin)/nx0
+
+    sum0 = 0.0d0
+    sum1 = 0.0d0
+
+    const = 0.5d0*acos(-1.0d0)
+
+    nx = nx0
+    dx = dx0
+    do ix=1,nx-1
+       x=xmin+ix*dx
+       coshx = 0.5d0*( exp(x) + exp(-x) )
+       sinhx = 0.5d0*( exp(x) - exp(-x) )
+       r = exp(const*sinhx)
+       sum0 = sum0 + phi_b(r,t,di,dj)*coshx*const*r
+!       sum0 = sum0 + phi_c(r,t,di,dj)*coshx*const*r
+    end do ! ix
+    sum1=sum0*dx
+
+    nx = nx/2
+
+    do loop=1,20
+
+       nx = nx*2
+       dx = dx*0.5d0
+       do ix=1,nx
+          x=xmin+(2*ix-1)*dx
+          coshx = 0.5d0*( exp(x) + exp(-x) )
+          sinhx = 0.5d0*( exp(x) - exp(-x) )
+          r = exp(const*sinhx)
+          sum0 = sum0 + phi_b(r,t,di,dj)*coshx*const*r
+!          sum0 = sum0 + phi_c(r,t,di,dj)*coshx*const*r
+       end do ! ix
+
+       if ( abs(sum0*dx-sum1) <= tol ) exit
+       sum1=sum0*dx
+
+    end do ! loop
+
+    sum_rad = sum0*dx
+
+  END SUBROUTINE Int_RadialPart
+
+  FUNCTION phi_b( r, theta, di, dj )
+    implicit none
+    real(8) :: phi_b
+    real(8),intent(IN)  :: r, theta, di, dj
+    real(8) :: a,b,WWW,TTT !,gamma,pi
     real(8) :: ct,st,sa,sb,ca,cb,hai,haj,hbi,hbj,vai,vaj,vbi,vbj
-    integer :: nr, nt, ir, it
+    real(8) :: a2,b2,cai,cbi,caj,cbj,gdidi_i,gdjdj_i
+    real(8),parameter :: pi=3.141592653589793d0
+    real(8),parameter :: gamma=1.396263401595464d0
+    real(8),parameter :: thr=3.0d0
+
+!    pi = acos(-1.0d0)
+!    gamma = 4.0d0*pi/9.0d0
+
+    a = r*cos(theta)
+    b = r*sin(theta)
+
+    a2=a*a
+    b2=b*b
+
+    gdidi_i = gamma/(di*di)
+    gdjdj_i = gamma/(dj*dj)
+
+    cai = a2*gdidi_i
+    cbi = b2*gdidi_i
+    caj = a2*gdjdj_i
+    cbj = b2*gdjdj_i
+!    cai = gamma*a2/(di*di)
+!    cbi = gamma*b2/(di*di)
+!    caj = gamma*a2/(dj*dj)
+!    cbj = gamma*b2/(dj*dj)
+
+!    ct = cos(theta)
+!    st = sin(theta)
+
+!    a = r*ct
+!    b = r*st
+
+!    ca = cos(a)
+!    cb = cos(b)
+!    sa = 1.0d0 ; if ( a /= 0.0d0 ) sa=sin(a)/a
+!    sb = 1.0d0 ; if ( b /= 0.0d0 ) sb=sin(b)/b
+!    sa=sin(a)/a
+!    sb=sin(b)/b
+
+!    WWW = ( (thr-a2)*sa-thr*ca )*cos(b) &
+!        + ( (thr-b2)*ca + (r*r-thr)*sa )*sin(b)/b
+!    WWW = ( (thr-a2)*sa-thr*ca )*cb + ( (thr-b2)*ca + (r*r-thr)*sa )*sb
+!    WWW = (thr-a2)*cb*sa + (thr-b2)*ca*sb + (r*r-thr)*sa*sb - thr*ca*cb
+!    WWW = (3.0d0-a2)*cb*sa + (3.0d0-b2)*ca*sb &
+!        + (r*r-3.0d0)*sa*sb - 3.0d0*ca*cb
+!    WWW = 2.0d0*( (3.0d0-a2)*cb*sa + (3.0d0-b2)*ca*sb &
+!                + (r*r-3.0d0)*sa*sb - 3.0d0*ca*cb )
+!    WWW = 2.0d0*( (3.0d0-a*a)*cb*sa + (3.0d0-b*b)*ca*sb &
+!                + (r*r-3.0d0)*sa*sb - 3.0d0*ca*cb )
+
+!    if ( di == 0.0d0 ) then
+!       hai = 0.0d0
+!       hbi = 0.0d0
+!    else
+!       hai = 1.0d0 - exp( -gamma*(a/di)**2 )
+!       hbi = 1.0d0 - exp( -gamma*(b/di)**2 )
+!       hai = 1.0d0 - exp( -cai )
+!       hbi = 1.0d0 - exp( -cbi )
+!    end if
+!    if ( dj == 0.0d0 ) then
+!       haj = 0.0d0
+!       hbj = 0.0d0
+!    else
+!       haj = 1.0d0 - exp( -gamma*(a/dj)**2 )
+!       hbj = 1.0d0 - exp( -gamma*(b/dj)**2 )
+!       haj = 1.0d0 - exp( -caj )
+!       hbj = 1.0d0 - exp( -cbj )
+!    end if
+
+!    if ( a == 0.0d0 ) then
+!       vai = di*di/(2.0d0*gamma)
+!       vaj = dj*dj/(2.0d0*gamma)
+!    else
+!       vai = a2/(2.0d0*hai)
+!       vaj = a2/(2.0d0*haj)
+!       vai = a2/( 2.0d0-2.0d0*exp(-cai) )
+!       vaj = a2/( 2.0d0-2.0d0*exp(-caj) )
+       vai = 0.5d0*a2/( 1.0d0-exp(-cai) )
+       vaj = 0.5d0*a2/( 1.0d0-exp(-caj) )
+!       vai = a2/( 1.0d0-exp(-cai) )
+!       vaj = a2/( 1.0d0-exp(-caj) )
+!    end if
+!    if ( b == 0.0d0 ) then
+!       vbi = di*di/(2.0d0*gamma)
+!       vbj = dj*dj/(2.0d0*gamma)
+!    else
+!       vbi = b2/(2.0d0*hbi)
+!       vbj = b2/(2.0d0*hbj)
+!       vbi = b2/( 2.0d0-2.0d0*exp(-cbi) )
+!       vbj = b2/( 2.0d0-2.0d0*exp(-cbj) )
+       vbi = 0.5d0*b2/( 1.0d0-exp(-cbi) )
+       vbj = 0.5d0*b2/( 1.0d0-exp(-cbj) )
+!       vbi = b2/( 1.0d0-exp(-cbi) )
+!       vbj = b2/( 1.0d0-exp(-cbj) )
+!    end if
+
+    TTT = ( 1.0d0/(vai+vbi) + 1.0d0/(vaj+vbj) ) &
+               *( 1.0d0/( (vai+vaj)*(vbi+vbj) ) &
+                 +1.0d0/( (vai+vbj)*(vaj+vbi) ) )
+!    TTT = ( 1.0d0/(vai+vbi) + 1.0d0/(vaj+vbj) ) &
+!               *( 1.0d0/( (vai+vaj)*(vbi+vbj) ) &
+!                 +1.0d0/( (vai+vbj)*(vaj+vbi) ) )
+!    TTT = 0.5d0*( 1.0d0/(vai+vbi) + 1.0d0/(vaj+vbj) ) &
+!               *( 1.0d0/( (vai+vaj)*(vbi+vbj) ) &
+!                 +1.0d0/( (vai+vbj)*(vaj+vbi) ) )
+
+    ca = cos(a)
+    sa = sin(a)/a
+    WWW = ( (thr-a2)*sa-thr*ca )*cos(b) &
+        + ( (thr-b2)*ca + (r*r-thr)*sa )*sin(b)/b
+
+    phi_b = r*WWW*TTT
+
+  END FUNCTION phi_b
+
+  FUNCTION phi_c( r, theta, di, dj )
+    implicit none
+    real(8) :: phi_c
+    real(8),intent(IN)  :: r, theta, di, dj
+    real(8) :: a,b,gamma,pi,WWW,TTT
+    real(8) :: ct,st,sa,sb,ca,cb,hai,haj,hbi,hbj,vai,vaj,vbi,vbj
 
     pi = acos(-1.0d0)
     gamma = 4.0d0*pi/9.0d0
 
-    nr   = 100
-    rmax = 20.0d0
-    dr   = rmax/nr
+    ct = cos(theta)
+    st = sin(theta)
 
-    nt = 9 ! to use a symmetry(a <-> b), odd number should be given
-    dt = 0.5d0*pi / nt
+    a = r*ct
+    b = r*st
 
-    phi = 0.0d0
+    ca = cos(a)
+    cb = cos(b)
+    sa = 1.0d0 ; if ( a /= 0.0d0 ) sa=sin(a)/a
+    sb = 1.0d0 ; if ( b /= 0.0d0 ) sb=sin(b)/b
 
-    do it=1,(nt-1)/2
-       t  = it*dt
-       ct = cos(t)
-       st = sin(t)
-    do ir=0,nr
-       r = ir*dr
-       a = r*ct
-       b = r*st
+    WWW = 2.0d0*( (3.0d0-a*a)*cb*sa + (3.0d0-b*b)*ca*sb &
+                + (r*r-3.0d0)*sa*sb - 3.0d0*ca*cb )
 
-       ca = cos(a)
-       cb = cos(b)
-       sa = 1.0d0 ; if ( a /= 0.0d0 ) sa=sin(a)/a
-       sb = 1.0d0 ; if ( b /= 0.0d0 ) sb=sin(b)/b
+    if ( di == 0.0d0 ) then
+       hai = 0.0d0
+       hbi = 0.0d0
+    else
+       hai = 1.0d0 - exp( -gamma*(a/di)**2 )
+       hbi = 1.0d0 - exp( -gamma*(b/di)**2 )
+    end if
+    if ( dj == 0.0d0 ) then
+       haj = 0.0d0
+       hbj = 0.0d0
+    else
+       haj = 1.0d0 - exp( -gamma*(a/dj)**2 )
+       hbj = 1.0d0 - exp( -gamma*(b/dj)**2 )
+    end if
 
-       WWW = 2.0d0*( (3.0d0-a*a)*cb*sa + (3.0d0-b*b)*ca*sb &
-                   + (r*r-3.0d0)*sa*sb - 3.0d0*ca*cb )
+    if ( a == 0.0d0 ) then
+       vai = di*di/(2.0d0*gamma)
+       vaj = dj*dj/(2.0d0*gamma)
+    else
+       vai = a*a/(2.0d0*hai)
+       vaj = a*a/(2.0d0*haj)
+    end if
+    if ( b == 0.0d0 ) then
+       vbi = di*di/(2.0d0*gamma)
+       vbj = dj*dj/(2.0d0*gamma)
+    else
+       vbi = b*b/(2.0d0*hbi)
+       vbj = b*b/(2.0d0*hbj)
+    end if
 
-       if ( di == 0.0d0 ) then
-          hai = 0.0d0
-          hbi = 0.0d0
-       else
-          hai = 1.0d0 - exp( -gamma*(a/di)**2 )
-          hbi = 1.0d0 - exp( -gamma*(b/di)**2 )
-       end if
-       if ( dj == 0.0d0 ) then
-          haj = 0.0d0
-          hbj = 0.0d0
-       else
-          haj = 1.0d0 - exp( -gamma*(a/dj)**2 )
-          hbj = 1.0d0 - exp( -gamma*(b/dj)**2 )
-       end if
+    TTT = 0.5d0*( 1.0d0/(vai+vbi) + 1.0d0/(vaj+vbj) ) &
+               *( 1.0d0/( (vai+vaj)*(vbi+vbj) ) &
+                 +1.0d0/( (vai+vbj)*(vaj+vbi) ) )
 
-       if ( a == 0.0d0 ) then
-          vai = di*di/(2.0d0*gamma)
-          vaj = dj*dj/(2.0d0*gamma)
-       else
-          vai = a*a/(2.0d0*hai)
-          vaj = a*a/(2.0d0*haj)
-       end if
-       if ( b == 0.0d0 ) then
-          vbi = di*di/(2.0d0*gamma)
-          vbj = dj*dj/(2.0d0*gamma)
-       else
-          vbi = b*b/(2.0d0*hbi)
-          vbj = b*b/(2.0d0*hbj)
-       end if
+    phi_c = r*WWW*TTT
 
-       TTT = 0.5d0*( 1.0d0/(vai+vbi) + 1.0d0/(vaj+vbj) ) &
-                  *( 1.0d0/( (vai+vaj)*(vbi+vbj) ) &
-                    +1.0d0/( (vai+vbj)*(vaj+vbi) ) )
-
-       phi = phi + r*WWW*TTT
-
-    end do ! ir
-    end do ! it
-
-    phi = 2.0d0*(2.0d0/pi**2)*phi*dt*dr
-
-  END SUBROUTINE calc_phi
+  END FUNCTION phi_c
 
 
   SUBROUTINE init1_xc_vdw
@@ -268,8 +508,8 @@ CONTAINS
     type(gradient) :: grad
     logical :: disp_sw
     integer :: i,j,m0,m1,mm
-    real(8) :: rho_tmp(2), trho, edx_lda(2), edc_lda
-    real(8) :: kf,pi,onethr,fouthr,ss
+    real(8) :: rho_tmp(2), trho, edx_lda(2), edc_lda,ss_min,ss_max
+    real(8) :: kf,pi,onethr,fouthr,ss,q0_min,q0_max,sbuf(2),rbuf(2)
     real(8),allocatable :: q0(:), pol_spline(:,:)
     real(8),parameter :: Zab=-0.8491d0
     complex(8),allocatable :: theta(:,:)
@@ -286,14 +526,25 @@ CONTAINS
 
     allocate( q0(m0:m1) ) ; q0=0.0d0
 
+    Ex_LDA = 0.0d0
+    Ec_LDA = 0.0d0
+
+    ss_min = 1.d100
+    ss_max =-1.d100
+
     do i=m0,m1
 
        rho_tmp(1) = rho%rho(i,1)
        rho_tmp(2) = rho%rho(i,rho%nn)
-       trho       = sum(rho_tmp)
+       trho       = sum(rho_tmp(1:rho%nn))
+
+!       if ( trho < zero_density ) cycle
 
        call calc_edx_lda( rho%nn, rho_tmp, edx_lda )
        call calc_edc_lda( rho%nn, rho_tmp, edc_lda )
+
+       Ex_LDA = Ex_LDA + sum( rho_tmp(1:rho%nn)*edx_lda(1:rho%nn) )
+       Ec_LDA = Ec_LDA + trho*edc_lda
 
        kf = ( 3.0d0*pi*pi*trho )**onethr
 
@@ -301,10 +552,35 @@ CONTAINS
 
        q0(i) = -fouthr*pi*(edx_lda(1)+edc_lda) - Zab/9.0d0*ss*kf
 
+       ss_min = min( ss, ss_min )
+       ss_max = max( ss, ss_max )
+
     end do ! i
 
+    sbuf(1) = minval(q0)
+    sbuf(2) = maxval(q0)
+    call MPI_ALLREDUCE(sbuf(1),q0_min,1,MPI_REAL8,MPI_MIN,comm_grid,i)
+    call MPI_ALLREDUCE(sbuf(2),q0_max,1,MPI_REAL8,MPI_MAX,comm_grid,i)
+
+    sbuf(1) = ss_min
+    sbuf(2) = ss_max
+    call MPI_ALLREDUCE(sbuf(1),ss_min,1,MPI_REAL8,MPI_MIN,comm_grid,i)
+    call MPI_ALLREDUCE(sbuf(2),ss_max,1,MPI_REAL8,MPI_MAX,comm_grid,i)
+
+    sbuf(1) = Ex_LDA * rgrid%dV
+    sbuf(2) = Ec_LDA * rgrid%dV
+    call MPI_ALLREDUCE(sbuf,rbuf,2,MPI_REAL8,MPI_SUM,comm_grid,i)
+    Ex_LDA = rbuf(1)
+    Ec_LDA = rbuf(2)
+
     call check_disp_switch( disp_sw, 0 )
-    if ( disp_sw ) write(*,*) "q0(min,max)=",minval(q0),maxval(q0)
+    if ( disp_sw ) then
+       write(*,*) "ss(min,max)=",ss_min,ss_max
+       write(*,*) "q0(min,max)=",q0_min,q0_max
+       write(*,*) "Ex_LDA =",Ex_LDA
+       write(*,*) "Ec_LDA =",Ec_LDA
+       write(*,*) "Exc_LDA=",Ex_LDA+Ec_LDA
+    end if
 
 ! ---
 
@@ -525,6 +801,7 @@ CONTAINS
     integer :: a,b,i,j,info
     complex(8) :: z
     real(8) :: c,E0
+    logical :: disp_sw
 
     z=(0.0d0,0.0d0)
 
@@ -544,7 +821,13 @@ CONTAINS
     E0 = 0.5d0*z * rgrid%NumGrid(0)*rgrid%dV
     call MPI_ALLREDUCE(E0,Ec,1,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,info)
 
-    write(*,*) "Ec_vdw=",Ec
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
+       write(*,*) "Ec_vdw=",Ec
+       write(*,*) "Ec_vdw+Ec_LDA=",Ec+Ec_LDA
+       E0=Ec*rgrid%NumGrid(0)*rgrid%dV
+       write(*,*) E0,E0+Ec_LDA
+    end if
 
   END SUBROUTINE calc_vdw_energy
 

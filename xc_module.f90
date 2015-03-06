@@ -305,8 +305,10 @@ CONTAINS
 
     case('VDWDF')
 
+       kappa = 1.245d0 ! revPBE
+
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
-            ,Md, Hgrid, Ngrid, SYStype )
+            ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
