@@ -5,28 +5,36 @@ MODULE xc_vdw_module
   use density_module, only: density
   use ggrid_module, only: NMGL, MGL, GG, NGgrid, LLG, MG_0, MG_1 &
                          ,construct_ggrid, destruct_ggrid
-  use gradient_module, only: gradient, construct_gradient, destruct_gradient
-  use parallel_module, only: comm_grid, myrank, nprocs
+  use gradient_module
+  use parallel_module, only: comm_grid, myrank, nprocs, ir_grid, id_grid
+  use fd_module, only: fd, construct_nabla_fd, destruct_nabla_fd
+  use lattice_module, only: lattice,construct_aa_lattice,get_reciprocal_lattice
+
+  use func2gp_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: init_xc_vdw, calc_xc_vdw
 
+  integer,parameter :: DP=kind(0.0d0)
+  integer,parameter :: QP=kind(0.0q0)
+
   real(8) :: Qmax=5.0d0
   real(8) :: Qmin=0.0d0
-  integer :: NumQgrid=10
+  integer :: NumQgrid=1
   real(8) :: SizeQgrid
   real(8),allocatable :: Qgrid(:)
   real(8) :: Dmax=48.6d0
+  real(8),parameter :: Zab=-0.8491d0
+  integer :: Mmax=12
 
   real(8),allocatable :: phiG(:,:,:)
   real(8),allocatable :: bmat(:,:),cmat(:,:),dmat(:,:)
 
   real(8),parameter :: zero_density = 1.d-10
   logical :: flag_init=.false.
-
-  real(8) :: Ex_LDA, Ec_LDA
+  real(8) :: Ex_LDA, Ec_LDA, Ec_vdw
 
   include 'mpif.h'
 
@@ -177,7 +185,6 @@ CONTAINS
        call Int_RadialPart( t, di, dj, sum1 )
        phi = phi + sum1
     end do ! it
-!    write(*,*) 0,phi*dt
 
     nt = nt/2
 
@@ -192,7 +199,6 @@ CONTAINS
           phi = phi + sum1
        end do ! it
 
-!       write(*,*) loop,nt,phi*dt,phi*dt-phi0
        if ( abs(phi*dt-phi0) <= tol ) exit
 
        phi0 = phi*dt
@@ -505,26 +511,29 @@ CONTAINS
     type(grid) :: rgrid
     type(density) :: rho
     type(xc) :: vdw
-    type(gradient) :: grad
+    type(gradient16) :: grad16
     logical :: disp_sw
     integer :: i,j,m0,m1,mm
     real(8) :: rho_tmp(2), trho, edx_lda(2), edc_lda,ss_min,ss_max
-    real(8) :: kf,pi,onethr,fouthr,ss,q0_min,q0_max,sbuf(2),rbuf(2)
-    real(8),allocatable :: q0(:), pol_spline(:,:)
-    real(8),parameter :: Zab=-0.8491d0
+    real(QP) :: kf,pi,onethr,fouthr,ss,const,c,q0
+    real(8) :: q0_min,q0_max,sbuf(2),rbuf(2)
+    real(8) :: vdx_lda(2), vdc_lda(2)
+    real(8),allocatable :: qsat(:), pol_spline(:,:)
+    real(8),allocatable :: ua(:,:), pol_drv(:,:), f(:), g(:)
     complex(8),allocatable :: theta(:,:)
 
     call write_border(30," calc_xc_vdw(start)")
 
-    pi     = acos(-1.0d0)
-    onethr = 1.0d0/3.0d0
-    fouthr = 4.0d0/3.0d0
+    pi     = acos(-1.0q0)
+    onethr = 1.0q0/3.0q0
+    fouthr = 4.0q0/3.0q0
+    const  = Zab/9.0q0
     m0     = rgrid%SubGrid(1,0)
     m1     = rgrid%SubGrid(2,0)
 
-    call construct_gradient( rgrid, rho, grad )
+    call construct_gradient16( rgrid, rho, grad16 )
 
-    allocate( q0(m0:m1) ) ; q0=0.0d0
+    allocate( qsat(m0:m1) ) ; qsat=0.0d0
 
     Ex_LDA = 0.0d0
     Ec_LDA = 0.0d0
@@ -532,33 +541,46 @@ CONTAINS
     ss_min = 1.d100
     ss_max =-1.d100
 
+    vdw%Vxc(:,:)=0.0d0
+
     do i=m0,m1
 
        rho_tmp(1) = rho%rho(i,1)
        rho_tmp(2) = rho%rho(i,rho%nn)
        trho       = sum(rho_tmp(1:rho%nn))
 
-!       if ( trho < zero_density ) cycle
+       if ( trho < zero_density ) cycle
 
-       call calc_edx_lda( rho%nn, rho_tmp, edx_lda )
-       call calc_edc_lda( rho%nn, rho_tmp, edc_lda )
+       call calc_edx_lda( rho%nn, rho_tmp, edx_lda, vdx_lda )
+       call calc_edc_lda( rho%nn, rho_tmp, edc_lda, vdc_lda )
 
        Ex_LDA = Ex_LDA + sum( rho_tmp(1:rho%nn)*edx_lda(1:rho%nn) )
        Ec_LDA = Ec_LDA + trho*edc_lda
 
-       kf = ( 3.0d0*pi*pi*trho )**onethr
+       do j=1,rho%nn
+          vdw%Vxc(i,j) = edc_lda + trho*vdc_lda(j)
+       end do
 
-       ss = grad%gg(i)/(2.0d0*kf*trho)**2
+       kf = ( 3.0q0*pi*pi*trho )**onethr
 
-       q0(i) = -fouthr*pi*(edx_lda(1)+edc_lda) - Zab/9.0d0*ss*kf
-
-       ss_min = min( ss, ss_min )
-       ss_max = max( ss, ss_max )
+       if ( trho <= 0.0d0 ) then
+          qsat(i)=Qmax
+       else
+          ss = grad16%gg(i)/(2.0q0*kf*trho)**2
+          q0 = -fouthr*pi*(edx_lda(1)+edc_lda) - const*ss*kf
+          c=0.0q0
+          do j=1,Mmax
+             c=c+(q0/Qmax)**j/j
+          end do
+          qsat(i) = Qmax*( 1.0q0 - exp(-c) )
+          ss_min = min( ss, ss_min )
+          ss_max = max( ss, ss_max )
+       end if
 
     end do ! i
 
-    sbuf(1) = minval(q0)
-    sbuf(2) = maxval(q0)
+    sbuf(1) = minval(qsat)
+    sbuf(2) = maxval(qsat)
     call MPI_ALLREDUCE(sbuf(1),q0_min,1,MPI_REAL8,MPI_MIN,comm_grid,i)
     call MPI_ALLREDUCE(sbuf(2),q0_max,1,MPI_REAL8,MPI_MAX,comm_grid,i)
 
@@ -586,7 +608,7 @@ CONTAINS
 
     allocate( pol_spline(m0:m1,0:NumQgrid) ) ; pol_spline=0.0d0
 
-    call calc_pol_spline( m0, m1, q0, pol_spline )
+    call calc_pol_spline( m0, m1, qsat, pol_spline )
 
 ! ---
 
@@ -604,48 +626,106 @@ CONTAINS
 
 ! ---
 
-    call calc_vdw_energy( rgrid, theta, vdw%Ec )
+    call calc_vdw_energy( rgrid, theta, Ec_vdw )
+
+    vdw%Ec = Ec_LDA + Ec_VDW
+
+! ---
+
+    allocate( ua(m0:m1,0:NumQgrid) ) ; ua=0.0d0
+
+    call calc_ua( rgrid, theta, ua )
 
 ! ---
 
     deallocate( theta )
-    deallocate( pol_spline )
-    deallocate( q0 )
 
-    call destruct_gradient( grad )
+! ---
+
+    allocate( pol_drv(m0:m1,0:NumQgrid) ) ; pol_drv=0.0d0
+
+    call calc_pol_drv( m0, m1, qsat, pol_spline, pol_drv )
+
+! ---
+
+    allocate( f(m0:m1) ) ; f=0.0d0
+    allocate( g(m0:m1) ) ; g=0.0d0
+
+    do j=0,NumQgrid
+       f(:) = f(:) + ua(:,j)*pol_drv(:,j)
+    end do
+
+    call calc_dqdn( rgrid, rho, grad16, f, g )
+
+! ---
+
+    do j=0,NumQgrid
+       g(:) = g(:) + ua(:,j)*pol_spline(:,j)
+    end do
+
+    c = 1.0d0/rgrid%NumGrid(0)
+
+    vdw%Vxc(:,1) = vdw%Vxc(:,1) + c*g(:)
+
+! ---
+
+    deallocate( g )
+    deallocate( f )
+    deallocate( pol_drv )
+    deallocate( ua )
+    deallocate( pol_spline )
+    deallocate( qsat )
+
+    call destruct_gradient16( grad16 )
 
     call write_border(30," calc_xc_vdw(end)")
 
   END SUBROUTINE calc_xc_vdw
 
 
-  SUBROUTINE calc_edx_lda( nn, rho, edx_lda )
+  SUBROUTINE calc_edx_lda( nn, rho, edx_lda, vdx_lda )
     implicit none
     integer,intent(IN)  :: nn
     real(8),intent(IN)  :: rho(nn)
-    real(8),intent(OUT) :: edx_lda(nn)
-    real(8) :: onethr, thrfou, thrpi, factor
+    real(8),optional,intent(OUT) :: edx_lda(nn)
+    real(8),optional,intent(OUT) :: vdx_lda(nn)
+    real(8) :: onethr, twothr, thrfou, thrpi, pi, factor
     integer :: s
 
+    pi     = acos(-1.0d0)
     onethr = 1.0d0/3.0d0
+    twothr = 2.0d0/3.0d0
     thrfou = 3.0d0/4.0d0
-    thrpi  = 3.0d0/acos(-1.0d0)
+    thrpi  = 3.0d0/pi
 
     factor = 1.0d0
     if ( nn == 2 ) factor = 2.0d0**onethr
 
-    do s=1,nn
-       edx_lda(s) = -factor*thrfou*( thrPi*rho(s) )**onethr
-    end do
+    if ( present(edx_lda) ) then
+       do s=1,nn
+          edx_lda(s) = -factor*thrfou*( thrPi*rho(s) )**onethr
+       end do
+    end if
+
+    if ( present(vdx_lda) ) then
+       do s=1,nn
+          if ( rho(s) > 0.0d0 ) then
+             vdx_lda(s) = -pi*thrfou/(3.0d0*pi*pi*rho(s))**twothr
+          else
+             vdx_lda(s)=0.0d0
+          end if
+       end do
+    end if
 
   END SUBROUTINE calc_edx_lda
 
 
-  SUBROUTINE calc_edc_lda( nn, rho, edc_lda )
+  SUBROUTINE calc_edc_lda( nn, rho, edc_lda, vdc_lda )
     implicit none
     integer,intent(IN)  :: nn
     real(8),intent(IN)  :: rho(nn)
-    real(8),intent(OUT) :: edc_lda
+    real(8),optional,intent(OUT) :: edc_lda
+    real(8),optional,intent(OUT) :: vdc_lda(nn)
     real(8),parameter :: A00  =0.031091d0,A01  =0.015545d0,A02  =0.016887d0
     real(8),parameter :: alp10=0.21370d0 ,alp11=0.20548d0 ,alp12=0.11125d0
     real(8),parameter :: bt10 =7.5957d0  ,bt11 =1.41189d1 ,bt12 =1.0357d1
@@ -654,12 +734,15 @@ CONTAINS
     real(8),parameter :: bt40 =0.49294d0 ,bt41 =0.62517d0 ,bt42 =0.49671d0
     real(8) :: one,two,fouthr,pi,const1,const2,onethr,ThrFouPi
     real(8) :: trho,rhoa,rhob,zeta,fz,kf,rs,rssq,ec_U,ec_P,alpc
-
-    edc_lda = 0.0d0
+    real(8) :: deU_dn, deP_dn, dac_dn, dfz_dz, dz_dn(2), dec_dz
+    integer :: s
 
     trho = sum( rho(1:nn) )
     rhoa = rho(1)
     rhob = rho(nn)
+
+    if ( present(edc_lda) ) edc_lda=0.0d0
+    if ( present(vdc_lda) ) vdc_lda=0.0d0
 
     if ( trho <= zero_density ) return
 
@@ -687,8 +770,53 @@ CONTAINS
          *log( one + one/( two*A02 &
          *(bt12*rssq + bt22*rs + bt32*rs*rssq + bt42*rs*rs) ) )
 
-    edc_lda = ec_U - alpc*fz*const2*(one-zeta**4) &
-         + ( ec_P - ec_U )*fz*zeta**4
+    if ( present(edc_lda) ) then
+       edc_lda = ec_U - alpc*fz*const2*(one-zeta**4) &
+            + ( ec_P - ec_U )*fz*zeta**4
+    end if
+
+    if ( present(vdc_lda) ) then
+
+       deU_dn = -4.0d0*Pi/9.0d0*rs**4*alp10*ec_U/( 1.0d0 + alp10*rs ) &
+            -4.0d0*Pi/9.0d0*rs*rs*( 1.0d0 + alp10*rs ) &
+            *( 0.5d0*bt10*sqrt(rs) + bt20*rs + 1.5d0*bt30*rs*sqrt(rs) &
+            +2.0d0*bt40*rs*rs ) &
+            /( bt10 + bt20*sqrt(rs) + bt30*rs &
+            + bt40*rs*sqrt(rs))**2 &
+            * exp( ec_U/(2.0d0*A00*(1.0d0+alp10*rs)) )
+
+       deP_dn = -4.0d0*Pi/9.0d0*rs**4*alp11*ec_P/( 1.0d0 + alp11*rs ) &
+            -4.0d0*Pi/9.0d0*rs*rs*( 1.0d0 + alp11*rs ) &
+            *( 0.5d0*bt11*sqrt(rs) + bt21*rs + 1.5d0*bt31*rs*sqrt(rs) &
+            +2.0d0*bt41*rs*rs ) &
+            /( bt11 + bt21*sqrt(rs) + bt31*rs &
+            + bt41*rs*sqrt(rs))**2 &
+            * exp( ec_P/(2.0d0*A01*(1.0d0+alp11*rs)) )
+
+       dac_dn = -4.0d0*Pi/9.0d0*rs**4*alp12*alpc/( 1.0d0 + alp12*rs ) &
+            -4.0d0*Pi/9.0d0*rs*rs*( 1.0d0 + alp12*rs ) &
+            *( 0.5d0*bt12*sqrt(rs) + bt22*rs + 1.5d0*bt32*rs*sqrt(rs) &
+            +2.0d0*bt42*rs*rs ) &
+            /( bt12 + bt22*sqrt(rs) + bt32*rs &
+            + bt42*rs*sqrt(rs))**2 &
+            * exp( alpc/(2.0d0*A02*(1.d0+alp12*rs)) )
+
+       dfz_dz = fouthr*( (one+zeta)**onethr - (one-zeta)**onethr )*const1
+
+       dz_dn(1)  = 2.0d0*rhob/trho
+       dz_dn(nn) =-2.0d0*rhoa/trho
+
+       dec_dz = -alpc*dfz_dz*const2*(one-zeta**4) &
+               + 4.0d0*alpc*fz*const2*zeta**3 &
+               +(ec_P-ec_U)*dfz_dz*zeta**4 &
+               +(ec_P-ec_U)*fz*4.0d0*zeta**3
+
+       do s=1,nn
+          vdc_lda(s) = deU_dn - dac_dn*fz*const2*(one-zeta**4) &
+               +(deP_dn-deU_dn)*fz*zeta**4 + dec_dz*dz_dn(s)
+       end do
+
+    end if
 
   END SUBROUTINE calc_edc_lda
 
@@ -717,9 +845,13 @@ CONTAINS
        pol(k,i) = pol(k,i) + 1.0d0
 
 ! ---------------------------- Wu & Gygi ---
-       do j=0,NumQgrid
-          pol(k,j) = Qgrid(j)*pol(k,j)/q0(k)
-       end do
+       if ( q0(k) /= 0.0d0 ) then
+          do j=0,NumQgrid
+             pol(k,j) = Qgrid(j)*pol(k,j)/q0(k)
+          end do
+       else
+          pol(k,:) = 0.0d0
+       end if
 ! ------------------------------------------
 
     end do ! k
@@ -797,7 +929,7 @@ CONTAINS
     implicit none
     complex(8),intent(IN) :: theta(:,0:)
     type(grid),intent(IN) :: rgrid
-    real(8),intent(OUT) :: Ec
+    real(8),intent(INOUT) :: Ec
     integer :: a,b,i,j,info
     complex(8) :: z
     real(8) :: c,E0
@@ -825,11 +957,276 @@ CONTAINS
     if ( disp_sw ) then
        write(*,*) "Ec_vdw=",Ec
        write(*,*) "Ec_vdw+Ec_LDA=",Ec+Ec_LDA
-       E0=Ec*rgrid%NumGrid(0)*rgrid%dV
-       write(*,*) E0,E0+Ec_LDA
     end if
 
   END SUBROUTINE calc_vdw_energy
+
+
+  SUBROUTINE calc_ua( rgrid, theta, ua )
+    implicit none
+    complex(8),intent(IN) :: theta(:,0:)
+    type(grid),intent(IN) :: rgrid
+    real(8),intent(OUT)   :: ua(:,0:)
+    integer :: a,b,i,j,i1,i2,i3
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
+    complex(8),allocatable :: work0(:,:,:),work1(:,:,:)
+    integer :: ML1,ML2,ML3,ML,info
+    integer :: ifacx(30),ifacy(30),ifacz(30)
+    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
+    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+
+    ML  = rgrid%NumGrid(0)
+    ML1 = rgrid%NumGrid(1)
+    ML2 = rgrid%NumGrid(2)
+    ML3 = rgrid%NumGrid(3)
+
+    allocate( work0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work0=zero
+    allocate( work1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work1=zero
+
+    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+
+    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
+         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call construct_ggrid(1)
+
+    ua(:,:) = 0.0d0
+
+    do a=1,NumQgrid
+
+       work1(:,:,:)=zero
+
+       do b=1,NumQgrid
+
+          do i=MG_0,MG_1
+             j=i-MG_0+1
+             i1 = mod( ML1+LLG(1,i), ML1 )
+             i2 = mod( ML2+LLG(2,i), ML2 )
+             i3 = mod( ML3+LLG(3,i), ML3 )
+             work1(i1,i2,i3) = work1(i1,i2,i3) + phiG(MGL(i),a,b)*theta(j,b)
+          end do ! i
+
+       end do ! b
+
+       call MPI_ALLREDUCE(work1,work0,size(work0),MPI_COMPLEX16 &
+            ,MPI_SUM,MPI_COMM_WORLD,info)
+
+       call fft3bx(ML1,ML2,ML3,ML,work0,work1,wsavex,wsavey,wsavez &
+            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+       i=0
+       do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
+       do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
+       do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
+          i=i+1
+          ua(i,a) = work0(i1,i2,i3)
+       end do
+       end do
+       end do
+
+    end do ! a
+
+    call destruct_ggrid
+
+    deallocate( wsavez,wsavey,wsavex )
+    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    deallocate( work1 )
+    deallocate( work0 )
+
+  END SUBROUTINE calc_ua
+
+
+  SUBROUTINE calc_pol_drv( m0, m1, q0, pol, pol_drv )
+    implicit none
+    integer,intent(IN)  :: m0,m1
+    real(8),intent(IN)  :: q0(m0:m1),pol(m0:m1,0:NumQgrid)
+    real(8),intent(OUT) :: pol_drv(m0:m1,0:NumQgrid)
+    integer :: i,j,k
+    real(8) :: q
+
+    pol_drv(:,:)=0.0d0
+
+    do k=m0,m1
+
+       do i=0,NumQgrid
+          if ( q0(k) < Qgrid(i) ) exit
+       end do
+       i=i-1
+
+       q=q0(k)-Qgrid(i)
+       do j=0,NumQgrid
+          pol_drv(k,j) = bmat(i,j) + 2.0d0*cmat(i,j)*q + 3.0d0*dmat(i,j)*q*q
+       end do
+
+! ---------------------------- Wu & Gygi ---
+       if ( q0(k) /= 0.0 ) then
+          do j=0,NumQgrid
+             pol_drv(k,j)=Qgrid(j)*(-pol(k,j)+q0(k)*pol_drv(k,j))/q0(k)**2
+          end do
+       else
+          pol_drv(k,:)=0.0d0
+       end if
+! ------------------------------------------
+
+    end do ! k
+
+  END SUBROUTINE calc_pol_drv
+
+
+  SUBROUTINE calc_dqdn( rgrid, rho, grad16, fin, fou )
+    implicit none
+    type(grid) :: rgrid
+    type(density) :: rho
+    type(gradient16) :: grad16
+    real(8),intent(IN)  :: fin(:)
+    real(8),intent(OUT) :: fou(:)
+    type(fd) :: nabla
+    type(lattice) :: aa, bb
+    real(8) :: trho,rho_tmp(2),vdx_lda(2),vdc_lda(2),b(3,3)
+    real(8) :: edx_lda(2),edc_lda
+    real(QP) :: pi,FouPiThr,twothr,onethr,sevthr,kf,ss,cm,q0,c,d,const
+    real(QP),allocatable :: rtmp0(:),rtmp(:,:),ftmp(:)
+    integer :: m0,m1,m,ML1,ML2,ML3,Md,i,i1,i2,i3,j,j1,j2,j3,k1,k2,k3,info
+    integer,allocatable :: LLL(:,:,:)
+
+    pi       = acos(-1.0q0)
+    onethr   = 1.0q0/3.0q0
+    twothr   = 2.0q0/3.0q0
+    FouPiThr = 4.0q0*pi/3.0q0
+    sevthr   = 7.0q0/3.0q0
+    const    = Zab/9.0q0
+
+    m0 = rgrid%SubGrid(1,0)
+    m1 = rgrid%SubGrid(2,0)
+
+    ML1 = rgrid%NumGrid(1)
+    ML2 = rgrid%NumGrid(2)
+    ML3 = rgrid%NumGrid(3)
+
+    allocate( rtmp(rgrid%NumGrid(0),3) ) ; rtmp=0.0q0
+    allocate( rtmp0(m0:m1)             ) ; rtmp0=0.0q0
+    allocate( ftmp(m0:m1)              ) ; ftmp=0.0q0
+
+! ---
+
+    do i=m0,m1
+
+       rho_tmp(1) = rho%rho(i,1)
+       rho_tmp(2) = rho%rho(i,rho%nn)
+       trho       = sum( rho_tmp(1:rho%nn) )
+
+       if ( trho <= zero_density ) cycle
+
+       call calc_edx_lda( rho%nn, rho_tmp, edx_lda, vdx_lda )
+       call calc_edc_lda( rho%nn, rho_tmp, edc_lda, vdc_lda )
+
+       kf = (3.0q0*pi*pi*trho)**onethr
+       ss = grad16%gg(i)/(2.0q0*kf*trho)**2
+       q0 = -FouPithr*(edx_lda(1)+edc_lda) - const*ss*kf
+
+       c=1.0q0
+       do j=1,Mmax-1
+          c=c+(q0/Qmax)**j
+       end do
+       d=0.0q0
+       do j=1,Mmax
+          d=d+(q0/Qmax)**j/j
+       end do
+       c=c*exp(-d)
+       
+       ftmp(i) = c*( -FouPiThr*( vdx_lda(1) + vdc_lda(1) )*trho &
+                     +const*sevthr*kf*ss )*fin(i-m0+1)
+
+       rtmp0(i) = c*( -const/(2.0q0*trho**2*kf) )*fin(i-m0+1)
+
+    end do ! i
+
+! ---
+
+    rtmp(m0:m1,1) = rtmp0(m0:m1) * grad16%gx(m0:m1)
+    rtmp(m0:m1,2) = rtmp0(m0:m1) * grad16%gy(m0:m1)
+    rtmp(m0:m1,3) = rtmp0(m0:m1) * grad16%gz(m0:m1)
+
+    deallocate( rtmp0 )
+
+    do i=1,3
+       call MPI_ALLGATHERV( rtmp(m0,i), m1-m0+1, MPI_REAL16, rtmp(1,i) &
+            , ir_grid, id_grid, MPI_REAL16, comm_grid, info )
+    end do
+
+    allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0
+
+    i=m0-1
+    do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
+    do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
+    do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
+       i=i+1
+       LLL(i1,i2,i3) = i
+    end do
+    end do
+    end do
+    call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER &
+         ,MPI_SUM, comm_grid, info )
+
+    call construct_nabla_fd( nabla )
+    Md = nabla%md
+
+    call construct_aa_lattice( aa )
+    call get_reciprocal_lattice( aa, bb )
+    b(1:3,1)=aa%Length(1)*bb%LatticeVector(1:3,1)/( 2*pi*rgrid%SizeGrid(1) )
+    b(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*pi*rgrid%SizeGrid(2) )
+    b(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*pi*rgrid%SizeGrid(3) )
+
+    do i3=0,ML3-1
+    do i2=0,ML2-1
+    do i1=0,ML1-1
+       i=LLL(i1,i2,i3)
+       do m=-Md,Md
+          cm=nabla%coef(m)*sign(1,m)
+          j1=i1+m
+          k1=j1/ML1 ; if ( j1 < 0 ) k1=(j1+1)/ML1-1
+          j1=j1-k1*ML1
+          j =LLL(j1,i2,i3)
+          if ( m0 <= j .and. j <= m1 ) then
+             ftmp(j) = ftmp(j) + cm*( rtmp(i,1)*b(1,1) &
+                                     +rtmp(i,2)*b(2,1) &
+                                     +rtmp(i,3)*b(3,1) )
+          end if
+          j2=i2+m
+          k2=j2/ML2 ; if ( j2 < 0 ) k2=(j2+1)/ML2-1
+          j2=j2-k2*ML2
+          j =LLL(i1,j2,i3)
+          if ( m0 <= j .and. j <= m1 ) then
+             ftmp(j) = ftmp(j) + cm*( rtmp(i,1)*b(1,2) &
+                                     +rtmp(i,2)*b(2,2) &
+                                     +rtmp(i,3)*b(3,2) )
+          end if
+          j3=i3+m
+          k3=j3/ML3 ; if ( j3 < 0 ) k3=(j3+1)/ML3-1
+          j3=j3-k3*ML3
+          j =LLL(i1,i2,j3)
+          if ( m0 <= j .and. j <= m1 ) then
+             ftmp(j) = ftmp(j) + cm*( rtmp(i,1)*b(1,3) &
+                                     +rtmp(i,2)*b(2,3) &
+                                     +rtmp(i,3)*b(3,3) )
+          end if
+       end do ! m
+    end do ! i1
+    end do ! i2
+    end do ! i3
+
+    fou(1:m1-m0+1) = ftmp(m0:m1)
+
+! ---
+
+    deallocate( ftmp )
+    deallocate( LLL  )
+    deallocate( rtmp )
+
+    call destruct_nabla_fd( nabla )
+
+  END SUBROUTINE calc_dqdn
 
 
 END MODULE xc_vdw_module

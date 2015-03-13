@@ -191,7 +191,7 @@ CONTAINS
 
        call calc_GGAPBE96_org
 
-    case('GGAPBE96')
+    case('GGAPBE96','PBE')
 
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
@@ -307,20 +307,27 @@ CONTAINS
 
        kappa = 1.245d0 ! revPBE
 
-       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
-            ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
-
-       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
-
        call init_grid( rgrid )
        call init_type_density( rho_v )
        rho_v%rho(:,:) = rho_tmp(:,:)
        call init_type_xc( rho_v%n0, rho_v%n1, rgrid, vdw )
 
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation &
+            , vdw%Vxc )
+
+       Vxc = vdw%Vxc
+
        call check_disp_switch( disp_switch_parallel, 1 )
 
        call init_xc_vdw
        call calc_xc_vdw( rgrid, rho_v, vdw )
+
+       E_correlation = vdw%Ec
+       Vxc(:,:) = Vxc(:,:) + vdw%Vxc(:,:)
+
+       Exc = E_exchange + E_correlation
 
     case default
 
