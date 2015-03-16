@@ -11,7 +11,7 @@ MODULE xc_variables
      real(8) :: Exc
      real(8) :: Ex
      real(8) :: Ec
-     real(8),allocatable :: Vxc(:,:)
+     real(8),allocatable :: Vxc(:,:), Vx(:,:), Vc(:,:)
      integer :: mm,m0,m1
      integer :: nn,n0,n1
   end type xc
@@ -29,8 +29,12 @@ CONTAINS
     f%n1 = MSP_1
     if ( .not.allocated(f%Vxc) ) then
        allocate( f%Vxc(f%m0:f%m1,f%n0:f%n1) )
+       allocate( f%Vx(f%m0:f%m1,f%n0:f%n1)  )
+       allocate( f%Vc(f%m0:f%m1,f%n0:f%n1)  )
     end if
     f%Vxc=0.0d0
+    f%Vx=0.0d0
+    f%Vc=0.0d0
   END SUBROUTINE init_type_xc
 
 END MODULE xc_variables

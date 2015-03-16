@@ -20,6 +20,7 @@ MODULE xc_module
   use xc_variables, only: xc, init_type_xc
   use xc_ldapz81_module
   use xc_ggapbe96_module
+  use xc_ggapbe96_2_module
   use xc_hybrid_module
   use xc_hse_module
   use xc_hf_module
@@ -146,7 +147,7 @@ CONTAINS
     real(8) :: c,mu,kappa
     integer :: s
     type(grid) :: rgrid
-    type(xc) :: vdw
+    type(xc) :: vdw, gga
     type(density) :: rho_v
 
     if ( disp_switch_parallel ) then
@@ -191,12 +192,28 @@ CONTAINS
 
        call calc_GGAPBE96_org
 
-    case('GGAPBE96','PBE')
+    case('GGAPBE96')
 
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+    case('PBE','PBE96')
+
+       call init_grid( rgrid )
+       call init_type_density( rho_v )
+       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, gga )
+
+       rho_v%rho(:,:) = rho_tmp(:,:)
+
+       call calc_GGAPBE96_2( rgrid, rho_v, gga )
+
+       E_exchange = gga%Ex
+       E_correlation = gga%Ec
+       Exc = E_exchange + E_correlation
+
+       Vxc(:,:) = gga%Vxc(:,:)
 
     case('PBEsol')
 
@@ -312,12 +329,9 @@ CONTAINS
        rho_v%rho(:,:) = rho_tmp(:,:)
        call init_type_xc( rho_v%n0, rho_v%n1, rgrid, vdw )
 
-       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
-            ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
-       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation &
-            , vdw%Vxc )
+       call calc_GGAPBE96_2( rgrid, rho_v, vdw, Kp_in=kappa )
 
-       Vxc = vdw%Vxc
+       E_exchange = vdw%Ex
 
        call check_disp_switch( disp_switch_parallel, 1 )
 
@@ -325,7 +339,7 @@ CONTAINS
        call calc_xc_vdw( rgrid, rho_v, vdw )
 
        E_correlation = vdw%Ec
-       Vxc(:,:) = Vxc(:,:) + vdw%Vxc(:,:)
+       Vxc(:,:) = vdw%Vx(:,:) + vdw%Vc(:,:)
 
        Exc = E_exchange + E_correlation
 

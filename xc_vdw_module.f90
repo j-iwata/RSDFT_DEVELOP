@@ -541,7 +541,7 @@ CONTAINS
     ss_min = 1.d100
     ss_max =-1.d100
 
-    vdw%Vxc(:,:)=0.0d0
+    vdw%Vc(:,:)=0.0d0
 
     do i=m0,m1
 
@@ -558,7 +558,7 @@ CONTAINS
        Ec_LDA = Ec_LDA + trho*edc_lda
 
        do j=1,rho%nn
-          vdw%Vxc(i,j) = edc_lda + trho*vdc_lda(j)
+          vdw%Vc(i,j) = edc_lda + trho*vdc_lda(j)
        end do
 
        kf = ( 3.0q0*pi*pi*trho )**onethr
@@ -665,7 +665,7 @@ CONTAINS
 
     c = 1.0d0/rgrid%NumGrid(0)
 
-    vdw%Vxc(:,1) = vdw%Vxc(:,1) + c*g(:)
+    vdw%Vc(:,1) = vdw%Vc(:,1) + c*g(:)
 
 ! ---
 
@@ -1083,9 +1083,10 @@ CONTAINS
     real(8),intent(OUT) :: fou(:)
     type(fd) :: nabla
     type(lattice) :: aa, bb
-    real(8) :: trho,rho_tmp(2),vdx_lda(2),vdc_lda(2),b(3,3)
+    real(8) :: trho,rho_tmp(2),vdx_lda(2),vdc_lda(2)
     real(8) :: edx_lda(2),edc_lda
     real(QP) :: pi,FouPiThr,twothr,onethr,sevthr,kf,ss,cm,q0,c,d,const
+    real(QP) :: qtrho,b(3,3)
     real(QP),allocatable :: rtmp0(:),rtmp(:,:),ftmp(:)
     integer :: m0,m1,m,ML1,ML2,ML3,Md,i,i1,i2,i3,j,j1,j2,j3,k1,k2,k3,info
     integer,allocatable :: LLL(:,:,:)
@@ -1115,14 +1116,16 @@ CONTAINS
        rho_tmp(1) = rho%rho(i,1)
        rho_tmp(2) = rho%rho(i,rho%nn)
        trho       = sum( rho_tmp(1:rho%nn) )
+       qtrho      = trho
 
-       if ( trho <= zero_density ) cycle
+       if ( trho <= 0.0d0 ) cycle
+!       if ( trho <= zero_density ) cycle
 
        call calc_edx_lda( rho%nn, rho_tmp, edx_lda, vdx_lda )
        call calc_edc_lda( rho%nn, rho_tmp, edc_lda, vdc_lda )
 
-       kf = (3.0q0*pi*pi*trho)**onethr
-       ss = grad16%gg(i)/(2.0q0*kf*trho)**2
+       kf = (3.0q0*pi*pi*qtrho)**onethr
+       ss = grad16%gg(i)/(2.0q0*kf*qtrho)**2
        q0 = -FouPithr*(edx_lda(1)+edc_lda) - const*ss*kf
 
        c=1.0q0
@@ -1138,7 +1141,7 @@ CONTAINS
        ftmp(i) = c*( -FouPiThr*( vdx_lda(1) + vdc_lda(1) )*trho &
                      +const*sevthr*kf*ss )*fin(i-m0+1)
 
-       rtmp0(i) = c*( -const/(2.0q0*trho**2*kf) )*fin(i-m0+1)
+       rtmp0(i) = c*( -const/(2.0q0*qtrho*kf) )*fin(i-m0+1)
 
     end do ! i
 

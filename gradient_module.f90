@@ -177,6 +177,8 @@ CONTAINS
     b3 = rgrid%SubGrid(2,3) + Md
     allocate( w(a1:b1,a2:b2,a3:b3) ) ; w=0.0q0
 
+    w=www(:,:,:,1)
+
     i=m0-1
     do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
     do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
