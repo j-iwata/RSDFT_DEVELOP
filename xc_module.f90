@@ -23,6 +23,7 @@ MODULE xc_module
   use xc_ggapbe96_2_module
   use xc_hybrid_module
   use xc_hse_module
+  use xc_pbe_xsr_module
   use xc_hf_module
   use xc_vdw_module
 
@@ -284,7 +285,7 @@ CONTAINS
 
        end if
 
-    case('HSE')
+    case('HSE','HSE06')
 
        if ( iflag_hybrid == 0 ) then
 
@@ -308,6 +309,52 @@ CONTAINS
           call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
                           ,MB_0,MB_1, SYStype, dV )
 
+          call calc_xc_hf( E_exchange_exx )
+
+          E_exchange = E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
+
+       end if
+
+    case('HSE_')
+
+       call init_grid( rgrid )
+       call init_type_density( rho_v )
+       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, gga )
+
+       rho_v%rho(:,:) = rho_tmp(:,:)
+
+       if ( iflag_hybrid == 0 ) then
+
+          if ( disp_switch_parallel ) then
+             write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
+             write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
+          end if
+
+          call calc_GGAPBE96_2( rgrid, rho_v, gga )
+
+          E_exchange = gga%Ex
+          E_correlation = gga%Ec
+          Exc = E_exchange + E_correlation
+
+          Vxc(:,:) = gga%Vxc(:,:)
+
+       else
+
+          call calc_GGAPBE96_2( rgrid, rho_v, gga )
+
+          E_exchange = gga%Ex
+          E_correlation = gga%Ec
+          Vxc(:,:) = gga%Vxc(:,:)
+
+          call calc_pbe_xsr( rgrid, rho_v, gga )
+
+          E_exchange = E_exchange - alpha_hf*gga%Ex
+          Vxc(:,:) = Vxc(:,:) - alpha_hf*gga%Vx(:,:)
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
           call calc_xc_hf( E_exchange_exx )
 
           E_exchange = E_exchange + E_exchange_exx

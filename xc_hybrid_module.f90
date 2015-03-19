@@ -136,7 +136,7 @@ CONTAINS
     case( "HF" )
        iflag_hf     = 1
        alpha_hf     = 1.0d0
-    case( "HSE" )
+    case( "HSE","HSE06","HSE_" )
        iflag_hse    = 1
        alpha_hf     = 0.25d0
     case( "PBE0" )
