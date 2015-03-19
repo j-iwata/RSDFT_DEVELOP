@@ -10,8 +10,6 @@ MODULE xc_vdw_module
   use fd_module, only: fd, construct_nabla_fd, destruct_nabla_fd
   use lattice_module, only: lattice,construct_aa_lattice,get_reciprocal_lattice
 
-  use func2gp_module
-
   implicit none
 
   PRIVATE
