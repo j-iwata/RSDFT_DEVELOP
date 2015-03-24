@@ -4,12 +4,23 @@ MODULE atom_module
 
   PRIVATE
   PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom &
-           ,atom_format
+           ,atom_format, atom, construct_atom, write_info_atom
+
+  integer,parameter :: DP=kind(0.0d0)
 
   integer :: Natom, Nelement
   integer,allocatable :: ki_atom(:), zn_atom(:), md_atom(:)
-  real(8),allocatable :: aa_atom(:,:)
+  real(DP),allocatable :: aa_atom(:,:)
   integer :: atom_format
+
+  type atom
+     integer :: natom, nelement
+     integer,allocatable :: k(:)
+     integer,allocatable :: z(:)
+     real(DP),allocatable :: aaa(:,:)
+     real(DP),allocatable :: xyz(:,:)
+     real(DP),allocatable :: force(:,:)
+  end type atom
 
 CONTAINS
 
@@ -132,5 +143,41 @@ CONTAINS
     call mpi_bcast(zn_atom,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(md_atom,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_2
+
+
+  SUBROUTINE construct_atom( x )
+    implicit none
+    type(atom) :: x
+    x%natom = Natom
+    x%nelement = Nelement
+    allocate( x%k(x%natom)       ) ; x%k(:) = ki_atom(:)
+    allocate( x%z(x%nelement)    ) ; x%z(:) = zn_atom(:)
+    allocate( x%aaa(3,x%natom)   ) ; x%aaa(:,:) = aa_atom(:,:)
+    allocate( x%xyz(3,x%natom)   ) ; x%xyz(:,:) = 0.0d0
+    allocate( x%force(3,x%natom) ) ; x%force(:,:) = 0.0d0
+  END SUBROUTINE construct_atom
+
+
+  SUBROUTINE write_info_atom( zps, FilePS )
+    implicit none
+    real(8),intent(IN) :: zps(:)
+    character(*),intent(IN) :: FilePS(:)
+    integer :: i
+    integer,allocatable :: num(:)
+    logical :: disp_sw
+    call write_border(60," write_info_atom")
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
+       allocate( num(Nelement) ) ; num=0
+       write(*,'(8x,3a8,4x,a)') "Zatom", "Zion", "Num", "FilePS"
+       do i=1,Nelement
+          num(i) = count( ki_atom == i )
+          write(*,'(4i8,4x,a)') i,zn_atom(i),nint(zps(i)),num(i),FilePS(i)
+       end do
+       write(*,'(3x,"total",3i8)') sum(zn_atom*num), sum(nint(zps)*num), Natom
+       deallocate( num )
+    end if
+  END SUBROUTINE write_info_atom
+
 
 END MODULE atom_module
