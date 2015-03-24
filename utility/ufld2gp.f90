@@ -1,19 +1,19 @@
 PROGRAM ufld2gp
 
   implicit none
-  integer,parameter :: u1=1, u2=10
+  integer,parameter :: u1=1, u2=10, u3=11
   integer,parameter :: maxloop=1000000
   integer :: loop,ik,k,n,i,j,nk,nb,ne
   character(5) :: cbuf
   real(8),allocatable :: kxyz_pc(:,:),kxyz_sc(:,:)
   real(8),allocatable :: esp(:,:), weight(:,:)
-  real(8) :: emax,emin,e_mergin,eta,de,pi,f,e
+  real(8) :: emax,emin,e_mergin,eta,de,pi,f,e,x
 
 ! ---
 
   ne = 500
 
-  eta = 0.02d0/27.2116d0
+  eta = 0.10d0/27.2116d0
 
   pi = acos(-1.0d0)
 
@@ -38,7 +38,7 @@ PROGRAM ufld2gp
 
 ! ---
 
-  allocate( kxyz_pc(3,nk) ) ; kxyz_pc=0.0d0
+  allocate( kxyz_pc(3,0:nk) ) ; kxyz_pc=0.0d0
   allocate( kxyz_sc(3,nk) ) ; kxyz_sc=0.0d0
   allocate( esp(nb,nk)    ) ; esp=0.0d0
   allocate( weight(nb,nk) ) ; weight=0.0d0
@@ -82,8 +82,14 @@ PROGRAM ufld2gp
 ! ---
 
   rewind u2
+  rewind u3
+
+  kxyz_pc(:,0) = kxyz_pc(:,1)
+  x=0.0d0
 
   do k=1,nk
+
+     x = x + sqrt( sum( (kxyz_pc(:,k)-kxyz_pc(:,k-1))**2 ) )
 
      do i=1,ne
 
@@ -95,11 +101,13 @@ PROGRAM ufld2gp
         end do
         f=f/pi
 
-        write(u2,'(1x,3f20.15)') kxyz_pc(1,k),e*27.2116d0,f
+        write(u2,'(1x,3f20.15)') x,e*27.2116d0,f
+        write(u3,'(1x,3f20.15)') x,e*27.2116d0,log(f)
 
      end do ! i
 
      write(u2,*)
+     write(u3,*)
 
   end do ! k
 
