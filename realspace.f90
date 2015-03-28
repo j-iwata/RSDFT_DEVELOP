@@ -32,6 +32,8 @@ PROGRAM Real_Space_Solid
 ! DISP_SWITCH = .true.
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
+
+  call check_disp_switch( DISP_SWITCH, 1 )
      
 ! --- input parameters ---
 
@@ -46,6 +48,13 @@ PROGRAM Real_Space_Solid
 ! --- Reciprocal Lattice ---
 
   call construct_bb(aa)
+
+  if ( disp_switch ) then
+     write(*,*) "bx=",2.0d0*acos(-1.0d0)/ax
+     write(*,'(1x,3f20.15)') bb(1:3,1)
+     write(*,'(1x,3f20.15)') bb(1:3,2)
+     write(*,'(1x,3f20.15)') bb(1:3,3)
+  end if
 
   call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
@@ -267,6 +276,8 @@ PROGRAM Real_Space_Solid
 ! --- Initial occupation ---
 
   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+
+  call write_info_atom( Zps, file_ps )
 
   if ( DISP_SWITCH ) then
      write(*,'(a60," main")') repeat("-",60)

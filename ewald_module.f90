@@ -614,8 +614,10 @@ CONTAINS
     real(8) :: ewldr_tmp,gmax
     real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
     integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
+    logical :: disp_sw
 
-    if ( disp_switch_parallel ) write(*,'(a60," calc_ewald")') repeat("-",60)
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) write(*,'(a60," calc_ewald")') repeat("-",60)
 
     pi=acos(-1.d0)
 
@@ -703,7 +705,7 @@ CONTAINS
        call mpi_allgather &
             (mg,1,mpi_integer,ir,1,mpi_integer,mpi_comm_world,ierr)
 
-       if ( disp_switch_parallel ) then
+       if ( disp_sw ) then
           write(*,'(1x,i4,2i8,2g26.15,2g12.5)') &
                loop_g,mg_tot,mg,ewldg,sqrt(ecut),timg(1:2)
        end if
@@ -719,7 +721,7 @@ CONTAINS
 
     end do ! loop_g
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,'(1x,"ewald(G)  =",2g24.15,2i8)') ewldg*0.5d0,sqrt(ecut),mg,mg_tot
     end if
 
@@ -789,7 +791,7 @@ CONTAINS
 
        deallocate( LR_tmp )
 
-       if ( disp_switch_parallel ) then
+       if ( disp_sw ) then
           write(*,'(1x,i4,3i8,2g26.15,2g12.5)') &
                loop_r,mr_tot,mr,m,ewldr,sqrt(rrcut),timr(1:2)
        end if
@@ -805,7 +807,7 @@ CONTAINS
 
     end do ! loop_r
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,'(1x,"ewald(G+R)=",2g24.15,2i8)') ewldr*0.5d0,sqrt(rrcut),mr,mr_tot
     end if
 

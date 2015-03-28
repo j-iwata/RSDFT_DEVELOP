@@ -193,6 +193,7 @@ CONTAINS
     complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:3),ett(0:3)
+    logical :: disp_sw
 
 #ifdef _FFTE_
     call construct_ps_local_ffte
@@ -275,7 +276,8 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
        write(*,*) "time(const_ps_loc_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(const_ps_loc_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)

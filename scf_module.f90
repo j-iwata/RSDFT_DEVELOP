@@ -105,11 +105,12 @@ CONTAINS
   END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch )
+  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch, Etot_out )
     implicit none
     integer,intent(IN)  :: Diter
     integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
+    real(8),optional,intent(OUT) :: Etot_out
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3)
@@ -131,6 +132,10 @@ CONTAINS
     MSP01       = MSP_1-MSP_0+1
     ib1         = max(1,nint(Nelectron/2)-20)
     ib2         = min(nint(Nelectron/2)+80,Nband)
+
+!    do s=MSP_0,MSP_1
+!       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+!    end do
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
                     ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
@@ -270,6 +275,7 @@ CONTAINS
        call calc_hartree(ML_0,ML_1,MSP,rho)
        call calc_xc
        call calc_total_energy( .false., disp_switch, .true. )
+       if ( present(Etot_out) ) Etot_out = Etot
 ! ---
 
        call watcht(disp_switch,"etot",1)

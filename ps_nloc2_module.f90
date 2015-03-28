@@ -60,6 +60,7 @@ CONTAINS
     integer :: ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
+    logical :: disp_sw
 
     INTERFACE
        FUNCTION Ylm(x,y,z,l,m)
@@ -69,7 +70,8 @@ CONTAINS
        END FUNCTION Ylm
     END INTERFACE
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
        write(*,'(a60," prep_ps_nloc2")') repeat("-",60)
     end if
 
@@ -102,7 +104,7 @@ CONTAINS
        end do
     end if
 
-    if ( all(ippform == 4) ) call init_ps_nloc_gth(disp_switch_parallel)
+    if ( all(ippform == 4) ) call init_ps_nloc_gth(disp_sw)
 
     if ( Mlma < nprocs_g ) then
        nzlma_0 = Mlma
@@ -846,7 +848,7 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,*) "time(ps_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(ps_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(ps_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
@@ -1220,6 +1222,7 @@ CONTAINS
     logical,allocatable :: a_rank(:)
     integer :: ML1,ML2,ML3,i0,iorb0
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
+    logical :: disp_sw
 
     INTERFACE
        FUNCTION Ylm(x,y,z,l,m)
@@ -1228,6 +1231,8 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    call check_disp_switch( disp_sw, 0 )
 
     if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
@@ -1794,7 +1799,7 @@ CONTAINS
 
 !$OMP end parallel
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,*) "time(force_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)

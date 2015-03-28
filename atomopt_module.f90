@@ -145,7 +145,8 @@ CONTAINS
 
     if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
 
-    disp_switch_loc = (myrank==0)
+    call check_disp_switch( disp_switch_loc, 0 )
+    call check_disp_switch( .false., 1 )
 
     ddmin  = 1.d-8
     safe   = 0.01d0
@@ -835,7 +836,8 @@ CONTAINS
        end do
     end if
 
-    if ( myrank == 0 ) disp_switch=.true.
+    call check_disp_switch( disp_switch_loc, 1 )
+    call check_disp_switch( disp_switch, 0 )
 
     call calc_total_energy(.true.,disp_switch)
 

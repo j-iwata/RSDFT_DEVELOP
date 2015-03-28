@@ -40,6 +40,8 @@ MODULE xc_module
 
   real(8),allocatable :: Vx(:,:)
 
+  logical :: disp_sw
+
 CONTAINS
 
 
@@ -128,7 +130,7 @@ CONTAINS
     call mpi_allreduce(sb,rb,3*n,mpi_real8,mpi_sum,comm_grid,ierr)
     call mpi_allreduce(ic,jc,3*n,mpi_integer,mpi_sum,comm_grid,ierr)
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        do j=1,n
           write(*,'(1x,"(positive)",i8,2x,2g16.8)') jc(2,j),rb(2,j),rb(1,j)
           write(*,'(1x,"(negative)",i8,2x,2g16.8)') jc(3,j),rb(3,j),rb(1,j)
@@ -151,7 +153,9 @@ CONTAINS
     type(xc) :: vdw, gga
     type(density) :: rho_v
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp_sw, 0 )
+
+    if ( disp_sw ) then
        write(*,'(a40," calc_xc(start)")') repeat("-",40)
     end if
 
@@ -238,7 +242,7 @@ CONTAINS
 
        if ( iflag_hybrid == 0 ) then
 
-          if ( disp_switch_parallel ) then
+          if ( disp_sw ) then
              write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
              write(*,*) "LDAPZ81 is called (iflag_hybrid==0)"
           end if
@@ -289,7 +293,7 @@ CONTAINS
 
        if ( iflag_hybrid == 0 ) then
 
-          if ( disp_switch_parallel ) then
+          if ( disp_sw ) then
              write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
              write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
           end if
@@ -327,7 +331,7 @@ CONTAINS
 
        if ( iflag_hybrid == 0 ) then
 
-          if ( disp_switch_parallel ) then
+          if ( disp_sw ) then
              write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
              write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
           end if
@@ -380,8 +384,6 @@ CONTAINS
 
        E_exchange = vdw%Ex
 
-       call check_disp_switch( disp_switch_parallel, 1 )
-
        call init_xc_vdw
        call calc_xc_vdw( rgrid, rho_v, vdw )
 
@@ -399,7 +401,7 @@ CONTAINS
 
     deallocate( rho_tmp )
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,'(a40," calc_xc(end)")') repeat("-",40)
     end if
 
@@ -537,7 +539,7 @@ CONTAINS
     Exc=E_exchange+E_correlation
 
     call watch(ctime1,etime1)
-    if ( DISP_SWITCH_PARALLEL ) then
+    if ( disp_sw ) then
        write(*,*) "TIME(XC_LDAPZ81)",ctime1-ctime0,etime1-etime0
     end if
 
@@ -630,7 +632,7 @@ CONTAINS
        end do
     end if
     call mpi_allreduce(sbf,rbf,3,MPI_REAL8,MPI_SUM,comm_grid,ierr)
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,'(1x,"negative charge =",3g20.10)') rbf(1:3)*dV
     end if
 ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -689,7 +691,7 @@ CONTAINS
        end if
        if ( zeta(i)>1.d0 .or. zeta(i)<-1.d0 ) then
           j=j+1
-          if ( disp_switch_parallel ) write(*,*) j,zeta(i),rho(i,1:nspin)
+          if ( disp_sw ) write(*,*) j,zeta(i),rho(i,1:nspin)
        end if
     end do
     where( zeta >  1.d0 )
@@ -1039,7 +1041,7 @@ CONTAINS
     end select
 
     call watch(ctime1,etime1)
-    if ( DISP_SWITCH_PARALLEL ) then
+    if ( disp_sw ) then
        write(*,*) "TIME(XC_GGAPBE96_org)",ctime1-ctime0,etime1-etime0
     end if
 
