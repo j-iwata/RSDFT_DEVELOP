@@ -1038,7 +1038,7 @@ CONTAINS
 
     allocate( uVunk(nzlma,ib1:ib2),uVunk0(nzlma,ib1:ib2) )
 
-!$OMP parallel
+!$OMP parallel private( i )
 
     do ib=ib1,ib2
 !$OMP do
@@ -1564,8 +1564,11 @@ CONTAINS
                    end do
                    tmp0=tmp0/(r*r)
                 else
-                   write(*,*) "force_ps_nloc2",ir,NRc
-                   stop
+!                   write(*,*) "force_ps_nloc2",ir,NRc
+!                   write(*,*) r,int(100.d0*r),irad( int(100.d0*r),ik )
+!                   write(*,*) rad1(NRc,ik)
+!                   stop
+                   tmp0=0.0d0
                 end if
                 maxerr=max(maxerr,err0)
 #endif

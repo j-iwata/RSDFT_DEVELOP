@@ -3,8 +3,9 @@ PROGRAM ufld2gp
   implicit none
   integer,parameter :: u1=1, u2=10, u3=11
   integer,parameter :: maxloop=1000000
-  integer :: loop,ik,k,n,i,j,nk,nb,ne
+  integer :: loop,ik,k,n,i,j,nk,nk0,nb,ne,kmax
   character(5) :: cbuf
+  real(8),parameter :: aB=0.529177d0, HT=27.2116d0
   real(8),allocatable :: kxyz_pc(:,:),kxyz_sc(:,:)
   real(8),allocatable :: esp(:,:), weight(:,:)
   real(8) :: emax,emin,e_mergin,eta,de,pi,f,e,x
@@ -19,12 +20,20 @@ PROGRAM ufld2gp
 
 ! ---
 
+  write(*,*) "eta(eV), ne="
+  read(*,*) eta, ne
+  eta = eta/HT
+
+! ---
+
   open(u1,file="band_ufld",status="old")
 
   nb=0
   nk=0
+  kmax=0
   do loop=1,maxloop
-     read(u1,*,END=1) cbuf
+     read(u1,*,END=1) cbuf,k
+     kmax=max(k,kmax)
      if ( cbuf == "iktrj" ) then
         nk=nk+1
         nb=0
@@ -35,6 +44,10 @@ PROGRAM ufld2gp
 1 continue
 
   write(*,*) "nk, nb=",nk,nb
+  write(*,*) "kmax=",kmax
+
+  nk0=nk
+  nk=kmax
 
 ! ---
 
@@ -47,7 +60,7 @@ PROGRAM ufld2gp
 
   rewind u1
 
-  do ik=1,nk
+  do ik=1,nk0
 
      read(u1,*) cbuf,k,kxyz_pc(1:3,k),kxyz_sc(1:3,k)
 
@@ -89,7 +102,7 @@ PROGRAM ufld2gp
 
   do k=1,nk
 
-     x = x + sqrt( sum( (kxyz_pc(:,k)-kxyz_pc(:,k-1))**2 ) )
+     x = x + sqrt( sum( (kxyz_pc(:,k)-kxyz_pc(:,k-1))**2 ) )/aB
 
      do i=1,ne
 
@@ -101,8 +114,8 @@ PROGRAM ufld2gp
         end do
         f=f/pi
 
-        write(u2,'(1x,3f20.15)') x,e*27.2116d0,f
-        write(u3,'(1x,3f20.15)') x,e*27.2116d0,log(f)
+        write(u2,'(1x,3f20.15)') x,e*HT,f
+        write(u3,'(1x,3f20.15)') x,e*HT,log(f)
 
      end do ! i
 
