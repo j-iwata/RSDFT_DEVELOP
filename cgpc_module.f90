@@ -39,7 +39,7 @@ CONTAINS
     integer :: i
     character(5) :: cbuf,ckey
     mloop=3
-    iswitch_cgpc=1
+    iswitch_cgpc=2
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000

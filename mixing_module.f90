@@ -39,7 +39,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i
     character(5) :: cbuf,ckey
-    imix=0
+    imix=20
     mmix=4
     beta=1.0d0
     iomix=0

@@ -29,7 +29,7 @@ MODS1 = simc_module.o\
         kinetic_variables.o  \
         kinetic_mol_module.o \
         esm_kinetic_module.o \
-        tmp3_omp_variables.o \
+        omp_variables.o \
         kinetic_fft_module.o \
         kinetic_sol_0_module.o \
         kinetic_sol_1_module.o \
