@@ -36,10 +36,12 @@ CONTAINS
     integer,parameter :: TYPE_MAIN=MPI_REAL8
     real(8),parameter :: zero=0.0d0
     real(8),allocatable :: utmp(:), utmp3(:,:,:)
+    real(4),allocatable :: utmpSP(:)
 #else
     integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: utmp(:), utmp3(:,:,:)
+    complex(4),allocatable :: utmpSP(:)
 #endif
 
     if ( DISP_SWITCH ) then
@@ -222,6 +224,9 @@ CONTAINS
     end if
 
     allocate( utmp(ML) ) ; utmp=zero
+    if ( OC == 14 .or. OC == 15 ) then
+       allocate( utmpSP(ML) ) ; utmpSP=zero
+    end if
 
     do s=1,MSP
     do k=1,MBZ
@@ -254,7 +259,13 @@ CONTAINS
 
           if ( myrank == 0 ) then
 
-             read(3) utmp
+             select case( OC )
+             case default
+                read(3) utmp
+             case(14,15)
+                read(3) utmpSP
+                utmp=utmpSP
+             end select
 
              do i=1,ML
                 i1=LL_tmp(1,i) ; i2=LL_tmp(2,i) ; i3=LL_tmp(3,i)
@@ -292,7 +303,13 @@ CONTAINS
        else if ( IO_ctrl == 3 ) then
 
           if ( flag_related ) then
-             read(3) unk(n1:n2,n,k,s)
+             select case(OC)
+             case default
+                read(3) unk(n1:n2,n,k,s)
+             case(14,15)
+                read(3) utmpSP(n1:n2)
+                unk(n1:n2,n,k,s)=utmpSP(n1:n2)
+             end select
           end if
 
        end if
@@ -303,6 +320,7 @@ CONTAINS
 
     if ( IO_ctrl == 0 .and. myrank == 0 .or. IO_ctrl == 3 ) close(3)
 
+    if ( allocated(utmpSP) ) deallocate( utmpSP )
     deallocate( utmp )
     deallocate( utmp3 )
     deallocate( LL_tmp )

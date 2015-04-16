@@ -130,7 +130,7 @@ CONTAINS
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
 
-    if ( OC2 < 1 .or. OC < 1 .or. OC > 13 ) return
+    if ( OC2 < 1 .or. OC < 1 .or. OC > 15 ) return
 
     icount=icount+1
     if ( .not.(flag .or. icount==OC2) ) return
@@ -191,7 +191,8 @@ CONTAINS
 ! --- density and potentials ---
 !
 
-    if ( OC == 2 .or. OC == 3 .or. OC == 5 .or. OC == 13 ) then
+    if ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
+         OC == 12 .or. OC == 13 .or. OC == 15 ) then
 
        allocate( rtmp(ML) )
 
@@ -310,8 +311,11 @@ CONTAINS
 !
     
 
-    if ( OC == 1  .or. OC == 3 .or. OC == 4 .or. OC == 5 .or. &
-         OC == 11 .or. OC == 13 ) then
+    if ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
+         OC == 11 .or. OC == 13 .or. OC == 14 .or. OC == 15 ) then
+
+       if ( OC == 4 ) OC=14
+       if ( OC == 5 ) OC=15
 
        call simple_wf_io_write &
             ( file_wf1, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
