@@ -34,15 +34,19 @@ CONTAINS
     character(32) :: file_wf_split
 #ifdef _DRSDFT_
     integer,parameter :: TYPE_MAIN=MPI_REAL8
+    integer,parameter :: type_wf_0=1
     real(8),parameter :: zero=0.0d0
     real(8),allocatable :: utmp(:), utmp3(:,:,:)
     real(4),allocatable :: utmpSP(:)
 #else
     integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+    integer,parameter :: type_wf_0=0
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: utmp(:), utmp3(:,:,:)
     complex(4),allocatable :: utmpSP(:)
 #endif
+    real(8),allocatable :: dtmp(:)
+    real(4),allocatable :: dtmpSP(:)
 
     if ( DISP_SWITCH ) then
        write(*,'(a40," simple_wf_io_read(start)")') repeat("-",40)
@@ -228,6 +232,23 @@ CONTAINS
        allocate( utmpSP(ML) ) ; utmpSP=zero
     end if
 
+    if ( type_wf /= type_wf_0 ) then
+
+       if ( type_wf == 1 ) then
+
+          allocate( dtmp(ML) ) ; dtmp=0.0d0
+          if ( OC == 14 .or. OC == 15 ) then
+             allocate( dtmpSP(ML) ) ; dtmpSP=0.0d0
+          end if
+
+       else if ( type_wf == 0 ) then
+
+          write(*,*) "type_wf,type_wf_0=",type_wf,type_wf_0
+
+       end if
+
+    end if
+
     do s=1,MSP
     do k=1,MBZ
     do n=MB1_tmp,min(MB2_tmp,MB)
@@ -261,10 +282,20 @@ CONTAINS
 
              select case( OC )
              case default
-                read(3) utmp
+                if ( type_wf == 1 ) then
+                   read(3) dtmp
+                   utmp=dtmp
+                else
+                   read(3) utmp
+                end if
              case(14,15)
-                read(3) utmpSP
-                utmp=utmpSP
+                if ( type_wf == 1 ) then
+                   read(3) dtmpSP
+                   utmp=dtmpSP
+                else
+                   read(3) utmpSP
+                   utmp=utmpSP
+                end if
              end select
 
              do i=1,ML
@@ -305,10 +336,20 @@ CONTAINS
           if ( flag_related ) then
              select case(OC)
              case default
-                read(3) unk(n1:n2,n,k,s)
+                if ( type_wf == 1 ) then
+                   read(3) dtmp(n1:n2)
+                   unk(n1:n2,n,k,s)=dtmp(n1:n2)
+                else
+                   read(3) unk(n1:n2,n,k,s)
+                end if
              case(14,15)
-                read(3) utmpSP(n1:n2)
-                unk(n1:n2,n,k,s)=utmpSP(n1:n2)
+                if ( type_wf == 1 ) then
+                   read(3) dtmpSP(n1:n2)
+                   unk(n1:n2,n,k,s)=dtmpSP(n1:n2)
+                else
+                   read(3) utmpSP(n1:n2)
+                   unk(n1:n2,n,k,s)=utmpSP(n1:n2)
+                end if
              end select
           end if
 
@@ -320,6 +361,8 @@ CONTAINS
 
     if ( IO_ctrl == 0 .and. myrank == 0 .or. IO_ctrl == 3 ) close(3)
 
+    if ( allocated(dtmpSP) ) deallocate( dtmpSP )
+    if ( allocated(dtmp) ) deallocate( dtmp )
     if ( allocated(utmpSP) ) deallocate( utmpSP )
     deallocate( utmp )
     deallocate( utmp3 )
