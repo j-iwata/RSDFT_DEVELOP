@@ -152,6 +152,7 @@ MODS1 = simc_module.o\
         random_initrho_module.o \
         hamiltonian_matrix_module.o \
         ChebyshevFilter_module.o \
+        rtddft_mol_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \

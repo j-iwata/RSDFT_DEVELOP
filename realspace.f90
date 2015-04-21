@@ -8,6 +8,7 @@ PROGRAM Real_Space_Solid
   use psv_initrho_module
   use random_initrho_module
   use hamiltonian_matrix_module
+  use rtddft_mol_module
 
   implicit none
 
@@ -432,6 +433,30 @@ PROGRAM Real_Space_Solid
      write(*,*) "RS-CPMD is not available for COMPLEX16"
      write(*,*) "Please re-compile the program"
 #endif
+  end select
+
+!
+! --- TDDFT ---
+!
+  select case( iswitch_tddft )
+  case( 0 )
+
+  case( 1,2 )
+
+     select case( SYStype )
+     case( 1 )
+        call init_rtddft_mol( 1, myrank )
+        call rtddft_mol( iswitch_tddft )
+        goto 900
+     case default
+        write(*,*) "real-time tddft is available only for rsmol"
+        goto 900
+     end select
+
+  case default
+
+     write(*,'(1x,"iswitch_tddft=",i2," is not available")') iswitch_tddft
+
   end select
 
 ! --- finalize ---

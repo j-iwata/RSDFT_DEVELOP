@@ -88,9 +88,10 @@ CONTAINS
 
     call read_watch(myrank,unit)
 
-    iswitch_scf  = 1
-    iswitch_opt  = 0
-    iswitch_test = 0
+    iswitch_scf   = 1
+    iswitch_opt   = 0
+    iswitch_test  = 0
+    iswitch_tddft = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
@@ -108,6 +109,9 @@ CONTAINS
           else if ( ckey(1:6) == "SWTEST" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_test
+          else if ( ckey(1:7) == "SWTDDFT" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_tddft
           end if
        end do
 990    continue
@@ -274,6 +278,7 @@ CONTAINS
     call mpi_bcast(iswitch_opt ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_band,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_test,1,mpi_integer,rank,mpi_comm_world,ierr)
+    call mpi_bcast(iswitch_tddft,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(atom_format,1,mpi_integer,rank,mpi_comm_world,ierr)
   END SUBROUTINE send_parameters
 
