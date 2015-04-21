@@ -163,7 +163,7 @@ CONTAINS
     if ( ML_tmp /= ML .or. ML1_tmp /= ML1 .or. &
          ML2_tmp /= ML2 .or. ML3_tmp /= ML3 ) stop "stop@simple_wf_io_read"
 
-    if ( MB1_tmp /= 1 .or. MB2_tmp /= MB ) then
+    if ( MB1_tmp /= 1 .or. MB2_tmp < MB ) then
        if ( DISP_SWITCH ) then
           write(*,*) "******** WARNING! ********"
           write(*,*) "MB1_tmp,MB2_tmp=",MB1_tmp,MB2_tmp
@@ -338,17 +338,18 @@ CONTAINS
              case default
                 if ( type_wf == 1 ) then
                    read(3) dtmp(n1:n2)
-                   unk(n1:n2,n,k,s)=dtmp(n1:n2)
+                   if ( flag_related ) unk(n1:n2,n,k,s)=dtmp(n1:n2)
                 else
-                   read(3) unk(n1:n2,n,k,s)
+                   read(3) utmp(n1:n2)
+                   if ( flag_related ) unk(n1:n2,n,k,s)=utmp(n1:n2)
                 end if
              case(14,15)
                 if ( type_wf == 1 ) then
                    read(3) dtmpSP(n1:n2)
-                   unk(n1:n2,n,k,s)=dtmpSP(n1:n2)
+                   if ( flag_related ) unk(n1:n2,n,k,s)=dtmpSP(n1:n2)
                 else
                    read(3) utmpSP(n1:n2)
-                   unk(n1:n2,n,k,s)=utmpSP(n1:n2)
+                   if ( flag_related ) unk(n1:n2,n,k,s)=utmpSP(n1:n2)
                 end if
              end select
           end if
