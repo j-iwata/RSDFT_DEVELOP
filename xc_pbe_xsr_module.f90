@@ -80,7 +80,7 @@ CONTAINS
 
     beta = mu*3.0d0/acos(-1.0d0)**2
 
-    call construct_gradient( rgrid, rho, grad )
+    call construct_gradient1( rgrid, rho, grad )
 
     call construct_nabla_fd( nabla )
 

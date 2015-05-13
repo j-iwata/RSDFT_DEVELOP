@@ -1,12 +1,13 @@
 MODULE xc_ggapbe96_2_module
 
   use gradient_module
-  use grid_module, only: grid
+  use grid_module
   use density_module, only: density
   use xc_variables, only: xc
   use fd_module, only: fd, construct_nabla_fd
   use lattice_module
   use parallel_module
+  use BasicTypeFactory
 
   implicit none
 
@@ -37,7 +38,8 @@ CONTAINS
     implicit none
 
     type(grid) :: rgrid
-    type(density) :: rho
+!    type(density) :: rho
+    type( GSArray ) :: rho
     type(xc) :: gga
     real(8),optional,intent(IN) :: mu_in, Kp_in
     type(gradient16) :: grad16
@@ -70,31 +72,31 @@ CONTAINS
     b(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*Pi*rgrid%SizeGrid(2) )
     b(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*Pi*rgrid%SizeGrid(3) )
 
-    ML1 = rgrid%NumGrid(1)
-    ML2 = rgrid%NumGrid(2)
-    ML3 = rgrid%NumGrid(3)
+!    ML1 = rgrid%NumGrid(1)
+!    ML2 = rgrid%NumGrid(2)
+!    ML3 = rgrid%NumGrid(3)
 
-    allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0
+    call get_map_3d_to_1d( LLL )
 
-    i=rgrid%SubGrid(1,0)-1
-    do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
-    do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
-    do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
-       i=i+1
-       LLL(i1,i2,i3) = i
-    end do
-    end do
-    end do
-
-    call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER &
-         ,MPI_SUM, comm_grid, i )
+!    allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0
+!    i=rgrid%SubGrid(1,0)-1
+!    do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
+!    do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
+!    do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
+!       i=i+1
+!       LLL(i1,i2,i3) = i
+!    end do
+!    end do
+!    end do
+!    call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER &
+!         ,MPI_SUM, comm_grid, i )
 
 ! ---
 
     m1 = rgrid%SubGrid(1,0)
     m2 = rgrid%SubGrid(2,0)
-    n1 = rho%n0
-    n2 = rho%n1
+    n1 = rho%s_prange%head
+    n2 = rho%s_prange%tail
 
     allocate( vx(m1:m2,n1:n2) ) ; vx=0.0q0
 
@@ -131,7 +133,8 @@ CONTAINS
   SUBROUTINE calc_PBE_x( rgrid, rho, grad16, gga )
     implicit none
     type(grid) :: rgrid
-    type(density) :: rho
+!    type(density) :: rho
+    type( GSArray ) :: rho
     type(xc) :: gga
     type(gradient16) :: grad16
 !   real(8),parameter :: mu=0.21951d0, Kp=0.804d0
@@ -141,33 +144,29 @@ CONTAINS
     real(QP) :: kf, vx_lda, ex_lda, Fx, Pi, g2, factor
     real(QP) :: onethr,const1,const2
     integer :: i1,i2,i3,j,j1,j2,j3,k1,k2,k3
-    integer :: m1,m2,mm,n1,n2
+    integer :: mm
 
     Pi = acos(-1.0q0)
 
     factor = 1.0q0
-    if ( rho%nn == 2 ) factor = 2.0q0
+    if ( rho%s_srange%size == 2 ) factor = 2.0q0
 
     onethr = 1.0q0/3.0q0
     const1 = 3.0q0*Pi*Pi
     const2 = 3.0q0/(4.0q0*Pi)
 
-    mm = rgrid%NumGrid(0)
-    m1 = rgrid%SubGrid(1,0)
-    m2 = rgrid%SubGrid(2,0)
-    n1 = rho%n0
-    n2 = rho%n1
+    mm = rho%g_srange%size
 
-    allocate( rtmp(m1:m2) ) ; rtmp=0.0q0
+    allocate( rtmp(rho%g_prange%head:rho%g_prange%tail) ) ; rtmp=0.0q0
     allocate( rrrr(mm,3)  ) ; rrrr=0.0q0
 
     Ex = 0.0q0
 
-    do ispin=n1,n2
+    do ispin=rho%s_prange%head,rho%s_prange%tail
 
-       do i=m1,m2
+       do i=rho%g_prange%head,rho%g_prange%tail
 
-          trho = factor*rho%rho(i,ispin)
+          trho = factor*rho%val(i,ispin)
 
           if ( trho <= zero_density ) cycle
 
@@ -192,11 +191,11 @@ CONTAINS
 
        end do ! i
 
-       rrrr(m1:m2,1) = rtmp(m1:m2)*grad16%gx(m1:m2)
-       rrrr(m1:m2,2) = rtmp(m1:m2)*grad16%gy(m1:m2)
-       rrrr(m1:m2,3) = rtmp(m1:m2)*grad16%gz(m1:m2)
+       rrrr(rho%g_prange%head:rho%g_prange%tail,1) = rtmp(rho%g_prange%head:rho%g_prange%tail)*grad16%gx(rho%g_prange%head:rho%g_prange%tail)
+       rrrr(rho%g_prange%head:rho%g_prange%tail,2) = rtmp(rho%g_prange%head:rho%g_prange%tail)*grad16%gy(rho%g_prange%head:rho%g_prange%tail)
+       rrrr(rho%g_prange%head:rho%g_prange%tail,3) = rtmp(rho%g_prange%head:rho%g_prange%tail)*grad16%gz(rho%g_prange%head:rho%g_prange%tail)
        do i=1,3
-          call mpi_allgatherv(rrrr(m1,i),ir_grid(myrank_g),mpi_real16 &
+          call mpi_allgatherv(rrrr(rho%g_prange%head,i),ir_grid(myrank_g),mpi_real16 &
                ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
        end do
 
@@ -215,7 +214,7 @@ CONTAINS
                 j =LLL(j1,i2,i3)
 ! The potential vx is calculated at j-th grid point rather than i-th.
 ! This is because non-transposed nabla matrix Dij is used (See XC.doc).
-                if ( m1 <= j .and. j <= m2 ) then
+                if ( rho%g_prange%head <= j .and. j <= rho%g_prange%tail ) then
                    vx(j,ispin) = vx(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
                                                    +rrrr(i,2)*b(2,1) &
                                                    +rrrr(i,3)*b(3,1) )
@@ -224,7 +223,7 @@ CONTAINS
                 k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
                 j2=j2-k2*ML2
                 j =LLL(i1,j2,i3)
-                if ( m1 <= j .and. j <= m2 ) then
+                if ( rho%g_prange%head <= j .and. j <= rho%g_prange%tail ) then
                    vx(j,ispin) = vx(j,ispin) + cm*( rrrr(i,1)*b(1,2) &
                                                    +rrrr(i,2)*b(2,2) &
                                                    +rrrr(i,3)*b(3,2) )
@@ -233,7 +232,7 @@ CONTAINS
                 k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
                 j3=j3-k3*ML3
                 j =LLL(i1,i2,j3)
-                if ( m1 <= j .and. j <= m2 ) then
+                if ( rho%g_prange%head <= j .and. j <= rho%g_prange%tail ) then
                    vx(j,ispin) = vx(j,ispin) + cm*( rrrr(i,1)*b(1,3) &
                                                    +rrrr(i,2)*b(2,3) &
                                                    +rrrr(i,3)*b(3,3) )
@@ -258,7 +257,8 @@ CONTAINS
   SUBROUTINE calc_PBE_c( rgrid, rho, grad16, gga )
     implicit none
     type(grid) :: rgrid
-    type(density) :: rho
+!    type(density) :: rho
+    type( GSArray ) rho
     type(gradient16) :: grad16
     type(xc) :: gga
     real(8),parameter :: A00  =0.031091d0,A01  =0.015545d0,A02  =0.016887d0
@@ -287,7 +287,7 @@ CONTAINS
     const2 = 9.0q0*(2.0q0**(1.0q0/3.0q0)-1.0q0)/4.0q0
 
     factor = 1.0q0
-    if ( rho%nn == 1 ) factor = 0.5q0
+    if ( rho%s_srange%size == 1 ) factor = 0.5q0
  
     Pi       = acos(-1.0q0)
     one      = 1.0q0
@@ -304,19 +304,15 @@ CONTAINS
 
     Ec = 0.0q0
 
-    mm = rgrid%NumGrid(0)
-    m1 = rgrid%SubGrid(1,0)
-    m2 = rgrid%SubGrid(2,0)
-    n1 = rho%n0
-    n2 = rho%n1
+    mm = rho%g_srange%size
 
-    allocate( rtmp(m1:m2) ) ; rtmp=0.0q0
+    allocate( rtmp(rho%g_prange%head:rho%g_prange%tail) ) ; rtmp=0.0q0
     allocate( rrrr(mm,3)  ) ; rrrr=0.0q0
 
-    do i=m1,m2
+    do i=rho%g_prange%head,rho%g_prange%tail
 
-       rhoa = rho%rho(i,1)*factor
-       rhob = rho%rho(i,rho%nn)*factor
+       rhoa = rho%val(i,1)*factor
+       rhob = rho%val(i,rho%s_srange%size)*factor
        trho = rhoa + rhob
 
        if ( trho <= zero_density ) cycle
@@ -402,9 +398,9 @@ CONTAINS
        dH_dphi = 3.0q0*Hs/phi
 
        dz_dn(1)   = 2.0q0*rhob/trho**2
-       dz_dn(rho%nn) =-2.0q0*rhoa/trho**2
+       dz_dn(rho%s_srange%size) =-2.0q0*rhoa/trho**2
 
-       do ispin=n1,n2
+       do ispin=rho%s_prange%head,rho%s_prange%tail
 
           dec_dn = deU_dn - dac_dn*fz*const2*(one-zeta**4) &
                +(deP_dn-deU_dn)*fz*zeta**4 + dec_dz*dz_dn(ispin)
@@ -423,11 +419,11 @@ CONTAINS
 
     end do ! i
 
-    rrrr(m1:m2,1) = rtmp(m1:m2)*grad16%gx(m1:m2)
-    rrrr(m1:m2,2) = rtmp(m1:m2)*grad16%gy(m1:m2)
-    rrrr(m1:m2,3) = rtmp(m1:m2)*grad16%gz(m1:m2)
+    rrrr(rho%g_prange%head:rho%g_prange%tail,1) = rtmp(rho%g_prange%head:rho%g_prange%tail)*grad16%gx(rho%g_prange%head:rho%g_prange%tail)
+    rrrr(rho%g_prange%head:rho%g_prange%tail,2) = rtmp(rho%g_prange%head:rho%g_prange%tail)*grad16%gy(rho%g_prange%head:rho%g_prange%tail)
+    rrrr(rho%g_prange%head:rho%g_prange%tail,3) = rtmp(rho%g_prange%head:rho%g_prange%tail)*grad16%gz(rho%g_prange%head:rho%g_prange%tail)
     do i=1,3
-       call mpi_allgatherv(rrrr(m1,i),ir_grid(myrank_g),mpi_real16 &
+       call mpi_allgatherv(rrrr(rho%g_prange%head,i),ir_grid(myrank_g),mpi_real16 &
             ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
     end do
 
@@ -446,8 +442,8 @@ CONTAINS
              j =LLL(j1,i2,i3)
 ! The potential vex is calculated at j-th grid point rather than i-th.
 ! This is because non-transposed nabla matrix Dij is used (See XC.doc).
-             if ( m1 <= j .and. j <= m2 ) then
-                do ispin=n1,n2
+             if ( rho%g_prange%head <= j .and. j <= rho%g_prange%tail ) then
+                do ispin=rho%s_prange%head,rho%s_prange%tail
                    vc(j,ispin) = vc(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
                                                    +rrrr(i,2)*b(2,1) &
                                                    +rrrr(i,3)*b(3,1) )
@@ -457,8 +453,8 @@ CONTAINS
              k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
              j2=j2-k2*ML2
              j =LLL(i1,j2,i3)
-             if ( m1 <= j .and. j <= m2 ) then
-                do ispin=n1,n2
+             if ( rho%g_prange%head <= j .and. j <= rho%g_prange%tail ) then
+                do ispin=rho%s_prange%head,rho%s_prange%tail
                    vc(j,ispin) = vc(j,ispin) + cm*( rrrr(i,1)*b(1,2) &
                                                    +rrrr(i,2)*b(2,2) &
                                                    +rrrr(i,3)*b(3,2) )
@@ -468,8 +464,8 @@ CONTAINS
              k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
              j3=j3-k3*ML3
              j =LLL(i1,i2,j3)
-             if ( m1 <= j .and. j <= m2 ) then
-                do ispin=n1,n2
+             if ( rho%g_prange%head <= j .and. j <= rho%g_prange%tail ) then
+                do ispin=rho%s_prange%head,rho%s_prange%tail
                    vc(j,ispin) = vc(j,ispin) + cm*( rrrr(i,1)*b(1,3) &
                                                    +rrrr(i,2)*b(2,3) &
                                                    +rrrr(i,3)*b(3,3) )

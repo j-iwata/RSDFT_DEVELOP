@@ -1,7 +1,7 @@
 MODULE xc_module
 
   use rgrid_module
-  use density_module, only: rho, density, init_type_density
+  use density_module, only: rho, density, init_type_density, get_range
   use ps_pcc_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1
@@ -25,7 +25,10 @@ MODULE xc_module
   use xc_hse_module
   use xc_pbe_xsr_module
   use xc_hf_module
-  use xc_vdw_module
+!  use xc_vdw_module
+
+  use BasicTypeFactory
+  use BasicFunctions
 
   implicit none
 
@@ -152,6 +155,7 @@ CONTAINS
     type(grid) :: rgrid
     type(xc) :: vdw, gga
     type(density) :: rho_v
+    type( GSarray ) :: density
 
     call check_disp_switch( disp_sw, 0 )
 
@@ -207,12 +211,14 @@ CONTAINS
     case('PBE','PBE96')
 
        call init_grid( rgrid )
-       call init_type_density( rho_v )
-       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, gga )
+       call get_range( density%g_prange,density%s_srange )
+       call allocateArray( density )
+!       call init_type_density( rho_v )
+       call init_type_xc( density%s_srange%head, density%s_srange%tail, rgrid, gga )
 
-       rho_v%rho(:,:) = rho_tmp(:,:)
+       density%val(:,:) = rho_tmp(:,:)
 
-       call calc_GGAPBE96_2( rgrid, rho_v, gga )
+       call calc_GGAPBE96_2( rgrid, density, gga )
 
        E_exchange = gga%Ex
        E_correlation = gga%Ec
@@ -336,7 +342,7 @@ CONTAINS
              write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
           end if
 
-          call calc_GGAPBE96_2( rgrid, rho_v, gga )
+!          call calc_GGAPBE96_2( rgrid, density, gga )
 
           E_exchange = gga%Ex
           E_correlation = gga%Ec
@@ -346,7 +352,7 @@ CONTAINS
 
        else
 
-          call calc_GGAPBE96_2( rgrid, rho_v, gga )
+!          call calc_GGAPBE96_2( rgrid, rho_v, gga )
 
           E_exchange = gga%Ex
           E_correlation = gga%Ec
@@ -380,12 +386,12 @@ CONTAINS
        rho_v%rho(:,:) = rho_tmp(:,:)
        call init_type_xc( rho_v%n0, rho_v%n1, rgrid, vdw )
 
-       call calc_GGAPBE96_2( rgrid, rho_v, vdw, Kp_in=kappa )
+!       call calc_GGAPBE96_2( rgrid, rho_v, vdw, Kp_in=kappa )
 
        E_exchange = vdw%Ex
 
-       call init_xc_vdw
-       call calc_xc_vdw( rgrid, rho_v, vdw )
+!       call init_xc_vdw
+!       call calc_xc_vdw( rgrid, rho_v, vdw )
 
        E_correlation = vdw%Ec
        Vxc(:,:) = vdw%Vx(:,:) + vdw%Vc(:,:)

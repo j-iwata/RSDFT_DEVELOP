@@ -507,7 +507,7 @@ CONTAINS
   SUBROUTINE calc_xc_vdw( rgrid, rho, vdw )
     implicit none
     type(grid) :: rgrid
-    type(density) :: rho
+    type( GSArray ) :: rho
     type(xc) :: vdw
     type(gradient16) :: grad16
     logical :: disp_sw
@@ -543,8 +543,8 @@ CONTAINS
 
     do i=m0,m1
 
-       rho_tmp(1) = rho%rho(i,1)
-       rho_tmp(2) = rho%rho(i,rho%nn)
+       rho_tmp(1) = rho%val(i,1)
+       rho_tmp(2) = rho%val(i,rho%s_srange%tail)
        trho       = sum(rho_tmp(1:rho%nn))
 
        if ( trho < zero_density ) cycle
@@ -555,7 +555,7 @@ CONTAINS
        Ex_LDA = Ex_LDA + sum( rho_tmp(1:rho%nn)*edx_lda(1:rho%nn) )
        Ec_LDA = Ec_LDA + trho*edc_lda
 
-       do j=1,rho%nn
+       do j=rho%s_prange%head,rho%s_prange%tail
           vdw%Vc(i,j) = edc_lda + trho*vdc_lda(j)
        end do
 
@@ -616,7 +616,7 @@ CONTAINS
 
     do j=0,NumQgrid
        do i=m0,m1
-          theta(i-m0+1,j) = sum( rho%rho(i,1:rho%nn) )*pol_spline(i,j)
+          theta(i-m0+1,j) = sum( rho%val(i,1:rho%s_srange%tail) )*pol_spline(i,j)
        end do
     end do
 

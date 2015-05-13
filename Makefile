@@ -3,6 +3,8 @@ include make.inc
 MODS1 = simc_module.o\
         watch_module.o \
         info_module.o \
+        basic_types.o \
+        basic_functions.o \
         modified_bessel_module.o \
 		bberf_module.o \
 		RealComplex.o \
@@ -139,7 +141,6 @@ MODS1 = simc_module.o\
         xc_ggapbe96_mol_module.o \
         xc_ggapbe96_module.o \
         xc_ggapbe96_2_module.o \
-        xc_vdw_module.o \
         xc_module.o \
         ps_pcc_force_module.o \
         hamiltonian_module.o \
