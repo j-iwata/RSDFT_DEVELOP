@@ -20,7 +20,8 @@ MODULE total_energy_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy,diff_etot
+  PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy, &
+            write_info_total_energy,diff_etot
 
   integer :: scf_iter_
 
@@ -71,6 +72,8 @@ CONTAINS
     complex(8),allocatable :: work00(:,:)
 #endif
     include 'mpif.h'
+
+    Etot_0 = Etot
 
     Etot = 0.d0
     Ekin = 0.d0
@@ -272,7 +275,6 @@ enddo
        call write_info_total_energy( disp_switch, .false. )
     end if
 
-    Etot_0 = Etot
     Ekin_0 = Ekin
     Eloc_0 = Eloc
     Enlc_0 = Enlc

@@ -96,11 +96,14 @@ MODULE global_variables
 
   use force_module
 
+  use sweep_module
+  use scf_module
+  use scf_chefsi_module
+
   implicit none
 
-  integer :: Diter, Nsweep, Ndiag
   integer :: iswitch_scf,iswitch_opt,iswitch_band
-  integer :: iswitch_test
+  integer :: iswitch_test,iswitch_tddft
   real(8) :: etime_limit
   logical :: disp_switch
 

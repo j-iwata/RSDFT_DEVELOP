@@ -3,7 +3,7 @@ MODULE watch_module
   implicit none
 
   PRIVATE
-  PUBLIC :: watch,watcht,read_watch,global_watch,read_oldformat_watch
+  PUBLIC :: watch,watchs,watcht,read_watch,global_watch,read_oldformat_watch
 
   real(8) :: ct0=0.d0, ctt=0.d0
   real(8) :: ett=0.d0
@@ -62,6 +62,21 @@ CONTAINS
     call cpu_time(ctime)
     etime=mpi_wtime()
   END SUBROUTINE watch
+
+  SUBROUTINE watchs(ctime,etime,icnt)
+    real(8),intent(INOUT) :: ctime,etime
+    integer,intent(IN) :: icnt
+    integer :: count,count_rate
+    real(8) :: ct
+    call cpu_time(ct)
+    call system_clock(count,count_rate)
+    if ( icnt == 1 ) then
+       ctime=ctime+ct-ct0
+       etime=etime+real(count-count0)/real(count_rate)
+    end if
+    ct0=ct
+    count0=count
+  END SUBROUTINE watchs
 
   SUBROUTINE watcht(disp_switch,indx,icnt)
     logical,intent(IN) :: disp_switch

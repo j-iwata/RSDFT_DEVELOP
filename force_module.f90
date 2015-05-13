@@ -1,37 +1,40 @@
 MODULE force_module
 
-  use ps_local_module
-  use ps_nloc2_module
-  use ps_pcc_module
-  use ps_pcc_force_module
-  use force_ewald_module
-  use watch_module
   use parallel_module, only: disp_switch_parallel
-  use vdw_grimme_module, only: calc_F_vdw_grimme
-  use atom_module, only: aa_atom, ki_atom, md_atom
+  use atom_module, only: aa_atom, ki_atom, md_atom, Natom
   use symmetry_module, only: sym_force
+  use force_sol_module
+  use force_mol_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_force, calc_force
+  PUBLIC :: init_force, calc_force, get_fmax_force
 
   integer :: Ntim
   real(8),allocatable :: tim(:,:,:)
+
+  integer :: SYStype
+  logical :: flag_init = .true.
 
   include 'mpif.h'
 
 CONTAINS
 
 
-  SUBROUTINE init_force( rank, unit )
+  SUBROUTINE init_force( rank, unit, SYStype_in )
     implicit none
-    integer :: rank, unit
+    integer,intent(IN) :: rank, unit, SYStype_in
     if ( disp_switch_parallel ) &
          write(*,'(1x,a60," init_force")') repeat("-",60)
+    if ( flag_init ) flag_init=.false.
+    SYStype = SYStype_in
     Ntim=0
     Ntim=maxval( md_atom )
-    if ( rank == 0 ) write(*,*) "Ntim=",Ntim
+    if ( rank == 0 ) then
+       write(*,*) "SYStype=",SYStype
+       write(*,*) "Ntim=",Ntim
+    end if
     if ( Ntim <= 0 ) return
     allocate( tim(3,3,Ntim) ) ; tim=0.0d0
     tim(1,1,1) = 1.0d0
@@ -83,102 +86,24 @@ CONTAINS
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
-    real(8),allocatable :: work(:,:)
-    integer :: a
-    real(8),allocatable :: work1(:,:),work2(:,:),work3(:,:)
-    real(8) :: ctt(0:4),ett(0:4)
 
-    force(:,:) = 0.d0
-
-    ctt(:)=0.d0
-    ett(:)=0.d0
-
-    allocate( work(3,MI) )
-
-    call watch(ctt(0),ett(0))
-
-#ifdef _FFTE_
-    call calc_force_ps_local_ffte(MI,work)
-#else
-    call calc_force_ps_local(MI,work)
-#endif
-    force = force + work
-
-    if ( flag_pcc_0 ) then
-       call calc_ps_pcc_force( MI, work )
-       force = force + work
+    if ( flag_init ) then
+       write(*,*) "init_force must be called first"
+       stop "stop@calc_force"
     end if
 
-    call watch(ctt(1),ett(1))
-
-    call calc_force_ps_nloc2(MI,work)
-    force = force + work
-
-    call watch(ctt(2),ett(2))
-
-    call calc_force_ewald(MI,work)
-    force = force + work
-
-    call watch(ctt(3),ett(3))
-
-! ---
-#ifdef _TEST_
-    allocate( work1(3,MI) ) ; work1=0.d0
-    allocate( work2(3,MI) ) ; work2=0.d0
-    allocate( work3(3,MI) ) ; work3=0.d0
-
-    call watch(ctt(1),ett(1))
-    call calc_force_ps_local(MI,work1)
-    call watch(ctt(2),ett(2))
-    call calc_force_ps_nloc2(MI,work2)
-    call watch(ctt(3),ett(3))
-    call calc_force_ewald(MI,work3)
-    call watch(ctt(3),ett(3))
-
-    do a=1,MI
-       if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'local',work1(1:3,a)
-    enddo
-    do a=1,MI
-       if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,' nloc',work2(1:3,a)
-    enddo
-    do a=1,MI
-       if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'ewald',work3(1:3,a)
-    enddo
-
-    force = work1 + work2 + work3
-
-    if ( myrank==0 ) write(200,*) '--------------------'
-    do a=1,MI
-       if ( myrank==0 ) write(200,'(I5,A9,3g20.7)') a,'total',force(1:3,a)
-    enddo
-    if ( myrank==0 ) write(200,*) '--------------------'
-
-    deallocate( work1 )
-    deallocate( work2 )
-    deallocate( work3 )
-#endif
-! ---
-
-    call calc_F_vdw_grimme( MI, aa_atom, force )
-
-    call watch(ctt(4),ett(4))
+    select case( SYStype )
+    case( 0 )
+       call calc_force_sol( MI, force )
+    case( 1 )
+       call calc_force_mol( MI, force )
+    end select
 
 ! --- constraint & symmetry ---
 
-    call sym_force( MI, ki_atom, aa_atom, force )
+    call sym_force ( MI, ki_atom, aa_atom, force )
 
     if ( Ntim > 0 ) call constraint_force( MI, force )
-
-! ---
-
-    deallocate( work )
-
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(force1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(force2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(force3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(force4)",ctt(4)-ctt(3),ett(4)-ett(3)
-    end if
 
   END SUBROUTINE calc_force
 
@@ -195,6 +120,30 @@ CONTAINS
        end if
     end do
   END SUBROUTINE constraint_force
+
+
+  SUBROUTINE get_fmax_force( fmax, ierr )
+    implicit none
+    real(8),intent(OUT) :: fmax
+    integer,intent(OUT) :: ierr
+    real(8),allocatable :: force(:,:)
+    real(8) :: ff
+    integer :: a
+    fmax=-1.0d10
+    if ( flag_init ) then
+       ierr=1
+       return
+    end if
+    ierr=0
+    allocate( force(3,Natom) ) ; force=0.0d0
+    call calc_force( Natom, force )
+    do a=1,Natom
+       ff=force(1,a)**2+force(2,a)**2+force(3,a)**2
+       fmax=max(fmax,ff)
+    end do
+    fmax=sqrt(fmax)
+    deallocate( force )
+  END SUBROUTINE get_fmax_force
 
 
 END MODULE force_module

@@ -98,7 +98,8 @@ CONTAINS
 
        do m=-Md,Md
 
-          cm=nab(m)*sign(1,m)*c
+          cm=-nab(m)*sign(1,m)*c ! The minus sign comes from anti symmetry
+                                 !  of nabla matrix (Dji=-Dij). See XC.doc.
 
           j = LLL(i1+m,i2,i3)
           if ( j /= 0 ) ve(i) = ve(i) + cm*rrrr(j,1)

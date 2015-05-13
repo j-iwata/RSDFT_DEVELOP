@@ -10,6 +10,8 @@ MODULE cg_module
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
   use cg_u_module, only: init_cg_u, cg_u
 
+  use wf_module, only: hunk, iflag_hunk
+
   implicit none
 
   PRIVATE
@@ -166,7 +168,13 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       if ( iflag_hunk >= 1 ) then
+!$OMP parallel workshare
+          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+!$OMP end parallel workshare
+       else
+          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       end if
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -339,7 +347,7 @@ CONTAINS
 
              call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
 
-          end do
+          end do ! n
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
 
@@ -358,6 +366,13 @@ CONTAINS
                 unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
+             if ( iflag_hunk >= 1 ) then
+!$OMP parallel do
+                do i=n1,n2
+                   hunk(i,m,k,s)=hxk(i,n)
+                end do
+!$OMP end parallel do
+             end if
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -377,14 +392,14 @@ CONTAINS
     deallocate( hpk,hxk )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
   END SUBROUTINE conjugate_gradient_1
@@ -448,7 +463,13 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       if ( iflag_hunk >= 1 ) then
+!$OMP parallel workshare
+          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+!$OMP end parallel workshare
+       else
+          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       end if
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -638,6 +659,13 @@ CONTAINS
                 unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
+             if ( iflag_hunk >= 1 ) then
+!$OMP parallel do
+                do i=n1,n2
+                   hunk(i,m,k,s)=hxk(i,n)
+                end do
+!$OMP end parallel do
+             end if
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -657,14 +685,14 @@ CONTAINS
     deallocate( hpk,hxk )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
   END SUBROUTINE conjugate_gradient_1

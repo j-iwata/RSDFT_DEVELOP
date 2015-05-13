@@ -3,15 +3,28 @@ MODULE atom_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom
   PUBLIC :: checkAtomData
 #ifdef _OBJECT_
   PUBLIC :: getAtomPosition
 #endif
+  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom &
+           ,atom_format, atom, construct_atom, write_info_atom
+
+  integer,parameter :: DP=kind(0.0d0)
 
   integer :: Natom, Nelement
   integer,allocatable :: ki_atom(:), zn_atom(:), md_atom(:)
-  real(8),allocatable :: aa_atom(:,:)
+  real(DP),allocatable :: aa_atom(:,:)
+  integer :: atom_format
+
+  type atom
+     integer :: natom, nelement
+     integer,allocatable :: k(:)
+     integer,allocatable :: z(:)
+     real(DP),allocatable :: aaa(:,:)
+     real(DP),allocatable :: xyz(:,:)
+     real(DP),allocatable :: force(:,:)
+  end type atom
 
 #ifdef _OBJECT_
   TYPE AtomPosition
@@ -26,13 +39,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     real(8),intent(INOUT) :: ax,aa(3,3)
-    integer :: i,iflag_format,idummy(10)
+    integer :: i,iflag_latvec,idummy(10)
     character(3) :: cbuf,ckey
     ax=0.0d0
     aa=0.0d0
     idummy=0
+    atom_format=0
+    iflag_latvec=0
     if ( rank == 0 ) then
-       iflag_format = 0
        rewind unit
        do i=1,10000
           read(unit,*,END=999) cbuf
@@ -40,35 +54,41 @@ CONTAINS
           if ( ckey(1:2) == "AX" ) then
              backspace(unit)
              read(unit,*) cbuf,ax
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:2) == "A1" ) then
              backspace(unit)
              read(unit,*) cbuf,aa(1:3,1)
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:2) == "A2" ) then
              backspace(unit)
              read(unit,*) cbuf,aa(1:3,2)
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:2) == "A3" ) then
              backspace(unit)
              read(unit,*) cbuf,aa(1:3,3)
-             iflag_format=1
+             iflag_latvec=1
           else if ( ckey(1:3) == "XYZ" ) then
-             iflag_format=2
+             atom_format=2
              exit
           else if ( ckey(1:2) == "AA" ) then
+             atom_format=1
              exit
           end if
        end do
 999    continue
-       if ( iflag_format == 0 ) then
+       if ( iflag_latvec == 0 .and. atom_format == 0 ) then
           rewind unit
-       else
-          write(*,*) "iflag_format=",iflag_format
+       else if ( iflag_latvec == 1 ) then
           write(*,*) "ax=",ax
           write(*,'(1x,"a1=",3f20.15)') aa(1:3,1)
           write(*,'(1x,"a2=",3f20.15)') aa(1:3,2)
           write(*,'(1x,"a3=",3f20.15)') aa(1:3,3)
+       end if
+       if ( atom_format == 0 .or. atom_format == 1 ) then
+          write(*,*) "Lattice coordinates are assumed"
+          atom_format=1
+       else if ( atom_format == 2 ) then
+          write(*,*) "XYZ coordinates are assumed"
        end if
        read(unit,*) Nelement,Natom, idummy(1:Nelement)
        write(*,*) "Nelment,Natom=",Nelement,Natom
@@ -121,6 +141,7 @@ CONTAINS
     call mpi_bcast(Nelement,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(ax,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(aa,9,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(atom_format,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_1
 
   SUBROUTINE send_atom_2(myrank)
@@ -167,5 +188,40 @@ CONTAINS
     return
   END SUBROUTINE getAtomPosition
 #endif
+
+  SUBROUTINE construct_atom( x )
+    implicit none
+    type(atom) :: x
+    x%natom = Natom
+    x%nelement = Nelement
+    allocate( x%k(x%natom)       ) ; x%k(:) = ki_atom(:)
+    allocate( x%z(x%nelement)    ) ; x%z(:) = zn_atom(:)
+    allocate( x%aaa(3,x%natom)   ) ; x%aaa(:,:) = aa_atom(:,:)
+    allocate( x%xyz(3,x%natom)   ) ; x%xyz(:,:) = 0.0d0
+    allocate( x%force(3,x%natom) ) ; x%force(:,:) = 0.0d0
+  END SUBROUTINE construct_atom
+
+
+  SUBROUTINE write_info_atom( zps, FilePS )
+    implicit none
+    real(8),intent(IN) :: zps(:)
+    character(*),intent(IN) :: FilePS(:)
+    integer :: i
+    integer,allocatable :: num(:)
+    logical :: disp_sw
+    call write_border(60," write_info_atom")
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
+       allocate( num(Nelement) ) ; num=0
+       write(*,'(8x,3a8,4x,a)') "Zatom", "Zion", "Num", "FilePS"
+       do i=1,Nelement
+          num(i) = count( ki_atom == i )
+          write(*,'(4i8,4x,a)') i,zn_atom(i),nint(zps(i)),num(i),FilePS(i)
+       end do
+       write(*,'(3x,"total",3i8)') sum(zn_atom*num), sum(nint(zps)*num), Natom
+       deallocate( num )
+    end if
+  END SUBROUTINE write_info_atom
+
 
 END MODULE atom_module

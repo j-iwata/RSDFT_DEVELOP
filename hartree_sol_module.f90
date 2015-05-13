@@ -26,6 +26,7 @@ CONTAINS
     integer :: ifacx(30),ifacy(30),ifacz(30)
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+    logical :: disp_sw
 
     pi4 = 4.d0*acos(-1.d0)
 
@@ -139,7 +140,8 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
        write(*,*) "time(hatree1)=",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(hatree2)=",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(hatree3)=",ctt(3)-ctt(2),ett(3)-ett(2)

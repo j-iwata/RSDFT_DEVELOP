@@ -10,8 +10,9 @@ MODULE parameters_module
 
   integer,parameter :: unit=1, unit_atom=970
 
-  integer :: atom_format
   integer :: param_format=0
+
+  integer :: Diter, Ndiag
 
 CONTAINS
 
@@ -39,7 +40,7 @@ CONTAINS
 
   SUBROUTINE read_keywordformat_parameters
     implicit none
-    integer :: i
+    integer :: i,iformat
     character(7) :: label,cbuf,ckey
     real(8) :: Ratom(3),ax_tmp,aa_tmp(3,3)
 
@@ -91,33 +92,10 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 
     call read_watch(myrank,unit)
 
-    Diter  = 100
-    Nsweep = 0
-    if ( myrank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "DITER" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Diter
-          else if ( ckey(1:6) == "NSWEEP" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nsweep
-          else if ( ckey(1:6) == "NDIAG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ndiag
-          end if
-       end do
-999    continue
-       write(*,*) "Diter =",Diter
-       write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Ndiag =",Ndiag
-    end if
-
-    iswitch_scf  = 1
-    iswitch_opt  = 0
-    iswitch_test = 0
+    iswitch_scf   = 1
+    iswitch_opt   = 0
+    iswitch_test  = 0
+    iswitch_tddft = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
@@ -135,6 +113,9 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
           else if ( ckey(1:6) == "SWTEST" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_test
+          else if ( ckey(1:7) == "SWTDDFT" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_tddft
           end if
        end do
 990    continue
@@ -144,19 +125,22 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
        write(*,*) "iswitch_test=",iswitch_test
     end if
 
-    atom_format = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
           read(unit,*,END=980) cbuf
           call convert_capital(cbuf,ckey)
           if ( ckey(1:3) == "XYZ" ) then
-             atom_format = 1
-             write(*,*) "atom_format=",atom_format,ckey(1:3)
+             atom_format = 2
              exit
           end if
        end do
 980    continue
+       if ( atom_format == 1 ) then
+          write(*,*) "atomic coordinates are assumed as lattice format"
+       else if ( atom_format == 2 ) then
+          write(*,*) "atomic coordinates are assumed as XYZ format"
+       end if
     end if
 
     call send_parameters(0)
@@ -164,7 +148,7 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
     call read_atomopt(myrank,unit)
 
     if ( SYStype == 1 ) then
-       if ( atom_format == 0 ) then
+       if ( atom_format == 1 ) then
           aa=ax*aa
           do i=1,Natom
              Ratom(1:3) = matmul( aa, aa_atom(:,i) )
@@ -183,7 +167,7 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
           call write_info("aa & aa_atom are modified")
        end if
     else if ( SYStype == 0 ) then
-       if ( atom_format == 1 ) then
+       if ( atom_format == 2 ) then
           call construct_bb(aa)
           bb(:,:)=transpose(bb(:,:))/(ax*2.0d0*acos(-1.0d0))
           do i=1,Natom
@@ -201,6 +185,15 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
     call read_symmetry( myrank, unit )
 
     call read_gram_schmidt( myrank, unit )
+
+    call read_sweep( myrank, unit )
+
+    select case( iswitch_scf )
+    case default
+       call read_scf( myrank, unit )
+    case( 2 )
+       call read_scf_chefsi( myrank, unit )
+    end select
 
   END SUBROUTINE read_keywordformat_parameters
 
@@ -259,7 +252,7 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
        read(unit,*) Diter, Nsweep, Ndiag
        write(*,*) "Diter =",Diter
        write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Nsweep=",Ndiag
+       write(*,*) "Ndiag =",Ndiag
     end if
 
     call read_oldformat_io(myrank,unit)
@@ -292,6 +285,7 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
     call mpi_bcast(iswitch_opt ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_band,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_test,1,mpi_integer,rank,mpi_comm_world,ierr)
+    call mpi_bcast(iswitch_tddft,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(atom_format,1,mpi_integer,rank,mpi_comm_world,ierr)
   END SUBROUTINE send_parameters
 

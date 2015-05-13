@@ -5,7 +5,7 @@ MODULE scf_module
   use electron_module
   use localpot_module
   use mixing_module
-  use xc_hybrid_module
+  use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use xc_module
   use hartree_variables, only: Vh
   use hartree_module, only: calc_hartree
@@ -38,110 +38,225 @@ MODULE scf_module
   use localpot2_ion_module, only: localpot2_calc_eion
   use localpot2_te_module, only: localpot2_te, diff_Etot_lpot2
 
+  use force_module, only: get_fmax_force
+  use hamiltonian_module
+
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_scf, init_scf
+  PUBLIC :: calc_scf, read_scf, Diter_scf
 
-  integer :: Ndiag=1
+  integer :: Diter_scf   = 100
+  integer :: Ndiag       = 1
+  integer :: second_diag = 2
+  real(8) :: scf_conv(2) = 0.0d0
+  real(8) :: fmax_conv   = 0.d0
+  real(8) :: etot_conv   = 0.d0
 
-  real(8),allocatable :: esp0(:,:,:)
-
-  logical :: second_diag=.false.
-!  logical :: second_diag=.true.
-
+  real(8),allocatable :: esp0(:,:,:),Vloc0(:,:)
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
+  real(8) :: time_scf(4)
+  real(8) :: fmax,fmax0,fdiff
 
 CONTAINS
 
 
-  SUBROUTINE init_scf( Ndiag_in )
-     implicit none
-     integer,intent(IN) :: Ndiag_in
-     if ( Ndiag_in > 0 ) Ndiag=Ndiag_in
-     if ( disp_switch_parallel ) then
-        write(*,*) "Ndiag=",Ndiag
-        write(*,*) "second_diag=",second_diag
-     end if
-  END SUBROUTINE init_scf
+  SUBROUTINE read_scf( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i,ierr
+    character(8) :: cbuf,ckey
+    scf_conv(1) = 1.d-20
+    scf_conv(2) = 0.0d0
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:7) == "SCFCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,scf_conv
+          else if ( ckey(1:8) == "FMAXCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,fmax_conv
+          else if ( ckey(1:8) == "ETOTCONV" ) then
+             backspace(unit)
+             read(unit,*) cbuf,etot_conv
+          else if ( ckey(1:5) == "DITER" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Diter_scf
+          else if ( ckey(1:5) == "NDIAG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Ndiag,second_diag
+          end if
+       end do
+999    continue
+       write(*,*) "scf_conv    =",scf_conv
+       write(*,*) "fmax_conv   =",fmax_conv
+       write(*,*) "etot_conv   =",etot_conv
+       write(*,*) "Diter_scf   =",Diter_scf
+       write(*,*) "Ndiag       =",Ndiag
+       write(*,*) "second_diag =",second_diag
+    end if
+    call mpi_bcast( scf_conv  ,2,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(fmax_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(etot_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Diter_scf  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Ndiag      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(second_diag,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch )
+  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch, Etot_out )
     implicit none
     integer,intent(IN)  :: Diter
     integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
+    real(8),optional,intent(OUT) :: Etot_out
     integer :: iter,s,k,n,m,ierr,idiag
-    integer :: ML01,MSP01,ib1,ib2
-    real(8) :: ct0,et0,ct1,et1
-    logical :: flag_exit,flag_end,flag_conv
+    integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
+    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3)
+    logical :: flag_exit,flag_end,flag_conv,flag_conv_f
 
-    flag_end  = .false.
-    flag_exit = .false.
-    flag_conv = .false.
-    ierr_out  = 0
+    if ( myrank == 0 ) write(*,*) "------------ SCF START ----------"
 
-    ML01      = ML_1-ML_0+1
-    MSP01     = MSP_1-MSP_0+1
-    ib1       = max(1,nint(Nelectron/2)-20)
-    ib2       = min(nint(Nelectron/2)+80,Nband)
+    flag_end    = .false.
+    flag_exit   = .false.
+    flag_conv   = .false.
+    flag_conv_f = .false.
+    ierr_out    = 0
+    fmax0       =-1.d10
+    fdiff       =-1.d10
 
-    call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0))
+    time_scf(:) = 0.0d0
 
-!    call init_diff_vrho_scf
+    ML01        = ML_1-ML_0+1
+    MSP01       = MSP_1-MSP_0+1
+    ib1         = max(1,nint(Nelectron/2)-20)
+    ib2         = min(nint(Nelectron/2)+80,Nband)
+
+!    do s=MSP_0,MSP_1
+!       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+!    end do
+
+    call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
+                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
+                    ,ir_grid,id_grid,myrank)
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
+
+    if ( iflag_hunk == 1 ) then
+
+       hunk(:,:,:,:)=0.0d0
+
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+          do m=MB_0,MB_1,MB_d
+             n=min(m+MB_d-1,MB_1)
+             call hamiltonian &
+                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+          end do
+       end do
+       end do
+
+       allocate( Vloc0(ML_0:ML_1,MSP_0:MSP_1) ) ; Vloc0=0.0d0
+       Vloc0(:,:)=Vloc(:,:)
+
+    end if
 
     do iter=1,Diter
 
        if ( disp_switch ) then
-          write(*,'(a40," scf_iter=",i4)') repeat("-",40),iter
+          write(*,'(a60," scf_iter=",i4)') repeat("-",60),iter
        end if
 
        call watch(ct0,et0)
 
        esp0=esp
 
+       call get_flag_xc_hybrid( iflag_hybrid_0 )
+
+       ct(:)=0.0d0
+       et(:)=0.0d0
+
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          call watcht(disp_switch,"",0)
+          call control_xc_hybrid( iflag_hybrid_0 )
+
+          if ( iflag_hunk == 1 ) then
+
+             do n=MB_0,MB_1
+                hunk(:,n,k,s) = hunk(:,n,k,s) &
+                     + ( Vloc(:,s)-Vloc0(:,s) )*unk(:,n,k,s)
+             end do
+             Vloc0(:,s)=Vloc(:,s)
+
+          else if ( iflag_hunk == 2 ) then
+
+             call get_flag_xc_hybrid( iflag_hybrid )
+
+             if ( iflag_hybrid == 2 ) then
+                call control_xc_hybrid(0)
+                allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
+                do m=MB_0,MB_1,MB_d
+                   n=min(m+MB_d-1,MB_1)
+                   workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
+                   call hamiltonian &
+                        (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                   hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
+                end do
+                deallocate( workwf )
+             end if
+
+          end if
+
+          call watchs(ct(0),et(0),0)
 
           call subspace_diag(k,s)
 
-          call watcht(disp_switch,"diag",1)
+          call watchs(ct(0),et(0),1)
+
+          call control_xc_hybrid(1)
 
           do idiag=1,Ndiag
 
-          if ( disp_switch ) then
-             write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
-          end if
+             if ( Ndiag > 1 .and. disp_switch ) then
+                write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
+             end if
 
-          call watcht(disp_switch,"",0)
+             call watchs(ct(1),et(1),0)
 
-          call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
-                                 ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+             call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
+                                    ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
 
-          call watcht(disp_switch,"cg  ",1)
+             call watchs(ct(1),et(1),1)
 
-          call gram_schmidt(1,Nband,k,s)
+             call gram_schmidt(1,Nband,k,s)
 
-          call watcht(disp_switch,"gs  ",1)
+             call watchs(ct(2),et(2),1)
 
-          if ( second_diag .or. idiag < Ndiag ) then
-             call subspace_diag(k,s)
-             call watcht(disp_switch,"diag",1)
-          else if ( idiag == Ndiag ) then
-             call esp_calc &
-                  (k,s,unk(ML_0,MB_0,k,s),ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
-             call watcht(disp_switch,"esp_calc",1)
-          end if
+             if ( second_diag == 1 .or. idiag < Ndiag ) then
+                call subspace_diag(k,s)
+             else if ( second_diag == 2 .and. idiag == Ndiag ) then
+                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
+                             ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+             end if
+
+             call watchs(ct(3),et(3),1)
 
           end do ! idiag
 
        end do ! k
        end do ! s
+
+       if ( disp_switch ) then
+          write(*,*) "time(diag)    =",ct(0),et(0)
+          write(*,*) "time(cg)      =",ct(1),et(1)
+          write(*,*) "time(gs)      =",ct(2),et(2)
+          write(*,*) "time(esp/diag)=",ct(3),et(3)
+       end if
 
        call watcht(disp_switch,"    ",0)
 
@@ -161,14 +276,29 @@ CONTAINS
 ! ---
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
-       call control_xc_hybrid(1)
        call calc_xc
-       call control_xc_hybrid(2)
-!       call diff_vrho_scf( disp_switch )
-       call calc_total_energy( .false., disp_switch, iter, .true. )
+       call calc_total_energy( .false., disp_switch, .true. )
+       if ( present(Etot_out) ) Etot_out = Etot
 ! ---
 
        call watcht(disp_switch,"etot",1)
+
+! --- convergence check by Fmax ---
+
+       if ( fmax_conv > 0.0d0 ) then
+          call get_fmax_force( fmax, ierr )
+          fdiff=fmax-fmax0
+          if ( ierr == 0 ) then
+             if ( disp_switch ) then
+                write(*,*) "fmax=",fmax,fdiff,flag_conv_f
+             end if
+             if ( abs(fdiff) < fmax_conv ) then
+                flag_conv_f=.true.
+             else
+                fmax0 = fmax
+             end if
+          end if
+       end if
 
 ! ---
        do s=MSP_0,MSP_1
@@ -176,7 +306,7 @@ CONTAINS
        end do
 
        call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-                           ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
+            ,Vloc(ML_0,MSP_0), flag_conv_f, flag_conv, disp_switch )
 
        if ( mod(imix,2) == 0 ) then
           call normalize_density
@@ -185,7 +315,6 @@ CONTAINS
                (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
           call calc_hartree(ML_0,ML_1,MSP,rho)
           call calc_xc
-          call control_xc_hybrid(1)
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
@@ -204,56 +333,85 @@ CONTAINS
           if ( abs(diff_etot_lpot2) < 1.d-10 ) flag_conv=.true.
        end if
 
-       call write_info_scf( ib1, ib2, iter, disp_switch )
+       call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
 
        call watch(ct1,et1)
+       time_scf(1)=ct1-ct0
+       time_scf(2)=et1-et0
+       time_scf(3)=time_scf(3)+time_scf(1)
+       time_scf(4)=time_scf(4)+time_scf(2)
        if ( disp_switch ) write(*,*) "time(scf)",ct1-ct0,et1-et0
 
        call global_watch(.false.,flag_end)
 
-       flag_exit = (flag_conv.or.flag_end)
+       flag_conv = (flag_conv.or.flag_conv_f)
+       flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call watcht(disp_switch,"",0)
        call write_data(disp_switch,flag_exit)
        if (myrank==0) write(200,'(A22,I4,A3,I4)') repeat('-',20),iter," / ",Diter
        call watcht(disp_switch,"io",1)
 
-       if ( flag_exit ) exit
+       if ( flag_exit ) then
+          call finalize_mixing
+          exit
+       end if
 
     end do ! iter
 
-    if ( myrank == 0 ) write(*,*) "------------ SCF result ----------"
-    call write_info_scf( 1, Nband, iter, myrank==0 )
+    if ( myrank == 0 ) then
+       write(*,*) "------------ SCF result ----------"
+       call write_info_total_energy( myrank==0, .true. )
+       call write_info_scf( 1, Nband, iter, myrank==0, 1 )
+    end if
 
+    if ( allocated(Vloc0) ) deallocate( Vloc0 )
     deallocate( esp0 )
 
-!    call end_diff_vrho_scf
-
-    ierr_out = iter
+    if ( .not.flag_conv ) then
+       ierr_out = -2
+       if ( myrank == 0 ) write(*,*) "scf not converged"
+    else
+       ierr_out = iter
+       if ( myrank == 0 ) then
+          if ( flag_conv_f ) then
+             write(*,'(A,2(E12.5,1X))') &
+                  " exit SCF loop:  fmax-fmax0, fmaxconv= ",fdiff,fmax_conv
+          else
+             if ( nspin == 1 ) then
+                write(*,'(2(A,1(E12.5,2X)),A,2E12.5)') &
+                     " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
+                     " vsqe=",sqerr_out(nspin+1:nspin*2)," scfconv= ",scf_conv
+             else
+                write(*,'(2(A,2(E12.5,1X),1X),1X,A,2E12.5)') &
+                     " exit SCF loop:  rsqe=",sqerr_out(1:nspin), &
+                     " vsqe=",sqerr_out(nspin+1:nspin*2),"scfconv= ",scf_conv
+             end if
+          end if
+       end if
+    end if
 
     if ( flag_end ) then
        ierr_out = -1
-       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "exit SCF loop: time limit"
        return
-    end if
-
-    if ( iter > Diter ) then
-       ierr_out = -2
-       if ( myrank == 0 ) write(*,*) "scf not converged"
     end if
 
     call gather_wf
 
+    if ( myrank == 0 ) write(*,*) "------------ SCF END ----------"
+
   END SUBROUTINE calc_scf
 
 
-  SUBROUTINE write_info_scf( ib1, ib2, iter, disp_switch )
+  SUBROUTINE write_info_scf( ib1, ib2, iter, disp_switch, flag )
     implicit none
-    integer,intent(IN) :: ib1, ib2, iter
+    integer,intent(IN) :: ib1, ib2, iter, flag
     logical,intent(IN) :: disp_switch
-    integer :: s,k,n,nb1,nb2,i,u(3)
-    u(:) = (/ 6, 98, 99 /)
-    do i=1,3
+    integer :: s,k,n,nb1,nb2,i,u(2)
+    u(:) = (/ 6, 99 /)
+    do i=1,2
+       if ( myrank /= 0 ) cycle
        if ( u(i) == 6 ) then
           nb1 = ib1
           nb2 = ib2
@@ -261,10 +419,42 @@ CONTAINS
           nb1 = 1
           nb2 = Nband
        end if
-       if ( u(i) == 6  .and. .not.disp_switch ) cycle
-       if ( u(i) /= 6  .and. myrank /= 0 ) cycle
-       if ( u(i) == 98 .and. myrank == 0 ) rewind 98
-       if ( u(i) == 99 .and. myrank == 0 ) then
+       if ( u(i) == 99 .or. disp_switch ) then
+          write(u(i),'(a4,a6,a20,2a13,1x)') &
+               "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
+          do k=1,Nbzsm
+          do n=nb1,nb2
+             write(u(i),'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+                  ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
+          end do
+          end do
+          write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
+       end if
+       if ( u(i) == 6 .and. flag == 0 ) then
+          if ( NSPIN == 1 ) then
+             write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X))') &
+                  " iter= ",iter,"  rsqerr= ",sqerr_out(1),&
+                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fdiff
+          else
+             write(u(i), '(A,I4,4(A,2(E12.5,2x)))') &
+                  " iter= ",iter,"  rsqerr= ",sqerr_out(1:2), &
+                  " vsqerr= ",sqerr_out(3:4)," sum_dspin,|dspin|= ", &
+                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fdiff
+          end if
+       else
+          if ( NSPIN == 1 ) then
+             write(u(i), '(1X,2(A,E12.5,2X),A,2(E14.5,2X))') &
+                  "RSQERR= ",sqerr_out(1),  " VSQERR= ",sqerr_out(2), &
+                  " FM,FM-FM0= ",fmax,fdiff
+          else
+             write(u(i), '(1X,4(A,2(E12.5,2x)))') &
+                  "RSQERR= ",sqerr_out(1:2)," VSQERR= ",sqerr_out(3:4), &
+                  " sum_DSPIN,|DSPIN|= ",sum_dspin(1:2), &
+                  " FM,FM-FM0= ",fmax,fdiff
+          end if
+       end if
+       if ( u(i) == 6 .and. .not.disp_switch ) cycle
+       if ( u(i) == 99 ) then
           write(u(i),'("AX", f20.15)') ax
           write(u(i),'("A1",3f20.15)') aa(1:3,1)/ax
           write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
@@ -272,18 +462,11 @@ CONTAINS
           write(u(i),'("VA", f30.15)') Va
           write(u(i),'("NGRID",3i5,i10)') Ngrid(1:3),Ngrid(0)
        end if
-       write(u(i),'("ECUT ",f10.5)') Ecut
-       write(u(i),'("XC",a10)') XCtype
-       write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-       write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
-       write(u(i),'(a4,a6,a20,2a13,1x)') &
-            "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
-       do k=1,Nbzsm
-       do n=nb1,nb2
-          write(u(i),'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
-               ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
-       end do
-       end do
+       if ( u(i) == 99 .or. flag == 1 ) then
+          write(u(i),'(1X,A,f10.5,2x,A,A,2x,A,i4,2x,2(A,f11.5,2X))') &
+               "ECUT=",Ecut,"XC=",XCtype,"ITER=",iter, &
+               "CTIME=",time_scf(3),"ETIME=",time_scf(4)
+       end if
     end do
   END SUBROUTINE write_info_scf
 

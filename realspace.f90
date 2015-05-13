@@ -6,17 +6,11 @@ PROGRAM Real_Space_Solid
   use func2gp_module
   use band_module
   use band_sseig_module
-
-  use sweep_module
-  use scf_module
-  use scf_chefsi_module
-
   use psv_initrho_module
   use random_initrho_module
-
   use pseudopotentials
-
   use hamiltonian_matrix_module
+  use rtddft_mol_module
 
 #ifdef _USPP_
   use PSnonLocDij
@@ -61,6 +55,8 @@ PROGRAM Real_Space_Solid
 ! DISP_SWITCH = .true.
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
+
+  call check_disp_switch( DISP_SWITCH, 1 )
      
 ! --- input parameters ---
 
@@ -75,6 +71,13 @@ PROGRAM Real_Space_Solid
 ! --- Reciprocal Lattice ---
 
   call construct_bb(aa)
+
+  if ( disp_switch ) then
+     write(*,*) "bx=",2.0d0*acos(-1.0d0)/ax
+     write(*,'(1x,3f20.15)') bb(1:3,1)
+     write(*,'(1x,3f20.15)') bb(1:3,2)
+     write(*,'(1x,3f20.15)') bb(1:3,3)
+  end if
 
   call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
@@ -250,7 +253,7 @@ PROGRAM Real_Space_Solid
   call read_xc_hybrid( myrank, 1 )
 
   call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
-       , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
+       , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP, MSP_0, MSP_1, MB_0, MB_1 &
        , kbb, bb, Va, SYStype, XCtype, disp_switch )
 
 !-------------------- Hamiltonian Test
@@ -286,7 +289,8 @@ PROGRAM Real_Space_Solid
 
 ! --- Initial wave functions ---
 
-  call init_wf  !!!!!! allocate(unk)
+  call read_wf( myrank, 1 )
+  call init_wf
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
@@ -302,6 +306,8 @@ PROGRAM Real_Space_Solid
 ! --- Initial occupation ---
 
   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+
+  call write_info_atom( Zps, file_ps )
 
   if ( DISP_SWITCH ) then
      write(*,'(a60," main")') repeat("-",60)
@@ -363,6 +369,7 @@ PROGRAM Real_Space_Solid
 
   if ( GetParam_IO(1) == 1 .or. GetParam_IO(1) >= 3 ) then
      call control_xc_hybrid(1)
+     if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
   end if
 
 ! ---
@@ -390,6 +397,21 @@ PROGRAM Real_Space_Solid
   call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
   call calc_E_vdw_grimme( Natom, aa_atom )
 
+! --- Init force ---
+
+  if ( iswitch_opt /= 0 ) then
+     call init_force( myrank, 1, SYStype )
+     if ( SYStype == 0 ) then
+        select case( pselect )
+        case( 2 )
+           call ps_nloc2_init_derivative
+        case( 102 )
+           call ps_nloc2_init_derivative
+           call ps_Q_init_derivative
+        end select
+     end if
+  end if
+
 ! ---
 
   call calc_with_rhoIN_total_energy(disp_switch)
@@ -407,12 +429,10 @@ PROGRAM Real_Space_Solid
 
   select case( iswitch_scf )
   case( 1 )
-     call init_scf( Ndiag )
-     call calc_scf( Diter, ierr, disp_switch )
+     call calc_scf( Diter_scf, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
   case( 2 )
-     call init_scf_chefsi( Ndiag, myrank, 1 )
-     call calc_scf_chefsi( Diter, ierr, disp_switch )
+     call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
   case( -1 )
      if ( nprocs == 1 ) then
@@ -436,18 +456,6 @@ PROGRAM Real_Space_Solid
 !
 ! --- Force test, atomopt, CPMD ---
 !
-  if ( iswitch_opt /= 0 ) then
-     call init_force( myrank, 1 )
-     if ( SYStype == 0 ) then
-        select case( pselect )
-        case( 2 )
-           call ps_nloc2_init_derivative
-        case( 102 )
-           call ps_nloc2_init_derivative
-           call ps_Q_init_derivative
-        end select
-     end if
-  end if
 
   select case( iswitch_opt )
   case( -1 )
@@ -470,14 +478,29 @@ PROGRAM Real_Space_Solid
 
   end select
 
-! --- BAND ---
+!
+! --- TDDFT ---
+!
+  select case( iswitch_tddft )
+  case( 0 )
 
-#ifndef _DRSDFT_
-  if ( iswitch_band == 1 .and. iswitch_opt /= 3 ) then
-     call control_xc_hybrid(1)
-     call band(nint(Nelectron*0.5d0),disp_switch)
-  end if
-#endif
+  case( 1,2 )
+
+     select case( SYStype )
+     case( 1 )
+        call init_rtddft_mol( 1, myrank )
+        call rtddft_mol( iswitch_tddft )
+        goto 900
+     case default
+        write(*,*) "real-time tddft is available only for rsmol"
+        goto 900
+     end select
+
+  case default
+
+     write(*,'(1x,"iswitch_tddft=",i2," is not available")') iswitch_tddft
+
+  end select
 
 ! --- finalize ---
 

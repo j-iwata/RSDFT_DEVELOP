@@ -15,7 +15,11 @@ MODULE fock_fft_module
   PRIVATE
   PUBLIC :: ct_fock_fft,et_focK_fft, fock_fft_1, fock_fft
 
+#ifdef _DRSDFT_
+  integer,parameter :: TYPE_MAIN=MPI_REAL8
+#else
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+#endif
 
   real(8) :: ct_fock_fft(10),et_fock_fft(10)
 
@@ -44,9 +48,14 @@ CONTAINS
     integer :: ifacx(30),ifacy(30),ifacz(30)
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+    real(8) :: ctt(0:5),ett(0:5)
 
 #ifdef _FFTE_
+    ct_fock_ffte(:)=0.0d0
+    et_fock_ffte(:)=0.0d0
     call fock_ffte( n1, n2, k, q, trho, tVh, t )
+    ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+    et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
     return
 #endif
 
@@ -61,6 +70,8 @@ CONTAINS
     k_fock(1) = bb(1,1)*kbb(1,k) + bb(1,2)*kbb(2,k) + bb(1,3)*kbb(3,k)
     k_fock(2) = bb(2,1)*kbb(1,k) + bb(2,2)*kbb(2,k) + bb(2,3)*kbb(3,k)
     k_fock(3) = bb(3,1)*kbb(1,k) + bb(3,2)*kbb(2,k) + bb(3,3)*kbb(3,k)
+
+    call watch(ctt(0),ett(0))
 
     allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork0=z0
 
@@ -104,8 +115,12 @@ CONTAINS
     call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
          ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
 
+    call watch(ctt(1),ett(1))
+
     call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
          ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call watch(ctt(2),ett(2))
 
     zwork1(:,:,:)=z0
 
@@ -176,8 +191,12 @@ CONTAINS
        end do
     end if
 
+    call watch(ctt(3),ett(3))
+
     call fft3bx(ML1,ML2,ML3,ML,zwork1,zwork0,wsavex,wsavey,wsavez &
          ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+    call watch(ctt(4),ett(4))
 
     deallocate( wsavez,wsavey,wsavex )
     deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
@@ -198,6 +217,19 @@ CONTAINS
     end do
 
     deallocate( zwork1 )
+
+    call watch(ctt(5),ett(5))
+
+    ct_fock_fft(1) = ct_fock_fft(1) + ctt(1) - ctt(0)
+    et_fock_fft(1) = et_fock_fft(1) + ett(1) - ett(0)
+    ct_fock_fft(2) = ct_fock_fft(2) + ctt(2) - ctt(1)
+    et_fock_fft(2) = et_fock_fft(2) + ett(2) - ett(1)
+    ct_fock_fft(3) = ct_fock_fft(3) + ctt(3) - ctt(2)
+    et_fock_fft(3) = et_fock_fft(3) + ett(3) - ett(2)
+    ct_fock_fft(4) = ct_fock_fft(4) + ctt(4) - ctt(3)
+    et_fock_fft(4) = et_fock_fft(4) + ett(4) - ett(3)
+    ct_fock_fft(5) = ct_fock_fft(5) + ctt(5) - ctt(4)
+    et_fock_fft(5) = et_fock_fft(5) + ett(5) - ett(4)
 
     return
   END SUBROUTINE Fock_fft

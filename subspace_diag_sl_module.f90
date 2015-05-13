@@ -57,11 +57,11 @@ CONTAINS
     deallocate( Vsub )
 
     if ( disp_switch ) then
-       write(*,'(1x,"time(diag_mate1)",2g10.3)') ct(1),et(1)
-!       write(*,'(1x,"time(diag_mate2)",2g10.3)') ct(4),et(4)
-       write(*,'(1x,"time(scalapack)",2g10.3)') ct(2),et(2)
-       write(*,'(1x,"time(diag_rotv1)",2g10.3)') ct(3),et(3)
-!       write(*,'(1x,"time(diag_rotv2)",2g10.3)') ct(5),et(5)
+!       write(*,'(1x,"time(diag_mate1)",2g10.3)') ct(1),et(1)
+!!       write(*,'(1x,"time(diag_mate2)",2g10.3)') ct(4),et(4)
+!       write(*,'(1x,"time(scalapack)",2g10.3)') ct(2),et(2)
+!       write(*,'(1x,"time(diag_rotv1)",2g10.3)') ct(3),et(3)
+!!       write(*,'(1x,"time(diag_rotv2)",2g10.3)') ct(5),et(5)
     end if
 
   END SUBROUTINE subspace_diag_sl

@@ -16,6 +16,7 @@ do
       read b
       format=`printf "%05d" $b`
       touch rank$j/f.$format
+#      ln -s /data/hp120301/k00755/out.2381056/wf.dat1.$format ./rank$j/wf.dat1.$format
       i=$((i+1))
    done
 

@@ -7,10 +7,9 @@ MODULE xc_hse_module
   use aa_module
   use bb_module
   use bc_module, only: www, bcset
-  use xc_hybrid_module, only: omega, alpha_hf, iflag_hybrid, VFunk
+  use xc_hybrid_module, only: omega, alpha_hf
   use wf_module, only: unk, occ
   use fd_module
-  use fock_module, only: UpdateWF_fock
 
   implicit none
 
@@ -38,6 +37,7 @@ CONTAINS
 
   SUBROUTINE init_xc_hse( ML_0_in, ML_1_in, MSP_in,MSP_0_in,MSP_1_in &
        ,MBZ_0_in,MBZ_1_in,MB_0_in,MB_1_in,SYStype_in )
+
     implicit none
     integer,intent(IN) :: SYStype_in
     integer,intent(IN) :: ML_0_in, ML_1_in, MSP_in,MSP_0_in,MSP_1_in
@@ -67,14 +67,15 @@ CONTAINS
 
 
   SUBROUTINE calc_xc_hse( iflag_hse, rho, Exc_out &
-       , Vxc, Ex_out, Ec_out, Eexx_out )
+       , Vxc, Ex_out, Ec_out )
+
     implicit none
 
     integer,intent(IN) :: iflag_hse
     real(8),intent(IN) :: rho(ML_0:,:)
     real(8),intent(OUT) :: Exc_out
     real(8),optional,intent(OUT) :: Vxc(ML_0:,MSP_0:)
-    real(8),optional,intent(OUT) :: Ex_out, Ec_out, Eexx_out
+    real(8),optional,intent(OUT) :: Ex_out, Ec_out
 
     real(8),parameter :: mu=0.21951d0,Kp=0.804d0
     real(8),parameter :: ep=1.d-25
@@ -910,74 +911,15 @@ CONTAINS
        E_correlation    =rbf(3)
 
 !
-! --- Short Range Exact Exchange ---
-!
-
-       if ( iflag_hybrid == 1 ) then
-
-          call UpdateWF_fock
-
-          select case( SYStype )
-          case default
-
-             sum0=0.0d0
-             do s=MSP_0,MSP_1
-             do k=MBZ_0,MBZ_1
-             do n=MB_0 ,MB_1
-
-                if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
-
-                c = 0.5d0*occ(n,k,s)
-
-                do i=n1,n2
-#ifdef _DRSDFT_
-                   sum0 = sum0 + c*unk(i,n,k,s)*VFunk(i,n,k,s)
-#else
-                   sum0 = sum0 + c*conjg(unk(i,n,k,s))*VFunk(i,n,k,s)
-#endif
-                end do ! i
-
-             end do ! n
-             end do ! k
-             end do ! s
-
-          case( 1 )
-
-!             sum0=0.d0
-!             do s=MSP_0,MSP_1
-!             do k=MBZ_0,MBZ_1
-!             do n=MB_0,MB_1
-!                call Fock_mol(k,s,n1,n2,unk(n1,n,k,s),VFunk(n1,n,k,s))
-!                if ( abs(occ(n,k,s))<1.d-10 ) cycle
-!                do i=n1,n2
-!                   sum0=sum0+0.5d0*occ(n,k,s)*unk(i,n,k,s)*VFunk(i,n,k,s)
-!                end do
-!             end do
-!             end do
-!             end do
-
-          end select
-
-          call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_grid,ierr)
-          call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_band,ierr)
-          call mpi_allreduce(sum0,sum1,1,mpi_real8,mpi_sum,comm_bzsm,ierr)
-          call mpi_allreduce(sum1,sum0,1,mpi_real8,mpi_sum,comm_spin,ierr)
-
-          E_exchange_exx = sum0*dV
-
-       end if ! [ iflag_hybrid == 1 ]
-
-!
 ! --- Exchange Correlation Energy for HSE ---
 !
 
-       E_exchange = E_exchange_pbe - E_exchange_pbe_sr + E_exchange_exx
+       E_exchange = E_exchange_pbe - E_exchange_pbe_sr
        Exc = E_exchange + E_correlation
 
        Exc_out = Exc
        if ( present(Ex_out)   ) Ex_out   = E_exchange
        if ( present(Ec_out)   ) Ec_out   = E_correlation
-       if ( present(Eexx_out) ) Eexx_out = E_exchange_exx
 
        deallocate( zeta )
        deallocate( rho_tmp )
@@ -991,8 +933,8 @@ CONTAINS
        if ( DISP_SWITCH_PARALLEL ) then
           write(*,'(1x," E_exchange_pbe, E_exchange_pbe_sr =",2f20.14)') &
                E_exchange_pbe, E_exchange_pbe_sr
-          write(*,'(1x," E_exchange_exx, E_exchange        =",2f20.14)') &
-               E_exchange_exx, E_exchange
+          write(*,'(1x," E_exchange                        =",2f20.14)') &
+               E_exchange
           write(*,'(1x," E_correlation , Exc               =",2f20.14)') &
                E_correlation, Exc
           write(*,'(a40," calc_xc_hse(end)")') repeat("-",40)

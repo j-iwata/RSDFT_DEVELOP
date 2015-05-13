@@ -29,16 +29,21 @@ MODULE xc_ggapbe96_module
   real(8) :: Hgrid(3)
   integer :: SYStype
 
+  real(8) :: mu=0.21951d0
+  real(8) :: Kp=0.804d0
+  real(8) :: beta=0.066725d0
+
 CONTAINS
 
 
   SUBROUTINE init_GGAPBE96 &
        ( Igrid_in,MSP_0_in,MSP_1_in,MSP_in,comm_in,dV_in &
-        ,Md_in,Hgrid_in,Ngrid_in,SYStype_in )
+        ,Md_in,Hgrid_in,Ngrid_in,SYStype_in, mu_in, Kp_in )
     implicit none
     integer,intent(IN) :: Igrid_in(2,0:3),MSP_0_in,MSP_1_in,MSP_in,comm_in
     real(8),intent(IN) :: dV_in, Hgrid_in(3)
     integer,intent(IN) :: Md_in, Ngrid_in(0:3), SYStype_in
+    real(8),optional,intent(IN) :: mu_in, Kp_in
     real(8) :: aaL(3), Pi
 
     if ( .not.flag_init ) return
@@ -72,6 +77,10 @@ CONTAINS
 
     allocate( nab(-Md:Md) ) ; nab=0.d0
     call get_coef_nabla_fd( Md, nab )
+
+    if ( present(mu_in)   ) mu  = mu_in
+    if ( present(Kp_in)   ) Kp  = Kp_in
+    beta = mu*3.0d0/acos(-1.0d0)**2
 
     flag_init = .false.
 
@@ -255,7 +264,7 @@ CONTAINS
     real(8),intent(IN)  :: rho(ML_0:,:)
     real(8),intent(OUT) :: vex(ML_0:,:)
     real(8),intent(OUT) :: Ex
-    real(8),parameter :: mu=0.21951d0, Kp=0.804d0
+!   real(8),parameter :: mu=0.21951d0, Kp=0.804d0
     integer :: i,ispin,ierr
     real(8) :: rhoa,rhob,trho,cm
     real(8),allocatable :: rrrr(:,:),rtmp(:)
@@ -327,6 +336,8 @@ CONTAINS
              k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
              j1=j1-k1*ML1
              j =LLL2(j1,i2,i3)
+! The potential vex is calculated at j-th grid point rather than i-th.
+! This is because non-transposed nabla matrix Dij is used (See XC.doc).
              if ( ML_0 <= j .and. j <= ML_1 ) then
                 vex(j,ispin) = vex(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
                                                   +rrrr(i,2)*b(2,1) &
@@ -386,7 +397,8 @@ CONTAINS
     real(8),parameter :: bt20 =3.5876d0  ,bt21 =6.1977d0  ,bt22 =3.6231d0
     real(8),parameter :: bt30 =1.6382d0  ,bt31 =3.3662d0  ,bt32 =0.88026d0
     real(8),parameter :: bt40 =0.49294d0 ,bt41 =0.62517d0 ,bt42 =0.49671d0
-    real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
+!   real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
+    real(8) :: c1,C2
     real(8) :: const1, const2, factor
     integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr,m1,m2,m3
     real(8) :: trho, rhoa, rhob
@@ -414,6 +426,9 @@ CONTAINS
     thrtwo   = 3.0d0/2.0d0
     twothr   = 2.0d0/3.0d0
     sevthr   = 7.0d0/3.0d0
+
+    C2 = ( 1.0d0-log(2.0d0) )/Pi**2 ! "gamma" in PBE paper
+    C1 = beta/C2
 
     vco = 0.0d0
     Ec  = 0.0d0
@@ -625,7 +640,8 @@ CONTAINS
     real(8),parameter :: bt20 =3.5876d0  ,bt21 =6.1977d0  ,bt22 =3.6231d0
     real(8),parameter :: bt30 =1.6382d0  ,bt31 =3.3662d0  ,bt32 =0.88026d0
     real(8),parameter :: bt40 =0.49294d0 ,bt41 =0.62517d0 ,bt42 =0.49671d0
-    real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
+!   real(8),parameter :: C1=2.14611945579107d0,C2=0.031091d0
+    real(8) :: C1,C2
     real(8) :: const1, const2, factor
     integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr,m1,m2,m3
     real(8) :: trho, rhoa, rhob
@@ -654,6 +670,9 @@ CONTAINS
     thrtwo   = 3.0d0/2.0d0
     twothr   = 2.0d0/3.0d0
     sevthr   = 7.0d0/3.0d0
+
+    C2 = ( 1.0d0-log(2.0d0) )/Pi**2 ! "gamma" in PBE paper
+    C1 = beta/C2
 
     vco = 0.0d0
     Ec  = 0.0d0
@@ -795,6 +814,8 @@ CONTAINS
           k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
           j1=j1-k1*ML1
           j =LLL2(j1,i2,i3)
+! The potential vex is calculated at j-th grid point rather than i-th.
+! This is because non-transposed nabla matrix Dij is used (See XC.doc).
           if ( ML_0 <= j .and. j <= ML_1 ) then
              do ispin=MSP_0,MSP_1
                 vco(j,ispin) = vco(j,ispin) + cm*( rrrr(i,1)*b(1,1) &

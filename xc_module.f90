@@ -1,7 +1,7 @@
 MODULE xc_module
 
   use rgrid_module
-  use density_module, only: rho
+  use density_module, only: rho, density, init_type_density
   use ps_pcc_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1
@@ -16,11 +16,16 @@ MODULE xc_module
   use electron_module, only: Nspin, Nband, Nelectron
   use bz_module, only: kbb, MMBZ, Nbzsm
 
+  use grid_module, only: grid, init_grid
+  use xc_variables, only: xc, init_type_xc
   use xc_ldapz81_module
   use xc_ggapbe96_module
+  use xc_ggapbe96_2_module
   use xc_hybrid_module
   use xc_hse_module
+  use xc_pbe_xsr_module
   use xc_hf_module
+  use xc_vdw_module
 
   implicit none
 
@@ -32,6 +37,10 @@ MODULE xc_module
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
   real(8) :: E_exchange_exx
+
+  real(8),allocatable :: Vx(:,:)
+
+  logical :: disp_sw
 
 CONTAINS
 
@@ -121,7 +130,7 @@ CONTAINS
     call mpi_allreduce(sb,rb,3*n,mpi_real8,mpi_sum,comm_grid,ierr)
     call mpi_allreduce(ic,jc,3*n,mpi_integer,mpi_sum,comm_grid,ierr)
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        do j=1,n
           write(*,'(1x,"(positive)",i8,2x,2g16.8)') jc(2,j),rb(2,j),rb(1,j)
           write(*,'(1x,"(negative)",i8,2x,2g16.8)') jc(3,j),rb(3,j),rb(1,j)
@@ -138,11 +147,16 @@ CONTAINS
   SUBROUTINE calc_xc
     implicit none
     real(8),allocatable :: rho_tmp(:,:)
-    real(8) :: c
+    real(8) :: c,mu,kappa
     integer :: s
+    type(grid) :: rgrid
+    type(xc) :: vdw, gga
+    type(density) :: rho_v
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," calc_xc(start)")') repeat("-",60)
+    call check_disp_switch( disp_sw, 0 )
+
+    if ( disp_sw ) then
+       write(*,'(a40," calc_xc(start)")') repeat("-",40)
     end if
 
     if ( .not.allocated(Vxc) ) then
@@ -190,11 +204,45 @@ CONTAINS
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
+    case('PBE','PBE96')
+
+       call init_grid( rgrid )
+       call init_type_density( rho_v )
+       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, gga )
+
+       rho_v%rho(:,:) = rho_tmp(:,:)
+
+       call calc_GGAPBE96_2( rgrid, rho_v, gga )
+
+       E_exchange = gga%Ex
+       E_correlation = gga%Ec
+       Exc = E_exchange + E_correlation
+
+       Vxc(:,:) = gga%Vxc(:,:)
+
+    case('PBEsol')
+
+       mu = 10.0d0/81.0d0
+
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype, mu_in=mu )
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+    case('revPBE')
+
+       kappa = 1.245d0
+
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
+
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
     case('HF')
 
        if ( iflag_hybrid == 0 ) then
 
-          if ( disp_switch_parallel ) then
+          if ( disp_sw ) then
              write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
              write(*,*) "LDAPZ81 is called (iflag_hybrid==0)"
           end if
@@ -217,17 +265,35 @@ CONTAINS
 
     case('PBE0')
 
-       stop "PBE0 is not available yet"
+       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype )
 
-    case('HSE')
+       if ( .not.allocated(Vx) ) then
+          allocate( Vx(ML_0:ML_1,MSP_0:MSP_1) ) ; Vx=0.0d0
+       end if
 
-!       call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
-!            , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP_0, MSP_1, MB_0, MB_1 &
-!            , kbb, bb, Va, SYStype, XCtype, disp_switch_parallel )
+       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation, Vx )
+
+       if ( iflag_hybrid /= 0 ) then
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+
+          call calc_xc_hf( E_exchange_exx )
+
+          Vxc(:,:) = Vxc(:,:) - alpha_hf*Vx(:,:)
+
+          E_exchange = (1.0d0-alpha_hf)*E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
+
+       end if
+
+    case('HSE','HSE06')
 
        if ( iflag_hybrid == 0 ) then
 
-          if ( disp_switch_parallel ) then
+          if ( disp_sw ) then
              write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
              write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
           end if
@@ -242,13 +308,89 @@ CONTAINS
                ,MBZ_0,MBZ_1,MB_0,MB_1,SYStype )
 
           call calc_xc_hse( iflag_hse, rho, Exc &
-               , Vxc, E_exchange, E_correlation, E_exchange_exx )
+               , Vxc, E_exchange, E_correlation )
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+
+          call calc_xc_hf( E_exchange_exx )
+
+          E_exchange = E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
+
+       end if
+
+    case('HSE_')
+
+       call init_grid( rgrid )
+       call init_type_density( rho_v )
+       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, gga )
+
+       rho_v%rho(:,:) = rho_tmp(:,:)
+
+       if ( iflag_hybrid == 0 ) then
+
+          if ( disp_sw ) then
+             write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
+             write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
+          end if
+
+          call calc_GGAPBE96_2( rgrid, rho_v, gga )
+
+          E_exchange = gga%Ex
+          E_correlation = gga%Ec
+          Exc = E_exchange + E_correlation
+
+          Vxc(:,:) = gga%Vxc(:,:)
+
+       else
+
+          call calc_GGAPBE96_2( rgrid, rho_v, gga )
+
+          E_exchange = gga%Ex
+          E_correlation = gga%Ec
+          Vxc(:,:) = gga%Vxc(:,:)
+
+          call calc_pbe_xsr( rgrid, rho_v, gga )
+
+          E_exchange = E_exchange - alpha_hf*gga%Ex
+          Vxc(:,:) = Vxc(:,:) - alpha_hf*gga%Vx(:,:)
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+          call calc_xc_hf( E_exchange_exx )
+
+          E_exchange = E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
 
        end if
 
     case('LCwPBE')
 
        stop "LCwPBE is not available yet"
+
+    case('VDWDF')
+
+       kappa = 1.245d0 ! revPBE
+
+       call init_grid( rgrid )
+       call init_type_density( rho_v )
+       rho_v%rho(:,:) = rho_tmp(:,:)
+       call init_type_xc( rho_v%n0, rho_v%n1, rgrid, vdw )
+
+       call calc_GGAPBE96_2( rgrid, rho_v, vdw, Kp_in=kappa )
+
+       E_exchange = vdw%Ex
+
+       call init_xc_vdw
+       call calc_xc_vdw( rgrid, rho_v, vdw )
+
+       E_correlation = vdw%Ec
+       Vxc(:,:) = vdw%Vx(:,:) + vdw%Vc(:,:)
+
+       Exc = E_exchange + E_correlation
 
     case default
 
@@ -259,8 +401,8 @@ CONTAINS
 
     deallocate( rho_tmp )
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," calc_xc(end)")') repeat("-",60)
+    if ( disp_sw ) then
+       write(*,'(a40," calc_xc(end)")') repeat("-",40)
     end if
 
   END SUBROUTINE calc_xc
@@ -397,7 +539,7 @@ CONTAINS
     Exc=E_exchange+E_correlation
 
     call watch(ctime1,etime1)
-    if ( DISP_SWITCH_PARALLEL ) then
+    if ( disp_sw ) then
        write(*,*) "TIME(XC_LDAPZ81)",ctime1-ctime0,etime1-etime0
     end if
 
@@ -490,7 +632,7 @@ CONTAINS
        end do
     end if
     call mpi_allreduce(sbf,rbf,3,MPI_REAL8,MPI_SUM,comm_grid,ierr)
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,'(1x,"negative charge =",3g20.10)') rbf(1:3)*dV
     end if
 ! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -549,7 +691,7 @@ CONTAINS
        end if
        if ( zeta(i)>1.d0 .or. zeta(i)<-1.d0 ) then
           j=j+1
-          if ( disp_switch_parallel ) write(*,*) j,zeta(i),rho(i,1:nspin)
+          if ( disp_sw ) write(*,*) j,zeta(i),rho(i,1:nspin)
        end if
     end do
     where( zeta >  1.d0 )
@@ -899,7 +1041,7 @@ CONTAINS
     end select
 
     call watch(ctime1,etime1)
-    if ( DISP_SWITCH_PARALLEL ) then
+    if ( disp_sw ) then
        write(*,*) "TIME(XC_GGAPBE96_org)",ctime1-ctime0,etime1-etime0
     end if
 

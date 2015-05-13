@@ -5,7 +5,7 @@ MODULE sweep_module
   use bz_module, only: weight_bz, Nbzsm
   use wf_module
   use cg_module, only: Ncg, conjugate_gradient
-  use array_bound_module, only: ML_0,ML_1,MBZ_0,MBZ_1,MSP_0,MSP_1
+  use array_bound_module, only: ML_0,ML_1,MBZ_0,MBZ_1,MSP_0,MSP_1,MB_0,MB_1
   use gram_schmidt_module
   use io_module
   use total_energy_module, only: calc_with_rhoIN_total_energy
@@ -13,11 +13,15 @@ MODULE sweep_module
   use subspace_diag_module
   use esp_gather_module
   use watch_module
+  use hamiltonian_module
+  use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
 
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_sweep, init_sweep
+  PUBLIC :: calc_sweep, init_sweep, read_sweep, Nsweep
+
+  integer :: Nsweep
 
   real(8),allocatable :: esp0(:,:,:)
 
@@ -29,6 +33,28 @@ MODULE sweep_module
   integer :: mb_ref
 
 CONTAINS
+
+
+  SUBROUTINE read_sweep( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i,ierr
+    character(8) :: cbuf,ckey
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey(1:6) == "NSWEEP" ) then
+             backspace(unit)
+             read(unit,*) cbuf,Nsweep
+          end if
+       end do
+999    continue
+       write(*,*) "Nsweep =",Nsweep
+    end if
+    call mpi_bcast(Nsweep,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+  END SUBROUTINE read_sweep
 
 
   SUBROUTINE init_sweep( iconv_check_in, mb_ref_in, tol_in )
@@ -51,9 +77,11 @@ CONTAINS
     integer,intent(IN)  :: Diter,isw_gs
     integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
-    integer :: iter,s,k,n,m
-    real(8) :: ct0,et0,ct1,et1
+    integer :: iter,s,k,n,m,iflag_hybrid
+    real(8) :: ct0,et0,ct1,et1,ct(0:2),et(0:2)
     logical :: flag_exit, flag_end, flag_conv
+
+    if ( disp_switch ) write(*,*) "------------ SWEEP START ----------"
 
     flag_end  = .false.
     flag_exit = .false.
@@ -63,6 +91,48 @@ CONTAINS
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
+    call get_flag_xc_hybrid( iflag_hybrid )
+
+    select case( iflag_hybrid )
+    case(0,1,3)
+
+       if ( iflag_hunk >= 1 ) then
+          do s=MSP_0,MSP_1
+          do k=MBZ_0,MBZ_1
+             do m=MB_0,MB_1,MB_d
+                n=min(m+MB_d-1,MB_1)
+                call hamiltonian &
+                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+             end do
+          end do
+          end do
+       end if
+
+    case( 2 )
+
+       if ( iflag_hunk >= 1 ) then
+          call control_xc_hybrid(0)
+          allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
+          do s=MSP_0,MSP_1
+          do k=MBZ_0,MBZ_1
+             do m=MB_0,MB_1,MB_d
+                n=min(m+MB_d-1,MB_1)
+                workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
+                call hamiltonian &
+                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
+             end do ! m
+          end do ! k
+          end do ! s
+          deallocate( workwf )
+       end if
+
+       call control_xc_hybrid(1)
+
+    end select
+
+    call calc_with_rhoIN_total_energy( .false., Echk )
+
     do iter=1,Diter
 
        if ( disp_switch ) then
@@ -71,20 +141,29 @@ CONTAINS
 
        call watch(ct0,et0)
 
+       ct(:)=0.0d0
+       et(:)=0.0d0
+
        Echk0=Echk
        esp0 =esp
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
-          call watcht(disp_switch,"",0)
+          call watchs(ct(0),et(0),0)
           call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,isw_gs &
                                  ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-          call watcht(disp_switch,"cg",1)
+          call watchs(ct(0),et(0),1)
           call gram_schmidt(1,Nband,k,s)
-          call watcht(disp_switch,"gs",1)
+          call watchs(ct(1),et(1),1)
           call subspace_diag(k,s)
-          call watcht(disp_switch,"diag",1)
+          call watchs(ct(2),et(2),1)
        end do
        end do
+
+       if ( disp_switch ) then
+          write(*,*) "time(diag)=",ct(0),et(0)
+          write(*,*) "time(cg)  =",ct(1),et(1)
+          write(*,*) "time(gs)  =",ct(2),et(2)
+       end if
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
@@ -126,6 +205,8 @@ CONTAINS
 
     call gather_wf
 
+    if ( disp_switch ) write(*,*) "------------ SWEEP END ----------"
+
   END SUBROUTINE calc_sweep
 
 
@@ -145,7 +226,6 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: iter
     logical,intent(OUT) :: flag_conv
-    if ( iter == 1 ) Echk0=0.0d0
     flag_conv=.false.
     if ( abs(Echk-Echk0) < tol_Echk ) flag_conv=.true.
   END SUBROUTINE conv_check_1

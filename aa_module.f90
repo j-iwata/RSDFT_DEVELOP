@@ -1,5 +1,7 @@
 MODULE aa_module
 
+  use lattice_module, only: init_lattice
+
   implicit none
 
   PRIVATE
@@ -51,6 +53,7 @@ CONTAINS
     end if
     call send_aa(0)
     call set_org_aa( ax, aa )
+    call init_lattice( ax, aa )
   END SUBROUTINE read_aa
 
 

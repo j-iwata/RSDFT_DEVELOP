@@ -21,6 +21,7 @@ MODULE ps_nloc2_module
   use minimal_box_module
   use bz_module
   use watch_module
+  use wf_module
 
   implicit none
 
@@ -67,6 +68,7 @@ CONTAINS
     integer :: ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
+    logical :: disp_sw
 
     INTERFACE
        FUNCTION Ylm(x,y,z,l,m)
@@ -79,7 +81,9 @@ CONTAINS
 #ifdef _SHOWALL_INIT_
     if ( isParallelTest ) write(200+myrank,*) ">>>> prep_ps_nloc2"
 #endif
-    if ( disp_switch_parallel ) then
+
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
        write(*,'(a60," prep_ps_nloc2")') repeat("-",60)
     end if
 
@@ -113,7 +117,7 @@ CONTAINS
        end do
     end if
 
-    if ( all(ippform == 4) ) call init_ps_nloc_gth(disp_switch_parallel)
+    if ( all(ippform == 4) ) call init_ps_nloc_gth(disp_sw)
 
     if ( Mlma < nprocs_g ) then
       nzlma_0 = Mlma
@@ -704,7 +708,7 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,*) "time(ps_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(ps_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(ps_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
@@ -1027,7 +1031,7 @@ CONTAINS
 
     allocate( uVunk(nzlma,ib1:ib2),uVunk0(nzlma,ib1:ib2) )
 
-!$OMP parallel
+!$OMP parallel private( i )
 
     do ib=ib1,ib2
 !$OMP do
@@ -1131,9 +1135,6 @@ CONTAINS
 
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)
-    use bz_module
-    use wf_module
-    use watch_module
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
@@ -1165,6 +1166,7 @@ CONTAINS
     logical,allocatable :: a_rank(:)
     integer :: ML1,ML2,ML3,i0,iorb0
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
+    logical :: disp_sw
 
     INTERFACE
        FUNCTION Ylm(x,y,z,l,m)
@@ -1173,6 +1175,8 @@ CONTAINS
          integer,intent(IN) :: l,m
        END FUNCTION Ylm
     END INTERFACE
+
+    call check_disp_switch( disp_sw, 0 )
 
     if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
@@ -1509,8 +1513,11 @@ CONTAINS
                    end do
                    tmp0=tmp0/(r*r)
                 else
-                   write(*,*) "force_ps_nloc2",ir,NRc
-                   stop
+!                   write(*,*) "force_ps_nloc2",ir,NRc
+!                   write(*,*) r,int(100.d0*r),irad( int(100.d0*r),ik )
+!                   write(*,*) rad1(NRc,ik)
+!                   stop
+                   tmp0=0.0d0
                 end if
                 maxerr=max(maxerr,err0)
 #endif
@@ -1749,7 +1756,7 @@ CONTAINS
 
 !$OMP end parallel
 
-    if ( disp_switch_parallel ) then
+    if ( disp_sw ) then
        write(*,*) "time(force_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)

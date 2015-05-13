@@ -19,6 +19,7 @@ MODS1 = simc_module.o\
         bcast_module.o \
         array_bound_module.o\
         ffte_sub_module.o \
+        lattice_module.o \
         aa_module.o \
         bb_module.o \
         atom_module.o \
@@ -36,7 +37,7 @@ MODS1 = simc_module.o\
         kinetic_variables.o  \
         kinetic_mol_module.o \
         esm_kinetic_module.o \
-        tmp3_omp_variables.o \
+        omp_variables.o \
         kinetic_fft_module.o \
         kinetic_sol_0_module.o \
         kinetic_sol_1_module.o \
@@ -120,6 +121,11 @@ MODS1 = simc_module.o\
         gram_schmidt_t_module.o \
         gram_schmidt_module.o \
         vdw_grimme_module.o \
+        fock_parallel_module.o \
+        grid_module.o \
+        gradient_module.o \
+        xc_variables.o \
+        xc_hybrid_io_module.o \
         xc_hybrid_module.o \
         fock_ffte_module.o \
         fock_fft_module.o \
@@ -127,13 +133,16 @@ MODS1 = simc_module.o\
         fock_module.o \
         xc_hf_module.o \
         xc_hse_module.o \
-        hamiltonian_module.o\
+        xc_pbe_xsr_module.o \
         xc_pw92_gth_module.o\
         xc_ldapz81_module.o \
         xc_ggapbe96_mol_module.o \
         xc_ggapbe96_module.o \
+        xc_ggapbe96_2_module.o \
+        xc_vdw_module.o \
         xc_module.o \
         ps_pcc_force_module.o \
+        hamiltonian_module.o \
         cgpc_gausseidel_module.o \
         cgpc_2_module.o \
         cgpc_diag_module.o \
@@ -148,10 +157,13 @@ MODS1 = simc_module.o\
         mixing_broyden_module.o \
         mixing_module.o \
         esp_gather_module.o \
+        io_read_module.o \
+        io_write_module.o \
         io2_module.o \
         io_module.o \
-        force_module.o \
+        force_sol_module.o \
         force_mol_module.o \
+        force_module.o \
         esm_cylindrical_test.o \
         func2gp_module.o \
         localpot2_te_module.o \
@@ -164,6 +176,7 @@ MODS1 = simc_module.o\
         random_initrho_module.o \
         hamiltonian_matrix_module.o \
         ChebyshevFilter_module.o \
+        rtddft_mol_module.o \
 
 #        momentum_mate_module.o \
 #        esm_ion_module.o \
@@ -179,9 +192,9 @@ DIAGSL_MOD = scalapack_module.o\
              subspace_diag_sl_module.o 
 DIAG_MOD   = subspace_diag_module.o
 
-MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig_module.o \
-        apply_sseig_module.o
-MODS2 = momentum_module.o band_variables.o band_sseig_module.o band_module.o
+MODS3 = timer_module.o iter_lin_solvers.o sseig.o prepare_sseig.o apply_sseig.o
+MODS2 = momentum_module.o band_variables.o band_sseig_module.o \
+        band_unfold_module.o band_module.o
 MODS4 = scf_module.o scf_chefsi_module.o sweep_module.o atomopt_module.o \
         global_variables.o parameters_module.o
 
@@ -203,6 +216,7 @@ EXTOBJ2 = $(DIR2)/polint.o \
           $(DIR2)/spline.o\
           $(DIR2)/convert_capital.o\
           $(DIR2)/gaussj.o\
+          $(DIR2)/write_info.o\
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o\

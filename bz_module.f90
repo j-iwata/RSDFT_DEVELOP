@@ -94,7 +94,7 @@ CONTAINS
     integer,allocatable :: mm(:,:),m(:,:),w(:)
 
     if ( DISP_SWITCH ) then
-       write(*,'(a60," generate_bz_sym")') repeat("-",60)
+       write(*,'(a60," generate_bz")') repeat("-",60)
     end if
 
     m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)

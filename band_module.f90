@@ -19,13 +19,16 @@ MODULE band_module
   use subspace_mate_sl_0_module, only: reset_subspace_mate_sl_0
   use subspace_rotv_sl_0_module, only: reset_subspace_rotv_sl_0
   use band_variables, only: nfki,nbk,ak,nskip_band &
-       ,esp_conv_tol, mb_band, mb2_band, maxiter_band &
-       ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,read_band
+       ,esp_conv_tol, mb_band, mb2_band, maxiter_band, read_band &
+       ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,unit_band_ufld
   use sweep_module, only: calc_sweep, init_sweep
   use pseudopot_module, only: pselect
   use ps_nloc2_module, only: prep_uvk_ps_nloc2, prep_rvk_ps_nloc2
   use ps_nloc3_module, only: prep_ps_nloc3, init_ps_nloc3
   use io_module, only: Init_IO
+  use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
+  use fock_ffte_module, only: init_fock_ffte
+  use band_unfold_module
   
   implicit none
 
@@ -40,7 +43,6 @@ CONTAINS
   SUBROUTINE band( MBV_in, disp_switch )
 
     implicit none
-
     integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
     integer :: MBV,nktrj,i,j,k,s,n,ibz,ierr,iktrj,iter,Diter_band
@@ -67,23 +69,35 @@ CONTAINS
     if ( MBV < 1 .or. mb_band < MBV ) MBV=1
     if ( disp_switch_parallel ) write(*,*) "MBV=",MBV
 
+! ---
+
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1
 
-    allocate( ktrj(6,nktrj) )
+    allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
 
-    k=0
-    do i=1,nbk
-       dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
-       do j=1,nfki(i)
-          k=k+1
-          ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
-          ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+    call read_band_unfold( myrank, unit )
+
+    if ( iswitch_banduf ) then
+
+       call init_band_unfold( nktrj, ktrj, unit_band_ufld, disp_switch )
+
+    else
+
+       k=0
+       do i=1,nbk
+          dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
+          do j=1,nfki(i)
+             k=k+1
+             ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
+             ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+          end do
        end do
-    end do
-    if ( nktrj > 1 ) then
-       ktrj(1:3,k+1) = ak(1:3,nbk+1)
-       ktrj(4:6,k+1) = 0.d0
+       if ( nktrj > 1 ) then
+          ktrj(1:3,k+1) = ak(1:3,nbk+1)
+          ktrj(4:6,k+1) = 0.d0
+       end if
+
     end if
 
     if ( disp_switch ) then
@@ -92,6 +106,8 @@ CONTAINS
           write(*,'(1x,i4,2x,3f15.10,2x,3f15.10)') k,ktrj(1:6,k)
        end do
     end if
+
+! ---
 
     allocate( ir_k(0:np_bzsm-1),id_k(0:np_bzsm-1) )
     id_k(:)=0
@@ -113,16 +129,24 @@ CONTAINS
        write(*,*) "sum(ir_k),nktrj=",sum(ir_k),nktrj
     end if
 
+! ---
+
+    if ( iflag_hunk == 0 ) call deallocate_work_wf
+
     if ( MB < mb_band ) then
        call modify_mb
        call modify_arraysize
     end if
+
+! ---
 
     allocate( esp0_tmp(MB,0:np_bzsm-1,MSP)   ) ; esp0_tmp=0.d0
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
     allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
     allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
     allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) ) ; unk0=0.d0
+
+! ---
 
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
@@ -143,6 +167,8 @@ CONTAINS
           open(unit_band_ovlp,file=file_ovlp)
        end if
     end if
+
+! ---
 
     iktrj_0 = id_k(myrank_k)+1
     iktrj_1 = id_k(myrank_k)+ir_k(myrank_k)
@@ -188,7 +214,17 @@ CONTAINS
           call prep_ps_nloc3
        end select
 
+       if ( iflag_hybrid > 0 ) then
+          if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
+          call prep_kq_xc_hybrid(Nbzsm,MBZ_0,MBZ_0,kbb,bb,disp_switch)
+          call init_fock_ffte
+       end if
+
+! --- sweep ---
+
        call calc_sweep( Diter_band, iswitch_gs, ierr, disp_switch )
+
+! ---
 
        if ( ierr == -1 ) then
           if ( myrank == 0 ) write(*,*) "etime limit !!!"
@@ -198,6 +234,12 @@ CONTAINS
           write(*,*) "band is not converged"
           return
        end if
+
+! --- band unfolding ---
+
+       call band_unfold( iktrj, disp_switch )
+
+! ---
 
 #ifndef _DRSDFT_
        if ( iktrj_0 < iktrj ) then
@@ -325,6 +367,8 @@ CONTAINS
     deallocate( ktrj )
 
     disp_switch_parallel = disp_switch_parallel_bak
+
+    call finalize_band_unfold
 
   END SUBROUTINE band
 

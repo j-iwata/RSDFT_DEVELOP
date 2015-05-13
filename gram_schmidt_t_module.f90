@@ -1,7 +1,7 @@
 MODULE gram_schmidt_t_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk
+  use wf_module, only: unk,hunk,iflag_hunk
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module
 
@@ -114,6 +114,10 @@ CONTAINS
 
     call mpi_allgatherv(unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN &
           ,unk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    if ( iflag_hunk >= 1 ) then
+       call mpi_allgatherv(hunk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN &
+            ,hunk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    end if
 
     do k1=1,ncycle
 
@@ -130,6 +134,9 @@ CONTAINS
 
        n=ML0*(ne-ns+1)
        call mpi_bcast(unk(ML_0,ns,k,s),n,TYPE_MAIN,irank_b,comm_band,ierr)
+       if ( iflag_hunk >= 1 ) then
+          call mpi_bcast(hunk(ML_0,ns,k,s),n,TYPE_MAIN,irank_b,comm_band,ierr)
+       end if
 
        if ( ns <= MB-NBAND_BLK ) then
 
@@ -199,13 +206,21 @@ CONTAINS
 
 #ifdef _DRSDFT_
              call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
-                  ,ML0,vtmp2,nn,one,unk(ML_0,ms,k,s),ML0)
+                  ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
+             if ( iflag_hunk >= 1 ) then
+                call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,hunk(ML_0,ns,k,s) &
+                     ,ML0,utmp2,nn,one,hunk(ML_0,ms,k,s),ML0)
+             end if
 #else
              call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
-                  ,ML0,vtmp2,nn,one,unk(ML_0,ms,k,s),ML0)
+                  ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
+             if ( iflag_hunk >= 1 ) then
+                call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,hunk(ML_0,ns,k,s) &
+                     ,ML0,utmp2,nn,one,hunk(ML_0,ms,k,s),ML0)
+             end if
 #endif
 
-             deallocate( vtmp2,utmp2 )
+             deallocate( utmp2 )
 
              if ( ms==ne+1 ) then
 
@@ -221,6 +236,11 @@ CONTAINS
                 do i=ML_0,ML_1
                    unk(i,ms,k,s)=c*unk(i,ms,k,s)
                 end do
+                if ( iflag_hunk >= 1 ) then
+                   do i=ML_0,ML_1
+                      hunk(i,ms,k,s)=c*hunk(i,ms,k,s)
+                   end do
+                endif
 
              end if
 
@@ -248,9 +268,17 @@ CONTAINS
 #ifdef _DRSDFT_
                    call dgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s) &
                         ,ML0,vtmp,1,one,unk(ML_0,m,k,s),1)
+                   if ( iflag_hunk >= 1 ) then
+                      call dgemv(TRANSB,ML0,n-ns+1,one,hunk(ML_0,ns,k,s) &
+                           ,ML0,vtmp,1,one,hunk(ML_0,m,k,s),1)
+                   end if
 #else
                    call zgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s) &
                         ,ML0,vtmp,1,one,unk(ML_0,m,k,s),1)
+                   if ( iflag_hunk >= 1 ) then
+                      call zgemv(TRANSB,ML0,n-ns+1,one,hunk(ML_0,ns,k,s) &
+                           ,ML0,vtmp,1,one,hunk(ML_0,m,k,s),1)
+                   end if
 #endif
 
                 end if
@@ -270,6 +298,11 @@ CONTAINS
                    do i=ML_0,ML_1
                       unk(i,m,k,s)=c*unk(i,m,k,s)
                    end do
+                   if ( iflag_hunk >= 1 ) then
+                      do i=ML_0,ML_1
+                         hunk(i,m,k,s)=c*hunk(i,m,k,s)
+                      end do
+                   end if
 
                 end if
 

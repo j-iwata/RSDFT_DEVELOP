@@ -194,6 +194,7 @@ CONTAINS
     complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:3),ett(0:3)
+    logical :: disp_sw
 
 #ifdef _FFTE_
     call construct_ps_local_ffte
@@ -276,7 +277,8 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
        write(*,*) "time(const_ps_loc_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(const_ps_loc_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)
@@ -1075,12 +1077,17 @@ CONTAINS
 
 !    call destruct_Ggrid
 
-    call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-                        ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+    if ( nprocs <= Natom ) then
+       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+    else
+       call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
+                         ,mpi_sum,mpi_comm_world,ierr)
+    end if
 
     call watch(ctt(9),ett(9))
 
-    if ( myrank == 0 ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force_local_ffte2)=",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force_local_ffte3)=",ctt(3)-ctt(2),ett(3)-ett(2)

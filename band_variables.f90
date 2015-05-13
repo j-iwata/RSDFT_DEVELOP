@@ -11,6 +11,7 @@ MODULE band_variables
   integer,parameter :: unit_band_eigv=100
   integer,parameter :: unit_band_ovlp=110
   integer,parameter :: unit_band_dedk=120
+  integer,parameter :: unit_band_ufld=130
 
 CONTAINS
 
@@ -29,7 +30,7 @@ CONTAINS
        do i=1,max_read
           read(unit,*,END=999) cbuf
           call convert_capital(cbuf,ckey)
-          if ( ckey(1:4) == 'BAND' ) then
+          if ( ckey == 'BAND' ) then
              backspace(unit)
              read(unit,*) cbuf,nbk,mb_band,mb2_band,esp_conv_tol,maxiter_band
              read(unit,*) ak(1,1:nbk+1)

@@ -11,16 +11,22 @@ MODULE density_module
   implicit none
 
   PRIVATE
-  PUBLIC :: rho,init_density,normalize_density,calc_density
-#ifdef _USPP_F_TEST_
-  PUBLIC :: write_rho,ML_0_RHO,ML_1_RHO,MS_0_RHO,MS_1_RHO
-#endif
+  PUBLIC :: rho,sum_dspin,init_density,normalize_density,calc_density &
+           ,density, init_type_density
+
   real(8),allocatable :: rho(:,:)
+  real(8) :: sum_dspin(2)
 
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
   integer :: MS_RHO,MS_0_RHO,MS_1_RHO
 
   real(8) :: Nelectron_RHO,dV_RHO
+
+  type density
+     integer :: mm,m0,m1
+     integer :: nn,n0,n1
+     real(8),allocatable :: rho(:,:)
+  end type density
 
 CONTAINS
 
@@ -134,6 +140,7 @@ CONTAINS
     end do
     call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
     call reduce_and_gather
+    call calc_sum_dspin
   END SUBROUTINE calc_density
 
 #endif
@@ -168,5 +175,41 @@ CONTAINS
     end do
   END SUBROUTINE write_rho
 #endif
+
+
+  SUBROUTINE calc_sum_dspin
+    implicit none
+    integer :: ierr
+    real(8) :: tmp(2)
+    sum_dspin(:)=0.0d0
+    if ( MS_RHO == 2 ) then
+       tmp(1)=sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
+       tmp(2)=sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
+       call mpi_allreduce( tmp,sum_dspin,2,mpi_real8,mpi_sum,comm_grid,ierr)
+!       if ( disp_switch_parallel ) then
+!          write(*,*) "sum  dspin(r)  = ",sum_dspin(1)
+!          write(*,*) "sum |dspin(r)| = ",sum_dspin(2)
+!       end if
+    end if
+  END SUBROUTINE calc_sum_dspin
+
+
+  SUBROUTINE init_type_density( rho )
+    implicit none
+    type(density) :: rho
+    rho%mm = ML_RHO
+    rho%m0 = ML_0_RHO
+    rho%m1 = ML_1_RHO
+    rho%nn = MS_RHO
+    rho%n0 = MS_0_RHO
+    rho%n1 = MS_1_RHO
+    if ( .not.allocated(rho%rho) ) then
+       allocate( rho%rho(rho%m0:rho%m1,rho%nn) )
+    else
+       stop "stop@init_type_density"
+    end if
+    rho%rho(:,:)=0.0d0
+  END SUBROUTINE init_type_density
+
 
 END MODULE density_module
