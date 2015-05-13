@@ -28,6 +28,8 @@ MODULE density_module
      real(8),allocatable :: rho(:,:)
   end type density
 
+  include 'mpif.h'
+
 CONTAINS
 
 !---------------------------------------------------------------------------------------

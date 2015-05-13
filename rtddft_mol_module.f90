@@ -185,7 +185,7 @@ CONTAINS
        call calc_density
        call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
        call calc_xc
-       call calc_total_energy( .true., .false. )
+       call calc_total_energy( .true., .false., 0 )
 
        call calc_dipole( dipole(0,it), rgrid%dV )
 

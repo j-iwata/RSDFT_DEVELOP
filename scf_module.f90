@@ -277,7 +277,7 @@ CONTAINS
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
        call calc_xc
-       call calc_total_energy( .false., disp_switch, .true. )
+       call calc_total_energy( .false., disp_switch, iter, .true. )
        if ( present(Etot_out) ) Etot_out = Etot
 ! ---
 

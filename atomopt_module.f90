@@ -58,7 +58,7 @@ CONTAINS
     eeps      = 1.d-10
     feps      = 5.d-4
     decr      = 1.d-1
-    flag_opt_constrain = .false.
+
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -83,7 +83,6 @@ CONTAINS
        write(*,*) "okatom, eeps      =",okatom,eeps
        write(*,*) "feps, decr        =",feps,decr
        write(*,*) "diter_opt         =",diter_opt
-       write(*,*) "flag_opt_constrain=",flag_opt_constrain
        if ( diter_opt <= 0 ) then
           diter_opt=50
           write(*,*) "diter_opt         =",diter_opt
