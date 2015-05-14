@@ -220,7 +220,7 @@ CONTAINS
              end if
 #endif
 
-             deallocate( utmp2 )
+             deallocate( vtmp2, utmp2 )
 
              if ( ms==ne+1 ) then
 

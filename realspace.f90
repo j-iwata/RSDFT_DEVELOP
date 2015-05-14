@@ -406,8 +406,13 @@ PROGRAM Real_Space_Solid
         case( 2 )
            call ps_nloc2_init_derivative
         case( 102 )
+#ifdef _USPP_
            call ps_nloc2_init_derivative
            call ps_Q_init_derivative
+#else
+           write(*,*) "USPP is not available (recompile!)"
+           goto 900
+#endif
         end select
      end if
   end if
