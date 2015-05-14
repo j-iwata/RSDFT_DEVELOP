@@ -191,7 +191,7 @@ CONTAINS
 
           if ( ms>=ne+1 ) then
 
-             allocate( utmp2(ns:ne,ms:me),vtmp2(ns:ne,ms:me) )
+             allocate( utmp2(ns:ne,ms:me) )
 
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,nn,mm,ML0, -dV,unk(ML_0,ns,k,s) &
@@ -201,7 +201,7 @@ CONTAINS
                   ,ML0,unk(ML_0,ms,k,s),ML0,zero,utmp2,nn)
 #endif
 
-             call mpi_allreduce(utmp2,vtmp2,nn*mm,TYPE_MAIN,mpi_sum &
+             call mpi_allreduce(MPI_IN_PLACE,utmp2,nn*mm,TYPE_MAIN,mpi_sum &
                   ,comm_grid,ierr)
 
 #ifdef _DRSDFT_
@@ -220,7 +220,7 @@ CONTAINS
              end if
 #endif
 
-             deallocate( vtmp2, utmp2 )
+             deallocate( utmp2 )
 
              if ( ms==ne+1 ) then
 
