@@ -8,10 +8,10 @@ band_variables.mod: band_variables.o
 band_variables.o: band_variables.f90
 	$(FC) $(FFLAGS) -c band_variables.f90 -o $@
 
-basic_types.mod: basic_types.o
+basictypefactory.mod: basic_type_factory.o
 	@true
-basic_types.o: basic_types.f90
-	$(FC) $(FFLAGS) -c basic_types.f90 -o $@
+basic_type_factory.o: basic_type_factory.f90
+	$(FC) $(FFLAGS) -c basic_type_factory.f90 -o $@
 
 bb_module.mod: bb_module.o
 	@true
@@ -53,12 +53,7 @@ fd_module.mod: fd_module.o
 fd_module.o: fd_module.f90
 	$(FC) $(FFLAGS) -c fd_module.f90 -o $@
 
-fermi_module.mod: fermi_module.o
-	@true
-fermi_module.o: fermi_module.f90
-	$(FC) $(FFLAGS) -c fermi_module.f90 -o $@
-
-fermi_mp_module.mod: fermi_mp_module.o
+fermi_module.mod: fermi_mp_module.o
 	@true
 fermi_mp_module.o: fermi_mp_module.f90
 	$(FC) $(FFLAGS) -c fermi_mp_module.f90 -o $@
@@ -68,7 +63,7 @@ ffte_sub_module.mod: ffte_sub_module.o
 ffte_sub_module.o: ffte_sub_module.f90
 	$(FC) $(FFLAGS) -c ffte_sub_module.f90 -o $@
 
-Filtering.mod: Filtering.o
+filtering.mod: Filtering.o
 	@true
 Filtering.o: Filtering.f90
 	$(FC) $(FFLAGS) -c Filtering.f90 -o $@
@@ -153,7 +148,7 @@ ps_read_yb_module.mod: ps_read_yb_module.o
 ps_read_yb_module.o: ps_read_yb_module.f90
 	$(FC) $(FFLAGS) -c ps_read_yb_module.f90 -o $@
 
-RealComplex.mod: RealComplex.o
+realcomplex.mod: RealComplex.o
 	@true
 RealComplex.o: RealComplex.f90
 	$(FC) $(FFLAGS) -c RealComplex.f90 -o $@
@@ -188,17 +183,17 @@ timer_module.mod: timer_module.o
 timer_module.o: timer_module.f90
 	$(FC) $(FFLAGS) -c timer_module.f90 -o $@
 
-VarPara.mod: VarPara.o
+varpara.mod: VarPara.o
 	@true
 VarPara.o: VarPara.f90
 	$(FC) $(FFLAGS) -c VarPara.f90 -o $@
 
-VarParaPSnonLocG.mod: VarParaPSnonLocG.o
+varparapsnonlocg.mod: VarParaPSnonLocG.o
 	@true
 VarParaPSnonLocG.o: VarParaPSnonLocG.f90
 	$(FC) $(FFLAGS) -c VarParaPSnonLocG.f90 -o $@
 
-VarSysParameter.mod: VarSysParameter.o
+varsysparameter.mod: VarSysParameter.o
 	@true
 VarSysParameter.o: VarSysParameter.f90
 	$(FC) $(FFLAGS) -c VarSysParameter.f90 -o $@
@@ -235,11 +230,11 @@ array_bound_module.o: array_bound_module.f90 \
                  parallel_module.mod
 	$(FC) $(FFLAGS) -c array_bound_module.f90 -o $@
 
-basic_functions.mod: basic_functions.o
+basicfunctions.mod: basic_type_methods.o
 	@true
-basic_functions.o: basic_functions.f90 \
-                 BasicTypeFactory.mod
-	$(FC) $(FFLAGS) -c basic_functions.f90 -o $@
+basic_type_methods.o: basic_type_methods.f90 \
+                 basictypefactory.mod
+	$(FC) $(FFLAGS) -c basic_type_methods.f90 -o $@
 
 bc_mol_module.mod: bc_mol_module.o
 	@true
@@ -279,11 +274,11 @@ mixing_module.o: mixing_module.f90 \
                  mixing_broyden_module.mod
 	$(FC) $(FFLAGS) -c mixing_module.f90 -o $@
 
-ParaRGridComm.mod: ParaRGridComm.o
+parargridcomm.mod: ParaRGridComm.o
 	@true
 ParaRGridComm.o: ParaRGridComm.f90 \
                  parallel_module.mod \
-                 VarPara.mod
+                 varpara.mod
 	$(FC) $(FFLAGS) -c ParaRGridComm.f90 -o $@
 
 ps_nloc2_variables.mod: ps_nloc2_variables.o
@@ -311,13 +306,13 @@ strfac_module.o: strfac_module.f90 \
                  atom_module.mod
 	$(FC) $(FFLAGS) -c strfac_module.f90 -o $@
 
-VarPSMember.mod: VarPSMember.o
+varpsmember.mod: VarPSMember.o
 	@true
 VarPSMember.o: VarPSMember.f90 \
                  parallel_module.mod
 	$(FC) $(FFLAGS) -c VarPSMember.f90 -o $@
 
-VarPSMemberG.mod: VarPSMemberG.o
+varpsmemberg.mod: VarPSMemberG.o
 	@true
 VarPSMemberG.o: VarPSMemberG.f90 \
                  parallel_module.mod
@@ -329,48 +324,48 @@ esm_rshell_module.o: esm_rshell_module.f90 \
                  aa_module.mod
 	$(FC) $(FFLAGS) -c esm_rshell_module.f90 -o $@
 
-ForceSub.mod: ForceSub.o
+forcesub.mod: ForceSub.o
 	@true
 ForceSub.o: ForceSub.f90 \
                  parallel_module.mod \
                  ps_nloc2_variables.mod \
                  atom_module.mod \
-                 VarParaPSnonLocG.mod \
-                 VarPSMemberG.mod \
+                 varparapsnonlocg.mod \
+                 varpsmemberg.mod \
                  aa_module.mod \
-                 VarPSMember.mod
+                 varpsmember.mod
 	$(FC) $(FFLAGS) -c ForceSub.f90 -o $@
 
-PSQInit.mod: PSQInit.o
+psqinit.mod: PSQInit.o
 	@true
 PSQInit.o: PSQInit.f90 \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod \
+                 varpsmember.mod \
+                 varpsmemberg.mod \
                  parallel_module.mod \
-                 VarSysParameter.mod \
+                 varsysparameter.mod \
                  maskf_module.mod \
-                 Filtering.mod
+                 filtering.mod
 	$(FC) $(FFLAGS) -c PSQInit.f90 -o $@
 
-PSreadPSV.mod: PSreadPSV.o
+psreadpsv.mod: PSreadPSV.o
 	@true
 PSreadPSV.o: PSreadPSV.f90 \
-                 VarPSMember.mod
+                 varpsmember.mod
 	$(FC) $(FFLAGS) -c PSreadPSV.f90 -o $@
 
-PSReadPSVG.mod: PSReadPSVG.o
+psreadpsvg.mod: PSReadPSVG.o
 	@true
 PSReadPSVG.o: PSReadPSVG.f90 \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod
+                 varpsmember.mod \
+                 varpsmemberg.mod
 	$(FC) $(FFLAGS) -c PSReadPSVG.f90 -o $@
 
-PStest.mod: PStest.o
+pstest.mod: PStest.o
 	@true
 PStest.o: PStest.f90 \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod \
-                 VarParaPSnonLocG.mod \
+                 varpsmember.mod \
+                 varpsmemberg.mod \
+                 varparapsnonlocg.mod \
                  ps_nloc2_variables.mod \
                  array_bound_module.mod
 	$(FC) $(FFLAGS) -c PStest.f90 -o $@
@@ -475,15 +470,6 @@ localpot2_xc_module.o: localpot2_xc_module.f90 \
                  watch_module.mod
 	$(FC) $(FFLAGS) -c localpot2_xc_module.f90 -o $@
 
-localpot2_xc_pz81_module.mod: localpot2_xc_pz81_module.o
-	@true
-localpot2_xc_pz81_module.o: localpot2_xc_pz81_module.f90 \
-                 parallel_module.mod \
-                 rgrid_module.mod \
-                 localpot2_variables.mod \
-                 watch_module.mod
-	$(FC) $(FFLAGS) -c localpot2_xc_pz81_module.f90 -o $@
-
 minimal_box_module.mod: minimal_box_module.o
 	@true
 minimal_box_module.o: minimal_box_module.f90 \
@@ -495,25 +481,25 @@ pseudopot_module.mod: pseudopot_module.o
 	@true
 pseudopot_module.o: pseudopot_module.f90 \
                  parallel_module.mod \
-                 VarPSMember.mod \
-                 PSreadPSV.mod \
-                 VarPSMemberG.mod \
-                 PSReadPSVG.mod \
-                 ps_read_TM_module.mod \
-                 ps_read_YB_module.mod \
-                 ps_read_UPF_module.mod \
+                 varpsmember.mod \
+                 psreadpsv.mod \
+                 varpsmemberg.mod \
+                 psreadpsvg.mod \
+                 ps_read_tm_module.mod \
+                 ps_read_yb_module.mod \
+                 ps_read_upf_module.mod \
                  ps_gth_module.mod
 	$(FC) $(FFLAGS) -c pseudopot_module.f90 -o $@
 
-PSnonLocOpG2.mod: PSnonLocOpG2.o
+psnonlocopg2.mod: PSnonLocOpG2.o
 	@true
 PSnonLocOpG2.o: PSnonLocOpG2.f90 \
                  parallel_module.mod \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod \
+                 varpsmember.mod \
+                 varpsmemberg.mod \
                  ps_nloc2_variables.mod \
                  rgrid_module.mod \
-                 ParaRGridComm.mod
+                 parargridcomm.mod
 	$(FC) $(FFLAGS) -c PSnonLocOpG2.f90 -o $@
 
 wf_sub_module.mod: wf_sub_module.o
@@ -546,16 +532,6 @@ electron_module.o: electron_module.f90 \
                  pseudopot_module.mod \
                  bz_module.mod
 	$(FC) $(FFLAGS) -c electron_module.f90 -o $@
-
-esm_ion_module.mod: esm_ion_module.o
-	@true
-esm_ion_module.o: esm_ion_module.f90 \
-                 aa_module.mod \
-                 atom_module.mod \
-                 pseudopot_module.mod \
-                 modified_bessel_module.mod \
-                 esm_rgrid_module.mod
-	$(FC) $(FFLAGS) -c esm_ion_module.f90 -o $@
 
 esm_kinetic_module.mod: esm_kinetic_module.o
 	@true
@@ -675,8 +651,8 @@ ps_nloc2_init_module.mod: ps_nloc2_init_module.o
 	@true
 ps_nloc2_init_module.o: ps_nloc2_init_module.f90 \
                  parallel_module.mod \
-                 VarPSMember.mod \
-                 Filtering.mod \
+                 varpsmember.mod \
+                 filtering.mod \
                  pseudopot_module.mod \
                  atom_module.mod \
                  maskf_module.mod
@@ -722,18 +698,6 @@ psv_initrho_module.o: psv_initrho_module.f90 \
                  pseudopot_module.mod
 	$(FC) $(FFLAGS) -c psv_initrho_module.f90 -o $@
 
-vloc_rho_mol_module.mod: vloc_rho_mol_module.o
-	@true
-vloc_rho_mol_module.o: vloc_rho_mol_module.f90 \
-                 bberf_module.mod \
-                 rgrid_mol_module.mod \
-                 atom_module.mod \
-                 pseudopot_module.mod \
-                 bc_module.mod \
-                 array_bound_module.mod \
-                 fd_module.mod
-	$(FC) $(FFLAGS) -c vloc_rho_mol_module.f90 -o $@
-
 wf_module.mod: wf_module.o
 	@true
 wf_module.o: wf_module.f90 \
@@ -748,16 +712,6 @@ xc_ggapbe96_mol_module.o: xc_ggapbe96_mol_module.f90 \
                  rgrid_mol_module.mod \
                  bc_module.mod
 	$(FC) $(FFLAGS) -c xc_ggapbe96_mol_module.f90 -o $@
-
-band_analysis_module.mod: band_analysis_module.o
-	@true
-band_analysis_module.o: band_analysis_module.f90 \
-                 wf_module.mod \
-                 parallel_module.mod \
-                 rgrid_module.mod \
-                 aa_module.mod \
-                 array_bound_module.mod
-	$(FC) $(FFLAGS) -c band_analysis_module.f90 -o $@
 
 band_unfold_module.mod: band_unfold_module.o
 	@true
@@ -806,7 +760,7 @@ gram_schmidt_m_module.o: gram_schmidt_m_module.f90 \
                  parallel_module.mod
 	$(FC) $(FFLAGS) -c gram_schmidt_m_module.f90 -o $@
 
-InnerProduct.mod: InnerProduct.o
+innerproduct.mod: InnerProduct.o
 	@true
 InnerProduct.o: InnerProduct.f90 \
                  watch_module.mod \
@@ -814,10 +768,10 @@ InnerProduct.o: InnerProduct.f90 \
                  pseudopot_module.mod \
                  rgrid_module.mod \
                  parallel_module.mod \
-                 VarPSMemberG.mod \
+                 varpsmemberg.mod \
                  wf_module.mod \
-                 RealComplex.mod \
-                 ParaRGridComm.mod
+                 realcomplex.mod \
+                 parargridcomm.mod
 	$(FC) $(FFLAGS) -c InnerProduct.f90 -o $@
 
 io2_module.mod: io2_module.o
@@ -950,12 +904,12 @@ ps_pcc_mol_module.o: ps_pcc_mol_module.f90 \
                  ps_pcc_module.mod
 	$(FC) $(FFLAGS) -c ps_pcc_mol_module.f90 -o $@
 
-PSnonLocPrepG.mod: PSnonLocPrepG.o
+psnonlocprepg.mod: PSnonLocPrepG.o
 	@true
 PSnonLocPrepG.o: PSnonLocPrepG.f90 \
                  parallel_module.mod \
-                 VarPSMemberG.mod \
-                 VarPSMember.mod \
+                 varpsmemberg.mod \
+                 varpsmember.mod \
                  atom_module.mod \
                  ps_nloc2_variables.mod \
                  electron_module.mod
@@ -994,7 +948,7 @@ subspace_solv_sl_module.o: subspace_solv_sl_module.f90 \
                  subspace_diag_variables.mod
 	$(FC) $(FFLAGS) -c subspace_solv_sl_module.f90 -o $@
 
-WFDensityG.mod: WFDensityG.o
+wfdensityg.mod: WFDensityG.o
 	@true
 WFDensityG.o: WFDensityG.f90 \
                  rgrid_module.mod \
@@ -1002,12 +956,12 @@ WFDensityG.o: WFDensityG.f90 \
                  wf_module.mod \
                  parallel_module.mod \
                  array_bound_module.mod \
-                 RealComplex.mod \
+                 realcomplex.mod \
                  ps_nloc2_variables.mod \
                  pseudopot_module.mod \
-                 VarPSMemberG.mod \
-                 VarParaPSnonLocG.mod \
-                 ParaRGridComm.mod
+                 varpsmemberg.mod \
+                 varparapsnonlocg.mod \
+                 parargridcomm.mod
 	$(FC) $(FFLAGS) -c WFDensityG.f90 -o $@
 
 xc_ggapbe96_module.mod: xc_ggapbe96_module.o
@@ -1050,32 +1004,21 @@ density_module.o: density_module.f90 \
                  wf_module.mod \
                  parallel_module.mod \
                  symmetry_module.mod \
-                 BasicTypeFactory.mod \
-                 WFDensityG.mod \
-                 VarSysParameter.mod
+                 basictypefactory.mod \
+                 wfdensityg.mod \
+                 varsysparameter.mod
 	$(FC) $(FFLAGS) -c density_module.f90 -o $@
 
-GramSchmidt_G.mod: GramSchmidt_G.o
+gramschmidt_g.mod: GramSchmidt_G.o
 	@true
 GramSchmidt_G.o: GramSchmidt_G.f90 \
                  rgrid_module.mod \
                  wf_module.mod \
                  array_bound_module.mod \
                  parallel_module.mod \
-                 RealComplex.mod \
-                 InnerProduct.mod
+                 realcomplex.mod \
+                 innerproduct.mod
 	$(FC) $(FFLAGS) -c GramSchmidt_G.f90 -o $@
-
-hartree_cg_module.mod: hartree_cg_module.o
-	@true
-hartree_cg_module.o: hartree_cg_module.f90 \
-                 hartree_mol_module.mod \
-                 rgrid_module.mod \
-                 ggrid_module.mod \
-                 parallel_module.mod \
-                 electron_module.mod \
-                 kinetic_module.mod
-	$(FC) $(FFLAGS) -c hartree_cg_module.f90 -o $@
 
 localpot2_module.mod: localpot2_module.o
 	@true
@@ -1091,13 +1034,13 @@ localpot2_module.o: localpot2_module.f90 \
                  array_bound_module.mod
 	$(FC) $(FFLAGS) -c localpot2_module.f90 -o $@
 
-WFtest.mod: WFtest.o
+wftest.mod: WFtest.o
 	@true
 WFtest.o: WFtest.f90 \
-                 InnerProduct.mod \
+                 innerproduct.mod \
                  wf_module.mod \
                  parallel_module.mod \
-                 RealComplex.mod
+                 realcomplex.mod
 	$(FC) $(FFLAGS) -c WFtest.f90 -o $@
 
 xc_hybrid_module.mod: xc_hybrid_module.o
@@ -1128,7 +1071,7 @@ gradient_module.o: gradient_module.f90 \
                  bc_module.mod \
                  fd_module.mod \
                  lattice_module.mod \
-                 BasicTypeFactory.mod
+                 basictypefactory.mod
 	$(FC) $(FFLAGS) -c gradient_module.f90 -o $@
 
 gram_schmidt_t_module.mod: gram_schmidt_t_module.o
@@ -1138,26 +1081,10 @@ gram_schmidt_t_module.o: gram_schmidt_t_module.f90 \
                  wf_module.mod \
                  array_bound_module.mod \
                  parallel_module.mod \
-                 GramSchmidt_G.mod
+                 gramschmidt_g.mod
 	$(FC) $(FFLAGS) -c gram_schmidt_t_module.f90 -o $@
 
-localpot2_iongth_module.mod: localpot2_iongth_module.o
-	@true
-localpot2_iongth_module.o: localpot2_iongth_module.f90 \
-                 pseudopot_module.mod \
-                 ps_gth_module.mod \
-                 aa_module.mod \
-                 bb_module.mod \
-                 atom_module.mod \
-                 rgrid_module.mod \
-                 parallel_module.mod \
-                 localpot2_module.mod \
-                 array_bound_module.mod \
-                 electron_module.mod \
-                 wf_module.mod
-	$(FC) $(FFLAGS) -c localpot2_iongth_module.f90 -o $@
-
-localpot2_Smatrix_module.mod: localpot2_Smatrix_module.o
+localpot2_smatrix_module.mod: localpot2_Smatrix_module.o
 	@true
 localpot2_Smatrix_module.o: localpot2_Smatrix_module.f90 \
                  localpot2_variables.mod \
@@ -1284,24 +1211,24 @@ fock_fft_module.o: fock_fft_module.f90 \
                  fock_ffte_module.mod
 	$(FC) $(FFLAGS) -c fock_fft_module.f90 -o $@
 
-ForcePSnonLoc2.mod: ForcePSnonLoc2.o
+forcepsnonloc2.mod: ForcePSnonLoc2.o
 	@true
 ForcePSnonLoc2.o: ForcePSnonLoc2.f90 \
                  atom_module.mod \
                  aa_module.mod \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod \
+                 varpsmember.mod \
+                 varpsmemberg.mod \
                  rgrid_module.mod \
                  array_bound_module.mod \
                  parallel_module.mod \
                  localpot_module.mod \
-                 ParaRGridComm.mod \
-                 ForceSub.mod \
+                 parargridcomm.mod \
+                 forcesub.mod \
                  bz_module.mod \
                  wf_module.mod \
                  watch_module.mod \
                  ps_nloc2_variables.mod \
-                 VarParaPSnonLocG.mod
+                 varparapsnonlocg.mod
 	$(FC) $(FFLAGS) -c ForcePSnonLoc2.f90 -o $@
 
 gram_schmidt_u_module.mod: gram_schmidt_u_module.o
@@ -1310,7 +1237,7 @@ gram_schmidt_u_module.o: gram_schmidt_u_module.f90 \
                  rgrid_module.mod \
                  wf_module.mod \
                  parallel_module.mod \
-                 localpot2_Smatrix_module.mod
+                 localpot2_smatrix_module.mod
 	$(FC) $(FFLAGS) -c gram_schmidt_u_module.f90 -o $@
 
 hamiltonian_matrix_module.mod: hamiltonian_matrix_module.o
@@ -1323,28 +1250,18 @@ hamiltonian_matrix_module.o: hamiltonian_matrix_module.f90 \
                  rgrid_module.mod
 	$(FC) $(FFLAGS) -c hamiltonian_matrix_module.f90 -o $@
 
-PSnonLocDij.mod: PSnonLocDij.o
+psnonlocdij.mod: PSnonLocDij.o
 	@true
 PSnonLocDij.o: PSnonLocDij.f90 \
                  parallel_module.mod \
                  array_bound_module.mod \
-                 VarPSMemberG.mod \
-                 VarParaPSnonLocG.mod \
-                 ParaRGridComm.mod \
+                 varpsmemberg.mod \
+                 varparapsnonlocg.mod \
+                 parargridcomm.mod \
                  localpot_module.mod \
                  rgrid_module.mod \
                  pseudopot_module.mod
 	$(FC) $(FFLAGS) -c PSnonLocDij.f90 -o $@
-
-TestModule.mod: TestModule.o
-	@true
-TestModule.o: TestModule.f90 \
-                 parallel_module.mod \
-                 wf_module.mod \
-                 density_module.mod \
-                 localpot_module.mod \
-                 array_bound_module.mod
-	$(FC) $(FFLAGS) -c TestModule.f90 -o $@
 
 xc_ggapbe96_2_module.mod: xc_ggapbe96_2_module.o
 	@true
@@ -1356,7 +1273,7 @@ xc_ggapbe96_2_module.o: xc_ggapbe96_2_module.f90 \
                  fd_module.mod \
                  lattice_module.mod \
                  parallel_module.mod \
-                 BasicTypeFactory.mod
+                 basictypefactory.mod
 	$(FC) $(FFLAGS) -c xc_ggapbe96_2_module.f90 -o $@
 
 xc_pbe_xsr_module.mod: xc_pbe_xsr_module.o
@@ -1371,19 +1288,6 @@ xc_pbe_xsr_module.o: xc_pbe_xsr_module.f90 \
                  parallel_module.mod \
                  expint_module.mod
 	$(FC) $(FFLAGS) -c xc_pbe_xsr_module.f90 -o $@
-
-xc_vdw_module.mod: xc_vdw_module.o
-	@true
-xc_vdw_module.o: xc_vdw_module.f90 \
-                 grid_module.mod \
-                 xc_variables.mod \
-                 density_module.mod \
-                 ggrid_module.mod \
-                 gradient_module.mod \
-                 parallel_module.mod \
-                 fd_module.mod \
-                 lattice_module.mod
-	$(FC) $(FFLAGS) -c xc_vdw_module.f90 -o $@
 
 cgpc_module.mod: cgpc_module.o
 	@true
@@ -1441,7 +1345,7 @@ gram_schmidt_module.o: gram_schmidt_module.f90 \
 ps_nloc2_module.mod: ps_nloc2_module.o
 	@true
 ps_nloc2_module.o: ps_nloc2_module.f90 \
-                 VarSysParameter.mod \
+                 varsysparameter.mod \
                  aa_module.mod \
                  atom_module.mod \
                  rgrid_module.mod \
@@ -1454,8 +1358,8 @@ ps_nloc2_module.o: ps_nloc2_module.f90 \
                  ps_nloc_mr_module.mod \
                  ps_nloc3_module.mod \
                  rgrid_mol_module.mod \
-                 ParaRGridComm.mod \
-                 ForcePSnonLoc2.mod \
+                 parargridcomm.mod \
+                 forcepsnonloc2.mod \
                  minimal_box_module.mod \
                  bz_module.mod \
                  watch_module.mod \
@@ -1481,24 +1385,24 @@ nonlocal_module.o: nonlocal_module.f90 \
                  ps_nloc2_module.mod \
                  ps_nloc3_module.mod \
                  ps_nloc_mr_module.mod \
-                 PSnonLocOpG2.mod \
+                 psnonlocopg2.mod \
                  parallel_module.mod
 	$(FC) $(FFLAGS) -c nonlocal_module.f90 -o $@
 
-PSQRijPrep.mod: PSQRijPrep.o
+psqrijprep.mod: PSQRijPrep.o
 	@true
 PSQRijPrep.o: PSQRijPrep.f90 \
                  parallel_module.mod \
                  aa_module.mod \
                  atom_module.mod \
                  rgrid_module.mod \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod \
-                 VarParaPSnonLocG.mod \
+                 varpsmember.mod \
+                 varpsmemberg.mod \
+                 varparapsnonlocg.mod \
                  ps_nloc2_module.mod \
                  pseudopot_module.mod \
                  minimal_box_module.mod \
-                 ParaRGridComm.mod \
+                 parargridcomm.mod \
                  watch_module.mod \
                  array_bound_module.mod
 	$(FC) $(FFLAGS) -c PSQRijPrep.f90 -o $@
@@ -1587,8 +1491,8 @@ xc_module.o: xc_module.f90 \
                  xc_hse_module.mod \
                  xc_pbe_xsr_module.mod \
                  xc_hf_module.mod \
-                 BasicTypeFactory.mod \
-                 BasicFunctions.mod
+                 basictypefactory.mod \
+                 basicfunctions.mod
 	$(FC) $(FFLAGS) -c xc_module.f90 -o $@
 
 cg_lobpcg_module.mod: cg_lobpcg_module.o
@@ -1603,11 +1507,11 @@ cg_u_module.mod: cg_u_module.o
 cg_u_module.o: cg_u_module.f90 \
                  hamiltonian_module.mod \
                  cgpc_module.mod \
-                 localpot2_Smatrix_module.mod \
+                 localpot2_smatrix_module.mod \
                  watch_module.mod
 	$(FC) $(FFLAGS) -c cg_u_module.f90 -o $@
 
-ChebyshevFilter_module.mod: ChebyshevFilter_module.o
+chebyshevfilter_module.mod: ChebyshevFilter_module.o
 	@true
 ChebyshevFilter_module.o: ChebyshevFilter_module.f90 \
                  rgrid_module.mod \
@@ -1616,7 +1520,7 @@ ChebyshevFilter_module.o: ChebyshevFilter_module.f90 \
                  wf_module.mod
 	$(FC) $(FFLAGS) -c ChebyshevFilter_module.f90 -o $@
 
-ConjugateGradient_G.mod: ConjugateGradient_G.o
+conjugategradient_g.mod: ConjugateGradient_G.o
 	@true
 ConjugateGradient_G.o: ConjugateGradient_G.f90 \
                  rgrid_module.mod \
@@ -1625,8 +1529,8 @@ ConjugateGradient_G.o: ConjugateGradient_G.f90 \
                  parallel_module.mod \
                  array_bound_module.mod \
                  watch_module.mod \
-                 InnerProduct.mod \
-                 RealComplex.mod
+                 innerproduct.mod \
+                 realcomplex.mod
 	$(FC) $(FFLAGS) -c ConjugateGradient_G.f90 -o $@
 
 esm_cylindrical_test.mod: esm_cylindrical_test.o
@@ -1718,9 +1622,9 @@ pseudopotentials.o: pseudopotentials.f90 \
                  ps_nloc3_module.mod \
                  ps_nloc_mr_module.mod \
                  pseudopot_module.mod \
-                 PSQInit.mod \
-                 PSQRijPrep.mod \
-                 PSnonLocPrepG.mod \
+                 psqinit.mod \
+                 psqrijprep.mod \
+                 psnonlocprepg.mod \
                  parallel_module.mod
 	$(FC) $(FFLAGS) -c pseudopotentials.f90 -o $@
 
@@ -1786,7 +1690,7 @@ total_energy_module.o: total_energy_module.f90 \
                  fermi_module.mod \
                  array_bound_module.mod \
                  fock_module.mod \
-                 VarSysParameter.mod \
+                 varsysparameter.mod \
                  vdw_grimme_module.mod
 	$(FC) $(FFLAGS) -c total_energy_module.f90 -o $@
 
@@ -1802,7 +1706,7 @@ cg_module.o: cg_module.f90 \
                  cg_lobpcg_module.mod \
                  cg_u_module.mod \
                  wf_module.mod \
-                 ConjugateGradient_G.mod
+                 conjugategradient_g.mod
 	$(FC) $(FFLAGS) -c cg_module.f90 -o $@
 
 force_sol_module.mod: force_sol_module.o
@@ -1982,7 +1886,7 @@ scf_chefsi_module.o: scf_chefsi_module.f90 \
                  localpot2_xc_module.mod \
                  localpot2_ion_module.mod \
                  localpot2_te_module.mod \
-                 ChebyshevFilter_module.mod
+                 chebyshevfilter_module.mod
 	$(FC) $(FFLAGS) -c scf_chefsi_module.f90 -o $@
 
 sweep_module.mod: sweep_module.o
@@ -2086,7 +1990,7 @@ scf_module.o: scf_module.f90 \
                  esp_gather_module.mod \
                  density_module.mod \
                  watch_module.mod \
-                 PSnonLocDij.mod \
+                 psnonlocdij.mod \
                  ggrid_module.mod \
                  rgrid_module.mod \
                  esp_calc_module.mod \
@@ -2124,8 +2028,8 @@ atomopt_module.o: atomopt_module.f90 \
                  ps_nloc2_mol_module.mod \
                  ps_pcc_mol_module.mod \
                  eion_mol_module.mod \
-                 PSQRijPrep.mod \
-                 PSnonLocPrepG.mod
+                 psqrijprep.mod \
+                 psnonlocprepg.mod
 	$(FC) $(FFLAGS) -c atomopt_module.f90 -o $@
 
 global_variables.mod: global_variables.o
@@ -2205,7 +2109,7 @@ global_variables.o: global_variables.f90 \
                  localpot2_xc_module.mod \
                  localpot2_module.mod \
                  localpot2_te_module.mod \
-                 localpot2_Smatrix_module.mod \
+                 localpot2_smatrix_module.mod \
                  ps_nloc3_module.mod \
                  test_hpsi2_module.mod \
                  test_force_module.mod \
@@ -2226,10 +2130,10 @@ parameters_module.o: parameters_module.f90 \
                  info_module.mod
 	$(FC) $(FFLAGS) -c parameters_module.f90 -o $@
 
-realspace.mod: realspace.o
+real_space_solid.mod: realspace.o
 	@true
 realspace.o: realspace.f90 \
-                 VarSysParameter.mod \
+                 varsysparameter.mod \
                  global_variables.mod \
                  parameters_module.mod \
                  func2gp_module.mod \
@@ -2240,13 +2144,218 @@ realspace.o: realspace.f90 \
                  pseudopotentials.mod \
                  hamiltonian_matrix_module.mod \
                  rtddft_mol_module.mod \
-                 PSnonLocDij.mod \
-                 PSQInit.mod \
-                 VarPSMember.mod \
-                 VarPSMemberG.mod \
+                 psnonlocdij.mod \
+                 psqinit.mod \
+                 varpsmember.mod \
+                 varpsmemberg.mod \
                  ps_nloc2_variables.mod \
-                 TestModule.mod \
-                 WFtest.mod \
-                 PStest.mod
+                 wftest.mod \
+                 pstest.mod
 	$(FC) $(FFLAGS) -c realspace.f90 -o $@
+
+OBJ_ALL = \
+       atom_module.o\
+       band_variables.o\
+       basic_type_factory.o\
+       bb_module.o\
+       bberf_module.o\
+       bc_variables.o\
+       bcast_module.o\
+       bz_module.o\
+       ewald_variables.o\
+       expint_module.o\
+       fd_module.o\
+       fermi_mp_module.o\
+       ffte_sub_module.o\
+       Filtering.o\
+       ggrid_module.o\
+       hartree_variables.o\
+       info_module.o\
+       init_occ_electron_module.o\
+       kinetic_variables.o\
+       lattice_module.o\
+       localpot2_variables.o\
+       maskf_module.o\
+       mixing_broyden_module.o\
+       modified_bessel_module.o\
+       omp_variables.o\
+       parallel_module.o\
+       ps_gth_module.o\
+       ps_read_tm_module.o\
+       ps_read_upf_module.o\
+       ps_read_yb_module.o\
+       RealComplex.o\
+       rgrid_mol_module.o\
+       rgrid_variables.o\
+       rsdft_mpi_module.o\
+       simc_module.o\
+       subspace_diag_variables.o\
+       timer_module.o\
+       VarPara.o\
+       VarParaPSnonLocG.o\
+       VarSysParameter.o\
+       vdw_grimme_module.o\
+       watch_module.o\
+       xc_ldapz81_module.o\
+       xc_pw92_gth_module.o\
+       aa_module.o\
+       array_bound_module.o\
+       basic_type_methods.o\
+       bc_mol_module.o\
+       esm_rgrid_module.o\
+       esp_gather_module.o\
+       fock_parallel_module.o\
+       grid_module.o\
+       mixing_module.o\
+       ParaRGridComm.o\
+       ps_nloc2_variables.o\
+       rgrid_sol_module.o\
+       scalapack_module.o\
+       strfac_module.o\
+       VarPSMember.o\
+       VarPSMemberG.o\
+       esm_rshell_module.o\
+       ForceSub.o\
+       PSQInit.o\
+       PSreadPSV.o\
+       PSReadPSVG.o\
+       PStest.o\
+       rgrid_module.o\
+       symmetry_module.o\
+       xc_variables.o\
+       bc_module.o\
+       construct_matrix_ps_nloc2_module.o\
+       func2gp_module.o\
+       hartree_sol_ffte_module.o\
+       hartree_sol_module.o\
+       kinetic_fft_module.o\
+       localpot2_vh_module.o\
+       localpot2_xc_module.o\
+       minimal_box_module.o\
+       pseudopot_module.o\
+       PSnonLocOpG2.o\
+       wf_sub_module.o\
+       cgpc_gausseidel_module.o\
+       eion_mol_module.o\
+       electron_module.o\
+       esm_kinetic_module.o\
+       ewald_module.o\
+       force_ewald_module.o\
+       force_ion_mol_module.o\
+       force_local_mol_gth_module.o\
+       hartree_mol_module.o\
+       kinetic_mol_module.o\
+       kinetic_sol_0_module.o\
+       kinetic_sol_1_module.o\
+       momentum_module.o\
+       ps_local_gth_module.o\
+       ps_nloc1_module.o\
+       ps_nloc2_init_module.o\
+       ps_nloc_gth_module.o\
+       ps_nloc_hgh_module.o\
+       ps_nloc_mol_gth_module.o\
+       ps_pcc_module.o\
+       psv_initrho_module.o\
+       wf_module.o\
+       xc_ggapbe96_mol_module.o\
+       band_unfold_module.o\
+       eion_module.o\
+       fock_cg_module.o\
+       force_nloc2_mol_module.o\
+       gram_schmidt_m_module.o\
+       InnerProduct.o\
+       io2_module.o\
+       io_read_module.o\
+       io_write_module.o\
+       kinetic_module.o\
+       localpot2_density_module.o\
+       localpot2_ion_module.o\
+       ps_nloc2_mol_module.o\
+       ps_nloc3_module.o\
+       ps_nloc_mr_module.o\
+       ps_pcc_mol_module.o\
+       PSnonLocPrepG.o\
+       subspace_rotv_sl_0_module.o\
+       subspace_rotv_sl_module.o\
+       subspace_solv_sl_module.o\
+       WFDensityG.o\
+       xc_ggapbe96_module.o\
+       xc_hybrid_io_module.o\
+       cgpc_2_module.o\
+       density_module.o\
+       GramSchmidt_G.o\
+       localpot2_module.o\
+       WFtest.o\
+       xc_hybrid_module.o\
+       fock_ffte_module.o\
+       gradient_module.o\
+       gram_schmidt_t_module.o\
+       localpot2_Smatrix_module.o\
+       localpot_module.o\
+       ps_initrho_module.o\
+       ps_initrho_mol_module.o\
+       ps_local_rs_module.o\
+       random_initrho_module.o\
+       xc_hse_module.o\
+       cgpc_diag_module.o\
+       cgpc_seitsonen_module.o\
+       esm_genpot_module.o\
+       fock_fft_module.o\
+       ForcePSnonLoc2.o\
+       gram_schmidt_u_module.o\
+       hamiltonian_matrix_module.o\
+       PSnonLocDij.o\
+       xc_ggapbe96_2_module.o\
+       xc_pbe_xsr_module.o\
+       cgpc_module.o\
+       esm_hartree_module.o\
+       fock_module.o\
+       gram_schmidt_module.o\
+       ps_nloc2_module.o\
+       hartree_module.o\
+       nonlocal_module.o\
+       PSQRijPrep.o\
+       xc_hf_module.o\
+       hamiltonian_module.o\
+       localpot2_te_module.o\
+       ps_local_module.o\
+       xc_module.o\
+       cg_lobpcg_module.o\
+       cg_u_module.o\
+       ChebyshevFilter_module.o\
+       ConjugateGradient_G.o\
+       esm_cylindrical_test.o\
+       esp_calc_module.o\
+       io_module.o\
+       iter_lin_solvers.o\
+       ps_local_mol_gth_module.o\
+       ps_pcc_force_module.o\
+       pseudopotentials.o\
+       subspace_diag_la_module.o\
+       subspace_mate_sl_0_module.o\
+       subspace_mate_sl_module.o\
+       test_hpsi2_module.o\
+       total_energy_module.o\
+       cg_module.o\
+       force_sol_module.o\
+       ps_local_mol_module.o\
+       rtddft_mol_module.o\
+       sseig.o\
+       subspace_diag_sl_module.o\
+       apply_sseig_module.o\
+       force_local_mol_module.o\
+       prepare_sseig_module.o\
+       subspace_diag_module.o\
+       band_sseig_module.o\
+       force_mol_module.o\
+       scf_chefsi_module.o\
+       sweep_module.o\
+       test_force_module.o\
+       band_module.o\
+       force_module.o\
+       scf_module.o\
+       atomopt_module.o\
+       global_variables.o\
+       parameters_module.o\
+       realspace.o\
 

@@ -52,18 +52,20 @@ class ModuleFile:
   def raiseHierarchyLevel( self, module_name ):
     if module_name.hierarchy_level >= self.hierarchy_level or self.hierarchy_level > 100:
       self.hierarchy_level = module_name.hierarchy_level + 1
+  def objectFilename( self ):
+    return self.file_name.split( '.' )[0] + '.o'
   def writeDependency( self ):
     with open( make_common, 'a' ) as f:
       basename = self.file_name.split( '.' )[0]
-      f.write( basename + '.mod: ' + basename + '.o' + '\n' )
+      f.write( self.module_name.lower() + '.mod: ' + basename + '.o' + '\n' )
       f.write( '	@true\n' )
       if self.hierarchy_level == 1:
         f.write( basename + '.o: ' + basename + '.f90' + '\n' )
       else:
         f.write( basename + '.o: ' + basename + '.f90 \\' + '\n' )
         for use_item in self.use_list[:-1]:
-          f.write( '                 ' + use_item + '.mod \\\n' )
-        f.write( '                 ' + self.use_list[-1] + '.mod\n' )
+          f.write( '                 ' + use_item.lower() + '.mod \\\n' )
+        f.write( '                 ' + self.use_list[-1].lower() + '.mod\n' )
       f.write( '	$(FC) $(FFLAGS) -c ' + self.file_name + ' -o $@\n' )
       f.write( '\n' )
   def show( self, filename ):
@@ -207,6 +209,11 @@ print "-----generating makefile.common-----"
 print "dependency for make  : " + make_common
 for classModule in leveled_file:
   classModule.writeDependency()
+with open( make_common, 'a' ) as f:
+  f.write( 'OBJ_ALL = \\\n' )
+  for classModule in leveled_file[:]:
+    f.write( '       ' + classModule.objectFilename() + '\\\n' )
+  f.write( '\n' )
 sys.exit()
 for classModule in source_file:
   print classModule.module_name+' '+str(classModule.getHierarchyLevel())
