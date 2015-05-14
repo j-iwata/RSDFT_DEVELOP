@@ -129,7 +129,7 @@ DIRNAME=os.getcwd()
 #MD_DIRNAME=DIRNAME+'/mdsource'
 FILES=os.listdir(DIRNAME)
 #MDFILES=os.listdir(MD_DIRNAME)
-make_common='Makefile.dep.common'
+make_common='makefile.dep.common'
 with open(make_common,'w') as f:
   pass
 
