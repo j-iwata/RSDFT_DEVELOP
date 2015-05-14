@@ -1,7 +1,7 @@
 *.o
 *.mod
 *.swp
-a.out
+*.out
 fort.*
 make.inc
 RSDFT_INFO*

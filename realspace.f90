@@ -24,7 +24,6 @@ PROGRAM Real_Space_Solid
 #endif
 
   use WFtest
-  use PStest
 
   implicit none
 
