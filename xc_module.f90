@@ -28,7 +28,7 @@ MODULE xc_module
 !  use xc_vdw_module
 
   use BasicTypeFactory
-  use BasicFunctions
+  use BasicTypeMethods
 
   implicit none
 
@@ -212,7 +212,7 @@ CONTAINS
 
        call init_grid( rgrid )
        call get_range( density%g_prange,density%s_srange )
-       call allocateArray( density )
+       call allocateGS( density )
 !       call init_type_density( rho_v )
        call init_type_xc( density%s_srange%head, density%s_srange%tail, rgrid, gga )
 
