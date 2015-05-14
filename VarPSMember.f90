@@ -117,7 +117,7 @@ CONTAINS
     call mpi_bcast(Rps   ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(NRps  ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(lo    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(no    ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(no    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(vql   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(cdd   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(cdc   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
