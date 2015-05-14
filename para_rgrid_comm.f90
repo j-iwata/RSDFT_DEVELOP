@@ -13,6 +13,7 @@ CONTAINS
 !---------------------------------------------------------------------------------------
   SUBROUTINE prepThreeWayComm( nr,NLRankMap,NRxyz,Num2Rank0 )
     implicit none
+    include 'mpif.h'
     
     integer,intent(IN) :: nr
     integer,intent(IN) :: NLRankMap(nr)
@@ -224,6 +225,7 @@ write(400+myrank,*) "<<<< prepThreeWayComm"
 !---------------------------------------------------------------------------------------
   SUBROUTINE do3StepComm_F( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
     implicit none
+    include 'mpif.h'
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
     integer,allocatable,intent(IN) :: Num2Rank0(:,:)
@@ -307,6 +309,7 @@ write(400+myrank,*) "<<<< threeWayComm"
 !---------------------------------------------------------------------------------------
   SUBROUTINE do3StepComm_dQ( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,nz,TarIN )
     implicit none
+    include 'mpif.h'
     integer,intent(IN) :: NRxyz(1:6),nz
     integer,allocatable,intent(IN) :: Num2Rank0(:,:)
     integer,allocatable,intent(IN) :: SendMap(:,:),RecvMap(:,:)
@@ -387,6 +390,7 @@ write(400+myrank,*) "<<<< threeWayComm"
 !---------------------------------------------------------------------------------------
   SUBROUTINE do3StepComm( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,SbufNL,RbufNL,nz,ib1,ib2,TarIN )
     implicit none
+    include 'mpif.h'
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
     integer,allocatable,intent(IN) :: Num2Rank0(:,:)
@@ -463,6 +467,7 @@ write(400+myrank,*) "<<<< 3StepComm"
 !---------------------------------------------------------------------------------------
   SUBROUTINE do3StepComm_real( NRxyz,Num2Rank0,SendMap,RecvMap,TarNSend,nz,ib1,ib2,TarIN )
     implicit none
+    include 'mpif.h'
     integer,intent(IN) :: nz,ib1,ib2
     integer,intent(IN) :: NRxyz(1:6)
     integer,allocatable,intent(IN) :: Num2Rank0(:,:)

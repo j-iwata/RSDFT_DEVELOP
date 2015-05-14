@@ -59,9 +59,9 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 all :
 	$(MAKE) lda0
 	cd $(DIR1) ; $(MAKE)
-	cd $(DIR3) ; $(MAKE) -j1
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
+	cd $(DIR3) ; $(MAKE) -j1
 	$(MAKE) realspace.o
 	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(OBJ_ALL) -o realspace.x
 

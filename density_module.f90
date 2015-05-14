@@ -12,28 +12,25 @@ MODULE density_module
   implicit none
 
   PRIVATE
-  PUBLIC :: rho,sum_dspin,init_density,normalize_density,calc_density &
-           ,density, init_type_density
+  PUBLIC :: init_density
+  PUBLIC :: normalize_density
+  PUBLIC :: calc_density
+  PUBLIC :: init_type_density
   PUBLIC :: get_range
 
-  real(8),allocatable :: rho(:,:)
-  real(8) :: sum_dspin(2)
+  real(8),allocatable,PUBLIC :: rho(:,:)
+  real(8),PUBLIC :: sum_dspin(2)
 
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
   integer :: MS_RHO,MS_0_RHO,MS_1_RHO
 
   real(8) :: Nelectron_RHO,dV_RHO
 
-  type density
+  type,PUBLIC :: density
      integer :: mm,m0,m1
      integer :: nn,n0,n1
      real(8),allocatable :: rho(:,:)
   end type
-!  type density
-!     type( ArrayRange1D ) :: g_srange, g_prange
-!     type( ArrayRange1D ) :: s_srange, s_prange
-!     real(8),allocatable :: val(:,:)
-!  end type density
 
   include 'mpif.h'
 

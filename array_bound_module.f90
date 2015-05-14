@@ -7,13 +7,12 @@ MODULE array_bound_module
   implicit none
 
   PRIVATE
-  PUBLIC :: ML,ML_0,ML_1,MB,MB_0,MB_1,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1 &
-           ,set_array_bound
+  PUBLIC :: set_array_bound
 
-  integer :: ML ,ML_0 ,ML_1
-  integer :: MB ,MB_0 ,MB_1
-  integer :: MBZ,MBZ_0,MBZ_1
-  integer :: MSP,MSP_0,MSP_1
+  integer,PUBLIC :: ML ,ML_0 ,ML_1
+  integer,PUBLIC :: MB ,MB_0 ,MB_1
+  integer,PUBLIC :: MBZ,MBZ_0,MBZ_1
+  integer,PUBLIC :: MSP,MSP_0,MSP_1
 
 CONTAINS
 

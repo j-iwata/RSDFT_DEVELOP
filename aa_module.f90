@@ -5,11 +5,15 @@ MODULE aa_module
   implicit none
 
   PRIVATE
-  PUBLIC :: ax,aa,Va,read_aa,construct_aa,read_oldformat_aa &
-           ,get_org_aa,set_org_aa
+  PUBLIC :: read_aa
+  PUBLIC :: construct_aa
+  PUBLIC :: read_oldformat_aa
+  PUBLIC :: get_org_aa
+  PUBLIC :: set_org_aa
 
-  real(8) :: ax,Va
-  real(8) :: aa(3,3)
+  real(8),PUBLIC :: ax
+  real(8),PUBLIC :: Va
+  real(8),PUBLIC :: aa(3,3)
 
   real(8) :: ax_org
   real(8) :: aa_org(3,3)

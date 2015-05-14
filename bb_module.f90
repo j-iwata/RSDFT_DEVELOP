@@ -3,9 +3,10 @@ MODULE bb_module
   implicit none
 
   PRIVATE
-  PUBLIC :: bb, construct_bb, calc_bb
+  PUBLIC :: construct_bb
+  PUBLIC :: calc_bb
 
-  real(8) :: bb(3,3)
+  real(8),PUBLIC :: bb(3,3)
 
 CONTAINS
 
