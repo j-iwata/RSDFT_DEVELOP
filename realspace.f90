@@ -21,7 +21,6 @@ PROGRAM Real_Space_Solid
   use VarPSMember
   use VarPSMemberG
   use ps_nloc2_variables
-  use TestModule
 #endif
 
   use WFtest
