@@ -15,8 +15,7 @@ MODULE density_module
   PUBLIC :: init_density
   PUBLIC :: normalize_density
   PUBLIC :: calc_density
-  PUBLIC :: init_type_density
-  PUBLIC :: get_range
+  PUBLIC :: get_range_density
 
   real(8),allocatable,PUBLIC :: rho(:,:)
   real(8),PUBLIC :: sum_dspin(2)
@@ -26,27 +25,27 @@ MODULE density_module
 
   real(8) :: Nelectron_RHO,dV_RHO
 
-  type,PUBLIC :: density
-     integer :: mm,m0,m1
-     integer :: nn,n0,n1
-     real(8),allocatable :: rho(:,:)
-  end type
-
   include 'mpif.h'
 
 CONTAINS
 
 !---------------------------------------------------------------------------------------
-  SUBROUTINE get_range( g_prange, s_srange )
-        implicit none
-        type( ArrayRange1D ),intent(OUT) :: g_prange,s_srange
-        g_prange%head = ML_0_RHO
-        g_prange%tail = ML_1_RHO
-        g_prange%size = ML_1_RHO - ML_0_RHO + 1
-        s_srange%head = 1
-        s_srange%tail = MS_RHO
-        s_srange%size = MS_RHO
-  END SUBROUTINE get_range
+  SUBROUTINE get_range_density( g_range, s_range )
+    implicit none
+    type( ArrayRange1D ),intent(OUT) :: g_range,s_range
+    g_range%head = ML_0_RHO
+    g_range%tail = ML_1_RHO
+    g_range%size = ML_1_RHO - ML_0_RHO + 1
+    s_range%head = 1
+    s_range%tail = MS_RHO
+    s_range%size = MS_RHO
+    g_range%head_global = 1
+    g_range%tail_global = ML_RHO
+    g_range%size_global = ML_RHO
+    s_range%head_global = 1
+    s_range%tail_global = MS_RHO
+    s_range%size_global = MS_RHO
+  END SUBROUTINE get_range_density
 
   SUBROUTINE init_density(Nelectron,dV)
     implicit none
@@ -209,24 +208,6 @@ CONTAINS
 !       end if
     end if
   END SUBROUTINE calc_sum_dspin
-
-
-  SUBROUTINE init_type_density( rho )
-    implicit none
-    type(density) :: rho
-    rho%mm = ML_RHO
-    rho%m0 = ML_0_RHO
-    rho%m1 = ML_1_RHO
-    rho%nn = MS_RHO
-    rho%n0 = MS_0_RHO
-    rho%n1 = MS_1_RHO
-    if ( .not.allocated(rho%rho) ) then
-       allocate( rho%rho(rho%m0:rho%m1,rho%nn) )
-    else
-       stop "stop@init_type_density"
-    end if
-    rho%rho(:,:)=0.0d0
-  END SUBROUTINE init_type_density
 
 
 END MODULE density_module
