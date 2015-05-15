@@ -59,6 +59,7 @@ OBJ_ALL = \
        strfac_module.o\
        var_ps_member.o\
        var_ps_member_g.o\
+       xc_variables.o\
        esm_rshell_module.o\
        force_sub.o\
        ps_q_init.o\
@@ -66,7 +67,6 @@ OBJ_ALL = \
        ps_read_psv_g.o\
        rgrid_module.o\
        symmetry_module.o\
-       xc_variables.o\
        bc_module.o\
        construct_matrix_ps_nloc2_module.o\
        func2gp_module.o\
@@ -87,6 +87,7 @@ OBJ_ALL = \
        force_ewald_module.o\
        force_ion_mol_module.o\
        force_local_mol_gth_module.o\
+       gradient_module.o\
        hartree_mol_module.o\
        kinetic_mol_module.o\
        kinetic_sol_0_module.o\
@@ -123,8 +124,11 @@ OBJ_ALL = \
        subspace_rotv_sl_module.o\
        subspace_solv_sl_module.o\
        wf_density_g.o\
+       xc_ggapbe96_2_module.o\
        xc_ggapbe96_module.o\
        xc_hybrid_io_module.o\
+       xc_pbe_xsr_module.o\
+       xc_vdw_module.o\
        cgpc_2_module.o\
        density_module.o\
        gram_schmidt_g.o\
@@ -132,7 +136,6 @@ OBJ_ALL = \
        wf_test.o\
        xc_hybrid_module.o\
        fock_ffte_module.o\
-       gradient_module.o\
        gram_schmidt_t_module.o\
        localpot2_Smatrix_module.o\
        localpot_module.o\
@@ -149,8 +152,6 @@ OBJ_ALL = \
        gram_schmidt_u_module.o\
        hamiltonian_matrix_module.o\
        ps_nloc_dij.o\
-       xc_ggapbe96_2_module.o\
-       xc_pbe_xsr_module.o\
        cgpc_module.o\
        esm_hartree_module.o\
        fock_module.o\
@@ -264,6 +265,7 @@ MODS1 = \
        strfac_module.o\
        var_ps_member.o\
        var_ps_member_g.o\
+       xc_variables.o\
        esm_rshell_module.o\
        force_sub.o\
        ps_q_init.o\
@@ -271,7 +273,6 @@ MODS1 = \
        ps_read_psv_g.o\
        rgrid_module.o\
        symmetry_module.o\
-       xc_variables.o\
        bc_module.o\
        construct_matrix_ps_nloc2_module.o\
        func2gp_module.o\
@@ -292,6 +293,7 @@ MODS1 = \
        force_ewald_module.o\
        force_ion_mol_module.o\
        force_local_mol_gth_module.o\
+       gradient_module.o\
        hartree_mol_module.o\
        kinetic_mol_module.o\
        kinetic_sol_0_module.o\
@@ -328,8 +330,11 @@ MODS1 = \
        subspace_rotv_sl_module.o\
        subspace_solv_sl_module.o\
        wf_density_g.o\
+       xc_ggapbe96_2_module.o\
        xc_ggapbe96_module.o\
        xc_hybrid_io_module.o\
+       xc_pbe_xsr_module.o\
+       xc_vdw_module.o\
        cgpc_2_module.o\
        density_module.o\
        gram_schmidt_g.o\
@@ -337,7 +342,6 @@ MODS1 = \
        wf_test.o\
        xc_hybrid_module.o\
        fock_ffte_module.o\
-       gradient_module.o\
        gram_schmidt_t_module.o\
        localpot2_Smatrix_module.o\
        localpot_module.o\
@@ -354,8 +358,6 @@ MODS1 = \
        gram_schmidt_u_module.o\
        hamiltonian_matrix_module.o\
        ps_nloc_dij.o\
-       xc_ggapbe96_2_module.o\
-       xc_pbe_xsr_module.o\
        cgpc_module.o\
        esm_hartree_module.o\
        fock_module.o\

@@ -265,7 +265,8 @@ grid_module.mod: grid_module.o
 	@true
 grid_module.o: grid_module.f90 \
                  rgrid_variables.mod \
-                 parallel_module.mod
+                 parallel_module.mod \
+                 basictypefactory.mod
 	$(FC) $(FFLAGS) -c grid_module.f90 -o $@
 
 mixing_module.mod: mixing_module.o
@@ -317,6 +318,12 @@ varpsmemberg.mod: var_ps_member_g.o
 var_ps_member_g.o: var_ps_member_g.f90 \
                  parallel_module.mod
 	$(FC) $(FFLAGS) -c var_ps_member_g.f90 -o $@
+
+xc_variables.mod: xc_variables.o
+	@true
+xc_variables.o: xc_variables.f90 \
+                 basictypefactory.mod
+	$(FC) $(FFLAGS) -c xc_variables.f90 -o $@
 
 esm_rshell_module.mod: esm_rshell_module.o
 	@true
@@ -378,12 +385,6 @@ symmetry_module.o: symmetry_module.f90 \
                  aa_module.mod \
                  bb_module.mod
 	$(FC) $(FFLAGS) -c symmetry_module.f90 -o $@
-
-xc_variables.mod: xc_variables.o
-	@true
-xc_variables.o: xc_variables.f90 \
-                 grid_module.mod
-	$(FC) $(FFLAGS) -c xc_variables.f90 -o $@
 
 bc_module.mod: bc_module.o
 	@true
@@ -572,6 +573,16 @@ force_local_mol_gth_module.o: force_local_mol_gth_module.f90 \
                  bberf_module.mod \
                  pseudopot_module.mod
 	$(FC) $(FFLAGS) -c force_local_mol_gth_module.f90 -o $@
+
+gradient_module.mod: gradient_module.o
+	@true
+gradient_module.o: gradient_module.f90 \
+                 grid_module.mod \
+                 bc_module.mod \
+                 fd_module.mod \
+                 lattice_module.mod \
+                 basictypefactory.mod
+	$(FC) $(FFLAGS) -c gradient_module.f90 -o $@
 
 hartree_mol_module.mod: hartree_mol_module.o
 	@true
@@ -954,6 +965,18 @@ wf_density_g.o: wf_density_g.f90 \
                  parargridcomm.mod
 	$(FC) $(FFLAGS) -c wf_density_g.f90 -o $@
 
+xc_ggapbe96_2_module.mod: xc_ggapbe96_2_module.o
+	@true
+xc_ggapbe96_2_module.o: xc_ggapbe96_2_module.f90 \
+                 gradient_module.mod \
+                 grid_module.mod \
+                 xc_variables.mod \
+                 fd_module.mod \
+                 lattice_module.mod \
+                 parallel_module.mod \
+                 basictypefactory.mod
+	$(FC) $(FFLAGS) -c xc_ggapbe96_2_module.f90 -o $@
+
 xc_ggapbe96_module.mod: xc_ggapbe96_module.o
 	@true
 xc_ggapbe96_module.o: xc_ggapbe96_module.f90 \
@@ -973,6 +996,32 @@ xc_hybrid_io_module.o: xc_hybrid_io_module.f90 \
                  rgrid_module.mod \
                  rgrid_mol_module.mod
 	$(FC) $(FFLAGS) -c xc_hybrid_io_module.f90 -o $@
+
+xc_pbe_xsr_module.mod: xc_pbe_xsr_module.o
+	@true
+xc_pbe_xsr_module.o: xc_pbe_xsr_module.f90 \
+                 gradient_module.mod \
+                 grid_module.mod \
+                 xc_variables.mod \
+                 fd_module.mod \
+                 lattice_module.mod \
+                 parallel_module.mod \
+                 expint_module.mod \
+                 basictypefactory.mod
+	$(FC) $(FFLAGS) -c xc_pbe_xsr_module.f90 -o $@
+
+xc_vdw_module.mod: xc_vdw_module.o
+	@true
+xc_vdw_module.o: xc_vdw_module.f90 \
+                 grid_module.mod \
+                 xc_variables.mod \
+                 ggrid_module.mod \
+                 gradient_module.mod \
+                 parallel_module.mod \
+                 fd_module.mod \
+                 lattice_module.mod \
+                 basictypefactory.mod
+	$(FC) $(FFLAGS) -c xc_vdw_module.f90 -o $@
 
 cgpc_2_module.mod: cgpc_2_module.o
 	@true
@@ -1052,17 +1101,6 @@ fock_ffte_module.o: fock_ffte_module.f90 \
                  bz_module.mod \
                  ffte_sub_module.mod
 	$(FC) $(FFLAGS) -c fock_ffte_module.f90 -o $@
-
-gradient_module.mod: gradient_module.o
-	@true
-gradient_module.o: gradient_module.f90 \
-                 density_module.mod \
-                 grid_module.mod \
-                 bc_module.mod \
-                 fd_module.mod \
-                 lattice_module.mod \
-                 basictypefactory.mod
-	$(FC) $(FFLAGS) -c gradient_module.f90 -o $@
 
 gram_schmidt_t_module.mod: gram_schmidt_t_module.o
 	@true
@@ -1252,32 +1290,6 @@ ps_nloc_dij.o: ps_nloc_dij.f90 \
                  rgrid_module.mod \
                  pseudopot_module.mod
 	$(FC) $(FFLAGS) -c ps_nloc_dij.f90 -o $@
-
-xc_ggapbe96_2_module.mod: xc_ggapbe96_2_module.o
-	@true
-xc_ggapbe96_2_module.o: xc_ggapbe96_2_module.f90 \
-                 gradient_module.mod \
-                 grid_module.mod \
-                 density_module.mod \
-                 xc_variables.mod \
-                 fd_module.mod \
-                 lattice_module.mod \
-                 parallel_module.mod \
-                 basictypefactory.mod
-	$(FC) $(FFLAGS) -c xc_ggapbe96_2_module.f90 -o $@
-
-xc_pbe_xsr_module.mod: xc_pbe_xsr_module.o
-	@true
-xc_pbe_xsr_module.o: xc_pbe_xsr_module.f90 \
-                 gradient_module.mod \
-                 grid_module.mod \
-                 density_module.mod \
-                 xc_variables.mod \
-                 fd_module.mod \
-                 lattice_module.mod \
-                 parallel_module.mod \
-                 expint_module.mod
-	$(FC) $(FFLAGS) -c xc_pbe_xsr_module.f90 -o $@
 
 cgpc_module.mod: cgpc_module.o
 	@true
@@ -1470,8 +1482,6 @@ xc_module.o: xc_module.f90 \
                  kinetic_module.mod \
                  kinetic_variables.mod \
                  fd_module.mod \
-                 electron_module.mod \
-                 bz_module.mod \
                  grid_module.mod \
                  xc_variables.mod \
                  xc_ldapz81_module.mod \
@@ -1481,6 +1491,7 @@ xc_module.o: xc_module.f90 \
                  xc_hse_module.mod \
                  xc_pbe_xsr_module.mod \
                  xc_hf_module.mod \
+                 xc_vdw_module.mod \
                  basictypefactory.mod \
                  basictypemethods.mod
 	$(FC) $(FFLAGS) -c xc_module.f90 -o $@
