@@ -129,8 +129,11 @@ DIRNAME=os.getcwd()
 #MD_DIRNAME=DIRNAME+'/mdsource'
 FILES=os.listdir(DIRNAME)
 #MDFILES=os.listdir(MD_DIRNAME)
-make_common='Makefile.dep.common'
+make_common='makefile.dep.common'
+make_common_obj='makefile.common'
 with open(make_common,'w') as f:
+  pass
+with open(make_common_obj,'w') as f:
   pass
 
 #----- get src files
@@ -207,9 +210,10 @@ print "leveled dependency   : 'dep.log'"
 
 print "-----generating makefile.common-----"
 print "dependency for make  : " + make_common
+print "dependency for make  : " + make_common_obj
 for classModule in leveled_file:
   classModule.writeDependency()
-with open( make_common, 'a' ) as f:
+with open( make_common, 'w' ) as f:
   f.write( 'OBJ_ALL = \\\n' )
   for classModule in leveled_file[:]:
     f.write( '       ' + classModule.objectFilename() + '\\\n' )

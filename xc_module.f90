@@ -13,8 +13,6 @@ MODULE xc_module
   use kinetic_module, only: SYStype
   use kinetic_variables, only: Md
   use fd_module
-!  use electron_module, only: Nband, Nelectron
-  use bz_module, only: kbb, MMBZ, Nbzsm
 
   use grid_module, only: grid, get_range_rgrid
   use xc_variables, only: xcpot, xcene
@@ -28,7 +26,7 @@ MODULE xc_module
   use xc_vdw_module
 
   use BasicTypeFactory
-  use BasicFunctions
+  use BasicTypeMethods
 
   implicit none
 

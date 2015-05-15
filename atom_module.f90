@@ -1,23 +1,23 @@
 MODULE atom_module
-
   implicit none
 
   PRIVATE
   PUBLIC :: checkAtomData
-#ifdef _OBJECT_
-  PUBLIC :: getAtomPosition
-#endif
-  PUBLIC :: Natom,Nelement,aa_atom,ki_atom,zn_atom,md_atom,read_atom &
-           ,atom_format, atom, construct_atom, write_info_atom
+  PUBLIC :: read_atom
+  PUBLIC :: construct_atom
+  PUBLIC :: write_info_atom
 
   integer,parameter :: DP=kind(0.0d0)
 
-  integer :: Natom, Nelement
-  integer,allocatable :: ki_atom(:), zn_atom(:), md_atom(:)
-  real(DP),allocatable :: aa_atom(:,:)
-  integer :: atom_format
+  integer,PUBLIC :: Natom
+  integer,PUBLIC :: Nelement
+  integer,allocatable,PUBLIC :: ki_atom(:)
+  integer,allocatable,PUBLIC :: zn_atom(:)
+  integer,allocatable,PUBLIC :: md_atom(:)
+  real(DP),allocatable,PUBLIC :: aa_atom(:,:)
+  integer,PUBLIC :: atom_format
 
-  type atom
+  type,PUBLIC :: atom
      integer :: natom, nelement
      integer,allocatable :: k(:)
      integer,allocatable :: z(:)
@@ -25,13 +25,6 @@ MODULE atom_module
      real(DP),allocatable :: xyz(:,:)
      real(DP),allocatable :: force(:,:)
   end type atom
-
-#ifdef _OBJECT_
-  TYPE AtomPosition
-    real(8) :: Rx,Ry,Rz
-    integer :: ix,iy,iz
-  END TYPE AtomPosition
-#endif
 
 CONTAINS
 
@@ -170,24 +163,6 @@ CONTAINS
       write(6200+myrank,'(I7,I10)') iatom,md_atom(iatom)
     enddo
   END SUBROUTINE checkAtomData
-
-#ifdef _OBJECT_
-  SUBROUTINE getAtomPosition(iatom,Ngrid,atomPos)
-    implicit none
-    integer,intent(IN) :: iatom
-    integer,intent(IN) :: Ngrid(3)
-    type(AtomPosition),intent(OUT) :: atomPos
-! Rx,Ry,Rz : atom position in real grid
-    atomPos%Rx = aa(1,1)*aa_atom(1,iatom)+aa(1,2)*aa_atom(2,iatom)+aa(1,3)*aa_atom(3,iatom)
-    atomPos%Ry = aa(2,1)*aa_atom(1,iatom)+aa(2,2)*aa_atom(2,iatom)+aa(2,3)*aa_atom(3,iatom)
-    atomPos%Rz = aa(3,1)*aa_atom(1,iatom)+aa(3,2)*aa_atom(2,iatom)+aa(3,3)*aa_atom(3,iatom)
-! ix,iy,iz : atom position in grid point
-    atomPos%ix = nint( aa_atom(1,iatom)*Ngrid(1) )
-    atomPos%iy = nint( aa_atom(2,iatom)*Ngrid(2) )
-    atomPos%iz = nint( aa_atom(3,iatom)*Ngrid(3) )
-    return
-  END SUBROUTINE getAtomPosition
-#endif
 
   SUBROUTINE construct_atom( x )
     implicit none

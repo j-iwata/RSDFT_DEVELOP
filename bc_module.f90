@@ -8,18 +8,21 @@ MODULE bc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: www, bcset, init_bcset, allocate_bcset &
-           ,n_neighbor, fdinfo_send, fdinfo_recv &
-           ,bcset_1
+  PUBLIC :: bcset
+  PUBLIC :: init_bcset
+  PUBLIC :: allocate_bcset
+  PUBLIC :: bcset_1
+
+  PUBLIC :: n_neighbor, fdinfo_send, fdinfo_recv
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
-  real(8),allocatable :: www(:,:,:,:)
+  real(8),allocatable,PUBLIC :: www(:,:,:,:)
   real(8),allocatable :: sbuf(:,:,:),rbuf(:,:,:)
   real(8),parameter :: zero=0.d0
 #else
   integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
-  complex(8),allocatable :: www(:,:,:,:)
+  complex(8),allocatable,PUBLIC :: www(:,:,:,:)
   complex(8),allocatable :: sbuf(:,:,:),rbuf(:,:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
 #endif

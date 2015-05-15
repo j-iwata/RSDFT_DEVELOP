@@ -3,15 +3,19 @@ MODULE bz_module
   implicit none
 
   PRIVATE
-  PUBLIC :: nk,mmm,Nbzsm,kbb,weight_bz,read_kgrid_bz,generate_bz &
-           ,read_kgrid_oldformat_bz,generate_bz_sym, MMBZ
+  PUBLIC :: read_kgrid_bz
+  PUBLIC :: generate_bz
+  PUBLIC :: read_kgrid_oldformat_bz
+  PUBLIC :: generate_bz_sym
 
-  integer :: nk,mmm(3,2)
-  integer :: Nbzsm
-  real(8),allocatable :: kbb(:,:)
-  real(8),allocatable :: weight_bz(:)
+  integer,PUBLIC :: nk
+  integer,PUBLIC :: mmm(3,2)
+  integer,PUBLIC :: Nbzsm
+  real(8),allocatable,PUBLIC :: kbb(:,:)
+  real(8),allocatable,PUBLIC :: weight_bz(:)
 
-  integer :: MMBZ,npbz
+  integer,PUBLIC :: MMBZ
+  integer :: npbz
   real(8),allocatable :: wbz(:)
   integer :: ndata_read_k=0
   real(8) :: kbb0(3)

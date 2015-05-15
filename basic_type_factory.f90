@@ -79,4 +79,35 @@ MODULE BasicTypeFactory
      real(8),allocatable :: val(:,:)
   end type GSArray
 
+  type,PUBLIC :: GBKSArray
+     sequence
+     type( ArrayRange1D ) :: g_srange, g_prange
+     type( ArrayRange1D ) :: b_srange, b_prange
+     type( ArrayRange1D ) :: k_srange, k_prange
+     type( ArrayRange1D ) :: s_srange, s_prange
+#ifdef REAL_VER
+     real(8),allocatable :: val(:,:,:,:)
+#elif defined COMPLEX_VER
+     complex(kind(0d0)),allocatable :: val(:,:,:,:)
+#endif
+  end type GBKSArray
+
+  type,PUBLIC :: rGBKSArray
+     sequence
+     type( ArrayRange1D ) :: g_srange, g_prange
+     type( ArrayRange1D ) :: b_srange, b_prange
+     type( ArrayRange1D ) :: k_srange, k_prange
+     type( ArrayRange1D ) :: s_srange, s_prange
+     real(8),allocatable :: val(:,:,:,:)
+  end type rGBKSArray
+
+  type,PUBLIC :: cGBKSArray
+     sequence
+     type( ArrayRange1D ) :: g_srange, g_prange
+     type( ArrayRange1D ) :: b_srange, b_prange
+     type( ArrayRange1D ) :: k_srange, k_prange
+     type( ArrayRange1D ) :: s_srange, s_prange
+     complex(kind(0d0)),allocatable :: val(:,:,:,:)
+  end type cGBKSArray
+
 END MODULE BasicTypeFactory

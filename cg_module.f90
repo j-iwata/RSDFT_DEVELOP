@@ -1,5 +1,4 @@
 MODULE cg_module
-
   use rgrid_module, only: zdV,dV
   use hamiltonian_module
   use cgpc_module
@@ -15,9 +14,13 @@ MODULE cg_module
   implicit none
 
   PRIVATE
-  PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs,read_oldformat_cg
+  PUBLIC :: conjugate_gradient
+  PUBLIC :: read_cg
+  PUBLIC :: read_oldformat_cg
 
-  integer :: Ncg,iswitch_gs
+  integer,PUBLIC :: Ncg
+  integer,PUBLIC :: iswitch_gs
+
   integer :: iswitch_cg
 
 CONTAINS

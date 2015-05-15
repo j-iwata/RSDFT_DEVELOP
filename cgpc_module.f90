@@ -1,5 +1,4 @@
 MODULE cgpc_module
-
 !$  use omp_lib
   use rgrid_module
   use parallel_module
@@ -16,7 +15,10 @@ MODULE cgpc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: preconditioning,read_cgpc,read_oldformat_cgpc,init_cgpc
+  PUBLIC :: preconditioning
+  PUBLIC :: read_cgpc
+  PUBLIC :: read_oldformat_cgpc
+  PUBLIC :: init_cgpc
 
   integer :: mloop
   integer :: iswitch_cgpc

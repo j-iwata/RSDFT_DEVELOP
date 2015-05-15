@@ -12,11 +12,13 @@ MODULE density_module
   implicit none
 
   PRIVATE
-  PUBLIC :: rho,sum_dspin,init_density,normalize_density,calc_density
+  PUBLIC :: init_density
+  PUBLIC :: normalize_density
+  PUBLIC :: calc_density
   PUBLIC :: get_range_density
 
-  real(8),allocatable :: rho(:,:)
-  real(8) :: sum_dspin(2)
+  real(8),allocatable,PUBLIC :: rho(:,:)
+  real(8),PUBLIC :: sum_dspin(2)
 
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
   integer :: MS_RHO,MS_0_RHO,MS_1_RHO
