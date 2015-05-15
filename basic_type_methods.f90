@@ -13,7 +13,7 @@ MODULE BasicTypeMethods
 
 #ifdef REAL_VER
   double precision,parameter :: zero = 0.d0
-#elif defined COMPLEX_VER
+#else
   complex(kind(0d0)),parameter :: zero = (0.d0,0.d0)
 #endif
   complex(kind(0d0)),parameter :: z0 = (0.d0,0.d0)

@@ -87,7 +87,7 @@ MODULE BasicTypeFactory
      type( ArrayRange1D ) :: s_srange, s_prange
 #ifdef REAL_VER
      real(8),allocatable :: val(:,:,:,:)
-#elif defined COMPLEX_VER
+#else 
      complex(kind(0d0)),allocatable :: val(:,:,:,:)
 #endif
   end type GBKSArray
