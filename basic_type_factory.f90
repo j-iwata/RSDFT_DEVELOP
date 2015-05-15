@@ -7,6 +7,9 @@ MODULE BasicTypeFactory
     integer :: head
     integer :: tail
     integer :: size
+    integer :: head_global
+    integer :: tail_global
+    integer :: size_global
   end type ArrayRange1D
 
   type,PUBLIC :: ArrayRange3D
@@ -71,6 +74,8 @@ MODULE BasicTypeFactory
      sequence
      type( ArrayRange1D ) :: g_srange, g_prange
      type( ArrayRange1D ) :: s_srange, s_prange
+     type( ArrayRange1D ) :: g_range
+     type( ArrayRange1D ) :: s_range
      real(8),allocatable :: val(:,:)
   end type GSArray
 

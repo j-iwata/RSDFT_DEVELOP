@@ -1,14 +1,14 @@
 MODULE xc_vdw_module
 
   use grid_module, only: grid
-  use xc_variables, only: xc
-  use density_module, only: density
+  use xc_variables, only: xcene, xcpot
   use ggrid_module, only: NMGL, MGL, GG, NGgrid, LLG, MG_0, MG_1 &
                          ,construct_ggrid, destruct_ggrid
   use gradient_module
   use parallel_module, only: comm_grid, myrank, nprocs, ir_grid, id_grid
   use fd_module, only: fd, construct_nabla_fd, destruct_nabla_fd
   use lattice_module, only: lattice,construct_aa_lattice,get_reciprocal_lattice
+  use BasicTypeFactory
 
   implicit none
 
@@ -504,14 +504,15 @@ CONTAINS
   END SUBROUTINE init1_xc_vdw
 
 
-  SUBROUTINE calc_xc_vdw( rgrid, rho, vdw )
+  SUBROUTINE calc_xc_vdw( rgrid, rho, ene, pot )
     implicit none
-    type(grid) :: rgrid
-    type( GSArray ) :: rho
-    type(xc) :: vdw
-    type(gradient16) :: grad16
+    type( grid ),intent(IN) :: rgrid
+    type( GSArray ),intent(IN) :: rho
+    type( xcene ) :: ene
+    type( xcpot ) :: pot
+    type( gradient16 ) :: grad16
     logical :: disp_sw
-    integer :: i,j,m0,m1,mm
+    integer :: i,j,m0,m1,mm,nspin
     real(8) :: rho_tmp(2), trho, edx_lda(2), edc_lda,ss_min,ss_max
     real(QP) :: kf,pi,onethr,fouthr,ss,const,c,q0
     real(8) :: q0_min,q0_max,sbuf(2),rbuf(2)
@@ -526,8 +527,9 @@ CONTAINS
     onethr = 1.0q0/3.0q0
     fouthr = 4.0q0/3.0q0
     const  = Zab/9.0q0
-    m0     = rgrid%SubGrid(1,0)
-    m1     = rgrid%SubGrid(2,0)
+    m0     = rgrid%g1%head
+    m1     = rgrid%g1%tail
+    nspin  = rho%s_range%size_global
 
     call construct_gradient16( rgrid, rho, grad16 )
 
@@ -539,24 +541,24 @@ CONTAINS
     ss_min = 1.d100
     ss_max =-1.d100
 
-    vdw%Vc(:,:)=0.0d0
+    pot%c%val(:,:)=0.0d0
 
-    do i=m0,m1
+    do i = pot%xc%g_range%head, pot%xc%g_range%tail
 
        rho_tmp(1) = rho%val(i,1)
-       rho_tmp(2) = rho%val(i,rho%s_srange%tail)
-       trho       = sum(rho_tmp(1:rho%nn))
+       rho_tmp(2) = rho%val(i,nspin)
+       trho       = sum( rho_tmp(1:nspin) )
 
        if ( trho < zero_density ) cycle
 
-       call calc_edx_lda( rho%nn, rho_tmp, edx_lda, vdx_lda )
-       call calc_edc_lda( rho%nn, rho_tmp, edc_lda, vdc_lda )
+       call calc_edx_lda( nspin, rho_tmp, edx_lda, vdx_lda )
+       call calc_edc_lda( nspin, rho_tmp, edc_lda, vdc_lda )
 
-       Ex_LDA = Ex_LDA + sum( rho_tmp(1:rho%nn)*edx_lda(1:rho%nn) )
+       Ex_LDA = Ex_LDA + sum( rho_tmp(1:nspin)*edx_lda(1:nspin) )
        Ec_LDA = Ec_LDA + trho*edc_lda
 
-       do j=rho%s_prange%head,rho%s_prange%tail
-          vdw%Vc(i,j) = edc_lda + trho*vdc_lda(j)
+       do j = pot%xc%s_range%head, pot%xc%s_range%tail
+          pot%c%val(i,j) = edc_lda + trho*vdc_lda(j)
        end do
 
        kf = ( 3.0q0*pi*pi*trho )**onethr
@@ -587,8 +589,8 @@ CONTAINS
     call MPI_ALLREDUCE(sbuf(1),ss_min,1,MPI_REAL8,MPI_MIN,comm_grid,i)
     call MPI_ALLREDUCE(sbuf(2),ss_max,1,MPI_REAL8,MPI_MAX,comm_grid,i)
 
-    sbuf(1) = Ex_LDA * rgrid%dV
-    sbuf(2) = Ec_LDA * rgrid%dV
+    sbuf(1) = Ex_LDA * rgrid%VolumeElement
+    sbuf(2) = Ec_LDA * rgrid%VolumeElement
     call MPI_ALLREDUCE(sbuf,rbuf,2,MPI_REAL8,MPI_SUM,comm_grid,i)
     Ex_LDA = rbuf(1)
     Ec_LDA = rbuf(2)
@@ -616,7 +618,7 @@ CONTAINS
 
     do j=0,NumQgrid
        do i=m0,m1
-          theta(i-m0+1,j) = sum( rho%val(i,1:rho%s_srange%tail) )*pol_spline(i,j)
+          theta(i-m0+1,j) = sum( rho%val(i,:) )*pol_spline(i,j)
        end do
     end do
 
@@ -626,7 +628,7 @@ CONTAINS
 
     call calc_vdw_energy( rgrid, theta, Ec_vdw )
 
-    vdw%Ec = Ec_LDA + Ec_VDW
+    ene%Ec = Ec_LDA + Ec_VDW
 
 ! ---
 
@@ -661,9 +663,9 @@ CONTAINS
        g(:) = g(:) + ua(:,j)*pol_spline(:,j)
     end do
 
-    c = 1.0d0/rgrid%NumGrid(0)
+    c = 1.0d0/rgrid%g1%size_global
 
-    vdw%Vc(:,1) = vdw%Vc(:,1) + c*g(:)
+    pot%c%val(:,1) = pot%c%val(:,1) + c*g(:)
 
 ! ---
 
@@ -859,7 +861,7 @@ CONTAINS
 
   SUBROUTINE fft_theta( rgrid, theta )
     implicit none
-    type(grid),intent(IN) :: rgrid
+    type( grid ),intent(IN) :: rgrid
     complex(8),intent(INOUT) :: theta(:,0:)
     integer :: ifacx(30),ifacy(30),ifacz(30)
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
@@ -868,10 +870,10 @@ CONTAINS
     complex(8),allocatable :: work0(:,:,:), work1(:,:,:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
 
-    ML  = rgrid%NumGrid(0)
-    ML1 = rgrid%NumGrid(1)
-    ML2 = rgrid%NumGrid(2)
-    ML3 = rgrid%NumGrid(3)
+    ML  = rgrid%g1%size_global
+    ML1 = rgrid%g3%x%size_global
+    ML2 = rgrid%g3%y%size_global
+    ML3 = rgrid%g3%z%size_global
 
     allocate( work0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work0=zero
     allocate( work1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work1=zero
@@ -888,9 +890,9 @@ CONTAINS
 
        work1(:,:,:)=zero
        i=0
-       do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
-       do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
-       do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
+       do i3=rgrid%g3%z%head,rgrid%g3%z%tail
+       do i2=rgrid%g3%y%head,rgrid%g3%y%tail
+       do i1=rgrid%g3%x%head,rgrid%g3%x%tail
           i=i+1
           work1(i1,i2,i3) = theta(i,j)
        end do ! i1
@@ -926,7 +928,7 @@ CONTAINS
   SUBROUTINE calc_vdw_energy( rgrid, theta, Ec )
     implicit none
     complex(8),intent(IN) :: theta(:,0:)
-    type(grid),intent(IN) :: rgrid
+    type( grid ),intent(IN) :: rgrid
     real(8),intent(INOUT) :: Ec
     integer :: a,b,i,j,info
     complex(8) :: z
@@ -948,7 +950,7 @@ CONTAINS
     end do ! a
     end do ! b
 
-    E0 = 0.5d0*z * rgrid%NumGrid(0)*rgrid%dV
+    E0 = 0.5d0*z * rgrid%g1%size_global * rgrid%VolumeElement
     call MPI_ALLREDUCE(E0,Ec,1,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,info)
 
     call check_disp_switch( disp_sw, 0 )
@@ -963,7 +965,7 @@ CONTAINS
   SUBROUTINE calc_ua( rgrid, theta, ua )
     implicit none
     complex(8),intent(IN) :: theta(:,0:)
-    type(grid),intent(IN) :: rgrid
+    type( grid ),intent(IN) :: rgrid
     real(8),intent(OUT)   :: ua(:,0:)
     integer :: a,b,i,j,i1,i2,i3
     complex(8),parameter :: zero=(0.0d0,0.0d0)
@@ -973,10 +975,10 @@ CONTAINS
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
 
-    ML  = rgrid%NumGrid(0)
-    ML1 = rgrid%NumGrid(1)
-    ML2 = rgrid%NumGrid(2)
-    ML3 = rgrid%NumGrid(3)
+    ML  = rgrid%g1%size_global
+    ML1 = rgrid%g3%x%size_global
+    ML2 = rgrid%g3%y%size_global
+    ML3 = rgrid%g3%z%size_global
 
     allocate( work0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work0=zero
     allocate( work1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work1=zero
@@ -1014,9 +1016,9 @@ CONTAINS
             ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
 
        i=0
-       do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
-       do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
-       do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
+       do i3=rgrid%g3%z%head,rgrid%g3%z%tail
+       do i2=rgrid%g3%y%head,rgrid%g3%y%tail
+       do i1=rgrid%g3%x%head,rgrid%g3%x%tail
           i=i+1
           ua(i,a) = work0(i1,i2,i3)
        end do
@@ -1074,19 +1076,20 @@ CONTAINS
 
   SUBROUTINE calc_dqdn( rgrid, rho, grad16, fin, fou )
     implicit none
-    type(grid) :: rgrid
-    type(density) :: rho
-    type(gradient16) :: grad16
+    type( grid ) :: rgrid
+    type( GSArray ) :: rho
+    type( gradient16 ) :: grad16
     real(8),intent(IN)  :: fin(:)
     real(8),intent(OUT) :: fou(:)
-    type(fd) :: nabla
-    type(lattice) :: aa, bb
+    type( fd ) :: nabla
+    type( lattice ) :: aa, bb
     real(8) :: trho,rho_tmp(2),vdx_lda(2),vdc_lda(2)
     real(8) :: edx_lda(2),edc_lda
     real(QP) :: pi,FouPiThr,twothr,onethr,sevthr,kf,ss,cm,q0,c,d,const
     real(QP) :: qtrho,b(3,3)
     real(QP),allocatable :: rtmp0(:),rtmp(:,:),ftmp(:)
     integer :: m0,m1,m,ML1,ML2,ML3,Md,i,i1,i2,i3,j,j1,j2,j3,k1,k2,k3,info
+    integer :: nspin
     integer,allocatable :: LLL(:,:,:)
 
     pi       = acos(-1.0q0)
@@ -1096,31 +1099,33 @@ CONTAINS
     sevthr   = 7.0q0/3.0q0
     const    = Zab/9.0q0
 
-    m0 = rgrid%SubGrid(1,0)
-    m1 = rgrid%SubGrid(2,0)
+    m0 = rgrid%g1%head
+    m1 = rgrid%g1%tail
 
-    ML1 = rgrid%NumGrid(1)
-    ML2 = rgrid%NumGrid(2)
-    ML3 = rgrid%NumGrid(3)
+    ML1 = rgrid%g3%x%size_global
+    ML2 = rgrid%g3%y%size_global
+    ML3 = rgrid%g3%z%size_global
 
-    allocate( rtmp(rgrid%NumGrid(0),3) ) ; rtmp=0.0q0
-    allocate( rtmp0(m0:m1)             ) ; rtmp0=0.0q0
-    allocate( ftmp(m0:m1)              ) ; ftmp=0.0q0
+    nspin = rho%s_range%size_global
+
+    allocate( rtmp(rgrid%g1%size_global,3) ) ; rtmp =0.0q0
+    allocate( rtmp0(m0:m1)                 ) ; rtmp0=0.0q0
+    allocate( ftmp(m0:m1)                  ) ; ftmp =0.0q0
 
 ! ---
 
     do i=m0,m1
 
-       rho_tmp(1) = rho%rho(i,1)
-       rho_tmp(2) = rho%rho(i,rho%nn)
-       trho       = sum( rho_tmp(1:rho%nn) )
+       rho_tmp(1) = rho%val(i,1)
+       rho_tmp(2) = rho%val(i,nspin)
+       trho       = sum( rho_tmp(1:nspin) )
        qtrho      = trho
 
        if ( trho <= 0.0d0 ) cycle
 !       if ( trho <= zero_density ) cycle
 
-       call calc_edx_lda( rho%nn, rho_tmp, edx_lda, vdx_lda )
-       call calc_edc_lda( rho%nn, rho_tmp, edc_lda, vdc_lda )
+       call calc_edx_lda( nspin, rho_tmp, edx_lda, vdx_lda )
+       call calc_edc_lda( nspin, rho_tmp, edc_lda, vdc_lda )
 
        kf = (3.0q0*pi*pi*qtrho)**onethr
        ss = grad16%gg(i)/(2.0q0*kf*qtrho)**2
@@ -1159,9 +1164,9 @@ CONTAINS
     allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0
 
     i=m0-1
-    do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
-    do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
-    do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
+    do i3=rgrid%g3%z%head,rgrid%g3%z%tail
+    do i2=rgrid%g3%y%head,rgrid%g3%y%tail
+    do i1=rgrid%g3%x%head,rgrid%g3%x%tail
        i=i+1
        LLL(i1,i2,i3) = i
     end do
@@ -1175,9 +1180,9 @@ CONTAINS
 
     call construct_aa_lattice( aa )
     call get_reciprocal_lattice( aa, bb )
-    b(1:3,1)=aa%Length(1)*bb%LatticeVector(1:3,1)/( 2*pi*rgrid%SizeGrid(1) )
-    b(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*pi*rgrid%SizeGrid(2) )
-    b(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*pi*rgrid%SizeGrid(3) )
+    b(1:3,1)=aa%Length(1)*bb%LatticeVector(1:3,1)/( 2*pi*rgrid%spacing(1) )
+    b(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*pi*rgrid%spacing(2) )
+    b(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*pi*rgrid%spacing(3) )
 
     do i3=0,ML3-1
     do i2=0,ML2-1

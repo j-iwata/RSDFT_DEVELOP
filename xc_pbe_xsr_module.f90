@@ -1,14 +1,14 @@
 MODULE xc_pbe_xsr_module
 
   use gradient_module
-  use grid_module, only: grid
-  use density_module, only: density
-  use xc_variables, only: xc
+  use grid_module, only: grid, get_map_3d_to_1d
+  use xc_variables, only: xcene, xcpot
   use fd_module, only: fd, construct_nabla_fd
   use lattice_module
   use parallel_module
   use expint_module
   use gradient_module
+  use BasicTypeFactory
 
   implicit none
 
@@ -35,18 +35,19 @@ MODULE xc_pbe_xsr_module
 CONTAINS
 
 
-  SUBROUTINE calc_pbe_xsr( rgrid, rho, gga )
+  SUBROUTINE calc_pbe_xsr( rgrid, rho, ene, pot )
 
     implicit none
 
-    type(grid) :: rgrid
-    type(density) :: rho
-    type(xc) :: gga
+    type( grid ),intent(IN) :: rgrid
+    type( GSArray ),intent(IN) :: rho
+    type( xcene ) :: ene
+    type( xcpot ) :: pot
 
     type(gradient) :: grad
     type(fd) :: nabla
     type(lattice) :: aa, bb
-    integer :: m1,m2,n1,n2,i,i1,i2,i3,s,j,ierr
+    integer :: mm,m1,m2,n1,n2,i,i1,i2,i3,s,j,ierr
     integer :: m,k1,k2,k3,j1,j2,j3
     real(DP) :: Pi, cm
     real(DP) :: sb(1),rb(1)
@@ -80,7 +81,7 @@ CONTAINS
 
     beta = mu*3.0d0/acos(-1.0d0)**2
 
-    call construct_gradient1( rgrid, rho, grad )
+    call construct_gradient( rgrid, rho, grad )
 
     call construct_nabla_fd( nabla )
 
@@ -94,28 +95,15 @@ CONTAINS
 
     Pi=acos(-1.0d0)
 
-    q(1:3,1)=aa%Length(1)*bb%LatticeVector(1:3,1)/( 2*Pi*rgrid%SizeGrid(1) )
-    q(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*Pi*rgrid%SizeGrid(2) )
-    q(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*Pi*rgrid%SizeGrid(3) )
+    q(1:3,1)=aa%Length(1)*bb%LatticeVector(1:3,1)/( 2*Pi*rgrid%spacing(1) )
+    q(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*Pi*rgrid%spacing(2) )
+    q(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*Pi*rgrid%spacing(3) )
 
-    ML1 = rgrid%NumGrid(1)
-    ML2 = rgrid%NumGrid(2)
-    ML3 = rgrid%NumGrid(3)
+    ML1 = rgrid%g3%x%size_global
+    ML2 = rgrid%g3%y%size_global
+    ML3 = rgrid%g3%z%size_global
 
-    allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0
-
-    i=rgrid%SubGrid(1,0)-1
-    do i3=rgrid%SubGrid(1,3),rgrid%SubGrid(2,3)
-    do i2=rgrid%SubGrid(1,2),rgrid%SubGrid(2,2)
-    do i1=rgrid%SubGrid(1,1),rgrid%SubGrid(2,1)
-       i=i+1
-       LLL(i1,i2,i3) = i
-    end do
-    end do
-    end do
-
-    call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER &
-         ,MPI_SUM, comm_grid, i )
+    call get_map_3d_to_1d( LLL )
 
 ! ---
 
@@ -142,25 +130,26 @@ CONTAINS
 
 ! ---
 
-    m1 = rgrid%SubGrid(1,0)
-    m2 = rgrid%SubGrid(2,0)
-    n1 = rho%n0
-    n2 = rho%n1
+    m1 = pot%xc%g_range%head
+    m2 = pot%xc%g_range%tail
+    n1 = pot%xc%s_range%head
+    n2 = pot%xc%s_range%tail
+    mm = pot%xc%g_range%size_global
 
-    allocate( vx(m1:m2,n1:n2)          ) ; vx=0.0d0
-    allocate( rtmp(m1:m2)              ) ; rtmp=0.0d0
-    allocate( rrrr(rgrid%NumGrid(0),3) ) ; rrrr=0.0d0
+    allocate( vx(m1:m2,n1:n2) ) ; vx=0.0d0
+    allocate( rtmp(m1:m2) ) ; rtmp=0.0d0
+    allocate( rrrr(mm,3) ) ; rrrr=0.0d0
 
     Ex = 0.0d0
 
     factor = 1.0d0
-    if ( rho%nn == 2 ) factor = 2.0d0
+    if ( rho%s_range%size_global == 2 ) factor = 2.0d0
 
     do s=n1,n2
 
        do i=m1,m2
 
-          trho = factor*rho%rho(i,s)
+          trho = factor*rho%val(i,s)
           if ( trho <= zero_density ) cycle
 
           kf = (3.0d0*Pi*Pi*trho)**(1.0d0/3.0d0)
@@ -438,13 +427,13 @@ CONTAINS
 
 ! ---
 
-    sb(1)=Ex*rgrid%dV
+    sb(1)=Ex*rgrid%VolumeElement
     call MPI_ALLREDUCE( sb, rb, 1, MPI_REAL8, MPI_SUM, comm_grid, i )
 
     Ex = rb(1)/factor
 
-    gga%Ex = Ex
-    gga%Vx(:,:) = vx(:,:)
+    ene%Ex = Ex
+    pot%x%val(:,:) = vx(:,:)
 
 ! ---
 

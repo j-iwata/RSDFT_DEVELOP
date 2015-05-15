@@ -2,30 +2,53 @@ MODULE grid_module
 
   use rgrid_variables
   use parallel_module
+  use BasicTypeFactory
 
   implicit none
 
   PRIVATE
-  PUBLIC :: grid, init_grid
+  PUBLIC :: grid, get_range_rgrid
   PUBLIC :: get_map_3d_to_1d
 
   type grid
-     integer :: NumGrid(0:3)
-     integer :: SubGrid(2,0:3)
-     real(8) :: SizeGrid(3)
-     real(8) :: dV
+     type( ArrayRange1D ) :: g1
+     type( ArrayRange3D ) :: g3
+     real(8) :: spacing(3)
+     real(8) :: VolumeElement
   end type grid
 
 CONTAINS
 
-  SUBROUTINE init_grid( g )
+  SUBROUTINE get_range_rgrid( rgrid )
     implicit none
-    type(grid) :: g
-    g%NumGrid(0:3)  = Ngrid(0:3)
-    g%SizeGrid(1:3) = Hgrid(1:3)
-    g%SubGrid(1:2,0:3) = Igrid(1:2,0:3)
-    g%dV = dV
-  END SUBROUTINE init_grid
+    type(grid) :: rgrid
+    rgrid%g1%head = Igrid(1,0)
+    rgrid%g1%tail = Igrid(2,0)
+    rgrid%g1%size = Igrid(2,0)-Igrid(1,0)+1
+    rgrid%g1%head_global = 1
+    rgrid%g1%tail_global = Ngrid(0)
+    rgrid%g1%size_global = Ngrid(0)
+    rgrid%g3%x%head = Igrid(1,1)
+    rgrid%g3%x%tail = Igrid(2,1)
+    rgrid%g3%x%size = Igrid(2,1)-Igrid(1,1)+1
+    rgrid%g3%y%head = Igrid(1,2)
+    rgrid%g3%y%tail = Igrid(2,2)
+    rgrid%g3%y%size = Igrid(2,2)-Igrid(1,2)+1
+    rgrid%g3%z%head = Igrid(1,3)
+    rgrid%g3%z%tail = Igrid(2,3)
+    rgrid%g3%z%size = Igrid(2,3)-Igrid(1,3)+1
+    rgrid%g3%x%head_global = 0
+    rgrid%g3%x%tail_global = Ngrid(1)-1
+    rgrid%g3%x%size_global = Ngrid(1)
+    rgrid%g3%y%head_global = 0
+    rgrid%g3%y%tail_global = Ngrid(2)-1
+    rgrid%g3%y%size_global = Ngrid(2)
+    rgrid%g3%z%head_global = 0
+    rgrid%g3%z%tail_global = Ngrid(3)-1
+    rgrid%g3%z%size_global = Ngrid(3)
+    rgrid%spacing(1:3) = Hgrid(1:3)
+    rgrid%VolumeElement = dV
+  END SUBROUTINE get_range_rgrid
 
   SUBROUTINE get_map_3d_to_1d( LLL )
      implicit none
@@ -43,6 +66,5 @@ CONTAINS
      end do
      call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER, MPI_SUM, comm_grid, ierr )
   END SUBROUTINE get_map_3d_to_1d
-
 
 END MODULE grid_module

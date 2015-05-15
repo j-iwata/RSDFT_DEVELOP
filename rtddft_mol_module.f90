@@ -2,7 +2,7 @@ MODULE rtddft_mol_module
 
   use wf_module
   use rgrid_mol_module, only: Hsize, LL
-  use grid_module
+  use grid_module, only: grid, get_range_rgrid
   use hamiltonian_module
   use parallel_module
   use density_module
@@ -117,7 +117,7 @@ CONTAINS
     ct(:)=0.0d0
     et(:)=0.0d0
 
-    call init_grid( rgrid )
+    call get_range_rgrid( rgrid )
 
     allocate( dipole(0:3,0:tddft%nt) ) ; dipole=0.0d0
     allocate( tpsi(ML_0_WF:ML_1_WF) ) ; tpsi=zero
@@ -144,7 +144,7 @@ CONTAINS
 
     if ( iswitch_tddft == 1 ) then
 
-       call calc_dipole( dipole(0,0), rgrid%dV )
+       call calc_dipole( dipole(0,0), rgrid%VolumeElement )
 
        if ( disp_sw ) then
           write(*,'(6f16.10,1x,2f10.5)') &
@@ -187,7 +187,7 @@ CONTAINS
        call calc_xc
        call calc_total_energy( .true., .false., 0 )
 
-       call calc_dipole( dipole(0,it), rgrid%dV )
+       call calc_dipole( dipole(0,it), rgrid%VolumeElement )
 
        call watch(ct(1),et(1))
        call global_watch( .false., flag_end )
