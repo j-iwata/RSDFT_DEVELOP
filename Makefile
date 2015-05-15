@@ -1,12 +1,8 @@
 include make.inc
 
-MODS1 = global_variables.o \
-        scf_module.o \
-        band_module.o \
-        atomopt_module.o \
-
 ########################################################################
 ########################################################################
+include makefile.common
 
 DIR1 = ext1
 MINPACOBJ  = $(DIR1)/ext_sub_minpac.o
@@ -71,14 +67,14 @@ lda0 : $(MODS1)
 
 re:
 	@echo '#!/bin/sh' > make_tmp.sh
-	@$(MAKE) -f makefile.old -n | grep mpif90 | grep I >> make_tmp.sh
+	@$(MAKE) -f makefile.simple -n | grep mpif90 | grep I >> make_tmp.sh
 	@cat make_tmp.sh | grep -v bin
 	@chmod u+x make_tmp.sh
 	@./make_tmp.sh
 	@rm make_tmp.sh
 	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(OBJ_ALL) -o realspace.x
 
-include makefile.dep.common
+include makefile.common.dep
 
 clean :
 	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog

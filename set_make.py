@@ -10,6 +10,50 @@ import math
 import itertools
 from numpy import array
 
+def rmItemsFromList( items, lists ):
+  for item in items:
+    try:
+      lists.remove( item )
+    except ValueError:
+      pass
+def add( name, catagory_list ):
+  if name not in catagory_list:
+    catagory_list.append( name )
+def writeList( f, list ):
+  for item in list:
+    f.write( ' {0:}\n'.format(item) )
+def findKeyword( keyword, data, startline ):
+  for idx in xrange(startline,len(data)):
+    items = data[idx].split()
+    try:
+      if items[0].lower() == keyword.lower():
+        itemname = items[1].split(",")[0].split("(")[0]
+        return [itemname,idx+1]
+    except IndexError:
+      pass
+  return ['',len(data)]
+def findUse( source, idx, data ):
+  findline = 0
+  while findline < len( data ):
+    usename = ''
+    [usename, findline] = findKeyword( 'use', data, findline )
+    if usename is not '':
+      source.addUse( usename )
+def findSubroutine( source, idx,data ):
+  findline = 0
+  while findline < len(data):
+    subroutinename = ''
+    [subroutinename, findline] = findKeyword( 'subroutine', data, findline )
+    if subroutinename is not '':
+      source.addSubroutine(subroutinename)
+def findCall( source, idx, data ):
+  findline = 0
+  while findline < len(data):
+    callname=''
+    [callname, findline] = findKeyword( 'call', data, findline )
+    if callname is not '':
+      source.addCall(callname)
+
 class ModuleFile:
   def __init__( self, file_name, module_name ):
     self.file_name       = file_name
@@ -20,26 +64,20 @@ class ModuleFile:
     self.contains_mpi    = False
     self.hierarchy_level = 0
   def addUse( self, use_name ):
-    if use_name not in self.use_list:
-      self.use_list.append( use_name )
+    add( use_name, self.use_list )
   def addSubroutine( self, subroutine_name ):
-    if subroutine_name not in self.subroutine_list:
-      self.subroutine_list.append( subroutine_name )
+    add( subroutine_name, self.subroutine_list )
   def addCall( self, call_name ):
-    if call_name not in self.call_list:
-      self.call_list.append( call_name )
+    add( call_name, self.call_list )
   def getMPI( self ):
     tmp = []
     for item in self.call_list:
       if item.lower().startswith( 'mpi_' ):
         tmp.append( item )
         self.contains_mpi = True
-    for item in tmp:
-      self.call_list.remove( item )
+    rmItemsFromList( tmp, self.call_list )
   def rmSelfSubroutines( self ):
-    for item in self.subroutine_list:
-      if item in self.call_list:
-         self.call_list.remove( item )
+    rmItemsFromList( self.subroutine_list, self.call_list )
   def isElementaryModule( self ):
     if not self.use_list:
       self.hierarchy_level = 1
@@ -55,7 +93,7 @@ class ModuleFile:
   def objectFilename( self ):
     return self.file_name.split( '.' )[0] + '.o'
   def writeDependency( self ):
-    with open( make_common, 'a' ) as f:
+    with open( make_common_dep, 'a' ) as f:
       basename = self.file_name.split( '.' )[0]
       f.write( self.module_name.lower() + '.mod: ' + basename + '.o' + '\n' )
       f.write( '	@true\n' )
@@ -70,10 +108,10 @@ class ModuleFile:
       f.write( '\n' )
   def show( self, filename ):
     with open(filename,'a') as f:
-      f.write( '<file_name>   : ' + self.file_name + '\n' )
-      f.write( '<module_name> : ' + self.module_name + '\n' )
-      f.write( '<hierarchy_level> : ' + str(self.hierarchy_level) + '\n' )
-      f.write( '<this module contains MPI calls> : ' + str(self.contains_mpi) + '\n' )
+      f.write( '<file_name>       :  {0:}\n'.format(self.file_name) )
+      f.write( '<module_name>     :  {0:}\n'.format(self.module_name) )
+      f.write( '<hierarchy_level> :  {0:}\n'.format(self.hierarchy_level) )
+      f.write( '<this module contains MPI calls> : {0:}\n'.format(self.contains_mpi) )
       f.write( '<this module use the following modules> :\n' )
       if not self.use_list:
         f.write( ' NONE\n' )
@@ -91,49 +129,16 @@ class ModuleFile:
         writeList( f, self.call_list )
       f.write( '\n' )
 
-def writeList( f, list ):
-  for item in list:
-    f.write( ' ' + item + '\n' )
-def findKeyword( keyword, data, startline ):
-  for idx in xrange(startline,len(data)):
-    itemlist = data[idx].split()
-    if len(itemlist) == 0:
-      continue
-    if itemlist[0].lower() == keyword:
-      itemname = itemlist[1].split(",")[0].split("(")[0]
-      return [itemname,idx+1]
-  return ['',len(data)]
-def findUse( source_list, idx, data ):
-  findline = 0
-  while findline < len(data):
-    usename = ''
-    [usename,findline] = findKeyword( 'use', data, findline )
-    if usename is not '':
-      source_file[idx].addUse( usename )
-def findSubroutine( source_list, idx,data ):
-  findline = 0
-  while findline < len(data):
-    subroutinename = ''
-    [subroutinename,findline] = findKeyword( 'subroutine', data, findline )
-    if subroutinename is not '':
-      source_file[idx].addSubroutine(subroutinename)
-def findCall( source_list, idx, data ):
-  findline = 0
-  while findline < len(data):
-    callname=''
-    [callname,findline] = findKeyword( 'call', data, findline )
-    if callname is not '':
-      source_file[idx].addCall(callname)
 
-DIRNAME=os.getcwd()
-#MD_DIRNAME=DIRNAME+'/mdsource'
-FILES=os.listdir(DIRNAME)
-#MDFILES=os.listdir(MD_DIRNAME)
-make_common='makefile.dep.common'
-make_common_obj='makefile.common'
+DIRNAME     = os.getcwd()
+MD_DIRNAME  = DIRNAME+'/mdsource'
+FILES       = os.listdir(DIRNAME)
+MDFILES     = os.listdir(MD_DIRNAME)
+make_common_dep ='makefile.common.dep'
+make_common     ='makefile.common'
 with open(make_common,'w') as f:
   pass
-with open(make_common_obj,'w') as f:
+with open(make_common_dep,'w') as f:
   pass
 
 #----- get src files
@@ -162,19 +167,18 @@ with open('src.log','w') as f:
   pass
 for idx,filename in enumerate(filelist):
   with open(filename,'r') as f:
-    data=f.readlines()
-
+    data = f.readlines()
   modulename = ''
   lastline   = 0
   [modulename,lastline] = findKeyword( 'module', data, 0 )
   if modulename is '':
     [modulename,lastline] = findKeyword( 'program', data, 0 )
-  source_file.append(ModuleFile(filename,modulename))
+  source_file.append( ModuleFile(filename, modulename) )
   dic_source[modulename] = idx
 
-  findUse( source_file, idx, data )
-  findSubroutine( source_file, idx, data )
-  findCall( source_file, idx, data )
+  findUse( source_file[idx], idx, data )
+  findSubroutine( source_file[idx], idx, data )
+  findCall( source_file[idx], idx, data )
 
   source_file[idx].getMPI()
   source_file[idx].rmSelfSubroutines()
@@ -209,13 +213,18 @@ print "raw dependency       : 'src.log'"
 print "leveled dependency   : 'dep.log'"
 
 print "-----generating makefile.common-----"
-print "dependency for make  : " + make_common
-print "dependency for make  : " + make_common_obj
+print "dependency for make  : " + make_common_dep
+print "common for make      : " + make_common
 for classModule in leveled_file:
   classModule.writeDependency()
-with open( make_common, 'w' ) as f:
+with open( make_common, 'a' ) as f:
   f.write( 'OBJ_ALL = \\\n' )
-  for classModule in leveled_file[:]:
+  for classModule in leveled_file:
+    f.write( '       ' + classModule.objectFilename() + '\\\n' )
+  f.write( '\n' )
+with open( make_common, 'a' ) as f:
+  f.write( 'MODS1 = \\\n' )
+  for classModule in leveled_file[:-1]:
     f.write( '       ' + classModule.objectFilename() + '\\\n' )
   f.write( '\n' )
 sys.exit()
