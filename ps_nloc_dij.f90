@@ -20,7 +20,8 @@ CONTAINS
 
     select case ( pselect )
     case ( 2 )
-      stop 'not implemented yet'
+       return
+!      stop 'not implemented yet'
     case ( 102 )
 !!write(8600+myrank,*) repeat('-',60)
 !write(8700+myrank,*) repeat('-',60)

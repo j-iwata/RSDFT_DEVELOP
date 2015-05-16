@@ -334,7 +334,7 @@ CONTAINS
 
     call send_pseudopot(rank)
 #ifdef _USPP_
-    call sendPSG(rank,Nelement_PP)
+    if ( all(ippform == 102) ) call sendPSG(rank,Nelement_PP)
 #endif
 
 !    call chk_pot(1,rank)
