@@ -1,25 +1,21 @@
 MODULE xc_module
 
-  use rgrid_module
+  use rgrid_module, only: Igrid,Ngrid,Hgrid,dV
   use density_module, only: rho, get_range_density
-  use ps_pcc_module
-  use parallel_module
-  use array_bound_module, only: ML_0,ML_1,MSP,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1
-  use xc_pw92_gth_module
-  use watch_module
-  use aa_module
-  use bb_module
-  use bc_module
+  use ps_pcc_module, only: flag_pcc_0, rhoc
+  use parallel_module, only: comm_grid, mpi_real8, mpi_integer, mpi_sum
+  use array_bound_module, only: MSP,MSP_0,MSP_1,MB_0,MB_1,MBZ_0,MBZ_1
   use kinetic_module, only: SYStype
   use kinetic_variables, only: Md
-  use fd_module
 
   use grid_module, only: grid, get_range_rgrid
   use xc_variables, only: xcpot, xcene
+
   use xc_ldapz81_module
+  use xc_pw92_gth_module
   use xc_ggapbe96_module
   use xc_ggapbe96_2_module
-  use xc_hybrid_module
+  use xc_hybrid_module, only: iflag_hybrid,iflag_hse,alpha_hf
   use xc_hse_module
   use xc_pbe_xsr_module
   use xc_hf_module
@@ -27,6 +23,7 @@ MODULE xc_module
 
   use BasicTypeFactory
   use BasicTypeMethods
+  use IOTools
 
   implicit none
 
@@ -46,25 +43,12 @@ MODULE xc_module
 CONTAINS
 
 
-  SUBROUTINE read_xc(rank,unit)
+  SUBROUTINE read_xc( rank, unit )
     implicit none
     integer,intent(IN) :: rank,unit
-    integer :: i
-    character(6) :: cbuf,ckey
     if ( rank == 0 ) then
        XCtype = "LDAPZ81"
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey == "XCTYPE" ) then
-             backspace(unit)
-             read(unit,*) cbuf,XCtype
-             exit
-          end if
-       end do
-999    continue
-       write(*,*) "XCtype= ",XCtype
+       call IOTools_readStringKeyword( "XCTYPE", unit, XCtype )
     end if
     call send_xc(0)
   END SUBROUTINE read_xc
@@ -151,7 +135,7 @@ CONTAINS
 
     real(8),allocatable :: rho_tmp(:,:)
     real(8) :: c,mu,kappa
-    integer :: s,ML_0,ML_1,MS_0,MS_1,MSP
+    integer :: s,ML_0,ML_1,MSP_0,MSP_1,MSP
     type( GSarray ) :: density
     type( grid ) :: rg
     type( xcpot ) :: pot
@@ -173,12 +157,12 @@ CONTAINS
 
     ML_0 = pot%xc%g_range%head
     ML_1 = pot%xc%g_range%tail
-    MS_0 = pot%xc%s_range%head
-    MS_1 = pot%xc%s_range%tail
+    MSP_0 = pot%xc%s_range%head
+    MSP_1 = pot%xc%s_range%tail
     MSP  = pot%xc%s_range%size_global
 
     if ( .not.allocated(Vxc) ) then
-       allocate( Vxc(ML_0:ML_1,MS_0:MS_1) )
+       allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
        Vxc=0.0d0
     end if
 
