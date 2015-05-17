@@ -108,7 +108,7 @@ CONTAINS
     write(*,*) "rtddft_mol is available only for COMPLEX16 calculations"
     return
 
-#else _DRSDFT_
+#elif defined _DRSDFT_
 
     call write_border(40," rtddft_mol(start)")
     call check_disp_switch( disp_sw, 0 )
