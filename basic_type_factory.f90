@@ -1,6 +1,8 @@
 MODULE BasicTypeFactory
   implicit none
   PRIVATE
+  PUBLIC :: getSize1D
+  PUBLIC :: getSize3D
 
   type,PUBLIC :: ArrayRange1D
     sequence
@@ -19,13 +21,19 @@ MODULE BasicTypeFactory
     type ( ArrayRange1D ) :: z
     integer :: size
   end type ArrayRange3D
+
+  type,PUBLIC :: ArrayRange2D
+    sequence
+    type ( ArrayRange1D ) :: r(1:2)
+    integer :: size
+  end type ArrayRange2D
   
   type,PUBLIC :: Array1D
     sequence
 #ifdef REAL_VER
-    double precision,allocatable :: array(:)
-#elif defined COMPLEX_VER
-    complex(kind(0d0)),allocatable :: array(:)
+    double precision,allocatable :: val(:)
+#else
+    complex(kind(0d0)),allocatable :: val(:)
 #endif
     type ( ArrayRange1D ) :: s_range
     type ( ArrayRange1D ) :: p_range
@@ -34,9 +42,9 @@ MODULE BasicTypeFactory
   type,PUBLIC :: Array3D
     sequence
 #ifdef REAL_VER
-    double precision,allocatable :: array(:,:,:)
-#elif defined COMPLEX_VER
-    complex(kind(0d0)),allocatable :: array(:,:,:)
+    double precision,allocatable :: val(:,:,:)
+#else
+    complex(kind(0d0)),allocatable :: val(:,:,:)
 #endif
     type ( ArrayRange3D ) :: s_range
     type ( ArrayRange3D ) :: p_range
@@ -44,28 +52,28 @@ MODULE BasicTypeFactory
 
   type,PUBLIC :: rArray1D
     sequence
-    double precision,allocatable :: array(:)
+    double precision,allocatable :: val(:)
     type ( ArrayRange1D ) :: s_range
     type ( ArrayRange1D ) :: p_range
   end type rArray1D
 
   type,PUBLIC :: rArray3D
     sequence
-    double precision,allocatable :: array(:,:,:)
+    double precision,allocatable :: val(:,:,:)
     type ( ArrayRange3D ) :: s_range
     type ( ArrayRange3D ) :: p_range
   end type rArray3D
 
   type,PUBLIC :: cArray1D
     sequence
-    complex(kind(0d0)),allocatable :: array(:)
+    complex(kind(0d0)),allocatable :: val(:)
     type ( ArrayRange1D ) :: s_range
     type ( ArrayRange1D ) :: p_range
   end type cArray1D
 
   type,PUBLIC :: cArray3D
     sequence
-    complex(kind(0d0)),allocatable :: array(:,:,:)
+    complex(kind(0d0)),allocatable :: val(:,:,:)
     type ( ArrayRange3D ) :: s_range
     type ( ArrayRange3D ) :: p_range
   end type cArray3D
@@ -110,4 +118,17 @@ MODULE BasicTypeFactory
      complex(kind(0d0)),allocatable :: val(:,:,:,:)
   end type cGBKSArray
 
+CONTAINS
+  SUBROUTINE getSize1D( range )
+    type( ArrayRange1D ) :: range
+    range%size = range%tail - range%head + 1
+  END SUBROUTINE getSize1D
+
+  SUBROUTINE getSize3D( range )
+    type( ArrayRange3D ) :: range
+    range%x%size = range%x%tail - range%x%head + 1
+    range%y%size = range%y%tail - range%y%head + 1
+    range%z%size = range%z%tail - range%z%head + 1
+    range%size =  range%x%size * range%y%size * range%z%size
+  END SUBROUTINE getSize3D
 END MODULE BasicTypeFactory

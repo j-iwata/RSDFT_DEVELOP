@@ -11,3 +11,5 @@ RSDFT_INFO*
 *.log
 *.optlog
 maketimer
+*.i90
+*.i

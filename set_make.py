@@ -32,21 +32,21 @@ def findKeyword( keyword, data, startline ):
     except IndexError:
       pass
   return ['',len(data)]
-def findUse( source, idx, data ):
+def findUse( source, data ):
   findline = 0
   while findline < len( data ):
     usename = ''
     [usename, findline] = findKeyword( 'use', data, findline )
     if usename is not '':
       source.addUse( usename )
-def findSubroutine( source, idx,data ):
+def findSubroutine( source, data ):
   findline = 0
   while findline < len(data):
     subroutinename = ''
     [subroutinename, findline] = findKeyword( 'subroutine', data, findline )
     if subroutinename is not '':
       source.addSubroutine(subroutinename)
-def findCall( source, idx, data ):
+def findCall( source, data ):
   findline = 0
   while findline < len(data):
     callname=''
@@ -152,12 +152,13 @@ print '<total number of source file> : ' + str(num_files)
 
 #----- get relationship
 count = 0
-# source_file is the raw data
-source_file  = []
+# module_file is the raw data
+module_file  = []
 # leveled_file will be appended according to the hierarchy level of the module
 leveled_file = []
-# dic_source is used for linking the module name and it's index
-dic_source   = {}
+# dic_module is used for linking the module name and it's index
+dic_module   = {}
+program_file = []
 
 print "-----started raw reading-----"
 #----- clean previous files
@@ -165,42 +166,57 @@ with open('dep.log','w') as f:
   pass
 with open('src.log','w') as f:
   pass
-for idx,filename in enumerate(filelist):
+for filename in filelist:
   with open(filename,'r') as f:
     data = f.readlines()
   modulename = ''
   lastline   = 0
   [modulename,lastline] = findKeyword( 'module', data, 0 )
-  if modulename is '':
-    [modulename,lastline] = findKeyword( 'program', data, 0 )
-  source_file.append( ModuleFile(filename, modulename) )
-  dic_source[modulename] = idx
+  if modulename == '':
+#    [modulename, lastline] = findKeyword( 'program', data, 0 )
+    if modulename == '':
+      continue
+  module_file.append( ModuleFile(filename, modulename) )
+  dic_module[modulename] = len(module_file) - 1
 
-  findUse( source_file[idx], idx, data )
-  findSubroutine( source_file[idx], idx, data )
-  findCall( source_file[idx], idx, data )
+  findUse( module_file[-1], data )
+  findSubroutine( module_file[-1], data )
+  findCall( module_file[-1], data )
 
-  source_file[idx].getMPI()
-  source_file[idx].rmSelfSubroutines()
-  dummy=source_file[idx].isElementaryModule()
-  source_file[idx].show('src.log')
+  module_file[-1].getMPI()
+  module_file[-1].rmSelfSubroutines()
+  dummy=module_file[-1].isElementaryModule()
+  module_file[-1].show('src.log')
+
+for filename in filelist:
+  with open( filename, 'r' ) as f:
+    data = f.readlines()
+  programname = ''
+  lastline    = 0
+  [programname, lastline] = findKeyword( 'program', data, 0 )
+  program_file.append( ModuleFile(filename, programname ) )
+
+  findUse( program_file[-1], data )
+  findCall( program_file[-1], data )
+  program_file[-1].getMPI()
+  program_file[-1].show('src.log')
 
 print "-----finished raw reading-----"
 print "-----generating hierarchy-----"
 
 i = 0
 while i < 100:
-  for classModule in source_file:
+  for classModule in module_file:
     if classModule.isElementaryModule():
       continue
     for usedModule in classModule.use_list:
-      if source_file[dic_source[usedModule]].getHierarchyLevel() < 100:
-        classModule.raiseHierarchyLevel(source_file[dic_source[usedModule]])
+      if module_file[dic_module[usedModule]].getHierarchyLevel() < 100:
+        classModule.raiseHierarchyLevel(module_file[dic_module[usedModule]])
   i += 1
 
 i = 0
 while i < 100:
-  for classModule in source_file:
+  for classModule in module_file:
     if classModule.getHierarchyLevel() is i:
 # append to leveled_file according to hierarchy level from small
       leveled_file.append(classModule)
@@ -218,15 +234,13 @@ print "common for make      : " + make_common
 for classModule in leveled_file:
   classModule.writeDependency()
 with open( make_common, 'a' ) as f:
-  f.write( 'OBJ_ALL = \\\n' )
-  for classModule in leveled_file:
-    f.write( '       ' + classModule.objectFilename() + '\\\n' )
-  f.write( '\n' )
-with open( make_common, 'a' ) as f:
   f.write( 'MODS1 = \\\n' )
-  for classModule in leveled_file[:-1]:
+  for classModule in leveled_file[:]:
     f.write( '       ' + classModule.objectFilename() + '\\\n' )
   f.write( '\n' )
 sys.exit()
-for classModule in source_file:
+for program in program_file:
+  program.writeDependency()
+sys.exit()
+for classModule in module_file:
   print classModule.module_name+' '+str(classModule.getHierarchyLevel())
