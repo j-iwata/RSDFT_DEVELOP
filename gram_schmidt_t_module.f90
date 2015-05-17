@@ -4,12 +4,10 @@ MODULE gram_schmidt_t_module
   use wf_module, only: unk,hunk,iflag_hunk
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module
-
-!--------------------------------------------------------------------------- 20140507 HL
+  use VarSysParameter, only: pp_kind
 #ifdef _USPP_
-    use GramSchmidt_G, only: GramSchmidtG
+  use GramSchmidt_G, only: GramSchmidtG
 #endif
-!=========================================================================== 20140507 HL
 
   implicit none
 
@@ -62,7 +60,8 @@ CONTAINS
     call send_gram_schmidt_t(0)
   END SUBROUTINE read_gram_schmidt_t
 
-!---------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
   SUBROUTINE read_oldformat_gram_schmidt_t(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -73,7 +72,8 @@ CONTAINS
     call send_gram_schmidt_t(0)
   END SUBROUTINE read_oldformat_gram_schmidt_t
 
-!---------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
   SUBROUTINE send_gram_schmidt_t(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -83,21 +83,21 @@ CONTAINS
     call mpi_bcast(NBLK1,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_gram_schmidt_t
 
-!---------------------------------------------------------------------------------------
-!--------------------------------------------------------------------------- 20140507 HL
-#ifdef _USPP_
-  SUBROUTINE gram_schmidt_t(n,nb,k,s)
-    implicit none
-    integer,intent(IN) :: n,nb,k,s
-    call GramSchmidtG(n,nb,k,s,NBLK,NBLK1)
-  END SUBROUTINE gram_schmidt_t
-#else
+!-----------------------------------------------------------------------
+
   SUBROUTINE gram_schmidt_t(n0,n1,k,s)
     implicit none
     integer,intent(IN) :: n0,n1,k,s
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
     integer,allocatable :: ir(:),id(:)
+
+#ifdef _USPP_
+    if ( pp_kind == "USPP" ) then
+       call GramSchmidtG(n0,n1,k,s,NBLK,NBLK1)
+       return
+    end if
+#endif
 
     ML0   = ML_1-ML_0+1
     mrnk  = id_class(myrank,4)
@@ -167,7 +167,8 @@ CONTAINS
 
   END SUBROUTINE gram_schmidt_t
 
-!---------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
   RECURSIVE SUBROUTINE gram_schmidt_sub(mm1,mm2,nn1,nn2,MBLK,k,s)
     implicit none
     integer,intent(IN) :: mm1,mm2,nn1,nn2,MBLK,k,s
@@ -324,7 +325,5 @@ CONTAINS
     return
 
   END SUBROUTINE gram_schmidt_sub
-#endif
-!=========================================================================== 20140507 HL
 
 END MODULE gram_schmidt_t_module

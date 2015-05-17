@@ -15,8 +15,10 @@ MODULE pseudopotentials
   use PSQRijPrep, only: prepQRijp102
   use PSnonLocPrepG, only: prepNzqr
 #endif
-
   use parallel_module, only: myrank
+  use VarSysParameter, only: pp_kind
+  use VarPSMember, only: ippform
+
   implicit none
 
 CONTAINS
@@ -40,6 +42,14 @@ CONTAINS
 !      call normalize_density
 !    end if
 !    call destruct_strfac
+
+!----
+
+    if ( all(ippform < 100) ) then
+       pp_kind="NCPP"
+    else
+       pp_kind="USPP"
+    end if
 
 !----------------------------------------- PSELECT
     select case( pselect )

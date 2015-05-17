@@ -14,7 +14,7 @@ MODULE total_energy_module
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
-  use VarSysParameter
+  use VarSysParameter, only: pp_kind
   use vdw_grimme_module, only: get_E_vdw_grimme
 
   implicit none
@@ -129,32 +129,40 @@ enddo
           esp0(i,k,s,2)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
           end do
+
 !---------------------------------------------------- nonlocal
-          if (pp_kind=='USPP') then
-            work=zero
-            work00=zero
-            call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
-            do i=nb1,nb2
+
+          if ( pp_kind == 'USPP' ) then
+
+             work=zero
+             work00=zero
+             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
+             do i=nb1,nb2
 #ifdef _DRSDFT_
-              esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
-              esp0_Q(i,k,s)=sum( unk(:,i,k,s)*work00(:,i-nb1+1) )*dV
+                esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
+                esp0_Q(i,k,s)=sum( unk(:,i,k,s)*work00(:,i-nb1+1) )*dV
 #else
-              esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
-              esp0_Q(i,k,s)=sum( conjg(unk(:,i,k,s))*work00(:,i-nb1+1) )*dV
+                esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
+                esp0_Q(i,k,s)=sum( conjg(unk(:,i,k,s))*work00(:,i-nb1+1) )*dV
 #endif
-            end do
-          elseif (pp_kind=='NCPP') then
-            work=zero
-            call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
-            do i=nb1,nb2
+             end do
+
+          else if ( pp_kind == 'NCPP' ) then
+
+             work=zero
+             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+             do i=nb1,nb2
 #ifdef _DRSDFT_
-              esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
+                esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
 #else
-              esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
+                esp0(i,k,s,3)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
-            enddo
-          endif
+             end do
+
+          end if
+
 !---------------------------------------------------- fock
+
           work=zero
           call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
 #ifdef _DRSDFT_
@@ -221,7 +229,9 @@ enddo
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
 
-#ifdef _USPP_
+    select case( pp_kind )
+    case( "USPP" )
+
     s0(:)=0.d0
     s1(:)=0.d0
     do s=MSP_0,MSP_1
@@ -233,7 +243,9 @@ enddo
 
     s0(:)=s0(:)*dV
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
-#else
+
+    case( "NCPP" )
+
     s0(:)=0.d0
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
@@ -252,7 +264,8 @@ enddo
     end do
     s0(:)=s0(:)*dV
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
-#endif
+
+    end select
 
     Eloc = s1(1)
     Eion = s1(2)

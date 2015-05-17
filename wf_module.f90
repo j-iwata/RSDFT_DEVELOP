@@ -134,8 +134,7 @@ CONTAINS
           do n=MB_0_WF,MB_1_WF
              do i=ML_0_WF,ML_1_WF
                 call random_number(u)
-!                unk(i,n,k,s)=dcmplx(u(1),u(2))
-                unk(i,n,k,s)=u(1)
+                unk(i,n,k,s)=dcmplx(u(1),u(2))
              end do
           end do
        end do

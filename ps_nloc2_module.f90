@@ -91,7 +91,7 @@ CONTAINS
     ctt=0.0d0 ; ett=0.0d0
     call watch(ctt(6),ett(6))
 
-! max atom*orb
+!------------------------------------------ max atom*orb
     Mlma=0
     do i=1,Natom
       ik=ki_atom(i)
@@ -99,8 +99,8 @@ CONTAINS
         Mlma=Mlma+2*lo(iorb,ik)+1
       end do
     end do
-!------------------------------------------ if no orb return
-    if ( Mlma <= 0 ) return
+    if ( Mlma <= 0 ) return   ! if no orb return
+!--------------------------------------------------------
 
     if ( .not.allocated(y2a) .and. all(ippform /= 4) ) then
        NRc=maxval(NRps)

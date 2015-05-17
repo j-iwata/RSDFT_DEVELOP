@@ -6,8 +6,8 @@ MODULE density_module
   USE BasicTypeFactory
 #ifdef _USPP_
   use WFDensityG, only: get_rhonks
-  use VarSysParameter, only: pp_kind
 #endif
+  use VarSysParameter, only: pp_kind
 
   implicit none
 
@@ -29,7 +29,8 @@ MODULE density_module
 
 CONTAINS
 
-!---------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
   SUBROUTINE get_range_density( g_range, s_range )
     implicit none
     type( ArrayRange1D ),intent(OUT) :: g_range,s_range
@@ -79,7 +80,8 @@ CONTAINS
 
   END SUBROUTINE init_density
 
-!---------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
   SUBROUTINE normalize_density
     implicit none
     real(8) :: c,d
@@ -91,8 +93,7 @@ CONTAINS
     rho=c*rho
   END SUBROUTINE normalize_density
 
-!---------------------------------------------------------------------------------------
-#ifdef _USPP_
+!-----------------------------------------------------------------------
 
   SUBROUTINE calc_density
     ! IN:	unk(:.n.k.s),ML_0,ML_1,MS_0,MS_1
@@ -101,10 +102,10 @@ CONTAINS
     integer :: n,k,s,i
     integer :: n1,n2,n0
     real(8),allocatable :: rhonks(:)
-
+#ifdef _USPP_
     select case ( pp_kind )
     case ( 'NCPP' )
-
+#endif
        rho(:,:)=0.0d0
        do s=MS_0_WF,MS_1_WF
           do k=MK_0_WF,MK_1_WF
@@ -113,7 +114,10 @@ CONTAINS
              end do
           end do
        end do
-
+       call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
+       call reduce_and_gather
+       call calc_sum_dspin
+#ifdef _USPP_
     case ( 'USPP' )
 
        n1 = ML_0_WF
@@ -133,35 +137,16 @@ CONTAINS
           end do
        end do
 
+       deallocate( rhonks )
+
+       call reduce_and_gather
+
     end select
-
-    call reduce_and_gather
-
-    deallocate( rhonks )
-
-  END SUBROUTINE calc_density
-
-#else
-
-  SUBROUTINE calc_density
-    implicit none
-    integer :: n,k,s
-    rho(:,:)=0.0d0
-    do s=MS_0_WF,MS_1_WF
-       do k=MK_0_WF,MK_1_WF
-          do n=MB_0_WF,MB_1_WF
-             rho(:,s)=rho(:,s)+occ(n,k,s)*abs( unk(:,n,k,s) )**2
-          end do
-       end do
-    end do
-    call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
-    call reduce_and_gather
-    call calc_sum_dspin
-  END SUBROUTINE calc_density
-
 #endif
+  END SUBROUTINE calc_density
 
-!---------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
   SUBROUTINE reduce_and_gather
     implicit none
     integer :: n,k,s,m,ierr

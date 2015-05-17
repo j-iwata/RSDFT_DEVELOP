@@ -270,16 +270,16 @@ CONTAINS
     do l=1,nl
        do j=1,nr(l)
           iorb=iorb+1
-#ifndef _USPP_
-          temp=sqrt( anorm(iorb,ielm) )
-#endif
-          do i=1,nsmpl
-#ifdef _USPP_
-             viod(i+1,iorb,ielm)=bet_(i,j,l)
-#else
-             viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
-#endif
-          end do
+          if ( ippform(ielm) < 100 ) then
+             temp=sqrt( anorm(iorb,ielm) )
+             do i=1,nsmpl
+                viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
+             end do
+          else
+             do i=1,nsmpl
+                viod(i+1,iorb,ielm)=bet_(i,j,l)
+             end do
+          end if
           viod(1,iorb,ielm)=0.d0
        end do
     end do

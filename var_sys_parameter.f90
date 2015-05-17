@@ -1,5 +1,7 @@
 MODULE VarSysParameter
+
   implicit none
+
 #ifdef _USPP_
   character(4) :: pp_kind='USPP'
 #else
@@ -16,17 +18,17 @@ MODULE VarSysParameter
 #endif
 
 CONTAINS
+
   SUBROUTINE setDispSwitch(myrank,nprocs)
     implicit none
     integer,intent(IN) :: myrank
     integer,intent(IN) :: nprocs
     isRootRank = (myrank==0)
     isTestRank = (myrank==testRank)
-    if (isParallelTest .and. nprocs>9) then
-      stop 'nprocs>9 is not suitable for parallel test'
-    endif
+    if ( isParallelTest .and. nprocs > 9 ) then
+       stop 'nprocs>9 is not suitable for parallel test'
+    end if
     return
   END SUBROUTINE setDispSwitch
-    
 
 END MODULE VarSysParameter
