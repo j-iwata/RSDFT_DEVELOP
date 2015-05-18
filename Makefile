@@ -52,7 +52,7 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 ########################################################################
 ########################################################################
 
-.PHONY: all clean re test runtest
+.PHONY: all clean re test runtest cleartest
 
 all :
 	@$(MAKE) lda0
