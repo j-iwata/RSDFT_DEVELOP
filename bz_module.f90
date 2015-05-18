@@ -94,7 +94,7 @@ CONTAINS
   SUBROUTINE generate_bz(disp_switch)
     implicit none
     logical,intent(IN) :: disp_switch
-    integer :: i,j,k,k1,iw,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
+    integer :: i,k,k1,iw,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
     integer,allocatable :: mm(:,:),m(:,:),w(:)
 
     if ( DISP_SWITCH ) then
@@ -183,8 +183,8 @@ CONTAINS
     real(8),intent(IN) :: rgb(3,3,nsym)
     logical,intent(IN) :: disp_switch
     integer,allocatable :: mm(:,:),m(:,:),w(:),w1(:),w2(:)
-    integer :: m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3),MBZ_tmp
-    integer :: i,j,k,k1,iw,n,nkmax,p3(3),ns,iqrt,ni,is,nni,ig,iqrt2
+    integer :: m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
+    integer :: i,k,k1,iw,nkmax,p3(3),ns,ni,is,nni,ig
     real(8) :: c,tmp(3)
 
     if ( disp_switch ) then

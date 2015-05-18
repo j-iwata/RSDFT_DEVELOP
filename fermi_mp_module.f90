@@ -99,7 +99,7 @@ CONTAINS
     real(8),intent(IN)  :: esp(MB,MBZ,MSP),wbz(MBZ),znel,dspn
     real(8),intent(OUT) :: occ(MB,MBZ,MSP)
     real(8) :: ef1,ef2,ef,ef0
-    integer :: ib,id,n,k,s,efconv,nn
+    integer :: id,n,k,s,efconv,nn
     real(8) :: zne,octmp,ff,xx
     real(8),parameter :: eps=0.d0
     integer,parameter :: mxcycl=1000
