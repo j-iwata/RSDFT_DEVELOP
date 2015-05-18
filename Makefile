@@ -52,7 +52,7 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 ########################################################################
 ########################################################################
 
-.PHONY: all clean re test
+.PHONY: all clean re test runtest
 
 all :
 	@$(MAKE) lda0
@@ -69,6 +69,7 @@ re:
 
 include makefile.common.program
 include makefile.common.dep
+include makefile.test
 
 clean :
 	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog *.i90
