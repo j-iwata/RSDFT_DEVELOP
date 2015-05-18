@@ -6,7 +6,7 @@ MODULE BasicTypeMethods
 
   PRIVATE
   PUBLIC :: allocateGS
-  PUBLIC :: allocateGSArray
+  PUBLIC :: allocateGSArray, allocateGSArray_v2
   PUBLIC :: allocateGBKS
   PUBLIC :: allocaterGBKS
   PUBLIC :: allocatecGBKS
@@ -30,6 +30,17 @@ CONTAINS
     n2=gs%s_range%tail
     allocate( gs%val(m1:m2,n1:n2) ) ; gs%val=0.0d0
   END SUBROUTINE allocateGSArray
+
+  SUBROUTINE allocateGSArray_v2( gs )
+    implicit none
+    type( GSArray_v2 ) :: gs
+    integer :: m1,m2,n1,n2
+    m1=gs%g_range%alloc%head
+    m2=gs%g_range%alloc%tail
+    n1=gs%s_range%alloc%head
+    n2=gs%s_range%alloc%tail
+    allocate( gs%val(m1:m2,n1:n2) ) ; gs%val=0.0d0
+  END SUBROUTINE allocateGSArray_v2
 
   SUBROUTINE allocateGS( gs )
     implicit none

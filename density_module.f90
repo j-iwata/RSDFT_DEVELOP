@@ -8,6 +8,8 @@ MODULE density_module
   use WFDensityG, only: get_rhonks
 #endif
   use VarSysParameter, only: pp_kind
+  use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
+                               ,get_spin_range_local, get_spin_range_globl
 
   implicit none
 
@@ -15,7 +17,7 @@ MODULE density_module
   PUBLIC :: init_density
   PUBLIC :: normalize_density
   PUBLIC :: calc_density
-  PUBLIC :: get_range_density
+  PUBLIC :: get_range_density, get_range_density_v2
 
   real(8),allocatable,PUBLIC :: rho(:,:)
   real(8),PUBLIC :: sum_dspin(2)
@@ -47,6 +49,21 @@ CONTAINS
     s_range%tail_global = MS_RHO
     s_range%size_global = MS_RHO
   END SUBROUTINE get_range_density
+
+  SUBROUTINE get_range_density_v2( g_range, s_range )
+    implicit none
+    type( pArrayRange1D ),intent(OUT) :: g_range,s_range
+    call get_grid_range_local( g_range%local )
+    call get_grid_range_globl( g_range%globl )
+    call get_spin_range_local( s_range%local )
+    call get_spin_range_globl( s_range%globl )
+    g_range%alloc%head = 1
+    g_range%alloc%tail = ML_RHO
+    call get_range_size( g_range%alloc )
+    s_range%alloc%head = 1
+    s_range%alloc%tail = MS_RHO
+    call get_range_size( s_range%alloc )
+  END SUBROUTINE get_range_density_v2
 
   SUBROUTINE init_density(Nelectron,dV)
     implicit none

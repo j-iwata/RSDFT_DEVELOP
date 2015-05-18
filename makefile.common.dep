@@ -250,7 +250,8 @@ aa_module.o: aa_module.f90 \
 array_bound_module.mod: array_bound_module.o
 	@true
 array_bound_module.o: array_bound_module.f90 \
-                 parallel_module.mod
+                 parallel_module.mod \
+                 basictypefactory.mod
 	$(FC) $(FFLAGS) -c array_bound_module.f90 -o $@
 
 esp_gather_module.mod: esp_gather_module.o
@@ -1056,7 +1057,8 @@ density_module.o: density_module.f90 \
                  symmetry_module.mod \
                  basictypefactory.mod \
                  wfdensityg.mod \
-                 varsysparameter.mod
+                 varsysparameter.mod \
+                 array_bound_module.mod
 	$(FC) $(FFLAGS) -c density_module.f90 -o $@
 
 xc_hybrid_module.mod: xc_hybrid_module.o
@@ -1133,6 +1135,7 @@ gram_schmidt_t_module.o: gram_schmidt_t_module.f90 \
                  wf_module.mod \
                  array_bound_module.mod \
                  parallel_module.mod \
+                 varsysparameter.mod \
                  gramschmidt_g.mod
 	$(FC) $(FFLAGS) -c gram_schmidt_t_module.f90 -o $@
 
@@ -1603,7 +1606,9 @@ pseudopotentials.o: pseudopotentials.f90 \
                  psqinit.mod \
                  psqrijprep.mod \
                  psnonlocprepg.mod \
-                 parallel_module.mod
+                 parallel_module.mod \
+                 varsysparameter.mod \
+                 varpsmember.mod
 	$(FC) $(FFLAGS) -c pseudopotentials.f90 -o $@
 
 esp_calc_module.mod: esp_calc_module.o

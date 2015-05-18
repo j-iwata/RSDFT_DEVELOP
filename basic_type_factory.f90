@@ -1,6 +1,9 @@
 MODULE BasicTypeFactory
+
   implicit none
+
   PRIVATE
+  PUBLIC :: get_range_size
 
   type,PUBLIC :: ArrayRange1D
     sequence
@@ -19,7 +22,32 @@ MODULE BasicTypeFactory
     type ( ArrayRange1D ) :: z
     integer :: size
   end type ArrayRange3D
-  
+
+  type,PUBLIC :: ArrayRange1D_v2
+    sequence
+    integer :: head
+    integer :: tail
+    integer :: size
+ end type ArrayRange1D_v2
+
+  type,PUBLIC :: ArrayRange3D_v2
+    sequence
+    type ( ArrayRange1D ) :: r(3)
+    integer :: size
+  end type ArrayRange3D_v2
+
+  type,PUBLIC :: pArrayRange1D
+     sequence
+     type( ArrayRange1D ) :: globl
+     type( ArrayRange1D ) :: local
+     type( ArrayRange1D ) :: alloc
+  end type pArrayRange1D
+
+  type,PUBLIC :: pArrayRange3D
+     sequence
+     type( pArrayRange1D ) :: r(3)
+  end type pArrayRange3D
+
   type,PUBLIC :: Array1D
     sequence
 #ifdef REAL_VER
@@ -79,6 +107,13 @@ MODULE BasicTypeFactory
      real(8),allocatable :: val(:,:)
   end type GSArray
 
+  type,PUBLIC :: GSArray_v2
+     sequence
+     type( pArrayRange1D ) :: g_range
+     type( pArrayRange1D ) :: s_range
+     real(8),allocatable :: val(:,:)
+  end type GSArray_v2
+
   type,PUBLIC :: GBKSArray
      sequence
      type( ArrayRange1D ) :: g_srange, g_prange
@@ -109,5 +144,13 @@ MODULE BasicTypeFactory
      type( ArrayRange1D ) :: s_srange, s_prange
      complex(kind(0d0)),allocatable :: val(:,:,:,:)
   end type cGBKSArray
+
+CONTAINS
+
+  SUBROUTINE get_range_size( a )
+    implicit none
+    type( ArrayRange1D ) :: a
+    a%size = a%tail - a%size + 1
+  END SUBROUTINE get_range_size
 
 END MODULE BasicTypeFactory
