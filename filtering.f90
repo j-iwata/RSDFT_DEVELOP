@@ -54,7 +54,7 @@ CONTAINS
        case(1)
           if ( r==0.d0 ) then
              tarIN(i)=0.d0
-             cycle	! i
+             cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
@@ -77,7 +77,7 @@ CONTAINS
        case(2)
           if ( r==0.d0 ) then
              tarIN(i)=0.d0
-             cycle	! i
+             cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
@@ -100,7 +100,7 @@ CONTAINS
        case(3)
           if ( r==0.d0 ) then
              tarIN(i)=0.d0
-             cycle	! i
+             cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
@@ -128,7 +128,7 @@ CONTAINS
        case(4)
           if ( r==0.d0 ) then
              tarIN(i)=0.d0
-             cycle	! i
+             cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
@@ -184,7 +184,7 @@ CONTAINS
     real(8),intent(IN)  :: f(n)
     real(8),intent(OUT) :: s
     real(8),allocatable :: g(:)
-    integer :: i,nn,nmax
+    integer :: i,nmax
     nmax=int(n/m)*m
     do i=0,m
        nmax=nmax+i ; if ( nmax>=n ) exit

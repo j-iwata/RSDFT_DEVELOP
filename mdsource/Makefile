@@ -27,5 +27,5 @@ OBJ = mnhc.o\
 all : $(MOBJ) $(OBJ)
 
 clean :
-	rm -r -f *.o *.mod mpif.h *.lst
+	rm -r -f *.o *.mod mpif.h *.lst *.optlog *.i90
 

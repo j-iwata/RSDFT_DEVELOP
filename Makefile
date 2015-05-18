@@ -52,32 +52,26 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 ########################################################################
 ########################################################################
 
-.PHONY: all clean re
+.PHONY: all clean re test
 
 all :
-	$(MAKE) lda0
+	@$(MAKE) lda0
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
 	cd $(DIR3) ; $(MAKE) -j1
-	$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(OBJ_ALL) -o realspace.x
+	$(FC) $(FFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(MODS1) realspace.f90 -o realspace.x
 
 lda0 : $(MODS1)
 
 re:
-	@echo '#!/bin/sh' > make_tmp.sh
-	@$(MAKE) -f makefile.simple -n | grep mpif90 | grep I >> make_tmp.sh
-	@cat make_tmp.sh | grep -v bin
-	@chmod u+x make_tmp.sh
-	@./make_tmp.sh
-	@rm make_tmp.sh
-	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(OBJ_ALL) -o realspace.x
+	$(MAKE) -f makefile.simple
 
+include makefile.common.program
 include makefile.common.dep
 
 clean :
-	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog
+	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog *.i90
 	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean
 	cd $(DIR3) ; $(MAKE) clean

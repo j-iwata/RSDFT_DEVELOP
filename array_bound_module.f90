@@ -41,7 +41,7 @@ CONTAINS
     type( ArrayRange1D ) :: g
     g%head = ML_0
     g%tail = ML_1
-    call get_range_size( g )
+    call getSize1D( g )
   END SUBROUTINE get_grid_range_local
 
   SUBROUTINE get_grid_range_globl( g )
@@ -49,7 +49,7 @@ CONTAINS
     type( ArrayRange1D ) :: g
     g%head = 1
     g%tail = ML
-    call get_range_size( g )
+    call getSize1D( g )
   END SUBROUTINE get_grid_range_globl
 
 
@@ -58,7 +58,7 @@ CONTAINS
     type( ArrayRange1D ) :: g
     g%head = MSP_0
     g%tail = MSP_1
-    call get_range_size( g )
+    call getSize1D( g )
   END SUBROUTINE get_spin_range_local
 
   SUBROUTINE get_spin_range_globl( g )
@@ -66,7 +66,7 @@ CONTAINS
     type( ArrayRange1D ) :: g
     g%head = 1
     g%tail = MSP
-    call get_range_size( g )
+    call getSize1D( g )
   END SUBROUTINE get_spin_range_globl
 
 

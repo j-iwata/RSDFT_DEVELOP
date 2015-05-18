@@ -4,8 +4,6 @@ include make.inc
 ########################################################################
 include makefile.common
 
-OBJ1 = realspace.o
-
 DIR1 = ext1
 MINPACOBJ  = $(DIR1)/ext_sub_minpac.o
 
@@ -54,9 +52,8 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 ########################################################################
 ########################################################################
 
-all : lda0 lda1 lda2 lda3 lda4 lda
-	$(FC) $(LFLAGS) $(MODS1) $(EXTOBJ2) $(MINPACOBJ) \
-                        $(MDOBJ) $(FFTOBJ) $(LAPACK_L)
+all : lda0 lda1 lda2 lda3 lda4
+	$(FC) $(FFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(MODS1) realspace.f90 -o realspace.x
 
 lda0 : $(MODS1)
 
@@ -68,13 +65,3 @@ lda3 :
 	cd $(DIR3) ; $(MAKE)
 lda4 :
 	cd $(DIR4) ; $(MAKE)
-
-lda : $(OBJ1)
-
-clean :
-	rm -f *.o *.mod a.out mpif.h *.lst
-	cd $(DIR1) ; $(MAKE) clean
-	cd $(DIR2) ; $(MAKE) clean
-	cd $(DIR3) ; $(MAKE) clean
-	cd $(DIR4) ; $(MAKE) clean
-

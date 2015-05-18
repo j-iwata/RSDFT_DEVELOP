@@ -229,6 +229,6 @@ FFLAGS = $(FFLAGS0) $(FFLAGS1)
 .SUFFIXES:
 .SUFFIXES: .o .f .f90
 .f.o :
-	$(FC) $(FFLAGS) -c $<
+	$(FC) $(FFLAGS) -c $< -o $@
 .f90.o :
-	$(FC) $(FFLAGS) -c $<
+	$(FC) $(FFLAGS) -c $< -o $@

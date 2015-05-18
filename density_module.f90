@@ -59,10 +59,10 @@ CONTAINS
     call get_spin_range_globl( s_range%globl )
     g_range%alloc%head = 1
     g_range%alloc%tail = ML_RHO
-    call get_range_size( g_range%alloc )
+    call getSize1D( g_range%alloc )
     s_range%alloc%head = 1
     s_range%alloc%tail = MS_RHO
-    call get_range_size( s_range%alloc )
+    call getSize1D( s_range%alloc )
   END SUBROUTINE get_range_density_v2
 
   SUBROUTINE init_density(Nelectron,dV)

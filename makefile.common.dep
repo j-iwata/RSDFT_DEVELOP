@@ -3,6 +3,11 @@ bb_module.mod: bb_module.o
 bb_module.o: bb_module.f90
 	$(FC) $(FFLAGS) -c bb_module.f90 -o $@
 
+testassert.mod: test_assert.o
+	@true
+test_assert.o: test_assert.f90
+	$(FC) $(FFLAGS) -c test_assert.f90 -o $@
+
 bc_variables.mod: bc_variables.o
 	@true
 bc_variables.o: bc_variables.f90
@@ -2136,26 +2141,4 @@ parameters_module.o: parameters_module.f90 \
                  global_variables.mod \
                  info_module.mod
 	$(FC) $(FFLAGS) -c parameters_module.f90 -o $@
-
-real_space_solid.mod: realspace.o
-	@true
-realspace.o: realspace.f90 \
-                 varsysparameter.mod \
-                 global_variables.mod \
-                 parameters_module.mod \
-                 func2gp_module.mod \
-                 band_module.mod \
-                 band_sseig_module.mod \
-                 psv_initrho_module.mod \
-                 random_initrho_module.mod \
-                 pseudopotentials.mod \
-                 hamiltonian_matrix_module.mod \
-                 rtddft_mol_module.mod \
-                 psnonlocdij.mod \
-                 psqinit.mod \
-                 varpsmember.mod \
-                 varpsmemberg.mod \
-                 ps_nloc2_variables.mod \
-                 wftest.mod
-	$(FC) $(FFLAGS) -c realspace.f90 -o $@
 

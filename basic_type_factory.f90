@@ -3,7 +3,9 @@ MODULE BasicTypeFactory
   implicit none
 
   PRIVATE
-  PUBLIC :: get_range_size
+  PUBLIC :: getSize1D
+  PUBLIC :: getSize3D
+  PUBLIC :: getSize3C
 
   type,PUBLIC :: ArrayRange1D
     sequence
@@ -48,12 +50,18 @@ MODULE BasicTypeFactory
      type( pArrayRange1D ) :: r(3)
   end type pArrayRange3D
 
+  type,PUBLIC :: ArrayRange3C
+    sequence
+    type ( ArrayRange1D ) :: r(1:3)
+    integer :: size
+  end type ArrayRange3C
+  
   type,PUBLIC :: Array1D
     sequence
 #ifdef REAL_VER
-    double precision,allocatable :: array(:)
-#elif defined COMPLEX_VER
-    complex(kind(0d0)),allocatable :: array(:)
+    double precision,allocatable :: val(:)
+#else
+    complex(kind(0d0)),allocatable :: val(:)
 #endif
     type ( ArrayRange1D ) :: s_range
     type ( ArrayRange1D ) :: p_range
@@ -62,9 +70,9 @@ MODULE BasicTypeFactory
   type,PUBLIC :: Array3D
     sequence
 #ifdef REAL_VER
-    double precision,allocatable :: array(:,:,:)
-#elif defined COMPLEX_VER
-    complex(kind(0d0)),allocatable :: array(:,:,:)
+    double precision,allocatable :: val(:,:,:)
+#else
+    complex(kind(0d0)),allocatable :: val(:,:,:)
 #endif
     type ( ArrayRange3D ) :: s_range
     type ( ArrayRange3D ) :: p_range
@@ -72,28 +80,28 @@ MODULE BasicTypeFactory
 
   type,PUBLIC :: rArray1D
     sequence
-    double precision,allocatable :: array(:)
+    double precision,allocatable :: val(:)
     type ( ArrayRange1D ) :: s_range
     type ( ArrayRange1D ) :: p_range
   end type rArray1D
 
   type,PUBLIC :: rArray3D
     sequence
-    double precision,allocatable :: array(:,:,:)
+    double precision,allocatable :: val(:,:,:)
     type ( ArrayRange3D ) :: s_range
     type ( ArrayRange3D ) :: p_range
   end type rArray3D
 
   type,PUBLIC :: cArray1D
     sequence
-    complex(kind(0d0)),allocatable :: array(:)
+    complex(kind(0d0)),allocatable :: val(:)
     type ( ArrayRange1D ) :: s_range
     type ( ArrayRange1D ) :: p_range
   end type cArray1D
 
   type,PUBLIC :: cArray3D
     sequence
-    complex(kind(0d0)),allocatable :: array(:,:,:)
+    complex(kind(0d0)),allocatable :: val(:,:,:)
     type ( ArrayRange3D ) :: s_range
     type ( ArrayRange3D ) :: p_range
   end type cArray3D
@@ -147,10 +155,26 @@ MODULE BasicTypeFactory
 
 CONTAINS
 
-  SUBROUTINE get_range_size( a )
-    implicit none
-    type( ArrayRange1D ) :: a
-    a%size = a%tail - a%size + 1
-  END SUBROUTINE get_range_size
+  SUBROUTINE getSize1D( range )
+    type( ArrayRange1D ) :: range
+    range%size = range%tail - range%head + 1
+  END SUBROUTINE getSize1D
+
+  SUBROUTINE getSize3D( range )
+    type( ArrayRange3D ) :: range
+    range%x%size = range%x%tail - range%x%head + 1
+    range%y%size = range%y%tail - range%y%head + 1
+    range%z%size = range%z%tail - range%z%head + 1
+    range%size =  range%x%size * range%y%size * range%z%size
+  END SUBROUTINE getSize3D
+
+  SUBROUTINE getSize3C( range )
+    type( ArrayRange3C ) :: range
+    integer :: i
+    do i = 1, 3
+      call getSize1D( range%r(i) )
+    enddo
+    range%size = PRODUCT( range%r(:)%size )
+  END SUBROUTINE getSize3C
 
 END MODULE BasicTypeFactory
