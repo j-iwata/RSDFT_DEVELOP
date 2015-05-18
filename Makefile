@@ -55,7 +55,7 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 .PHONY: all clean re test
 
 all :
-	$(MAKE) lda0
+	@$(MAKE) lda0
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
@@ -67,9 +67,7 @@ lda0 : $(MODS1)
 re:
 	$(MAKE) -f makefile.simple
 
-test:
-	@echo 'Test'
-
+include makefile.common.program
 include makefile.common.dep
 
 clean :

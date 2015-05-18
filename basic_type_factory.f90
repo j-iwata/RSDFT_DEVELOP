@@ -3,6 +3,7 @@ MODULE BasicTypeFactory
   PRIVATE
   PUBLIC :: getSize1D
   PUBLIC :: getSize3D
+  PUBLIC :: getSize3C
 
   type,PUBLIC :: ArrayRange1D
     sequence
@@ -22,11 +23,11 @@ MODULE BasicTypeFactory
     integer :: size
   end type ArrayRange3D
 
-  type,PUBLIC :: ArrayRange2D
+  type,PUBLIC :: ArrayRange3C
     sequence
-    type ( ArrayRange1D ) :: r(1:2)
+    type ( ArrayRange1D ) :: r(1:3)
     integer :: size
-  end type ArrayRange2D
+  end type ArrayRange3C
   
   type,PUBLIC :: Array1D
     sequence
@@ -131,4 +132,13 @@ CONTAINS
     range%z%size = range%z%tail - range%z%head + 1
     range%size =  range%x%size * range%y%size * range%z%size
   END SUBROUTINE getSize3D
+
+  SUBROUTINE getSize3C( range )
+    type( ArrayRange3C ) :: range
+    integer :: i
+    do i = 1, 3
+      call getSize1D( range%r(i) )
+    enddo
+    range%size = PRODUCT( range%r(:)%size )
+  END SUBROUTINE getSize3C
 END MODULE BasicTypeFactory

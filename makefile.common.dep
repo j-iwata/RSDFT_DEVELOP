@@ -183,6 +183,11 @@ subspace_diag_variables.mod: subspace_diag_variables.o
 subspace_diag_variables.o: subspace_diag_variables.f90
 	$(FC) $(FFLAGS) -c subspace_diag_variables.f90 -o $@
 
+testassert.mod: test_assert.o
+	@true
+test_assert.o: test_assert.f90
+	$(FC) $(FFLAGS) -c test_assert.f90 -o $@
+
 timer_module.mod: timer_module.o
 	@true
 timer_module.o: timer_module.f90

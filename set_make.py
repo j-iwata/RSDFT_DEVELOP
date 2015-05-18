@@ -92,6 +92,8 @@ class ModuleFile:
       self.hierarchy_level = module_name.hierarchy_level + 1
   def objectFilename( self ):
     return self.file_name.split( '.' )[0] + '.o'
+  def programFilename( self ):
+    return self.file_name.split( '.' )[0] + '.x'
   def writeDependency( self ):
     with open( make_common_dep, 'a' ) as f:
       basename = self.file_name.split( '.' )[0]
@@ -105,6 +107,16 @@ class ModuleFile:
           f.write( '                 ' + use_item.lower() + '.mod \\\n' )
         f.write( '                 ' + self.use_list[-1].lower() + '.mod\n' )
       f.write( '	$(FC) $(FFLAGS) -c ' + self.file_name + ' -o $@\n' )
+      f.write( '\n' )
+  def writeProgram( self ):
+    with open( make_common_program, 'a' ) as f:
+      basename = self.file_name.split( '.' )[0]
+      f.write( basename + '.x: ' + basename + '.f90 \\' + '\n' )
+      for use_item in self.use_list[:-1]:
+        f.write( '                 ' + dic_name[use_item]+ '.o \\\n' )
+      f.write( '                 ' + dic_name[self.use_list[-1]] + '.o\n' )
+#      f.write( '	$(FC) $(FFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) ' + self.file_name + ' -o $@\n' )
+      f.write( '	$(FC) $(FFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(FFTOBJ) $(LAPACK_L) $^ -o $@\n' )
       f.write( '\n' )
   def show( self, filename ):
     with open(filename,'a') as f:
@@ -134,11 +146,14 @@ DIRNAME     = os.getcwd()
 MD_DIRNAME  = DIRNAME+'/mdsource'
 FILES       = os.listdir(DIRNAME)
 MDFILES     = os.listdir(MD_DIRNAME)
-make_common_dep ='makefile.common.dep'
-make_common     ='makefile.common'
+make_common_dep     ='makefile.common.dep'
+make_common_program ='makefile.common.program'
+make_common         ='makefile.common'
 with open(make_common,'w') as f:
   pass
 with open(make_common_dep,'w') as f:
+  pass
+with open(make_common_program,'w') as f:
   pass
 
 #----- get src files
@@ -158,6 +173,7 @@ module_file  = []
 leveled_file = []
 # dic_module is used for linking the module name and it's index
 dic_module   = {}
+dic_name     = {}
 program_file = []
 
 print "-----started raw reading-----"
@@ -173,11 +189,10 @@ for filename in filelist:
   lastline   = 0
   [modulename,lastline] = findKeyword( 'module', data, 0 )
   if modulename == '':
-#    [modulename, lastline] = findKeyword( 'program', data, 0 )
-    if modulename == '':
-      continue
+    continue
   module_file.append( ModuleFile(filename, modulename) )
   dic_module[modulename] = len(module_file) - 1
+  dic_name[modulename]   = filename.split('.')[0]
 
   findUse( module_file[-1], data )
   findSubroutine( module_file[-1], data )
@@ -194,6 +209,8 @@ for filename in filelist:
   programname = ''
   lastline    = 0
   [programname, lastline] = findKeyword( 'program', data, 0 )
+  if modulename == '':
+    continue
   program_file.append( ModuleFile(filename, programname ) )
 
   findUse( program_file[-1], data )
@@ -231,6 +248,7 @@ print "leveled dependency   : 'dep.log'"
 print "-----generating makefile.common-----"
 print "dependency for make  : " + make_common_dep
 print "common for make      : " + make_common
+print "tests                : " + make_common_program
 for classModule in leveled_file:
   classModule.writeDependency()
 with open( make_common, 'a' ) as f:
@@ -238,9 +256,19 @@ with open( make_common, 'a' ) as f:
   for classModule in leveled_file[:]:
     f.write( '       ' + classModule.objectFilename() + '\\\n' )
   f.write( '\n' )
-sys.exit()
 for program in program_file:
-  program.writeDependency()
+  if program.module_name.lower().startswith( 'test' ):
+    program.writeProgram()
+with open( make_common_program, 'a' ) as f:
+  f.write( 'test: \n' )
+  f.write( '	@echo " Tests start!!! -------------------------"\n' )
+  for program in program_file:
+    if program.module_name.lower().startswith( 'test' ):
+      f.write( '	@echo "---> TEST_CASE: {0:}" \n'.format( program.programFilename() ) )
+      f.write( '	@$(MAKE)\n' )
+      f.write( '	@$(MAKE) ' + program.programFilename() + '\n' )
+      f.write( '	@./{0:} \n'.format( program.programFilename() ) )
+  f.write( '\n' )
 sys.exit()
 for classModule in module_file:
   print classModule.module_name+' '+str(classModule.getHierarchyLevel())
