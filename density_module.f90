@@ -3,7 +3,8 @@ MODULE density_module
   use wf_module
   use parallel_module, only: comm_grid,comm_band,comm_bzsm,comm_spin,ir_grid,id_grid,ir_spin,id_spin,myrank_g,myrank_s,myrank
   use symmetry_module, only: sym_rho
-  USE BasicTypeFactory
+  use BasicTypeFactory
+  use BasicTypeMethods
 #ifdef _USPP_
   use WFDensityG, only: get_rhonks
 #endif
@@ -17,7 +18,7 @@ MODULE density_module
   PUBLIC :: init_density
   PUBLIC :: normalize_density
   PUBLIC :: calc_density
-  PUBLIC :: get_range_density, get_range_density_v2
+  PUBLIC :: get_range_density, construct_density_v2
 
   real(8),allocatable,PUBLIC :: rho(:,:)
   real(8),PUBLIC :: sum_dspin(2)
@@ -57,13 +58,16 @@ CONTAINS
     call get_grid_range_globl( g_range%globl )
     call get_spin_range_local( s_range%local )
     call get_spin_range_globl( s_range%globl )
-    g_range%alloc%head = 1
-    g_range%alloc%tail = ML_RHO
-    call getSize1D( g_range%alloc )
-    s_range%alloc%head = 1
-    s_range%alloc%tail = MS_RHO
-    call getSize1D( s_range%alloc )
+    g_range%alloc = g_range%local
+    s_range%alloc = s_range%globl
   END SUBROUTINE get_range_density_v2
+
+  SUBROUTINE construct_density_v2( density )
+    implicit none
+    type( GSArray_v2 ),intent(OUT) :: density
+    call get_range_density_v2( density%g_range, density%s_range )
+    call allocateGSArray_v2( density )
+  END SUBROUTINE construct_density_v2
 
   SUBROUTINE init_density(Nelectron,dV)
     implicit none

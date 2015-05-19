@@ -1,7 +1,7 @@
 MODULE xc_module
 
   use rgrid_module, only: Igrid,Ngrid,Hgrid,dV
-  use density_module, only: rho, get_range_density, get_range_density_v2
+  use density_module, only: rho, get_range_density, construct_density_v2
   use ps_pcc_module, only: flag_pcc_0, rhoc
   use parallel_module, only: comm_grid, mpi_real8, mpi_integer, mpi_sum
   use array_bound_module, only: MSP,MSP_0,MSP_1,MB_0,MB_1,MBZ_0,MBZ_1
@@ -153,8 +153,7 @@ CONTAINS
     call get_range_density( density%g_range, density%s_range )
     call allocateGSArray( density )
 
-    call get_range_density_v2( density_v2%g_range, density_v2%s_range )
-    call allocateGSArray_v2( density_v2 )
+    call construct_density_v2( density_v2 )
 
     call get_range_xc( pot )
     call allocateGSArray( pot%xc )
@@ -185,12 +184,17 @@ CONTAINS
     call chk_density(rho_tmp)
 
     density%val(:,:) = rho_tmp(:,:)
+    density_v2%val(:,:) = rho_tmp(:,:)
 
     select case(XCtype)
     case('LDAPZ81')
 
-       call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
-       call calc_LDAPZ81( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+       call calc_LDAPZ81( rg, density_v2, ene, pot )
+
+       E_exchange    = ene%Ex
+       E_correlation = ene%Ec
+       Exc           = ene%Exc
+       Vxc(:,:)      = pot%xc%val(:,:)
 
     case('LDAPW92')
 
@@ -240,8 +244,12 @@ CONTAINS
              write(*,*) "LDAPZ81 is called (iflag_hybrid==0)"
           end if
 
-          call init_LDAPZ81(ML_0,ML_1,MSP_0,MSP_1,MSP,comm_grid,dV)
-          call calc_LDAPZ81( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+          call calc_LDAPZ81( rg, density_v2, ene, pot )
+
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
 
        else
 

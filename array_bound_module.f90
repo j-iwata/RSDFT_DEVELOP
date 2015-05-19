@@ -38,36 +38,43 @@ CONTAINS
 
   SUBROUTINE get_grid_range_local( g )
     implicit none
-    type( ArrayRange1D ) :: g
+    type( ArrayRange ) :: g
     g%head = ML_0
     g%tail = ML_1
-    call getSize1D( g )
+    call getArraySize( g )
   END SUBROUTINE get_grid_range_local
 
   SUBROUTINE get_grid_range_globl( g )
     implicit none
-    type( ArrayRange1D ) :: g
+    type( ArrayRange ) :: g
     g%head = 1
     g%tail = ML
-    call getSize1D( g )
+    call getArraySize( g )
   END SUBROUTINE get_grid_range_globl
 
 
   SUBROUTINE get_spin_range_local( g )
     implicit none
-    type( ArrayRange1D ) :: g
+    type( ArrayRange ) :: g
     g%head = MSP_0
     g%tail = MSP_1
-    call getSize1D( g )
+    call getArraySize( g )
   END SUBROUTINE get_spin_range_local
 
   SUBROUTINE get_spin_range_globl( g )
     implicit none
-    type( ArrayRange1D ) :: g
+    type( ArrayRange ) :: g
     g%head = 1
     g%tail = MSP
-    call getSize1D( g )
+    call getArraySize( g )
   END SUBROUTINE get_spin_range_globl
+
+
+  SUBROUTINE getArraySize( range )
+    implicit none
+    type( ArrayRange ) :: range
+    range%size = range%tail - range%head + 1
+  END SUBROUTINE getArraySize
 
 
 END MODULE array_bound_module

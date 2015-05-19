@@ -7,6 +7,13 @@ MODULE BasicTypeFactory
   PUBLIC :: getSize3D
   PUBLIC :: getSize3C
 
+  type,PUBLIC :: ArrayRange
+    sequence
+    integer :: head
+    integer :: tail
+    integer :: size
+ end type ArrayRange
+
   type,PUBLIC :: ArrayRange1D
     sequence
     integer :: head
@@ -25,13 +32,6 @@ MODULE BasicTypeFactory
     integer :: size
   end type ArrayRange3D
 
-  type,PUBLIC :: ArrayRange1D_v2
-    sequence
-    integer :: head
-    integer :: tail
-    integer :: size
- end type ArrayRange1D_v2
-
   type,PUBLIC :: ArrayRange3D_v2
     sequence
     type ( ArrayRange1D ) :: r(3)
@@ -40,9 +40,9 @@ MODULE BasicTypeFactory
 
   type,PUBLIC :: pArrayRange1D
      sequence
-     type( ArrayRange1D ) :: globl
-     type( ArrayRange1D ) :: local
-     type( ArrayRange1D ) :: alloc
+     type( ArrayRange ) :: globl
+     type( ArrayRange ) :: local
+     type( ArrayRange ) :: alloc
   end type pArrayRange1D
 
   type,PUBLIC :: pArrayRange3D

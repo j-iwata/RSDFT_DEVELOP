@@ -188,11 +188,6 @@ init_occ_electron_module.mod: init_occ_electron_module.o
 init_occ_electron_module.o: init_occ_electron_module.f90
 	$(FC) $(FFLAGS) -c init_occ_electron_module.f90 -o $@
 
-xc_ldapz81_module.mod: xc_ldapz81_module.o
-	@true
-xc_ldapz81_module.o: xc_ldapz81_module.f90
-	$(FC) $(FFLAGS) -c xc_ldapz81_module.f90 -o $@
-
 rgrid_mol_module.mod: rgrid_mol_module.o
 	@true
 rgrid_mol_module.o: rgrid_mol_module.f90
@@ -396,6 +391,15 @@ ps_q_init.o: ps_q_init.f90 \
                  maskf_module.mod \
                  filtering.mod
 	$(FC) $(FFLAGS) -c ps_q_init.f90 -o $@
+
+xc_ldapz81_module.mod: xc_ldapz81_module.o
+	@true
+xc_ldapz81_module.o: xc_ldapz81_module.f90 \
+                 basictypefactory.mod \
+                 grid_module.mod \
+                 xc_variables.mod \
+                 parallel_module.mod
+	$(FC) $(FFLAGS) -c xc_ldapz81_module.f90 -o $@
 
 psnonlocopg2.mod: ps_nloc2_op_g.o
 	@true
@@ -1061,6 +1065,7 @@ density_module.o: density_module.f90 \
                  parallel_module.mod \
                  symmetry_module.mod \
                  basictypefactory.mod \
+                 basictypemethods.mod \
                  wfdensityg.mod \
                  varsysparameter.mod \
                  array_bound_module.mod

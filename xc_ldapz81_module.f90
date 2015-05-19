@@ -1,88 +1,77 @@
 MODULE xc_ldapz81_module
 
+  use BasicTypeFactory
+  use grid_module, only: grid
+  use xc_variables, only: xcene, xcpot
+  use parallel_module, only: comm_grid
+
   implicit none
 
   PRIVATE
-  PUBLIC :: init_LDAPZ81, calc_LDAPZ81
+  PUBLIC :: calc_LDAPZ81
 
-  integer :: ML_0, ML_1, MSP_0, MSP_1, MSP, comm
-  real(8) :: dV
-  logical :: flag_init = .true.
+  integer :: ML_0, ML_1, MS_0, MS_1, MSP
 
 CONTAINS
 
 
-  SUBROUTINE init_LDAPZ81 &
-       (ML_0_in,ML_1_in,MSP_0_in,MSP_1_in,MSP_in,comm_in,dV_in)
+  SUBROUTINE calc_LDAPZ81( rg, density, ene, pot )
     implicit none
-    integer,intent(IN) :: ML_0_in,ML_1_in,MSP_0_in,MSP_1_in,MSP_in,comm_in
-    real(8),intent(IN) :: dV_in
-    ML_0      = ML_0_in
-    ML_1      = ML_1_in
-    MSP_0     = MSP_0_in
-    MSP_1     = MSP_1_in
-    MSP       = MSP_in
-    comm      = comm_in
-    dV        = dV_in
-    flag_init = .false.
-  END SUBROUTINE init_LDAPZ81
-
-
-  SUBROUTINE calc_LDAPZ81 &
-       ( rho, Exc_out, Vxc_out, Ex_out, Ec_out, Vx_out, Vc_out )
-    implicit none
-    real(8),intent(IN)  :: rho(ML_0:,:)
-    real(8),intent(OUT) :: Exc_out
-    real(8),optional,intent(OUT) :: Vxc_out(ML_0:,MSP_0:)
-    real(8),optional,intent(OUT) :: Ex_out, Ec_out
-    real(8),optional,intent(OUT) :: Vx_out(ML_0:,MSP_0:),Vc_out(ML_0:,MSP_0:)
+    type( grid ),intent(IN) :: rg
+    type( GSArray_v2 ),intent(IN) :: density
+    type( xcene ),optional :: ene
+    type( xcpot ),optional :: pot
     real(8),allocatable :: vxc_tmp(:,:)
     real(8) :: Ex_part, Ec_part, s0(2),s1(2)
     integer :: ierr
     include 'mpif.h'
 
-    if ( flag_init ) then
-       write(*,*) "Call INIT_LDAPZ81 first"
-       stop "stop@calc_LDAPZ81(in xc_ldapz81_module)"
-    end if
+    ML_0  = density%g_range%local%head
+    ML_1  = density%g_range%local%tail
+    MS_0 = density%s_range%local%head
+    MS_1 = density%s_range%local%tail
+    MSP   = density%s_range%globl%size
 
     allocate( vxc_tmp(ML_0:ML_1,1:MSP) ) ; vxc_tmp=0.0d0
 
 ! -- Exchange --
 
-    call calc_LDAPZ81_x( rho, vxc_tmp, Ex_part )
+    call calc_LDAPZ81_x( density%val, vxc_tmp, Ex_part )
 
-    if ( present(Vx_out) ) then
-       Vx_out(ML_0:ML_1,MSP_0:MSP_1) = vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
-    end if
+    if ( present(pot) ) then
 
-    if ( present(Vxc_out) ) then
-       Vxc_out(ML_0:ML_1,MSP_0:MSP_1) = vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
+       if ( allocated(pot%x%val) ) then
+          pot%x%val(ML_0:ML_1,MS_0:MS_1) = vxc_tmp(ML_0:ML_1,MS_0:MS_1)
+       end if
+
+       pot%xc%val(ML_0:ML_1,MS_0:MS_1) = vxc_tmp(ML_0:ML_1,MS_0:MS_1)
+
     end if
 
 ! -- Correlation --
 
-    call calc_LDAPZ81_c( rho, vxc_tmp, Ec_part )
+    call calc_LDAPZ81_c( density%val, vxc_tmp, Ec_part )
 
-    if ( present(Vc_out) ) then
-       Vc_out(ML_0:ML_1,MSP_0:MSP_1) = vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
+    if ( present(pot) ) then
+
+       if ( allocated(pot%c%val) ) then
+          pot%c%val(ML_0:ML_1,MS_0:MS_1) = vxc_tmp(ML_0:ML_1,MS_0:MS_1)
+       end if
+
+       pot%xc%val(ML_0:ML_1,MS_0:MS_1) = pot%xc%val(ML_0:ML_1,MS_0:MS_1) &
+            + vxc_tmp(ML_0:ML_1,MS_0:MS_1)
+
     end if
 
-    if ( present(Vxc_out) ) then
-       Vxc_out(ML_0:ML_1,MSP_0:MSP_1) = Vxc_out(ML_0:ML_1,MSP_0:MSP_1) &
-                                      + vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
+    s0(1) = Ex_part * rg%VolumeElement
+    s0(2) = Ec_part * rg%VolumeElement
+    call mpi_allreduce(s0,s1,2,mpi_real8,mpi_sum,comm_grid,ierr)
+
+    if ( present(ene) ) then
+       ene%Exc = s1(1) + s1(2)
+       ene%Ex  = s1(1)
+       ene%Ec  = s1(2)
     end if
-
-! --
-
-    s0(1) = Ex_part*dV
-    s0(2) = Ec_part*dV
-    call mpi_allreduce(s0,s1,2,mpi_real8,mpi_sum,comm,ierr)
-
-    Exc_out = s1(1) + s1(2)
-
-    if ( present(Ex_out) ) Ex_out=s1(1)
-    if ( present(Ec_out) ) Ec_out=s1(2)
 
 ! --
 
