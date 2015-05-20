@@ -52,11 +52,13 @@ MODS1 = \
        esp_gather_module.o\
        ps_nloc2_variables.o\
        xc_variables.o\
+       physical_type_methods.o\
        strfac_module.o\
        rgrid_sol_module.o\
        scalapack_module.o\
        var_ps_member.o\
        bc_mol_module.o\
+       physical_type_methods.o\
        fock_parallel_module.o\
        grid_module.o\
        esm_rgrid_module.o\

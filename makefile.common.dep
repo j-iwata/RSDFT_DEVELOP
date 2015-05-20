@@ -272,6 +272,13 @@ xc_variables.o: xc_variables.f90 \
                  basictypefactory.mod
 	$(FC) $(FFLAGS) -c xc_variables.f90 -o $@
 
+physicaltypemethods.mod: physical_type_methods.o
+	@true
+physical_type_methods.o: physical_type_methods.f90 \
+                 parallel_module.mod \
+                 rgrid_variables.mod
+	$(FC) $(FFLAGS) -c physical_type_methods.f90~ -o $@
+
 strfac_module.mod: strfac_module.o
 	@true
 strfac_module.o: strfac_module.f90 \
@@ -303,6 +310,13 @@ bc_mol_module.o: bc_mol_module.f90 \
                  bc_variables.mod \
                  rgrid_mol_module.mod
 	$(FC) $(FFLAGS) -c bc_mol_module.f90 -o $@
+
+physicaltypemethods.mod: physical_type_methods.o
+	@true
+physical_type_methods.o: physical_type_methods.f90 \
+                 parallel_module.mod \
+                 rgrid_variables.mod
+	$(FC) $(FFLAGS) -c physical_type_methods.f90 -o $@
 
 fock_parallel_module.mod: fock_parallel_module.o
 	@true
@@ -396,9 +410,8 @@ xc_ldapz81_module.mod: xc_ldapz81_module.o
 	@true
 xc_ldapz81_module.o: xc_ldapz81_module.f90 \
                  basictypefactory.mod \
-                 grid_module.mod \
-                 xc_variables.mod \
-                 parallel_module.mod
+                 physicaltypemethods.mod \
+                 xc_variables.mod
 	$(FC) $(FFLAGS) -c xc_ldapz81_module.f90 -o $@
 
 psnonlocopg2.mod: ps_nloc2_op_g.o

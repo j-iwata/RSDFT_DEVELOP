@@ -1,9 +1,8 @@
 MODULE xc_ldapz81_module
 
   use BasicTypeFactory
-  use grid_module, only: grid
+  use PhysicalTypeMethods
   use xc_variables, only: xcene, xcpot
-  use parallel_module, only: comm_grid
 
   implicit none
 
@@ -15,22 +14,19 @@ MODULE xc_ldapz81_module
 CONTAINS
 
 
-  SUBROUTINE calc_LDAPZ81( rg, density, ene, pot )
+  SUBROUTINE calc_LDAPZ81( density, ene, pot )
     implicit none
-    type( grid ),intent(IN) :: rg
     type( GSArray_v2 ),intent(IN) :: density
     type( xcene ),optional :: ene
     type( xcpot ),optional :: pot
     real(8),allocatable :: vxc_tmp(:,:)
-    real(8) :: Ex_part, Ec_part, s0(2),s1(2)
-    integer :: ierr
-    include 'mpif.h'
+    real(8) :: Ex_part, Ec_part, s1(2)
 
-    ML_0  = density%g_range%local%head
-    ML_1  = density%g_range%local%tail
+    ML_0 = density%g_range%local%head
+    ML_1 = density%g_range%local%tail
     MS_0 = density%s_range%local%head
     MS_1 = density%s_range%local%tail
-    MSP   = density%s_range%globl%size
+    MSP  = density%s_range%globl%size
 
     allocate( vxc_tmp(ML_0:ML_1,1:MSP) ) ; vxc_tmp=0.0d0
 
@@ -63,9 +59,8 @@ CONTAINS
 
     end if
 
-    s0(1) = Ex_part * rg%VolumeElement
-    s0(2) = Ec_part * rg%VolumeElement
-    call mpi_allreduce(s0,s1,2,mpi_real8,mpi_sum,comm_grid,ierr)
+    s1(1:2) = (/ Ex_part, Ec_part /)
+    call dSpatialIntegral( s1 )
 
     if ( present(ene) ) then
        ene%Exc = s1(1) + s1(2)

@@ -189,7 +189,7 @@ CONTAINS
     select case(XCtype)
     case('LDAPZ81')
 
-       call calc_LDAPZ81( rg, density_v2, ene, pot )
+       call calc_LDAPZ81( density_v2, ene, pot )
 
        E_exchange    = ene%Ex
        E_correlation = ene%Ec
@@ -244,7 +244,7 @@ CONTAINS
              write(*,*) "LDAPZ81 is called (iflag_hybrid==0)"
           end if
 
-          call calc_LDAPZ81( rg, density_v2, ene, pot )
+          call calc_LDAPZ81( density_v2, ene, pot )
 
           E_exchange    = ene%Ex
           E_correlation = ene%Ec
