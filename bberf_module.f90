@@ -187,9 +187,10 @@ CONTAINS
 
   FUNCTION bberf( x )
     implicit none
-    real(8) :: bberf_ji
+    real(8) :: bberf
     real(8),intent(IN) :: x
-    bberf_ji=1.0d0-ccerf(x)
+    bberf = erf(x)
+!   bberf=1.0d0-ccerf(x) ! if buil-in erf is not avaialbe
   END FUNCTION bberf
 
   FUNCTION ccerf( x )
