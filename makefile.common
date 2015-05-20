@@ -3,7 +3,6 @@ MODS1 = \
        test_assert.o\
        bc_variables.o\
        ggrid_module.o\
-       simc_module.o\
        vdw_grimme_module.o\
        maskf_module.o\
        rsdft_mpi_module.o\
@@ -45,6 +44,7 @@ MODS1 = \
        mixing_broyden_module.o\
        ps_gth_module.o\
        basic_type_methods.o\
+       simc_module.o\
        mixing_module.o\
        var_ps_member_g.o\
        aa_module.o\

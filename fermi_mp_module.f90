@@ -284,12 +284,6 @@ CONTAINS
     implicit none
     integer :: n,i
     real(8) :: x,ff,ff0,hp0,hp1,hp2,hp3
-!    INTERFACE
-!       FUNCTION bberf(x)
-!         real(8) :: bberf,x
-!       END FUNCTION bberf
-!    END INTERFACE
-!    ff0 = 0.5d0*(1.d0-bberf(x))
     ff0 = 0.5d0*(1.d0-erf(x))
     if ( n <= 0 ) return
     hp0 = 1.d0

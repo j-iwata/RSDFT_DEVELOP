@@ -1,15 +1,11 @@
 MODULE simc_module
 
+  use bberf_module
+
   implicit none
 
   PRIVATE
   PUBLIC :: simc
-
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
 
 CONTAINS
 

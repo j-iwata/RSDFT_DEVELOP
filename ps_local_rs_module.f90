@@ -15,6 +15,7 @@ MODULE ps_local_rs_module
   use esm_rshell_module
 
   use simc_module
+  use bberf_module
 
   implicit none
 
@@ -26,12 +27,6 @@ MODULE ps_local_rs_module
   real(8),allocatable :: vqlg(:,:),vqlgl(:,:),vqls(:,:)
   real(8),allocatable :: Vion(:)
   real(8),allocatable :: rho_ps(:)
-
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
 
 CONTAINS
 

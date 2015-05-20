@@ -18,17 +18,12 @@ MODULE localpot2_ion_module
 
   use ggrid_module
   use strfac_module
+  use bberf_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: localpot2_ion, localpot2_calc_eion
-
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
 
 CONTAINS
 

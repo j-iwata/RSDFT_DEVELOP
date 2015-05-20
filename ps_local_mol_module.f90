@@ -9,6 +9,7 @@ MODULE ps_local_mol_module
   use array_bound_module, only: ML_0,ML_1
   use rgrid_mol_module
   use ps_local_mol_gth_module
+  use bberf_module
 
   implicit none
 
@@ -19,12 +20,6 @@ MODULE ps_local_mol_module
   real(8),allocatable :: vqls(:,:)
   real(8),allocatable :: Rcloc(:)
   integer,allocatable :: NRcloc(:)
-
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
 
 CONTAINS
 

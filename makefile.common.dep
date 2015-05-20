@@ -18,11 +18,6 @@ ggrid_module.mod: ggrid_module.o
 ggrid_module.o: ggrid_module.f90
 	$(FC) $(FFLAGS) -c ggrid_module.f90 -o $@
 
-simc_module.mod: simc_module.o
-	@true
-simc_module.o: simc_module.f90
-	$(FC) $(FFLAGS) -c simc_module.f90 -o $@
-
 vdw_grimme_module.mod: vdw_grimme_module.o
 	@true
 vdw_grimme_module.o: vdw_grimme_module.f90
@@ -228,6 +223,12 @@ basictypemethods.mod: basic_type_methods.o
 basic_type_methods.o: basic_type_methods.f90 \
                  basictypefactory.mod
 	$(FC) $(FFLAGS) -c basic_type_methods.f90 -o $@
+
+simc_module.mod: simc_module.o
+	@true
+simc_module.o: simc_module.f90 \
+                 bberf_module.mod
+	$(FC) $(FFLAGS) -c simc_module.f90 -o $@
 
 mixing_module.mod: mixing_module.o
 	@true
@@ -898,7 +899,8 @@ xc_pbe_xsr_module.o: xc_pbe_xsr_module.f90 \
                  lattice_module.mod \
                  parallel_module.mod \
                  expint_module.mod \
-                 basictypefactory.mod
+                 basictypefactory.mod \
+                 bberf_module.mod
 	$(FC) $(FFLAGS) -c xc_pbe_xsr_module.f90 -o $@
 
 subspace_solv_sl_module.mod: subspace_solv_sl_module.o
@@ -948,7 +950,8 @@ localpot2_ion_module.o: localpot2_ion_module.f90 \
                  wf_module.mod \
                  watch_module.mod \
                  ggrid_module.mod \
-                 strfac_module.mod
+                 strfac_module.mod \
+                 bberf_module.mod
 	$(FC) $(FFLAGS) -c localpot2_ion_module.f90 -o $@
 
 ps_nloc3_module.mod: ps_nloc3_module.o
@@ -1183,7 +1186,8 @@ xc_hse_module.o: xc_hse_module.f90 \
                  bc_module.mod \
                  xc_hybrid_module.mod \
                  wf_module.mod \
-                 fd_module.mod
+                 fd_module.mod \
+                 bberf_module.mod
 	$(FC) $(FFLAGS) -c xc_hse_module.f90 -o $@
 
 fock_ffte_module.mod: fock_ffte_module.o
@@ -1224,7 +1228,8 @@ ps_local_rs_module.o: ps_local_rs_module.f90 \
                  aa_module.mod \
                  esm_rgrid_module.mod \
                  esm_rshell_module.mod \
-                 simc_module.mod
+                 simc_module.mod \
+                 bberf_module.mod
 	$(FC) $(FFLAGS) -c ps_local_rs_module.f90 -o $@
 
 esm_genpot_module.mod: esm_genpot_module.o
@@ -1750,7 +1755,8 @@ ps_local_mol_module.o: ps_local_mol_module.f90 \
                  ps_local_module.mod \
                  array_bound_module.mod \
                  rgrid_mol_module.mod \
-                 ps_local_mol_gth_module.mod
+                 ps_local_mol_gth_module.mod \
+                 bberf_module.mod
 	$(FC) $(FFLAGS) -c ps_local_mol_module.f90 -o $@
 
 subspace_diag_sl_module.mod: subspace_diag_sl_module.o

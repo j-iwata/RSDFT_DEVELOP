@@ -10,6 +10,7 @@ MODULE xc_hse_module
   use xc_hybrid_module, only: omega, alpha_hf
   use wf_module, only: unk, occ
   use fd_module
+  use bberf_module
 
   implicit none
 
@@ -146,12 +147,6 @@ CONTAINS
 ! The recommended value: small_hse=1.d-5.
 !
     real(8),parameter :: small_hse = 0.0d0
-
-    INTERFACE
-       FUNCTION bberf(x)
-         real(8) :: bberf,x
-       END FUNCTION bberf
-    END INTERFACE
 
     if ( disp_switch_parallel ) then
        write(*,'(a40," calc_xc_hse(start)")') repeat("-",40)

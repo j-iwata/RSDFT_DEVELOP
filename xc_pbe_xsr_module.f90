@@ -9,6 +9,7 @@ MODULE xc_pbe_xsr_module
   use expint_module
   use gradient_module
   use BasicTypeFactory
+  use bberf_module
 
   implicit none
 
@@ -70,12 +71,6 @@ CONTAINS
     real(DP) :: A1,H1,H2,H3,erfc_ha,FF,GG,Fx,dFxds,dFxdn,x,expint_ha
     real(DP) :: DHs,DHs2,DHs3,dsdDHs,srpi,DHs92,A12
     real(DP),allocatable :: rtmp(:),rrrr(:,:)
-
-    INTERFACE
-       FUNCTION bberf(x)
-         real(8) :: bberf,x
-       END FUNCTION bberf
-    END INTERFACE
 
 ! ---
 
