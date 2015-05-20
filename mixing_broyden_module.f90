@@ -21,14 +21,15 @@ CONTAINS
     complex(8),intent(INOUT) :: zXin(ML0,MSP,mmix)
     complex(8),intent(INOUT) :: zXou(ML0,MSP,mmix)
     integer :: i,j,k,l,mmix0,ierr,mmm
+    integer,allocatable :: ipiv(:)
     real(8),allocatable :: F(:,:,:)
     real(8),allocatable :: dF(:,:,:)
     real(8),allocatable :: u(:,:,:)
     real(8),allocatable :: dX(:,:,:)
     real(8),allocatable :: a(:,:),beta(:,:),cm(:),gamma(:)
-    real(8),allocatable :: w(:),b(:,:),Xnew(:,:)
+    real(8),allocatable :: w(:),Xnew(:,:)
     real(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
-    real(8),allocatable :: s0(:),s1(:)
+    real(8),allocatable :: s0(:),s1(:),work(:)
     real(8) :: alpha,dFnorm,c1
 
     zXou(:,:,mmix) = g(:,:)
@@ -76,10 +77,11 @@ CONTAINS
     allocate( u(ML0,MSP,mmix0)      )
     allocate( cm(mmix0)             )
     allocate( a(mmix0-1,mmix0-1)    )
-    allocate( b(mmix0-1,1)          )
     allocate( beta(mmix0-1,mmix0-1) )
     allocate( gamma(mmix0)          )
     allocate( Xnew(ML0,MSP)         )
+    allocate( ipiv(mmix0-1)         )
+    allocate( work(mmix0-1)         )
 
     Xin(:,:,:) = real( zXin(:,:,:) )
     Xou(:,:,:) = real( zXou(:,:,:) )
@@ -137,8 +139,8 @@ CONTAINS
     end do
 
     beta(:,:)=a(:,:)
-    b(:,:)=0.0d0
-    call gaussj( beta, mmix0-1, mmix0-1, b, 1, 1 )
+    call dgetrf( mmix0-1, mmix0-1, beta, mmix0-1, ipiv, ierr )
+    call dgetri( mmix0-1, beta, mmix0-1, ipiv, work, mmix0-1, ierr )
 
     gamma(:)=0.0d0
     do l=1,mmix0-1
@@ -167,10 +169,11 @@ CONTAINS
 
     g(:,:) = Xnew(:,:)
 
+    deallocate( work )
+    deallocate( ipiv )
     deallocate( Xnew )
     deallocate( gamma )
     deallocate( beta )
-    deallocate( b )
     deallocate( a )
     deallocate( cm )
     deallocate( u )
