@@ -59,7 +59,6 @@ CONTAINS
 ! d1,d2 need to be removed from this module, define a different variable name
     real(8) :: d1,d2,d3
     integer :: i1,i2,i3
-    include 'mpif.h'
 
     INTERFACE
       FUNCTION Ylm(x,y,z,l,m)
