@@ -11,6 +11,7 @@ MODULE fock_ffte_module
   use bz_module, only: kbb
   use ffte_sub_module, only: zwork1_ffte, zwork2_ffte, npuz, npuy, npux &
                             ,comm_fftx, comm_ffty, comm_fftz
+  use omp_variables
 
   implicit none
 
@@ -120,6 +121,7 @@ CONTAINS
 
   SUBROUTINE fock_ffte( n1, n2, k, q, trho, tVh, t )
 
+!$  use omp_lib
     implicit none
 
     integer,intent(IN) :: n1,n2,k,q,t
@@ -136,7 +138,7 @@ CONTAINS
     complex(8),intent(IN)    :: trho(n1:n2)
     complex(8),intent(INOUT) :: tVh(n1:n2)
 #endif
-    integer :: ispin,n
+    integer :: ispin,n,mm
     real(8) :: ctt(0:5),ett(0:5)
     integer :: MG,ML_0,ML_1,a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     integer :: MG1,MG2,MG3,NG1,NG2,NG3,np1,np2,np3
@@ -172,17 +174,20 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
+!$OMP parallel private( mm,i1,i2,i3,i )
+!$  mm=omp_get_thread_num()
+!$OMP workshare
     zwork1_ffte(:,:,:)=z0
-!$OMP parallel do collapse(3) private(i)
-    do i3=a3b,b3b
-    do i2=a2b,b2b
-    do i1=a1b,b1b
+!$OMP end workshare
+    do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
+    do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
+    do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
        i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
        zwork1_ffte(i1,i2,i3) = trho(i)
     end do
     end do
     end do
-!$OMP end parallel do
+!$OMP end parallel
 
     call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
          ,mpi_complex16,mpi_sum,comm_fftx,ierr)
@@ -198,22 +203,26 @@ CONTAINS
 
     if ( gamma_hf == 1 ) then
 
+!$OMP parallel do private( i1,i2,i3 )
        do i=1,NGHT
           i1=LGHT(1,i)
           i2=LGHT(2,i)
           i3=LGHT(3,i)
           zwork2_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)*GGHT(i,1)
        end do
+!$OMP end parallel do
 
     else if ( gamma_hf == 0 ) then
 
        j=i_kq_fock(k,q,t)
+!$OMP parallel do private( i1,i2,i3 )
        do i=1,NGHT
           i1=LGHT(1,i)
           i2=LGHT(2,i)
           i3=LGHT(3,i)
           zwork2_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)*GGHT(i,j)
        end do
+!$OMP end parallel do
 
     end if ! [ gamma_hf ]
 
@@ -224,10 +233,11 @@ CONTAINS
 
     call watch(ctt(4),ett(4))
 
-!$OMP parallel do collapse(3) private(i)
-    do i3=a3b,b3b
-    do i2=a2b,b2b
-    do i1=a1b,b1b
+!$OMP parallel private( mm,i,i1,i2,i3 )
+!$  mm=omp_get_thread_num()
+    do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
+    do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
+    do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
        i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
 #ifdef _DRSDFT_
        tVh(i) = real( zwork1_ffte(i1,i2,i3) )
@@ -237,7 +247,7 @@ CONTAINS
     end do
     end do
     end do
-!$OMP end parallel do
+!$OMP end parallel
 
     call watch(ctt(5),ett(5))
 

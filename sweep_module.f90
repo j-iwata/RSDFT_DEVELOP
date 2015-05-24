@@ -77,8 +77,8 @@ CONTAINS
     integer,intent(IN)  :: Diter,isw_gs
     integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
-    integer :: iter,s,k,n,m,iflag_hybrid
-    real(8) :: ct0,et0,ct1,et1,ct(0:2),et(0:2)
+    integer :: iter,s,k,n,m,iflag_hybrid,ierr
+    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3),ctt(0:5),ett(0:5)
     logical :: flag_exit, flag_end, flag_conv
 
     if ( disp_switch ) write(*,*) "------------ SWEEP START ----------"
@@ -159,10 +159,16 @@ CONTAINS
        end do
        end do
 
+       ctt(0)=et(0)
+       ctt(1)=et(1)
+       ctt(2)=et(2)
+       call mpi_allreduce(ctt,ett(0),3,mpi_real8,mpi_min,mpi_comm_world,ierr)
+       call mpi_allreduce(ctt,ett(3),3,mpi_real8,mpi_max,mpi_comm_world,ierr)
+
        if ( disp_switch ) then
-          write(*,*) "time(diag)=",ct(0),et(0)
-          write(*,*) "time(cg)  =",ct(1),et(1)
-          write(*,*) "time(gs)  =",ct(2),et(2)
+          write(*,*) "time(cg)  =",ctt(0),ett(0),ett(3)
+          write(*,*) "time(gs)  =",ctt(1),ett(1),ett(4)
+          write(*,*) "time(diag)=",ctt(2),ett(2),ett(5)
        end if
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
