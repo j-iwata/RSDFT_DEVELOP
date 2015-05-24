@@ -113,7 +113,7 @@ CONTAINS
     real(8),optional,intent(OUT) :: Etot_out
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
-    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3)
+    real(8) :: ct0,et0,ct1,et1,ct(0:5),et(0:5),ctt(0:7),ett(0:7)
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
 
     if ( myrank == 0 ) write(*,*) "------------ SCF START ----------"
@@ -133,9 +133,9 @@ CONTAINS
     ib1         = max(1,nint(Nelectron/2)-20)
     ib2         = min(nint(Nelectron/2)+80,Nband)
 
-!    do s=MSP_0,MSP_1
-!       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-!    end do
+    do s=MSP_0,MSP_1
+       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+    end do
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
                     ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
@@ -248,11 +248,19 @@ CONTAINS
        end do ! k
        end do ! s
 
+
+       ctt(0)=et(0)
+       ctt(1)=et(1)
+       ctt(2)=et(2)
+       ctt(3)=et(3)
+       call mpi_allreduce(ctt,ett(0),4,mpi_real8,mpi_min,mpi_comm_world,ierr)
+       call mpi_allreduce(ctt,ett(4),4,mpi_real8,mpi_max,mpi_comm_world,ierr)
+
        if ( disp_switch ) then
-          write(*,*) "time(diag)    =",ct(0),et(0)
-          write(*,*) "time(cg)      =",ct(1),et(1)
-          write(*,*) "time(gs)      =",ct(2),et(2)
-          write(*,*) "time(esp/diag)=",ct(3),et(3)
+          write(*,*) "time(diag)    =",ctt(0),ett(0),ett(4)
+          write(*,*) "time(cg)      =",ctt(1),ett(1),ett(5)
+          write(*,*) "time(gs)      =",ctt(2),ett(2),ett(6)
+          write(*,*) "time(esp/diag)=",ctt(3),ett(3),ett(7)
        end if
 
        call watcht(disp_switch,"    ",0)
@@ -424,14 +432,16 @@ CONTAINS
        end if
        if ( u(i) == 6 .and. flag == 0 ) then
           if ( NSPIN == 1 ) then
-             write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X))') &
+             write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X),A,E12.5)') &
                   " iter= ",iter,"  rsqerr= ",sqerr_out(1),&
-                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fdiff
+                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fdiff, &
+                  " time=",time_scf(2)
           else
-             write(u(i), '(A,I4,4(A,2(E12.5,2x)))') &
+             write(u(i), '(A,I4,4(A,2(E12.5,2x),A,E12.5))') &
                   " iter= ",iter,"  rsqerr= ",sqerr_out(1:2), &
                   " vsqerr= ",sqerr_out(3:4)," sum_dspin,|dspin|= ", &
-                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fdiff
+                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fdiff, &
+                  " time=",time_scf(2)
           end if
        else
           if ( NSPIN == 1 ) then

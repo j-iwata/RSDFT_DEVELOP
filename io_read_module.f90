@@ -232,21 +232,11 @@ CONTAINS
        allocate( utmpSP(ML) ) ; utmpSP=zero
     end if
 
-    if ( type_wf /= type_wf_0 ) then
-
-       if ( type_wf == 1 ) then
-
-          allocate( dtmp(ML) ) ; dtmp=0.0d0
-          if ( OC == 14 .or. OC == 15 ) then
-             allocate( dtmpSP(ML) ) ; dtmpSP=0.0d0
-          end if
-
-       else if ( type_wf == 0 ) then
-
-          write(*,*) "type_wf,type_wf_0=",type_wf,type_wf_0
-
+    if ( type_wf == 1 ) then
+       allocate( dtmp(ML) ) ; dtmp=0.0d0
+       if ( OC == 14 .or. OC == 15 ) then
+          allocate( dtmpSP(ML) ) ; dtmpSP=0.0d0
        end if
-
     end if
 
     do s=1,MSP
