@@ -27,7 +27,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
-!    integer :: lma1,lma2
+    include 'mpif.h'
     integer :: ib1,ib2
     integer :: i,j,k,s,n,ir,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq
