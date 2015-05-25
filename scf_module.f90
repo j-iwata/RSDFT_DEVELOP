@@ -260,10 +260,10 @@ CONTAINS
        call mpi_allreduce(ctt,ett(4),4,mpi_real8,mpi_max,mpi_comm_world,ierr)
 
        if ( disp_switch ) then
-          write(*,*) "time(diag)    =",ctt(0),ett(0),ett(4)
-          write(*,*) "time(cg)      =",ctt(1),ett(1),ett(5)
-          write(*,*) "time(gs)      =",ctt(2),ett(2),ett(6)
-          write(*,*) "time(esp/diag)=",ctt(3),ett(3),ett(7)
+          write(*,'(1x,"time(diag)    =",3f12.3)') ctt(0),ett(0),ett(4)
+          write(*,'(1x,"time(cg)      =",3f12.3)') ctt(1),ett(1),ett(5)
+          write(*,'(1x,"time(gs)      =",3f12.3)') ctt(2),ett(2),ett(6)
+          write(*,'(1x,"time(esp/diag)=",3f12.3)') ctt(3),ett(3),ett(7)
        end if
 
        call watcht(disp_switch,"    ",0)
