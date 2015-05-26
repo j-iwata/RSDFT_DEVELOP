@@ -19,6 +19,7 @@ MODULE density_module
   PUBLIC :: normalize_density
   PUBLIC :: calc_density
   PUBLIC :: get_range_density, construct_density_v2
+  PUBLIC :: writeDensity
 
   real(8),allocatable,PUBLIC :: rho(:,:)
   real(8),PUBLIC :: sum_dspin(2)
@@ -214,6 +215,19 @@ CONTAINS
 !       end if
     end if
   END SUBROUTINE calc_sum_dspin
+
+  SUBROUTINE writeDensity( iter )
+    implicit none
+    integer,intent(IN) :: iter
+    integer :: s,i
+    call reduce_and_gather
+    do s=MS_0_RHO,MS_1_RHO
+       do i=ML_0_RHO,ML_1_RHO
+          write(5000+iter,'(g20.12)') rho(i,s)
+       end do
+    end do
+  END SUBROUTINE writeDensity
+
 
 
 END MODULE density_module
