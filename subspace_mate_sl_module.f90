@@ -3,10 +3,9 @@ MODULE subspace_mate_sl_module
   use rgrid_module, only: dV,zdV
   use parallel_module
   use hamiltonian_module
-  use wf_module, only: unk,esp
-!  use electron_module
+  use wf_module, only: unk,esp,hunk,iflag_hunk
   use scalapack_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
 
   implicit none
@@ -15,10 +14,10 @@ MODULE subspace_mate_sl_module
   PUBLIC :: subspace_mate_sl
 
 #ifdef _DRSDFT_
-  real(8),allocatable :: hunk(:,:),vtmp2(:,:),wtmp2(:,:)
+  real(8),allocatable :: hpsi(:,:),vtmp2(:,:),wtmp2(:,:)
   character(1),parameter :: TRANSA='T', TRANSB='N'
 #else
-  complex(8),allocatable :: hunk(:,:),vtmp2(:,:),wtmp2(:,:)
+  complex(8),allocatable :: hpsi(:,:),vtmp2(:,:),wtmp2(:,:)
   character(1),parameter :: TRANSA='C', TRANSB='N'
 #endif
 
@@ -54,6 +53,10 @@ CONTAINS
 
     call mpi_allgatherv(unk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN &
                        ,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    if ( iflag_hunk >= 1 ) then
+       call mpi_allgatherv(hunk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN &
+                          ,hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    end if
 
     deallocate( ir,id )
 
@@ -64,8 +67,8 @@ CONTAINS
     irecv_me(:,:) =-1
     isend_me(:,:) =-1
 
-    allocate( hunk(n1:n2,MBLK) )
-    hunk=zero
+    allocate( hpsi(n1:n2,MBLK) )
+    hpsi=zero
 
     j0=0
 
@@ -76,10 +79,15 @@ CONTAINS
 
        IPCOL = mod( (ns-1)/NBSIZE, NPCOL )
 
-       do ib1=ns,ne,MB_d
-          ib2=min(ib1+MB_d-1,ne)
-          call hamiltonian(k,s,unk(n1,ib1,k,s),hunk(n1,ib1-ns+1),n1,n2,ib1,ib2)
-       end do
+       if ( iflag_hunk >= 1 ) then
+          hpsi(:,1:nn)=hunk(:,ns:ne,k,s)
+       else
+          do ib1=ns,ne,MB_d
+             ib2=min(ib1+MB_d-1,ne)
+             call hamiltonian &
+                  (k,s,unk(n1,ib1,k,s),hpsi(n1,ib1-ns+1),n1,n2,ib1,ib2)
+          end do
+       end if
 
        if ( j0<LLD_C ) i0=0
 
@@ -123,10 +131,10 @@ CONTAINS
              vtmp2=zero ; wtmp2=zero
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,mm,nn,ML0, dV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,1),ML0,zero,vtmp2(ms,ns),mm)
+                  ,ML0,hpsi(n1,1),ML0,zero,vtmp2(ms,ns),mm)
 #else
              call zgemm(TRANSA,TRANSB,mm,nn,ML0,zdV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,1),ML0,zero,vtmp2(ms,ns),mm)
+                  ,ML0,hpsi(n1,1),ML0,zero,vtmp2(ms,ns),mm)
 #endif
              call mpi_reduce &
                   (vtmp2,wtmp2,mm*nn,TYPE_MAIN,mpi_sum,iroot2,comm_grid,ierr)
@@ -173,10 +181,10 @@ CONTAINS
              vtmp2=zero ; wtmp2=zero
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,mm,nnn,ML0, dV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,nns-ns+1),ML0,zero,vtmp2,mm)
+                  ,ML0,hpsi(n1,nns-ns+1),ML0,zero,vtmp2,mm)
 #else
              call zgemm(TRANSA,TRANSB,mm,nnn,ML0,zdV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,nns-ns+1),ML0,zero,vtmp2,mm)
+                  ,ML0,hpsi(n1,nns-ns+1),ML0,zero,vtmp2,mm)
 #endif
              call mpi_reduce &
                   (vtmp2,wtmp2,mm*nnn,TYPE_MAIN,mpi_sum,iroot2,comm_grid,ierr)
@@ -230,10 +238,10 @@ CONTAINS
              vtmp2=zero ; wtmp2=zero
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,mm,nnn,ML0, dV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,nns-ns+1),ML0,zero,vtmp2,mm)
+                  ,ML0,hpsi(n1,nns-ns+1),ML0,zero,vtmp2,mm)
 #else
              call zgemm(TRANSA,TRANSB,mm,nnn,ML0,zdV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,nns-ns+1),ML0,zero,vtmp2,mm)
+                  ,ML0,hpsi(n1,nns-ns+1),ML0,zero,vtmp2,mm)
 #endif
              call mpi_reduce(vtmp2,wtmp2,mm*nnn,TYPE_MAIN,mpi_sum &
                   ,iroot2,comm_grid,ierr)
@@ -263,7 +271,7 @@ CONTAINS
 
     end do ! ns
 
-    deallocate( hunk )
+    deallocate( hpsi )
 
 ! --- ME-send ---
 
@@ -379,19 +387,19 @@ CONTAINS
           if ( ms>=ne ) then
 #ifdef _DRSDFT_
              call dgemm(TRANSA,TRANSB,mm,nn,ML0, dV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,ns-ns0+1),ML0,zero,vtmp2(ms,ns),ld)
+                  ,ML0,hpsi(n1,ns-ns0+1),ML0,zero,vtmp2(ms,ns),ld)
 #else
              call zgemm(TRANSA,TRANSB,mm,nn,ML0,zdV,unk(n1,ms,k,s) &
-                  ,ML0,hunk(n1,ns-ns0+1),ML0,zero,vtmp2(ms,ns),ld)
+                  ,ML0,hpsi(n1,ns-ns0+1),ML0,zero,vtmp2(ms,ns),ld)
 #endif
           else if ( mm<=NBLK1 ) then
              do n=ns,ne
 #ifdef _DRSDFT_
                 call dgemv(TRANSA,ML0,ne-n+1, dV,unk(n1,n,k,s) &
-                     ,ML0,hunk(n1,n-ns0+1),1,zero,vtmp2(n,n),1)
+                     ,ML0,hpsi(n1,n-ns0+1),1,zero,vtmp2(n,n),1)
 #else
                 call zgemv(TRANSA,ML0,ne-n+1,zdV,unk(n1,n,k,s) &
-                     ,ML0,hunk(n1,n-ns0+1),1,zero,vtmp2(n,n),1)
+                     ,ML0,hpsi(n1,n-ns0+1),1,zero,vtmp2(n,n),1)
 #endif
              end do
           else

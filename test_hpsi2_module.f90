@@ -83,7 +83,7 @@ CONTAINS
 
     do loop=1,nloop
        do i=1,niter
-          call op_nonlocal(1,tpsi,htpsi,n1,n2,1,nrhs)
+          call op_nonlocal(1,1,tpsi,htpsi,n1,n2,1,nrhs)
        end do
     end do
 

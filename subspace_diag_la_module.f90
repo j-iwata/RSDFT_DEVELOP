@@ -4,7 +4,7 @@ MODULE subspace_diag_la_module
   use wf_module, only: unk,esp
   use hamiltonian_module
   use parallel_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use array_bound_module, only: ML_0,ML_1
   use watch_module
 
@@ -16,6 +16,7 @@ MODULE subspace_diag_la_module
 CONTAINS
 
   SUBROUTINE subspace_diag_la(k,s)
+    implicit none
     integer,intent(IN) :: k,s
     integer :: ML0,n1,n2,m,n,ierr,MB
     complex(8),allocatable :: work(:)

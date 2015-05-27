@@ -5,7 +5,7 @@ MODULE subspace_mate_sl_0_module
   use hamiltonian_module
   use wf_module, only: unk,esp
   use scalapack_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
 

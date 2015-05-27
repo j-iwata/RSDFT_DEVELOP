@@ -1,5 +1,8 @@
 MODULE bc_mol_module
 
+  use bc_variables, only: fdinfo_send,fdinfo_recv,n_neighbor
+  use rgrid_mol_module, only: map_g2p_rgrid_mol
+
   implicit none
 
   PRIVATE
@@ -10,8 +13,6 @@ MODULE bc_mol_module
 CONTAINS
 
   SUBROUTINE init_bcset_mol(Md,Ngrid,nproc,myrnk,comm,pinfo_grid)
-    use bc_module, only: fdinfo_send,fdinfo_recv,n_neighbor,allocate_bcset
-    use rgrid_mol_module, only: map_g2p_rgrid_mol
     implicit none
     integer,intent(IN) :: Ngrid(3),Md,nproc,myrnk,comm
     integer,intent(IN) :: pinfo_grid(8,0:nproc-1)
@@ -27,8 +28,6 @@ CONTAINS
 
     if ( myrnk == 0 ) write(*,'(a60," init_bcset_mol(start)")') repeat("-",60)
 
-!    Rc2 = Rsize**2
-!    H   = Hsize
     mx  = (Ngrid(1)-1)/2
     my  = (Ngrid(2)-1)/2
     mz  = (Ngrid(3)-1)/2
@@ -38,30 +37,6 @@ CONTAINS
     allocate( map_grid_2_pinfo(a1:b1,a2:b2,a3:b3) )
     map_grid_2_pinfo(:,:,:)=-1
 
-!    do n=0,nproc-1
-!       a1=pinfo_grid(1,n)+1 ; b1=a1+pinfo_grid(2,n)-1
-!       a2=pinfo_grid(3,n)+1 ; b2=a2+pinfo_grid(4,n)-1
-!       a3=pinfo_grid(5,n)+1 ; b3=a3+pinfo_grid(6,n)-1
-!       do i3=a3,b3
-!       do i2=a2,b2
-!       do i1=a1,b1
-!          select case(Box_Shape)
-!          case(1)
-!             r2=H*H*(i1*i1+i2*i2+i3*i3)
-!             if ( r2 <= Rc2+eps ) then
-!                map_grid_2_pinfo(i1,i2,i3)=n
-!             end if
-!          case(2)
-!             r2=H*H*(i1*i1+i2*i2)
-!             z=abs(i3*H)
-!             if ( r2 <= Rc2+eps .and. z <= Zsize+eps ) then
-!                map_grid_2_pinfo(i1,i2,i3)=n
-!             end if
-!          end select
-!       end do
-!       end do
-!       end do
-!    end do
     call map_g2p_rgrid_mol(a1,b1,a2,b2,a3,b3,map_grid_2_pinfo,nproc,pinfo_grid)
 
 !
@@ -373,15 +348,6 @@ CONTAINS
     do j=1,6
        do i=1,n_neighbor(j)
           irank=fdinfo_recv(8,i,j)
-!          write(*,*) j,i,irank,myrnk
-!          select case(j)
-!          case(1,3,5)
-!             itags=10*(j+1)+i
-!             itagr=10*j+i
-!          case(2,4,6)
-!             itags=10*(j-1)+i
-!             itagr=10*j+i
-!          end select
           itags=1
           itagr=1
           nreq=nreq+1
@@ -397,8 +363,6 @@ CONTAINS
 
     deallocate( istatus )
     deallocate( ireq )
-
-    call allocate_bcset
 
     if ( myrnk == 0 ) write(*,'(a60," init_bcset_mol(end)")') repeat("-",60)
 

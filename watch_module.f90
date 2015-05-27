@@ -3,7 +3,7 @@ MODULE watch_module
   implicit none
 
   PRIVATE
-  PUBLIC :: watch,watcht,read_watch,global_watch,read_oldformat_watch
+  PUBLIC :: watch,watchs,watcht,read_watch,global_watch,read_oldformat_watch
 
   real(8) :: ct0=0.d0, ctt=0.d0
   real(8) :: ett=0.d0
@@ -63,6 +63,21 @@ CONTAINS
     etime=mpi_wtime()
   END SUBROUTINE watch
 
+  SUBROUTINE watchs(ctime,etime,icnt)
+    real(8),intent(INOUT) :: ctime,etime
+    integer,intent(IN) :: icnt
+    integer :: count,count_rate
+    real(8) :: ct
+    call cpu_time(ct)
+    call system_clock(count,count_rate)
+    if ( icnt == 1 ) then
+       ctime=ctime+ct-ct0
+       etime=etime+real(count-count0)/real(count_rate)
+    end if
+    ct0=ct
+    count0=count
+  END SUBROUTINE watchs
+
   SUBROUTINE watcht(disp_switch,indx,icnt)
     logical,intent(IN) :: disp_switch
     character(*),intent(IN) :: indx 
@@ -83,12 +98,13 @@ CONTAINS
     count0=count
   END SUBROUTINE watcht
 
-  SUBROUTINE global_watch(flag_timelimit)
-    logical,intent(OUT) :: flag_timelimit
+  SUBROUTINE global_watch(disp_switch,flag_timelimit)
+    implicit none
+    logical,intent(IN) :: disp_switch
+    logical,optional,intent(OUT) :: flag_timelimit
     integer :: ierr
-    real(8) :: ct,et
+    real(8) :: ct,et,s(2),r(2)
     include 'mpif.h'
-    flag_timelimit=.false.
     call cpu_time(ct)
     et=mpi_wtime()
     if ( flag_count_start ) then
@@ -97,9 +113,14 @@ CONTAINS
        flag_count_start=.false.
        return
     end if
-    ct=et-global_etime0
-    call mpi_allreduce(ct,et,1,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,ierr)
-    if ( et > etime_limit ) flag_timelimit=.true.
+    s(1)=ct-global_ctime0
+    s(2)=et-global_etime0
+    call mpi_allreduce(s,r,2,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,ierr)
+    if ( present(flag_timelimit) ) then
+       flag_timelimit=.false.
+       if ( r(2) > etime_limit ) flag_timelimit=.true.
+    end if
+    if ( disp_switch ) write(*,'(1x,"TIME(END)",3f12.5)') r(1:2)
   END SUBROUTINE global_watch
 
 END MODULE watch_module

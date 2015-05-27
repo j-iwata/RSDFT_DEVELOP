@@ -6,7 +6,7 @@ MODULE subspace_diag_sl_module
   use subspace_solv_sl_module
   use subspace_rotv_sl_module
   use subspace_rotv_sl_0_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use watch_module
 
   implicit none
@@ -18,6 +18,7 @@ CONTAINS
 
 
   SUBROUTINE subspace_diag_sl(k,s,disp_switch)
+    implicit none
     logical,intent(IN) :: disp_switch
     integer,intent(IN) :: k,s
     real(8) :: ct(5),et(5),ct0,et0,ct1,et1
@@ -25,7 +26,7 @@ CONTAINS
     ct(:)=0.d0
     et(:)=0.d0
 
-    call prep_scalapack(MB_diag,disp_switch)
+    call prep_scalapack( MB_diag )
 
     allocate( Hsub(LLD_R,LLD_C) )
     Hsub=zero
@@ -56,11 +57,11 @@ CONTAINS
     deallocate( Vsub )
 
     if ( disp_switch ) then
-       write(*,'(1x,"time(diag_mate)",2g10.3)') ct(1),et(1)
-       write(*,'(1x,"time(diag_mate)",2g10.3)') ct(4),et(4)
-       write(*,'(1x,"time(scalapack)",2g10.3)') ct(2),et(2)
-       write(*,'(1x,"time(diag_rotv)",2g10.3)') ct(3),et(3)
-       write(*,'(1x,"time(diag_rotv)",2g10.3)') ct(5),et(5)
+!       write(*,'(1x,"time(diag_mate1)",2g10.3)') ct(1),et(1)
+!!       write(*,'(1x,"time(diag_mate2)",2g10.3)') ct(4),et(4)
+!       write(*,'(1x,"time(scalapack)",2g10.3)') ct(2),et(2)
+!       write(*,'(1x,"time(diag_rotv1)",2g10.3)') ct(3),et(3)
+!!       write(*,'(1x,"time(diag_rotv2)",2g10.3)') ct(5),et(5)
     end if
 
   END SUBROUTINE subspace_diag_sl

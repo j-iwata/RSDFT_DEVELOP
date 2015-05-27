@@ -1,5 +1,4 @@
 MODULE cg_module
-
   use rgrid_module, only: zdV,dV
   use hamiltonian_module
   use cgpc_module
@@ -7,16 +6,26 @@ MODULE cg_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
 
+  use cg_lobpcg_module, only: init_lobpcg, lobpcg
+  use cg_u_module, only: init_cg_u, cg_u
+
+  use wf_module, only: hunk, iflag_hunk
+
   implicit none
 
   PRIVATE
-  PUBLIC :: conjugate_gradient,read_cg,Ncg,iswitch_gs,read_oldformat_cg
+  PUBLIC :: conjugate_gradient
+  PUBLIC :: read_cg
+  PUBLIC :: read_oldformat_cg
 
-  integer :: Ncg,iswitch_gs
+  integer,PUBLIC :: Ncg
+  integer,PUBLIC :: iswitch_gs
+
+  integer :: iswitch_cg
 
 CONTAINS
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE read_cg(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -24,6 +33,7 @@ CONTAINS
     character(4) :: cbuf,ckey
     Ncg = 2
     iswitch_gs = 0
+    iswitch_cg = 1
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -35,17 +45,22 @@ CONTAINS
           else if ( ckey(1:4) == "SWGS" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_gs
+          else if ( ckey(1:3) == "ICG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_cg
           end if
        end do
 999    continue
        write(*,*) "Ncg=",Ncg
        write(*,*) "iswitch_gs=",iswitch_gs
+       write(*,*) "iswitch_cg=",iswitch_cg
     end if
     call send_cg(0)
   END SUBROUTINE read_cg
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE read_oldformat_cg(rank,unit)
+    implicit none
     integer,intent(IN) :: rank,unit
     if ( rank == 0 ) then
        read(unit,*) Ncg,iswitch_gs
@@ -55,17 +70,51 @@ CONTAINS
     call send_cg(0)
   END SUBROUTINE read_oldformat_cg
 
-
+!---------------------------------------------------------------------------------------
   SUBROUTINE send_cg(rank)
     implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     call mpi_bcast(Ncg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iswitch_gs,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(iswitch_cg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_cg
 
-#ifdef _DRSDFT_
+!---------------------------------------------------------------------------------------
+
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+    implicit none
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    real(8),intent(INOUT) :: esp(MB),res(MB)
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
+    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
+
+    call init_cgpc(n1,n2,k,s,dV)
+
+    select case( iswitch_cg )
+    case default
+
+    case( 1 )
+       call conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+    case( 2 )
+       if ( disp_switch_parallel ) write(*,*) "--- LOBPCG ---"
+       call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+       call lobpcg( k,s,Mcg,igs,unk,esp,res )
+    case( 3 )
+       if ( disp_switch_parallel ) write(*,*) "--- CG_U ---"
+       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
+    end select
+
+  END SUBROUTINE conjugate_gradient
+
+#ifndef _USPP_
+
+#ifdef _DRSDFT_
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     real(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -110,8 +159,8 @@ CONTAINS
     allocate( utmp2(2,2),btmp2(2,2) )
 
 !$OMP parallel workshare
-    res(:)  = 0.d0
-    esp(:)  = 0.d0
+    res(:) = 0.0d0
+    esp(:) = 0.0d0
 !$OMP end parallel workshare
 
     do ns=MB_0,MB_1
@@ -122,7 +171,13 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       if ( iflag_hunk >= 1 ) then
+!$OMP parallel workshare
+          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+!$OMP end parallel workshare
+       else
+          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       end if
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -175,7 +230,7 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
@@ -295,7 +350,7 @@ CONTAINS
 
              call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
 
-          end do
+          end do ! n
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
 
@@ -314,6 +369,13 @@ CONTAINS
                 unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
+             if ( iflag_hunk >= 1 ) then
+!$OMP parallel do
+                do i=n1,n2
+                   hunk(i,m,k,s)=hxk(i,n)
+                end do
+!$OMP end parallel do
+             end if
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -333,21 +395,21 @@ CONTAINS
     deallocate( hpk,hxk )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE conjugate_gradient_1
 
 #else
 
-  SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -404,7 +466,13 @@ CONTAINS
 
        call watch(ct0,et0)
 
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       if ( iflag_hunk >= 1 ) then
+!$OMP parallel workshare
+          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+!$OMP end parallel workshare
+       else
+          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       end if
 
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
@@ -455,7 +523,7 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
@@ -594,6 +662,13 @@ CONTAINS
                 unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
              end do
 !$OMP end parallel do
+             if ( iflag_hunk >= 1 ) then
+!$OMP parallel do
+                do i=n1,n2
+                   hunk(i,m,k,s)=hxk(i,n)
+                end do
+!$OMP end parallel do
+             end if
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -613,21 +688,41 @@ CONTAINS
     deallocate( hpk,hxk )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE conjugate_gradient
+  END SUBROUTINE conjugate_gradient_1
+#endif
+
+#else
+
+  SUBROUTINE conjugate_gradient_1( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
+    use ConjugateGradient_G
+    implicit none
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(n1:n2,MB)
+#else
+    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+#endif
+    real(8),intent(INOUT) :: esp(MB),res(MB)
+
+#ifdef _SHOWALL_CG_
+    write(200+myrank,*) '----> USPP CG routine'
+#endif
+    call ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+  END SUBROUTINE conjugate_gradient_1
 
 #endif
 
-
+!---------------------------------------------------------------------------------------
 #ifdef TEST
   SUBROUTINE dot_product(a,b,c,alpha,n,m)
     implicit none

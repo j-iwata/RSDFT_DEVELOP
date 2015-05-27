@@ -4,7 +4,8 @@ MODULE force_mol_module
   use force_nloc2_mol_module
   use force_ion_mol_module
   use watch_module
-  use parallel_module, only: disp_switch_parallel
+  use parallel_module, only: disp_switch_parallel, myrank
+  use ps_pcc_module, only: flag_pcc_0
 
   implicit none
 
@@ -18,40 +19,64 @@ CONTAINS
     real(8),intent(OUT) :: force(3,MI)
     real(8),allocatable :: work(:,:)
     real(8) :: ctt(0:3),ett(0:3)
+    logical :: disp_switch
+    integer :: a,i
 
     force(:,:) = 0.0d0
 
     ctt(:)=0.d0
     ett(:)=0.d0
 
+    disp_switch = .false.
+!    disp_switch = ( myrank == 0 )
+
     allocate( work(3,MI) ) ; work=0.0d0
 
     call watch(ctt(0),ett(0))
 
+    work=0.0d0
     call calc_force_local_mol(work)
     force = force + work
 
-!    if ( flag_pcc_0 ) then
-!       write(*,*) "RSMOL: force with pcc is not available yet"
-!       stop "stop@force_mol"
-!    end if
+    if ( flag_pcc_0 ) then
+       write(*,*) "RSMOL: force with pcc is not available yet"
+       stop "stop@force_mol"
+    end if
+
+    if ( disp_switch ) then
+       do a=1,MI
+          write(*,'(1x,"(local)",i8,3g21.12)') a,(work(i,a),i=1,3)
+       end do
+    end if
 
     call watch(ctt(1),ett(1))
 
+    work=0.0d0
     call calc_force_nloc2_mol(work)
     force = force + work
 
+    if ( disp_switch ) then
+       do a=1,MI
+          write(*,'(1x,"(nloc2)",i8,3g21.12)') a,(work(i,a),i=1,3)
+       end do
+    end if
+
     call watch(ctt(2),ett(2))
 
+    work=0.0d0
     call calc_force_ion_mol(work)
     force = force + work
 
+    if ( disp_switch ) then
+       do a=1,MI
+          write(*,'(1x,"(ion  )",i8,3g21.12)') a,(work(i,a),i=1,3)
+       end do
+       do a=1,MI
+          write(*,'(1x,"(tot  )",i8,3g21.12)') a,(force(i,a),i=1,3)
+       end do
+    end if
+
     call watch(ctt(3),ett(3))
-
-! --- constraint & symmetry ---
-
-!    call_symforce
-!    call_constraint
 
     deallocate( work )
 

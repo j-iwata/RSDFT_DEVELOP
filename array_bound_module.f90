@@ -3,19 +3,22 @@ MODULE array_bound_module
   use parallel_module, only: id_grid,ir_grid,id_band,ir_band &
                             ,id_bzsm,ir_bzsm,id_spin,ir_spin &
                             ,myrank_g,myrank_b,myrank_k,myrank_s
+  use BasicTypeFactory
 
   implicit none
 
   PRIVATE
-  PUBLIC :: ML,ML_0,ML_1,MB,MB_0,MB_1,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1 &
-           ,set_array_bound
+  PUBLIC :: set_array_bound
+  PUBLIC :: get_grid_range_local, get_grid_range_globl
+  PUBLIC :: get_spin_range_local, get_spin_range_globl
 
-  integer :: ML ,ML_0 ,ML_1
-  integer :: MB ,MB_0 ,MB_1
-  integer :: MBZ,MBZ_0,MBZ_1
-  integer :: MSP,MSP_0,MSP_1
+  integer,PUBLIC :: ML ,ML_0 ,ML_1
+  integer,PUBLIC :: MB ,MB_0 ,MB_1
+  integer,PUBLIC :: MBZ,MBZ_0,MBZ_1
+  integer,PUBLIC :: MSP,MSP_0,MSP_1
 
 CONTAINS
+
 
   SUBROUTINE set_array_bound
     ML_0  = id_grid(myrank_g)+1
@@ -31,5 +34,47 @@ CONTAINS
     MBZ = sum(ir_bzsm)
     MSP = sum(ir_spin)
   END SUBROUTINE set_array_bound
+
+
+  SUBROUTINE get_grid_range_local( g )
+    implicit none
+    type( ArrayRange ) :: g
+    g%head = ML_0
+    g%tail = ML_1
+    call getArraySize( g )
+  END SUBROUTINE get_grid_range_local
+
+  SUBROUTINE get_grid_range_globl( g )
+    implicit none
+    type( ArrayRange ) :: g
+    g%head = 1
+    g%tail = ML
+    call getArraySize( g )
+  END SUBROUTINE get_grid_range_globl
+
+
+  SUBROUTINE get_spin_range_local( g )
+    implicit none
+    type( ArrayRange ) :: g
+    g%head = MSP_0
+    g%tail = MSP_1
+    call getArraySize( g )
+  END SUBROUTINE get_spin_range_local
+
+  SUBROUTINE get_spin_range_globl( g )
+    implicit none
+    type( ArrayRange ) :: g
+    g%head = 1
+    g%tail = MSP
+    call getArraySize( g )
+  END SUBROUTINE get_spin_range_globl
+
+
+  SUBROUTINE getArraySize( range )
+    implicit none
+    type( ArrayRange ) :: range
+    range%size = range%tail - range%head + 1
+  END SUBROUTINE getArraySize
+
 
 END MODULE array_bound_module

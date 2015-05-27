@@ -6,19 +6,47 @@ MODULE parameters_module
   implicit none
 
   PRIVATE
-  PUBLIC :: read_parameters, read_oldformat_parameters
+  PUBLIC :: read_parameters
 
   integer,parameter :: unit=1, unit_atom=970
 
-  integer :: atom_format
+  integer :: param_format=0
+
+  integer :: Diter, Ndiag
 
 CONTAINS
 
+
   SUBROUTINE read_parameters
     implicit none
-    integer :: i
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(START)")') repeat("-",60)
+    end if
+
+    select case( param_format )
+    case default
+       call read_keywordformat_parameters
+    case( 1 )
+       call read_oldformat_parameters
+    end select
+
+    if ( disp_switch_parallel ) then
+       write(*,'(a60," read_parameters(END)")') repeat("-",60)
+    end if
+
+  END SUBROUTINE read_parameters
+
+
+  SUBROUTINE read_keywordformat_parameters
+    implicit none
+    integer :: i,iformat
     character(7) :: label,cbuf,ckey
     real(8) :: Ratom(3),ax_tmp,aa_tmp(3,3)
+
+#ifdef _SHOWALL_
+if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
+#endif
 
     call read_atom(myrank,unit_atom,ax_tmp,aa_tmp)
 
@@ -30,6 +58,7 @@ CONTAINS
        ax = ax_tmp
        aa(:,:) = aa_tmp(:,:)
        call write_info("ax and aa given in fort.970 are used") 
+       call set_org_aa( ax, aa )
     end if
 
     call read_electron(myrank,unit)
@@ -38,7 +67,7 @@ CONTAINS
 
     call read_cg(myrank,unit)
 
-    call read_rgrid(myrank,unit)
+    call Read_RgridSol(myrank,unit)
 
     call read_kinetic(myrank,unit)
 
@@ -63,33 +92,10 @@ CONTAINS
 
     call read_watch(myrank,unit)
 
-    Diter  = 100
-    Nsweep = 0
-    if ( myrank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "DITER" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Diter
-          else if ( ckey(1:6) == "NSWEEP" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nsweep
-          else if ( ckey(1:6) == "NDIAG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ndiag
-          end if
-       end do
-999    continue
-       write(*,*) "Diter =",Diter
-       write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Ndaig =",Ndiag
-    end if
-
-    iswitch_scf  = 1
-    iswitch_opt  = 0
-    iswitch_test = 0
+    iswitch_scf   = 1
+    iswitch_opt   = 0
+    iswitch_test  = 0
+    iswitch_tddft = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
@@ -107,6 +113,9 @@ CONTAINS
           else if ( ckey(1:6) == "SWTEST" ) then
              backspace(unit)
              read(unit,*) cbuf,iswitch_test
+          else if ( ckey(1:7) == "SWTDDFT" ) then
+             backspace(unit)
+             read(unit,*) cbuf,iswitch_tddft
           end if
        end do
 990    continue
@@ -116,19 +125,22 @@ CONTAINS
        write(*,*) "iswitch_test=",iswitch_test
     end if
 
-    atom_format = 0
     if ( myrank == 0 ) then
        rewind unit
        do i=1,10000
           read(unit,*,END=980) cbuf
           call convert_capital(cbuf,ckey)
           if ( ckey(1:3) == "XYZ" ) then
-             atom_format = 1
-             write(*,*) "atom_format=",atom_format,ckey(1:3)
+             atom_format = 2
              exit
           end if
        end do
 980    continue
+       if ( atom_format == 1 ) then
+          write(*,*) "atomic coordinates are assumed as lattice format"
+       else if ( atom_format == 2 ) then
+          write(*,*) "atomic coordinates are assumed as XYZ format"
+       end if
     end if
 
     call send_parameters(0)
@@ -136,7 +148,7 @@ CONTAINS
     call read_atomopt(myrank,unit)
 
     if ( SYStype == 1 ) then
-       if ( atom_format == 0 ) then
+       if ( atom_format == 1 ) then
           aa=ax*aa
           do i=1,Natom
              Ratom(1:3) = matmul( aa, aa_atom(:,i) )
@@ -155,7 +167,7 @@ CONTAINS
           call write_info("aa & aa_atom are modified")
        end if
     else if ( SYStype == 0 ) then
-       if ( atom_format == 1 ) then
+       if ( atom_format == 2 ) then
           call construct_bb(aa)
           bb(:,:)=transpose(bb(:,:))/(ax*2.0d0*acos(-1.0d0))
           do i=1,Natom
@@ -166,8 +178,24 @@ CONTAINS
           end do
        end if
     end if
+#ifdef _SHOWALL_
+if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
+#endif
 
-  END SUBROUTINE read_parameters
+    call read_symmetry( myrank, unit )
+
+    call read_gram_schmidt( myrank, unit )
+
+    call read_sweep( myrank, unit )
+
+    select case( iswitch_scf )
+    case default
+       call read_scf( myrank, unit )
+    case( 2 )
+       call read_scf_chefsi( myrank, unit )
+    end select
+
+  END SUBROUTINE read_keywordformat_parameters
 
 
   SUBROUTINE read_oldformat_parameters
@@ -200,7 +228,7 @@ CONTAINS
 
     call read_oldformat_cg(myrank,unit)
 
-    call read_oldformat_rgrid(myrank,unit)
+    call ReadOldformat_RgridSol(myrank,unit)
 
     call read_oldformat_kinetic(myrank,unit)
 
@@ -224,7 +252,7 @@ CONTAINS
        read(unit,*) Diter, Nsweep, Ndiag
        write(*,*) "Diter =",Diter
        write(*,*) "Nsweep=",Nsweep
-       write(*,*) "Nsweep=",Ndiag
+       write(*,*) "Ndiag =",Ndiag
     end if
 
     call read_oldformat_io(myrank,unit)
@@ -257,6 +285,7 @@ CONTAINS
     call mpi_bcast(iswitch_opt ,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_band,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(iswitch_test,1,mpi_integer,rank,mpi_comm_world,ierr)
+    call mpi_bcast(iswitch_tddft,1,mpi_integer,rank,mpi_comm_world,ierr)
     call mpi_bcast(atom_format,1,mpi_integer,rank,mpi_comm_world,ierr)
   END SUBROUTINE send_parameters
 

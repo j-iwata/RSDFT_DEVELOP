@@ -11,7 +11,6 @@ MODULE force_nloc2_mol_module
   use ps_nloc2_variables
   use ps_nloc2_init_module
 
-
   implicit none
 
   PRIVATE
@@ -19,9 +18,9 @@ MODULE force_nloc2_mol_module
 
   logical :: flag_init = .true.
   integer,allocatable :: ilm1(:,:,:),irad(:,:)
-  real(8) :: Y1(0:2,-2:2,0:3,-3:3)
-  real(8) :: Y2(0:2,-2:2,0:3,-3:3)
-  real(8) :: Y3(0:2,-2:2,0:3,-3:3)
+  real(8) :: Y1(0:3,-3:3,0:4,-4:4)
+  real(8) :: Y2(0:3,-3:3,0:4,-4:4)
+  real(8) :: Y3(0:3,-3:3,0:4,-4:4)
 
 CONTAINS
 
@@ -36,7 +35,15 @@ CONTAINS
     real(8) :: maxerr,err,err0,x,y,z,r
     real(8) :: Rx,Ry,Rz,Rc,c
     real(8) :: v,v0,yy1,yy2,yy3
-    real(8),allocatable :: duVdR(:,:,:),w(:,:,:,:),wtmp(:,:),ftmp(:,:)
+    real(8),allocatable :: duVdR(:,:,:)
+#ifdef _DRSDFT_
+    real(8),allocatable :: w(:,:,:,:),wtmp(:,:)
+    real(8),parameter :: zero=0.0d0
+#else
+    complex(8),allocatable :: w(:,:,:,:),wtmp(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
+#endif
+    real(8),allocatable :: ftmp(:,:)
     logical,allocatable :: a_rank(:)
 
     INTERFACE
@@ -150,7 +157,7 @@ CONTAINS
 
 !--
 
-    allocate( w(0:3,nzlma,MB_0:MB_1,MSP_0:MSP_1) ) ; w=0.0d0
+    allocate( w(0:3,nzlma,MB_0:MB_1,MSP_0:MSP_1) ) ; w=zero
 
     do s=MSP_0,MSP_1
     do n=MB_0,MB_1
@@ -163,7 +170,11 @@ CONTAINS
 
           do j=1,MJJ(lma)
              i=JJP(j,lma)
-             w(0,lma,n,s) = w(0,lma,n,s) +   uVk(j,lma,1)*unk(i,n,1,s)
+#ifdef _DRSDFT_
+             w(0,lma,n,s) = w(0,lma,n,s) + uVk(j,lma,1)*unk(i,n,1,s)
+#else             
+             w(0,lma,n,s) = w(0,lma,n,s) + uVk(j,lma,1)*conjg(unk(i,n,1,s))
+#endif
              w(1,lma,n,s) = w(1,lma,n,s) + duVdR(1,j,lma)*unk(i,n,1,s)
              w(2,lma,n,s) = w(2,lma,n,s) + duVdR(2,j,lma)*unk(i,n,1,s)
              w(3,lma,n,s) = w(3,lma,n,s) + duVdR(3,j,lma)*unk(i,n,1,s)
@@ -182,7 +193,7 @@ CONTAINS
     m = 2*maxval( nrlma_xyz )
     allocate( ireq(m) ) ; ireq=0
     allocate( istatus(MPI_STATUS_SIZE,m) ) ; istatus=0
-    allocate( wtmp(0:3,nzlma) ) ; wtmp=0.0d0
+    allocate( wtmp(0:3,nzlma) ) ; wtmp=zero
     allocate( a_rank(Natom) ) ; a_rank=.false.
 
     do a=1,Natom
@@ -305,6 +316,26 @@ CONTAINS
     Y1( 2, 2, 1, 1) =  0.218509686118416d0
     Y1( 2, 2, 3, 1) = -0.058399170081902d0
     Y1( 2, 2, 3, 3) =  0.226179013159540d0
+    Y1( 3,-3, 2,-2) = -0.226179013159540d0
+    Y1( 3,-1, 2,-2) =  0.058399170081901d0
+    Y1( 3,-2, 2,-1) = -0.184674390922371d0
+    Y1( 3, 1, 2, 0) =  0.202300659403420d0
+    Y1( 3, 0, 2, 1) = -0.143048168102668d0
+    Y1( 3, 2, 2, 1) =  0.184674390922371d0
+    Y1( 3, 1, 2, 2) = -0.058399170081901d0
+    Y1( 3, 3, 2, 2) =  0.226179013159540d0
+    Y1( 3,-3, 4,-4) = -0.230329432980890d0
+    Y1( 3,-2, 4,-3) = -0.199471140200716d0
+    Y1( 3,-3, 4,-2) =  0.043528171377568d0
+    Y1( 3,-1, 4,-2) = -0.168583882836183d0
+    Y1( 3,-2, 4,-1) =  0.075393004386513d0
+    Y1( 3, 1, 4, 0) = -0.150786008773026d0
+    Y1( 3, 0, 4, 1) =  0.194663900273006d0
+    Y1( 3, 2, 4, 1) = -0.075393004386513d0
+    Y1( 3, 1, 4, 2) =  0.168583882836183d0
+    Y1( 3, 3, 4, 2) = -0.043528171377568d0
+    Y1( 3, 2, 4, 3) =  0.199471140200716d0
+    Y1( 3, 3, 4, 4) =  0.230329432980890d0
     Y2=0.d0
     Y2( 0, 0, 1,-1) =  0.282094791773878d0
     Y2( 1,-1, 0, 0) =  0.282094791773878d0
@@ -324,6 +355,26 @@ CONTAINS
     Y2( 2, 2, 1,-1) = -0.218509686118416d0
     Y2( 2, 2, 3,-3) =  0.226179013159540d0
     Y2( 2, 2, 3,-1) =  0.058399170081902d0
+    Y2( 3, 1, 2,-2) =  0.058399170081901d0
+    Y2( 3, 3, 2,-2) =  0.226179013159540d0
+    Y2( 3, 0, 2,-1) = -0.143048168102668d0
+    Y2( 3, 2, 2,-1) = -0.184674390922371d0
+    Y2( 3,-1, 2, 0) =  0.202300659403420d0
+    Y2( 3,-2, 2, 1) = -0.184674390922371d0
+    Y2( 3,-3, 2, 2) =  0.226179013159540d0
+    Y2( 3,-1, 2, 2) =  0.058399170081901d0
+    Y2( 3, 3, 4,-4) = -0.230329432980890d0
+    Y2( 3, 2, 4,-3) =  0.199471140200716d0
+    Y2( 3, 1, 4,-2) = -0.168583882836183d0
+    Y2( 3, 3, 4,-2) = -0.043528171377568d0
+    Y2( 3, 0, 4,-1) =  0.194663900273006d0
+    Y2( 3, 2, 4,-1) =  0.075393004386513d0
+    Y2( 3,-1, 4, 0) = -0.150786008773026d0
+    Y2( 3,-2, 4, 1) =  0.075393004386513d0
+    Y2( 3,-3, 4, 2) = -0.043528171377568d0
+    Y2( 3,-1, 4, 2) = -0.168583882836183d0
+    Y2( 3,-2, 4, 3) =  0.199471140200716d0
+    Y2( 3,-3, 4, 4) = -0.230329432980890d0
     Y3=0.d0
     Y3( 0, 0, 1, 0) =  0.282094791773878d0
     Y3( 1,-1, 2,-1) =  0.218509686118416d0
@@ -338,6 +389,18 @@ CONTAINS
     Y3( 2, 1, 1, 1) =  0.218509686118416d0
     Y3( 2, 1, 3, 1) =  0.233596680327607d0
     Y3( 2, 2, 3, 2) =  0.184674390922372d0
+    Y3( 3,-2, 2,-2) =  0.184674390922371d0
+    Y3( 3,-1, 2,-1) =  0.233596680327607d0
+    Y3( 3, 0, 2, 0) =  0.247766695083476d0
+    Y3( 3, 1, 2, 1) =  0.233596680327607d0
+    Y3( 3, 2, 2, 2) =  0.184674390922371d0
+    Y3( 3,-3, 4,-3) =  0.162867503967639d0
+    Y3( 3,-2, 4,-2) =  0.213243618622923d0
+    Y3( 3,-1, 4,-1) =  0.238413613504448d0
+    Y3( 3, 0, 4, 0) =  0.246232521229829d0
+    Y3( 3, 1, 4, 1) =  0.238413613504448d0
+    Y3( 3, 2, 4, 2) =  0.213243618622923d0
+    Y3( 3, 3, 4, 3) =  0.162867503967639d0
 
     L1=maxval(lo)+1
     n =maxval(norb)
@@ -465,7 +528,11 @@ CONTAINS
   SUBROUTINE comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,w)
     implicit none
     integer,intent(IN) :: nzlma,ib1,ib2
+#ifdef _DRSDFT_
     real(8),intent(INOUT) :: w(4,nzlma,ib1:ib2)
+#else
+    complex(8),intent(INOUT) :: w(4,nzlma,ib1:ib2)
+#endif
     integer :: nreq,irank,m,i1,i2,i3,i4,ib,ierr,nb
     integer :: istatus(mpi_status_size,512),ireq(512)
     nb=ib2-ib1+1
@@ -475,7 +542,7 @@ CONTAINS
        if ( irank == myrank_g .or. m <= 0 ) cycle
        i2=0
        do ib=ib1,ib2
-       do i1=1,nzlma
+       do i1=1,lma_nsend(irank)
        do i3=1,4
           i2=i2+1
           sbufnl(i2,irank)=w(i3,sendmap(i1,irank),ib)
@@ -495,7 +562,7 @@ CONTAINS
        if ( irank == myrank_g .or. m <= 0 ) cycle
        i2=0
        do ib=ib1,ib2
-       do i1=1,nzlma
+       do i1=1,lma_nsend(irank)
           i4=recvmap(i1,irank)
        do i3=1,4
           i2=i2+1

@@ -7,9 +7,9 @@ SUBROUTINE bomd
   use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,KB,dt &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,linitnose,lmeta,dtsuz,lbath,lbathnewe &
-                           ,lscaleele,Rion,lscale,linitnosee,AMU,pmass &
+                           ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue,AMU,pmass &
                            ,iatom,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
-                           ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm
+                           ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
   use parallel_module
   use total_energy_module
   use wf_module
@@ -18,10 +18,11 @@ SUBROUTINE bomd
   use cpmdio2_module
 
   use rotorb_module
+  use blue_moon_module
 
   implicit none
 
-  integer :: i,j,k,n,s,ierr,itime,ib1,ib2
+  integer :: i,j,k,n,s,ierr,ib1,ib2
   real(8) :: tott,dif,kine,tote,tote0,dt2,ltemp
   real(8) :: fke,bathe,engconf,enose
   real(8) :: ctime0,ctime1,etime0,etime1
@@ -38,12 +39,16 @@ SUBROUTINE bomd
 
   integer,parameter :: unit_trjxyz = 90
 
+  lblue = .false.
+
   if ( myrank == 0 ) write(*,'(1x,a60," CPMD")') repeat("-",60)
 
   if ( myrank == 0 ) then
      call read_cpmd_variables ! in 'alloc_cpmd.f90'
+     if ( lblue ) call read_blue
   end if
   call send_cpmd_variables ! in 'alloc_cpmd.f90'
+  if ( lblue ) call bcast_blue_data
 
   tote0       = 0.d0
   enose       = 0.d0
@@ -163,7 +168,7 @@ SUBROUTINE bomd
         disp_switch=(myrank==0)
         call getforce_cpmd(.true.,ltime) ! in 'getforce_cpmd.f90'
         call wf_force ! in 'wf_force.f90'
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,9999)
         disp_switch=.false.
      endif
   else
@@ -288,11 +293,14 @@ SUBROUTINE bomd
      if ( lbath ) call mnhc
 
 !-------subtruct center of mass
-     call comvel(vcmio,.true.,itime) ! in 'bomd.f90'
+     call comvel(vcmio,.true.) ! in 'bomd.f90'
 !------------------------------
 
+     Rion0(:,:)    = Rion(:,:)
      Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
      Rion(:,:)     = Rion(:,:)     + Velocity(:,:)*dt
+
+     if ( lblue ) call cpmdshake
 
      if ( lcpmd ) then
         call watch(ctime_cpmd(0),etime_cpmd(0))
@@ -313,11 +321,11 @@ SUBROUTINE bomd
         call watch(ctime_cpmd(7),etime_cpmd(7))
         call calfke(fke)
         call watch(ctime_cpmd(8),etime_cpmd(8))
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,999)
         call watch(ctime_cpmd(9),etime_cpmd(9))
      else
         call getforce
-        call calc_total_energy(.false.,disp_switch)
+        call calc_total_energy(.false.,disp_switch,999)
      endif
 
      if ( lmeta ) then
@@ -333,8 +341,15 @@ SUBROUTINE bomd
 
      Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
 
+!---------------------for constraint(2)----
+     if ( lblue ) then
+        call rattle
+        call write_blue_data(itime)
+     end if
+!------------------------------------------
+
 !-----------------subtruct center of mass (Nessesary for RS-CPMD)
-     call comvel(vcmio,.false.,itime)
+     call comvel(vcmio,.false.)
 !-----------------------------------------
 
      if ( lbath ) then
@@ -412,7 +427,7 @@ SUBROUTINE bomd
         end if
      endif
 
-     call global_watch(flag_etlimit)
+     call global_watch(.false.,flag_etlimit)
      if ( flag_etlimit ) then
         if ( myrank == 0 ) write(*,*) "elapsed time limit exceeded : flag_etlimit=",flag_etlimit
         exit
@@ -441,6 +456,7 @@ SUBROUTINE bomd
   close(4)
   close(15)
   close(unit_trjxyz)
+  if ( lblue ) close(889)
   if ( ltime ) then
      close(16)
      close(17)
@@ -1086,14 +1102,14 @@ subroutine make_nose_time(delt_elec)
   return
 end subroutine make_nose_time
 !-------------------------------------------------------------------
-subroutine comvel(vcmio,inout,itime)
+subroutine comvel(vcmio,inout)
   !      use global_variables
   use cpmd_variables
   implicit none
   real(8) :: kine,pm,temp1,temp2
   real(8) :: tscal,vscale,totmass
   real(8) :: vcmio(4),vcm(3)
-  integer :: i,j,itime
+  integer :: i,j
   logical :: inout
 !calculate first temp.
   kine=0.0d0

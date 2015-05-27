@@ -16,7 +16,7 @@
 
       pi4    = atan(1.d0)*16.d0
       l2_i   = 1
-      l1_max = 2
+      l1_max = 3
 
       i=0
       do j=1,3

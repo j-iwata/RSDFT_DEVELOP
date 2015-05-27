@@ -15,14 +15,14 @@ MODULE ps_local_module
   use ffte_sub_module
   use bberf_module
 
+
   implicit none
 
   PRIVATE
   PUBLIC :: Vion,init_ps_local,construct_ps_local,calc_force_ps_local &
        ,construct_ps_local_ffte,calc_force_ps_local_ffte
 
-  real(8),allocatable :: Rcloc(:),vqlg(:,:),vqlgl(:,:),vqls(:,:)
-  integer,allocatable :: NRcloc(:)
+  real(8),allocatable :: vqlg(:,:),vqlgl(:,:),vqls(:,:)
   real(8),allocatable :: Vion(:)
 
   logical :: first_time1=.true.
@@ -51,22 +51,20 @@ CONTAINS
     Pi    = acos(-1.d0)
     const = 4.d0*Pi/Vcell
 
-    allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.d0
-
-    if ( pselect == 4 .or. pselect == 5 ) then
-       call init_ps_local_gth(NMGL,Nelement,GG,vqlg)
-       return
-    end if
+    allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.0d0
 
     MMr=maxval(Mr)
     allocate( vqls(MMr,MKI)   ) ; vqls=0.d0
     allocate( vqlgl(NMGL,MKI) ) ; vqlgl=0.d0
-    allocate( NRcloc(MKI)     ) ; NRcloc=0
-    allocate( Rcloc(MKI)      ) ; Rcloc=0.d0
 
     allocate( vshort(MMr) )
 
     do ik=1,MKI
+
+       if ( ippform(ik) == 4 ) then
+          call init_ps_local_gth( Vcell, NMGL, ik, GG, vqlg(1,ik) )
+          cycle
+       end if
 
        MMr = Mr(ik)
 
@@ -101,18 +99,7 @@ CONTAINS
           end if
           vshort(i)=vql(i,ik)-vlong
           vqls(i,ik)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 
@@ -207,6 +194,12 @@ CONTAINS
     complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:3),ett(0:3)
+    logical :: disp_sw
+
+#ifdef _FFTE_
+    call construct_ps_local_ffte
+    return
+#endif
 
     MG  = NGgrid(0)
     ML  = Ngrid(0)
@@ -284,7 +277,8 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
        write(*,*) "time(const_ps_loc_1)",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(const_ps_loc_2)",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)
@@ -913,6 +907,7 @@ CONTAINS
     complex(8),allocatable :: zrho(:) !, zrho3(:,:,:)
     complex(8),parameter :: z0=(0.d0,0.d0)
     real(8) :: zsum1,zsum2,zsum3,ztmp
+    include 'mpif.h'
 
     force(:,:)=0.d0
 
@@ -1082,12 +1077,17 @@ CONTAINS
 
 !    call destruct_Ggrid
 
-    call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-                        ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+    if ( nprocs <= Natom ) then
+       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+    else
+       call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
+                         ,mpi_sum,mpi_comm_world,ierr)
+    end if
 
     call watch(ctt(9),ett(9))
 
-    if ( myrank == 0 ) then
+    if ( disp_switch_parallel ) then
        write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
        write(*,*) "time(force_local_ffte2)=",ctt(2)-ctt(1),ett(2)-ett(1)
        write(*,*) "time(force_local_ffte3)=",ctt(3)-ctt(2),ett(3)-ett(2)

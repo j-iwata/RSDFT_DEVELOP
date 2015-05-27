@@ -157,6 +157,11 @@ CONTAINS
 
     deallocate( jtmp )
 
+    mm1 = maxval( abs(mcube_grid_ion(:,1)) ) + 1
+    mm2 = maxval( abs(mcube_grid_ion(:,2)) ) + 1
+    mm3 = maxval( abs(mcube_grid_ion(:,3)) ) + 1
+    mm4 = M_grid_ion
+
   END SUBROUTINE make_minimal_box
 
 END MODULE minimal_box_module

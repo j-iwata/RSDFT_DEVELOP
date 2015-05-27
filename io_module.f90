@@ -5,7 +5,7 @@ MODULE io_module
   use density_module, only: rho
   use xc_module, only: Vxc
   use localpot_module, only: Vloc
-  use hartree_module, only: Vh
+  use hartree_variables, only: Vh
   use parallel_module
   use array_bound_module, only: ML,ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
@@ -13,15 +13,22 @@ MODULE io_module
   use rgrid_mol_module, only: LL
   use kinetic_module, only: SYStype
 
+  use io2_module
+  use io_read_module
+  use io_write_module
+
   implicit none
 
   PRIVATE
-  PUBLIC :: read_io, write_data, read_data, read_oldformat_io
+  PUBLIC :: read_io, write_data, read_data, read_oldformat_io &
+           ,GetParam_IO, Init_IO
 
   integer :: IO_ctrl=0
   integer :: IC,OC,OC2
   integer :: MBwr1=0
   integer :: MBwr2=0
+  character(30) :: file_wf0   ="wf.dat1"
+  character(30) :: file_vrho0 ="vrho.dat1"
   character(30) :: file_wf1   ="wf.dat1"
   character(30) :: file_vrho1 ="vrho.dat1"
   character(30) :: file_wf2   ="wf.dat1"
@@ -53,7 +60,7 @@ CONTAINS
     integer :: i
     character(6) :: cbuf,ckey
     IC  = 0
-    OC  = 3
+    OC  = 0
     OC2 = 100
     IO_ctrl = 0
     if ( rank == 0 ) then
@@ -67,12 +74,15 @@ CONTAINS
           else if ( ckey(1:3) == "OC2" ) then
              backspace(unit)
              read(unit,*) cbuf,OC2
-          else if ( ckey(1:2) == "OC" ) then
+          else if ( ckey(1:3) == "OC" ) then
              backspace(unit)
              read(unit,*) cbuf,OC
           else if ( ckey(1:6) == "IOCTRL" ) then
              backspace(unit)
              read(unit,*) cbuf,IO_ctrl
+          else if ( ckey(1:4) == "MBWR" ) then
+             backspace(unit)
+             read(unit,*) cbuf,MBwr1,MBwr2
           end if
        end do
 999    continue
@@ -80,6 +90,7 @@ CONTAINS
        write(*,*) "OC =",OC
        write(*,*) "OC2=",OC2
        write(*,*) "IO_ctrl=",IO_ctrl
+       write(*,*) "MBwr1,MBwr2=",MBwr1,MBwr2
     end if
     call send_io(0)
   END SUBROUTINE read_io
@@ -101,6 +112,8 @@ CONTAINS
     call mpi_bcast(OC ,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(OC2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(IO_ctrl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(MBwr1,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(MBwr2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_io
 
   SUBROUTINE write_data(disp_switch,flag)
@@ -117,7 +130,7 @@ CONTAINS
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
 
-    if ( OC2<1 .or. OC<1 .or. OC>5 ) return
+    if ( OC2 < 1 .or. OC < 1 .or. OC > 15 ) return
 
     icount=icount+1
     if ( .not.(flag .or. icount==OC2) ) return
@@ -178,7 +191,8 @@ CONTAINS
 ! --- density and potentials ---
 !
 
-    if ( OC==2 .or. OC==3 .or. OC==5 ) then
+    if ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
+         OC == 12 .or. OC == 13 .or. OC == 15 ) then
 
        allocate( rtmp(ML) )
 
@@ -295,9 +309,18 @@ CONTAINS
 !
 ! --- Wave function ---
 !
+    
 
-    if ( OC==1 .or. OC==3 .or. OC==4 .or. OC==5 ) then
+    if ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
+         OC == 11 .or. OC == 13 .or. OC == 14 .or. OC == 15 ) then
 
+       if ( OC == 4 ) OC=14
+       if ( OC == 5 ) OC=15
+
+       call simple_wf_io_write &
+            ( file_wf1, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
+
+goto 100
        if (DISP_SWITCH) then
           select case(OC)
 #ifdef _DRSDFT_
@@ -324,7 +347,11 @@ CONTAINS
        if ( myrank==0 ) then
           open(1,file=file_wf1,form="unformatted")
           write(1) ML,ML1,ML2,ML3
-          write(1) MB,MBwr1,MBwr2
+          if ( OC > 10 ) then
+             write(1) MB,MBwr1,MBwr2,MBZ,MSP
+          else
+             write(1) MB,MBwr1,MBwr2
+          end if
           write(1) LL2(:,:)
           write(1) occ(:,:,:)
        end if
@@ -449,6 +476,7 @@ CONTAINS
 
        if ( allocated(utmpSP) ) deallocate( utmpSP )
        deallocate( utmp )
+100 continue
 
     end if
 
@@ -480,7 +508,7 @@ CONTAINS
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
 
-    if ( IC<=0 ) return
+    if ( IC <= 0 ) return
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -539,7 +567,7 @@ CONTAINS
 !
 ! --- Read VRHO ---
 !
-    if ( IC==2 .or. IC==3 .or. IC==5 ) then
+    if ( IC==2 .or. IC==3 .or. IC==5 .or. IC==6 .or. IC==13 ) then
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
@@ -677,6 +705,19 @@ CONTAINS
 !
 ! --- Read WF ---
 !
+
+    if ( IC == 2 ) return
+
+    call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+
+goto 100
+
+    if ( IC == 6 ) then
+       if ( allocated(LL_tmp) ) deallocate(LL_tmp)
+       if ( allocated(LL2) ) deallocate(LL2)
+       call read_data_io2( disp_switch )
+       return
+    end if
 
     if ( IC==1 .or. IC==3 .or. IC==4 .or. IC==5 ) then
 
@@ -1002,11 +1043,44 @@ CONTAINS
 
     end if
 
+100 continue
+
     deallocate( LL_tmp )
     deallocate( LL2 )
 
     return
 
   END SUBROUTINE read_data
+
+
+  FUNCTION GetParam_IO(i)
+    implicit none
+    integer :: GetParam_IO
+    integer,intent(IN) :: i
+    select case(i)
+    case( 1 )
+       GetParam_IO = IC
+    case( 2 )
+       GetParam_IO = OC
+    case( 3 )
+       GetParam_IO = OC2
+    case default
+       GetParam_IO = -1
+    end select
+  END FUNCTION GetParam_IO
+
+
+  SUBROUTINE Init_IO( index )
+    implicit none
+    character(*),intent(IN) :: index
+    if ( index /= "" ) then
+       file_wf1   = trim(file_wf0)//"."//index
+       file_vrho1 = trim(file_vrho0)//"."//index
+    else
+       file_wf1   = file_wf0
+       file_vrho1 = file_vrho0
+    end if
+  END SUBROUTINE Init_IO
+
 
 END MODULE io_module

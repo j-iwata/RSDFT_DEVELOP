@@ -1,0 +1,332 @@
+MODULE VarPSMember
+
+  use parallel_module, only: myrank
+
+  implicit none
+
+  PRIVATE
+  PUBLIC :: allocateRps
+  PUBLIC :: deallocateRps
+  PUBLIC :: allocateRad1
+  PUBLIC :: deallocateRad1
+  PUBLIC :: send_pseudopot
+  PUBLIC :: ps_allocate
+#ifdef _USPP_F_TEST_
+  PUBLIC :: write_viod
+  PUBLIC :: write_dviod
+#endif
+
+  integer,PUBLIC :: Nelement_PP
+  integer,PUBLIC :: Nelement_
+  integer,allocatable,PUBLIC :: ippform(:)
+  character(30),allocatable,PUBLIC :: file_ps(:)
+  real(8),allocatable,PUBLIC :: rad(:,:),rab(:,:),rad1(:,:)
+  real(8),allocatable,PUBLIC :: rabr2(:,:)
+  real(8),allocatable,PUBLIC :: vql(:,:),viod(:,:,:)
+  real(8),allocatable,PUBLIC :: dviod(:,:,:)
+  real(8),allocatable,PUBLIC :: cdc(:,:),cdd(:,:)
+  real(8),allocatable,PUBLIC :: anorm(:,:)
+
+  real(8),allocatable,PUBLIC :: Rps(:,:)
+  integer,allocatable,PUBLIC :: lo(:,:),inorm(:,:),NRps(:,:)
+
+  integer,allocatable,PUBLIC :: Mr(:),norb(:)
+  real(8),allocatable,PUBLIC :: parloc(:,:)
+  real(8),allocatable,PUBLIC :: Zps(:),Zelement(:)
+  real(8),allocatable,PUBLIC :: cdd_coef(:,:,:)
+
+  integer,allocatable,PUBLIC :: NRps0(:,:)
+  real(8),allocatable,PUBLIC :: Rps0(:,:)
+
+  integer,PUBLIC :: max_psgrd=0,max_psorb=0,max_ngauss=0
+
+  integer,allocatable,PUBLIC :: nlf(:)
+  integer,allocatable,PUBLIC :: nrf(:,:)
+  integer,allocatable,PUBLIC :: no(:,:)
+  
+  real(8),allocatable,PUBLIC :: hnml(:,:,:,:),knml(:,:,:,:)
+  real(8),allocatable,PUBLIC :: hnl(:,:,:),knl(:,:,:)
+  real(8),allocatable,PUBLIC :: Rcloc(:)
+
+  integer,PUBLIC :: ps_type = 0
+
+CONTAINS
+
+!------------------------------------------
+  SUBROUTINE allocateRps
+    implicit none
+    integer :: m
+    if (allocated( NRps0 )) then
+      call deallocateRps
+    end if
+    m=max_psorb
+    allocate( NRps0(1:m,1:Nelement_) ) ; NRps0=0
+    allocate( Rps0(1:m,1:Nelement_)  ) ; Rps0=0.d0
+    NRps0(:,:)=NRps(:,:)
+    Rps0(:,:)=Rps(:,:)
+    return
+  END SUBROUTINE allocateRps
+!------------------------------------------
+  SUBROUTINE deallocateRps
+    implicit none
+    deallocate( NRps0 )
+    deallocate( Rps0  )
+    return
+  END SUBROUTINE deallocateRps
+!------------------------------------------
+  SUBROUTINE allocateRad1(m)
+    implicit none
+    integer,intent(IN) :: m
+    if (allocated( rad1 )) then
+      if (m>size(rad1(:,1))) then
+        call deallocateRad1
+      else
+        return
+      endif
+    end if
+    allocate( rad1(m,Nelement_)  ) ; rad1=0.d0
+    return
+  END SUBROUTINE allocateRad1
+!------------------------------------------
+  SUBROUTINE deallocateRad1
+    implicit none
+    deallocate( Rad1  )
+    return
+  END SUBROUTINE deallocateRad1
+
+!------------------------------------------
+  SUBROUTINE send_pseudopot(myrank)
+    implicit none
+    integer,intent(IN) :: myrank
+    integer :: m,n,ierr
+    include 'mpif.h'
+    m=max_psgrd
+    n=max_psorb
+    call mpi_bcast(m,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(n,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Nelement_PP,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    if ( myrank /= 0 ) then
+       call ps_allocate(m,n)
+    end if
+    call mpi_bcast(Mr    ,Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(norb  ,Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Zps   ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(parloc,4*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(anorm ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(inorm ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Rps   ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(NRps  ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(lo    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(no    ,n*Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(vql   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(cdd   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(cdc   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(rad   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(rab   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(viod  ,m*n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(Rcloc ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+#ifdef _USPP_
+    call mpi_bcast(nlf   ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(nrf   ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(rabr2 ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+#endif
+!
+    call mpi_bcast(max_ngauss,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    if ( max_ngauss /= 0 ) then
+       if ( myrank /= 0 ) then
+          allocate( cdd_coef(3,max_ngauss,Nelement_PP) ) ; cdd_coef(:,:,:)=0.0d0
+       end if
+       call mpi_bcast(cdd_coef,size(cdd_coef),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    end if
+!
+    call mpi_bcast(hnl ,size(hnl) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(knl ,size(knl) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(hnml,size(hnml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(knml,size(knml),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(ps_type,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+
+  END SUBROUTINE send_pseudopot
+
+!-------------------------------------------------------
+  SUBROUTINE ps_allocate(n_grd,n_orb)
+    implicit none
+    integer,intent(IN) :: n_grd,n_orb
+    integer :: mg,mo
+    real(8),allocatable :: vql_tmp(:,:),cdd_tmp(:,:),rad_tmp(:,:)
+    real(8),allocatable :: cdc_tmp(:,:),viod_tmp(:,:,:)
+    real(8),allocatable :: anorm_tmp(:,:),Rps_tmp(:,:),rab_tmp(:,:)
+    real(8),allocatable :: rabr2_tmp(:,:)
+    integer,allocatable :: inorm_tmp(:,:),lo_tmp(:,:),NRps_tmp(:,:)
+    integer,allocatable :: nrf_tmp(:,:),no_tmp(:,:)
+    if ( .not.allocated(hnl) ) then
+       allocate( hnl(3,0:2,Nelement_PP) ) ; hnl=0.0d0
+       allocate( knl(3,1:2,Nelement_PP) ) ; knl=0.0d0
+    end if
+    if ( .not.allocated(hnml) ) then
+       allocate( hnml(3,3,0:2,Nelement_PP) ) ; hnml=0.0d0
+       allocate( knml(3,3,1:2,Nelement_PP) ) ; knml=0.0d0
+    end if
+    if ( max_psgrd==0 .or. max_psorb==0 ) then
+       allocate( Mr(Nelement_PP)   ) ; Mr(:)=0
+       allocate( norb(Nelement_PP) ) ; norb(:)=0
+       allocate( nlf(Nelement_PP)   ) ; nlf(:)=0
+       allocate( nrf(n_orb,Nelement_PP) ) ; nrf(:,:)=0
+       allocate( Zps(Nelement_PP)      ) ; Zps(:)=0.d0
+       allocate( Zelement(Nelement_PP) ) ; Zelement(:)=0.d0
+       allocate( parloc(4,Nelement_PP)    ) ; parloc(:,:)=0.d0
+       allocate( anorm(n_orb,Nelement_PP) ) ; anorm(:,:)=0.d0
+       allocate( inorm(n_orb,Nelement_PP) ) ; inorm(:,:)=0
+       allocate( Rps(n_orb,Nelement_PP)   ) ; Rps(:,:)=0.d0
+       allocate( NRps(n_orb,Nelement_PP)  ) ; NRps(:,:)=0
+       allocate( lo(n_orb,Nelement_PP)    ) ; lo(:,:)=0
+       allocate( no(n_orb,Nelement_PP) ) ; no(:,:)=0
+       allocate( vql(n_grd,Nelement_PP)   ) ; vql(:,:)=0.d0
+       allocate( cdd(n_grd,Nelement_PP)   ) ; cdd(:,:)=0.d0
+       allocate( cdc(n_grd,Nelement_PP)   ) ; cdc(:,:)=0.d0
+       allocate( rad(n_grd,Nelement_PP)   ) ; rad(:,:)=0.d0
+       allocate( rab(n_grd,Nelement_PP)   ) ; rab(:,:)=0.d0
+       allocate( viod(n_grd,n_orb,Nelement_PP) ) ; viod(:,:,:)=0.d0
+       allocate( Rcloc(Nelement_PP) ) ; Rcloc(:)=0.0d0
+       allocate( rabr2(n_grd,Nelement_PP) ) ; rabr2(:,:)=0.d0
+       max_psgrd=n_grd
+       max_psorb=n_orb
+       return
+    end if
+    mg = max( max_psgrd, n_grd )
+    mo = max( max_psorb, n_orb )
+    if ( max_psgrd < mg ) then
+       allocate( vql_tmp(mg,Nelement_PP) ) ; vql_tmp(:,:)=0.d0
+       allocate( cdd_tmp(mg,Nelement_PP) ) ; cdd_tmp(:,:)=0.d0
+       allocate( rad_tmp(mg,Nelement_PP) ) ; rad_tmp(:,:)=0.d0
+       allocate( rab_tmp(mg,Nelement_PP) ) ; rab_tmp(:,:)=0.d0
+       allocate( cdc_tmp(mg,Nelement_PP) ) ; cdc_tmp(:,:)=0.d0
+       allocate( rabr2_tmp(mg,Nelement_PP) ) ; rabr2_tmp(:,:)=0.d0
+       vql_tmp(1:max_psgrd,1:Nelement_PP) = vql(1:max_psgrd,1:Nelement_PP)
+       cdd_tmp(1:max_psgrd,1:Nelement_PP) = cdd(1:max_psgrd,1:Nelement_PP)
+       rad_tmp(1:max_psgrd,1:Nelement_PP) = rad(1:max_psgrd,1:Nelement_PP)
+       rab_tmp(1:max_psgrd,1:Nelement_PP) = rab(1:max_psgrd,1:Nelement_PP)
+       cdc_tmp(1:max_psgrd,1:Nelement_PP) = cdc(1:max_psgrd,1:Nelement_PP)
+       rabr2_tmp(1:max_psgrd,1:Nelement_PP)=rabr2_tmp(1:max_psgrd,1:Nelement_PP)
+       deallocate( rabr2 )
+       deallocate( cdc )
+       deallocate( rab )
+       deallocate( rad )
+       deallocate( cdd )
+       deallocate( vql )
+       allocate( vql(mg,Nelement_PP) ) ; vql(:,:)=0.d0
+       allocate( cdd(mg,Nelement_PP) ) ; cdd(:,:)=0.d0
+       allocate( rad(mg,Nelement_PP) ) ; rad(:,:)=0.d0
+       allocate( rab(mg,Nelement_PP) ) ; rab(:,:)=0.d0
+       allocate( cdc(mg,Nelement_PP) ) ; cdc(:,:)=0.d0
+       allocate( rabr2(mg,Nelement_PP) ) ; rabr2(:,:)=0.d0
+       vql(:,:)=vql_tmp(:,:)
+       cdd(:,:)=cdd_tmp(:,:)
+       rad(:,:)=rad_tmp(:,:)
+       rab(:,:)=rab_tmp(:,:)
+       cdc(:,:)=cdc_tmp(:,:)
+       rabr2(:,:)=rabr2_tmp(:,:)
+       deallocate( rabr2_tmp )
+       deallocate( cdc_tmp )
+       deallocate( rab_tmp )
+       deallocate( rad_tmp )
+       deallocate( cdd_tmp )
+       deallocate( vql_tmp )
+       allocate( viod_tmp(mg,mo,Nelement_PP) ) ; viod_tmp(:,:,:)=0.d0
+       viod_tmp(1:max_psgrd,1:max_psorb,1:Nelement_PP) &
+            = viod(1:max_psgrd,1:max_psorb,1:Nelement_PP)
+       deallocate( viod )
+       allocate( viod(mg,mo,Nelement_PP) ) ; viod(:,:,:)=0.d0
+       viod(:,:,:)=viod_tmp(:,:,:)
+       deallocate( viod_tmp )
+    end if
+    if ( max_psorb < mo ) then
+       allocate( anorm_tmp(mo,Nelement_PP) ) ; anorm_tmp(:,:)=0.d0
+       allocate( inorm_tmp(mo,Nelement_PP) ) ; inorm_tmp(:,:)=0
+       allocate( lo_tmp(mo,Nelement_PP) ) ; lo_tmp(:,:)=0
+       allocate( no_tmp(mo,Nelement_PP) ) ; no_tmp(:,:)=0
+       allocate( Rps_tmp(mo,Nelement_PP) ) ; Rps_tmp(:,:)=0.d0
+       allocate( NRps_tmp(mo,Nelement_PP) ) ; NRps_tmp(:,:)=0
+       allocate( nrf_tmp(mo,Nelement_PP) ) ; nrf_tmp(:,:)=0
+       anorm_tmp(1:max_psorb,1:Nelement_PP) = anorm(1:max_psorb,1:Nelement_PP)
+       inorm_tmp(1:max_psorb,1:Nelement_PP) = inorm(1:max_psorb,1:Nelement_PP)
+       lo_tmp(1:max_psorb,1:Nelement_PP) = lo(1:max_psorb,1:Nelement_PP)
+       no_tmp(1:max_psorb,1:Nelement_PP) = no(1:max_psorb,1:Nelement_PP)
+       Rps_tmp(1:max_psorb,1:Nelement_PP) = Rps(1:max_psorb,1:Nelement_PP)
+       NRps_tmp(1:max_psorb,1:Nelement_PP) = NRps(1:max_psorb,1:Nelement_PP)
+       nrf_tmp(1:max_psorb,1:Nelement_PP) = nrf(1:max_psorb,1:Nelement_PP)
+       deallocate( nrf )
+       deallocate( NRps )
+       deallocate( Rps )
+       deallocate( no )
+       deallocate( lo )
+       deallocate( inorm )
+       deallocate( anorm )
+       allocate( anorm(mo,Nelement_PP) ) ; anorm(:,:)=0.d0
+       allocate( inorm(mo,Nelement_PP) ) ; inorm(:,:)=0
+       allocate( lo(mo,Nelement_PP)    ) ; lo(:,:)=0
+       allocate( no(mo,Nelement_PP)    ) ; no(:,:)=0
+       allocate( Rps(mo,Nelement_PP)   ) ; Rps(:,:)=0.d0
+       allocate( NRps(mo,Nelement_PP)  ) ; NRps(:,:)=0
+       allocate( nrf(mo,Nelement_PP)   ) ; nrf(:,:)=0
+       anorm(:,:) = anorm_tmp(:,:)
+       inorm(:,:) = inorm_tmp(:,:)
+       lo(:,:) = lo_tmp(:,:)
+       no(:,:) = no_tmp(:,:)
+       Rps(:,:) = Rps_tmp(:,:)
+       NRps(:,:) = NRps_tmp(:,:)
+       nrf(:,:) = nrf_tmp(:,:)
+       deallocate( nrf_tmp )
+       deallocate( NRps_tmp )
+       deallocate( Rps_tmp )
+       deallocate( lo_tmp )
+       deallocate( no_tmp )
+       deallocate( inorm_tmp )
+       deallocate( anorm_tmp )
+       if ( max_psgrd >= mg ) then
+          allocate( viod_tmp(mg,mo,Nelement_PP) ) ; viod_tmp(:,:,:)=0.d0
+          viod_tmp(1:max_psgrd,1:max_psorb,1:Nelement_PP) &
+               = viod(1:max_psgrd,1:max_psorb,1:Nelement_PP)
+          deallocate( viod )
+          allocate( viod(mg,mo,Nelement_PP) ) ; viod(:,:,:)=0.d0
+          viod(:,:,:)=viod_tmp(:,:,:)
+          deallocate( viod_tmp )
+       end if
+    end if
+    max_psgrd = mg
+    max_psorb = mo
+  END SUBROUTINE ps_allocate
+
+#ifdef _USPP_F_TEST_
+  subroutine write_viod(unit,rank)
+    implicit none
+    integer,intent(IN) :: unit,rank
+    integer :: i,iorb,ielm
+    if (rank==0) write(200,'(A10,3I7)') 'viod=',Nelement_PP,max_psorb,max_psgrd
+    write(unit+rank,'(3I7)') Nelement_PP,max_psorb,max_psgrd
+    do ielm=1,Nelement_PP
+      do iorb=1,max_psorb
+        do i=1,max_psgrd
+          write(unit+rank,'(g20.12)') viod(i,iorb,ielm)
+        enddo
+      enddo
+    enddo
+  end subroutine write_viod
+
+  subroutine write_dviod(unit,rank)
+    implicit none
+    integer,intent(IN) :: unit,rank
+    integer :: i,iorb,ielm
+    integer :: l
+    l=size(dviod)/(Nelement_PP*max_psgrd)
+    if (rank==0) write(200,'(A10,3I7)') 'dviod=',Nelement_PP,l,max_psgrd
+    write(unit+rank,'(3I7)') Nelement_PP,l,max_psgrd
+    do ielm=1,Nelement_PP
+      do iorb=1,l
+        do i=1,max_psgrd
+          write(unit+rank,'(g20.12)') dviod(i,iorb,ielm)
+        enddo
+      enddo
+    enddo
+  end subroutine write_dviod
+#endif
+END MODULE VarPSMember

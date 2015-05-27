@@ -1,6 +1,5 @@
 MODULE sseig
 
-  use global_variables, only: disp_switch
   use parallel_module
   use iter_lin_solvers, only: z_dot,comm_rhs,solver_timers,solver_info &
                              ,myrank_r,nprocs_r,seed_val,z_mgs_qr,z_matmat_cn,z_matmat_nx &
@@ -146,7 +145,7 @@ CONTAINS
 
        allocate(  Y_tmp(size(X,1), n_rhs_blk_here, opt%N)  )
 
-       if ( disp_switch ) write(*,'(a40," LSfun")') repeat("-",60)
+       if ( disp_switch_parallel ) write(*,'(a40," LSfun")') repeat("-",60)
        call tic(current_sseig_timers%ls_time,comm_grid)
        call LSfun(omega,V(:,offset:offset+n_rhs_blk_here-1),Y_tmp)
        call toc(current_sseig_timers%ls_time,comm_grid)
@@ -162,7 +161,7 @@ CONTAINS
 
     end do
 
-    if ( disp_switch ) write(*,'(a40," z_sseig_post_linear_system")') repeat("-",60)
+    if ( disp_switch_parallel ) write(*,'(a40," z_sseig_post_linear_system")') repeat("-",60)
     call tic(current_sseig_timers%post_time,comm_grid)
     call z_sseig_post_linear_system &
          (gamma,rho,opt,theta,omega,Y,lambda,X,residual,evnum)

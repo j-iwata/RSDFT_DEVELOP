@@ -14,6 +14,7 @@ OBJ = mnhc.o\
       calc_overlap_module.o \
       overlap_cpmd_module.o \
       rotorb_module.o \
+      blue_moon_module.o \
       bomd.o\
       calkin.o\
       getforce_cpmd.o\
@@ -26,5 +27,5 @@ OBJ = mnhc.o\
 all : $(MOBJ) $(OBJ)
 
 clean :
-	rm -r -f *.o *.mod mpif.h *.lst
+	rm -r -f *.o *.mod mpif.h *.lst *.optlog *.i90
 

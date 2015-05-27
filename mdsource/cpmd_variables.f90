@@ -35,8 +35,8 @@ MODULE cpmd_variables
   real(8),allocatable :: psi_v(:,:,:,:) ! velocity   of wavefunction
   real(8),allocatable :: psi_n(:,:,:,:) ! updated    of wavefunction 
 #else
-  complex(16),allocatable :: psi_v(:,:,:,:) ! velocity   of wavefunction
-  complex(16),allocatable :: psi_n(:,:,:,:) ! updated    of wavefunction 
+  complex(8),allocatable :: psi_v(:,:,:,:) ! velocity   of wavefunction
+  complex(8),allocatable :: psi_n(:,:,:,:) ! updated    of wavefunction 
 #endif
   real(8),allocatable :: zam(:,:)
   real(8),allocatable :: tau(:,:)
@@ -174,6 +174,21 @@ MODULE cpmd_variables
   integer :: IO_ctrl
   character(30) :: FILE_WF2,FILE_WF
 !  include 'mpif.h'
+!--------------for blue-moon------------------------
+  real(8),allocatable :: ylagr(:),xlagr(:)
+  integer,allocatable :: ipvt(:)
+  real(8),allocatable :: DT2BYM(:),DTB2MI(:)
+  real(8),allocatable :: pm_dim(:)
+  real(8),allocatable :: Rion0(:,:)
+  real(8),allocatable :: fc(:),fv(:)
+  real(8),allocatable :: anorm(:,:)
+  logical :: lblue
+  integer :: mcnstr,nodim,ityp
+  integer :: ia(10),ib(10),ic(10)
+  real(8) :: cnpar(2,10)
+  real(8) :: cval(10)
+  integer :: index(10)
+  integer :: itime
 
 END MODULE cpmd_variables
 

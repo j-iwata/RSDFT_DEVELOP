@@ -6,7 +6,10 @@ MODULE esm_genpot_module
   use ps_local_rs_module
   use modified_bessel_module
   use parallel_module
-  use kinetic_module
+  use kinetic_variables, only: Md
+  use bc_module
+  use fd_module
+  use pseudopot_module
 
   implicit none
 
@@ -206,10 +209,6 @@ CONTAINS
 
 
   SUBROUTINE esm_test3(n1,n2,rho_in,v_inout)
-    use kinetic_module
-    use bc_module
-    use fd_module
-    use pseudopot_module
     implicit none
     integer,intent(IN)  :: n1,n2
     real(8),intent(IN)  :: rho_in(n1:n2)
@@ -249,8 +248,8 @@ CONTAINS
     c2  = 1.d0/Hgrid(2)**2
     c3  = 1.d0/Hgrid(3)**2
 
-    allocate( lap(-Md:Md) ) ; lap=0.d0
-    call get_coef_laplacian_fd(Md,lap)
+    allocate( lap(-Md:Md) ) ; lap=0.0d0
+    call get_coef_lapla_fd(Md,lap)
     lap(0)=0.5d0*lap(0)
 
     allocate(  b(n1:n2) )

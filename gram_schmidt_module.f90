@@ -1,45 +1,52 @@
 MODULE gram_schmidt_module
 
-  use rgrid_module
-  use wf_module
-  use parallel_module
+  use gram_schmidt_m_module
+  use gram_schmidt_t_module
+  use gram_schmidt_u_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: gram_schmidt_m
+  PUBLIC :: gram_schmidt, read_gram_schmidt
 
-#ifdef _DRSDFT_
-  integer,parameter :: TYPE_MAIN=MPI_REAL8
-  real(8) :: uu,vv
-#else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
-  complex(8) :: uu,vv
-#endif
+  integer :: iswitch_algorithm = 0
+  include 'mpif.h'
 
 CONTAINS
 
-  SUBROUTINE gram_schmidt_m(n0,n1,k,s)
-    integer,intent(IN) :: n0,n1,k,s
-    integer :: n,m,ierr
-    real(8) :: c,d
-
-    do n=n0,n1
-       do m=n0,n-1
-#ifdef _DRSDFT_
-          uu=sum( unk(:,m,k,s)*unk(:,n,k,s) )*dV
-#else
-          uu=sum( conjg(unk(:,m,k,s))*unk(:,n,k,s) )*dV
-#endif
-          call mpi_allreduce(uu,vv,1,TYPE_MAIN,MPI_SUM,comm_grid,ierr)
-          unk(:,n,k,s)=unk(:,n,k,s)-unk(:,m,k,s)*vv
+  SUBROUTINE read_gram_schmidt(rank,unit)
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: i,ierr
+    character(2) :: cbuf,ckey
+    if ( rank == 0 ) then
+       rewind unit
+       do i=1,10000
+          read(unit,*,END=999) cbuf
+          call convert_capital(cbuf,ckey)
+          if ( ckey == "GS" ) then
+             backspace(unit)
+             read(unit,*) cbuf, iswitch_algorithm
+             exit
+          end if
        end do
-       c=sum(abs(unk(:,n,k,s))**2)*dV
-       call mpi_allreduce(c,d,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
-       c=1.d0/sqrt(d)
-       unk(:,n,k,s)=c*unk(:,n,k,s)
-    end do
+999    continue
+       write(*,*) "GS:iswitch_algorithm=",iswitch_algorithm
+    end if
+    call mpi_bcast(iswitch_algorithm,1,mpi_integer,0,mpi_comm_world,ierr)
+  END SUBROUTINE read_gram_schmidt
 
-  END SUBROUTINE gram_schmidt_m
+  SUBROUTINE gram_schmidt(n0,n1,k,s)
+    implicit none
+    integer,intent(IN) :: n0,n1,k,s
+    select case( iswitch_algorithm )
+    case default
+       call gram_schmidt_t(n0,n1,k,s)
+    case( 1 )
+       call gram_schmidt_m(n0,n1,k,s)
+    case( 2 )
+       call gram_schmidt_u(n0,n1,k,s)
+    end select
+  END SUBROUTINE gram_schmidt
 
 END MODULE gram_schmidt_module

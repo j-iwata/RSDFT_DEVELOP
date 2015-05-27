@@ -9,6 +9,10 @@ MODULE esm_cylindrical_test
   use ps_local_module
   use ps_local_rs_module
   use hartree_module
+  use kinetic_variables, only: Md
+  use pseudopot_module
+  use bc_module
+  use fd_module
 
   implicit none
 
@@ -121,8 +125,7 @@ CONTAINS
 
 
   SUBROUTINE esm_test2
-    use kinetic_module
-    use pseudopot_module
+    implicit none
     integer :: ikz,i,i1,i2,i3,j,j1,j2,ma,ima,ierr,n,s
     integer :: a1,a2,a3,b1,b2,b3
     real(8) :: pi4,pi2,r,r1,r2,kz,phi,x,y,z,c,pi
@@ -329,9 +332,6 @@ CONTAINS
   END FUNCTION Rrigt
 
   SUBROUTINE esm_test3(n1,n2,rho_in,v_inout)
-    use kinetic_module
-    use bc_module
-    use fd_module
     implicit none
     integer,intent(IN)  :: n1,n2
     real(8),intent(IN)  :: rho_in(n1:n2)
@@ -362,7 +362,7 @@ CONTAINS
     c3  = 1.d0/Hgrid(3)**2
 
     allocate( lap(-Md:Md) ) ; lap=0.d0
-    call get_coef_laplacian_fd(Md,lap)
+    call get_coef_lapla_fd(Md,lap)
     lap(0)=0.5d0*lap(0)
 
     mp = 0 !Ngrid(3)/2
@@ -663,9 +663,6 @@ CONTAINS
   END SUBROUTINE esm_test3
 
   SUBROUTINE esm_test3_test(n1,n2,rho_in,v_inout)
-    use kinetic_module
-    use bc_module
-    use fd_module
     implicit none
     integer,intent(IN)  :: n1,n2
     real(8),intent(IN)  :: rho_in(n1:n2)
@@ -693,7 +690,7 @@ CONTAINS
     b3=Igrid(2,3)
 
     allocate( lap(-Md:Md) ) ; lap=0.d0
-    call get_coef_laplacian_fd(Md,lap)
+    call get_coef_lapla_fd(Md,lap)
     lap(0)=0.5d0*lap(0)
 
     c1=1.d0/Hgrid(1)**2

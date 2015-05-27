@@ -15,23 +15,18 @@ MODULE ps_local_rs_module
   use esm_rshell_module
 
   use simc_module
+  use bberf_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_ps_local_rs,construct_ps_local_rs,construct_ps_density_longloc &
-            ,rho_ps,construct_ps_initrho_rs
+  PUBLIC :: init_ps_local_rs, construct_ps_local_rs &
+           ,construct_ps_density_longloc &
+           ,rho_ps, construct_ps_initrho_rs
 
-  real(8),allocatable :: Rcloc(:),vqlg(:,:),vqlgl(:,:),vqls(:,:)
-  integer,allocatable :: NRcloc(:)
+  real(8),allocatable :: vqlg(:,:),vqlgl(:,:),vqls(:,:)
   real(8),allocatable :: Vion(:)
   real(8),allocatable :: rho_ps(:)
-
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
 
 CONTAINS
 
@@ -52,8 +47,6 @@ CONTAINS
     allocate( vqls(MMr,MKI)   ) ; vqls=0.d0
     allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.d0
     allocate( vqlgl(NMGL,MKI) ) ; vqlgl=0.d0
-    allocate( NRcloc(MKI)     ) ; NRcloc=0
-    allocate( Rcloc(MKI)      ) ; Rcloc=0.d0
 
     allocate( vshort(MMr) )
 
@@ -92,18 +85,7 @@ CONTAINS
           end if
           vshort(i)=vql(i,ik)-vlong
           vqls(i,ik)=vql(i,ik)-vlong
-          if( NRcloc(ik)==0 )then
-             if( abs(vshort(i))<1.d-8 ) then
-                NRcloc(ik)=i
-                Rcloc(ik)=r
-             end if
-          end if
        end do
-
-       if ( NRcloc(ik)==0 ) then
-          Rcloc(ik)=Rc
-          NRcloc(ik)=NRc
-       end if
 
        allocate( tmp(MMr) )
 

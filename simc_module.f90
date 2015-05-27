@@ -1,15 +1,11 @@
 MODULE simc_module
 
+  use bberf_module
+
   implicit none
 
   PRIVATE
   PUBLIC :: simc
-
-  INTERFACE
-     FUNCTION bberf(x)
-       real(8) :: bberf,x
-     END FUNCTION bberf
-  END INTERFACE
 
 CONTAINS
 
@@ -81,9 +77,9 @@ CONTAINS
        write(6,*) 'x(1) = ',x(1)
        write(6,*) 'x(2) = ',x(2)
        write(6,*) 'x(3) = ',x(3)
-       write(6,*) 'k, rads(k),vins(k),wgt(k)'
+       write(6,'(A5,3A20)') 'k','rads(k)','vins(k)','wgt(k)'
        do k=1,num
-          write(6,*)k,rads(k),vins(k),wgt(k)
+          write(6,'(I5,3g20.12)')k,rads(k),vins(k),wgt(k)
        end do
        stop
     end if

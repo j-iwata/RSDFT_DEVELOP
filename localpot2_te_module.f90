@@ -6,15 +6,16 @@ MODULE localpot2_te_module
   use localpot_module
   use kinetic_module
   use nonlocal_module
-  use ewald_module
+  use eion_module, only: Eewald
   use electron_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: localpot2_te, etot_lpot2
+  PUBLIC :: localpot2_te, Etot_lpot2, diff_Etot_lpot2
 
-  real(8) :: etot_lpot2
+  real(8) :: Etot_lpot2
+  real(8) :: diff_Etot_lpot2
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
   real(8) :: Eloc_0=0.d0
@@ -74,7 +75,7 @@ CONTAINS
 #endif
 
        work=zero
-       call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,n,n)
+       call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,n,n)
 #ifdef _DRSDFT_
        esp0(n,k,s,3)=sum( unk(:,n,k,s)*work(:,1) )*dV
 #else
@@ -101,6 +102,8 @@ CONTAINS
 
     Etot_lpot2 = Eeig - Eloc + Eion + Eh + Exc + Eewald
     Etot=Etot_lpot2
+
+    diff_Etot_lpot2 = Etot - Etot_0
 
     if ( disp_switch ) then
        write(*,*) "--- localpot2_total-energy ---"

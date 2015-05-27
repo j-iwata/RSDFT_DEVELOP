@@ -1,4 +1,4 @@
-MODULE pw92_gth_module
+MODULE xc_pw92_gth_module
 
   implicit none
 
@@ -93,4 +93,4 @@ CONTAINS
 
   END SUBROUTINE calc_pw92_gth
 
-END MODULE pw92_gth_module
+END MODULE xc_pw92_gth_module

@@ -1,10 +1,10 @@
 MODULE subspace_rotv_sl_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk
+  use wf_module, only: unk,hunk,iflag_hunk
   use scalapack_module
   use parallel_module
-  use subspace_diag_module
+  use subspace_diag_variables
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use bcast_module
 
@@ -25,8 +25,8 @@ CONTAINS
   SUBROUTINE subspace_rotv_sl(k,s)
     implicit none
     integer,intent(IN) :: k,s
-    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm
-    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB
+    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,loop
+    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,n_loop
 
     n1  = ML_0
     n2  = ML_1
@@ -37,6 +37,13 @@ CONTAINS
 
     allocate( utmp(NBLK2,MB_0:MB_1) )
     utmp=zero
+
+    n_loop=1
+    if ( iflag_hunk >= 1 ) then
+       n_loop=2
+    end if
+
+    do loop=1,n_loop
 
     do i=1,maxval(ircnt),NBLK2
        i1=n1+i-1
@@ -67,24 +74,36 @@ CONTAINS
              allocate( utmp2(ms:me,ns:ne) )
 
              if ( iroot1 == myrank ) then
+!$OMP parallel workshare
                 utmp2(ms:me,ns:ne)=Vsub(i0+1:i0+mm,j0+1:j0+nn)
+!$OMP end parallel workshare
                 i0=i0+mm
              end if
 
 !             call mpi_bcast(utmp2(ms,ns),mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #ifdef _DRSDFT_
-          call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+             call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #else
-          call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+             call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #endif
 
              if ( ii>0 ) then
 #ifdef _DRSDFT_
-                call dgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
-                     ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                if ( loop == 1 ) then
+                   call dgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                else if ( loop == 2 ) then
+                   call dgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                end if
 #else
-                call zgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
-                     ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                if ( loop == 1 ) then
+                   call zgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                else if ( loop == 2 ) then
+                   call zgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
+                end if
 #endif
              end if
 
@@ -96,11 +115,21 @@ CONTAINS
 
        end do ! ns
 
-       if ( ii>0 ) then
-          unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+       if ( ii > 0 ) then
+          if ( loop == 1 ) then
+!$OMP parallel workshare
+             unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+!$OMP end parallel workshare
+          else if ( loop == 2 ) then
+!$OMP parallel workshare
+             hunk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+!$OMP end parallel workshare
+          end if
        end if
 
     end do ! ii
+
+    end do ! loop
 
     deallocate( utmp )
 

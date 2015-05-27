@@ -6,7 +6,7 @@ MODULE atomopt_module
   use aa_module
   use bb_module
   use scf_module
-  use ewald_module
+  use eion_module, only: calc_eion
   use strfac_module
   use ps_local_module
   use ps_pcc_module
@@ -18,11 +18,14 @@ MODULE atomopt_module
 
   use kinetic_module, only: SYStype
 
-  use ps_local_mol_module
+  use ps_local_mol_module, only: construct_ps_local_mol
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
-  use force_mol_module
+#ifdef _USPP_
+  use PSQRijPrep
+  use PSnonLocPrepG, only: prepNzqr
+#endif
 
   implicit none
 
@@ -36,6 +39,8 @@ MODULE atomopt_module
   logical :: disp_switch_loc
   integer :: diter_opt
 
+  integer :: strlog
+
 CONTAINS
 
 
@@ -48,10 +53,12 @@ CONTAINS
     most      = 6
     nrfr      = 5
     diter_opt = 50
+    strlog    = 0
     okatom    = 0.5d0
     eeps      = 1.d-10
     feps      = 5.d-4
     decr      = 1.d-1
+
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -66,6 +73,9 @@ CONTAINS
           else if ( ckey(1:8) == "ATOMOPT3" ) then
              backspace(unit)
              read(unit,*) cbuf,diter_opt
+          else if ( ckey(1:8) == "STRLOG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,strlog
           end if
        end do
 999    continue
@@ -77,6 +87,7 @@ CONTAINS
           diter_opt=50
           write(*,*) "diter_opt         =",diter_opt
        end if
+       write(*,*) "strlog            =",strlog
     end if
     call send_atomopt
   END SUBROUTINE read_atomopt
@@ -112,6 +123,7 @@ CONTAINS
     call mpi_bcast(feps  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(decr  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(diter_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(strlog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atomopt
 
 
@@ -119,7 +131,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: iswitch_opt
     logical,intent(INOUT) :: disp_switch
-    integer,parameter :: max_nhist=1000
+    integer,parameter :: max_nhist=100000
     integer :: SCF_hist(max_nhist),ICY_hist(max_nhist)
     integer :: LIN_hist(max_nhist)
     integer :: a,nhist,most0,ncycl0,ifar,ierr,icy,nhist0
@@ -138,7 +150,8 @@ CONTAINS
 
     if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
 
-    disp_switch_loc = (myrank==0)
+    call check_disp_switch( disp_switch_loc, 0 )
+    call check_disp_switch( .false., 1 )
 
     ddmin  = 1.d-8
     safe   = 0.01d0
@@ -154,14 +167,9 @@ CONTAINS
 
     if ( iswitch_opt < 2  ) then
 
-       if ( iswitch_opt == 1 ) call calc_total_energy(.false.,disp_switch_loc)
+       if ( iswitch_opt == 1 ) call calc_total_energy(.false.,disp_switch_loc,1000)
 
-       select case(SYStype)
-       case default
-          call calc_force(Natom,Force)
-       case(1,2)
-          call calc_force_mol(Natom,Force)
-       end select
+       call calc_force( Natom, Force )
 
        Fmax=0.d0
        do a=1,Natom
@@ -171,7 +179,7 @@ CONTAINS
        Fmax=sqrt(Fmax)
 
        Etot_save = 0.d0
-       dif       = Etot - Etot_save
+       dif       = 0.0d0
 
        nhist                = 1
        Etot_hist(nhist)     = Etot
@@ -234,6 +242,8 @@ CONTAINS
 
     end if
 
+    call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
+       
     disp_switch = .false.
     disp_switch_parallel = .false.
 
@@ -252,7 +262,7 @@ CONTAINS
     opt_ion : do icy=ncycl0,ncycl0+ncycl-1
 
        if ( disp_switch_loc ) then
-          write(*,'(a60," ICY (",i2,")")') repeat("-",60),icy
+          write(*,'(a57," ICY (",i5,")")') repeat("-",57),icy
        end if
 
 !
@@ -270,6 +280,8 @@ CONTAINS
           gamma=0.d0
           if ( icy>1 .and. disp_switch_loc ) then
              write(*,*) 'CG-direction is refreshed !!!'
+          else
+             if ( disp_switch_loc ) write(*,*) 'The first CG step !'
           end if
 
        else
@@ -292,6 +304,7 @@ CONTAINS
        hh        = sqrt( sum(hi(:,:)*hi(:,:)) )
        gh        = sum( gi(:,:)*hi(:,:) )
        alpha     = 2.d0*abs(dif/gh)
+       if ( dif == 0.0d0 ) alpha = 0.5d0
 
 !
 ! --- Check alpha ---
@@ -422,8 +435,8 @@ CONTAINS
        linmin : do itlin=most0,most
 
           if ( disp_switch_loc ) then
-             write(*,'(a60," ICY    (",i2,")")') repeat("-",60),icy
-             write(*,'(a60," LINMIN (",i2,")")') repeat("-",60),itlin
+             write(*,'(a57," ICY    (",i5,")")') repeat("-",57),icy
+             write(*,'(a57," LINMIN (",i5,")")') repeat("-",57),itlin
           end if
 
           Etsave = Etot
@@ -589,22 +602,25 @@ CONTAINS
              write(*,*) 'Trial configuration (see fort.97)'
              if ( Natom <= 11 ) then
                 do a=1,Natom
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              else
                 do a=1,min(5,Natom)
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
                 write(*,'(1x,10x,".")')
                 write(*,'(1x,10x,".")')
                 write(*,'(1x,10x,".")')
                 do a=Natom-5,Natom
-                   write(* ,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
+                   write(* ,'(1x,i5,3f20.12,i4)') &
+                        ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              end if
           end if
 
-          if ( myrank == 0 ) call write_atomic_coordinates(97)
+          if ( myrank == 0 ) call write_atomic_coordinates_log(97,icy,itlin,0,iswitch_opt)
 
 !
 ! --- SCF ---
@@ -613,7 +629,7 @@ CONTAINS
           select case(SYStype)
           case default
 
-             call calc_ewald(Eewald,disp_switch)
+             call calc_eion
 
              call construct_strfac
              call construct_ps_local
@@ -627,11 +643,17 @@ CONTAINS
                 call prep_ps_nloc3
              case(5)
                 call prep_ps_nloc_mr
+#ifdef _USPP_
+             case(102)
+                call prep_ps_nloc2
+                call prepNzqr
+                call prepQRijp102
+#endif
              end select
 
           case(1)
 
-             call calc_eion_mol(Eewald)
+             call calc_eion
 
              call construct_ps_local_mol
              call construct_ps_pcc_mol
@@ -640,14 +662,19 @@ CONTAINS
           end select
 
           if ( disp_switch ) write(*,*) "SCF start"
-          call calc_scf(diter_opt,0,iter_final,.false.)
 
-          select case(SYStype)
-          case default
-             call calc_force(Natom,Force)
-          case(1)
-             call calc_force_mol(Natom,Force)
-          end select
+          call calc_scf( diter_opt, ierr, .false. )
+
+          if ( ierr == -1 ) then
+             if ( myrank == 0 ) write(*,*) "time limit !!!"
+             exit opt_ion
+          end if
+          if ( ierr == -2 ) then
+             if ( myrank == 0 ) write(*,*) "SCF is not converged"
+          end if
+          iter_final=ierr
+
+          call calc_force( Natom, Force )
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')
@@ -712,9 +739,11 @@ CONTAINS
              do i=nhist0,nhist
                 write(*,'(1x,i3,1x,g13.6,1x,g20.10,1x,3g13.5,i5)') &
                      i-nhist0,alpha_hist(i),Etot_hist(i) &
-                     ,grad_hist(i),Fmax_hist(i),dmax_hist(i),SCF_hist(nhist)
+                     ,grad_hist(i),Fmax_hist(i),dmax_hist(i),SCF_hist(i)
              end do
           end if
+
+          if ( myrank == 0 ) call write_atomic_coordinates_log(97,icy,itlin,2,iswitch_opt)
 
 !
 ! --- Convergence check 2 ---
@@ -764,6 +793,7 @@ CONTAINS
           if ( icflag >= 0 ) then
              if ( Etot > Etot00 ) then
                 if ( disp_switch_loc ) then
+! why this kind of thing happens?
                    write(*,*) "can not exit linmin !!!"
                    write(*,*) "Etot, Etot00 =",Etot,Etot00
                 end if
@@ -775,6 +805,14 @@ CONTAINS
        end do linmin
 
        hi(1:3,1:Natom) = signh*hi(1:3,1:Natom)
+
+       most0=1
+
+!  Best structure on a line.
+
+       if ( disp_switch_loc ) write(*,*) 'Best structure on a line (see fort.197)'
+
+       if ( myrank == 0 ) call write_atomic_coordinates_log(197,icy,itlin,1,iswitch_opt)
 
 !
 ! --- Convergence check 3 ---
@@ -798,12 +836,6 @@ CONTAINS
 
        end if
 
-       most0=1
-
-!  Best structure on a line.
-
-       if ( myrank == 0 ) call write_atomic_coordinates(197)
-
     end do opt_ion
 
 999 continue
@@ -816,9 +848,8 @@ CONTAINS
        end do
     end if
 
-    if ( myrank == 0 ) disp_switch=.true.
-
-    call calc_total_energy(.false.,disp_switch)
+    call check_disp_switch( disp_switch_loc, 1 )
+    call check_disp_switch( disp_switch, 0 )
 
     deallocate( Force )
     deallocate( aa_atom_0, gi, hi )
@@ -885,44 +916,101 @@ CONTAINS
     end if
     return
   END SUBROUTINE parmin
+  
+
+  SUBROUTINE write_atomic_coordinates_log(unit,icy,itlin,flag,iswitch_opt)
+    implicit none
+    integer, intent(IN) :: unit,icy,itlin,flag,iswitch_opt
+    integer :: u1
+
+    call write_atomic_coordinates( unit, .true.  )
+    call write_atomic_coordinates( unit, .false. )
+
+    if ( strlog == 0 .or. flag /= strlog ) return
+
+    u1 = 297
+
+    if ( icy == 0 ) then
+      open(u1,file="strlog.dat")
+      if ( iswitch_opt >= 2 ) return
+      call write_atomic_coordinates( u1, .true. )
+    end if
+
+    write(u1,'("#_STRLOG_",a63," icy, itlin =",2(X,I3))') repeat("-",63),icy,itlin
+
+    call write_atomic_coordinates( u1, .false. )
+
+  END SUBROUTINE write_atomic_coordinates_log  
 
 
-  SUBROUTINE write_atomic_coordinates(unit)
+  SUBROUTINE write_atomic_coordinates(unit,flag_header)
     implicit none
     integer,intent(IN) :: unit
+    logical,intent(IN) :: flag_header
     integer :: a
     real(8) :: ax_org,aa_org(3,3),bb_tmp(3,3),aa_inv(3,3),vtmp(3)
 
     call get_org_aa(ax_org,aa_org)
 
-    rewind unit
-    write(unit,'("AX",1f20.15)') ax_org
-    write(unit,'("A1",3f20.15)') aa_org(1:3,1)
-    write(unit,'("A2",3f20.15)') aa_org(1:3,2)
-    write(unit,'("A3",3f20.15)') aa_org(1:3,3)
-    write(unit,'("AA")')
-    write(unit,*) Nelement,Natom
+    if ( flag_header ) then
+       rewind unit
+       write(unit,'("AX",1f20.15)') ax_org
+       write(unit,'("A1",3f20.15)') aa_org(1:3,1)
+       write(unit,'("A2",3f20.15)') aa_org(1:3,2)
+       write(unit,'("A3",3f20.15)') aa_org(1:3,3)
+       if ( atom_format == 1 ) then
+          write(unit,'("AA")')
+       else if ( atom_format == 2 ) then
+          write(unit,'("XYZ")')
+       end if
+       write(unit,*) Nelement,Natom,zn_atom(1:Nelement), " /"
+       return
+    end if
 
     select case( SYStype )
     case default
 
-       do a=1,Natom
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),aa_atom(:,a),1
-       end do
+       if ( atom_format == 1 ) then
+
+          do a=1,Natom
+             write(unit,'(1x,i5,3f20.12,i4)') &
+                  ki_atom(a),aa_atom(:,a),md_atom(a)
+          end do
+
+       else if ( atom_format == 2 ) then
+
+          aa_org(:,:)=ax_org*aa_org(:,:)
+          do a=1,Natom
+             vtmp(:) = matmul( aa_org,aa_atom(:,a) )
+             write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
+          end do
+
+       end if
 
     case( 1 )
 
-       aa_org(:,:)=ax_org*aa_org(:,:)
-       call calc_bb(aa_org,bb_tmp)
-       aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
-       do a=1,Natom
-          vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
-          write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),1
-       end do
+       if ( atom_format == 1 ) then
+
+          aa_org(:,:)=ax_org*aa_org(:,:)
+          call calc_bb(aa_org,bb_tmp)
+          aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
+          do a=1,Natom
+             vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
+             write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
+          end do
+
+       else if ( atom_format == 2 ) then
+
+          do a=1,Natom
+             write(unit,'(1x,i5,3f20.12,i4)') &
+                  ki_atom(a),aa_atom(:,a),md_atom(a)
+          end do
+
+       end if
 
     end select
 
   END SUBROUTINE write_atomic_coordinates
 
-
+   
 END MODULE atomopt_module

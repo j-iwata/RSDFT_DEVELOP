@@ -6,10 +6,11 @@ MODULE force_local_mol_module
   use density_module
   use electron_module, only: Nspin
   use bberf_module
-  use pseudopot_module
+  use pseudopot_module, only: parloc, rad, Zps, ippform
   use rgrid_mol_module
-  use ps_local_mol_module
+  use ps_local_mol_module, only: NRcloc, Rcloc, vqls
   use rgrid_module
+  use force_local_mol_gth_module
 
   implicit none
 
@@ -24,23 +25,31 @@ CONTAINS
     real(8),intent(INOUT) :: force(:,:)
     integer :: a,ik,i,i1,i2,i3,ir,mm,m1,m2,ierr
     real(8) :: p1,p2,p3,p4,Rc
-    real(8) :: Rx,Ry,Rz,x,y,z,r,vx,vy,vz,v0,v
+    real(8) :: Rx,Ry,Rz,x,y,z,r,r2,vx,vy,vz,v0,v
     real(8) :: tmp0,tmp1,const0,const1,pi
     real(8) :: maxerr,err0,err
     real(8),allocatable :: ftmp(:,:),trho(:)
     integer :: M_irad,NRc,ir0
     integer,allocatable :: irad(:,:)
 
-    pi = acos(-1.0d0)
-    const0 = 2.0d0/sqrt(pi)
-    const1 = 2.0d0/3.0d0*const0
-
-    allocate( ftmp(3,Natom)   ) ; ftmp=0.0d0
     allocate( trho(ML_0:ML_1) ) ; trho=0.0d0
 
     do i=1,Nspin
        trho(:) = trho(:) + rho(:,i)
     end do
+
+    if ( any( ippform == 4 ) ) then
+       call calc_force_local_mol_gth( trho, force )
+       deallocate( trho )
+       return
+    end if
+
+    pi = acos(-1.0d0)
+    const0 = 2.0d0/sqrt(pi)
+!    const1 = 2.0d0/3.0d0*const0
+    const1 = const0/6.0d0
+
+    allocate( ftmp(3,Natom) ) ; ftmp=0.0d0
 
     allocate( irad(0:3000,Nelement) ) ; irad=0
     M_irad=0
@@ -81,6 +90,8 @@ CONTAINS
 
        Rc = Rcloc(ik)
 
+       NRc = NRcloc(ik)
+
        do i=ML_0,ML_1
 
           i1 = LL(1,i)
@@ -91,7 +102,8 @@ CONTAINS
           y = i2*Hsize - Ry
           z = i3*Hsize - Rz
 
-          r = sqrt(x*x+y*y+z*z)
+          r2 = x*x+y*y+z*z
+          r  = sqrt(r2)
 
           vx = 0.0d0
           vy = 0.0d0
@@ -160,11 +172,11 @@ CONTAINS
           else
 
              tmp1 = -p1*bberf(p2*r) - p3*bberf(p4*r) &
-                  + r*const0*( p1*p2*exp(-p2*p2*r*r) + p3*p4*exp(-p4*p4*r*r) )
+                  + r*const0*( p1*p2*exp(-p2*p2*r2) + p3*p4*exp(-p4*p4*r2) )
 
-             vx = vx + tmp1*x/r**3
-             vy = vy + tmp1*y/r**3
-             vz = vz + tmp1*z/r**3
+             vx = vx + tmp1*x/(r*r2)
+             vy = vy + tmp1*y/(r*r2)
+             vz = vz + tmp1*z/(r*r2)
 
           end if
 

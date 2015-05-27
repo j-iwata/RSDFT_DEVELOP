@@ -1,17 +1,13 @@
 MODULE rgrid_mol_module
 
-  use rgrid_module
-  use parallel_module
-
   implicit none
 
   PRIVATE
-  PUBLIC :: LL,KK,Hsize &
-           ,read_rgrid_mol &
-           ,init_rgrid_mol,mesh_div_1,mesh_div_2 &
-           ,construct_rgrid_mol,destruct_rgrid_mol &
-           ,construct_boundary_rgrid_mol,destruct_boundary_rgrid_mol &
-           ,map_g2p_rgrid_mol,iswitch_eqdiv
+  PUBLIC :: LL,KK,Hsize,map_g2p_rgrid_mol,iswitch_eqdiv &
+           ,Construct_RgridMol, Destruct_RgridMol &
+           ,ConstructBoundary_RgridMol, DestructBoundary_RgridMol &
+           ,Read_RgridMol, InitParallel_RgridMol &
+           ,GetGridSize_RgridMol, GetNumGrids_RgridMol, GetSimBox_RgridMol
 
   integer :: Box_Shape
   real(8) :: Hsize,Rsize,Zsize
@@ -20,12 +16,21 @@ MODULE rgrid_mol_module
 
   real(8),parameter :: eps = 1.d-10
 
+  integer :: node_partition(3)
+
+  integer :: Ngrid_mol(0:3)=0
+
 CONTAINS
 
 
-  SUBROUTINE read_rgrid_mol(rank,unit)
+  SUBROUTINE Read_RgridMol(rank,unit)
     implicit none
     integer,intent(IN)  :: rank,unit
+    Box_Shape=0
+    Hsize=0.0d0
+    Rsize=0.0d0
+    Zsize=0.0d0
+    iswitch_eqdiv=0
     if ( rank == 0 ) then
        write(*,'(a60," read_rgrid_mol")') repeat("-",60)
        read(unit,*) Box_Shape
@@ -42,10 +47,11 @@ CONTAINS
        write(*,*) "Zsize=",Zsize
        write(*,*) "iswitch_eqdiv=",iswitch_eqdiv
     end if
-    call send_rgrid_mol(rank)
-  END SUBROUTINE read_rgrid_mol
+    call Send_RgridMol(rank)
+  END SUBROUTINE Read_RgridMol
 
-  SUBROUTINE send_rgrid_mol(rank)
+  SUBROUTINE Send_RgridMol(rank)
+    implicit none
     integer,intent(IN)  :: rank
     integer :: ierr
     include 'mpif.h'
@@ -54,89 +60,154 @@ CONTAINS
     call mpi_bcast(Rsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Zsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iswitch_eqdiv,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_rgrid_mol
+  END SUBROUTINE Send_RgridMol
 
 
-  SUBROUTINE init_rgrid_mol(Ngrid,Hgrid,aa,bb,disp_switch)
-    integer,intent(OUT) :: Ngrid(3)
-    real(8),intent(OUT) :: Hgrid(3),aa(3,3),bb(3,3)
-    logical,optional,intent(IN)  :: disp_switch
-    if ( disp_switch ) write(*,'(a60," init_rgrid_mol")') repeat("-",60)
-    call init_mesh_rsmol( Ngrid(1),Ngrid(2),Ngrid(3) )
-    Hgrid(1)=Hsize
-    Hgrid(2)=Hsize
-    Hgrid(3)=Hsize
-    aa(:,:)=0.d0
-    bb(:,:)=0.d0
-    aa(1,1)=Hsize*Ngrid(1)
-    aa(2,2)=Hsize*Ngrid(2)
-    aa(3,3)=Hsize*Ngrid(3)
-    bb(1,1)=2.d0*acos(-1.d0)/aa(1,1)
-    bb(2,2)=2.d0*acos(-1.d0)/aa(2,2)
-    bb(3,3)=2.d0*acos(-1.d0)/aa(3,3)
-    if ( present(disp_switch) ) then
-       if ( disp_switch ) then
-       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
-       write(*,*) "Hgrid(1:3)=",Hgrid(1:3)
-       write(*,*) "aa"
-       write(*,*) aa(1:3,1)
-       write(*,*) aa(1:3,2)
-       write(*,*) aa(1:3,3)
-       write(*,*) "bb"
-       write(*,*) bb(1:3,1)
-       write(*,*) bb(1:3,2)
-       write(*,*) bb(1:3,3)
-       end if
-    end if
-  END SUBROUTINE init_rgrid_mol
+  SUBROUTINE GetGridSize_RgridMol(Hgrid)
+    implicit none
+    real(8),intent(OUT) :: Hgrid(3)
+    Hgrid(1:3) = Hsize
+  END SUBROUTINE GetGridSize_RgridMol
 
-  SUBROUTINE init_mesh_rsmol(mx,my,mz)
-    integer,intent(OUT) :: mx,my,mz
+
+  SUBROUTINE GetNumGrids_RgridMol(Ngrid)
+    implicit none
+    integer,intent(OUT) :: Ngrid(0:3)
+    if ( any(Ngrid_mol==0) ) call CalcNumGrids_RgridMol(Ngrid)
+    Ngrid(:)=Ngrid_mol(:)
+  END SUBROUTINE GetNumGrids_RgridMol
+
+
+  SUBROUTINE CalcNumGrids_RgridMol(Ngrid)
+    implicit none
+    integer,intent(OUT) :: Ngrid(0:3)
+    integer :: i1,i2,i3,m1,m2,m3,nn,n1,n2,n3
+    real(8) :: rs2,zs2,rr,x,y,z,zz
+
     select case(Box_Shape)
     case(1)
-       mx = nint(Rsize/Hsize)
-       if ( mx*Hsize < Rsize ) mx=mx+1
-       my = mx
-       mz = mx
+       m1 = nint(Rsize/Hsize)
+       if ( m1*Hsize < Rsize ) m1=m1+1
+       m2 = m1
+       m3 = m1
     case(2)
-       mx = nint(Rsize/Hsize)
-       if ( mx*Hsize < Rsize ) mx=mx+1
-       my = mx
-       mz = nint(Zsize/Hsize)
-       if ( mz*Hsize < Zsize ) mz=mz+1
+       m1 = nint(Rsize/Hsize)
+       if ( m1*Hsize < Rsize ) m1=m1+1
+       m2 = m1
+       m3 = nint(Zsize/Hsize)
+       if ( m3*Hsize < Zsize ) m3=m3+1
     end select
-    mx = 2*mx+1
-    my = 2*my+1
-    mz = 2*mz+1
-  END SUBROUTINE init_mesh_rsmol
+
+    n1=0
+    n2=0
+    n3=0
+    nn=0
+    select case(Box_Shape)
+    case(1)
+       rs2 = Rsize**2 + eps
+       do i3=-m3,m3
+       do i2=-m2,m2
+       do i1=-m1,m1
+          x=Hsize*i1
+          y=Hsize*i2
+          z=Hsize*i3
+          rr = x*x + y*y + z*z
+          if ( rr <= rs2 ) then
+             nn = nn + 1
+             n1 = max( abs(i1), n1 )
+             n2 = max( abs(i2), n2 )
+             n3 = max( abs(i3), n3 )
+          end if
+       end do ! i1
+       end do ! i2
+       end do ! i3
+    case(2)
+       rs2 = Rsize**2 + eps
+       zs2 = Zsize**2 + eps
+       do i3=-m3,m3
+       do i2=-m2,m2
+       do i1=-m1,m1
+          x=Hsize*i1
+          y=Hsize*i2
+          z=Hsize*i3
+          rr = x*x + y*y
+          zz = z*z
+          if ( rr <= rs2 .and. zz <= zs2 ) then
+             nn = nn + 1
+             n1 = max( abs(i1), n1 )
+             n2 = max( abs(i2), n2 )
+             n3 = max( abs(i3), n3 )
+          end if
+       end do ! i1
+       end do ! i2
+       end do ! i3
+    end select
+
+    Ngrid(0) = nn
+    Ngrid(1) = 2*n1 + 1
+    Ngrid(2) = 2*n2 + 1
+    Ngrid(3) = 2*n3 + 1
+
+    Ngrid_mol(:) = Ngrid(:)
+
+  END SUBROUTINE CalcNumGrids_RgridMol
 
 
-  SUBROUTINE mesh_div_1(np_grid,np,Ngrid,pinfo_grid,disp_switch)
+  SUBROUTINE GetSimBox_RgridMol(aa)
     implicit none
-    integer,intent(IN)  :: np_grid,np(3),Ngrid(3)
-    logical,intent(IN)  :: disp_switch
+    real(8),intent(OUT) :: aa(3,3)
+    if ( any(Ngrid_mol==0) ) stop "stop@GetSimBox_RgridMol"
+    aa=0.0d0
+    aa(1,1)=Hsize*Ngrid_mol(1)
+    aa(2,2)=Hsize*Ngrid_mol(2)
+    aa(3,3)=Hsize*Ngrid_mol(3)
+  END SUBROUTINE GetSimBox_RgridMol
+
+
+  SUBROUTINE InitParallel_RgridMol( np, np_grid, pinfo_grid, disp_switch )
+    implicit none
+    integer,intent(IN)  :: np(3), np_grid
     integer,intent(OUT) :: pinfo_grid(8,0:np_grid-1)
+    logical,intent(IN)  :: disp_switch
+    node_partition(1:3) = np(1:3)
+    select case( iswitch_eqdiv )
+    case default
+       call mesh_div_1( np_grid, pinfo_grid, disp_switch )
+    case(2)
+       call mesh_div_2( np_grid, pinfo_grid, disp_switch )
+    end select
+  END SUBROUTINE InitParallel_RgridMol
+
+  SUBROUTINE mesh_div_1( np_grid, pinfo_grid, disp_switch )
+    implicit none
+    integer,intent(IN)  :: np_grid
+    integer,intent(OUT) :: pinfo_grid(8,0:np_grid-1)
+    logical,intent(IN)  :: disp_switch
     integer,parameter :: max_loop=600
     integer :: iloop,ix,iy,iz,i1,i2,i3,m,n,mx0,my0,mz0
-    integer :: mx,my,mz,i,j
+    integer :: mx,my,mz,i,j,np(3)
     integer,allocatable :: itmp(:),mxp(:),myp(:),mzp(:)
     real(8) :: r2,Rc2,z,ave,var
 
-    allocate( itmp(0:np_grid-1) ) ; itmp=0
-    allocate( mxp(np(1)),myp(np(2)),mzp(np(3)) )
+    np(1:3) = node_partition(1:3)
 
-    mxp(:) = Ngrid(1)/np(1)
-    myp(:) = Ngrid(2)/np(2)
-    mzp(:) = Ngrid(3)/np(3)
-    mxp(1) = mxp(1)+Ngrid(1)-sum(mxp)
-    myp(1) = myp(1)+Ngrid(2)-sum(myp)
-    mzp(1) = mzp(1)+Ngrid(3)-sum(mzp)
+    allocate( itmp(0:np_grid-1) ) ; itmp=0
+    allocate( mxp(np(1))        ) ; mxp =0
+    allocate( myp(np(2))        ) ; myp =0
+    allocate( mzp(np(3))        ) ; mzp =0
+
+    mxp(:) = Ngrid_mol(1)/np(1)
+    myp(:) = Ngrid_mol(2)/np(2)
+    mzp(:) = Ngrid_mol(3)/np(3)
+    mxp(1) = mxp(1)+Ngrid_mol(1)-sum(mxp)
+    myp(1) = myp(1)+Ngrid_mol(2)-sum(myp)
+    mzp(1) = mzp(1)+Ngrid_mol(3)-sum(mzp)
 
     Rc2 = Rsize**2
 
-    mx = (Ngrid(1)-1)/2
-    my = (Ngrid(2)-1)/2
-    mz = (Ngrid(3)-1)/2
+    mx = (Ngrid_mol(1)-1)/2
+    my = (Ngrid_mol(2)-1)/2
+    mz = (Ngrid_mol(3)-1)/2
 
     do iloop=1,max_loop
 
@@ -241,7 +312,6 @@ CONTAINS
        do i2=1,np(2)
        do i1=1,np(1)
           n=n+1
-!          write(*,'(1x,i5,2x,3i4,2x,i8)') n,mxp(i1),myp(i2),mzp(i3),itmp(n)
           pinfo_grid(2:6:2,n)=pinfo_grid(2:6:2,n)+pinfo_grid(1:5:2,n)
           pinfo_grid(1:5:2,n)=pinfo_grid(1:5:2,n)+1
           write(*,'(1x,i5,2x,6i4,2x,2i8)') n,pinfo_grid(1:8,n)
@@ -258,9 +328,11 @@ CONTAINS
     return
   END SUBROUTINE mesh_div_1
 
-
-  SUBROUTINE mesh_div_2
+  SUBROUTINE mesh_div_2( np_grid, pinfo_grid, disp_switch )
     implicit none
+    integer,intent(IN)  :: np_grid
+    integer,intent(OUT) :: pinfo_grid(8,0:np_grid-1)
+    logical,intent(IN)  :: disp_switch
     integer,parameter :: max_loop=100
     integer :: i1,i2,i3,i,j,iloop,iloc(1),m1,m2,m3,m
     integer :: ix,jx,iy,jy,iz,jz,i_dif,Mx,My,Mz,n,j1,j2,j3
@@ -269,16 +341,15 @@ CONTAINS
     integer,allocatable :: ip(:,:,:),Mxp(:),Myp(:),Mzp(:),LLLp(:,:,:)
     real(8),parameter :: eps=1.d-10
     real(8) :: Rc2,r2,z,H
-
     integer :: np1,np2,np3
 
     np1 = node_partition(1)
     np2 = node_partition(2)
     np3 = node_partition(3)
 
-    Mx = ( Ngrid(1)-1 )/2
-    My = ( Ngrid(2)-1 )/2
-    Mz = ( Ngrid(3)-1 )/2
+    Mx = ( Ngrid_mol(1)-1 )/2
+    My = ( Ngrid_mol(2)-1 )/2
+    Mz = ( Ngrid_mol(3)-1 )/2
 
     H = Hsize
 
@@ -293,12 +364,12 @@ CONTAINS
     allocate( Myp(np2) ) ; Myp=0
     allocate( Mzp(np3) ) ; Mzp=0
 
-    Mxp(1:np1) = Ngrid(1)/np1
-    Myp(1:np2) = Ngrid(2)/np2
-    Mzp(1:np3) = Ngrid(3)/np3
-    Mxp(1) = Mxp(1) + Ngrid(1) - sum(Mxp)
-    Myp(1) = Myp(1) + Ngrid(2) - sum(Myp)
-    Mzp(1) = Mzp(1) + Ngrid(3) - sum(Mzp)
+    Mxp(1:np1) = Ngrid_mol(1)/np1
+    Myp(1:np2) = Ngrid_mol(2)/np2
+    Mzp(1:np3) = Ngrid_mol(3)/np3
+    Mxp(1) = Mxp(1) + Ngrid_mol(1) - sum(Mxp)
+    Myp(1) = Myp(1) + Ngrid_mol(2) - sum(Myp)
+    Mzp(1) = Mzp(1) + Ngrid_mol(3) - sum(Mzp)
 
     allocate( itmp(n)   ) ; itmp=0
     allocate( jtmp(n)   ) ; jtmp=0
@@ -541,11 +612,13 @@ CONTAINS
   END SUBROUTINE mesh_div_2
 
 
-  SUBROUTINE construct_rgrid_mol
-    use rgrid_module, only: Igrid
-    use array_bound_module, only: ML_0,ML_1
-    integer :: i,ix,iy,iz
+  SUBROUTINE Construct_RgridMol(Igrid)
+    implicit none
+    integer,intent(IN) :: Igrid(2,0:3)
+    integer :: i,ix,iy,iz,ML_0,ML_1
     real(8) :: r2,Rc2,z,x,y
+    ML_0=Igrid(1,0)
+    ML_1=Igrid(2,0)
     if ( allocated(LL) ) deallocate(LL)
     allocate( LL(3,ML_0:ML_1) ) ; LL=0
     Rc2=Rsize*Rsize
@@ -583,19 +656,21 @@ CONTAINS
           end do
        end do
     end select
-  END SUBROUTINE construct_rgrid_mol
+  END SUBROUTINE Construct_RgridMol
 
-  SUBROUTINE destruct_rgrid_mol
+  SUBROUTINE Destruct_RgridMol
     if ( allocated(LL) ) deallocate(LL)
-  END SUBROUTINE destruct_rgrid_mol
+  END SUBROUTINE Destruct_RgridMol
 
 
-  SUBROUTINE construct_boundary_rgrid_mol(Md)
-    use array_bound_module, only: ML_0,ML_1
-    integer,intent(IN) :: Md
-    integer :: i,ix,iy,iz,m,m1,m2,m3,m4,m5,m6
+  SUBROUTINE ConstructBoundary_RgridMol(Md,Igrid)
+    implicit none
+    integer,intent(IN) :: Md,Igrid(2,0:3)
+    integer :: i,ix,iy,iz,m,m1,m2,m3,m4,m5,m6,ML_0,ML_1
     integer,allocatable :: icheck(:,:,:)
     real(8) :: z,r2,Rc2,H2
+    ML_0 = Igrid(1,0)
+    ML_1 = Igrid(2,0)
     m1 = minval( LL(1,:) ) - Md
     m2 = maxval( LL(1,:) ) + Md
     m3 = minval( LL(2,:) ) - Md
@@ -657,14 +732,15 @@ CONTAINS
     end do
     end do
 
-  END SUBROUTINE construct_boundary_rgrid_mol
+  END SUBROUTINE ConstructBoundary_RgridMol
 
-  SUBROUTINE destruct_boundary_rgrid_mol
+  SUBROUTINE DestructBoundary_RgridMol
     if ( allocated(KK) ) deallocate(KK)
-  END SUBROUTINE destruct_boundary_rgrid_mol
+  END SUBROUTINE DestructBoundary_RgridMol
 
 
   SUBROUTINE map_g2p_rgrid_mol(a1,b1,a2,b2,a3,b3,map_g2p,np,pinfo_grid)
+    implicit none
     integer,intent(IN)  :: a1,b1,a2,b2,a3,b3,np,pinfo_grid(8,0:np-1)
     integer,intent(OUT) :: map_g2p(a1:b1,a2:b2,a3:b3)
     integer :: n,i1,i2,i3
