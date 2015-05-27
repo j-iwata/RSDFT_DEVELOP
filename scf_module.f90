@@ -437,7 +437,7 @@ CONTAINS
                   " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fdiff, &
                   " time=",time_scf(2)
           else
-             write(u(i), '(A,I4,4(A,2(E12.5,2x),A,E12.5))') &
+             write(u(i), '(A,I4,4(A,2(E12.5,2x)))') &
                   " iter= ",iter,"  rsqerr= ",sqerr_out(1:2), &
                   " vsqerr= ",sqerr_out(3:4)," sum_dspin,|dspin|= ", &
                   sum_dspin(1:2)," fm,fm-fm0= ",fmax,fdiff, &
