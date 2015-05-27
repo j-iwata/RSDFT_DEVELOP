@@ -48,6 +48,13 @@ CONTAINS
     real(8) :: c
     integer :: ML0,m,q,i,t,ierr
 
+#ifdef _DRSDFT_
+    if ( SYStype == 0 ) then
+       call Fock_Double( k, s, n1, n2, psi, tpsi )
+       return
+    end if
+#endif
+
     ML0 = n2 - n1 + 1
 
     allocate( trho(n1:n2) ) ; trho=zero
@@ -249,15 +256,13 @@ CONTAINS
     do s=MSP_0,MSP_1
        if ( gamma_hf == 1 ) then
           do k=MBZ_0,MBZ_1
-             !call Fock_2( k,s,ML_0,ML_1 )
+#ifdef _DRSDFT_
+             call Fock_4_Double( k,s,ML_0,ML_1 )
+#else
              call Fock_4( k,s,ML_0,ML_1 )
+#endif
           end do ! k
        else
-!          do k=MBZ_0,MBZ_1
-!          do n=MB_0 ,MB_1
-!             call Fock( n,k,s, ML_0,ML_1, unk(ML_0,n,k,s), hunk(ML_0,n,k,s) )
-!          end do ! n
-!          end do ! k
           call Fock_5( s,ML_0,ML_1 )
        end if
     end do ! s
@@ -489,6 +494,129 @@ CONTAINS
   END SUBROUTINE Fock_4
 
 
+  SUBROUTINE Fock_4_Double( k, s, ml0, ml1 )
+    implicit none
+    integer,intent(IN) :: k,s,ml0,ml1
+    complex(8),allocatable :: trho(:),tvht(:)
+    real(8),parameter :: tol=1.d-10
+    real(8) :: c
+    integer :: m1,n1,m2,n2,m,n,i,j,nwork,iwork1,iwork2,ierr
+    integer,allocatable :: mapwork(:,:)
+
+! ---
+
+    nwork=0
+    i=0
+    do n=1,MB
+       do m=1,n
+          if ( abs(occ(n,k,s)) < tol .and. abs(occ(m,k,s)) < tol ) cycle
+          i=i+1
+          j=mod(i-1,np_band)
+          if ( j == myrank_b ) nwork=nwork+1
+       end do
+    end do
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "total # of me    =",i
+       write(*,*) "# of me of rank0 =",nwork
+    end if
+
+    allocate( mapwork(2,nwork) ) ; mapwork=0
+
+    nwork=0
+    i=0
+    do n=1,MB
+       do m=1,n
+          if ( abs(occ(n,k,s)) < tol .and. abs(occ(m,k,s)) < tol ) cycle
+          i=i+1
+          j=mod(i-1,np_band)
+          if ( j == myrank_b ) then
+             nwork=nwork+1
+             mapwork(1,nwork)=m
+             mapwork(2,nwork)=n
+          end if
+       end do
+    end do
+
+! ---
+
+    allocate( trho(ml0:ml1) ) ; trho=(0.0d0,0.0d0)
+    allocate( tvht(ml0:ml1) ) ; tvht=(0.0d0,0.0d0)
+
+! ---
+
+    do iwork1=1,nwork,2
+
+       iwork2=min(iwork1+1,nwork)
+
+       m1 = mapwork(1,iwork1)
+       n1 = mapwork(2,iwork1)
+       m2 = mapwork(1,iwork2)
+       n2 = mapwork(2,iwork2)
+
+       if ( iwork1 < iwork2 ) then
+          do i=ml0,ml1
+             trho(i) = dcmplx( unk(i,m1,k,s)*unk(i,n1,k,s) &
+                              ,unk(i,m2,k,s)*unk(i,n2,k,s) )
+          end do
+       else
+          do i=ml0,ml1
+             trho(i) = unk(i,m1,k,s)*unk(i,n1,k,s)
+          end do
+       end if
+
+       call Fock_fft_Double( ml0, ml1, trho, tvht )
+
+       if ( abs(occ(m1,k,s)) >= tol ) then
+          c = alpha_hf*(2.0d0*occ_factor)*occ(m1,k,s)
+          do i=ml0,ml1
+             hunk(i,n1,k,s)=hunk(i,n1,k,s)-c*real( tvht(i) )*unk(i,m1,k,s)
+          end do
+       end if
+
+       if ( m1 /= n1 .and. abs(occ(n1,k,s)) >= tol ) then
+          c = alpha_hf*(2.0d0*occ_factor)*occ(n1,k,s)
+          do i=ml0,ml1
+             hunk(i,m1,k,s)=hunk(i,m1,k,s)-c*real( tvht(i) )*unk(i,n1,k,s)
+          end do
+       end if
+
+       if ( iwork1 < iwork2 ) then
+
+          if ( abs(occ(m2,k,s)) >= tol ) then
+             c = alpha_hf*(2.0d0*occ_factor)*occ(m2,k,s)
+             do i=ml0,ml1
+                hunk(i,n2,k,s)=hunk(i,n2,k,s)-c*aimag( tvht(i) )*unk(i,m2,k,s)
+             end do
+          end if
+
+          if ( m2 /= n2 .and. abs(occ(n2,k,s)) >= tol ) then
+             c = alpha_hf*(2.0d0*occ_factor)*occ(n2,k,s)
+             do i=ml0,ml1
+                hunk(i,m2,k,s)=hunk(i,m2,k,s)-c*aimag( tvht(i) )*unk(i,n2,k,s)
+             end do
+          end if
+
+       end if
+
+    end do ! iwork
+
+    deallocate( tvht ) 
+    deallocate( trho )
+
+    deallocate( mapwork )
+
+! ---
+
+    call mpi_allreduce( MPI_IN_PLACE,hunk(ml0,1,k,s),MB*(ml1-ml0+1) &
+                       ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
+!    call rsdft_allreduce( comm_band, hunk(ml0,1,k,s), MB*(ml1-ml0+1), 512 )
+
+    return
+
+  END SUBROUTINE Fock_4_Double
+
+
   SUBROUTINE Fock_5( s,n1,n2 )
     implicit none
     integer,intent(IN) :: s,n1,n2
@@ -663,6 +791,60 @@ CONTAINS
     return
 #endif
   END SUBROUTINE Fock_5
+
+
+  SUBROUTINE Fock_Double( k, s, n1, n2, psi, tpsi )
+    implicit none
+    integer,intent(IN) :: k,s,n1,n2
+    real(8),intent(IN)  :: psi(n1:n2)
+    real(8),intent(INOUT) :: tpsi(n1:n2)
+    complex(8),allocatable :: trho(:),tvht(:)
+    real(8) :: c1,c2
+    integer :: m1,m2,i
+
+    allocate( trho(n1:n2) ) ; trho=(0.0d0,0.0d0)
+    allocate( tvht(n1:n2) ) ; tvht=(0.0d0,0.0d0)
+
+    do m1=FKMB_0,FKMB_1,2
+
+       m2=min( m1+1, FKMB_1 )
+
+       if ( abs(occ_hf(m1,k,s)) < 1.d-10 ) cycle
+
+       if ( m1 < m2 ) then
+          do i=n1,n2
+             trho(i) = dcmplx( unk_hf(i,m1,k,s),unk_hf(i,m2,k,s) )*psi(i)
+          end do
+       else
+          do i=n1,n2
+             trho(i) = unk_hf(i,m1,k,s)*psi(i)
+          end do
+       end if
+
+       call Fock_FFT_Double( n1, n2, trho, tvht )
+
+       c1 = alpha_hf*(2.0d0*occ_factor)*occ_hf(m1,k,s)
+       c2 = alpha_hf*(2.0d0*occ_factor)*occ_hf(m2,k,s)
+
+       if ( m1 < m2 ) then
+          do i=n1,n2
+             tpsi(i) = tpsi(i) - c1*real( tvht(i) )*unk_hf(i,m1,k,s) &
+                               - c2*aimag( tvht(i) )*unk_hf(i,m2,k,s)
+          end do
+       else
+          do i=n1,n2
+             tpsi(i) = tpsi(i) - c1*real( tvht(i) )*unk_hf(i,m1,k,s)
+          end do
+       end if
+
+    end do ! m1
+
+    deallocate( tvht ) 
+    deallocate( trho )
+
+    return
+
+  END SUBROUTINE Fock_Double
 
 
 END MODULE fock_module
