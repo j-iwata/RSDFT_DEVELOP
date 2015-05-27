@@ -20,6 +20,7 @@ MODULE xc_module
   use xc_pbe_xsr_module
   use xc_hf_module
   use xc_vdw_module
+  USE xc_ggaak13_module
 
   use BasicTypeFactory
   use BasicTypeMethods
@@ -207,6 +208,13 @@ CONTAINS
             ,Md, Hgrid, Ngrid, SYStype )
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+
+    case('GGAAK13')
+
+       call init_GGAAK13( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+            ,Md, Hgrid, Ngrid, SYStype )
+
+       call calc_GGAAK13( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
     case('PBE','PBE96')
 

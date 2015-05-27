@@ -127,6 +127,7 @@ MODS1 = \
        subspace_rotv_sl_module.o\
        subspace_solv_sl_module.o\
        wf_density_g.o\
+       xc_ggaak13_module.o\
        xc_ggapbe96_2_module.o\
        xc_ggapbe96_module.o\
        xc_hybrid_io_module.o\

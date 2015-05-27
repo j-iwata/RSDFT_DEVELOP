@@ -988,6 +988,17 @@ wf_density_g.o: wf_density_g.f90 \
                  parargridcomm.mod
 	$(FC) $(FFLAGS) -c wf_density_g.f90 -o $@
 
+xc_ggaak13_module.mod: xc_ggaak13_module.o
+	@true
+xc_ggaak13_module.o: xc_ggaak13_module.f90 \
+                 aa_module.mod \
+                 bb_module.mod \
+                 bc_module.mod \
+                 parallel_module.mod \
+                 fd_module.mod \
+                 xc_ggapbe96_mol_module.mod
+	$(FC) $(FFLAGS) -c xc_ggaak13_module.f90 -o $@
+
 xc_ggapbe96_2_module.mod: xc_ggapbe96_2_module.o
 	@true
 xc_ggapbe96_2_module.o: xc_ggapbe96_2_module.f90 \
@@ -1125,7 +1136,8 @@ fock_ffte_module.o: fock_ffte_module.f90 \
                  xc_hybrid_module.mod \
                  watch_module.mod \
                  bz_module.mod \
-                 ffte_sub_module.mod
+                 ffte_sub_module.mod \
+                 omp_variables.mod
 	$(FC) $(FFLAGS) -c fock_ffte_module.f90 -o $@
 
 gram_schmidt_t_module.mod: gram_schmidt_t_module.o
@@ -1516,6 +1528,7 @@ xc_module.o: xc_module.f90 \
                  xc_pbe_xsr_module.mod \
                  xc_hf_module.mod \
                  xc_vdw_module.mod \
+                 xc_ggaak13_module.mod \
                  basictypefactory.mod \
                  basictypemethods.mod \
                  iotools.mod
