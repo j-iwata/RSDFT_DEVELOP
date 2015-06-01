@@ -343,7 +343,7 @@ CONTAINS
 
        call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
 
-       call writeDensity( iter )
+!       call writeDensity( iter )
 
        call watch(ct1,et1)
        time_scf(1)=ct1-ct0
