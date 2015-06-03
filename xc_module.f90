@@ -37,7 +37,7 @@ MODULE xc_module
   real(8) :: Exc,E_exchange,E_correlation
   real(8) :: E_exchange_exx
 
-  real(8),allocatable :: Vx(:,:)
+  real(8),allocatable :: Vx(:,:), Vc(:,:)
 
   logical :: disp_sw
 
@@ -214,7 +214,17 @@ CONTAINS
        call init_GGAAK13( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
 
-       call calc_GGAAK13( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+       call calc_GGAAK13( rho_tmp, Exc, Vxc, E_exchange )
+
+!       if ( .not.allocated(Vc) ) then
+!          allocate( Vc(ML_0:ML_1,MSP_0:MSP_1) ) ; Vc=0.0d0
+!       end if
+!       mu = 10.0d0/81.0d0
+!       call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
+!            ,Md, Hgrid, Ngrid, SYStype, mu_in=mu )
+!       call calc_GGAPBE96( rho_tmp, Exc, Ec_out=E_correlation, Vc_out=Vc )
+!       Exc = E_exchange + E_correlation
+!       Vxc = Vxc + Vc
 
     case('PBE','PBE96')
 
