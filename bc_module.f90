@@ -821,7 +821,7 @@ CONTAINS
           c2=fdinfo_send(3,n,2) ; d2=fdinfo_send(4,n,2)
           c3=fdinfo_send(5,n,2) ; d3=fdinfo_send(6,n,2)
           if ( ndata<1 ) cycle
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
@@ -883,7 +883,7 @@ CONTAINS
           c1=fdinfo_send(1,n,4) ; d1=fdinfo_send(2,n,4)
           c3=fdinfo_send(5,n,4) ; d3=fdinfo_send(6,n,4)
           if ( ndata<1 ) cycle
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
@@ -945,7 +945,7 @@ CONTAINS
           c1=fdinfo_send(1,n,6) ; d1=fdinfo_send(2,n,6)
           c2=fdinfo_send(3,n,6) ; d2=fdinfo_send(4,n,6)
           if ( ndata<1 ) cycle
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
@@ -1007,7 +1007,7 @@ CONTAINS
           c2=fdinfo_send(3,n,1) ; d2=fdinfo_send(4,n,1)
           c3=fdinfo_send(5,n,1) ; d3=fdinfo_send(6,n,1)
           if ( ndata<1 ) cycle
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
@@ -1069,7 +1069,7 @@ CONTAINS
           c1=fdinfo_send(1,n,3) ; d1=fdinfo_send(2,n,3)
           c3=fdinfo_send(5,n,3) ; d3=fdinfo_send(6,n,3)
           if ( ndata<1 ) cycle
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
@@ -1131,7 +1131,7 @@ CONTAINS
           c1=fdinfo_send(1,n,5) ; d1=fdinfo_send(2,n,5)
           c2=fdinfo_send(3,n,5) ; d2=fdinfo_send(4,n,5)
           if ( ndata<1 ) cycle
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2
@@ -1200,7 +1200,7 @@ CONTAINS
              if ( fdinfo_recv(9,n,m)<1 ) cycle
           end if
 
-!$OMP do
+!$OMP do collapse(4)
           do ib=ib1,ib2
              do i3=c3,d3
              do i2=c2,d2

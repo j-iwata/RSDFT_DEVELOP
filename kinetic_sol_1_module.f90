@@ -50,8 +50,8 @@ CONTAINS
 
     nb = ib2-ib1+1
 
-!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &
-!$OMP                 ,n1_omp,n2_omp,j,p,d,mm,c)
+!!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &
+!!$OMP                 ,n1_omp,n2_omp,j,p,d,mm,c)
 
     mm=0
 !$  mm=omp_get_thread_num()
@@ -305,7 +305,7 @@ CONTAINS
 !$OMP end single
 
     end if
-!$OMP end parallel
+!!$OMP end parallel
  
   END SUBROUTINE op_kinetic_sol_1
 

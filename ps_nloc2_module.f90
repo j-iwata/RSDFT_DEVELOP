@@ -1015,103 +1015,149 @@ CONTAINS
 
   END SUBROUTINE prep_rvk_ps_nloc2
 
+  SUBROUTINE calc_range_omp( nb, nz, nb_0, nb_1, nz_0, nz_1 )
+    use omp_lib
+    implicit none
+    integer,intent(IN)  :: nb, nz
+    integer,intent(OUT) :: nb_0,nb_1,nz_0,nz_1
+    integer :: mp,ip,k0,k1,id,a,i,j
+!    real(8) :: et0,et1
+!    et0=omp_get_wtime()
+    mp=omp_get_num_threads()
+    ip=omp_get_thread_num()
+    k0=gcd(nb,mp)
+    k1=mp/k0
+    a=-1
+    loop_j : do j=0,k0-1
+    do i=0,k1-1
+       a=a+1
+       if ( a == ip ) then
+          nb_0 = j*(nb/k0) + 1
+          nb_1 = nb_0 + (nb/k0) - 1
+          nz_0 = i*(nz/k1) + 1
+          nz_1 = nz_0 + (nz/k1) - 1
+          exit loop_j
+       end if
+    end do
+    end do loop_j
+!    et1=omp_get_wtime()
+!    write(*,'(1x,8i4)') ip,mp,nb_0,nb_1,nz_0,nz_1
+!    write(*,*) "time=",et1-et0
+  END SUBROUTINE calc_range_omp
+  FUNCTION gcd(m0,n0)
+    implicit none
+    integer :: gcd,m0,n0
+    integer :: m,n,mtmp,loop
+    if ( m0 >= n0 ) then
+       m=m0
+       n=n0
+    else
+       m=n0
+       n=m0
+    end if
+    do loop=1,10000
+       if ( n == 0 ) exit
+       mtmp = n
+       n = mod(m,n)
+       m = mtmp
+    end do
+    gcd = m
+  END FUNCTION gcd
 
   SUBROUTINE op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
+!$  use omp_lib
     implicit none
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
     real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
 #else
     complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
     complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
 #endif
-    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq
+    integer :: i,ib,j,jb,i1,i2,m,lma,nb,ierr,nreq
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
     complex(8) :: zc
-
-    nb = ib2-ib1+1
+    integer :: nb_0_omp,nb_1_omp,nzlma_0_omp,nzlma_1_omp
 
     if ( Mlma <= 0 ) return
 
-    allocate( uVunk(nzlma,ib1:ib2),uVunk0(nzlma,ib1:ib2) )
+    nb = ib2-ib1+1
 
-!$OMP parallel private( i )
+    call calc_range_omp(nb,nzlma,nb_0_omp,nb_1_omp,nzlma_0_omp,nzlma_1_omp)
 
-    do ib=ib1,ib2
-!$OMP do
-       do lma=1,nzlma
-          uVunk(lma,ib)=zero
-          do j=1,MJJ(lma)
-             i=JJP(j,lma)
+    do ib=nb_0_omp,nb_1_omp
+       jb=ib+ib1-1
+    do lma=nzlma_0_omp,nzlma_1_omp
+       uVunk(lma,ib)=zero
+       do j=1,MJJ(lma)
+          i=JJP(j,lma)
 #ifdef _DRSDFT_
-             uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*tpsi(i,ib)
+          uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*tpsi(i,jb)
 #else
-             uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*tpsi(i,ib)
+          uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*tpsi(i,jb)
 #endif
-          end do
-          uVunk(lma,ib)=iuV(lma)*dV*uVunk(lma,ib)
        end do
-!$OMP end do
+       uVunk(lma,ib)=iuV(lma)*dV*uVunk(lma,ib)
     end do
+    end do
+
+!$omp barrier
 
     select case( iswitch_eqdiv )
     case default
 
-!$OMP single
-    do i=1,6
-       select case(i)
-       case(1,3,5)
-!!$OMP single
-          j=i+1
-!!$OMP end single
-!!$OMP workshare
-          uVunk0(:,:)=uVunk(:,:)
-!!$OMP end workshare
-       case(2,4,6)
-!!$OMP single
-          j=i-1
-!!$OMP end single
-       end select
-!!$OMP single
-       do m=1,nrlma_xyz(i)
-          nreq=0
-          irank=num_2_rank(m,i)
-          jrank=num_2_rank(m,j)
-          if( irank>=0 )then
-             i2=0
-             do ib=ib1,ib2
+       do i=1,6
+
+          select case(i)
+          case(1,3,5)
+             j=i+1
+!$OMP workshare
+             uVunk0(:,:)=uVunk(:,:)
+!$OMP end workshare
+          case(2,4,6)
+             j=i-1
+          end select
+
+!$OMP master
+          do m=1,nrlma_xyz(i)
+             irank=num_2_rank(m,i)
+             jrank=num_2_rank(m,j)
+             nreq=0 
+             if ( irank >= 0 ) then
+                i2=0
+                do ib=1,nb
                 do i1=1,lma_nsend(irank)
                    i2=i2+1
                    sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
                 end do
-             end do
-             nreq=nreq+1
-             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb &
-                  ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
-          end if
-          if( jrank>=0 )then
-             nreq=nreq+1
-             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
-                  ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
-          end if
-          call mpi_waitall(nreq,ireq,istatus,ierr)
-          if( jrank>=0 )then
-             i2=0
-             do ib=ib1,ib2
+                end do
+                nreq=nreq+1
+                call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb &
+                     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+             end if
+             if ( jrank >= 0 ) then
+                nreq=nreq+1
+                call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
+                     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+             end if
+             call mpi_waitall(nreq,ireq,istatus,ierr)
+             if ( jrank >= 0 ) then
+                i2=0
+                do ib=1,nb
                 do i1=1,lma_nsend(jrank)
                    i2=i2+1
                    uVunk(recvmap(i1,jrank),ib) &
                         =uVunk(recvmap(i1,jrank),ib)+rbufnl(i2,jrank)
                 end do
-             end do
-          end if
+                end do
+             end if
+
+          end do
+!$OMP end master
+!$OMP barrier
+
        end do
-!!$OMP end single
-    end do
-!$OMP end single
 
     case( 2 )
 
@@ -1119,28 +1165,16 @@ CONTAINS
 
     end select
 
-!    do ib=ib1,ib2
-!       do lma=1,nzlma
-!          do j=1,MJJ(lma)
-!             i=JJP(j,lma)
-!             htpsi(i,ib)=htpsi(i,ib)+uVk(j,lma,k)*uVunk(lma,ib)
-!          end do
-!    end do
-!----
     do ib=ib1,ib2
-       do lma=1,nzlma
+    do lma=1,nzlma
 !$OMP do
-          do j=1,MJJ(lma)
-             htpsi(JJP(j,lma),ib)=htpsi(JJP(j,lma),ib) &
-                  +uVk(j,lma,k)*uVunk(lma,ib)
-          end do
-!$OMP end do
+       do j=1,MJJ(lma)
+          htpsi(JJP(j,lma),ib)=htpsi(JJP(j,lma),ib) &
+               +uVk(j,lma,k)*uVunk(lma,ib-ib1+1)
        end do
+!$OMP end do
     end do
-
-!$OMP end parallel
-
-    deallocate( uVunk0,uVunk )
+    end do
 
   END SUBROUTINE op_ps_nloc2
 
