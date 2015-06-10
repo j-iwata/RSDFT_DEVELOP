@@ -2,6 +2,7 @@ MODULE total_energy_module
 
   use rgrid_module, only: dV
   use hamiltonian_module
+  use nonlocal_module, only: init_op_nonlocal
   use hartree_variables, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
   use eion_module, only: Eewald
@@ -92,7 +93,9 @@ CONTAINS
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
           work=zero
+!$OMP parallel
           call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+!$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,1)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -101,7 +104,9 @@ CONTAINS
 #endif
           end do
           work=zero
+!$OMP parallel
           call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
+!$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,2)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -110,7 +115,10 @@ CONTAINS
 #endif
           end do
           work=zero
+          call init_op_nonlocal
+!$OMP parallel
           call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+!$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,3)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -165,6 +173,7 @@ CONTAINS
     end do
     end do
     end do
+    s0(2)=sum( Vion(:)*rho(:,1) )
     s0(:)=s0(:)*dV
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
 

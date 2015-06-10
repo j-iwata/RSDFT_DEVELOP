@@ -791,6 +791,7 @@ CONTAINS
 !(1) [sender][2]-->[1][receiver]
 
     if ( idir==0 .or. idir==1 .or. idir==2 ) then
+!$OMP master
        do n=1,n_neighbor(1)
           if ( ndepth==1 ) then
              ndata = fdinfo_recv(10,n,1)*nb
@@ -800,14 +801,11 @@ CONTAINS
           if ( ndata<1 ) cycle
           irank = fdinfo_recv(8,n,1)
           itagr = 10
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_irecv(rbuf(1,n,1),ndata,TYPE_MAIN,irank,itagr &
                         ,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-!$OMP barrier
        end do
+!$OMP end master
        do n=1,n_neighbor(2)
           if ( ndepth==1 ) then
              c1=b1
@@ -821,8 +819,8 @@ CONTAINS
           c2=fdinfo_send(3,n,2) ; d2=fdinfo_send(4,n,2)
           c3=fdinfo_send(5,n,2) ; d3=fdinfo_send(6,n,2)
           if ( ndata<1 ) cycle
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -833,18 +831,15 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
-          !if ( ndata/=j ) stop
+          end do
+!$OMP master
           irank = fdinfo_send(7,n,2)
           itags = 10
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,2),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
-!$OMP barrier
        end do
     end if
 
@@ -853,6 +848,7 @@ CONTAINS
 !(3) [sender][4]-->[3][receiver]
 
     if ( idir==0 .or. idir==3 .or. idir==4 ) then
+!$OMP master
        do n=1,n_neighbor(3)
           if ( ndepth==1 ) then
              ndata = fdinfo_recv(10,n,3)*nb
@@ -862,14 +858,11 @@ CONTAINS
           if ( ndata<1 ) cycle
           irank = fdinfo_recv(8,n,3)
           itagr = 30
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_irecv(rbuf(1,n,3),ndata,TYPE_MAIN,irank,itagr &
                         ,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-!$OMP barrier
        end do
+!$OMP end master
        do n=1,n_neighbor(4)
           if ( ndepth==1 ) then
              c2=b2
@@ -883,8 +876,8 @@ CONTAINS
           c1=fdinfo_send(1,n,4) ; d1=fdinfo_send(2,n,4)
           c3=fdinfo_send(5,n,4) ; d3=fdinfo_send(6,n,4)
           if ( ndata<1 ) cycle
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -895,18 +888,15 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
-          !if ( ndata/=j ) stop
+          end do
           irank = fdinfo_send(7,n,4)
           itags = 30
-!$OMP barrier
 !$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,4),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
-!$OMP barrier
        end do
     end if
 
@@ -915,6 +905,7 @@ CONTAINS
 !(5) [sender][6]-->[5][receiver]
 
     if ( idir==0 .or. idir==5 .or. idir==6 ) then
+!$OMP master
        do n=1,n_neighbor(5)
           if ( ndepth==1 ) then
              ndata = fdinfo_recv(10,n,5)*nb
@@ -924,14 +915,11 @@ CONTAINS
           if ( ndata<1 ) cycle
           irank = fdinfo_recv(8,n,5)
           itagr = 50
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_irecv(rbuf(1,n,5),ndata,TYPE_MAIN,irank,itagr &
                         ,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-!$OMP barrier
        end do
+!$OMP end master
        do n=1,n_neighbor(6)
           if ( ndepth==1 ) then
              c3=b3
@@ -945,8 +933,8 @@ CONTAINS
           c1=fdinfo_send(1,n,6) ; d1=fdinfo_send(2,n,6)
           c2=fdinfo_send(3,n,6) ; d2=fdinfo_send(4,n,6)
           if ( ndata<1 ) cycle
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -957,18 +945,15 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
-          !if ( ndata/=j ) stop
+          end do
+!$OMP master
           irank = fdinfo_send(7,n,6)
           itags = 50
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,6),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
-!$OMP barrier
        end do
     end if
 
@@ -977,6 +962,7 @@ CONTAINS
 !(2) [receiver][2]<--[1][sender]
 
     if ( idir==0 .or. idir==1 .or. idir==2 ) then
+!$OMP master
        do n=1,n_neighbor(2)
           if ( ndepth==1 ) then
              ndata = fdinfo_recv(10,n,2)*nb
@@ -986,14 +972,11 @@ CONTAINS
           if ( ndata<1 ) cycle
           irank = fdinfo_recv(8,n,2)
           itagr = 20
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_irecv(rbuf(1,n,2),ndata,TYPE_MAIN,irank,itagr &
                         ,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-!$OMP barrier
        end do
+!$OMP end master
        do n=1,n_neighbor(1)
           if ( ndepth==1 ) then
              c1=a1
@@ -1007,8 +990,8 @@ CONTAINS
           c2=fdinfo_send(3,n,1) ; d2=fdinfo_send(4,n,1)
           c3=fdinfo_send(5,n,1) ; d3=fdinfo_send(6,n,1)
           if ( ndata<1 ) cycle
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -1019,18 +1002,15 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
-          !if ( ndata/=j ) stop
+          end do
+!$OMP master
           irank = fdinfo_send(7,n,1)
           itags = 20
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,1),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
-!$OMP barrier
        end do
     end if
 
@@ -1039,6 +1019,7 @@ CONTAINS
 !(4) [receiver][4]<--[3][sender]
 
     if ( idir==0 .or. idir==3 .or. idir==4 ) then
+!$OMP master
        do n=1,n_neighbor(4)
           if ( ndepth==1 ) then
              ndata = fdinfo_recv(10,n,4)*nb
@@ -1048,14 +1029,11 @@ CONTAINS
           if ( ndata<1 ) cycle
           irank = fdinfo_recv(8,n,4)
           itagr = 40
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_irecv(rbuf(1,n,4),ndata,TYPE_MAIN,irank,itagr &
                         ,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-!$OMP barrier
        end do
+!$OMP end master
        do n=1,n_neighbor(3)
           if ( ndepth==1 ) then
              c2=a2
@@ -1069,8 +1047,8 @@ CONTAINS
           c1=fdinfo_send(1,n,3) ; d1=fdinfo_send(2,n,3)
           c3=fdinfo_send(5,n,3) ; d3=fdinfo_send(6,n,3)
           if ( ndata<1 ) cycle
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -1081,18 +1059,15 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
-          !if ( ndata/=j ) stop
+          end do
+!$OMP master
           irank = fdinfo_send(7,n,3)
           itags = 40
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,3),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
-!$OMP barrier
        end do
     end if
 
@@ -1101,6 +1076,7 @@ CONTAINS
 !(6) [receiver][6]<--[5][sender]
 
     if ( idir==0 .or. idir==5 .or. idir==6 ) then
+!$OMP master
        do n=1,n_neighbor(6)
           if ( ndepth==1 ) then
              ndata = fdinfo_recv(10,n,6)*nb
@@ -1110,14 +1086,11 @@ CONTAINS
           if ( ndata<1 ) cycle
           irank = fdinfo_recv(8,n,6)
           itagr = 60
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_irecv(rbuf(1,n,6),ndata,TYPE_MAIN,irank,itagr &
                         ,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-!$OMP barrier
        end do
+!$OMP end master
        do n=1,n_neighbor(5)
           if ( ndepth==1 ) then
              c3=a3
@@ -1131,8 +1104,8 @@ CONTAINS
           c1=fdinfo_send(1,n,5) ; d1=fdinfo_send(2,n,5)
           c2=fdinfo_send(3,n,5) ; d2=fdinfo_send(4,n,5)
           if ( ndata<1 ) cycle
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -1143,22 +1116,18 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
-          !if ( ndata/=j ) stop
+          end do
+!$OMP master
           irank = fdinfo_send(7,n,5)
           itags = 60
-!$OMP barrier
-!$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,5),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
-!$OMP barrier
        end do
     end if
 
-!$OMP barrier
 !$OMP master
     call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
 !$OMP end master
@@ -1200,8 +1169,8 @@ CONTAINS
              if ( fdinfo_recv(9,n,m)<1 ) cycle
           end if
 
-!$OMP do collapse(4)
           do ib=ib1,ib2
+!$OMP do
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
@@ -1212,8 +1181,8 @@ CONTAINS
              end do
              end do
              end do
-          end do
 !$OMP end do
+          end do
 
        end do ! n
     end do ! m

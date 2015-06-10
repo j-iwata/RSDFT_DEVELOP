@@ -4,10 +4,13 @@ MODULE watch_module
 
   PRIVATE
   PUBLIC :: watch,watchs,watcht,read_watch,global_watch,read_oldformat_watch
+  PUBLIC :: et_hpsi_
 
   real(8) :: ct0=0.d0, ctt=0.d0
   real(8) :: ett=0.d0
   integer :: count0=0
+
+  real(8) :: et_hpsi_(8)
 
   real(8) :: etime_limit
 

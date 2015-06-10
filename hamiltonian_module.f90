@@ -33,7 +33,9 @@ CONTAINS
 
 !!$  et0 = omp_get_wtime()
 
-!$OMP parallel
+    call init_op_nonlocal
+
+!$OMP parallel private( et0, et1 )
 
 !$OMP workshare
     htpsi=(0.d0,0.d0)
@@ -41,36 +43,49 @@ CONTAINS
 
 ! --- Kinetic energy ---
 
-!    call watch(ct0,et0)
+!$OMP barrier
+    et0 = omp_get_wtime()
 
     call op_kinetic(k,tpsi,htpsi,n1,n2,ib1,ib2)
 
-!    call watch(ct1,et1)
-!    ctt_hamil(1)=ctt_hamil(1)+ct1-ct0 ; ett_hamil(1)=ett_hamil(1)+et1-et0
+!$OMP barrier
+    et1 = omp_get_wtime()
+
+!$OMP single
+    ett_hamil(1)=ett_hamil(1)+et1-et0
+!$OMP end single
 
 ! --- local potential ---
 
+!$OMP barrier
+    et0 = omp_get_wtime()
+
     call op_localpot(s,n2-n1+1,ib2-ib1+1,tpsi,htpsi)
 
-!    call watch(ct0,et0)
-!    ctt_hamil(2)=ctt_hamil(2)+ct0-ct1 ; ett_hamil(2)=ett_hamil(2)+et0-et1
+!$OMP barrier
+    et1 = omp_get_wtime()
+
+!$OMP single
+    ett_hamil(2)=ett_hamil(2)+et1-et0
+!$OMP end single
 
 ! --- nonlocal potential ---
 
+!$OMP barrier
+    et0 = omp_get_wtime()
+
     call op_nonlocal(k,tpsi,htpsi,n1,n2,ib1,ib2)
 
-!    call watch(ct1,et1)
-!    ctt_hamil(3)=ctt_hamil(3)+ct1-ct0 ; ett_hamil(3)=ett_hamil(3)+et1-et0
+!$OMP barrier
+    et1 = omp_get_wtime()
+
+!$OMP single
+    ett_hamil(3)=ett_hamil(3)+et1-et0
+!$OMP end single
 
 !$OMP end parallel
 
     call op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
-
-!    call watch(ct0,et0)
-!    ctt_hamil(4)=ctt_hamil(4)+ct0-ct1 ; ett_hamil(4)=ett_hamil(4)+et0-et1
-
-!!$  et1 = omp_get_wtime()
-!!$  write(*,*) "time(hamiltonian)=",et1-et0
 
   END SUBROUTINE hamiltonian
 

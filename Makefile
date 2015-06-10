@@ -67,6 +67,7 @@ MODS1 = simc_module.o\
         ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
         ps_nloc3_module.o \
+        ps_nloc2_op_module.o \
         ps_nloc2_module.o \
         construct_matrix_ps_nloc2_module.o \
         localpot2_variables.o \
@@ -122,6 +123,7 @@ MODS1 = simc_module.o\
         ps_pcc_force_module.o \
         hamiltonian_module.o\
         cgpc_gausseidel_module.o \
+        cgpc_hprsdft_module.o \
         cgpc_2_module.o \
         cgpc_diag_module.o \
         cgpc_seitsonen_module.o \

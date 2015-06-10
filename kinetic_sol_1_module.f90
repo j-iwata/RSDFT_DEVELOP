@@ -7,6 +7,7 @@ MODULE kinetic_sol_1_module
   use bc_module, only: www, bcset_1
   use kinetic_variables, only: coef_lap0, coef_lap, zcoef_kin, coef_nab &
        ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md
+  use watch_module, only: et_hpsi_
 
   implicit none
 
@@ -34,10 +35,15 @@ CONTAINS
     integer :: i,ib,i1,i2,i3,nb,m,n,j
     integer :: a1,a2,a3,b1,b2,b3,p,mm,nn
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
-    real(8) :: c,d
+    real(8) :: c,d,et0,et1
     integer,allocatable :: ic(:)
     integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp,n1_omp,n2_omp
     integer :: ib1_omp,ib2_omp,nb_omp
+
+!!$OMP barrier
+!!$OMP master
+!    et0=omp_get_wtime()
+!!$OMP end master
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -73,6 +79,12 @@ CONTAINS
        end do
     end do
 
+!!$OMP barrier
+!!$OMP master
+!    et1=omp_get_wtime()
+!    et_hpsi_(1)=et_hpsi_(1)+et1-et0
+!!$OMP end master
+
     do ib=ib1,ib2
        do i3=a3b_omp,b3b_omp
        do i2=a2b_omp,b2b_omp
@@ -84,9 +96,29 @@ CONTAINS
        end do
     end do
 
+!!$OMP barrier
+!!$OMP master
+!    et0=omp_get_wtime()
+!    et_hpsi_(2)=et_hpsi_(2)+et0-et1
+!!$OMP end master
+
 !$OMP barrier
     call bcset_1(1,nb,Md,0)
 !$OMP barrier
+
+!!$OMP barrier
+!!$OMP master
+!    et1=omp_get_wtime()
+!    et_hpsi_(3)=et_hpsi_(3)+et1-et0
+!!$OMP end master
+
+!    c=coef_lap0+const_k2(k)
+!    do ib=ib1,ib2
+!       do i=n1_omp,n2_omp
+!          htpsi(i,ib) = c*tpsi(i,ib)
+!       end do
+!    end do
+!!$OMP barrier
 
     if ( flag_nab ) then
 
@@ -140,6 +172,12 @@ CONTAINS
        end do ! ib
 
     end if
+
+!!$OMP barrier
+!!$OMP master
+!    et0=omp_get_wtime()
+!    et_hpsi_(4)=et_hpsi_(4)+et0-et1
+!!$OMP end master
 
 !$OMP barrier
 

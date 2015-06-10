@@ -133,6 +133,8 @@ CONTAINS
     ett(:)=0.d0
     ctt_hamil(:)=0.d0
     ett_hamil(:)=0.d0
+    et_hpsi_(:)=0.0d0
+    et_cgpc_(:)=0.0d0
 
     ML0 = ML_1-ML_0+1
 
@@ -388,15 +390,32 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
+    call mpi_allreduce( et_hpsi_(7),c,1,mpi_real8,mpi_min,mpi_comm_world,i)
+    call mpi_allreduce( et_hpsi_(7),d,1,mpi_real8,mpi_max,mpi_comm_world,i)
+
     if ( disp_switch_parallel ) then
-!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+       write(*,*) "et_hpsi_(1)    ",et_hpsi_(1)
+       write(*,*) "et_hpsi_(2)    ",et_hpsi_(2)
+       write(*,*) "et_hpsi_(3)    ",et_hpsi_(3)
+       write(*,*) "et_hpsi_(4)    ",et_hpsi_(4)
+       write(*,*) "et_hpsi_(5)    ",et_hpsi_(5)
+       write(*,*) "et_hpsi_(6)    ",et_hpsi_(6)
+       write(*,*) "et_hpsi_(7)    ",et_hpsi_(7),c,d
+       write(*,*) "et_hpsi_(8)    ",et_hpsi_(8)
+       write(*,*) "et_cgpc_(1)    ",et_cgpc_(1)
+       write(*,*) "et_cgpc_(2)    ",et_cgpc_(2)
+       write(*,*) "et_cgpc_(3)    ",et_cgpc_(3)
+       write(*,*) "et_cgpc_(4)    ",et_cgpc_(4)
+       write(*,*) "et_cgpc_(5)    ",et_cgpc_(5)
+       write(*,*) "et_cgpc_(6)    ",et_cgpc_(6)
+       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
   END SUBROUTINE conjugate_gradient_1
