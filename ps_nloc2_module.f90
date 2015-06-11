@@ -11,17 +11,17 @@ MODULE ps_nloc2_module
   use ps_nloc_gth_module
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
-  use rgrid_mol_module, only: iswitch_eqdiv
   use minimal_box_module
   use bz_module
   use watch_module
   use wf_module
+  use ps_nloc2_op_module, only: init_op_ps_nloc2, init_op_ps_nloc2_hp
 
   implicit none
 
   PRIVATE
   PUBLIC :: prep_ps_nloc2 &
-           ,op_ps_nloc2,calc_force_ps_nloc2 &
+           ,calc_force_ps_nloc2 &
            ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
            ,prep_ps_nloc2_esm
 
@@ -32,9 +32,6 @@ MODULE ps_nloc2_module
   integer,allocatable :: JJ_tmp(:,:,:,:)
   integer,allocatable :: MJJ_tmp(:,:)
   real(8),allocatable :: uV_tmp(:,:,:)
-
-  integer,allocatable :: n_i2j(:)
-  integer,allocatable :: i2j(:,:,:)
 
 CONTAINS
 
@@ -58,9 +55,8 @@ CONTAINS
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
     real(8),allocatable :: work(:)
-    real(8) :: ctt(0:9),ett(0:9)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
-    integer :: ab1,ab2,ab3
+    integer :: ab1,ab2,ab3,timer_counter
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
     logical :: disp_sw
@@ -78,9 +74,8 @@ CONTAINS
        write(*,'(a60," prep_ps_nloc2")') repeat("-",60)
     end if
 
-    ctt=0.0d0 ; ett=0.0d0
-
-    call watch(ctt(6),ett(6))
+    timer_counter = -1
+    call watcha( timer_counter )
 
     Mlma=0
     do i=1,Natom
@@ -132,7 +127,7 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    call watch(ctt(7),ett(7))
+    call watcha( timer_counter )
 
     r=maxval(Rps)+maxval(Hgrid(1:3))+1.d-8
     call make_minimal_box(r,mm1,mm2,mm3,MMJJ_0)
@@ -140,7 +135,7 @@ CONTAINS
     mm2 = maxval( abs(mcube_grid_ion(:,2)) ) + 1
     mm3 = maxval( abs(mcube_grid_ion(:,3)) ) + 1
 
-    call watch(ctt(8),ett(8))
+    call watcha( timer_counter )
 
     MMJJ_0 = M_grid_ion
 
@@ -153,7 +148,7 @@ CONTAINS
        allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
     end if
 
-    call watch(ctt(0),ett(0))
+    call watcha( timer_counter )
 
     if ( any( ippform == 4 ) ) then
 
@@ -356,7 +351,7 @@ CONTAINS
     call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical &
                       ,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
 
-    call watch(ctt(1),ett(1))
+    call watcha( timer_counter )
 
 ! for grid-parallel computation
 
@@ -530,8 +525,8 @@ CONTAINS
     end do ! m
     end do ! iorb
     end do ! a
-
-    call watch(ctt(2),ett(2))
+ 
+    call watcha( timer_counter )
 
     nzlma = icheck_tmp2(myrank_g)
 
@@ -617,7 +612,7 @@ CONTAINS
 !    deallocate( uV_tmp )
     deallocate( maps_tmp )
 
-    call watch(ctt(3),ett(3))
+    call watcha( timer_counter )
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
@@ -840,7 +835,7 @@ CONTAINS
        nrlma_xyz(i+1)=n
     end do
 
-    call watch(ctt(4),ett(4))
+    call watcha( timer_counter )
 
     call allocate_ps_nloc2(MB_d)
 
@@ -853,49 +848,17 @@ CONTAINS
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
-    call watch(ctt(5),ett(5))
+    call watcha( timer_counter )
 
-! --- inverse map ( grid label i --> (j,lma) )
+!    call init_op_ps_nloc2
+    call init_op_ps_nloc2_hp
 
-    if ( allocated(i2j) ) deallocate(i2j)
-    if ( allocated(n_i2j) ) deallocate(n_i2j)
-
-    allocate( n_i2j(ML_0:ML_1) ) ; n_i2j=0
-
-    do lma=1,nzlma
-       do j=1,MJJ(lma)
-          i=JJP(j,lma)
-          n_i2j(i)=n_i2j(i)+1
-       end do
-    end do
-
-    n=maxval( n_i2j )
-    allocate( i2j(2,n,ML_0:ML_1) ) ; i2j=0
-
-    n_i2j(:)=0
-    do lma=1,nzlma
-       do j=1,MJJ(lma)
-          i=JJP(j,lma)
-          n_i2j(i)=n_i2j(i)+1
-          i2j(1,n_i2j(i),i)=j
-          i2j(2,n_i2j(i),i)=lma
-       end do
-    end do
-
-    call watch(ctt(9),ett(9))
+    call watcha( timer_counter )
 
 ! ---
 
     if ( disp_sw ) then
-       write(*,*) "time(ps_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(ps_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(ps_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(ps_nloc2_4)",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(ps_nloc2_5)",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(ps_nloc2_7)",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(ps_nloc2_8)",ctt(8)-ctt(7),ett(8)-ett(7)
-       write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
-       write(*,*) "time(ps_nloc2_10)",ctt(9)-ctt(5),ett(9)-ett(5)
+       call write_watcha( timer_counter,"prep_ps_nloc2" )
     end if
 
   END SUBROUTINE prep_ps_nloc2
@@ -1052,267 +1015,6 @@ CONTAINS
     deallocate( icheck_tmp4 )
 
   END SUBROUTINE prep_rvk_ps_nloc2
-
-  SUBROUTINE calc_range_omp( nb, nz, nb_0, nb_1, nz_0, nz_1 )
-    use omp_lib
-    implicit none
-    integer,intent(IN)  :: nb, nz
-    integer,intent(OUT) :: nb_0,nb_1,nz_0,nz_1
-    integer :: mp,ip,k0,k1,id,a,i,j
-    real(8) :: et0,et1
-    et0=omp_get_wtime()
-    mp=omp_get_num_threads()
-    ip=omp_get_thread_num()
-    k0=gcd(nb,mp)
-    k1=mp/k0
-    a=-1
-    loop_j : do j=0,k0-1
-    do i=0,k1-1
-       a=a+1
-       if ( a == ip ) then
-          nb_0 = j*(nb/k0) + 1
-          nb_1 = nb_0 + (nb/k0) - 1
-          nz_0 = i*(nz/k1) + 1
-          nz_1 = nz_0 + (nz/k1) - 1
-          if ( i == k1-1 ) nz_1 = nz
-          exit loop_j
-       end if
-    end do
-    end do loop_j
-!    et1=omp_get_wtime()
-!    write(*,'(1x,8i4)') ip,mp,nb_0,nb_1,nz_0,nz_1
-!    write(*,*) "time=",et1-et0
-  END SUBROUTINE calc_range_omp
-  FUNCTION gcd(m0,n0)
-    implicit none
-    integer :: gcd,m0,n0
-    integer :: m,n,mtmp,loop
-    if ( m0 >= n0 ) then
-       m=m0
-       n=n0
-    else
-       m=n0
-       n=m0
-    end if
-    do loop=1,10000
-       if ( n == 0 ) exit
-       mtmp = n
-       n = mod(m,n)
-       m = mtmp
-    end do
-    gcd = m
-  END FUNCTION gcd
-
-  SUBROUTINE op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
-!$  use omp_lib
-    implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
-#ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-#else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-#endif
-    integer :: i,ib,j,jb,i1,i2,i3,m,lma,nb,ierr,nreq,lmani,lmanj
-    integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512) 
-    integer :: nb_0_omp,nb_1_omp,nzlma_0_omp,nzlma_1_omp,m_0,m_1,n_0,n_1
-    complex(8) :: zc
-    real(8) :: et0,et1
-
-    if ( Mlma <= 0 ) return
-
-!$OMP barrier
-!$OMP master
-    et0=omp_get_wtime()
-!$OMP end master
-
-    nb = ib2-ib1+1
-
-    call calc_range_omp(nb,nzlma,nb_0_omp,nb_1_omp,nzlma_0_omp,nzlma_1_omp)
-
-!$OMP barrier
-!$OMP master
-    et1=omp_get_wtime()
-    et_hpsi_(5)=et_hpsi_(5)+et1-et0
-!$OMP end master
-
-    do ib=nb_0_omp,nb_1_omp
-       jb=ib+ib1-1
-    do lma=nzlma_0_omp,nzlma_1_omp
-       uVunk(lma,ib)=zero
-       do j=1,MJJ(lma)
-          i=JJP(j,lma)
-#ifdef _DRSDFT_
-          uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*tpsi(i,jb)
-#else
-          uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*tpsi(i,jb)
-#endif
-       end do
-       uVunk(lma,ib)=iuV(lma)*dV*uVunk(lma,ib)
-    end do
-    end do
-
-!$OMP barrier
-!$OMP master
-    et0=omp_get_wtime()
-    et_hpsi_(6)=et_hpsi_(6)+et0-et1
-!$OMP end master
-
-    select case( iswitch_eqdiv )
-    case default
-
-       do i=1,6
-
-!$OMP barrier
-
-          select case(i)
-          case(1,3,5)
-             j=i+1
-             do ib=nb_0_omp,nb_1_omp
-             do lma=nzlma_0_omp,nzlma_1_omp
-                uVunk0(lma,ib)=uVunk(lma,ib)
-             end do
-             end do
-          case(2,4,6)
-             j=i-1
-          end select
-!$OMP barrier
-
-          do m=1,nrlma_xyz(i)
-             irank=num_2_rank(m,i)
-             jrank=num_2_rank(m,j)
-             nreq=0 
-             if ( irank >= 0 ) then
-                lmani = lma_nsend(irank)
-                call calc_range_omp(nb,lmani,m_0,m_1,n_0,n_1)
-                do ib=m_0,m_1
-                do i1=n_0,n_1
-                   i2=i1+(ib-1)*lmani
-                   sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
-                end do
-                end do
-!$OMP barrier
-!$OMP master
-                nreq=nreq+1
-                call mpi_isend(sbufnl(1,irank),lmani*nb &
-                     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
-!$OMP end master
-             end if
-!$OMP master
-             if ( jrank >= 0 ) then
-                lmanj = lma_nsend(jrank)
-                nreq=nreq+1
-                call mpi_irecv(rbufnl(1,jrank),lmanj*nb &
-                     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
-             end if
-             call mpi_waitall(nreq,ireq,istatus,ierr)
-!$OMP end master
-!$OMP barrier
-             if ( jrank >= 0 ) then
-                lmanj = lma_nsend(jrank)
-                call calc_range_omp(nb,lmanj,m_0,m_1,n_0,n_1)
-                do ib=m_0,m_1
-                do i1=n_0,n_1
-                   i2=i1+(ib-1)*lmanj
-                   i3=recvmap(i1,jrank)
-                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,jrank)
-                end do
-                end do
-             end if
-
-          end do ! m
-
-       end do ! i
-
-    case( 2 )
-
-       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
-
-    end select
-
-!$OMP barrier
-!$OMP master
-    et1=omp_get_wtime()
-    et_hpsi_(7)=et_hpsi_(7)+et1-et0
-!$OMP end master
-
-    do ib=ib1,ib2
-       jb=ib-ib1+1
-!$OMP do
-       do i=n1,n2
-          do m=1,n_i2j(i)
-             j=i2j(1,m,i)
-             lma=i2j(2,m,i)
-             htpsi(i,ib) = htpsi(i,ib) + uVk(j,lma,k)*uVunk(lma,jb)
-          end do
-       end do
-!$OMP end do nowait
-    end do
-!    do ib=ib1,ib2
-!       jb=ib-ib1+1
-!       do lma=1,nzlma
-!!$OMP do
-!          do j=1,MJJ(lma)
-!             i=JJP(j,lma)
-!             htpsi(i,ib) = htpsi(i,ib) + uVk(j,lma,k)*uVunk(lma,jb)
-!          end do
-!!$OMP end do
-!       end do
-!    end do
-
-!$OMP barrier
-!$OMP master
-    et0=omp_get_wtime()
-    et_hpsi_(8)=et_hpsi_(8)+et0-et1
-!$OMP end master
-
-  END SUBROUTINE op_ps_nloc2
-
-
-  SUBROUTINE comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
-    implicit none
-    integer,intent(IN) :: nzlma,ib1,ib2
-#ifdef _DRSDFT_
-    real(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
-#else
-    complex(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
-#endif
-    integer :: nreq,irank,m,i1,i2,ib,ierr,nb
-    integer :: istatus(mpi_status_size,512),ireq(512)
-    nb=ib2-ib1+1
-    nreq=0
-    do irank=0,nprocs_g-1
-       m=lma_nsend(irank)
-       if ( irank == myrank_g .or. m <= 0 ) cycle
-       i2=0
-       do ib=ib1,ib2
-       do i1=1,m
-          i2=i2+1
-          sbufnl(i2,irank)=uVunk(sendmap(i1,irank),ib)
-       end do
-       end do
-       nreq=nreq+1
-       call mpi_isend(sbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
-            ,comm_grid,ireq(nreq),ierr)
-       nreq=nreq+1
-       call mpi_irecv(rbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
-            ,comm_grid,ireq(nreq),ierr)
-    end do
-    if ( nreq > 0 ) call mpi_waitall(nreq,ireq,istatus,ierr)
-    do irank=0,nprocs_g-1
-       m=lma_nsend(irank)
-       if ( irank == myrank_g .or. m <= 0 ) cycle
-       i2=0
-       do ib=ib1,ib2
-       do i1=1,m
-          i2=i2+1
-          uVunk(recvmap(i1,irank),ib) &
-               =uVunk(recvmap(i1,irank),ib)+rbufnl(i2,irank)
-       end do
-       end do
-    end do
-  END SUBROUTINE comm_eqdiv_ps_nloc2_mol
 
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)

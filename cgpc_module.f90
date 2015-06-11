@@ -85,23 +85,24 @@ CONTAINS
   END SUBROUTINE send_cgpc
 
 
-  SUBROUTINE init_cgpc(n1,n2,k,s,dV_in)
+  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, ipc_out )
     implicit none
     integer,intent(IN) :: n1,n2,k,s
     real(8),intent(IN) :: dV_in
+    integer,optional,intent(OUT) :: ipc_out
+
+    if ( present(ipc_out) ) ipc_out=iswitch_cgpc
+
     select case( iswitch_cgpc )
     case( 0 )
     case( 1 )
-!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_1 ---"
        if ( mloop == 0 ) mloop=3
     case( 2 )
-!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_2 ---"
        call init_cgpc_2( mloop, SYStype )
     case( 3 )
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
        call init_cgpc_gausseidel(Igrid,Ngrid,Hgrid,ggg,mloop)
     case( 4 )
-!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_hprsdft ---"
        call init_cgpc_hprsdft( mloop, SYStype )
     case( 10 )
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_diag ---"
@@ -110,6 +111,7 @@ CONTAINS
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_seitsonen ---"
        call init_cgpc_seitsonen(n1,n2,comm_grid,dV_in)
     end select
+
   END SUBROUTINE init_cgpc
 
 
@@ -173,11 +175,11 @@ CONTAINS
     n2_omp = Igrid_omp(2,0,mt) - Igrid_omp(1,0,0) + 1
 
 !$OMP single
-    et0 = omp_get_wtime()
+!!$  et0 = omp_get_wtime()
     allocate( rk_pc(ML0,nn),pk_pc(ML0,nn) )
     allocate( gtmp2(ML0,nn),ftmp2(ML0,nn) )
-    et1 = omp_get_wtime()
-    et_cgpc_(1)=et_cgpc_(1)+et1-et0
+!!$  et1 = omp_get_wtime()
+!!$  et_cgpc_(1)=et_cgpc_(1)+et1-et0
 !$OMP end single
 
     do n=1,nn
@@ -187,16 +189,16 @@ CONTAINS
     end do
 !$OMP barrier
 
-!$OMP master
-    et0=omp_get_wtime()
-!$OMP end master
+!!$OMP master
+!!$  et0=omp_get_wtime()
+!!$OMP end master
 
     call precond_cg_mat(E0,k,s,ML0,nn)
 
-!$OMP master
-    et1=omp_get_wtime()
-    et_cgpc_(2)=et_cgpc_(2)+et1-et0
-!$OMP end master
+!!$OMP master
+!!$  et1=omp_get_wtime()
+!!$  et_cgpc_(2)=et_cgpc_(2)+et1-et0
+!!$OMP end master
 
     do n=1,nn
        do i=n1_omp,n2_omp
@@ -204,11 +206,12 @@ CONTAINS
           pk_pc(i,n)=rk_pc(i,n)
        end do
     end do
+!$omp barrier
 
-!$OMP master
-    et0=omp_get_wtime()
-    et_cgpc_(3)=et_cgpc_(3)+et0-et1
-!$OMP end master
+!!$OMP master
+!!$  et0=omp_get_wtime()
+!!$  et_cgpc_(3)=et_cgpc_(3)+et0-et1
+!!$OMP end master
 
     do n=1,nn
 !$OMP single
@@ -224,16 +227,16 @@ CONTAINS
 !$OMP end single
     end do
 
-!$OMP master
-    et1=omp_get_wtime()
-    et_cgpc_(4)=et_cgpc_(4)+et1-et0
-!$OMP end master
+!!$OMP master
+!!$  et1=omp_get_wtime()
+!!$  et_cgpc_(4)=et_cgpc_(4)+et1-et0
+!!$OMP end master
 
 !$OMP single
-    et0=omp_get_wtime()
+!!$  et0=omp_get_wtime()
     call mpi_allreduce(sb,rr0,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-    et1=omp_get_wtime()
-    et_cgpc_(5)=et_cgpc_(5)+et1-et0
+!!$  et1=omp_get_wtime()
+!!$  et_cgpc_(5)=et_cgpc_(5)+et1-et0
 !$OMP end single
 
     if ( all(rr0(1:nn) < ep) ) then
@@ -242,9 +245,9 @@ CONTAINS
 
     do iloop=1,mloop+1
 
-!$OMP master
-       et0=omp_get_wtime()
-!$OMP end master
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$OMP end master
 
        do n=1,nn
           do i=n1_omp,n2_omp
@@ -253,17 +256,17 @@ CONTAINS
        end do
 !$OMP barrier
 
-!$OMP master
-       et1=omp_get_wtime()
-       et_cgpc_(6)=et_cgpc_(6)+et1-et0
-!$OMP end master
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(6)=et_cgpc_(6)+et1-et0
+!!$OMP end master
 
        call precond_cg_mat(E0,k,s,ML0,nn)
 
-!$OMP master
-       et0=omp_get_wtime()
-       et_cgpc_(2)=et_cgpc_(2)+et0-et1
-!$OMP end master
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$     et_cgpc_(2)=et_cgpc_(2)+et0-et1
+!!$OMP end master
 
        do n=1,nn
 !$OMP single
@@ -283,35 +286,36 @@ CONTAINS
 !$OMP end single
        end do
 
-!$OMP master
-       et1=omp_get_wtime()
-       et_cgpc_(4)=et_cgpc_(4)+et1-et0
-!$OMP end master
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(4)=et_cgpc_(4)+et1-et0
+!!$OMP end master
 
 !$OMP single
-       et0=omp_get_wtime()
+!!$     et0=omp_get_wtime()
        call mpi_allreduce(sb,pAp,nn,mpi_real8,mpi_sum,comm_grid,ierr)
        do n=1,nn
           a(n)=rr0(n)/pAp(n)
        end do
-       et1=omp_get_wtime()
-       et_cgpc_(5)=et_cgpc_(5)+et1-et0
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(5)=et_cgpc_(5)+et1-et0
 !$OMP end single
 
-!$OMP master
-       et0=omp_get_wtime()
-!$OMP end master
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$OMP end master
 
        do n=1,nn
           do i=n1_omp,n2_omp
              rk_pc(i,n)=rk_pc(i,n)-a(n)*ftmp2(i,n)
           end do
        end do
+!$OMP barrier
 
-!$OMP master
-       et1=omp_get_wtime()
-       et_cgpc_(6)=et_cgpc_(6)+et1-et0
-!$OMP end master
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(6)=et_cgpc_(6)+et1-et0
+!!$OMP end master
 
        do n=1,nn
 !$OMP single
@@ -327,25 +331,25 @@ CONTAINS
 !$OMP end single
        end do
 
-!$OMP master
-       et0=omp_get_wtime()
-       et_cgpc_(4)=et_cgpc_(4)+et0-et1
-!$OMP end master
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$     et_cgpc_(4)=et_cgpc_(4)+et0-et1
+!!$OMP end master
 
 !$OMP single
-       et0=omp_get_wtime()
+!!$     et0=omp_get_wtime()
        call mpi_allreduce(sb,rr1,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-       et1=omp_get_wtime()
-       et_cgpc_(5)=et_cgpc_(5)+et1-et0
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(5)=et_cgpc_(5)+et1-et0
 !$OMP end single
 
        if ( iloop == mloop+1 ) then
           exit
        end if
 
-!$OMP master
-       et0=omp_get_wtime()
-!$OMP end master
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$OMP end master
 
        do n=1,nn
           b=rr1(n)/rr0(n)
@@ -354,11 +358,12 @@ CONTAINS
              pk_pc(i,n) = rk_pc(i,n) + b*pk_pc(i,n)
           end do
        end do
+!$OMP barrier
 
-!$OMP master
-       et1=omp_get_wtime()
-       et_cgpc_(6)=et_cgpc_(6)+et1-et0
-!$OMP end master
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(6)=et_cgpc_(6)+et1-et0
+!!$OMP end master
 
 !$OMP single
        do n=1,nn
@@ -459,9 +464,7 @@ CONTAINS
     end do
 !$OMP barrier
 
-!!$OMP single
     call bcset_1(1,nn,1,0)
-!!$OMP end single
 !$OMP barrier
 
     do n=1,nn
@@ -477,8 +480,6 @@ CONTAINS
        end do
     end do
 !$OMP barrier
-
-!!$OMP end parallel
 
     return
   END SUBROUTINE precond_cg_mat_sol

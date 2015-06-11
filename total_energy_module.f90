@@ -2,7 +2,6 @@ MODULE total_energy_module
 
   use rgrid_module, only: dV
   use hamiltonian_module
-  use nonlocal_module, only: init_op_nonlocal
   use hartree_variables, only: Vh, E_hartree
   use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
   use eion_module, only: Eewald
@@ -115,7 +114,6 @@ CONTAINS
 #endif
           end do
           work=zero
-          call init_op_nonlocal
 !$OMP parallel
           call op_nonlocal(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
 !$OMP end parallel

@@ -4,6 +4,7 @@ MODULE bc_module
   use parallel_module
   use bc_mol_module, only: init_bcset_mol
   use bc_variables, only: fdinfo_send,fdinfo_recv,n_neighbor
+  use watch_module
 
   implicit none
 
@@ -774,6 +775,9 @@ CONTAINS
     integer :: c1,c2,c3,d1,d2,d3,irank,nreq,itags,itagr,ireq(36)
     integer :: i,l
     integer :: istatus(mpi_status_size,123)
+    real(8) :: ttmp(2),ttmp_bc(2)
+
+    call watchb_omp( ttmp_bc )
 
     a1=Igrid(1,1)
     b1=Igrid(2,1)
@@ -791,6 +795,7 @@ CONTAINS
 !(1) [sender][2]-->[1][receiver]
 
     if ( idir==0 .or. idir==1 .or. idir==2 ) then
+       call watchb_omp( ttmp )
 !$OMP master
        do n=1,n_neighbor(1)
           if ( ndepth==1 ) then
@@ -806,6 +811,7 @@ CONTAINS
                         ,comm_grid,ireq(nreq),ierr)
        end do
 !$OMP end master
+       call watchb_omp( ttmp, time_bcfd(1,1) )
        do n=1,n_neighbor(2)
           if ( ndepth==1 ) then
              c1=b1
@@ -819,6 +825,7 @@ CONTAINS
           c2=fdinfo_send(3,n,2) ; d2=fdinfo_send(4,n,2)
           c3=fdinfo_send(5,n,2) ; d3=fdinfo_send(6,n,2)
           if ( ndata<1 ) cycle
+          call watchb_omp( ttmp )
           do ib=ib1,ib2
 !$OMP do
              do i3=c3,d3
@@ -833,6 +840,7 @@ CONTAINS
              end do
 !$OMP end do
           end do
+          call watchb_omp( ttmp, time_bcfd(1,3) )
 !$OMP master
           irank = fdinfo_send(7,n,2)
           itags = 10
@@ -840,14 +848,20 @@ CONTAINS
           call mpi_isend(sbuf(1,n,2),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
+          call watchb_omp( ttmp, time_bcfd(1,2) )
        end do
     end if
 
+!    call watchb_omp( ttmp )
+!!$OMP master
 !    call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
+!!$OMP end master
+!    call watchb_omp( ttmp, time_bcfd(1,4) )
 
 !(3) [sender][4]-->[3][receiver]
 
     if ( idir==0 .or. idir==3 .or. idir==4 ) then
+       call watchb_omp( ttmp )
 !$OMP master
        do n=1,n_neighbor(3)
           if ( ndepth==1 ) then
@@ -863,6 +877,7 @@ CONTAINS
                         ,comm_grid,ireq(nreq),ierr)
        end do
 !$OMP end master
+       call watchb_omp( ttmp, time_bcfd(1,1) )
        do n=1,n_neighbor(4)
           if ( ndepth==1 ) then
              c2=b2
@@ -876,6 +891,7 @@ CONTAINS
           c1=fdinfo_send(1,n,4) ; d1=fdinfo_send(2,n,4)
           c3=fdinfo_send(5,n,4) ; d3=fdinfo_send(6,n,4)
           if ( ndata<1 ) cycle
+          call watchb_omp( ttmp )
           do ib=ib1,ib2
 !$OMP do
              do i3=c3,d3
@@ -890,21 +906,28 @@ CONTAINS
              end do
 !$OMP end do
           end do
+          call watchb_omp( ttmp, time_bcfd(1,3) )
+!$OMP master
           irank = fdinfo_send(7,n,4)
           itags = 30
-!$OMP master
           nreq  = nreq + 1
           call mpi_isend(sbuf(1,n,4),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
+          call watchb_omp( ttmp, time_bcfd(1,2) )
        end do
     end if
 
+!    call watchb_omp( ttmp )
+!!$OMP master
 !    call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
+!!$OMP end master
+!    call watchb_omp( ttmp, time_bcfd(1,4) )
 
 !(5) [sender][6]-->[5][receiver]
 
     if ( idir==0 .or. idir==5 .or. idir==6 ) then
+       call watchb_omp( ttmp )
 !$OMP master
        do n=1,n_neighbor(5)
           if ( ndepth==1 ) then
@@ -920,6 +943,7 @@ CONTAINS
                         ,comm_grid,ireq(nreq),ierr)
        end do
 !$OMP end master
+       call watchb_omp( ttmp, time_bcfd(1,1) )
        do n=1,n_neighbor(6)
           if ( ndepth==1 ) then
              c3=b3
@@ -933,6 +957,7 @@ CONTAINS
           c1=fdinfo_send(1,n,6) ; d1=fdinfo_send(2,n,6)
           c2=fdinfo_send(3,n,6) ; d2=fdinfo_send(4,n,6)
           if ( ndata<1 ) cycle
+          call watchb_omp( ttmp )
           do ib=ib1,ib2
 !$OMP do
              do i3=c3,d3
@@ -947,6 +972,7 @@ CONTAINS
              end do
 !$OMP end do
           end do
+          call watchb_omp( ttmp, time_bcfd(1,3) )
 !$OMP master
           irank = fdinfo_send(7,n,6)
           itags = 50
@@ -954,14 +980,20 @@ CONTAINS
           call mpi_isend(sbuf(1,n,6),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
+          call watchb_omp( ttmp, time_bcfd(1,2) )
        end do
     end if
 
+!    call watchb_omp( ttmp )
+!!$OMP master
 !    call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
+!!$OMP end master
+!    call watchb_omp( ttmp, time_bcfd(1,4) )
 
 !(2) [receiver][2]<--[1][sender]
 
     if ( idir==0 .or. idir==1 .or. idir==2 ) then
+       call watchb_omp( ttmp )
 !$OMP master
        do n=1,n_neighbor(2)
           if ( ndepth==1 ) then
@@ -977,6 +1009,7 @@ CONTAINS
                         ,comm_grid,ireq(nreq),ierr)
        end do
 !$OMP end master
+       call watchb_omp( ttmp, time_bcfd(1,1) )
        do n=1,n_neighbor(1)
           if ( ndepth==1 ) then
              c1=a1
@@ -990,6 +1023,7 @@ CONTAINS
           c2=fdinfo_send(3,n,1) ; d2=fdinfo_send(4,n,1)
           c3=fdinfo_send(5,n,1) ; d3=fdinfo_send(6,n,1)
           if ( ndata<1 ) cycle
+          call watchb_omp( ttmp )
           do ib=ib1,ib2
 !$OMP do
              do i3=c3,d3
@@ -1004,6 +1038,7 @@ CONTAINS
              end do
 !$OMP end do
           end do
+          call watchb_omp( ttmp, time_bcfd(1,3) )
 !$OMP master
           irank = fdinfo_send(7,n,1)
           itags = 20
@@ -1011,14 +1046,20 @@ CONTAINS
           call mpi_isend(sbuf(1,n,1),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
+          call watchb_omp( ttmp, time_bcfd(1,2) )
        end do
     end if
 
+!    call watchb_omp( ttmp )
+!!$OMP master
 !    call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
+!!$OMP end master
+!    call watchb_omp( ttmp, time_bcfd(1,4) )
 
 !(4) [receiver][4]<--[3][sender]
 
     if ( idir==0 .or. idir==3 .or. idir==4 ) then
+       call watchb_omp( ttmp )
 !$OMP master
        do n=1,n_neighbor(4)
           if ( ndepth==1 ) then
@@ -1034,6 +1075,7 @@ CONTAINS
                         ,comm_grid,ireq(nreq),ierr)
        end do
 !$OMP end master
+       call watchb_omp( ttmp, time_bcfd(1,1) )
        do n=1,n_neighbor(3)
           if ( ndepth==1 ) then
              c2=a2
@@ -1047,6 +1089,7 @@ CONTAINS
           c1=fdinfo_send(1,n,3) ; d1=fdinfo_send(2,n,3)
           c3=fdinfo_send(5,n,3) ; d3=fdinfo_send(6,n,3)
           if ( ndata<1 ) cycle
+          call watchb_omp( ttmp )
           do ib=ib1,ib2
 !$OMP do
              do i3=c3,d3
@@ -1061,6 +1104,7 @@ CONTAINS
              end do
 !$OMP end do
           end do
+          call watchb_omp( ttmp, time_bcfd(1,3) )
 !$OMP master
           irank = fdinfo_send(7,n,3)
           itags = 40
@@ -1068,14 +1112,20 @@ CONTAINS
           call mpi_isend(sbuf(1,n,3),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
+          call watchb_omp( ttmp, time_bcfd(1,2) )
        end do
     end if
 
+!    call watchb_omp( ttmp )
+!!$OMP master
 !    call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
+!!$OMP end master
+!    call watchb_omp( ttmp, time_bcfd(1,4) )
 
 !(6) [receiver][6]<--[5][sender]
 
     if ( idir==0 .or. idir==5 .or. idir==6 ) then
+       call watchb_omp( ttmp )
 !$OMP master
        do n=1,n_neighbor(6)
           if ( ndepth==1 ) then
@@ -1091,6 +1141,7 @@ CONTAINS
                         ,comm_grid,ireq(nreq),ierr)
        end do
 !$OMP end master
+       call watchb_omp( ttmp, time_bcfd(1,1) )
        do n=1,n_neighbor(5)
           if ( ndepth==1 ) then
              c3=a3
@@ -1104,6 +1155,7 @@ CONTAINS
           c1=fdinfo_send(1,n,5) ; d1=fdinfo_send(2,n,5)
           c2=fdinfo_send(3,n,5) ; d2=fdinfo_send(4,n,5)
           if ( ndata<1 ) cycle
+          call watchb_omp( ttmp )
           do ib=ib1,ib2
 !$OMP do
              do i3=c3,d3
@@ -1118,6 +1170,7 @@ CONTAINS
              end do
 !$OMP end do
           end do
+          call watchb_omp( ttmp, time_bcfd(1,3) )
 !$OMP master
           irank = fdinfo_send(7,n,5)
           itags = 60
@@ -1125,13 +1178,16 @@ CONTAINS
           call mpi_isend(sbuf(1,n,5),ndata,TYPE_MAIN,irank,itags &
                         ,comm_grid,ireq(nreq),ierr)
 !$OMP end master
+          call watchb_omp( ttmp, time_bcfd(1,2) )
        end do
     end if
 
+    call watchb_omp( ttmp )
 !$OMP master
     call mpi_waitall(nreq,ireq,istatus,ierr) ; nreq=0
 !$OMP end master
 !$OMP barrier
+    call watchb_omp( ttmp, time_bcfd(1,4) )
 
     do m=1,6
        do n=1,n_neighbor(m)
@@ -1186,6 +1242,9 @@ CONTAINS
 
        end do ! n
     end do ! m
+
+    call watchb_omp( ttmp, time_bcfd(1,5) )
+    call watchb_omp( ttmp_bc, time_bcfd(1,6) )
 
     return
 
