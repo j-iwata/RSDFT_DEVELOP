@@ -3,11 +3,9 @@ MODULE cgpc_module
 !$  use omp_lib
   use rgrid_module
   use parallel_module
-  use kinetic_module, only: SYStype
   use bc_module
   use kinetic_variables, only: Md, ggg
   use array_bound_module, only: ML_0,ML_1
-
   use cgpc_diag_module
   use cgpc_seitsonen_module
   use cgpc_2_module
@@ -19,10 +17,10 @@ MODULE cgpc_module
 
   PRIVATE
   PUBLIC :: preconditioning,read_cgpc,read_oldformat_cgpc,init_cgpc
-  PUBLIC :: et_cgpc_
 
   integer :: mloop
   integer :: iswitch_cgpc
+  integer :: SYStype
 
 #ifdef _DRSDFT_
   real(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
@@ -31,8 +29,6 @@ MODULE cgpc_module
   complex(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
 #endif
-
-  real(8) :: et_cgpc_(20)
 
 CONTAINS
 
@@ -85,13 +81,15 @@ CONTAINS
   END SUBROUTINE send_cgpc
 
 
-  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, ipc_out )
+  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, SYStype_in, ipc_out )
     implicit none
-    integer,intent(IN) :: n1,n2,k,s
+    integer,intent(IN) :: n1,n2,k,s,systype_in
     real(8),intent(IN) :: dV_in
     integer,optional,intent(OUT) :: ipc_out
 
     if ( present(ipc_out) ) ipc_out=iswitch_cgpc
+
+    SYStype = SYStype_in
 
     select case( iswitch_cgpc )
     case( 0 )
@@ -498,7 +496,7 @@ CONTAINS
     c2 = -0.5d0/Hsize**2
     c3 = -0.5d0/Hsize**2
 
-!$OMP parallel
+!!$OMP parallel
 
     do n=1,nn
        d=c-E(n)
@@ -519,9 +517,12 @@ CONTAINS
     end do
 !$OMP barrier
 
-!$OMP single
-    call bcset(1,nn,1,0)
-!$OMP end single
+!!$OMP single
+!    call bcset(1,nn,1,0)
+!!$OMP end single
+
+    call bcset_1(1,nn,1,0)
+!$OMP barrier
 
     do n=1,nn
 !$OMP do
@@ -538,7 +539,7 @@ CONTAINS
     end do
 !$OMP barrier
 
-!$OMP end parallel
+!!$OMP end parallel
 
     return
   END SUBROUTINE precond_cg_mat_mol

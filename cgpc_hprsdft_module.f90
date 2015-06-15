@@ -2,6 +2,7 @@ MODULE cgpc_hprsdft_module
 
 !$ use omp_lib
   use rgrid_module, only: Igrid,Hgrid
+  use rgrid_mol_module, only: Hsize, LL
   use bc_module
   use kinetic_variables, only: ggg
   use parallel_module
@@ -27,7 +28,7 @@ MODULE cgpc_hprsdft_module
   integer :: ompn1,ompn2,ompA3,ompB3
   real(8),allocatable :: ompr1s(:,:)
 
-  integer :: a1b,b1b,a2b,b2b ,mloop,SYStype
+  integer :: a1b,b1b,a2b,b2b ,mloop,SYStype, ML_0
   real(8) :: H1,H2,H3
   logical :: init_flag=.false.
 
@@ -62,6 +63,8 @@ CONTAINS
     b1b = Igrid(2,1)
     a2b = Igrid(1,2)
     b2b = Igrid(2,2)
+
+    ML_0 = Igrid(1,0)
 
 !$OMP parallel private( ompblock,ompblock0,i,j )
 
@@ -147,7 +150,7 @@ CONTAINS
 
     call watchb_omp( ttmp, time_cgpc(1,1) )
 
-    call precond_cg_mat2_omp( E0, k, ML0, nn )
+    call precond_cg_mat( E0, k, s, ML0, nn )
 
     call watchb_omp( ttmp, time_cgpc(1,2) )
 
@@ -183,7 +186,7 @@ CONTAINS
 
        call watchb_omp( ttmp, time_cgpc(1,1) )
 
-       call precond_cg_mat2_omp(E0,k,ML0,nn)
+       call precond_cg_mat( E0, k, s, ML0, nn )
 
        call watchb_omp( ttmp, time_cgpc(1,2) )
 
@@ -259,11 +262,26 @@ CONTAINS
   END SUBROUTINE precond_hprsdft
 
 
-  SUBROUTINE precond_cg_mat2_omp(E,k,mm,nn)
+  SUBROUTINE precond_cg_mat( E, k, s, mm, nn )
+    implicit none
+    integer,intent(IN) :: k,s,mm,nn
+    real(8),intent(INOUT) :: E(nn)
+    select case(SYStype)
+    case(0)
+       call precond_cg_mat2_omp(E,k,s,mm,nn)
+    case(1)
+       call precond_cg_mat_mol(E,k,s,mm,nn)
+!    case(3)
+!       call precond_cg_mat_esm(E,k,s,mm,nn)
+    end select
+  END SUBROUTINE precond_cg_mat
+
+
+  SUBROUTINE precond_cg_mat2_omp(E,k,s,mm,nn)
 
     implicit none
 
-    integer,intent(IN) :: k,mm,nn
+    integer,intent(IN) :: k,s,mm,nn
     real(8) :: E(nn)
     real(8) :: c,c1,c2,c3,d,ttmp(2)
     integer :: n,i,i1,i2,i3
@@ -326,6 +344,56 @@ CONTAINS
     return
 
   END SUBROUTINE precond_cg_mat2_omp
+
+
+  SUBROUTINE precond_cg_mat_mol(E,k,s,mm,nn)
+    implicit none
+    integer,intent(IN) :: k,s,mm,nn
+    real(8),intent(INOUT) :: E(nn)
+    real(8) :: c,c1,c2,c3,d
+    integer :: n,i,i1,i2,i3,j
+
+    c  =  3.d0/Hsize**2
+    c1 = -0.5d0/Hsize**2
+    c2 = -0.5d0/Hsize**2
+    c3 = -0.5d0/Hsize**2
+
+    do n=1,nn
+       d=c-E(n)
+       do i=omp1,omp2
+          ftmp2(i,n)=d*gtmp2(i,n)
+       end do
+    end do
+
+!!$OMP workshare
+!    www(:,:,:,:)=zero
+!!$OMP end workshare
+    do n=1,nn
+       do i=omp1,omp2
+          j=i+ML_0-1
+          www( LL(1,j),LL(2,j),LL(3,j),n ) = gtmp2(i,n)
+       end do
+    end do
+!$OMP barrier
+
+    call bcset_1(1,nn,1,0)
+!$OMP barrier
+
+    do n=1,nn
+       do i=omp1,omp2
+          j=i+ML_0-1
+          i1=LL(1,j)
+          i2=LL(2,j)
+          i3=LL(3,j)
+          ftmp2(i,n)=ftmp2(i,n)+c1*( www(i1-1,i2,i3,n)+www(i1+1,i2,i3,n) ) &
+                               +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
+                               +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
+       end do
+    end do
+!$OMP barrier
+
+    return
+  END SUBROUTINE precond_cg_mat_mol
 
 
 END MODULE cgpc_hprsdft_module

@@ -14,11 +14,11 @@ MODULE omp_variables
 CONTAINS
 
 
-  SUBROUTINE init_omp(a1b,b1b,a2b,b2b,a3b,b3b,n1,n2,disp_switch)
+  SUBROUTINE init_omp(a1b,b1b,a2b,b2b,a3b,b3b,n1,n2,systype,disp_switch)
 
     implicit none
 
-    integer,intent(IN) :: a1b,b1b,a2b,b2b,a3b,b3b,n1,n2
+    integer,intent(IN) :: a1b,b1b,a2b,b2b,a3b,b3b,n1,n2,systype
     logical,intent(IN) :: disp_switch
     integer :: i1,i2,i3,m,n,k,j,i,ab1,ab2,ab3,nn(3),np(3)
     integer,allocatable :: ntmp(:,:)
@@ -159,9 +159,20 @@ CONTAINS
 
     end if
 
-    do i=0,nthreads-1
-       Ngrid_omp(0,i) = Ngrid_omp(1,i)*Ngrid_omp(2,i)*Ngrid_omp(3,i)
-    end do
+    if ( systype == 1 ) then
+
+       do j=1,n2-n1+1
+          i=mod( j-1, nthreads )
+          Ngrid_omp(0,i) = Ngrid_omp(0,i) + 1
+       end do
+
+    else
+
+       do i=0,nthreads-1
+          Ngrid_omp(0,i) = Ngrid_omp(1,i)*Ngrid_omp(2,i)*Ngrid_omp(3,i)
+       end do
+
+    end if
 
     i=-1
     do i3=1,np(3)

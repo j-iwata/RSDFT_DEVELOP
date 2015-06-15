@@ -12,8 +12,9 @@ MODULE kinetic_sol_1_module
   implicit none
 
   PRIVATE
-  PUBLIC :: op_kinetic_sol_1, init_kinetic_sol_1 &
-       , construct_matrix_kinetic_sol_1
+  PUBLIC :: op_kinetic_sol_1
+!  PUBLIC :: init_kinetic_sol_1
+  PUBLIC :: construct_matrix_kinetic_sol_1
 
 CONTAINS
 
@@ -328,13 +329,13 @@ CONTAINS
   END SUBROUTINE op_kinetic_sol_1
 
 
-  SUBROUTINE init_kinetic_sol_1( disp_switch )
-    implicit none
-    logical,intent(IN) :: disp_switch
-    call init_omp( Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
-                  ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
-                  ,disp_switch )
-  END SUBROUTINE init_kinetic_sol_1
+!  SUBROUTINE init_kinetic_sol_1( disp_switch )
+!    implicit none
+!    logical,intent(IN) :: disp_switch
+!    call init_omp( Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
+!                  ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
+!                  ,disp_switch )
+!  END SUBROUTINE init_kinetic_sol_1
 
 
   SUBROUTINE construct_matrix_kinetic_sol_1( k, ML, Hmat )

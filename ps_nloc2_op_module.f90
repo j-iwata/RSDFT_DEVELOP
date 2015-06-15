@@ -367,29 +367,29 @@ CONTAINS
 !$OMP barrier
     call watchb_omp( ttmp, time_nlpp(1,2) )
 
-    do ib=ib1,ib2
-       jb=ib-ib1+1
-!$OMP do
-       do i=n1,n2
-          do m=1,n_i2j(i)
-             j=i2j(1,m,i)
-             lma=i2j(2,m,i)
-             htpsi(i,ib) = htpsi(i,ib) + uVk(j,lma,k)*uVunk(lma,jb)
-          end do
-       end do
-!$OMP end do nowait
-    end do
 !    do ib=ib1,ib2
 !       jb=ib-ib1+1
-!       do lma=1,nzlma
 !!$OMP do
-!          do j=1,MJJ(lma)
-!             i=JJP(j,lma)
+!       do i=n1,n2
+!          do m=1,n_i2j(i)
+!             j=i2j(1,m,i)
+!             lma=i2j(2,m,i)
 !             htpsi(i,ib) = htpsi(i,ib) + uVk(j,lma,k)*uVunk(lma,jb)
 !          end do
-!!$OMP end do
 !       end do
+!!$OMP end do nowait
 !    end do
+    do ib=ib1,ib2
+       jb=ib-ib1+1
+       do lma=1,nzlma
+!$OMP do
+          do j=1,MJJ(lma)
+             i=JJP(j,lma)
+             htpsi(i,ib) = htpsi(i,ib) + uVk(j,lma,k)*uVunk(lma,jb)
+          end do
+!$OMP end do
+       end do
+    end do
 
 !$OMP barrier
     call watchb_omp( ttmp, time_nlpp(1,3) )

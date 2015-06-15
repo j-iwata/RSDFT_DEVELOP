@@ -104,7 +104,7 @@ CONTAINS
 
        deallocate( nab,lap )
 
-       call init_kinetic_sol_1( disp_switch )
+!       call init_kinetic_sol_1( disp_switch )
 
     end if ! first_time
 

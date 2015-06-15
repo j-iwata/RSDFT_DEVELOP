@@ -8,6 +8,7 @@ MODULE cg_module
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
   use cg_u_module, only: init_cg_u, cg_u
   use wf_module, only: hunk, iflag_hunk
+  use kinetic_module, only: SYStype
   use watch_module
 
   implicit none
@@ -86,7 +87,7 @@ CONTAINS
 #endif
     integer :: ipc
 
-    call init_cgpc( n1, n2, k, s, dV, ipc )
+    call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 
     select case( iswitch_cg )
     case default

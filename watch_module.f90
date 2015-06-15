@@ -14,7 +14,7 @@ MODULE watch_module
   real(8) :: ett=0.d0
   integer :: count0=0
 
-  real(8) :: time_cgpc(2,8)
+  real(8) :: time_cgpc(2,16)
   real(8) :: time_hmlt(2,4)
   real(8) :: time_kine(2,16)
   real(8) :: time_nlpp(2,4)
