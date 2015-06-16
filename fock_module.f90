@@ -493,7 +493,7 @@ CONTAINS
 
   END SUBROUTINE Fock_4
 
-
+#ifdef _DRSDFT_
   SUBROUTINE Fock_4_Double( k, s, ml0, ml1 )
     implicit none
     integer,intent(IN) :: k,s,ml0,ml1
@@ -615,7 +615,7 @@ CONTAINS
     return
 
   END SUBROUTINE Fock_4_Double
-
+#endif
 
   SUBROUTINE Fock_5( s,n1,n2 )
     implicit none
@@ -792,7 +792,7 @@ CONTAINS
 #endif
   END SUBROUTINE Fock_5
 
-
+#ifdef _DRSDFT_
   SUBROUTINE Fock_Double( k, s, n1, n2, psi, tpsi )
     implicit none
     integer,intent(IN) :: k,s,n1,n2
@@ -845,6 +845,6 @@ CONTAINS
     return
 
   END SUBROUTINE Fock_Double
-
+#endif
 
 END MODULE fock_module
