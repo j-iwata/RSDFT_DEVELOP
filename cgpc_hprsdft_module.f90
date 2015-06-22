@@ -4,6 +4,7 @@ MODULE cgpc_hprsdft_module
   use rgrid_module, only: Igrid,Hgrid
   use rgrid_mol_module, only: Hsize, LL
   use bc_module
+  use bcset_0_module, only: bcset_0
   use kinetic_variables, only: ggg
   use parallel_module
   use watch_module, only: watchb_omp, time_cgpc, time_bcfd
@@ -318,6 +319,7 @@ CONTAINS
 !$OMP barrier
 !    call watchb_omp( ttmp, time_cgpc(1,5) )
 
+    !call bcset_0(1,nn,1,0)
     call bcset_1(1,nn,1,0)
 
 !$OMP barrier

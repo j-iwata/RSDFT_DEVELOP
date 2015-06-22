@@ -4,6 +4,7 @@ MODULE kinetic_module
   use kinetic_variables
   use kinetic_sol_0_module
   use kinetic_sol_1_module
+  use kinetic_sol_simple_module
   use kinetic_mol_module
   use esm_kinetic_module
   use kinetic_fft_module
@@ -176,6 +177,7 @@ CONTAINS
     case default
 !       call op_kinetic_sol_0(k,tpsi,htpsi,n1,n2,ib1,ib2)
        call op_kinetic_sol_1(k,tpsi,htpsi,n1,n2,ib1,ib2)
+!       call op_kinetic_sol_simple(k,tpsi,htpsi,n1,n2,ib1,ib2)
 !       call op_kinetic_fft(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(1)
        call op_kinetic_mol(n1,n2,ib1,ib2,tpsi,htpsi)

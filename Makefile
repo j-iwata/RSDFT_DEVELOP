@@ -25,15 +25,17 @@ MODS1 = simc_module.o\
         fd_module.o \
         bc_variables.o \
         bc_mol_module.o \
+        omp_variables.o \
+        bcset_0_module.o \
         bcset_1_module.o \
         bc_module.o \
         kinetic_variables.o  \
         kinetic_mol_module.o \
         esm_kinetic_module.o \
-        omp_variables.o \
         kinetic_fft_module.o \
         kinetic_sol_0_module.o \
         kinetic_sol_1_module.o \
+        kinetic_sol_simple_module.o \
         kinetic_module.o \
         strfac_module.o \
         ps_read_tm_module.o \
