@@ -175,14 +175,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n
     real(8),intent(IN) :: t_results(2,n)
-    character(*),intent(IN) :: indx
+    character(*),intent(IN) :: indx(n)
     integer,optional,intent(IN) :: unit
     integer :: i,j,u
     u=6
     if ( present(unit) ) u=unit
     do i=1,n
        write(u,'(1x,i3,2x,a,3x,2x,2f15.5)') &
-            i, "timeb("//indx//")", (t_results(j,i),j=1,2)
+            i, "timeb("//indx(i)//")", (t_results(j,i),j=1,2)
     end do
   END SUBROUTINE write_watchb
 

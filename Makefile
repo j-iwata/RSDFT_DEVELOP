@@ -25,6 +25,7 @@ MODS1 = simc_module.o\
         fd_module.o \
         bc_variables.o \
         bc_mol_module.o \
+        bcset_1_module.o \
         bc_module.o \
         kinetic_variables.o  \
         kinetic_mol_module.o \

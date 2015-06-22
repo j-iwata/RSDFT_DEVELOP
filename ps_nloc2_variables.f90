@@ -34,6 +34,8 @@ CONTAINS
     n=maxval( lma_nsend )*4*MB_d
     if ( allocated(rbufnl) ) deallocate(rbufnl)
     if ( allocated(sbufnl) ) deallocate(sbufnl)
+    if ( allocated(uVunk)  ) deallocate(uVunk)
+    if ( allocated(uVunk0) ) deallocate(uVunk0)
     allocate( sbufnl(n,0:nprocs_g-1) ) ; sbufnl=zero
     allocate( rbufnl(n,0:nprocs_g-1) ) ; rbufnl=zero
     allocate( uVunk(nzlma,MB_d)  ) ; uVunk=zero

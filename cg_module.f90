@@ -121,7 +121,6 @@ CONTAINS
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
-    real(8) :: timecg(2,16), ttmp(2), ttmp_cg(2)
     real(8),allocatable :: sb(:),rb(:),E(:),E1(:),gkgk(:),bk(:)
     complex(8) :: work(9),zphase,ztmp
     real(8),parameter :: zero=0.d0
@@ -129,6 +128,13 @@ CONTAINS
     real(8),allocatable :: pk(:,:),pko(:,:)
     real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     real(8),allocatable :: utmp2(:,:),btmp2(:,:)
+    real(8) :: timecg(2,16), ttmp(2), ttmp_cg(2)
+    real(8) :: timecg_min(2,16),timecg_max(2,16)
+    real(8) :: time_cgpc_min(2,16),time_cgpc_max(2,16)
+    real(8) :: time_kine_min(2,16),time_kine_max(2,16)
+    character(5) :: timecg_indx(7)
+    character(5) :: time_cgpc_indx(13)
+    character(5) :: time_kine_indx(11)
 
     call watchb( ttmp_cg ) ; ttmp(:)=ttmp_cg(:)
 
@@ -139,6 +145,10 @@ CONTAINS
     time_kine(:,:)=0.0d0
     time_nlpp(:,:)=0.0d0
     time_cgpc(:,:)=0.0d0
+
+    timecg_indx(1:7) = (/"hamil","dotp","allr","prec","init","deall","tot"/)
+    time_cgpc_indx(8:13) = (/"recv","send","spack","waita","final","tot"/)
+    time_kine_indx(6:11) = (/"recv","send","spack","waita","final","tot"/)
 
     ML0 = ML_1-ML_0+1
 
@@ -401,15 +411,33 @@ CONTAINS
     call watchb( ttmp, timecg(:,6) )
     call watchb( ttmp_cg, timecg(:,7) )
 
+!    call get_time_min( 7, timecg, timecg_min )
+!    call get_time_max( 7, timecg, timecg_max )
+!    call get_time_min( 11, time_kine, time_kine_min )
+!    call get_time_max( 11, time_kine, time_kine_max )
+!    call get_time_min( 13, time_cgpc, time_cgpc_min )
+!    call get_time_max( 13, time_cgpc, time_cgpc_max )
+
     if ( disp_switch_parallel ) then
        write(*,*) "time(hmlt_kin)",( time_hmlt(i,1), i=1,2 )
        write(*,*) "time(hmlt_loc)",( time_hmlt(i,2), i=1,2 )
        write(*,*) "time(hmlt_nlc)",( time_hmlt(i,3), i=1,2 )
        write(*,*) "time(hmlt_exx)",( time_hmlt(i,4), i=1,2 )
-       call write_watchb( time_kine(1,1),11, "kine" ) 
-       call write_watchb( time_nlpp(1,1), 4, "nlpp" ) 
-       call write_watchb( time_cgpc(1,1),13, "cgpc" ) 
-       call write_watchb( timecg(1,1), 7, "dcg" ) 
+!       write(*,'(a20," kine")') repeat("-",20)
+!       call write_watchb( time_kine(1,6),6, time_kine_indx(6) ) 
+!       write(*,*) "(min)"
+!       call write_watchb( time_kine_min(1,6),6, time_kine_indx(6) ) 
+!       write(*,*) "(max)"
+!       call write_watchb( time_kine_max(1,6),6, time_kine_indx(6) ) 
+!       call write_watchb( time_nlpp(1,1), 4, "nlpp" ) 
+!       write(*,'(a20," cgpc")') repeat("-",20)
+!       call write_watchb( time_cgpc(1,8),6, time_cgpc_indx(8) ) 
+!       write(*,*) "(min)"
+!       call write_watchb( time_cgpc_min(1,8),6, time_cgpc_indx(8) ) 
+!       write(*,*) "(max)"
+!       call write_watchb( time_cgpc_max(1,8),6, time_cgpc_indx(8) ) 
+!       write(*,'(a20," cg_1")') repeat("-",20)
+       call write_watchb( timecg(1,1), 7, timecg_indx ) 
     end if
 
   END SUBROUTINE conjugate_gradient_1
@@ -710,35 +738,31 @@ CONTAINS
 #endif
 
 
-#ifdef TEST
-  SUBROUTINE dot_product(a,b,c,alpha,n,m)
+  SUBROUTINE get_time_min( n, t_in, t_min )
     implicit none
-    integer,intent(IN) :: n,m
+    integer,intent(IN)  :: n
+    real(8),intent(IN)  :: t_in(2,n)
+    real(8),intent(OUT) :: t_min(2,n)
     integer :: i
-    real(8) :: a(*),b(*),c(*),alpha,tmp
+    real(8),allocatable :: t_tmp(:,:)
+    allocate( t_tmp(2,n) ) ; t_tmp=0.0d0
+    call mpi_allreduce( t_in, t_tmp, 2*n, mpi_real8, mpi_min, comm_grid, i )
+    call mpi_allreduce( t_tmp, t_min, 2*n, mpi_real8, mpi_min, comm_band, i )
+    deallocate( t_tmp )
+  END SUBROUTINE get_time_min
 
-    c(1:m)=0.d0
+  SUBROUTINE get_time_max( n, t_in, t_max )
+    implicit none
+    integer,intent(IN)  :: n
+    real(8),intent(IN)  :: t_in(2,n)
+    real(8),intent(OUT) :: t_max(2,n)
+    integer :: i
+    real(8),allocatable :: t_tmp(:,:)
+    allocate( t_tmp(2,n) ) ; t_tmp=0.0d0
+    call mpi_allreduce( t_in, t_tmp, 2*n, mpi_real8, mpi_max, comm_grid, i )
+    call mpi_allreduce( t_tmp, t_max, 2*n, mpi_real8, mpi_max, comm_band, i )
+    deallocate( t_tmp )
+  END SUBROUTINE get_time_max
 
-    tmp=0.d0
-!$OMP parallel do reduction(+:tmp)
-    do i=1,n
-       tmp=tmp+a(i)*b(i)
-    end do
-!$OMP end parallel do
-    c(1)=tmp*alpha
-
-    if ( m==2 ) then
-       tmp=0.d0
-!$OMP parallel do reduction(+:tmp)
-       do i=1,n-1,2
-          tmp=tmp+a(i)*b(i+1)-a(i+1)*b(i)
-       end do
-!$OMP end parallel do
-       c(m)=tmp*alpha
-    end if
-
-    return
-  END SUBROUTINE dot_product
-#endif
 
 END MODULE cg_module

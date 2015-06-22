@@ -27,11 +27,12 @@ MODULE ps_nloc2_op_module
 CONTAINS
 
 
-  SUBROUTINE init_op_ps_nloc2_hp
+  SUBROUTINE init_op_ps_nloc2_hp( init_flag_in )
     implicit none
+    logical,intent(IN) :: init_flag_in
     integer :: i,j,k,ompblock,ompblock0,mm
 
-    if ( init_flag ) return
+    if ( .not.init_flag_in ) return
     init_flag = .true.
 
     mm = Igrid(2,0) - Igrid(1,0) + 1
@@ -60,8 +61,14 @@ CONTAINS
 ! ---
 
 !$OMP master
-    allocate( omplns1(0:np_grid-1,0:ompnprocs-1) ) ; omplns1=0
-    allocate( omplns2(0:np_grid-1,0:ompnprocs-1) ) ; omplns2=0
+    if ( .not.allocated(omplns1) ) then
+       allocate( omplns1(0:np_grid-1,0:ompnprocs-1) )
+       allocate( omplns2(0:np_grid-1,0:ompnprocs-1) )
+    end if
+    omplns1=0
+    omplns2=0
+    if ( allocated(ompMJJ1) ) deallocate(ompMJJ1)
+    if ( allocated(ompMJJ2) ) deallocate(ompMJJ2)
     allocate( ompMJJ1(0:nzlma,0:ompnprocs-1)     ) ; ompMJJ1=0
     allocate( ompMJJ2(0:nzlma,0:ompnprocs-1)     ) ; ompMJJ2=0
 !$OMP end master
@@ -147,7 +154,7 @@ CONTAINS
 
     nb = ib2-ib1+1
 
-    call watchb_omp( ttmp )
+!    call watchb_omp( ttmp )
 
     do ib=ib1,ib2
        jb=ib-ib1+1
@@ -165,7 +172,7 @@ CONTAINS
        end do ! lma
     end do ! ib
 
-    call watchb_omp( ttmp, time_nlpp(1,1) )
+!    call watchb_omp( ttmp, time_nlpp(1,1) )
 
     do i=1,6
 
@@ -226,7 +233,7 @@ CONTAINS
     end do ! i
 
 !$omp barrier
-    call watchb_omp( ttmp, time_nlpp(1,2) )
+!    call watchb_omp( ttmp, time_nlpp(1,2) )
 
     do ib=ib1,ib2
        jb=ib-ib1+1
@@ -239,7 +246,7 @@ CONTAINS
     end do
 
 !$omp barrier
-    call watchb_omp( ttmp, time_nlpp(1,3) )
+!    call watchb_omp( ttmp, time_nlpp(1,3) )
 
     return 
       
