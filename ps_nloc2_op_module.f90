@@ -174,6 +174,9 @@ CONTAINS
 
 !    call watchb_omp( ttmp, time_nlpp(1,1) )
 
+    select case( iswitch_eqdiv )
+    case default
+
     do i=1,6
 
 !$omp barrier
@@ -232,6 +235,13 @@ CONTAINS
 
     end do ! i
 
+    case( 2 )
+
+!$OMP barrier
+       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
+
+    end select
+
 !$omp barrier
 !    call watchb_omp( ttmp, time_nlpp(1,2) )
 
@@ -254,7 +264,7 @@ CONTAINS
 
 
   SUBROUTINE op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
-!$  use omp_lib
+
     implicit none
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
@@ -273,13 +283,13 @@ CONTAINS
     if ( Mlma <= 0 ) return
 
 !$OMP barrier
-    call watchb_omp( ttmp )
+!    call watchb_omp( ttmp )
 
     nb = ib2-ib1+1
 
     call calc_range_omp(nb,nzlma,nb_0_omp,nb_1_omp,nzlma_0_omp,nzlma_1_omp)
 
-    call watchb_omp( ttmp, time_nlpp(1,4) )
+!    call watchb_omp( ttmp, time_nlpp(1,4) )
 
     do ib=nb_0_omp,nb_1_omp
        jb=ib+ib1-1
@@ -297,7 +307,7 @@ CONTAINS
     end do
     end do
 
-    call watchb_omp( ttmp, time_nlpp(1,1) )
+!    call watchb_omp( ttmp, time_nlpp(1,1) )
 
     select case( iswitch_eqdiv )
     case default
@@ -367,12 +377,13 @@ CONTAINS
 
     case( 2 )
 
+!$OMP barrier
        call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
 
     end select
 
 !$OMP barrier
-    call watchb_omp( ttmp, time_nlpp(1,2) )
+!    call watchb_omp( ttmp, time_nlpp(1,2) )
 
 !    do ib=ib1,ib2
 !       jb=ib-ib1+1
@@ -399,12 +410,12 @@ CONTAINS
     end do
 
 !$OMP barrier
-    call watchb_omp( ttmp, time_nlpp(1,3) )
+!    call watchb_omp( ttmp, time_nlpp(1,3) )
 
   END SUBROUTINE op_ps_nloc2
 
   SUBROUTINE calc_range_omp( nb, nz, nb_0, nb_1, nz_0, nz_1 )
-!$  use omp_lib
+
     implicit none
     integer,intent(IN)  :: nb, nz
     integer,intent(OUT) :: nb_0,nb_1,nz_0,nz_1
@@ -501,38 +512,49 @@ CONTAINS
 #else
     complex(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
 #endif
-    integer :: nreq,irank,m,i1,i2,ib,ierr,nb
+    integer :: nreq,irank,m,i1,i2,i3,ib,ierr,nb
     integer :: istatus(mpi_status_size,512),ireq(512)
     nb=ib2-ib1+1
     nreq=0
     do irank=0,nprocs_g-1
        m=lma_nsend(irank)
        if ( irank == myrank_g .or. m <= 0 ) cycle
-       i2=0
+!       i2=0
        do ib=ib1,ib2
+!$OMP do
        do i1=1,m
-          i2=i2+1
+!          i2=i2+1
+          i2 = i1 + (ib-ib1)*m
           sbufnl(i2,irank)=uVunk(sendmap(i1,irank),ib)
        end do
+!$OMP end do
        end do
+!$OMP master
        nreq=nreq+1
        call mpi_isend(sbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
             ,comm_grid,ireq(nreq),ierr)
        nreq=nreq+1
        call mpi_irecv(rbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
             ,comm_grid,ireq(nreq),ierr)
+!$OMP end master
     end do
+!$OMP master
     if ( nreq > 0 ) call mpi_waitall(nreq,ireq,istatus,ierr)
+!$OMP end master
+!$OMP barrier
     do irank=0,nprocs_g-1
        m=lma_nsend(irank)
        if ( irank == myrank_g .or. m <= 0 ) cycle
-       i2=0
+!       i2=0
        do ib=ib1,ib2
+!$OMP do
        do i1=1,m
-          i2=i2+1
-          uVunk(recvmap(i1,irank),ib) &
-               =uVunk(recvmap(i1,irank),ib)+rbufnl(i2,irank)
+!          i2=i2+1
+          i2 = i1 + (ib-ib1)*m
+          i3 = recvmap(i1,irank)
+          uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,irank)
        end do
+!$OMP end do
        end do
     end do
   END SUBROUTINE comm_eqdiv_ps_nloc2_mol
