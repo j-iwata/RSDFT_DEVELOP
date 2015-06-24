@@ -45,7 +45,7 @@ CONTAINS
        allocate( ft(Ngrid(0)) )
        ft(:)=zero
 
-!$OMP PARALLEL
+!!$OMP PARALLEL
        do n=1,nn
 !$OMP SINGLE
        call mpi_allgatherv(f(1,n),mm,TYP,ft,ir_grid,id_grid,TYP,comm_grid,ierr)
@@ -58,13 +58,13 @@ CONTAINS
           end do
 !$OMP END DO
        end do
-!$OMP END PARALLEL
+!!$OMP END PARALLEL
 
        deallocate( ft )
 
     else
 
-!$OMP PARALLEL
+!!$OMP PARALLEL
        do n=1,nn
 !$OMP DO
           do i=1,mm
@@ -72,7 +72,7 @@ CONTAINS
           end do
 !$OMP END DO
        end do
-!$OMP END PARALLEL
+!!$OMP END PARALLEL
 
     end if
 

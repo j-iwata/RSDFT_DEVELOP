@@ -25,14 +25,17 @@ MODS1 = simc_module.o\
         fd_module.o \
         bc_variables.o \
         bc_mol_module.o \
+        omp_variables.o \
+        bcset_0_module.o \
+        bcset_1_module.o \
         bc_module.o \
         kinetic_variables.o  \
         kinetic_mol_module.o \
         esm_kinetic_module.o \
-        omp_variables.o \
         kinetic_fft_module.o \
         kinetic_sol_0_module.o \
         kinetic_sol_1_module.o \
+        kinetic_sol_simple_module.o \
         kinetic_module.o \
         strfac_module.o \
         ps_read_tm_module.o \
@@ -67,6 +70,7 @@ MODS1 = simc_module.o\
         ps_nloc2_variables.o \
         ps_nloc_mr_module.o \
         ps_nloc3_module.o \
+        ps_nloc2_op_module.o \
         ps_nloc2_module.o \
         construct_matrix_ps_nloc2_module.o \
         localpot2_variables.o \
@@ -122,6 +126,7 @@ MODS1 = simc_module.o\
         ps_pcc_force_module.o \
         hamiltonian_module.o\
         cgpc_gausseidel_module.o \
+        cgpc_hprsdft_module.o \
         cgpc_2_module.o \
         cgpc_diag_module.o \
         cgpc_seitsonen_module.o \

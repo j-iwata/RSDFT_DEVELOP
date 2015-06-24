@@ -3,16 +3,16 @@ MODULE kinetic_sol_1_module
 !$  use omp_lib
   use rgrid_module
   use omp_variables
-  use bc_variables
   use bc_module, only: www, bcset_1
   use kinetic_variables, only: coef_lap0, coef_lap, zcoef_kin, coef_nab &
        ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md
+  use watch_module, only: watchb_omp, time_kine, time_bcfd
 
   implicit none
 
   PRIVATE
-  PUBLIC :: op_kinetic_sol_1, init_kinetic_sol_1 &
-       , construct_matrix_kinetic_sol_1
+  PUBLIC :: op_kinetic_sol_1
+  PUBLIC :: construct_matrix_kinetic_sol_1
 
 CONTAINS
 
@@ -34,10 +34,15 @@ CONTAINS
     integer :: i,ib,i1,i2,i3,nb,m,n,j
     integer :: a1,a2,a3,b1,b2,b3,p,mm,nn
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
-    real(8) :: c,d
+    real(8) :: c,d,et0,et1, ttmp(2)
     integer,allocatable :: ic(:)
     integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp,n1_omp,n2_omp
     integer :: ib1_omp,ib2_omp,nb_omp
+
+!    call watchb_omp( ttmp )
+!$OMP master
+    time_bcfd(:,:)=0.0d0
+!$OMP end master
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -50,8 +55,8 @@ CONTAINS
 
     nb = ib2-ib1+1
 
-!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &
-!$OMP                 ,n1_omp,n2_omp,j,p,d,mm,c)
+!!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &
+!!$OMP                 ,n1_omp,n2_omp,j,p,d,mm,c)
 
     mm=0
 !$  mm=omp_get_thread_num()
@@ -73,6 +78,8 @@ CONTAINS
        end do
     end do
 
+!    call watchb_omp( ttmp, time_kine(1,1) )
+
     do ib=ib1,ib2
        do i3=a3b_omp,b3b_omp
        do i2=a2b_omp,b2b_omp
@@ -85,8 +92,12 @@ CONTAINS
     end do
 
 !$OMP barrier
+!    call watchb_omp( ttmp, time_kine(1,2) )
+
     call bcset_1(1,nb,Md,0)
+
 !$OMP barrier
+!    call watchb_omp( ttmp, time_kine(1,3) )
 
     if ( flag_nab ) then
 
@@ -142,6 +153,7 @@ CONTAINS
     end if
 
 !$OMP barrier
+!    call watchb_omp( ttmp, time_kine(1,4) )
 
     if ( flag_n12 .or. flag_n23 .or. flag_n31 ) then
 
@@ -305,18 +317,14 @@ CONTAINS
 !$OMP end single
 
     end if
-!$OMP end parallel
- 
+
+!    call watchb_omp( ttmp, time_kine(1,5) )
+
+!$OMP master
+    time_kine(1:2,6:11) = time_kine(1:2,6:11) + time_bcfd(1:2,1:6)
+!$OMP end master
+
   END SUBROUTINE op_kinetic_sol_1
-
-
-  SUBROUTINE init_kinetic_sol_1( disp_switch )
-    implicit none
-    logical,intent(IN) :: disp_switch
-    call init_omp( Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
-                  ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
-                  ,disp_switch )
-  END SUBROUTINE init_kinetic_sol_1
 
 
   SUBROUTINE construct_matrix_kinetic_sol_1( k, ML, Hmat )

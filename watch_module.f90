@@ -4,15 +4,29 @@ MODULE watch_module
 
   PRIVATE
   PUBLIC :: watch,watchs,watcht,read_watch,global_watch,read_oldformat_watch
+  PUBLIC :: watcha, write_watcha
+  PUBLIC :: watchb, write_watchb, watchb_omp
+  PUBLIC :: time_cgpc, time_hmlt, time_kine, time_nlpp, time_bcfd
+
+  include 'mpif.h'
 
   real(8) :: ct0=0.d0, ctt=0.d0
   real(8) :: ett=0.d0
   integer :: count0=0
 
+  real(8) :: time_cgpc(2,16)
+  real(8) :: time_hmlt(2,4)
+  real(8) :: time_kine(2,16)
+  real(8) :: time_nlpp(2,4)
+  real(8) :: time_bcfd(2,8)
+
   real(8) :: etime_limit
 
   real(8) :: global_ctime0,global_etime0
   logical :: flag_count_start=.true.
+
+  integer,parameter :: max_timea_counter=64
+  real(8) :: timea(0:max_timea_counter,2)
 
 CONTAINS
 
@@ -52,13 +66,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank
     integer :: ierr
-    include 'mpif.h'
     call mpi_bcast(etime_limit,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_watch
 
   SUBROUTINE watch(ctime,etime)
     real(8),intent(OUT) :: ctime,etime
-    include 'mpif.h'
     call cpu_time(ctime)
     etime=mpi_wtime()
   END SUBROUTINE watch
@@ -104,7 +116,6 @@ CONTAINS
     logical,optional,intent(OUT) :: flag_timelimit
     integer :: ierr
     real(8) :: ct,et,s(2),r(2)
-    include 'mpif.h'
     call cpu_time(ct)
     et=mpi_wtime()
     if ( flag_count_start ) then
@@ -122,5 +133,72 @@ CONTAINS
     end if
     if ( disp_switch ) write(*,'(1x,"TIME(END)",3f12.5)') r(1:2)
   END SUBROUTINE global_watch
+
+
+  SUBROUTINE watcha( icounter )
+    implicit none
+    integer,intent(INOUT) :: icounter
+    integer :: n
+    n = min( max(icounter+1,0), max_timea_counter )
+    call cpu_time( timea(n,1) )
+    timea(n,2) = mpi_wtime()
+    icounter = n
+  END SUBROUTINE watcha
+
+  SUBROUTINE write_watcha( n, indx, unit )
+    implicit none
+    integer,intent(IN) :: n
+    character(*),intent(IN) :: indx
+    integer,optional,intent(IN) :: unit
+    integer :: i,j,u
+    u=6
+    if ( present(unit) ) u=unit
+    do i=1,n
+       write(u,'(1x,i3,2x,a,3x,2x,2f15.5)') &
+            i, "timea("//indx//")", (timea(i,j)-timea(i-1,j),j=1,2)
+    end do
+  END SUBROUTINE write_watcha
+
+
+  SUBROUTINE watchb( t_tmp, t_out )
+    implicit none
+    real(8),intent(INOUT) :: t_tmp(2)
+    real(8),optional,intent(INOUT) :: t_out(2)
+    real(8) :: tnow(2)
+    call cpu_time( tnow(1) )
+    tnow(2) = mpi_wtime()
+    if ( present(t_out) ) t_out(:) = t_out(:) + tnow(:) - t_tmp(:)
+    t_tmp(:) = tnow(:)
+  END SUBROUTINE watchb
+
+  SUBROUTINE write_watchb( t_results, n, indx, unit )
+    implicit none
+    integer,intent(IN) :: n
+    real(8),intent(IN) :: t_results(2,n)
+    character(*),intent(IN) :: indx(n)
+    integer,optional,intent(IN) :: unit
+    integer :: i,j,u
+    u=6
+    if ( present(unit) ) u=unit
+    do i=1,n
+       write(u,'(1x,i3,2x,a,3x,2x,2f15.5)') &
+            i, "timeb("//indx(i)//")", (t_results(j,i),j=1,2)
+    end do
+  END SUBROUTINE write_watchb
+
+
+  SUBROUTINE watchb_omp( t_tmp, t_out )
+    implicit none
+    real(8),intent(INOUT) :: t_tmp(2)
+    real(8),optional,intent(INOUT) :: t_out(2)
+    real(8) :: tnow(2)
+!$OMP master
+    call cpu_time( tnow(1) )
+    tnow(2) = mpi_wtime()
+    if ( present(t_out) ) t_out(:) = t_out(:) + tnow(:) - t_tmp(:)
+    t_tmp(:) = tnow(:)
+!$OMP end master
+  END SUBROUTINE watchb_omp
+
 
 END MODULE watch_module

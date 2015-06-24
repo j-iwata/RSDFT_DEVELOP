@@ -17,6 +17,7 @@ MODULE hamiltonian_module
 CONTAINS
 
   SUBROUTINE hamiltonian(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+    implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
@@ -25,39 +26,47 @@ CONTAINS
     complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
     complex(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
 #endif
-    integer :: i,ib,i1,i2,i3,j,lma,m,ML0,n,nb
-    integer :: a1,a2,a3,b1,b2,b3,ierr,nreq
-    real(8) :: ct0,ct1,et0,et1
+    real(8) :: ttmp(2)
 
+!$OMP parallel
+
+!$OMP workshare
     htpsi=(0.d0,0.d0)
+!$OMP end workshare
+
+    call watchb_omp( ttmp )
 
 ! --- Kinetic energy ---
 
-    call watch(ct0,et0)
-
     call op_kinetic(k,tpsi,htpsi,n1,n2,ib1,ib2)
 
-    call watch(ct1,et1)
-    ctt_hamil(1)=ctt_hamil(1)+ct1-ct0 ; ett_hamil(1)=ett_hamil(1)+et1-et0
+!$OMP barrier
+
+    call watchb_omp( ttmp, time_hmlt(1,1) )
 
 ! --- local potential ---
 
     call op_localpot(s,n2-n1+1,ib2-ib1+1,tpsi,htpsi)
 
-    call watch(ct0,et0)
-    ctt_hamil(2)=ctt_hamil(2)+ct0-ct1 ; ett_hamil(2)=ett_hamil(2)+et0-et1
+!$OMP barrier
+
+    call watchb_omp( ttmp, time_hmlt(1,2) )
 
 ! --- nonlocal potential ---
 
     call op_nonlocal(k,tpsi,htpsi,n1,n2,ib1,ib2)
 
-    call watch(ct1,et1)
-    ctt_hamil(3)=ctt_hamil(3)+ct1-ct0 ; ett_hamil(3)=ett_hamil(3)+et1-et0
+!$OMP barrier
+
+    call watchb_omp( ttmp, time_hmlt(1,3) )
+
+!$OMP end parallel
+
+    call watchb( ttmp )
 
     call op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
 
-    call watch(ct0,et0)
-    ctt_hamil(4)=ctt_hamil(4)+ct0-ct1 ; ett_hamil(4)=ett_hamil(4)+et0-et1
+    call watchb( ttmp, time_hmlt(1,4) )
 
   END SUBROUTINE hamiltonian
 
