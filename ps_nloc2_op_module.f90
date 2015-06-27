@@ -154,7 +154,7 @@ CONTAINS
 
     nb = ib2-ib1+1
 
-!    call watchb_omp( ttmp )
+    !call watchb_omp( ttmp )
 
     do ib=ib1,ib2
        jb=ib-ib1+1
@@ -172,7 +172,7 @@ CONTAINS
        end do ! lma
     end do ! ib
 
-!    call watchb_omp( ttmp, time_nlpp(1,1) )
+    !call watchb_omp( ttmp, time_nlpp(1,1) )
 
     select case( iswitch_eqdiv )
     case default
@@ -243,7 +243,7 @@ CONTAINS
     end select
 
 !$omp barrier
-!    call watchb_omp( ttmp, time_nlpp(1,2) )
+    !call watchb_omp( ttmp, time_nlpp(1,2) )
 
     do ib=ib1,ib2
        jb=ib-ib1+1
@@ -256,7 +256,7 @@ CONTAINS
     end do
 
 !$omp barrier
-!    call watchb_omp( ttmp, time_nlpp(1,3) )
+    !call watchb_omp( ttmp, time_nlpp(1,3) )
 
     return 
       
@@ -283,13 +283,13 @@ CONTAINS
     if ( Mlma <= 0 ) return
 
 !$OMP barrier
-!    call watchb_omp( ttmp )
+    !call watchb_omp( ttmp )
 
     nb = ib2-ib1+1
 
     call calc_range_omp(nb,nzlma,nb_0_omp,nb_1_omp,nzlma_0_omp,nzlma_1_omp)
 
-!    call watchb_omp( ttmp, time_nlpp(1,4) )
+    !call watchb_omp( ttmp, time_nlpp(1,4) )
 
     do ib=nb_0_omp,nb_1_omp
        jb=ib+ib1-1
@@ -307,7 +307,7 @@ CONTAINS
     end do
     end do
 
-!    call watchb_omp( ttmp, time_nlpp(1,1) )
+    !call watchb_omp( ttmp, time_nlpp(1,1) )
 
     select case( iswitch_eqdiv )
     case default
@@ -383,7 +383,7 @@ CONTAINS
     end select
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_nlpp(1,2) )
+    !call watchb_omp( ttmp, time_nlpp(1,2) )
 
 !    do ib=ib1,ib2
 !       jb=ib-ib1+1
@@ -410,7 +410,7 @@ CONTAINS
     end do
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_nlpp(1,3) )
+    !call watchb_omp( ttmp, time_nlpp(1,3) )
 
   END SUBROUTINE op_ps_nloc2
 

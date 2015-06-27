@@ -145,22 +145,22 @@ CONTAINS
 
 !$omp parallel private ( n, iloop, b )
 
-!    call watchb_omp( ttmp )
+    !call watchb_omp( ttmp )
 
     gtmp2(omp1:omp2,1:nn) = gk(ompn1:ompn2,1:nn)
 
-!    call watchb_omp( ttmp, time_cgpc(1,1) )
+    !call watchb_omp( ttmp, time_cgpc(1,1) )
 
     call precond_cg_mat( E0, k, s, ML0, nn )
 
-!    call watchb_omp( ttmp, time_cgpc(1,2) )
+    !call watchb_omp( ttmp, time_cgpc(1,2) )
 
     do n=1,nn
        rk_pc(omp1:omp2,n) = gk(ompn1:ompn2,n) - ftmp2(omp1:omp2,n)
        pk_pc(omp1:omp2,n) = rk_pc(omp1:omp2,n)
     end do
 
-!    call watchb_omp( ttmp, time_cgpc(1,1) )
+    !call watchb_omp( ttmp, time_cgpc(1,1) )
 
     do n=1,nn
        ompr1s(n,ompmyrank) = sum( abs(rk_pc(omp1:omp2,n))**2 )
@@ -175,21 +175,21 @@ CONTAINS
 !$omp end master
 !$omp barrier
 
-!    call watchb_omp( ttmp, time_cgpc(1,3) )
+    !call watchb_omp( ttmp, time_cgpc(1,3) )
 
     if ( ompflag1 ) goto 99
 
     do iloop=1,mloop
 
-!       call watchb_omp( ttmp )
+       !call watchb_omp( ttmp )
 
        gtmp2(omp1:omp2,1:nn) = pk_pc(omp1:omp2,1:nn)
 
-!       call watchb_omp( ttmp, time_cgpc(1,1) )
+       !call watchb_omp( ttmp, time_cgpc(1,1) )
 
        call precond_cg_mat( E0, k, s, ML0, nn )
 
-!       call watchb_omp( ttmp, time_cgpc(1,2) )
+       !call watchb_omp( ttmp, time_cgpc(1,2) )
 
        do n=1,nn
 #ifdef _DRSDFT_
@@ -213,13 +213,13 @@ CONTAINS
 !$omp end master
 !$omp barrier
 
-!       call watchb_omp( ttmp, time_cgpc(1,3) )
+       !call watchb_omp( ttmp, time_cgpc(1,3) )
 
        do n=1,nn
           Pgk(ompn1:ompn2,n) = Pgk(ompn1:ompn2,n) + a(n)*pk_pc(omp1:omp2,n)
        end do
 
-!       call watchb_omp( ttmp, time_cgpc(1,1) )
+       !call watchb_omp( ttmp, time_cgpc(1,1) )
 
        if ( iloop == mloop ) exit
 
@@ -227,7 +227,7 @@ CONTAINS
           rk_pc(omp1:omp2,n)=rk_pc(omp1:omp2,n)-a(n)*ftmp2(omp1:omp2,n)
        end do
 
-!       call watchb_omp( ttmp, time_cgpc(1,1) )
+       !call watchb_omp( ttmp, time_cgpc(1,1) )
 
        do n=1,nn
           ompr1s(n,ompmyrank)=sum( abs(rk_pc(omp1:omp2,n))**2 )
@@ -241,14 +241,14 @@ CONTAINS
 !$omp end master
 !$omp barrier
 
-!       call watchb_omp( ttmp, time_cgpc(1,3) )
+       !call watchb_omp( ttmp, time_cgpc(1,3) )
 
        do n=1,nn
           b=rr1(n)/rr0(n)
           pk_pc(omp1:omp2,n) = rk_pc(omp1:omp2,n) + b*pk_pc(omp1:omp2,n)
        end do
 
-!       call watchb_omp( ttmp, time_cgpc(1,1) )
+       !call watchb_omp( ttmp, time_cgpc(1,1) )
 
     end do ! iloop
 
@@ -287,7 +287,7 @@ CONTAINS
     real(8) :: c,c1,c2,c3,d,ttmp(2)
     integer :: n,i,i1,i2,i3
 
-!    call watchb_omp( ttmp )
+    !call watchb_omp( ttmp )
 
     c =ggg(1)/H1**2+ggg(2)/H2**2+ggg(3)/H3**2
     c1=-0.5d0/H1**2*ggg(1)
@@ -302,7 +302,7 @@ CONTAINS
     end do
 
 !$omp barrier
-!    call watchb_omp( ttmp, time_cgpc(1,4) )
+    !call watchb_omp( ttmp, time_cgpc(1,4) )
 
     do n=1,nn
        i=ompnsw
@@ -317,13 +317,13 @@ CONTAINS
     end do
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_cgpc(1,5) )
+    !call watchb_omp( ttmp, time_cgpc(1,5) )
 
     !call bcset_0(1,nn,1,0)
     call bcset_1(1,nn,1,0)
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_cgpc(1,6) )
+    !call watchb_omp( ttmp, time_cgpc(1,6) )
 
     do n=1,nn
        i=ompnsw
@@ -341,7 +341,7 @@ CONTAINS
     end do
 
 !$omp barrier
-!    call watchb_omp( ttmp, time_cgpc(1,7) )
+    !call watchb_omp( ttmp, time_cgpc(1,7) )
 
     return
 

@@ -39,7 +39,7 @@ CONTAINS
     integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp,n1_omp,n2_omp
     integer :: ib1_omp,ib2_omp,nb_omp
 
-!    call watchb_omp( ttmp )
+    !call watchb_omp( ttmp )
 !$OMP master
     time_bcfd(:,:)=0.0d0
 !$OMP end master
@@ -78,7 +78,7 @@ CONTAINS
        end do
     end do
 
-!    call watchb_omp( ttmp, time_kine(1,1) )
+    !call watchb_omp( ttmp, time_kine(1,1) )
 
     do ib=ib1,ib2
        do i3=a3b_omp,b3b_omp
@@ -92,12 +92,12 @@ CONTAINS
     end do
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_kine(1,2) )
+    !call watchb_omp( ttmp, time_kine(1,2) )
 
     call bcset_1(1,nb,Md,0)
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_kine(1,3) )
+    !call watchb_omp( ttmp, time_kine(1,3) )
 
     if ( flag_nab ) then
 
@@ -153,7 +153,7 @@ CONTAINS
     end if
 
 !$OMP barrier
-!    call watchb_omp( ttmp, time_kine(1,4) )
+    !call watchb_omp( ttmp, time_kine(1,4) )
 
     if ( flag_n12 .or. flag_n23 .or. flag_n31 ) then
 
@@ -318,7 +318,7 @@ CONTAINS
 
     end if
 
-!    call watchb_omp( ttmp, time_kine(1,5) )
+    !call watchb_omp( ttmp, time_kine(1,5) )
 
 !$OMP master
     time_kine(1:2,6:11) = time_kine(1:2,6:11) + time_bcfd(1:2,1:6)

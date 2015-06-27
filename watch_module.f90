@@ -7,6 +7,7 @@ MODULE watch_module
   PUBLIC :: watcha, write_watcha
   PUBLIC :: watchb, write_watchb, watchb_omp
   PUBLIC :: time_cgpc, time_hmlt, time_kine, time_nlpp, time_bcfd
+  PUBLIC :: time_cgpc_indx, time_hmlt_indx, time_kine_indx, time_nlpp_indx
 
   include 'mpif.h'
 
@@ -19,6 +20,15 @@ MODULE watch_module
   real(8) :: time_kine(2,16)
   real(8) :: time_nlpp(2,4)
   real(8) :: time_bcfd(2,8)
+  character(5) :: time_hmlt_indx(4)
+  character(5) :: time_kine_indx(16)
+  character(5) :: time_nlpp_indx(4)
+  character(5) :: time_cgpc_indx(16)
+  data time_hmlt_indx(1:4)/"kine","loc","nlc","exx"/
+  data time_kine_indx(1:11)/"kine1","kine2","bc","kine3","kine4" &
+                     ,"recv","send","spack","waita","final","totbc"/
+  data time_nlpp_indx(1:3)/"nlc1","nlcom","nlc2"/
+  data time_cgpc_indx(8:13)/"recv","send","spack","waita","final","totbc"/
 
   real(8) :: etime_limit
 

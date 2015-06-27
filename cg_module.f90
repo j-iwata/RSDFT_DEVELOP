@@ -134,7 +134,6 @@ CONTAINS
     real(8) :: time_kine_min(2,16),time_kine_max(2,16)
     character(5) :: timecg_indx(7)
     character(5) :: time_cgpc_indx(13)
-    character(5) :: time_kine_indx(11)
 
     call watchb( ttmp_cg ) ; ttmp(:)=ttmp_cg(:)
 
@@ -147,8 +146,6 @@ CONTAINS
     time_cgpc(:,:)=0.0d0
 
     timecg_indx(1:7) = (/"hamil","dotp","allr","prec","init","deall","tot"/)
-    time_cgpc_indx(8:13) = (/"recv","send","spack","waita","final","tot"/)
-    time_kine_indx(6:11) = (/"recv","send","spack","waita","final","tot"/)
 
     ML0 = ML_1-ML_0+1
 
@@ -429,7 +426,7 @@ CONTAINS
 !       call write_watchb( time_kine_min(1,6),6, time_kine_indx(6) ) 
 !       write(*,*) "(max)"
 !       call write_watchb( time_kine_max(1,6),6, time_kine_indx(6) ) 
-!       call write_watchb( time_nlpp(1,1), 4, "nlpp" ) 
+!       call write_watchb( time_nlpp(1,1), 4, time_nlpp_indx ) 
 !       write(*,'(a20," cgpc")') repeat("-",20)
 !       call write_watchb( time_cgpc(1,8),6, time_cgpc_indx(8) ) 
 !       write(*,*) "(min)"
