@@ -3,7 +3,7 @@ MODULE kinetic_sol_1_module
 !$  use omp_lib
   use rgrid_module
   use omp_variables
-  use bc_module, only: www, bcset_1
+  use bc_module, only: www, bcset_1, bcset_3
   use kinetic_variables, only: coef_lap0, coef_lap, zcoef_kin, coef_nab &
        ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md
   use watch_module, only: watchb_omp, time_kine, time_bcfd
@@ -94,7 +94,7 @@ CONTAINS
 !$OMP barrier
     !call watchb_omp( ttmp, time_kine(1,2) )
 
-    call bcset_1(1,nb,Md,0)
+    call bcset_3(1,nb,Md,0)
 
 !$OMP barrier
     !call watchb_omp( ttmp, time_kine(1,3) )

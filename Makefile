@@ -28,6 +28,7 @@ MODS1 = simc_module.o\
         omp_variables.o \
         bcset_0_module.o \
         bcset_1_module.o \
+        bcset_3_module.o \
         bc_module.o \
         kinetic_variables.o  \
         kinetic_mol_module.o \

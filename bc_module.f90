@@ -7,13 +7,14 @@ MODULE bc_module
                          ,sbuf,rbuf,TYPE_MAIN,zero
   use watch_module
   use bcset_1_module, only: bcset_1
+  use bcset_3_module, only: bcset_3
 
   implicit none
 
   PRIVATE
   PUBLIC :: www, bcset, init_bcset, allocate_bcset &
            ,n_neighbor, fdinfo_send, fdinfo_recv &
-           ,bcset_1
+           ,bcset_1,bcset_3
 
 CONTAINS
 
