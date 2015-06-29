@@ -171,7 +171,6 @@ CONTAINS
     end do
     end do
     end do
-    s0(2)=sum( Vion(:)*rho(:,1) )
     s0(:)=s0(:)*dV
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
 
