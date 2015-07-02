@@ -5,7 +5,7 @@ MODULE kinetic_sol_1_module
   use omp_variables
   use bc_module, only: www, bcset_1, bcset_3
   use kinetic_variables, only: coef_lap0, coef_lap, zcoef_kin, coef_nab &
-       ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md
+       ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md, wk
   use watch_module, only: watchb_omp, time_kine, time_bcfd
 
   implicit none
@@ -23,12 +23,10 @@ CONTAINS
 #ifdef _DRSDFT_
     real(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
     real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    real(8),allocatable :: wk(:,:,:,:)
     real(8),parameter :: zero=0.d0
 #else
     complex(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
     complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    complex(8),allocatable :: wk(:,:,:,:)
     complex(8),parameter :: zero=(0.d0,0.d0)
 #endif
     integer :: i,ib,i1,i2,i3,nb,m,n,j
