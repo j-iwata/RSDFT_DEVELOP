@@ -426,7 +426,7 @@ CONTAINS
 !       call write_watchb( time_kine_min(1,6),6, time_kine_indx(6) ) 
 !       write(*,*) "(max)"
 !       call write_watchb( time_kine_max(1,6),6, time_kine_indx(6) ) 
-!       call write_watchb( time_nlpp(1,1), 4, time_nlpp_indx ) 
+!       call write_watchb( time_nlpp(1,1), 7, time_nlpp_indx ) 
 !       write(*,'(a20," cgpc")') repeat("-",20)
 !       call write_watchb( time_cgpc(1,8),6, time_cgpc_indx(8) ) 
 !       write(*,*) "(min)"

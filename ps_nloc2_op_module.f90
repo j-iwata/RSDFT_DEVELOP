@@ -148,7 +148,7 @@ CONTAINS
     integer :: i,ib,i1,i2,i3,j,jb,lma,m,ML0,n,nb
     integer :: ierr,nreq
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
-    real(8) :: c, ttmp(2)
+    real(8) :: c, ttmp(2), ttmp1(2)
 
     if ( .not.init_flag ) stop "@op_ps_nloc2_hp(init_flag=.false.)"
 
@@ -193,6 +193,7 @@ CONTAINS
 !$omp barrier
 
        do m=1,nrlma_xyz(i)
+          !call watchb_omp( ttmp1 )
           nreq=0
           irank=num_2_rank(m,i)
           jrank=num_2_rank(m,j)
@@ -211,15 +212,18 @@ CONTAINS
                   ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
 !$omp end master
           end if
+          !call watchb_omp( ttmp1, time_nlpp(1,4) )
 !$omp master
           if ( jrank >= 0 ) then
              nreq=nreq+1
              call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
                   ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
           end if
+          !call watchb_omp( ttmp1, time_nlpp(1,5) )
           call mpi_waitall(nreq,ireq,istatus,ierr)
 !$omp end master
 !$omp barrier
+          !call watchb_omp( ttmp1, time_nlpp(1,6) )
           if ( jrank >= 0 ) then
              do ib=1,nb
                 i2=omplns1(jrank,ompmyrank)-1+lma_nsend(jrank)*(ib-1)
@@ -230,6 +234,7 @@ CONTAINS
                 end do
              end do
           end if
+          !call watchb_omp( ttmp1, time_nlpp(1,7) )
 
        end do ! m
 

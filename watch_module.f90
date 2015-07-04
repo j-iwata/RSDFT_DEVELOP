@@ -18,16 +18,16 @@ MODULE watch_module
   real(8) :: time_cgpc(2,16)
   real(8) :: time_hmlt(2,4)
   real(8) :: time_kine(2,16)
-  real(8) :: time_nlpp(2,4)
+  real(8) :: time_nlpp(2,8)
   real(8) :: time_bcfd(2,8)
   character(5) :: time_hmlt_indx(4)
   character(5) :: time_kine_indx(16)
-  character(5) :: time_nlpp_indx(4)
+  character(5) :: time_nlpp_indx(8)
   character(5) :: time_cgpc_indx(16)
   data time_hmlt_indx(1:4)/"kine","loc","nlc","exx"/
   data time_kine_indx(1:11)/"kine1","kine2","bc","kine3","kine4" &
                      ,"recv","send","spack","waita","final","totbc"/
-  data time_nlpp_indx(1:3)/"nlc1","nlcom","nlc2"/
+  data time_nlpp_indx(1:7)/"nlc1","nlcom","nlc2","com1","com2","com3","com4"/
   data time_cgpc_indx(8:13)/"recv","send","spack","waita","final","totbc"/
 
   real(8) :: etime_limit
