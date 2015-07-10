@@ -97,12 +97,10 @@ CONTAINS
     allocate( tn(n1:n2) )
     allocate( tk(n1:n2) )
 
-    tk(n1:n2) = rho(n1:n2,1)
+    tn(n1:n2) = rho(n1:n2,1)
     do j=2,n3
-       tk(n1:n2) = tk(n1:n2) + rho(n1:n2,j)
+       tn(n1:n2) = tn(n1:n2) + rho(n1:n2,j)
     end do
-
-    call mpi_allreduce(tk,tn,ML0,MPI_REAL8,MPI_SUM,comm_spin,ierr)
 
     sum0 = sum( tn(n1:n2)*tn(n1:n2) )*dV
 
