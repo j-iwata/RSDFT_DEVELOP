@@ -20,6 +20,7 @@ MODULE ps_local_module
   PRIVATE
   PUBLIC :: Vion,init_ps_local,construct_ps_local,calc_force_ps_local &
        ,construct_ps_local_ffte,calc_force_ps_local_ffte
+  real(8),PUBLIC :: const_ps_local
 
   real(8),allocatable :: vqlg(:,:),vqlgl(:,:),vqls(:,:)
   real(8),allocatable :: Vion(:)
@@ -34,6 +35,8 @@ MODULE ps_local_module
   integer,allocatable :: icnta(:),idisa(:)
 
   integer,allocatable :: LLG_f(:,:)
+
+  logical :: flag_zero_ave = .true.
 
 CONTAINS
 
@@ -141,6 +144,23 @@ CONTAINS
     end do ! ik
 
     deallocate( vshort )
+
+! --- const_ps_local
+
+   const_ps_local=0.0d0
+
+   if ( flag_zero_ave ) then
+
+      do ig=1,NMGL
+        if ( GG(ig) == 0.0d0 ) exit
+      end do
+      do i=1,Natom
+         ik=ki_atom(i)
+         const_ps_local=const_ps_local+vqlg(ig,ik)    
+      end do
+      vqlg(ig,:)=0.0d0
+
+   end if
 
   END SUBROUTINE init_ps_local
 
