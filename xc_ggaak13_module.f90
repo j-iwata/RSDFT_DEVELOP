@@ -1,6 +1,6 @@
 MODULE xc_ggaak13_module
 
-  use aa_module
+  use aa_module, only: aa
   use bb_module
   use bc_module
   use parallel_module
@@ -169,17 +169,19 @@ CONTAINS
 
 ! -- Correlation --
 
-! call calc_GGAPBE96_c2( rho, vxc_tmp, Ec_part )
-    call calc_GGAAK13_c92( rho, vxc_tmp, Ec_part )
+!    call calc_GGAPBE96_c2( rho, vxc_tmp, Ec_part )
+!    call calc_GGAAK13_c92( rho, vxc_tmp, Ec_part )
+    Ec_part=0.0d0
 
     if ( present(Vc_out) ) then
-       Vc_out(ML_0:ML_1,MSP_0:MSP_1) = vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
+!       Vc_out(ML_0:ML_1,MSP_0:MSP_1) = vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
+       Vc_out(ML_0:ML_1,MSP_0:MSP_1) = 0.0d0
     end if
 
-    if ( present(Vxc_out) ) then
-       Vxc_out(ML_0:ML_1,MSP_0:MSP_1) = Vxc_out(ML_0:ML_1,MSP_0:MSP_1) &
-                                      + vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
-    end if
+!    if ( present(Vxc_out) ) then
+!       Vxc_out(ML_0:ML_1,MSP_0:MSP_1) = Vxc_out(ML_0:ML_1,MSP_0:MSP_1) &
+!                                      + vxc_tmp(ML_0:ML_1,MSP_0:MSP_1)
+!    end if
 
 ! --
 
@@ -256,16 +258,20 @@ CONTAINS
     real(8),intent(IN)  :: rho(ML_0:,:)
     real(8),intent(OUT) :: vex(ML_0:,:)
     real(8),intent(OUT) :: Ex
-    !real(8),parameter :: mu=0.21951d0, Kp=0.804d0
+    real(8),parameter :: Ax=-0.738558766382022405884230032680836d0
     integer :: i,ispin,ierr
-    real(8) :: rhoa,rhob,trho,cm
+    real(8) :: rhoa,rhob,trho,cm,thrd4,thrd
     real(8),allocatable :: rrrr(:,:),rtmp(:)
-    real(8) :: kf, vx_lda, ex_lda, Fx, Pi, g2, factor, s, muge, B1, dFx_ds ! s, muge, B1 and dFx_ds are added
+    real(8) :: kf, vx_lda, ex_lda, Fx, Pi, g2, factor, s, muge, B1,B2, dFx_ds
     integer :: i1,i2,i3,j,j1,j2,j3,k1,k2,k3,m,m1,m2,m3
 
     Pi = acos(-1.0d0)
     muge = 10.d0/81.d0
     B1 = (3.d0/5.d0)*muge + 8.d0*Pi/15.d0
+    B2 = muge-B1
+
+    thrd4 = 4.0d0/3.0d0
+    thrd  = 1.0d0/3.0d0
 
     factor = 1.0d0
     if ( MSP == 2 ) factor = 2.0d0
@@ -284,21 +290,26 @@ CONTAINS
 
           if ( trho <= zero_density ) cycle
 
-          kf = (3.0d0*Pi*Pi*trho)**(1.0d0/3.0d0)
-
-          ex_lda = -3.0d0/(4.0d0*Pi)*kf
-          vx_lda = -1.0d0/Pi*kf
+!          kf = (3.0d0*Pi*Pi*trho)**(1.0d0/3.0d0)
+!          ex_lda = -3.0d0/(4.0d0*Pi)*kf
+!          vx_lda = -1.0d0/Pi*kf
 
           g2 = gx(i)*gx(i) + gy(i)*gy(i) + gz(i)*gz(i)
-          ! calc s
-          s = dsqrt(g2)/(2.d0*kf*trho)
-          !Fx = 1.0d0 + Kp - 4.0d0*Kp*Kp*(trho*kf)**2/( 4.0d0*Kp*(trho*kf)**2 + mu*g2 )
-          Fx = 1.d0 + B1*s*dlog(1.d0+s) + (muge-B1)*s*dlog(1.d0+dlog(1.d0+s))
-          Ex = Ex + trho*ex_lda*Fx
-          dFx_ds =  B1*( dlog(1.d0+s)+s/(1.d0+s) ) + (muge-B1)*( dlog(1.d0+dlog(1.d0+s))+s/(1.d0+s)/(1.d0+dlog(1.d0+s)) )
-          vex(i,ispin) = vex(i,ispin) + Fx*vx_lda + 3.d0*s*kf/(4.0d0*Pi)*dFx_ds
-          !rtmp(i) = -18.0d0*Pi*Kp*Kp*mu*trho**4/( 4.0d0*Kp*(trho*kf)**2 + mu*g2 )**2
-          rtmp(i) = -3.d0/(8.d0*Pi*dsqrt(g2))*dFx_ds
+          s  = sqrt(g2)/(2.d0*(3.0d0*Pi*Pi)**thrd*trho**thrd4)
+          Fx = 1.0d0 + B1*s*log(1.0d0+s) + B2*s*log(1.0d0+dlog(1.0d0+s))
+
+          Ex = Ex + Ax * trho**thrd4 * Fx
+
+          dFx_ds =  B1*( log(1.0d0+s) + s/(1.0d0+s) ) &
+               + B2*( log(1.0d0+log(1.0d0+s)) &
+                     +s/(1.0d0+s)/(1.0d0+log(1.0d0+s)) )
+
+          vex(i,ispin) = vex(i,ispin) + Ax*thrd4*trho**thrd &
+               *( 1.0d0 - B1*s*s/(1.0d0+s) &
+                 - B2*s*s/(1.0d0+s)/(1.0d0+log(1.0d0+s)) )
+
+          rtmp(i) = Ax*dFx_ds/( 2.d0*(3.0d0*Pi*Pi)**thrd*sqrt(g2) )
+
        end do ! i
 
        rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
