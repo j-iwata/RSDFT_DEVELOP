@@ -4,7 +4,8 @@ MODULE scf_module
   use parallel_module
   use electron_module
   use localpot_module
-  use mixing_module
+  use mixing_module, only: init_mixing, perform_mixing, calc_sqerr_mixing &
+                         , finalize_mixing, imix, beta, sqerr_out
   use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use xc_module
   use hartree_variables, only: Vh
@@ -118,6 +119,7 @@ CONTAINS
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     real(8) :: ct0,et0,ct1,et1,ct(0:5),et(0:5),ctt(0:7),ett(0:7)
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
+    real(8),allocatable :: v(:,:)
 
     if ( myrank == 0 ) write(*,*) "------------ SCF START ----------"
 
@@ -308,29 +310,43 @@ CONTAINS
           end if
        end if
 
-! ---
-       do s=MSP_0,MSP_1
-          Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-       end do
+! --- mixing & convergence check by density & potential ---
 
-       call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-            ,Vloc(ML_0,MSP_0), flag_conv_f, flag_conv, disp_switch )
+       if ( flag_conv_f ) then
 
-       if ( mod(imix,2) == 0 ) then
-          call normalize_density
-          m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
-          call mpi_allgather &
-               (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
-          call calc_hartree(ML_0,ML_1,MSP,rho)
-          call calc_xc
+          allocate( v(ML_0:ML_1,MSP_0:MSP_1) ) ; v=0.0d0
+          do s=MSP_0,MSP_1
+             v(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+          end do
+          call calc_sqerr_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0), v, flag_conv )
+          deallocate( v )
+
+       else
+
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
-       end if
+
+          call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
+               ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
+
+          if ( .not.flag_conv .and. mod(imix,2) == 0 ) then
+             call normalize_density
+             m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
+             call mpi_allgather &
+                  (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
+             call calc_hartree(ML_0,ML_1,MSP,rho)
+             call calc_xc
+             do s=MSP_0,MSP_1
+                Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+             end do
+          end if
 
 #ifdef _USPP_
-       call getDij
+          call getDij
 #endif
+       end if
+
 ! ---
 
        call watcht(disp_switch,"mixing",1)

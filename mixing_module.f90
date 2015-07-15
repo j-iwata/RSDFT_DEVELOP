@@ -7,7 +7,7 @@ MODULE mixing_module
   PRIVATE
   PUBLIC :: sqerr_out, imix, beta &
            ,init_mixing,read_mixing,perform_mixing,read_oldformat_mixing &
-           ,finalize_mixing, restart_mixing
+           ,finalize_mixing, restart_mixing, calc_sqerr_mixing
 
   include 'mpif.h'
 
@@ -179,12 +179,10 @@ CONTAINS
   END SUBROUTINE init_mixing
 
 
-  SUBROUTINE perform_mixing &
-       ( m, n1, n2, f_io, g_io, flag_conv_f, flag_conv, disp_sw_in )
+  SUBROUTINE perform_mixing( m, n1, n2, f_io, g_io, flag_conv, disp_sw_in )
     implicit none
     integer,intent(IN)    :: m,n1,n2
     real(8),intent(INOUT) :: f_io(m,n1:n2),g_io(m,n1:n2)
-    logical,intent(IN)    :: flag_conv_f
     logical,intent(OUT)   :: flag_conv
     logical,optional,intent(IN) :: disp_sw_in
     real(8) :: err0(2),err(2),sum0(2),beta_bak,beta_min,dif_min(2)
@@ -205,7 +203,7 @@ CONTAINS
     call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
 
     call calc_sqerr( ML0, MSP, f, g, flag_conv )
-    if ( flag_conv .or. flag_conv_f ) then
+    if ( flag_conv ) then
        deallocate( g,f )
        return
     end if
@@ -328,6 +326,29 @@ CONTAINS
 
   END SUBROUTINE perform_mixing
 
+
+  SUBROUTINE calc_sqerr_mixing( m, n1, n2, f_io, g_io, flag_conv )
+    implicit none
+    integer,intent(IN)    :: m,n1,n2
+    real(8),intent(INOUT) :: f_io(m,n1:n2),g_io(m,n1:n2)
+    logical,intent(OUT)   :: flag_conv
+    integer :: n,ierr
+    real(8),allocatable :: f(:,:),g(:,:)
+
+    write(*,*) "sqerr_mixing"
+
+    allocate( f(m,MSP) ) ; f=0.0d0
+    allocate( g(m,MSP) ) ; g=0.0d0
+
+    n=m*(n2-n1+1)
+    call mpi_allgather( f_io(1,n1),n,MPI_REAL8,f,n,MPI_REAL8,comm_spin,ierr)
+    call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
+
+    call calc_sqerr( m, MSP, f, g, flag_conv )
+ 
+    deallocate( g,f )
+    return
+  END SUBROUTINE calc_sqerr_mixing
 
   SUBROUTINE calc_sqerr(m,n,f,g,flag_conv)
     implicit none

@@ -213,7 +213,7 @@ CONTAINS
        end do
 
        call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-            ,Vloc(ML_0,MSP_0), .false., flag_conv, disp_switch )
+            ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
 
        if ( mod(imix,2) == 0 ) then
           call normalize_density
