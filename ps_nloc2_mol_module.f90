@@ -10,6 +10,7 @@ MODULE ps_nloc2_mol_module
   use ps_nloc2_variables
   use minimal_box_module
   use ps_nloc_mol_gth_module
+  use ps_nloc2_op_module, only: init_op_ps_nloc2_hp
 
   implicit none
 
@@ -907,6 +908,7 @@ CONTAINS
 
     end if ![ iswitch_eqdiv ]
 
+    call init_op_ps_nloc2_hp( .true. )
 
   END SUBROUTINE prep_ps_nloc2_mol
 

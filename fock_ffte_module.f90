@@ -17,6 +17,7 @@ MODULE fock_ffte_module
 
   PRIVATE
   PUBLIC :: ct_fock_ffte,et_fock_ffte, fock_ffte, init_fock_ffte
+  PUBLIC :: fock_ffte_double
 
   real(8) :: ct_fock_ffte(10),et_fock_ffte(10)
 
@@ -167,6 +168,8 @@ CONTAINS
     ab1 = (b1b-a1b+1)
     ab12= (b1b-a1b+1)*(b2b-a2b+1)
 
+    mm = 0
+
     if ( first_time ) call init_fock_ffte
     
     ctt(:)=0.0d0
@@ -263,6 +266,112 @@ CONTAINS
     et_fock_ffte(5) = ett(5) - ett(4)
 
   END SUBROUTINE fock_ffte
+
+
+  SUBROUTINE fock_ffte_double( n1, n2, trho, tVh )
+!$  use omp_lib
+    implicit none
+    integer,intent(IN)     :: n1,n2
+    complex(8),intent(IN)  :: trho(n1:n2)
+    complex(8),intent(OUT) :: tVh(n1:n2)
+    complex(8),parameter :: z0=(0.d0,0.d0)
+    real(8) :: ctt(0:5),ett(0:5)
+    integer :: ML1,ML2,ML3,mm,i,i1,i2,i3,ierr
+    integer :: ML_0,ML_1,a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
+
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+
+    ML_0= Igrid(1,0)
+    ML_1= Igrid(2,0)
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+    ab1 = (b1b-a1b+1)
+    ab12= (b1b-a1b+1)*(b2b-a2b+1)
+
+    mm = 0
+
+    if ( first_time ) call init_fock_ffte
+    
+    ctt(:)=0.0d0
+    ett(:)=0.0d0
+
+    call watch(ctt(0),ett(0))
+
+!$OMP parallel private( mm,i1,i2,i3,i )
+!$  mm=omp_get_thread_num()
+!$OMP workshare
+    zwork1_ffte(:,:,:)=z0
+!$OMP end workshare
+    do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
+    do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
+    do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
+       i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+       zwork1_ffte(i1,i2,i3) = trho(i)
+    end do
+    end do
+    end do
+!$OMP end parallel
+
+    call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
+         ,mpi_complex16,mpi_sum,comm_fftx,ierr)
+
+    call watch(ctt(1),ett(1))
+
+    call pzfft3dv(zwork2_ffte,zwork1_ffte,ML1,ML2,ML3 &
+         ,comm_ffty,comm_fftz,npuy,npuz,-1)
+
+    call watch(ctt(2),ett(2))
+
+    zwork2_ffte(:,:,:)=z0
+
+!$OMP parallel do private( i1,i2,i3 )
+    do i=1,NGHT
+       i1=LGHT(1,i)
+       i2=LGHT(2,i)
+       i3=LGHT(3,i)
+       zwork2_ffte(i1,i2,i3)=zwork1_ffte(i1,i2,i3)*GGHT(i,1)
+    end do
+!$OMP end parallel do
+
+    call watch(ctt(3),ett(3))
+
+    call pzfft3dv(zwork2_ffte,zwork1_ffte,ML1,ML2,ML3 &
+         ,comm_ffty,comm_fftz,npuy,npuz,1)
+
+    call watch(ctt(4),ett(4))
+
+!$OMP parallel private( mm,i,i1,i2,i3 )
+!$  mm=omp_get_thread_num()
+    do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
+    do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
+    do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
+       i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+       tVh(i) = zwork1_ffte(i1,i2,i3)
+    end do
+    end do
+    end do
+!$OMP end parallel
+
+    call watch(ctt(5),ett(5))
+
+    ct_fock_ffte(1) = ctt(1) - ctt(0)
+    et_fock_ffte(1) = ett(1) - ett(0)
+    ct_fock_ffte(2) = ctt(2) - ctt(1)
+    et_fock_ffte(2) = ett(2) - ett(1)
+    ct_fock_ffte(3) = ctt(3) - ctt(2)
+    et_fock_ffte(3) = ett(3) - ett(2)
+    ct_fock_ffte(4) = ctt(4) - ctt(3)
+    et_fock_ffte(4) = ett(4) - ett(3)
+    ct_fock_ffte(5) = ctt(5) - ctt(4)
+    et_fock_ffte(5) = ett(5) - ett(4)
+
+  END SUBROUTINE fock_ffte_double
 
 
 END MODULE fock_ffte_module

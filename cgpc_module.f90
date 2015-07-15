@@ -2,15 +2,15 @@ MODULE cgpc_module
 !$  use omp_lib
   use rgrid_module
   use parallel_module
-  use kinetic_module, only: SYStype
   use bc_module
   use kinetic_variables, only: Md, ggg
   use array_bound_module, only: ML_0,ML_1
-
   use cgpc_diag_module
   use cgpc_seitsonen_module
   use cgpc_2_module
   use cgpc_gausseidel_module
+  use cgpc_hprsdft_module
+  use omp_variables
 
   implicit none
 
@@ -22,6 +22,7 @@ MODULE cgpc_module
 
   integer :: mloop
   integer :: iswitch_cgpc
+  integer :: SYStype
 
 #ifdef _DRSDFT_
   real(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
@@ -30,7 +31,6 @@ MODULE cgpc_module
   complex(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
 #endif
-
 
 CONTAINS
 
@@ -41,7 +41,7 @@ CONTAINS
     integer :: i
     character(5) :: cbuf,ckey
     mloop=3
-    iswitch_cgpc=2
+    iswitch_cgpc=4
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -83,21 +83,27 @@ CONTAINS
   END SUBROUTINE send_cgpc
 
 
-  SUBROUTINE init_cgpc(n1,n2,k,s,dV_in)
+  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, SYStype_in, ipc_out )
     implicit none
-    integer,intent(IN) :: n1,n2,k,s
+    integer,intent(IN) :: n1,n2,k,s,systype_in
     real(8),intent(IN) :: dV_in
+    integer,optional,intent(OUT) :: ipc_out
+
+    if ( present(ipc_out) ) ipc_out=iswitch_cgpc
+
+    SYStype = SYStype_in
+
     select case( iswitch_cgpc )
     case( 0 )
     case( 1 )
-!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_1 ---"
        if ( mloop == 0 ) mloop=3
     case( 2 )
-!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_2 ---"
        call init_cgpc_2( mloop, SYStype )
     case( 3 )
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
        call init_cgpc_gausseidel(Igrid,Ngrid,Hgrid,ggg,mloop)
+    case( 4 )
+       call init_cgpc_hprsdft( mloop, SYStype )
     case( 10 )
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_diag ---"
        call init_cgpc_diag(n1,n2,k,s,dV_in)
@@ -105,6 +111,7 @@ CONTAINS
        if ( disp_switch_parallel ) write(*,*) "--- cgpc_seitsonen ---"
        call init_cgpc_seitsonen(n1,n2,comm_grid,dV_in)
     end select
+
   END SUBROUTINE init_cgpc
 
 
@@ -129,6 +136,8 @@ CONTAINS
        call preconditioning_2(E,k,s,nn,ML0,gk,Pgk)
     case( 3 )
        call cgpc_gausseidel(ML0,nn,Pgk)
+    case( 4 )
+       call precond_hprsdft(E,k,s,nn,ML0,gk,Pgk)
     case( 10 )
        call cgpc_diag(ML0,nn,Pgk)
     case( 20 )
@@ -151,59 +160,117 @@ CONTAINS
 #endif
     real(8),parameter :: ep=1.d-24
     real(8) :: rr0(nn),rr1(nn),sb(nn),pAp(nn),a(nn),E0(nn),b,c
-    integer :: i,n,ierr,iloop !,n1,n2
+    real(8) :: et0,et1
+    integer :: i,n,ierr,iloop,n1_omp,n2_omp,mt
 
     E0(:) = 0.d0
 
-    if ( mloop<=0 ) return
+    if ( mloop <= 0 ) return
 
+!$OMP parallel private( n1_omp,n2_omp,i,n,iloop,b,mt )
+
+    mt = 0
+!$  mt = omp_get_thread_num()
+    n1_omp = Igrid_omp(1,0,mt) - Igrid_omp(1,0,0) + 1
+    n2_omp = Igrid_omp(2,0,mt) - Igrid_omp(1,0,0) + 1
+
+!$OMP single
+!!$  et0 = omp_get_wtime()
     allocate( rk_pc(ML0,nn),pk_pc(ML0,nn) )
     allocate( gtmp2(ML0,nn),ftmp2(ML0,nn) )
+!!$  et1 = omp_get_wtime()
+!!$  et_cgpc_(1)=et_cgpc_(1)+et1-et0
+!$OMP end single
 
-!$OMP parallel workshare
-    gtmp2(1:ML0,1:nn)=gk(1:ML0,1:nn)
-!$OMP end parallel workshare
+    do n=1,nn
+       do i=n1_omp,n2_omp
+          gtmp2(i,n)=gk(i,n)
+       end do
+    end do
+!$OMP barrier
+
+!!$OMP master
+!!$  et0=omp_get_wtime()
+!!$OMP end master
 
     call precond_cg_mat(E0,k,s,ML0,nn)
 
+!!$OMP master
+!!$  et1=omp_get_wtime()
+!!$  et_cgpc_(2)=et_cgpc_(2)+et1-et0
+!!$OMP end master
+
     do n=1,nn
-!$OMP parallel do
-       do i=1,ML0
+       do i=n1_omp,n2_omp
           rk_pc(i,n)=gk(i,n)-ftmp2(i,n)
           pk_pc(i,n)=rk_pc(i,n)
        end do
-!$OMP end parallel do
     end do
+!$omp barrier
+
+!!$OMP master
+!!$  et0=omp_get_wtime()
+!!$  et_cgpc_(3)=et_cgpc_(3)+et0-et1
+!!$OMP end master
 
     do n=1,nn
-       c=0.d0
-!$OMP parallel do reduction(+:c)
+!$OMP single
+       c=0.0d0
+!$OMP end single
+!$OMP do reduction(+:c)
        do i=1,ML0
           c=c+abs(rk_pc(i,n))**2
        end do
-!$OMP end parallel do
+!$OMP end do
+!$OMP single
        sb(n)=c
+!$OMP end single
     end do
 
+!!$OMP master
+!!$  et1=omp_get_wtime()
+!!$  et_cgpc_(4)=et_cgpc_(4)+et1-et0
+!!$OMP end master
+
+!$OMP single
+!!$  et0=omp_get_wtime()
     call mpi_allreduce(sb,rr0,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+!!$  et1=omp_get_wtime()
+!!$  et_cgpc_(5)=et_cgpc_(5)+et1-et0
+!$OMP end single
+
     if ( all(rr0(1:nn) < ep) ) then
-       deallocate( ftmp2,gtmp2,pk_pc,rk_pc )
-       return
+       goto 900
     end if
 
     do iloop=1,mloop+1
 
-!$OMP parallel workshare
-       gtmp2(1:ML0,1:nn)=pk_pc(1:ML0,1:nn)
-!$OMP end parallel workshare
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$OMP end master
+
+       do n=1,nn
+          do i=n1_omp,n2_omp
+             gtmp2(i,n)=pk_pc(i,n)
+          end do
+       end do
+!$OMP barrier
+
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(6)=et_cgpc_(6)+et1-et0
+!!$OMP end master
 
        call precond_cg_mat(E0,k,s,ML0,nn)
 
-!$OMP parallel
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$     et_cgpc_(2)=et_cgpc_(2)+et0-et1
+!!$OMP end master
 
        do n=1,nn
 !$OMP single
-          c=0.d0
+          c=0.0d0
 !$OMP end single
 !$OMP do reduction(+:c)
           do i=1,ML0
@@ -219,24 +286,40 @@ CONTAINS
 !$OMP end single
        end do
 
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(4)=et_cgpc_(4)+et1-et0
+!!$OMP end master
+
 !$OMP single
+!!$     et0=omp_get_wtime()
        call mpi_allreduce(sb,pAp,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+       do n=1,nn
+          a(n)=rr0(n)/pAp(n)
+       end do
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(5)=et_cgpc_(5)+et1-et0
 !$OMP end single
 
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$OMP end master
+
        do n=1,nn
-!$OMP single
-          a(n)=rr0(n)/pAp(n)
-!$OMP end single
-!$OMP do
-          do i=1,ML0
+          do i=n1_omp,n2_omp
              rk_pc(i,n)=rk_pc(i,n)-a(n)*ftmp2(i,n)
           end do
-!$OMP end do
        end do
+!$OMP barrier
+
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(6)=et_cgpc_(6)+et1-et0
+!!$OMP end master
 
        do n=1,nn
 !$OMP single
-          c=0.d0
+          c=0.0d0
 !$OMP end single
 !$OMP do reduction(+:c)
           do i=1,ML0
@@ -248,30 +331,55 @@ CONTAINS
 !$OMP end single
        end do
 
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$     et_cgpc_(4)=et_cgpc_(4)+et0-et1
+!!$OMP end master
+
 !$OMP single
+!!$     et0=omp_get_wtime()
        call mpi_allreduce(sb,rr1,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(5)=et_cgpc_(5)+et1-et0
 !$OMP end single
 
-!$OMP end parallel
-
-       if ( iloop==mloop+1 ) then
+       if ( iloop == mloop+1 ) then
           exit
        end if
 
+!!$OMP master
+!!$     et0=omp_get_wtime()
+!!$OMP end master
+
        do n=1,nn
           b=rr1(n)/rr0(n)
-          rr0(n)=rr1(n)
-!$OMP parallel do
-          do i=1,ML0
-             Pgk(i,n)=Pgk(i,n)+a(n)*pk_pc(i,n)
-             pk_pc(i,n)=rk_pc(i,n)+b*pk_pc(i,n)
+          do i=n1_omp,n2_omp
+             Pgk(i,n) = Pgk(i,n) + a(n)*pk_pc(i,n)
+             pk_pc(i,n) = rk_pc(i,n) + b*pk_pc(i,n)
           end do
-!$OMP end parallel do
        end do
+!$OMP barrier
+
+!!$OMP master
+!!$     et1=omp_get_wtime()
+!!$     et_cgpc_(6)=et_cgpc_(6)+et1-et0
+!!$OMP end master
+
+!$OMP single
+       do n=1,nn
+          rr0(n)=rr1(n)
+       end do
+!$OMP end single
 
     end do ! iloop
 
+900 continue
+
+!$OMP single
     deallocate( ftmp2,gtmp2,pk_pc,rk_pc )
+!$OMP end single
+
+!$OMP end parallel
 
     return
 
@@ -298,17 +406,14 @@ CONTAINS
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
     real(8) :: c,c1,c2,c3,d
-    integer :: m,n,i,i1,i2,i3,j !,n1,n2
-    integer :: a1b,b1b,a2b,b2b,a3b,b3b
+    integer :: m,n,i,i1,i2,i3,j
+    integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     integer,allocatable :: ic(:)
-    integer :: a3b_omp,b3b_omp,n1_omp,mt,nt
+    integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp
+    integer :: n1_omp,n2_omp,mt,nt
 
-!$OMP parallel private(a3b_omp,b3b_omp,n1_omp,d,i,mt,nt)
-
-    nt = 1
-!$  nt = omp_get_num_threads()
-
-!$OMP single
+!!$OMP parallel private(a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp &
+!!$OMP                 ,n1_omp,n2_omp,d,i,i1,i2,i3,mt,nt)
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -316,65 +421,57 @@ CONTAINS
     b2b = Igrid(2,2)
     a3b = Igrid(1,3)
     b3b = Igrid(2,3)
+    ab1 = (b1b-a1b+1)
+    ab12= (b1b-a1b+1)*(b2b-a2b+1)
 
     c  =  ggg(1)/Hgrid(1)**2+ggg(2)/Hgrid(2)**2+ggg(3)/Hgrid(3)**2
     c1 = -0.5d0/Hgrid(1)**2*ggg(1)
     c2 = -0.5d0/Hgrid(2)**2*ggg(2)
     c3 = -0.5d0/Hgrid(3)**2*ggg(3)
 
-    allocate( ic(0:nt-1) )
-    ic(:)=(b3b-a3b+1)/nt
-    mt=(b3b-a3b+1)-sum(ic)
-    do i=0,mt-1
-       ic(i)=ic(i)+1
-    end do
-!$OMP end single
-
     mt=0
 !$  mt=omp_get_thread_num()
-    a3b_omp=a3b+sum(ic(0:mt))-ic(mt)
-    b3b_omp=a3b_omp+ic(mt)-1
-    n1_omp=1+(a3b_omp-a3b)*(b2b-a2b+1)*(b1b-a1b+1)
-!$OMP barrier
 
-!$OMP single
-    deallocate( ic )
-!$OMP end single
+    n1_omp = Igrid_omp(1,0,mt) - Igrid_omp(1,0,0) + 1
+    n2_omp = Igrid_omp(2,0,mt) - Igrid_omp(1,0,0) + 1
+
+    a1b_omp = Igrid_omp(1,1,mt)
+    b1b_omp = Igrid_omp(2,1,mt)
+    a2b_omp = Igrid_omp(1,2,mt)
+    b2b_omp = Igrid_omp(2,2,mt)
+    a3b_omp = Igrid_omp(1,3,mt)
+    b3b_omp = Igrid_omp(2,3,mt)
 
     do n=1,nn
        d=c-E(n)
-!$OMP do
-       do i=1,mm
+       do i=n1_omp,n2_omp
           ftmp2(i,n)=d*gtmp2(i,n)
        end do
-!$OMP end do
     end do
 
-!$OMP workshare
-    www(:,:,:,:)=zero
-!$OMP end workshare
+!!$OMP workshare
+!    www(:,:,:,:)=zero
+!!$OMP end workshare
     do n=1,nn
-       i=n1_omp-1
        do i3=a3b_omp,b3b_omp
-       do i2=a2b,b2b
-       do i1=a1b,b1b
-          i=i+1 ; www(i1,i2,i3,n)=gtmp2(i,n)
+       do i2=a2b_omp,b2b_omp
+       do i1=a1b_omp,b1b_omp
+          i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+          www(i1,i2,i3,n)=gtmp2(i,n)
        end do
        end do
        end do
     end do
 !$OMP barrier
 
-!$OMP single
-    call bcset(1,nn,1,0)
-!$OMP end single
+    call bcset_1(1,nn,1,0)
+!$OMP barrier
 
     do n=1,nn
-       i=n1_omp-1
        do i3=a3b_omp,b3b_omp
-       do i2=a2b,b2b
-       do i1=a1b,b1b
-          i=i+1
+       do i2=a2b_omp,b2b_omp
+       do i1=a1b_omp,b1b_omp
+          i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
           ftmp2(i,n)=ftmp2(i,n)+c1*( www(i1-1,i2,i3,n)+www(i1+1,i2,i3,n) ) &
                                +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
                                +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
@@ -383,8 +480,6 @@ CONTAINS
        end do
     end do
 !$OMP barrier
-
-!$OMP end parallel
 
     return
   END SUBROUTINE precond_cg_mat_sol
@@ -403,7 +498,7 @@ CONTAINS
     c2 = -0.5d0/Hsize**2
     c3 = -0.5d0/Hsize**2
 
-!$OMP parallel
+!!$OMP parallel
 
     do n=1,nn
        d=c-E(n)
@@ -424,9 +519,12 @@ CONTAINS
     end do
 !$OMP barrier
 
-!$OMP single
-    call bcset(1,nn,1,0)
-!$OMP end single
+!!$OMP single
+!    call bcset(1,nn,1,0)
+!!$OMP end single
+
+    call bcset_1(1,nn,1,0)
+!$OMP barrier
 
     do n=1,nn
 !$OMP do
@@ -443,7 +541,7 @@ CONTAINS
     end do
 !$OMP barrier
 
-!$OMP end parallel
+!!$OMP end parallel
 
     return
   END SUBROUTINE precond_cg_mat_mol

@@ -4,6 +4,7 @@ MODULE test_hpsi2_module
   use localpot_module
   use hamiltonian_module
   use parallel_module
+  use watch_module
 
   implicit none
 
@@ -40,6 +41,10 @@ CONTAINS
 
     do ii = 0,10
 
+    time_hmlt(:,:)=0.0d0
+    time_kine(:,:)=0.0d0
+    time_nlpp(:,:)=0.0d0
+
     nrhs = 2**ii
     if ( nrhs > MB_d ) exit
 
@@ -65,27 +70,33 @@ CONTAINS
 
     t1 = mpi_wtime()
 
+!$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
           call op_kinetic(1,tpsi,htpsi,n1,n2,1,nrhs)
        end do
     end do
+!$OMP end parallel
 
     t2 = mpi_wtime()
 
+!$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
           call op_localpot(1,n2-n1+1,nrhs,tpsi,htpsi)
        end do
     end do
+!$OMP end parallel
 
     t3 = mpi_wtime()
 
+!$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
           call op_nonlocal(1,1,tpsi,htpsi,n1,n2,1,nrhs)
        end do
     end do
+!$OMP end parallel
 
     t4 = mpi_wtime()
 
@@ -108,8 +119,10 @@ CONTAINS
        write(*,*) 'niter = ', niter
        write(*,*) 'time(tot) = ', t1 - t0
        write(*,*) 'time(kin) = ', t2 - t1
+       call write_watchb( time_kine, 11, time_kine_indx )
        write(*,*) 'time(loc) = ', t3 - t2
        write(*,*) 'time(nlc) = ', t4 - t3
+       call write_watchb( time_nlpp, 3, time_nlpp_indx )
        write(*,*) 'check sum'
        do i = 1, nrhs
           write(*,*) sums(i),sum(sums)

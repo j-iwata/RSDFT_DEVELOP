@@ -897,8 +897,9 @@ CONTAINS
 
        end if ! present(Vxc)
   
-       sbf(1)=E_exchange_pbe*dV/dble(nspin)
-       sbf(2)=E_exchange_pbe_sr*dV/dble(nspin)
+       rbf(1)=E_exchange_pbe*dV/dble(nspin)
+       rbf(2)=E_exchange_pbe_sr*dV/dble(nspin)
+       call mpi_allreduce(rbf,sbf,2,mpi_real8,mpi_sum,comm_spin,ierr)
        sbf(3)=E_correlation*dV
        call mpi_allreduce(sbf,rbf,3,mpi_real8,mpi_sum,comm_grid,ierr)
        E_exchange_pbe   =rbf(1)

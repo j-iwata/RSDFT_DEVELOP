@@ -11,6 +11,7 @@ PROGRAM Real_Space_Solid
   use pseudopotentials
   use hamiltonian_matrix_module
   use rtddft_mol_module
+  use omp_variables, only: init_omp
 
 #ifdef _USPP_
   use PSnonLocDij
@@ -114,6 +115,12 @@ PROGRAM Real_Space_Solid
   call InitParallel_Ggrid( nprocs, myrank )
 
   call prep_symmetry( Igrid )
+
+! --- initialization for thread-parallel computation ---
+
+  call init_omp( Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
+                ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
+                ,SYStype, disp_switch )
 
 !- FD boundary set -
 

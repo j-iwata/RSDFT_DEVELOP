@@ -22,12 +22,13 @@ MODULE ps_nloc2_module
   use bz_module
   use watch_module
   use wf_module
+  use ps_nloc2_op_module, only: init_op_ps_nloc2, init_op_ps_nloc2_hp
 
   implicit none
 
   PRIVATE
   PUBLIC :: prep_ps_nloc2 &
-           ,op_ps_nloc2,calc_force_ps_nloc2 &
+           ,calc_force_ps_nloc2 &
            ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
            ,prep_ps_nloc2_esm &
            ,prepMapsTmp
@@ -63,9 +64,8 @@ CONTAINS
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp,tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
     real(8),allocatable :: work(:)
-    real(8) :: ctt(0:9),ett(0:9)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
-    integer :: ab1,ab2,ab3
+    integer :: ab1,ab2,ab3,timer_counter
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
     logical :: disp_sw
@@ -87,9 +87,8 @@ CONTAINS
        write(*,'(a60," prep_ps_nloc2")') repeat("-",60)
     end if
 
-! initiate clock & clock start
-    ctt=0.0d0 ; ett=0.0d0
-    call watch(ctt(6),ett(6))
+    timer_counter = -1
+    call watcha( timer_counter )
 
 !------------------------------------------ max atom*orb
     Mlma=0
@@ -155,7 +154,7 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    call watch(ctt(7),ett(7))
+    call watcha( timer_counter )
 
 !----- make_minimal_box -----
 ! atom position centered grid
@@ -169,7 +168,7 @@ CONTAINS
 !       mcube_grid_ion(1_min:2_max,1:3) - max & min value of map_grid_ion
 !       mm1,mm2,mm3 : max of abs(mcube_grid_ion)
 
-    call watch(ctt(8),ett(8))
+    call watcha( timer_counter )
 
     MMJJ_0 = M_grid_ion
 
@@ -182,7 +181,7 @@ CONTAINS
        allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
     end if
 
-    call watch(ctt(0),ett(0))
+    call watcha( timer_counter )
 
     if ( any( ippform == 4 ) ) then
 
@@ -440,7 +439,7 @@ CONTAINS
     end do
     call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
 
-    call watch(ctt(1),ett(1))
+    call watcha( timer_counter )
 
 ! for grid-parallel computation
 
@@ -533,11 +532,13 @@ CONTAINS
     end do ! iorb
     end do ! a
 
+
 #ifdef _SHOWALL_PSNLOC_
     write(1100+myrank,*) repeat('=',50),'icheck_tmp2'
 #endif
+ 
+    call watcha( timer_counter )
 
-    call watch(ctt(2),ett(2))
 
     nzlma = icheck_tmp2(myrank_g)
 
@@ -635,7 +636,7 @@ CONTAINS
 !    deallocate( uV_tmp )
     deallocate( maps_tmp )
 
-    call watch(ctt(3),ett(3))
+    call watcha( timer_counter )
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
@@ -646,7 +647,7 @@ CONTAINS
           i1=JJ_MAP(1,i,lma)
           i2=JJ_MAP(2,i,lma)
           i3=JJ_MAP(3,i,lma)
-          if ( icheck_tmp4(i1,i2,i3)==0 ) then
+          if ( icheck_tmp4(i1,i2,i3) == 0 .and. uV(i,lma) /= 0.0d0 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)=j
           end if
@@ -655,6 +656,8 @@ CONTAINS
     end do
     MAXMJJ = maxval( MJJ(1:nzlma) )
     deallocate( icheck_tmp4 )
+
+! ---
 
     nl_max_send = maxval( lma_nsend_tmp )
 
@@ -667,11 +670,14 @@ CONTAINS
     allocate( sendmap(nl_max_send,0:nprocs_g-1) ) ; sendmap=0
     allocate( recvmap(nl_max_send,0:nprocs_g-1) ) ; recvmap=0
 
+! ---
+
     do n=0,nprocs_g-1
        sendmap(1:nl_max_send,n) = sendmap_tmp(1:nl_max_send,n)
        lma_nsend(n) = lma_nsend_tmp(n)
     end do
 
+! ---
 
     allocate( ireq(2*nprocs_g) )
     allocate( istatus(MPI_STATUS_SIZE,2*nprocs_g) )
@@ -693,7 +699,7 @@ CONTAINS
 
     call prepThreeWayComm( nrlma,nl_rank_map,nrlma_xyz,num_2_rank )
 
-    call watch(ctt(4),ett(4))
+    call watcha( timer_counter )
 
     call allocate_ps_nloc2(MB_d)
 
@@ -706,17 +712,17 @@ CONTAINS
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
-    call watch(ctt(5),ett(5))
+    call watcha( timer_counter )
+
+!    call init_op_ps_nloc2
+    call init_op_ps_nloc2_hp(.true.)
+
+    call watcha( timer_counter )
+
+! ---
 
     if ( disp_sw ) then
-       write(*,*) "time(ps_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(ps_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(ps_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(ps_nloc2_4)",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(ps_nloc2_5)",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(ps_nloc2_7)",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(ps_nloc2_8)",ctt(8)-ctt(7),ett(8)-ett(7)
-       write(*,*) "time(ps_nloc2_9)",ctt(0)-ctt(8),ett(0)-ett(8)
+       call write_watcha( timer_counter,"prep_ps_nloc2" )
     end if
 
 #ifdef _SHOWALL_INIT_
@@ -863,9 +869,10 @@ CONTAINS
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
     integer :: i,j,k,j3,lma,i0,i1,i2,i3,m1,m2,m3
     integer,allocatable :: icheck_tmp4(:,:,:)
-    real(8) :: c1,c2,c3,d1,d2,d3,kr
+    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr,u3
     complex(8) :: ztmp0
-    real(8),parameter :: pi2=2.d0*acos(-1.d0)
+
+    pi2=2.d0*acos(-1.d0)
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -893,7 +900,6 @@ CONTAINS
           j=0
           icheck_tmp4=0
           do i=1,MJJ_MAP(lma)
-!             i0=JJ_MAP(0,i,lma)
              i1=JJ_MAP(1,i,lma)
              i2=JJ_MAP(2,i,lma)
              i3=JJ_MAP(3,i,lma)
@@ -901,15 +907,15 @@ CONTAINS
              m2=JJ_MAP(5,i,lma)
              m3=JJ_MAP(6,i,lma)
              j3=icheck_tmp4(i1,i2,i3)
+             u3=uV(i,lma)
              kr=d1*(c1*i1+m1)+d2*(c2*i2+m2)+d3*(c3*i3+m3)
-             ztmp0=dcmplx(cos(kr),-sin(kr))*uV(i,lma)
-             if ( j3==0 ) then
+             ztmp0=dcmplx(cos(kr),-sin(kr))*u3
+             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
                 j=j+1
                 icheck_tmp4(i1,i2,i3)=j
-                uVk(j,lma,k)=ztmp0
+                uVk(j,lma,k) = ztmp0
                 JJP(j,lma) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
-!                JJP(j,lma) = i0
-             else
+             else if ( j3 /= 0 ) then
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
              end if
           end do
@@ -1007,131 +1013,6 @@ CONTAINS
     deallocate( icheck_tmp4 )
 
   END SUBROUTINE prep_rvk_ps_nloc2
-
-
-  SUBROUTINE op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
-    implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
-#ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
-#else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
-#endif
-    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq
-    integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
-    complex(8) :: zc
-
-    nb = ib2-ib1+1
-
-    if ( Mlma <= 0 ) return
-
-    allocate( uVunk(nzlma,ib1:ib2),uVunk0(nzlma,ib1:ib2) )
-
-!$OMP parallel private( i )
-
-    do ib=ib1,ib2
-!$OMP do
-       do lma=1,nzlma
-          uVunk(lma,ib)=zero
-          do j=1,MJJ(lma)
-             i=JJP(j,lma)
-#ifdef _DRSDFT_
-             uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*tpsi(i,ib)
-#else
-             uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*tpsi(i,ib)
-#endif
-          end do
-          uVunk(lma,ib)=iuV(lma)*dV*uVunk(lma,ib)
-       end do
-!$OMP end do
-    end do
-
-!$OMP single
-    select case( iswitch_eqdiv )
-    case default
-    
-      call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
-
-    case( 2 )
-
-       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
-
-    end select
-!$OMP end single
-
-!    do ib=ib1,ib2
-!       do lma=1,nzlma
-!          do j=1,MJJ(lma)
-!             i=JJP(j,lma)
-!             htpsi(i,ib)=htpsi(i,ib)+uVk(j,lma,k)*uVunk(lma,ib)
-!          end do
-!    end do
-!----
-    do ib=ib1,ib2
-       do lma=1,nzlma
-!$OMP do
-          do j=1,MJJ(lma)
-             htpsi(JJP(j,lma),ib)=htpsi(JJP(j,lma),ib) &
-                  +uVk(j,lma,k)*uVunk(lma,ib)
-          end do
-!$OMP end do
-       end do
-    end do
-
-!$OMP end parallel
-
-    deallocate( uVunk0,uVunk )
-
-  END SUBROUTINE op_ps_nloc2
-
-
-  SUBROUTINE comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
-    implicit none
-    integer,intent(IN) :: nzlma,ib1,ib2
-#ifdef _DRSDFT_
-    real(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
-#else
-    complex(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
-#endif
-    integer :: nreq,irank,m,i1,i2,ib,ierr,nb
-    integer :: istatus(mpi_status_size,512),ireq(512)
-    nb=ib2-ib1+1
-    nreq=0
-    do irank=0,nprocs_g-1
-       m=lma_nsend(irank)
-       if ( irank == myrank_g .or. m <= 0 ) cycle
-       i2=0
-       do ib=ib1,ib2
-       do i1=1,m
-          i2=i2+1
-          sbufnl(i2,irank)=uVunk(sendmap(i1,irank),ib)
-       end do
-       end do
-       nreq=nreq+1
-       call mpi_isend(sbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
-            ,comm_grid,ireq(nreq),ierr)
-       nreq=nreq+1
-       call mpi_irecv(rbufnl(1,irank),m*nb,TYPE_MAIN,irank,1 &
-            ,comm_grid,ireq(nreq),ierr)
-    end do
-    if ( nreq > 0 ) call mpi_waitall(nreq,ireq,istatus,ierr)
-    do irank=0,nprocs_g-1
-       m=lma_nsend(irank)
-       if ( irank == myrank_g .or. m <= 0 ) cycle
-       i2=0
-       do ib=ib1,ib2
-       do i1=1,m
-          i2=i2+1
-          uVunk(recvmap(i1,irank),ib) &
-               =uVunk(recvmap(i1,irank),ib)+rbufnl(i2,irank)
-       end do
-       end do
-    end do
-  END SUBROUTINE comm_eqdiv_ps_nloc2_mol
 
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)

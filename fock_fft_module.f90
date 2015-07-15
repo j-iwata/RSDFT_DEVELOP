@@ -14,6 +14,7 @@ MODULE fock_fft_module
 
   PRIVATE
   PUBLIC :: ct_fock_fft,et_focK_fft, fock_fft_1, fock_fft
+  PUBLIC :: Fock_FFT_Double
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
@@ -423,6 +424,26 @@ CONTAINS
 
     return
   END SUBROUTINE fock_fft_1
+
+
+  SUBROUTINE Fock_FFT_Double( n1, n2, trho, tVh )
+    implicit none
+    integer,intent(IN)     :: n1,n2
+    complex(8),intent(IN)  :: trho(n1:n2)
+    complex(8),intent(OUT) :: tVh(n1:n2)
+#ifdef _FFTE_
+    ct_fock_ffte(:)=0.0d0
+    et_fock_ffte(:)=0.0d0
+    call Fock_FFTE_Double( n1, n2, trho, tVh )
+    ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+    et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
+    return
+#else
+    tVh=0.0d0
+    write(*,*) "Fock_FFTE_Double is only available"
+    stop "stop@Fock_FFT_Double"
+#endif
+  END SUBROUTINE Fock_FFT_Double
 
 
 END MODULE fock_fft_module
