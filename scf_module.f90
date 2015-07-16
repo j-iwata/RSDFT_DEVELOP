@@ -279,19 +279,28 @@ CONTAINS
 
        call watcht(disp_switch,"fermi",1)
 
+! --- total energy ---
+
        call calc_with_rhoIN_total_energy(disp_switch)
 
        call watcht(disp_switch,"harris",1)
 
-! ---
        call calc_density ! n_out
        call calc_hartree(ML_0,ML_1,MSP,rho)
        call calc_xc
        call calc_total_energy( .false., disp_switch, iter, .true. )
        if ( present(Etot_out) ) Etot_out = Etot
-! ---
 
        call watcht(disp_switch,"etot",1)
+
+! --- convergence check by density & potential ---
+
+       allocate( v(ML_0:ML_1,MSP_0:MSP_1) ) ; v=0.0d0
+       do s=MSP_0,MSP_1
+          v(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+       end do
+       call calc_sqerr_mixing( ML01,MSP_0,MSP_1,rho(ML_0,MSP_0),v,flag_conv )
+       deallocate( v )
 
 ! --- convergence check by Fmax ---
 
@@ -310,27 +319,20 @@ CONTAINS
           end if
        end if
 
-! --- mixing & convergence check by density & potential ---
+       flag_conv = ( flag_conv .or. flag_conv_f )
 
-       if ( flag_conv_f ) then
+! --- mixing ---
 
-          allocate( v(ML_0:ML_1,MSP_0:MSP_1) ) ; v=0.0d0
-          do s=MSP_0,MSP_1
-             v(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-          end do
-          call calc_sqerr_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0), v, flag_conv )
-          deallocate( v )
-
-       else
+       if ( .not.flag_conv ) then
 
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
 
           call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-               ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
+               ,Vloc(ML_0,MSP_0), disp_sw_in=disp_switch )
 
-          if ( .not.flag_conv .and. mod(imix,2) == 0 ) then
+          if ( mod(imix,2) == 0 ) then
              call normalize_density
              m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
              call mpi_allgather &
@@ -341,21 +343,22 @@ CONTAINS
                 Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
              end do
           end if
-
 #ifdef _USPP_
           call getDij
 #endif
        end if
 
-! ---
-
        call watcht(disp_switch,"mixing",1)
+
+! ---
 
        if ( flag_localpot2 ) then
           call sub_localpot2_scf( disp_switch )
           flag_conv=.false.
           if ( abs(diff_etot_lpot2) < 1.d-10 ) flag_conv=.true.
        end if
+
+! ---
 
        call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
 
@@ -370,7 +373,6 @@ CONTAINS
 
        call global_watch(.false.,flag_end)
 
-       flag_conv = (flag_conv.or.flag_conv_f)
        flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call watcht(disp_switch,"",0)
