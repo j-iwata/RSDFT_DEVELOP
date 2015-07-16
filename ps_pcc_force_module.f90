@@ -34,7 +34,7 @@ CONTAINS
 
     force(:,:) = 0.0d0
 
-    pi2 = acos(-1.0d0)
+    pi2 = 2.0d0*acos(-1.0d0)
     MG  = NGgrid(0)
     ML  = Ngrid(0)
     ML1 = Ngrid(1)

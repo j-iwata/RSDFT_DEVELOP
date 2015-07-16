@@ -7,6 +7,8 @@ MODULE test_force_module
   use ps_local_module
   use force_ewald_module
   use ps_nloc2_module
+  use ps_pcc_force_module, only: calc_ps_pcc_force
+  use ps_pcc_module, only: flag_pcc_0
 
   use force_local_mol_module
   use force_ion_mol_module
@@ -49,7 +51,11 @@ CONTAINS
     allocate( forcet(3,Natom) ) ; forcet=0.d0
 
     call watcht(disp_switch,"floc",0)
+#ifdef _FFTE_
+    call calc_force_ps_local_ffte(Natom,force)
+#else
     call calc_force_ps_local(Natom,force)
+#endif
     call watcht(disp_switch,"floc",1)
     forcet(:,:)=forcet(:,:)+force(:,:)
 
@@ -57,6 +63,18 @@ CONTAINS
        do i=1,Natom
           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
        end do
+    end if
+
+    if ( flag_pcc_0 ) then
+       call watcht(disp_switch,"fpcc",0)
+       call calc_ps_pcc_force( Natom, force )
+       call watcht(disp_switch,"fpcc",1)
+       forcet(:,:)=forcet(:,:)+force(:,:)
+       if ( disp_switch ) then
+          do i=1,Natom
+             write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
+          end do
+       end if
     end if
 
     call watcht(disp_switch,"fewl",0)
