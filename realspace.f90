@@ -128,7 +128,7 @@ PROGRAM Real_Space_Solid
 
 ! --- kinetic energy oprator coefficients ---
 
-  call init_kinetic( aa, bb, Nbzsm, kbb, DISP_SWITCH )
+  call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
 
 ! --- ??? ---
 

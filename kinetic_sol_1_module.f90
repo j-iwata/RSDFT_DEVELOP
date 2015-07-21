@@ -155,13 +155,9 @@ CONTAINS
 
     if ( flag_n12 .or. flag_n23 .or. flag_n31 ) then
 
-!$OMP single
-       a1=a1b-Md ; b1=b1b+Md
-       a2=a2b-Md ; b2=b2b+Md
-       a3=a3b-Md ; b3=b3b+Md
-       allocate( wk(a1:b1,a2:b2,a3:b3,nb) )
+!$OMP workshare
        wk=www
-!$OMP end single
+!$OMP end workshare
 
        if ( flag_n12 ) then
 
@@ -309,10 +305,6 @@ CONTAINS
           end do
 
        end if
-
-!$OMP single
-       deallocate( wk )
-!$OMP end single
 
     end if
 

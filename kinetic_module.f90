@@ -1,6 +1,5 @@
 MODULE kinetic_module
 
-  use rgrid_module, only: Hgrid,Igrid
   use kinetic_variables
   use kinetic_sol_0_module
   use kinetic_sol_1_module
@@ -17,28 +16,34 @@ MODULE kinetic_module
            ,read_kinetic, read_oldformat_kinetic &
            ,SYStype
 
-  integer :: SYStype=0
+!  integer :: SYStype=0
 
 CONTAINS
 
 
-  SUBROUTINE init_kinetic( aa, bb, MBZ, kbb, disp_switch )
+  SUBROUTINE init_kinetic( aa, bb, MBZ, kbb, Hgrid, Igrid, MBD, disp_switch )
     implicit none
     real(8),intent(IN) :: aa(3,3),bb(3,3)
     integer,intent(IN) :: MBZ
     real(8),intent(IN) :: kbb(3,MBZ)
-    logical,intent(IN) :: disp_switch
+    real(8),optional,intent(IN) :: Hgrid(3)
+    integer,optional,intent(IN) :: Igrid(2,0:3),MBD
+    logical,optional,intent(IN) :: disp_switch
     integer :: m,n,k,is,i
     real(8) :: c1,c2,c3,kx,ky,kz,pi2
     real(8) :: a1,a2,a3,H1,H2,H3
     complex(8),parameter :: zi=(0.d0,1.d0)
     real(8),allocatable :: nab(:),lap(:)
     logical :: first_time = .true.
+    logical :: disp_sw
 
     pi2 = 2.d0*acos(-1.d0)
     a1  = sqrt(sum(aa(1:3,1)**2))/pi2
     a2  = sqrt(sum(aa(1:3,2)**2))/pi2
     a3  = sqrt(sum(aa(1:3,3)**2))/pi2
+
+    disp_sw=.false.
+    if ( present(disp_switch) ) disp_sw=disp_switch
 
     if ( first_time ) then
 
@@ -61,7 +66,7 @@ CONTAINS
 
        call get_ggg_kinetic(aa,bb,ggg)
 
-       if ( disp_switch ) write(*,'(1x,"ggg=",6f10.5)') ggg
+       if ( disp_sw ) write(*,'(1x,"ggg=",6f10.5)') ggg
 
        flag_n12 = .false.
        flag_n23 = .false.
@@ -91,7 +96,7 @@ CONTAINS
           coef_nab(3,n)=nab(n)/H3
        end do
 
-       if ( disp_switch ) then
+       if ( disp_sw ) then
           write(*,'(1x,3x,3x,a20,3x,a20)') "lap","coef_lap"
           write(*,'(1x,i3,3x,f20.15,3x,f20.15)') 0,lap(0),coef_lap0
           do n=1,Md
@@ -105,7 +110,7 @@ CONTAINS
 
        deallocate( nab,lap )
 
-!       call init_kinetic_sol_1( disp_switch )
+       call allocate_wk( Igrid, MBD )
 
     end if ! first_time
 
@@ -143,6 +148,18 @@ CONTAINS
     end do
 
   END SUBROUTINE init_kinetic
+
+
+  SUBROUTINE allocate_wk( Igrid, MBD )
+    implicit none
+    integer,intent(IN) :: Igrid(2,0:3),MBD
+    integer :: a1,a2,a3,b1,b2,b3,nb
+    a1=Igrid(1,1)-Md ; b1=Igrid(2,1)+Md
+    a2=Igrid(1,2)-Md ; b2=Igrid(2,2)+Md
+    a3=Igrid(1,3)-Md ; b3=Igrid(2,3)+Md
+    allocate( wk(a1:b1,a2:b2,a3:b3,MBD) )
+    wk=(0.0d0,0.0d0)
+  END SUBROUTINE allocate_wk
 
 
   SUBROUTINE get_ggg_kinetic(aa,bb,ggg)
@@ -185,56 +202,6 @@ CONTAINS
        call op_esm_kinetic(k,n1,n2,ib1,ib2,tpsi,htpsi)
     end select
   END SUBROUTINE op_kinetic
-
-
-  SUBROUTINE read_kinetic(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(7) :: cbuf,ckey
-    Md = 6
-    SYStype = 0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:2) == "MD" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Md
-          else if ( ckey(1:7) == "SYSTYPE" ) then
-             backspace(unit)
-             read(unit,*) cbuf,SYStype
-          end if
-       end do
-999    continue
-       write(*,*) "Md =",Md
-       write(*,*) "SYStype =",SYStype
-    end if
-    call send_kinetic(0)
-  END SUBROUTINE read_kinetic
-
-
-  SUBROUTINE read_oldformat_kinetic(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) Md, SYStype
-       write(*,*) "Md =",Md
-       write(*,*) "SYStype =",SYStype
-    end if
-    call send_kinetic(0)
-  END SUBROUTINE read_oldformat_kinetic
-
-
-  SUBROUTINE send_kinetic(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(Md,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(SYStype,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_kinetic
 
 
 END MODULE kinetic_module

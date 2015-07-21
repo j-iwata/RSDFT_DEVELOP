@@ -204,7 +204,7 @@ CONTAINS
           end do
        endif
 
-       call init_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
+       call init_kinetic(aa,bb,Nbzsm,kbb,DISP_SWITCH=disp_switch)
 
        select case( pselect )
        case( 2 )
