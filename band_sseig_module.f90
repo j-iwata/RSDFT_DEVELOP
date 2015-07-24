@@ -88,7 +88,7 @@ CONTAINS
        end if
 
        kbb(1:3,1) = ktrj(1:3,k)
-       call init_kinetic(aa,bb,Nbzsm,kbb,disp_switch)
+       call init_kinetic(aa,bb,Nbzsm,kbb,DISP_SWITCH=disp_switch)
        call prep_uvk_ps_nloc2(1,Nbzsm,kbb)
 
        call apply_sseig( k, ktrj(4:6,k) )
