@@ -60,7 +60,7 @@ all :
 	cd $(DIR4) ; $(MAKE)
 	cd $(DIR3) ; $(MAKE) -j1
 	@$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(MODS1) realspace.o -o realspace.x
+	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(MODS1) realspace.o $(LIBS) -o realspace.x
 
 lda0 : $(MODS1)
 

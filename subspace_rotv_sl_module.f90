@@ -1,6 +1,5 @@
 MODULE subspace_rotv_sl_module
 
-  use rgrid_module, only: dV,zdV
   use wf_module, only: unk,hunk,iflag_hunk
   use scalapack_module
   use parallel_module
