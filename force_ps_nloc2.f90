@@ -9,13 +9,15 @@ MODULE ForcePSnonLoc2
   use VarPSMemberG
   use rgrid_module
   use array_bound_module
-  use parallel_module
+  use parallel_module, only: MB_d, disp_switch_parallel
   use localpot_module, only: Vloc
   use ParaRGridComm, only: do3StepComm_F,do3StepComm_dQ
   use ForceSub
   implicit none
   PRIVATE
   PUBLIC :: calcForcePSnonLoc2
+
+  include 'mpif.h'
 
 CONTAINS
 
@@ -27,7 +29,6 @@ CONTAINS
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
-    include 'mpif.h'
     integer :: ib1,ib2
     integer :: i,j,k,s,n,ir,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq
