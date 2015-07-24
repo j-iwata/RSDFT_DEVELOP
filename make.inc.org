@@ -15,19 +15,22 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
            $(DIR1)/ext_sub_lapack_c16_2.o \
            $(DIR1)/ext_sub_lapack_aux.o
 #################### Generate COMPLEX16 code #####
-FFLAGS1 = -I../
+FFLAGS1 =
 #################### Generate REAL8 code #####
-#FFLAGS1 = -D_DRSDFT_ -I../
+#FFLAGS1 = -D_DRSDFT_
 #################### Generate COMPLEX16-USPP code #####
-#FFLAGS1 = -D_USPP_ -I../
+#FFLAGS1 = -D_USPP_
 #################### SPLINE interpolation is used in prep_ps #####
-#FFLAGS1 = -D_SPLINE_ -I../
-#FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -I../
-#################### FFTES is used #####
-#FFLAGS1 = -D_FFTE_ -I../
-#FFLAGS1 = -D_DRSDFT_ -D_FFTE_ -I../
-#FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -D_FFTE_ -I../
-########################################################################
+#FFLAGS1 = -D_SPLINE_
+#FFLAGS1 = -D_DRSDFT_ -D_SPLINE_
+#################### FFTE is used #####
+#FFLAGS1 = -D_FFTE_
+#FFLAGS1 = -D_DRSDFT_ -D_FFTE_
+#FFLAGS1 = -D_DRSDFT_ -D_SPLINE_ -D_FFTE_
+############################################ Libraries & directories ###
+#EigenExaLib = /home.org/iwata/rsdft/EigenExa-2.3c
+#LIBS = $(EigenExaLib)/libEigenExa.a
+INCLUDE_DIR = -I../ -I$(EigenExaLib)
 ########################################################################
 ##### INTEL                                                        #####
 #FFLAGS0 = -fast -xHost -cpp
@@ -35,7 +38,9 @@ FFLAGS1 = -I../
 #FFLAGS0 = -fast -xAVX -openmp -cpp
 #FFLAGS0 = -openmp -cpp
 #FFLAGS0 = -O3 -xHost -opt-report-phase=all -opt-report-file=$*.optlog -fpp -openmp
+#FFLAGS0 = -cpp
 #FFLAGS0 = -C -cpp
+#FFLAGS0 = -C -openmp -cpp
 #LFLAGS = -openmp
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
@@ -223,7 +228,7 @@ FFLAGS1 = -I../
 ########################################################################
 ########################################################################
 #
-FFLAGS = $(FFLAGS0) $(FFLAGS1)
+FFLAGS = $(FFLAGS0) $(FFLAGS1) $(INCLUDE_DIR)
 #
 ########################################################################
 .SUFFIXES:

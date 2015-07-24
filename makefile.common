@@ -182,6 +182,10 @@ MODS1 = \
        iter_lin_solvers.o\
        cg_lobpcg_module.o\
        subspace_mate_sl_module.o\
+       subspace_mate_eigen_module.o \
+       subspace_solv_eigen_module.o \
+       subspace_rotv_eigen_module.o \
+       subspace_diag_eigen_module.o \
        chebyshev_filter_module.o\
        cg_u_module.o\
        conjugate_gradient_g.o\

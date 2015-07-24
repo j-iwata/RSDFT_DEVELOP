@@ -37,8 +37,9 @@ CONTAINS
 
 
   SUBROUTINE start_mpi_parallel
-    integer :: ierr
+    integer :: ierr,iprovided
     call mpi_init(ierr)
+    !call mpi_init_thread( MPI_THREAD_MULTIPLE, iprovided, ierr)
     call mpi_comm_size(mpi_comm_world,nprocs,ierr)
     call mpi_comm_rank(mpi_comm_world,myrank,ierr)
   END SUBROUTINE start_mpi_parallel
