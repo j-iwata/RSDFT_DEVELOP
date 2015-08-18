@@ -445,7 +445,7 @@ PROGRAM cubegen_wf3
   complex(8),allocatable :: uztmp(:,:,:,:),ztmp(:)
 
   integer :: MB,MB1,MB2
-  integer :: MBZ,MSP
+  integer :: MBZ,MSP,itmp(6)
   integer :: ndata, iflag_abs
   integer,allocatable :: idata(:,:)
   logical :: flag_real8
@@ -547,9 +547,19 @@ PROGRAM cubegen_wf3
 ! ---
 
   if ( myrank == 0 ) then
-  open(u1,file=file_name,status='old',form='unformatted')
-  read(u1) ML,ML1,ML2,ML3
-  read(u1) MB,MB1,MB2
+     open(u1,file=file_name,status='old',form='unformatted')
+     read(u1) i
+     if ( i <= 0 ) then
+        write(*,*) "--- new format ---"
+        read(u1) ML,ML1,ML2,ML3
+        read(u1) MB,MB1,MB2
+        read(u1) itmp(1:3)
+        read(u1) itmp(4:6)
+     else
+        rewind u1
+        read(u1) ML,ML1,ML2,ML3
+        read(u1) MB,MB1,MB2
+     end if
   endif
 
   call mpi_bcast(ML,1,mpi_integer,0,mpi_comm_world,ierr)
@@ -572,6 +582,11 @@ PROGRAM cubegen_wf3
   call mpi_bcast(LL,3*ML,mpi_integer,0,mpi_comm_world,ierr)
   call mpi_bcast(occ,size(occ),mpi_integer,0,mpi_comm_world,ierr)
 
+  if ( myrank == 0 ) then
+     write(*,*) "ML,ML1,ML2,ML3=",ML,ML1,ML2,ML3
+     write(*,*) "MB=",MB
+  end if
+
 ! ---
 
   Ngrid(0) = ML
@@ -583,16 +598,27 @@ PROGRAM cubegen_wf3
 
 ! ---
 
-  ir_grid(:)=Ngrid(0)/np_grid
-  
-  n=Ngrid(0)-sum(ir_grid)
-  do i=1,n
-     j=mod(i-1,np_grid)
-     ir_grid(j)=ir_grid(j)+1
-  end do
-  do j=0,np_grid-1
-     id_grid(j)=sum(ir_grid(0:j))-ir_grid(j)
-  end do
+!  ir_grid(:)=Ngrid(0)/np_grid
+!    n=Ngrid(0)-sum(ir_grid)
+!  do i=1,n
+!     j=mod(i-1,np_grid)
+!     ir_grid(j)=ir_grid(j)+1
+!  end do
+!  do j=0,np_grid-1
+!     id_grid(j)=sum(ir_grid(0:j))-ir_grid(j)
+!  end do
+
+  call InitParallel_RgridSol( node_partition, np_grid, pinfo_grid )
+
+  id_grid(:) = pinfo_grid(7,:)
+  ir_grid(:) = pinfo_grid(8,:)
+
+  if ( myrank == 0 ) then
+     do i=0,np_grid-1
+        write(*,*) i,id_grid(i)+1,id_grid(i)+ir_grid(i),ir_grid(i)
+     end do
+     write(*,*) "sum(ir_grid),ML=",sum(ir_grid),ML
+  end if
 
 ! ---
 
@@ -757,6 +783,42 @@ CONTAINS
 110 format(i5,4f12.6)
 
   END SUBROUTINE gen_cube
+
+
+  SUBROUTINE InitParallel_RgridSol( np, np_grid, pinfo_grid )
+    implicit none
+    integer,intent(IN)  :: np(3), np_grid
+    integer,intent(OUT) :: pinfo_grid(8,0:np_grid-1)
+    integer :: i,j,n,i1,i2,i3
+    integer,allocatable :: ntmp(:,:)
+    n=maxval(np)
+    allocate( ntmp(0:n-1,3) ) ; ntmp=0
+    do j=1,3
+       do i=0,Ngrid(j)-1
+          n=mod(i,np(j))
+          ntmp(n,j)=ntmp(n,j)+1
+       end do
+    end do
+    n=-1
+    i= 0
+    do i3=0,np(3)-1
+    do i2=0,np(2)-1
+    do i1=0,np(1)-1
+       n=n+1
+       pinfo_grid(1,n)=sum( ntmp(0:i1,1) )-ntmp(i1,1)
+       pinfo_grid(2,n)=ntmp(i1,1)
+       pinfo_grid(3,n)=sum( ntmp(0:i2,2) )-ntmp(i2,2)
+       pinfo_grid(4,n)=ntmp(i2,2)
+       pinfo_grid(5,n)=sum( ntmp(0:i3,3) )-ntmp(i3,3)
+       pinfo_grid(6,n)=ntmp(i3,3)
+       pinfo_grid(7,n)=i
+       pinfo_grid(8,n)=ntmp(i1,1)*ntmp(i2,2)*ntmp(i3,3)
+       i=i+pinfo_grid(8,n)
+    end do
+    end do
+    end do
+    deallocate( ntmp )
+  END SUBROUTINE InitParallel_RgridSol
 
 
 END PROGRAM cubegen_wf3
