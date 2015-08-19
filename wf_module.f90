@@ -71,10 +71,15 @@ CONTAINS
   END SUBROUTINE read_wf
 
 
-  SUBROUTINE init_wf
+  SUBROUTINE init_wf( SYStype_in )
     implicit none
+    integer,optional,intent(IN) :: SYStype_in
+    integer :: SYStype
 
     if ( myrank == 0 ) write(*,'(a60," init_wf")') repeat("-",60)
+
+    SYStype=0
+    if ( present(SYStype_in) ) SYStype=SYStype_in
 
     ML_WF   = sum( ir_grid )
     ML_0_WF = id_grid(myrank_g) + 1
@@ -110,7 +115,7 @@ CONTAINS
 !    call fft_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
 !        ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
 !    call random_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
-!         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
+!         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk,SYStype )
 
     if ( iwork_wf == 1 ) call allocate_work_wf( iwork_wf )
 

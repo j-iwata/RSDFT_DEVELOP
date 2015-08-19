@@ -295,7 +295,7 @@ PROGRAM Real_Space_Solid
 ! --- Initial wave functions ---
 
   call read_wf( myrank, 1 )
-  call init_wf
+  call init_wf( SYStype )
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1

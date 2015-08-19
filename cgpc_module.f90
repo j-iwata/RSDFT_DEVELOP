@@ -40,7 +40,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i
     character(5) :: cbuf,ckey
-    mloop=3
+    mloop=0
     iswitch_cgpc=4
     if ( rank == 0 ) then
        rewind unit
@@ -56,7 +56,7 @@ CONTAINS
           end if
        end do
 999    continue
-       write(*,*) "mloop=",mloop
+       if ( mloop /= 0 ) write(*,*) "mloop=",mloop
        write(*,*) "iswitch_cgpc=",iswitch_cgpc
     end if
     call send_cgpc(0)
@@ -92,6 +92,14 @@ CONTAINS
     if ( present(ipc_out) ) ipc_out=iswitch_cgpc
 
     SYStype = SYStype_in
+    if ( mloop == 0 ) then
+       mloop = 3
+       if ( SYStype == 1 ) mloop = 2
+       if ( disp_switch_parallel ) then
+          write(*,*) "SYStype=",SYStype
+          write(*,*) "mloop  =",mloop
+       end if
+    end if
 
     select case( iswitch_cgpc )
     case( 0 )
