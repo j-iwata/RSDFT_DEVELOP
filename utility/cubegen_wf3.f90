@@ -535,7 +535,7 @@ PROGRAM cubegen_wf3
   end do
   end if
 
-  call mpi_bcast( asi,3*MI,mpi_integer,0,mpi_comm_world,ierr )
+  call mpi_bcast( asi,3*MI,mpi_real8,0,mpi_comm_world,ierr )
   call mpi_bcast( Kion,MI,mpi_integer,0,mpi_comm_world,ierr )
 
 ! ---
