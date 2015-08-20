@@ -170,6 +170,7 @@ MODS1 = \
        fock_module.o\
        cgpc_module.o\
        hamiltonian_module.o\
+       hartree_ene_module.o\
        hartree_module.o\
        xc_hf_module.o\
        ps_qrij_prep.o\

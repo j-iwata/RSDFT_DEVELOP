@@ -37,7 +37,7 @@ CONTAINS
     real(8) :: Edummy
 
 #ifdef _DRSDFT_
-    call calc_hartree_mol( n1, n2, 1, trho, tVh, Edummy )
+    call calc_hartree_mol( n1, n2, 1, trho, tVh, Edummy, tol=1.d-8 )
 #endif
 
     return

@@ -5,6 +5,7 @@ MODULE hartree_module
   use hartree_sol_ffte_module
   use hartree_mol_module
   use esm_hartree_module
+  use hartree_ene_module
 
   implicit none
 
@@ -46,6 +47,8 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,n3
     real(8),intent(IN) :: rho(n1:n2,n3)
+    real(8),allocatable :: trho(:)
+    integer :: i,s
 
     select case(SYStype)
     case default
@@ -55,7 +58,22 @@ CONTAINS
        call calc_hartree_sol(n1,n2,n3,rho)
 #endif
     case(1)
-       call calc_hartree_mol(n1,n2,n3,rho,Vh,E_hartree)
+       allocate( trho(n1:n2) )
+!$OMP parallel do
+       do i=n1,n2
+          trho(i) = rho(i,1)
+       end do
+!$OMP end parallel do
+       do s=2,n3
+!$OMP parallel do
+          do i=n1,n2
+             trho(i) = trho(i) + rho(i,s)
+          end do
+!$OMP end parallel do
+       end do
+       call calc_hartree_mol(n1,n2,1,trho,Vh,E_hartree)
+       call calc_hartree_ene( trho, Vh, E_hartree )
+       deallocate( trho )
     case(3)
        call calc_esm_hartree(n1,n2,n3,rho,Vh,E_hartree)
     end select
