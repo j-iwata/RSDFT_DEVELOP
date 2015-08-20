@@ -9,6 +9,7 @@ MODULE kinetic_variables
   PUBLIC :: wk
   PUBLIC :: SYStype
   PUBLIC :: read_kinetic, read_oldformat_kinetic
+  PUBLIC :: coef_kin
 
   integer :: SYStype
   integer :: Md
@@ -16,6 +17,7 @@ MODULE kinetic_variables
   real(8) :: coef_lap0, ggg(6)
   real(8),allocatable :: coef_lap(:,:), coef_nab(:,:)
   real(8),allocatable :: coef_nabk(:,:,:), const_k2(:)
+  real(8),allocatable :: coef_kin(:)
   complex(8),allocatable :: zcoef_kin(:,:,:)
 #ifdef _DRSDFT_
   real(8),allocatable :: wk(:,:,:,:)

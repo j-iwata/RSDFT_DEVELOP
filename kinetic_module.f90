@@ -112,6 +112,9 @@ CONTAINS
 
        call allocate_wk( Igrid, MBD )
 
+       allocate( coef_kin(Md) ) ; coef_kin=0.0d0
+       coef_kin(1:Md) = coef_lap(1,1:Md)
+
     end if ! first_time
 
 ! -- k-dependent coefficient --
