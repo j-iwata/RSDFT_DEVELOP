@@ -1,6 +1,5 @@
 MODULE bcset_3_module
 
-  use rgrid_module, only: Ngrid,Igrid
   use parallel_module
   use bc_variables
   use watch_module, only: watchb_omp, time_bcfd
