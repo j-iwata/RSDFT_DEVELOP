@@ -312,11 +312,11 @@ physical_type_methods.o: physical_type_methods.f90 \
                  rgrid_variables.mod
 	$(FC) $(FFLAGS) -c physical_type_methods.f90 -o $@
 
-fock_parallel_module.mod: fock_parallel_module.o
-	@true
-fock_parallel_module.o: fock_parallel_module.f90 \
-                 parallel_module.mod
-	$(FC) $(FFLAGS) -c fock_parallel_module.f90 -o $@
+#fock_parallel_module.mod: fock_parallel_module.o
+#	@true
+#fock_parallel_module.o: fock_parallel_module.f90 \
+#                 parallel_module.mod
+#	$(FC) $(FFLAGS) -c fock_parallel_module.f90 -o $@
 
 grid_module.mod: grid_module.o
 	@true
@@ -1171,8 +1171,7 @@ kinetic_module.o: kinetic_module.f90 \
 xc_hybrid_module.mod: xc_hybrid_module.o
 	@true
 xc_hybrid_module.o: xc_hybrid_module.f90 \
-                 xc_hybrid_io_module.mod \
-                 fock_parallel_module.mod
+                 xc_hybrid_io_module.mod
 	$(FC) $(FFLAGS) -c xc_hybrid_module.f90 -o $@
 
 localpot2_module.mod: localpot2_module.o
@@ -1478,7 +1477,6 @@ fock_module.o: fock_module.f90 \
                  wf_module.mod \
                  fock_fft_module.mod \
                  fock_cg_module.mod \
-                 fock_parallel_module.mod \
                  parallel_module.mod \
                  watch_module.mod \
                  rsdft_mpi_module.mod

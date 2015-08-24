@@ -199,8 +199,10 @@ enddo
 
        n=MB*MBZ*MSP*4
        call mpi_allreduce(esp0,esp1,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+       esp1=esp1/np_fkmb
        n=MB*MBZ*MSP
        call mpi_allreduce(esp0_Q,esp1_Q,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+       esp1_Q=esp1_Q/np_fkmb
 
        Ekin = sum( occ(:,:,:)*esp1(:,:,:,1) )
        Eloc = sum( occ(:,:,:)*esp1(:,:,:,2) )
@@ -252,7 +254,7 @@ enddo
       end do
     end do
 
-    s0(:)=s0(:)*dV
+    s0(:)=s0(:)*dV/np_fkmb
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
 
     case( "NCPP" )
@@ -273,7 +275,7 @@ enddo
     end do
     end do
     end do
-    s0(:)=s0(:)*dV
+    s0(:)=s0(:)*dV/np_fkmb
     call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
 
     end select

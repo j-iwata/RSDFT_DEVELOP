@@ -5,13 +5,13 @@ MODULE fock_module
                              ,occ_factor,gamma_hf
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1,MBZ,MBZ_0,MBZ_1 &
                                ,MSP_0,MSP_1
-  use wf_module, only: unk, occ, hunk
+  use wf_module, only: unk, occ, esp, hunk
   use fock_fft_module
   use fock_cg_module
-  use fock_parallel_module
   use parallel_module
   use watch_module
   use rsdft_mpi_module
+  use hartree_mol_module, only: timer_reset_hartree_mol, timer_result_hartree_mol
 
   implicit none
 
@@ -37,12 +37,12 @@ CONTAINS
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: psi(n1:n2)
     real(8),intent(INOUT) :: tpsi(n1:n2)
-    real(8),allocatable :: trho(:),tvht(:)
+    real(8),allocatable :: trho(:),tvht(:),tphi(:)
     integer,parameter :: TYPE_MAIN = MPI_REAL8
 #else
     complex(8),intent(IN)  :: psi(n1:n2)
     complex(8),intent(INOUT) :: tpsi(n1:n2)
-    complex(8),allocatable :: trho(:),tvht(:)
+    complex(8),allocatable :: trho(:),tvht(:),tphi(:)
     integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
 #endif
     real(8) :: c
@@ -59,8 +59,12 @@ CONTAINS
 
     allocate( trho(n1:n2) ) ; trho=zero
     allocate( tvht(n1:n2) ) ; tvht=zero
+    allocate( tphi(n1:n2) ) ; tphi=zero
+
+! ---
 
     if ( gamma_hf == 0 ) then
+
 #ifdef _DRSDFT_
        stop "stop@Fock: This routine is only for COMPLEX16 calculations"
 #else
@@ -82,7 +86,7 @@ CONTAINS
                 c = occ_factor*occ_hf(m,q,s)*alpha_hf
 
                 do i=n1,n2
-                   tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
+                   tphi(i)=tphi(i)-c*tvht(i)*unk_hf(i,m,q,s)
                 end do
 
              end do ! m
@@ -93,7 +97,7 @@ CONTAINS
              do q=FKBZ_0,FKBZ_1
              do m=FKMB_0,FKMB_1
 
-                if ( abs(occ_hf(m,q,s))<1.d-10 ) cycle
+                if ( abs(occ_hf(m,q,s)) < 1.d-10 ) cycle
 
                 do i=n1,n2
                    trho(i)=unk_hf(i,m,q,s)*psi(i)
@@ -104,7 +108,7 @@ CONTAINS
                 c = occ_factor*occ_hf(m,q,s)*alpha_hf
 
                 do i=n1,n2
-                   tpsi(i)=tpsi(i)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
+                   tphi(i)=tphi(i)-c*tvht(i)*conjg(unk_hf(i,m,q,s))
                 end do ! i
 
              end do ! m
@@ -113,12 +117,8 @@ CONTAINS
           end if ! [ t ]
 
        end do ! t
-
-!       trho(:)=tpsi(:)
-!       call mpi_allreduce(trho,tpsi,ML0,TYPE_MAIN,mpi_sum,comm_fkmb,ierr)
-!       call mpi_allreduce(tpsi,trho,ML0,TYPE_MAIN,mpi_sum,comm_fkbz,ierr)
-!       call mpi_allreduce(trho,tpsi,ML0,TYPE_MAIN,mpi_sum,comm_fock,ierr)
 #endif
+
     else ! [ gamma_hf /= 0 ]
 
        q = k
@@ -144,16 +144,19 @@ CONTAINS
           c = alpha_hf*(2.0d0*occ_factor)*occ_hf(m,q,s)
 
           do i=n1,n2
-             tpsi(i)=tpsi(i)-c*tvht(i)*unk_hf(i,m,q,s)
+             tphi(i)=tphi(i)-c*tvht(i)*unk_hf(i,m,q,s)
           end do
 
        end do ! m
 
-!       trho(:)=tpsi(:)
-!       call mpi_allreduce(trho,tpsi,ML0,TYPE_MAIN,mpi_sum,comm_fkmb,ierr)
-
     end if ! [ gamma_hf ]
 
+    call mpi_allreduce(tphi,trho,ML0,TYPE_MAIN,mpi_sum,comm_fkmb,ierr)
+    do i=n1,n2
+       tpsi(i) = tpsi(i) + trho(i)
+    end do
+
+    deallocate( tphi )
     deallocate( tvht ) 
     deallocate( trho )
 
@@ -198,56 +201,62 @@ CONTAINS
   SUBROUTINE UpdateWF_fock( SYStype_in )
     implicit none
     integer,optional,intent(IN) :: SYStype_in
-    integer :: s,k,n,m,ierr
+    integer :: s,k,n,m,i_occ,i_orb,ierr
 
     if ( present(SYStype_in) ) SYStype = SYStype_in
 
     if ( disp_switch_parallel ) write(*,*) "UpdateWF_fock"
+
+! ---
 
     occ_hf(:,:,:)   = 0.0d0
     unk_hf(:,:,:,:) = zero
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-    do n=MB_0 ,MB_1
 
-       if ( n < FKMB_0 .or. FKMB_1 < n .or. k < FKBZ_0 .or. FKBZ_1 < k ) cycle
+       if ( k < FKBZ_0 .or. FKBZ_1 < k ) cycle
 
-       unk_hf(:,n,k,s) = unk(:,n,k,s)
+       i_orb=0
+       i_occ=0
+       do n=1,MB
 
-       occ_hf(n,k,s) = occ(n,k,s)
+          if ( abs(occ(n,k,s)) <= 1.d-10 ) cycle
 
-    end do ! n
+          i_occ = i_occ + 1
+
+          if ( mod(i_occ-1,np_fkmb) == myrank_f ) then 
+             i_orb = i_orb + 1
+             if ( MB_0 <= n .and. n <= MB_1 ) unk_hf(:,i_orb,k,s) = unk(:,n,k,s)
+             occ_hf(i_orb,k,s) = occ(n,k,s)
+          end if
+
+       end do ! n
+
     end do ! k
     end do ! s
 
-    m = size( unk_hf(:,:,FKBZ_0,MSP_0) )
+    m = size(unk_hf,1)*size(unk_hf,2)
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
        call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,k,s), m, TYPE_MAIN &
             ,MPI_SUM, comm_band, ierr )
-!       call rsdft_allreduce( comm_band, unk_hf(:,:,k,s), m, 512 )
     end do ! k
     end do ! s
 
-    m = size( unk_hf(:,:,:,MSP_0) )
+    m = size(unk_hf,1)*size(unk_hf,2)*size(unk_hf,3)
     do s=MSP_0,MSP_1
        call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,:,s), m, TYPE_MAIN &
             ,MPI_SUM, comm_bzsm, ierr )
     end do ! s
 
-    m = size( occ_hf(:,FKBZ_0,MSP_0) )
-    do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
-       call MPI_ALLREDUCE( MPI_IN_PLACE, occ_hf(:,k,s), m, MPI_REAL8 &
-            ,MPI_SUM, comm_band, ierr )
-    end do ! k
-    end do ! s
-    m = size( occ_hf(:,:,MSP_0) )
+    m = size( occ_hf,1 )*size( occ_hf,2 )
     do s=MSP_0,MSP_1
        call MPI_ALLREDUCE( MPI_IN_PLACE, occ_hf(:,:,s), m, MPI_REAL8 &
             ,MPI_SUM, comm_bzsm, ierr )
     end do ! s
+
+! ---
 
     hunk(:,:,:,:) = zero
     ct_fock_fft(:)=0.0d0
@@ -288,105 +297,6 @@ CONTAINS
   END SUBROUTINE UpdateWF_fock
 
 
-  SUBROUTINE Fock_2( k,s,n1,n2 )
-    implicit none
-    integer,intent(IN) :: k,s,n1,n2
-#ifdef _DRSDFT_
-    real(8),allocatable :: trho(:),tvht(:)
-#else
-    complex(8),allocatable :: trho(:),tvht(:)
-#endif
-    real(8) :: c
-    integer :: m,n,i
-
-    allocate( trho(n1:n2) ) ; trho=zero
-    allocate( tvht(n1:n2) ) ; tvht=zero
-
-! --- occupied oribitals
-
-    do n=MB_0,MB_1
-
-       if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
-
-       do m=MB_0,n
-
-          if ( abs(occ(m,k,s)) < 1.d-10 ) cycle
-
-          do i=n1,n2
-#ifdef _DRSDFT_
-             trho(i) = unk(i,m,k,s)*unk(i,n,k,s)
-#else   
-             trho(i) = conjg(unk(i,m,k,s))*unk(i,n,k,s)
-#endif
-          end do
-
-          if ( SYStype == 1 ) then
-             call Fock_cg( n1,n2,k,k,trho,tvht,1 )
-          else
-             call Fock_fft(n1,n2,k,k,trho,tvht,1)
-          end if
-
-          c = alpha_hf*(2.0d0*occ_factor)*occ(m,k,s)
-          do i=n1,n2
-             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk(i,m,k,s)
-          end do
-
-          if ( m == n ) cycle
-
-          c = alpha_hf*(2.0d0*occ_factor)*occ(n,k,s)
-          do i=n1,n2
-#ifdef _DRSDFT_
-             hunk(i,m,k,s)=hunk(i,m,k,s)-c*tvht(i)*unk(i,n,k,s)
-#else
-             hunk(i,m,k,s)=hunk(i,m,k,s)-c*conjg(tvht(i))*unk(i,n,k,s)
-#endif
-          end do
-
-       end do ! m
-
-    end do ! n
-
-! --- unoccupied orbitals
-
-    do n=MB_0,MB_1
-
-       if ( abs(occ(n,k,s)) >= 1.d-10 ) cycle
-
-       do m=MB_0,MB_1
-
-          if ( abs(occ(m,k,s)) < 1.d-10 ) cycle
-
-          do i=n1,n2
-#ifdef _DRSDFT_
-             trho(i) = unk(i,m,k,s)*unk(i,n,k,s)
-#else   
-             trho(i) = conjg(unk(i,m,k,s))*unk(i,n,k,s)
-#endif
-          end do
-
-          if ( SYStype == 1 ) then
-             call Fock_cg( n1,n2,k,k,trho,tvht,1 )
-          else
-             call Fock_fft(n1,n2,k,k,trho,tvht,1)
-          end if
-
-          c = alpha_hf*(2.0d0*occ_factor)*occ(m,k,s)
-          do i=n1,n2
-             hunk(i,n,k,s)=hunk(i,n,k,s)-c*tvht(i)*unk(i,m,k,s)
-          end do
-
-       end do ! m
-
-    end do ! n
-
-    deallocate( tvht ) 
-    deallocate( trho )
-
-    return
-
-  END SUBROUTINE Fock_2
-
-
   SUBROUTINE Fock_4( k,s,n1,n2 )
     implicit none
     integer,intent(IN) :: k,s,n1,n2
@@ -396,7 +306,7 @@ CONTAINS
     complex(8),allocatable :: trho(:),tvht(:)
 #endif
     real(8) :: c
-    integer :: m,n,i,j,nwork,iwork,ierr
+    integer :: m,n,i,j,nwork,iwork,ierr,nwork_0,nwork_1
     integer,allocatable :: mapwork(:,:)
 
 ! ---
@@ -434,6 +344,19 @@ CONTAINS
        end do
     end do
 
+    ir_fkmb(:)=0
+    id_fkmb(:)=0
+    do i=1,nwork
+       j=mod(i-1,np_fkmb)
+       ir_fkmb(j)=ir_fkmb(j)+1
+    end do
+    do j=0,np_fkmb-1
+       id_fkmb(j)=sum(ir_fkmb(0:j))-ir_fkmb(j)
+    end do
+
+    nwork_0 = id_fkmb(myrank_f) + 1
+    nwork_1 = id_fkmb(myrank_f) + ir_fkmb(myrank_f)
+
 ! ---
 
     allocate( trho(n1:n2) ) ; trho=zero
@@ -441,7 +364,7 @@ CONTAINS
 
 ! ---
 
-    do iwork=1,nwork
+    do iwork=nwork_0,nwork_1
 
        m = mapwork(1,iwork)
        n = mapwork(2,iwork)
@@ -491,6 +414,8 @@ CONTAINS
 
     call mpi_allreduce( MPI_IN_PLACE,hunk(n1,1,k,s),MB*(n2-n1+1) &
                        ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
+    call mpi_allreduce( MPI_IN_PLACE,hunk(n1,1,k,s),MB*(n2-n1+1) &
+                       ,TYPE_MAIN,MPI_SUM,comm_fkmb,ierr )
 !    call rsdft_allreduce( comm_band, hunk(n1,1,k,s), MB*(n2-n1+1), 512 )
 
     return
@@ -505,6 +430,7 @@ CONTAINS
     real(8),parameter :: tol=1.d-10
     real(8) :: c
     integer :: m1,n1,m2,n2,m,n,i,j,nwork,iwork1,iwork2,ierr
+    integer :: nwork_0,nwork_1
     integer,allocatable :: mapwork(:,:)
 
 ! ---
@@ -542,6 +468,19 @@ CONTAINS
        end do
     end do
 
+    ir_fkmb(:)=0
+    id_fkmb(:)=0
+    do i=1,nwork
+       j=mod(i-1,np_fkmb)
+       ir_fkmb(j)=ir_fkmb(j)+1
+    end do
+    do j=0,np_fkmb-1
+       id_fkmb(j)=sum(ir_fkmb(0:j))-ir_fkmb(j)
+    end do
+
+    nwork_0 = id_fkmb(myrank_f) + 1
+    nwork_1 = id_fkmb(myrank_f) + ir_fkmb(myrank_f)
+
 ! ---
 
     allocate( trho(ml0:ml1) ) ; trho=(0.0d0,0.0d0)
@@ -549,9 +488,9 @@ CONTAINS
 
 ! ---
 
-    do iwork1=1,nwork,2
+    do iwork1=nwork_0,nwork_1,2
 
-       iwork2=min(iwork1+1,nwork)
+       iwork2=min(iwork1+1,nwork_1)
 
        m1 = mapwork(1,iwork1)
        n1 = mapwork(2,iwork1)
@@ -614,6 +553,8 @@ CONTAINS
 
     call mpi_allreduce( MPI_IN_PLACE,hunk(ml0,1,k,s),MB*(ml1-ml0+1) &
                        ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
+    call mpi_allreduce( MPI_IN_PLACE,hunk(ml0,1,k,s),MB*(ml1-ml0+1) &
+                       ,TYPE_MAIN,MPI_SUM,comm_fkmb,ierr )
 !    call rsdft_allreduce( comm_band, hunk(ml0,1,k,s), MB*(ml1-ml0+1), 512 )
 
     return
@@ -629,7 +570,7 @@ CONTAINS
 #else
     complex(8),allocatable :: trho(:),tvht(:)
     real(8) :: c,ctt(0:3),ett(0:3)
-    integer :: m,n,q,k,i,j,a,b,nwork,iwork,ierr
+    integer :: m,n,q,k,i,j,a,b,nwork,iwork,ierr,nwork_0,nwork_1
     integer,allocatable :: mapnk(:,:),mapwork(:,:)
 
     call watch(ctt(0),ett(0))
@@ -690,6 +631,19 @@ CONTAINS
        end do ! i
     end do ! j
 
+    ir_fkmb(:)=0
+    id_fkmb(:)=0
+    do i=1,nwork
+       j=mod(i-1,np_fkmb)
+       ir_fkmb(j)=ir_fkmb(j)+1
+    end do
+    do j=0,np_fkmb-1
+       id_fkmb(j)=sum(ir_fkmb(0:j))-ir_fkmb(j)
+    end do
+
+    nwork_0 = id_fkmb(myrank_f) + 1
+    nwork_1 = id_fkmb(myrank_f) + ir_fkmb(myrank_f)
+
 ! ---
 
     allocate( trho(n1:n2) ) ; trho=zero
@@ -699,7 +653,7 @@ CONTAINS
 
 ! ---
 
-    do iwork=1,nwork
+    do iwork=nwork_0,nwork_1
 
        a = mapwork(1,iwork)
        b = mapwork(2,iwork)
@@ -758,18 +712,19 @@ CONTAINS
 
 ! ---
 
-!    m=size( hunk,1 )*size( hunk,2 )
-!    do k=MBZ_0,MBZ_1
-!       call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
-!                           MPI_SUM, comm_band, ierr )
-!    end do
-!    m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
-!    call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
-!                        MPI_SUM, comm_bzsm, ierr )
+    m=size( hunk,1 )*size( hunk,2 )
+    do k=MBZ_0,MBZ_1
+       call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
+                           MPI_SUM, comm_band, ierr )
+    end do
 
     m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
     call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
-                        MPI_SUM, comm_fock, ierr )
+                        MPI_SUM, comm_bzsm, ierr )
+
+    m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
+    call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
+                        MPI_SUM, comm_fkmb, ierr )
 
     call watch(ctt(3),ett(3))
 

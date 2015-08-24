@@ -51,7 +51,7 @@ CONTAINS
   SUBROUTINE prep_scalapack( MB )
     implicit none
     integer,intent(INOUT) :: MB
-    integer :: ierr,NPCOL0,i,j,n,is,ik,m,ib,l,i1,i2,i3
+    integer :: ierr,NPCOL0,i,j,n,is,ik,m,ib,l,i1,i2,i3,i7
     integer :: MXLLD,MYROW,MYCOL,mm,mchk
     integer,save :: icount_visit=0, ICTXT=0, ICTXT0=0
     integer :: NUMROC
@@ -123,6 +123,7 @@ CONTAINS
        usermap(:,:,:)=MPI_PROC_NULL
 
        n=-1
+       do i7=0,node_partition(7)-1
        do is=0,node_partition(6)-1
        do ik=0,node_partition(5)-1
           m=-1 ; mchk=-NPROW*NPCOL
@@ -137,8 +138,9 @@ CONTAINS
                 i=mod(m+NPROW,NPROW)
                 j=m/NPROW
                 mm=myrank_g+nprocs_g*myrank_b+1
-                if ( id_class(myrank,5)==ik .and. id_class(myrank,6)==is &
-                     .and. mm > mchk ) then
+                if ( id_class(myrank,5)==ik .and. &
+                     id_class(myrank,6)==is .and. &
+                     id_class(myrank,7)==i7 .and. mm > mchk ) then
                    usermap(i,j,1)=n
                    usermap(i,j,2)=l
                 end if
@@ -148,6 +150,7 @@ CONTAINS
           end do ! ib
        end do ! ik
        end do ! is
+       end do ! i7
 
     end if
 

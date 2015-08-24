@@ -58,7 +58,6 @@ MODS1 = \
        var_ps_member.o\
        bc_mol_module.o\
        physical_type_methods.o\
-       fock_parallel_module.o\
        grid_module.o\
        esm_rgrid_module.o\
        para_rgrid_comm.o\

@@ -1,7 +1,6 @@
 MODULE xc_hybrid_module
 
   use xc_hybrid_io_module
-  use fock_parallel_module
 
   implicit none
 
@@ -96,10 +95,10 @@ CONTAINS
 
   SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
        , MBZ,MBZ_0,MBZ_1, MSP,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell &
-       , SYStype, XCtype, disp_switch )
+       , SYStype, XCtype, np_fkmb, disp_switch )
     implicit none
     integer,intent(IN) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
-    integer,intent(IN) :: MSP, MSP_0, MSP_1, MB_0, MB_1
+    integer,intent(IN) :: MSP, MSP_0, MSP_1, MB_0, MB_1, np_fkmb
     real(8),intent(IN) :: Ntot, kbb(:,:), bb(3,3), Vcell
     character(*),intent(IN) :: XCtype
     logical,intent(IN) :: disp_switch
@@ -185,7 +184,8 @@ CONTAINS
     FKBZ_1 = MBZ
     FKMMBZ = MMBZ
     FKMB_0 = 1
-    FKMB_1 = MB
+    FKMB_1 = MB/np_fkmb
+    if ( FKMB_1*np_fkmb < MB ) FKMB_1=FKMB_1+1
     FOCK_0 = 1
     FOCK_1 = 2
 
@@ -333,10 +333,6 @@ CONTAINS
 !       write(*,*) "Optimal division number of mpi_allgatherv =",npart
 !       write(*,*) "Best time of divided MPI_Allgatherv (s) =",best_time
     end if
-
-! ---
-
-    call init_fock_parallel
 
 ! ---
 

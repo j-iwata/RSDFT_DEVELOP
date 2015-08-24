@@ -259,7 +259,7 @@ PROGRAM Real_Space_Solid
 
   call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
        , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP, MSP_0, MSP_1, MB_0, MB_1 &
-       , kbb, bb, Va, SYStype, XCtype, disp_switch )
+       , kbb, bb, Va, SYStype, XCtype, np_fkmb, disp_switch )
 
 !-------------------- Hamiltonian Test
 

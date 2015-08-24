@@ -173,6 +173,13 @@ CONTAINS
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
+#ifdef _DRSDFT_
+       call mpi_bcast( unk, size(unk), MPI_REAL8, 0, comm_fkmb, ierr )
+#else
+       call mpi_bcast( unk, size(unk), MPI_COMPLEX16, 0, comm_fkmb, ierr )
+#endif
+       call mpi_bcast( esp, size(esp), MPI_REAL8, 0, comm_fkmb, ierr )
+
        call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                       ,esp,weight_bz,occ,disp_switch)
 
