@@ -24,6 +24,8 @@ CONTAINS
     implicit none
     integer,intent(IN) :: Igrid(2,0:3), Nspin_in, Md_in, SYStype_in
 
+    call write_border( 40, " init_hartree" )
+
     ML0     = Igrid(1,0)
     ML1     = Igrid(2,0)
     Nspin   = Nspin_in

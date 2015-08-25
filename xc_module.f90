@@ -24,7 +24,7 @@ MODULE xc_module
 
   use BasicTypeFactory
   use BasicTypeMethods
-  use IOTools
+  use io_tools_module
 
   implicit none
 

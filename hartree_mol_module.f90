@@ -7,6 +7,7 @@ MODULE hartree_mol_module
   use fd_module
   use atom_module
   use watch_module
+  use io_tools_module
 
   implicit none
 
@@ -15,7 +16,7 @@ MODULE hartree_mol_module
   PUBLIC :: timer_reset_hartree_mol, timer_result_hartree_mol
 
   logical :: flag_init = .true.
-  integer :: MEO=2, Lmax_ME=4, M_max=4
+  integer :: MEO=1, Lmax_ME=8, M_max=8
   integer :: lmmax_ME
   real(8),allocatable :: shf1(:,:),shf2(:,:)
   real(8),allocatable :: lap(:)
@@ -40,10 +41,26 @@ MODULE hartree_mol_module
 CONTAINS
 
 
+  SUBROUTINE read_param_hartree_mol( rank, unit )
+    implicit none
+    integer,intent(IN) :: rank,unit
+    integer :: itmp(2)
+    itmp=-1
+    if ( rank == 0 ) call IOTools_readIntegerKeyword( "MEO", unit, itmp )
+    call IOTools_bcastIntegerParameter( itmp )
+    if ( itmp(1) > 0 ) MEO = itmp(1)
+    if ( itmp(2) > 0 ) Lmax_ME = itmp(2)
+  END SUBROUTINE read_param_hartree_mol
+
+
   SUBROUTINE init_hartree_mol( Md_in )
     implicit none
     integer,intent(IN) :: Md_in
     integer :: i,j
+
+    call read_param_hartree_mol( myrank, 2 )
+
+    M_max = Lmax_ME
 
     Md = Md_in
 
@@ -60,7 +77,7 @@ CONTAINS
        call prep1_hartree_mol
     case(2)
        call prep2_hartree_mol
-       call init_MultiCenterExpansion_2
+       call init_MultiCenterExpansion
     end select
 
 ! --- for OpenMP
@@ -92,6 +109,14 @@ CONTAINS
 ! ---
 
     flag_init = .false.
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "MEO     =",MEO
+       write(*,*) "Lmax_ME =",Lmax_ME
+       write(*,*) "M_max   =",M_max
+       write(*,*) "lmmax_ME=",lmmax_ME
+       write(*,*) "Md      =",Md
+    end if
 
   END SUBROUTINE init_hartree_mol
 
@@ -184,10 +209,10 @@ CONTAINS
 !$OMP end parallel workshare
 
     select case( MEO )
-    case(1) ! Single-center expansion
-       call MultiCenterExpansion_1( n1, n2, n3, m1, m2, tn, vb )
-    case(2) ! Multi-center expansion
-       call MultiCenterExpansion_2( n1, n2, n3, m1, m2, tn, vb )
+    case(1)
+       call SingleCenterExpansion( n1, n2, n3, m1, m2, tn, vb )
+    case(2)
+       call MultiCenterExpansion( n1, n2, n3, m1, m2, tn, vb )
     end select ! MEO
 
     !call watchb( time_tmp, time_ht(:,3) )
@@ -247,6 +272,7 @@ CONTAINS
 
 !$OMP parallel private( i,j,ix,iy,iz,n1_omp,n2_omp,mythread,c,d )
 
+       mythread = 0
 !$     mythread = omp_get_thread_num()
        n1_omp = id_omp(mythread) + 1
        n2_omp = id_omp(mythread) + ir_omp(mythread)
@@ -407,8 +433,8 @@ CONTAINS
     implicit none
     real(8),allocatable :: ra(:)
     real(8) :: x,y,z,r2,H
-    integer :: i,a,m,n,i1,i2,i3,n1,n2,ierr,maxMdv
     integer,allocatable :: itmp(:),jtmp(:)
+    integer :: i,a,m,n,i1,i2,i3,n1,n2,ierr,maxMdv
 
     n1 = idisp(myrank)+1
     n2 = idisp(myrank)+ircnt(myrank)
@@ -479,7 +505,7 @@ CONTAINS
   END SUBROUTINE prep2_hartree_mol
 
 
-  SUBROUTINE MultiCenterExpansion_1( n1, n2, n3, m1, m2, tn, vb )
+  SUBROUTINE SingleCenterExpansion( n1, n2, n3, m1, m2, tn, vb )
     implicit none
     integer,intent(IN)  :: n1,n2,n3,m1,m2
     real(8),intent(IN)  :: tn(n1:n2,n3)
@@ -490,27 +516,31 @@ CONTAINS
     allocate( rholm(lmmax_ME,1,n3)   ) ; rholm=0.0d0
 
     do n=1,n3
+!$OMP parallel do
        do lm=1,lmmax_ME
           rholm_0(lm,1,n) = sum( tn(n1:n2,n)*shf1(n1:n2,lm) )*dV
        end do
+!$OMP end parallel do
     end do
 
     call mpi_allreduce( rholm_0, rholm, lmmax_ME*n3 &
                        ,mpi_real8, mpi_sum, comm_grid, ierr )
 
     do n=1,n3
+!$OMP parallel do
        do i=m1,m2
           vb(i,n) = sum( shf2(1:lmmax_ME,i)*rholm(1:lmmax_ME,1,n) )
        end do
+!$OMP end parallel do
     end do
 
     deallocate( rholm )
     deallocate( rholm_0 )
 
-  END SUBROUTINE MultiCenterExpansion_1
+  END SUBROUTINE SingleCenterExpansion
 
 
-  SUBROUTINE init_MultiCenterExpansion_2
+  SUBROUTINE init_MultiCenterExpansion
     implicit none
     integer :: m,i,L,k,k1,k2
     real(8) :: pi
@@ -550,10 +580,10 @@ CONTAINS
        end do ! m
     end do ! L
 
-  END SUBROUTINE init_MultiCenterExpansion_2
+  END SUBROUTINE init_MultiCenterExpansion
 
 
-  SUBROUTINE MultiCenterExpansion_2( n1, n2, n3, m1, m2, tn, vb )
+  SUBROUTINE MultiCenterExpansion( n1, n2, n3, m1, m2, tn, vb )
     implicit none
     integer,intent(IN)  :: n1,n2,n3,m1,m2
     real(8),intent(IN)  :: tn(n1:n2,n3)
@@ -794,7 +824,7 @@ CONTAINS
     deallocate( rholm )
     deallocate( rholm_0 )
 
-  END SUBROUTINE MultiCenterExpansion_2
+  END SUBROUTINE MultiCenterExpansion
 
 
   SUBROUTINE timer_reset_hartree_mol
