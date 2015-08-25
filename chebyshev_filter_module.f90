@@ -150,7 +150,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k, s
     real(8),intent(OUT) :: eu_guess
-    integer :: i,j,ierr,idum
+    integer :: i,j,ierr
     real(8) :: c(2),d(3),alpha,beta
     real(8),allocatable :: T(:,:)
     real(8),allocatable :: Td(:),Te(:),work(:),w(:)
@@ -173,16 +173,11 @@ CONTAINS
     allocate( v0(ML_0:ML_1) ) ; v0=zero
     allocate( f(ML_0:ML_1)  ) ; f=zero
 
-    idum=123456789
     do i=1,ML_0-1
-!       call random_number(c)
-       c(1)=ran0(idum)
-       c(2)=ran0(idum)
+       call random_number(c)
     end do
     do i=ML_0,ML_1
-!       call random_number(c)
-       c(1)=ran0(idum)
-       c(2)=ran0(idum)
+       call random_number(c)
        v(i) = dcmplx( c(1), c(2) )
     end do
     c(1) = sum( abs(v)**2 )*dV
@@ -262,18 +257,5 @@ CONTAINS
 
   END SUBROUTINE get_upper_bound
 
-  function ran0(idum)
-    implicit none
-    real(8) :: ran0
-    integer,intent(INOUT) :: idum
-    integer :: k
-    integer,parameter :: IA=16807,IM=2147483647,IQ=127773,IR=2836
-    real(8),parameter :: AM=1.d0/IM
-    k=idum/IQ
-    idum=IA*(idum-k*IQ)-IR*k
-    if ( idum<0 ) idum=idum+IM
-    ran0=AM*idum
-    return
-  end function ran0
 
 END MODULE ChebyshevFilter_module
