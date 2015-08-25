@@ -458,7 +458,7 @@ CONTAINS
 
                 okstep=okstep*2.d0
                 alpha2=alpha1
-                call parmin(all,al,xmin,emin)
+                call get_min_parabola(all,al,xmin,emin)
                 alpha1=xmin
                 alp=alpha1-alpha2
                 if ( disp_switch_loc ) then
@@ -509,7 +509,7 @@ CONTAINS
              else !( ifar/=0 )
 
                 alpha2=alpha1
-                call parmin(al,ar,xmin,emin)
+                call get_min_parabola(al,ar,xmin,emin)
                 alpha1=xmin
                 if ( .not.( (al(1)<alpha1).and.(alpha1<ar(1)) ) ) then
                    alpha1=0.5d0*(al(1)+ar(1))
@@ -859,34 +859,20 @@ CONTAINS
   END SUBROUTINE atomopt
 
 
-  SUBROUTINE parmin(g1,g2,xmin,emin)
-!*************************************************************
-!   RETURN MINIMUM VALUE BY PARABOLA
-!          F(X)=0.5*A*X^2+B*X+C
-!
-! INPUT                     OUTPUT
-!   F1,2(1):  X                XMIN:EXPECTED X TO GIVE EMIN
-!       (2):  F                EMIN:EXPECTED MINIMUM ENERGY
-!       (3):  DF/DX
-!                           IEX=0 : NORMAL END
-!************************************************************
+  SUBROUTINE get_min_parabola(g1,g2,xmin,emin)
     implicit none
     real(8),intent(IN)  :: g1(3),g2(3)
     real(8),intent(OUT) :: xmin,emin
     real(8) :: f1(3),f2(3)
     real(8) :: a,b,c,dl,d1,d2,x
-    integer :: iex
 
-    f1(1:2)=g1(1:2)
-    f2(1:2)=g2(1:2)
-    f1(3)=-g1(3)
-    f2(3)=-g2(3)
+    f1(1:3) = (/ g1(1), g1(2), -g1(3) /)
+    f2(1:3) = (/ g2(1), g2(2), -g2(3) /)
 
     a=(f2(3)-f1(3))/(f2(1)-f1(1))
     dl=abs(f2(1)-f1(1))
-    if ( abs(a) <= 0.d0 ) then
+    if ( abs(a) <= 0.0d0 ) then
        b=(f1(3)+f2(3))*0.5d0
-       iex=1
        if ( b >= 0.0d0 ) then
           xmin=f2(1)-1.d6*dl
        else
@@ -894,7 +880,6 @@ CONTAINS
        end if
        emin=0.0d0
     else
-       iex=0
        b=f1(3)-a*f1(1)
        xmin=-b/a
        d1=abs(xmin-f1(1))
@@ -915,7 +900,7 @@ CONTAINS
        write(*,*) 'emin=',emin
     end if
     return
-  END SUBROUTINE parmin
+  END SUBROUTINE get_min_parabola
   
 
   SUBROUTINE write_atomic_coordinates_log(unit,icy,itlin,flag,iswitch_opt)
