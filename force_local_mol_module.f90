@@ -11,6 +11,7 @@ MODULE force_local_mol_module
   use ps_local_mol_module, only: NRcloc, Rcloc, vqls
   use rgrid_module
   use force_local_mol_gth_module
+  use polint_module
 
   implicit none
 

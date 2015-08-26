@@ -1,4 +1,10 @@
 MODS1 = \
+       polint_module.o\
+       hsort_module.o\
+       bberf_module.o\
+       ylm_module.o\
+       var_sys_parameter.o\
+       timer_module.o\
        bb_module.o\
        test_assert.o\
        bc_variables.o\
@@ -15,9 +21,6 @@ MODS1 = \
        ps_read_tm_module.o\
        kinetic_variables.o\
        rgrid_variables.o\
-       bberf_module.o\
-       var_sys_parameter.o\
-       timer_module.o\
        ps_read_upf_module.o\
        parallel_module.o\
        info_module.o\

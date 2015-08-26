@@ -1,14 +1,18 @@
 MODULE PSnonLocDij
+
   use parallel_module, only: myrank,nprocs_g ! no need of nprocs_g
   use array_bound_module, only: MSP_0,MSP_1
   use VarPSMemberG, only: Dij00,Dij,N_nzqr,QRij
   use VarParaPSnonLocG, only: MJJ_Q,JJP_Q,nrqr_xyz,num_2_rank_Q,sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,nl_max_send_Q
-  use ParaRGridComm, only: do3StepComm_real
+  use para_rgrid_comm, only: do3StepComm_real
   use localpot_module, only: Vloc
   use rgrid_module, only: dV
   use pseudopot_module, only: pselect
+
   implicit none
+
 CONTAINS
+
   SUBROUTINE getDij
     implicit none
     integer :: s,kk1,i,j

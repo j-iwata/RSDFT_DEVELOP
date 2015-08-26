@@ -7,6 +7,7 @@ MODULE ewald_module
   use pseudopot_module, only: Zps
   use parallel_module
   use watch_module
+  use hsort_module
 
   implicit none
 

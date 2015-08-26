@@ -13,6 +13,9 @@ MODULE ps_nloc_mr_module
   use bz_module
   use watch_module
   use wf_module
+  use ylm_module
+  use hsort_module
+  use polint_module
 
   implicit none
 
@@ -56,14 +59,6 @@ CONTAINS
     integer :: ab1,ab2,ab3,a1,a2,l1,l2
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     Mlma=0
     do i=1,Natom
@@ -1182,14 +1177,6 @@ CONTAINS
     logical,allocatable :: a_rank(:)
     integer :: ML1,ML2,ML3,i0,iorb0
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     force2(:,:) = 0.0d0
 

@@ -1,4 +1,5 @@
 MODULE PSQRijPrep
+
   use parallel_module, only: myrank,myrank_g,nprocs_g,np_grid,node_partition,COMM_GRID,disp_switch_parallel,MB_d
   use aa_module, only: aa
   use atom_module, only: Natom,ki_atom,aa_atom
@@ -10,9 +11,11 @@ MODULE PSQRijPrep
   use ps_nloc2_module, only: prepMapsTmp
   use pseudopot_module, only: pselect
   use minimal_box_module
-  use ParaRGridComm
+  use para_rgrid_comm
   use watch_module
   use array_bound_module, only: ML_0
+  use polint_module
+
   implicit none
 
   include 'mpif.h'

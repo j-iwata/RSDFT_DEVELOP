@@ -1,15 +1,20 @@
 MODULE PSnonLocOpG2
+
   use parallel_module, only: myrank
   use VarPSMember
   use VarPSMemberG
-  use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,zero,uVk,iuV
+  use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz &
+       ,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,zero,uVk,iuV
   use rgrid_module, only: dV
-!  use ParaRGridComm, only: threeWayComm
-  use ParaRGridComm, only: do3StepComm
+  use para_rgrid_comm, only: do3StepComm
+
   implicit none
+
   include 'mpif.h'
+
   private
   public :: op_ps_nloc2_uspp
+
 CONTAINS
 
   SUBROUTINE op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2,htpsi00)

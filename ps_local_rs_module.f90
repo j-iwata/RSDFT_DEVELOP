@@ -16,6 +16,7 @@ MODULE ps_local_rs_module
 
   use simc_module
   use bberf_module
+  use polint_module
 
   implicit none
 

@@ -1,4 +1,5 @@
 MODULE InnerProduct
+
   use watch_module, only: watch
   ! Mlma,nzlma,MMJ(lma),JJP(MJJ(lma),lma),TYPE_MAIN,lma_nsend(irank),sendmap(i1,irank),
   ! sbufnl(i2,irank),rbufnl(1,jrank),uVk(MJJ(lma),lma,k),
@@ -13,18 +14,17 @@ MODULE InnerProduct
   use wf_module, only: unk,Sunk
   ! Sunk(nn1,n)
   use RealComplex, only: RCProduct,zero
-  
-!  use ParaRGridComm, only: threeWayComm
-  use ParaRGridComm, only: do3StepComm
+  use para_rgrid_comm, only: do3StepComm
 
   include 'mpif.h'
+
   PRIVATE
   PUBLIC :: dot_product,get_Sf,get_gf,get_gSf,get_Sunk_Mat
 
 
 CONTAINS
 
-!---------------------------------------------------------------------------------------	
+!------------------------------------------------------------------------------
 
   SUBROUTINE dot_product( a,b,c,alpha,n,m,nop )
 !$ use omp_lib
@@ -57,7 +57,8 @@ CONTAINS
     return
   END SUBROUTINE dot_product
 
-!---------------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE get_Sf(fin,nn1,nn2,k,Sf)
     ! IN:	nn1,nn2,k,fin
     !		Mlma,nzlma,pselect,

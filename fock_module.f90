@@ -48,11 +48,13 @@ CONTAINS
     real(8) :: c
     integer :: ML0,m,q,i,t,ierr
 
+#ifdef _FFTE_
 #ifdef _DRSDFT_
     if ( SYStype == 0 ) then
        call Fock_Double( k, s, n1, n2, psi, tpsi )
        return
     end if
+#endif
 #endif
 
     ML0 = n2 - n1 + 1
@@ -267,7 +269,11 @@ CONTAINS
           do k=MBZ_0,MBZ_1
              if ( SYStype == 0 ) then
 #ifdef _DRSDFT_
+#ifdef _FFTE_
                 call Fock_4_Double( k,s,ML_0,ML_1 )
+#else
+                call Fock_4( k,s,ML_0,ML_1 )
+#endif
 #else
                 call Fock_4( k,s,ML_0,ML_1 )
 #endif

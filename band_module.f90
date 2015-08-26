@@ -29,6 +29,7 @@ MODULE band_module
   use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
   use fock_ffte_module, only: init_fock_ffte
   use band_unfold_module
+  use hsort_module
   
   implicit none
 

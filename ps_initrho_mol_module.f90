@@ -1,5 +1,7 @@
 MODULE ps_initrho_mol_module
 
+  use polint_module
+
   PRIVATE
   PUBLIC :: init_ps_initrho_mol,construct_ps_initrho_mol
 

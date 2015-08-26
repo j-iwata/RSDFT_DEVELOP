@@ -1,7 +1,9 @@
-MODULE ParaRGridComm
+MODULE para_rgrid_comm
+
   use parallel_module, only: node_partition,myrank_g,nprocs_g,COMM_GRID,myrank
   use VarPara
-  ! TYPE_MAIN,node_partition,nprocs_g,myrank_g
+  use hsort_module
+
   implicit none
 
   PRIVATE
@@ -10,7 +12,8 @@ MODULE ParaRGridComm
 
 CONTAINS
 
-!---------------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
   SUBROUTINE prepThreeWayComm( nr,NLRankMap,NRxyz,Num2Rank0 )
     implicit none
     include 'mpif.h'
@@ -24,7 +27,8 @@ CONTAINS
     integer :: i1,i2,i3
     integer :: np1,np2,np3
     integer,allocatable :: LLp(:,:)
-    integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:),work(:)
+    integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:)
+    real(8),allocatable :: work(:)
 
 #ifdef _SHOWALL_INIT_
 write(200+myrank,*) ">>>> prepThreeWayComm"
@@ -50,7 +54,7 @@ write(200+myrank,*) ">>>> prepThreeWayComm"
     allocate( itmp1(nr)   ) ; itmp1=0
     allocate( itmp2(nr)   ) ; itmp2=0
     allocate( itmp3(3,nr) ) ; itmp3=0
-    allocate( work(nr)    ) ; work =0
+    allocate( work(nr)    ) ; work =0.0d0
 
     do ir=1,nr
         n=NLRankMap(ir)
@@ -545,4 +549,6 @@ write(400+myrank,*) "<<<< 3StepComm"
 #endif
     return
   END SUBROUTINE do3StepComm_real
-END MODULE ParaRGridComm
+
+
+END MODULE para_rgrid_comm

@@ -4,6 +4,7 @@ MODULE ps_nloc_hgh_module
   use rgrid_module
   use atom_module
   use pseudopot_module
+  use ylm_module
 
   implicit none
 
@@ -187,14 +188,6 @@ CONTAINS
     integer :: a,L,m,iorb,ik,n,j,L1,L1z
     real(8) :: c1,c2,c3,pi,cnst,cnst1,cnst2,cnst3,tmp0,tmp1,r2,e,rp
     real(8) :: gamma,Rx,Ry,Rz,x,y,z,r,d1,d2,d3,v0,v1,yy1,yy2,yy3
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
 !$OMP workshare
     duVdR=0.d0

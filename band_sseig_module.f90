@@ -15,6 +15,7 @@ MODULE band_sseig_module
   use momentum_module
   use band_variables, only: nfki,nbk,ak,nskip_band &
        ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,read_band
+  use hsort_module
 
   implicit none
 

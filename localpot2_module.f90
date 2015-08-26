@@ -9,6 +9,7 @@ MODULE localpot2_module
   use watch_module
   use parallel_module
   use array_bound_module
+  use hsort_module
 
   implicit none
 

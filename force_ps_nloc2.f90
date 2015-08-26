@@ -1,8 +1,10 @@
-MODULE ForcePSnonLoc2
+MODULE force_ps_nonloc2
+
 !----------------------------------------------------------------------------
 ! this module calculates force for ultrasoft PS
 ! this module use subroutines from ForceSub.f90
 !----------------------------------------------------------------------------
+
   use atom_module, only: ki_atom,aa_atom
   use aa_module, only: aa
   use VarPSMember
@@ -11,9 +13,12 @@ MODULE ForcePSnonLoc2
   use array_bound_module
   use parallel_module, only: MB_d, disp_switch_parallel
   use localpot_module, only: Vloc
-  use ParaRGridComm, only: do3StepComm_F,do3StepComm_dQ
+  use para_rgrid_comm, only: do3StepComm_F,do3StepComm_dQ
   use ForceSub
+  use ylm_module
+
   implicit none
+
   PRIVATE
   PUBLIC :: calcForcePSnonLoc2
 
@@ -60,14 +65,6 @@ CONTAINS
 ! d1,d2 need to be removed from this module, define a different variable name
     real(8) :: d1,d2,d3
     integer :: i1,i2,i3
-
-    INTERFACE
-      FUNCTION Ylm(x,y,z,l,m)
-        real(8) :: Ylm
-        real(8),intent(IN) :: x,y,z
-        integer,intent(IN) :: l,m
-      END FUNCTION Ylm
-    END INTERFACE
     
     call getSHY
     call getCijLM
@@ -423,15 +420,6 @@ CONTAINS
     integer :: k1,k2,k3
     integer :: d1,d2,d3
 
-    INTERFACE
-      FUNCTION Ylm(x,y,z,l,m)
-        real(8) :: Ylm
-        real(8),intent(IN) :: x,y,z
-        integer,intent(IN) :: l,m
-      END FUNCTION Ylm
-    END INTERFACE
-    
-
     forceQ(:,:) = 0.0d0
 
     maxerr=0.d0
@@ -638,4 +626,4 @@ CONTAINS
   END SUBROUTINE calcForceQ
 #endif
 
-END MODULE ForcePSnonLoc2
+END MODULE force_ps_nonloc2

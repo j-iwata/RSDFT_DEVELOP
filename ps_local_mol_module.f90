@@ -10,6 +10,7 @@ MODULE ps_local_mol_module
   use rgrid_mol_module
   use ps_local_mol_gth_module
   use bberf_module
+  use polint_module
 
   implicit none
 

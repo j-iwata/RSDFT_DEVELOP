@@ -11,6 +11,9 @@ MODULE ps_nloc2_mol_module
   use minimal_box_module
   use ps_nloc_mol_gth_module
   use ps_nloc2_op_module, only: init_op_ps_nloc2_hp
+  use ylm_module
+  use hsort_module
+  use polint_module
 
   implicit none
 
@@ -44,14 +47,6 @@ CONTAINS
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: MMJJ_t,ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,'(a60," prep_ps_nloc2_mol")') repeat("-",60)

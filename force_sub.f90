@@ -1,5 +1,8 @@
 MODULE ForceSub
+
   use parallel_module, only: myrank
+  use polint_module
+
   implicit none
 
   real(8),allocatable :: SH_Y1(:,:,:,:),SH_Y2(:,:,:,:),SH_Y3(:,:,:,:)

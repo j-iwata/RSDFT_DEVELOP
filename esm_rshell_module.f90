@@ -1,5 +1,7 @@
 MODULE esm_rshell_module
 
+  use hsort_module
+
   implicit none
 
   PRIVATE

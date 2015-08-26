@@ -1,5 +1,7 @@
 MODULE ggrid_module
 
+  use hsort_module
+
   implicit none
 
   PRIVATE

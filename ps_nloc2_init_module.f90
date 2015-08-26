@@ -6,6 +6,7 @@ MODULE ps_nloc2_init_module
   use pseudopot_module
   use atom_module, only: Nelement,Natom,ki_atom
   use maskf_module
+  use polint_module
 
   implicit none
 
@@ -378,78 +379,6 @@ CONTAINS
     deallocate( g )
     return
   END SUBROUTINE simp
-
-!--------1---------2---------3---------4---------5---------6---------7--
-!
-! Spherical Bessel Function jn(x)
-! (Ref. "Fortran77 ni yoru suuti-keisan software", Maruzen)
-!
-  FUNCTION sjbes(n,x)
-    implicit none
-    real(8) :: sjbes
-    real(8),intent(IN) :: x
-    integer,intent(IN) :: n
-    integer :: i,m,l
-    real(8) :: c,j0,js0,js1,js2,jsn
-
-    if ( x < 0.0d0 .or. n < 0 ) then
-       stop "Bad arguments (stop at sjbes)"
-    end if
-
-    if ( x <= 2.d-8 ) then
-       if ( n == 0 ) then
-          sjbes=1.d0
-       else
-          if( x <= 1.d-77 )then
-             sjbes=0.d0
-          else
-             c=2*n+1
-             do i=2*n-1,1,-2
-                c=c*i
-             end do
-             sjbes=x/c
-          end if
-       end if
-       return
-    end if
-
-    if ( x >= 100.d0 ) then
-       l=int(0.05d0*x+30)
-    else if ( 10.d0 <= x .and. x < 100.d0 ) then
-       l=int(0.15d0*x+20)
-    else if ( 1.0d0 < x .and. x < 10.d0 ) then
-       l=int(x+9)
-    else
-       l=8
-    end if
-    m=max(n,nint(x))+l
-    js2=0.d0 ; js1=1.d-75
-    do i=m,1,-1
-       js0=(2*i+1)/x*js1-js2
-       js2=js1
-       js1=js0
-       if ( i == n+1 ) jsn=js0
-    end do
-    if( x >= 0.2d0 )then
-       j0=sin(x)/x
-    else
-       j0=1.d0-x**2/6.d0+x**4/120.d0-x**6/5040.d0+x**8/362880.d0
-    end if
-    if ( js0 == 0.0d0 ) then
-       sjbes=0.d0
-       if ( abs(jsn) > 1.d-14 ) then
-          write(*,*) "n,x=",n,x
-          write(*,*) "j0 =",j0
-          write(*,*) "js0=",js0
-          write(*,*) "jsn=",jsn
-          stop "sjbes"
-       end if
-    else
-       sjbes=j0/js0*jsn
-    end if
-
-    return
-  END FUNCTION sjbes
 
 
 END MODULE ps_nloc2_init_module

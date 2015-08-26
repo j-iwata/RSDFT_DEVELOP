@@ -13,15 +13,18 @@ MODULE ps_nloc2_module
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
-  use ParaRGridComm, only: prepThreeWayComm,do3StepComm,do3StepComm_F
+  use para_rgrid_comm, only: prepThreeWayComm,do3StepComm,do3StepComm_F
 #ifdef _USPP_
-  use ForcePSnonLoc2
+  use force_ps_nonloc2
 #endif
   use minimal_box_module
   use bz_module
   use watch_module
   use wf_module
   use ps_nloc2_op_module, only: init_op_ps_nloc2, init_op_ps_nloc2_hp
+  use ylm_module
+  use hsort_module
+  use polint_module
 
   implicit none
 
@@ -68,14 +71,6 @@ CONTAINS
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
     logical :: disp_sw
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
 #ifdef _SHOWALL_INIT_
     if ( isParallelTest ) write(200+myrank,*) ">>>> prep_ps_nloc2"
@@ -1323,14 +1318,6 @@ CONTAINS
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
     logical :: disp_sw
 
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
-
     call check_disp_switch( disp_sw, 0 )
 
     if ( pselect == 3 ) then
@@ -1957,14 +1944,6 @@ CONTAINS
     integer :: ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
 
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
-
     Mlma=0
     do i=1,Natom
        ik=ki_atom(i)
@@ -2394,7 +2373,6 @@ CONTAINS
           y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
           z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
           uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
-!          JJ_MAP(0,j,lma)=i1-a1b+(i2-a2b)*ab1+(i3-a3b)*ab1*ab2+ML_0
           JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
        end do
     end do

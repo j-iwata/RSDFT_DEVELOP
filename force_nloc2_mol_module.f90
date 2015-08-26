@@ -10,6 +10,8 @@ MODULE force_nloc2_mol_module
   use pseudopot_module
   use ps_nloc2_variables
   use ps_nloc2_init_module
+  use ylm_module
+  use polint_module
 
   implicit none
 
@@ -45,14 +47,6 @@ CONTAINS
 #endif
     real(8),allocatable :: ftmp(:,:)
     logical,allocatable :: a_rank(:)
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     if ( Mlma <= 0 ) return
 

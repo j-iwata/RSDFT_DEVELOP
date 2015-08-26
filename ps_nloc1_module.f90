@@ -1,6 +1,8 @@
 MODULE ps_nloc1_module
 
   use pseudopot_module
+  use ylm_module
+  use hsort_module
 
   implicit none
 
@@ -9,14 +11,6 @@ MODULE ps_nloc1_module
 
   integer :: Ndense, Nintp
   real(8),allocatable :: rad1(:,:)
-
-  INTERFACE
-     FUNCTION Ylm(x,y,z,l,m)
-       real(8) :: Ylm
-       real(8),intent(IN) :: x,y,z
-       integer,intent(IN) :: l,m
-     END FUNCTION Ylm
-  END INTERFACE
 
 CONTAINS
 

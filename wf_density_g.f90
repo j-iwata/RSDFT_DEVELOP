@@ -1,4 +1,5 @@
 MODULE WFDensityG
+
   use rgrid_module, only: dV
   use electron_module, only: Nelectron
   ! unk(:,n,k,s)
@@ -6,20 +7,20 @@ MODULE WFDensityG
   use parallel_module, only: COMM_GRID,COMM_BAND,COMM_BZSM,COMM_SPIN,myrank
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
   use RealComplex, only: RCProduct
-    use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sbufnl,rbufnl,lma_nsend,sendmap,recvmap,TYPE_MAIN,uVk
-    use pseudopot_module, only: pselect
+  use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz,num_2_rank,sbufnl,rbufnl,lma_nsend,sendmap,recvmap,TYPE_MAIN,uVk
+  use pseudopot_module, only: pselect
     
-    use VarPSMemberG
-    ! N_nzqr,nzqr_pair,MJJ_Q(),JJP_Q(),sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,num_2_rank_Q,uVunk,uVunk0,QRij
-    use VarParaPSnonLocG, only: MJJ_Q,JJP_Q
-    use ParaRGridComm, only: do3StepComm
+  use VarPSMemberG
+  ! N_nzqr,nzqr_pair,MJJ_Q(),JJP_Q(),sendmap_Q,recvmap_Q,qr_nsend,sbufnl_Q,rbufnl_Q,num_2_rank_Q,uVunk,uVunk0,QRij
+  use VarParaPSnonLocG, only: MJJ_Q,JJP_Q
+  use para_rgrid_comm, only: do3StepComm
 
   implicit none
+
   include 'mpif.h'
 
   PRIVATE
   PUBLIC :: get_rhonks
-  !	PUBLIC :: rho,init_density,normalize_density,calc_density
 
   ! WARNING_USPP
   real(8),allocatable :: rho(:,:)

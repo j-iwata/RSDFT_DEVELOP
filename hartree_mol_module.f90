@@ -1,4 +1,5 @@
 MODULE hartree_mol_module
+
 !$ use omp_lib
   use rgrid_mol_module, only: LL,KK
   use rgrid_module, only: dV,Hgrid,Ngrid,Igrid
@@ -8,6 +9,7 @@ MODULE hartree_mol_module
   use atom_module
   use watch_module
   use io_tools_module
+  use ylm_module
 
   implicit none
 
@@ -375,14 +377,6 @@ CONTAINS
     logical :: flag_alloc(2)
     real(8),parameter :: eps=1.d-20
     real(8) :: r,x,y,z,const,H,pi4
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)

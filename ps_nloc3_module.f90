@@ -11,8 +11,9 @@ MODULE ps_nloc3_module
   use parallel_module
   use wf_module
   use electron_module
-
   use ps_nloc2_variables
+  use ylm_module
+  use hsort_module
 
   implicit none
 
@@ -269,14 +270,6 @@ CONTAINS
     integer :: ifacx(30),ifacy(30),ifacz(30)
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     nn1     = idisp(myrank)+1
     nn2     = idisp(myrank)+ircnt(myrank)
@@ -551,14 +544,6 @@ CONTAINS
     complex(8),allocatable :: vtmp3(:,:,:)
     complex(8),allocatable :: utmp2(:,:)
 #endif
-
-    INTERFACE
-       FUNCTION Ylm(x,y,z,l,m)
-         real(8) :: Ylm
-         real(8),intent(IN) :: x,y,z
-         integer,intent(IN) :: l,m
-       END FUNCTION Ylm
-    END INTERFACE
 
     force2(:,:) = 0.0d0
 
