@@ -150,6 +150,8 @@ CONTAINS
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
     real(8) :: c, ttmp(2), ttmp1(2)
 
+    if ( Mlma <= 0 ) return
+
     if ( .not.init_flag ) stop "@op_ps_nloc2_hp(init_flag=.false.)"
 
     nb = ib2-ib1+1
