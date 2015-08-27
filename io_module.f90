@@ -227,7 +227,7 @@ CONTAINS
 
           call mpi_barrier(mpi_comm_world,ierr)
 
-          if ( irank/=0 ) then
+          if ( irank /= 0 .and. myrank_f == 0 ) then
              if ( irank==myrank ) then
                 call mpi_send(rtmp,ML,mpi_real8,0,0,mpi_comm_world,ierr)
              end if
@@ -247,7 +247,7 @@ CONTAINS
 
           call mpi_barrier(mpi_comm_world,ierr)
 
-          if ( irank/=0 ) then
+          if ( irank /= 0 .and. myrank_f == 0 ) then
              if ( irank==myrank ) then
                 call mpi_send(rtmp,ML,mpi_real8,0,0,mpi_comm_world,ierr)
              end if
@@ -278,7 +278,7 @@ CONTAINS
 
           call mpi_barrier(mpi_comm_world,ierr)
 
-          if ( irank/=0 ) then
+          if ( irank /= 0 .and. myrank_f == 0 ) then
              if ( irank==myrank ) then
                 call mpi_send(rtmp,ML,mpi_real8,0,0,mpi_comm_world, &
                      & ierr)

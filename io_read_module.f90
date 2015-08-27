@@ -301,7 +301,7 @@ CONTAINS
 
           call mpi_barrier(mpi_comm_world,ierr)
 
-          if ( irank /= 0 ) then
+          if ( irank /= 0 .and. myrank_f == 0 ) then
 
              if ( myrank == 0 ) then
                 call mpi_send(utmp,ML,TYPE_MAIN,irank,0, &
@@ -359,6 +359,12 @@ CONTAINS
     deallocate( utmp3 )
     deallocate( LL_tmp )
     deallocate( LL2 )
+
+#ifdef _DRSDFT_
+    call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
+#else
+    call mpi_bcast( unk,size(unk),MPI_COMPLEX16,0,comm_fkmb,ierr )
+#endif
 
     if ( DISP_SWITCH ) then
        write(*,*) "read from ",file_wf2

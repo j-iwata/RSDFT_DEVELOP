@@ -195,7 +195,7 @@ CONTAINS
                   utmp,ir_grid,id_grid,TYPE_MAIN,0,comm_grid,ierr)
           end if
           call mpi_barrier(mpi_comm_world,ierr)
-          if ( irank /= 0 ) then
+          if ( irank /= 0 .and. myrank_f == 0 ) then
              if ( irank == myrank ) then
                 call mpi_send(utmp,ML,TYPE_MAIN,0,0,mpi_comm_world,ierr)
              end if

@@ -195,8 +195,8 @@ CONTAINS
 
     FKBZ_0 = 1
     FKBZ_1 = FKBZ
-    FKMB_0 = 1
-    FKMB_1 = FKMB
+    !FKMB_0 = 1
+    !FKMB_1 = FKMB
 
 ! ---
 
@@ -269,9 +269,9 @@ CONTAINS
 
           call mpi_bcast(utmp,ML,TYPE_MAIN,0,mpi_comm_world,ierr)
 
-          if ( MSP_0 <= s .and. s <= MSP_1 ) then
-             unk_hf(n1:n2,n,k,s) = utmp(n1:n2)
-          end if
+          if ( n < FKMB_0 .or. FKMB_1 < n ) cycle
+          if ( s < MSP_0 .or. MSP_1 < s ) cycle
+          unk_hf(n1:n2,n,k,s) = utmp(n1:n2)
 
        end do ! n
        end do ! k
@@ -293,6 +293,7 @@ CONTAINS
        do k=MBZ_0,MBZ_1
        do n=MB_0 ,MB_1
 
+          if ( n < FKMB_0 .or. FKMB_1 < n ) cycle
           read(3) unk_hf(n1:n2,n,k,s)
 
        end do ! n
