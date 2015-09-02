@@ -26,8 +26,8 @@ CONTAINS
     real(8),intent(INOUT) :: force(:,:)
     integer :: a,ik,i,i1,i2,i3,ir,mm,m1,m2,ierr
     real(8) :: p1,p2,p3,p4,Rc
-    real(8) :: Rx,Ry,Rz,x,y,z,r,r2,vx,vy,vz,v0,v
-    real(8) :: tmp0,tmp1,const0,const1,pi
+    real(8) :: Rx,Ry,Rz,x,y,z,r,r2,r0,vx,vy,vz,v0,v
+    real(8) :: const0,const1,pi
     real(8) :: maxerr,err0,err
     real(8),allocatable :: ftmp(:,:),trho(:)
     integer :: M_irad,NRc,ir0
@@ -47,7 +47,6 @@ CONTAINS
 
     pi = acos(-1.0d0)
     const0 = 2.0d0/sqrt(pi)
-!    const1 = 2.0d0/3.0d0*const0
     const1 = const0/6.0d0
 
     allocate( ftmp(3,Natom) ) ; ftmp=0.0d0
@@ -109,6 +108,7 @@ CONTAINS
           vx = 0.0d0
           vy = 0.0d0
           vz = 0.0d0
+          v0 = 0.0d0
 
           if ( r <= Rc + 1.d-10 ) then
 
@@ -119,14 +119,13 @@ CONTAINS
 
              if ( ir <= 2 ) then
 
-                r = rad(2,ik)
+                r0 = rad(2,ik)
 
                 err0 = 1.d10
-                v0 = 0.0d0
                 do mm=1,20
                    m1=max(1,ir-mm)
                    m2=min(ir+mm,NRc)
-                   call dpolint(rad(m1,ik),vqls(m1,ik),m2-m1+1,r,v,err)
+                   call dpolint(rad(m1,ik),vqls(m1,ik),m2-m1+1,r0,v,err)
                    if ( abs(err) < err0 ) then
                       v0=v
                       err0 = abs(err)
@@ -134,14 +133,14 @@ CONTAINS
                    end if
                 end do
 
-                vx = vx + v0*x/r
-                vy = vy + v0*y/r
-                vz = vz + v0*z/r
+                v0 = v0/r0
+                vx = vx + v0*x
+                vy = vy + v0*y
+                vz = vz + v0*z
 
              else
 
                 err0 = 1.d10
-                v0 = 0.0d0
                 do mm=1,20
                    m1=max(1,ir-mm)
                    m2=min(ir+mm,NRc)
@@ -153,9 +152,10 @@ CONTAINS
                    end if
                 end do
 
-                vx = vx + v0*x/r
-                vy = vy + v0*y/r
-                vz = vz + v0*z/r
+                v0 = v0/r
+                vx = vx + v0*x
+                vy = vy + v0*y
+                vz = vz + v0*z
 
              end if
              maxerr=max(maxerr,err0)
@@ -164,20 +164,20 @@ CONTAINS
 
           if ( r < 1.d-9 ) then
 
-             tmp1 = -const1*(p1*p2**3+p3*p4**3)
-
-             vx = vx + x*tmp1
-             vy = vy + y*tmp1
-             vz = vz + z*tmp1
+             v0 = -const1*(p1*p2**3+p3*p4**3)
+             vx = vx + x*v0
+             vy = vy + y*v0
+             vz = vz + z*v0
 
           else
 
-             tmp1 = -p1*bberf(p2*r) - p3*bberf(p4*r) &
-                  + r*const0*( p1*p2*exp(-p2*p2*r2) + p3*p4*exp(-p4*p4*r2) )
+             v0 = -p1*bberf(p2*r) - p3*bberf(p4*r) &
+                + r*const0*( p1*p2*exp(-p2*p2*r2) + p3*p4*exp(-p4*p4*r2) )
 
-             vx = vx + tmp1*x/(r*r2)
-             vy = vy + tmp1*y/(r*r2)
-             vz = vz + tmp1*z/(r*r2)
+             v0 = v0/(r*r2)
+             vx = vx + v0*x
+             vy = vy + v0*y
+             vz = vz + v0*z
 
           end if
 
