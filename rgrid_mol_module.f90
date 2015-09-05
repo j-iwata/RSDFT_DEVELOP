@@ -63,10 +63,14 @@ CONTAINS
   END SUBROUTINE Send_RgridMol
 
 
-  SUBROUTINE GetGridSize_RgridMol(Hgrid)
+  SUBROUTINE GetGridSize_RgridMol( Hsize_out, Rsize_out, Zsize_out )
     implicit none
-    real(8),intent(OUT) :: Hgrid(3)
-    Hgrid(1:3) = Hsize
+    real(8),optional,intent(OUT) :: Hsize_out(3)
+    real(8),optional,intent(OUT) :: Rsize_out
+    real(8),optional,intent(OUT) :: Zsize_out
+    if ( present(Hsize_out) ) Hsize_out(1:3) = Hsize
+    if ( present(Rsize_out) ) Rsize_out = Rsize
+    if ( present(Zsize_out) ) Zsize_out = Zsize
   END SUBROUTINE GetGridSize_RgridMol
 
 
