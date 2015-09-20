@@ -16,19 +16,22 @@ MODULE force_module
 
   integer :: SYStype
   logical :: flag_init = .true.
+  real(8) :: feps=0.0d0
 
   include 'mpif.h'
 
 CONTAINS
 
 
-  SUBROUTINE init_force( rank, unit, SYStype_in )
+  SUBROUTINE init_force( rank, unit, SYStype_in, feps_in )
     implicit none
     integer,intent(IN) :: rank, unit, SYStype_in
+    real(8),optional,intent(IN) :: feps_in
     if ( disp_switch_parallel ) &
          write(*,'(1x,a60," init_force")') repeat("-",60)
     if ( flag_init ) flag_init=.false.
     SYStype = SYStype_in
+    if ( present(feps_in) ) feps=feps_in
     Ntim=0
     Ntim=maxval( md_atom )
     if ( rank == 0 ) then
@@ -142,6 +145,7 @@ CONTAINS
        fmax=max(fmax,ff)
     end do
     fmax=sqrt(fmax)
+    if ( fmax <= feps ) ierr=2
     deallocate( force )
   END SUBROUTINE get_fmax_force
 
