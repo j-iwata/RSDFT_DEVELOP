@@ -54,12 +54,11 @@ CONTAINS
 
     select case(SYStype)
     case default
-#ifdef _FFTE_
-       call calc_hartree_sol_ffte(n1,n2,n3,rho)
-#else
+
        call calc_hartree_sol(n1,n2,n3,rho)
-#endif
+
     case(1)
+
        allocate( trho(n1:n2) )
 !$OMP parallel do
        do i=n1,n2
@@ -76,8 +75,11 @@ CONTAINS
        call calc_hartree_mol(n1,n2,1,trho,Vh,E_hartree)
        call calc_hartree_ene( trho, Vh, E_hartree )
        deallocate( trho )
+
     case(3)
+
        call calc_esm_hartree(n1,n2,n3,rho,Vh,E_hartree)
+
     end select
 
   END SUBROUTINE calc_hartree

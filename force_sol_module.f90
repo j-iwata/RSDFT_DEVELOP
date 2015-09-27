@@ -1,6 +1,6 @@
 MODULE force_sol_module
 
-  use ps_local_module, only: calc_force_ps_local,calc_force_ps_local_ffte
+  use force_local_sol_module, only: calc_force_local_sol
   use ps_nloc2_module, only: calc_force_ps_nloc2
   use ps_pcc_module, only: flag_pcc_0
   use ps_pcc_force_module, only: calc_ps_pcc_force
@@ -33,11 +33,7 @@ CONTAINS
 
     call watch(ctt(0),ett(0))
 
-#ifdef _FFTE_
-    call calc_force_ps_local_ffte(MI,work)
-#else
-    call calc_force_ps_local(MI,work)
-#endif
+    call calc_force_local_sol( MI, work )
     force = force + work
 
     if ( flag_pcc_0 ) then

@@ -5,6 +5,7 @@ MODULE hartree_sol_module
   use ggrid_module, only: GG,LLG,MGL,NGgrid,construct_ggrid,destruct_ggrid
   use parallel_module
   use watch_module
+  use hartree_sol_ffte_module, only: calc_hartree_sol_ffte
 
   implicit none
 
@@ -27,6 +28,11 @@ CONTAINS
     integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
     complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     logical :: disp_sw
+
+#ifdef _FFTE_
+    call calc_hartree_sol_ffte(n1,n2,n3,rho)
+    return
+#endif
 
     pi4 = 4.d0*acos(-1.d0)
 

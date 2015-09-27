@@ -77,6 +77,7 @@ MODS1 = \
        construct_matrix_ps_nloc2_module.o\
        localpot2_xc_module.o\
        wf_sub_module.o\
+       hartree_sol_ffte_module.o\
        hartree_sol_module.o\
        ps_nloc2_op_module.o\
        localpot2_vh_module.o\
@@ -85,7 +86,6 @@ MODS1 = \
        func2gp_module.o\
        bcset_1_module.o\
        kinetic_fft_module.o\
-       hartree_sol_ffte_module.o\
        bcset_0_module.o\
        ps_nloc2_init_module.o\
        eion_mol_module.o\
@@ -179,6 +179,7 @@ MODS1 = \
        subspace_mate_sl_0_module.o\
        subspace_diag_la_module.o\
        test_hpsi2_module.o\
+       ps_local_variables.o\
        ps_local_module.o\
        xc_module.o\
        esp_calc_module.o\
@@ -205,6 +206,7 @@ MODS1 = \
        rtddft_mol_module.o\
        ps_local_mol_module.o\
        apply_sseig_module.o\
+       force_local_sol_module.o\
        force_sol_module.o\
        prepare_sseig_module.o\
        force_local_mol_module.o\

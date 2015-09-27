@@ -27,22 +27,6 @@ CONTAINS
     implicit none
     real(8),intent(IN) :: gcut
 
-!    call init_ps_local
-!    call init_ps_pcc
-!    call init_ps_initrho
-!    call construct_strfac
-!#ifndef _FFTE_
-!    call construct_ps_local
-!#else
-!    call construct_ps_local_ffte
-!#endif
-!    if (pselect/=4 .and. pselect/=5) then
-!      call construct_ps_pcc
-!      call construct_ps_initrho
-!      call normalize_density
-!    end if
-!    call destruct_strfac
-
 !----
 
     if ( all(ippform < 100) ) then
@@ -53,15 +37,6 @@ CONTAINS
 
 !----------------------------------------- PSELECT
     select case( pselect )
-
-!    case( 2 )
-!       call ps_nloc2_init(gcut)
-!       call prep_ps_nloc2
-!    case( 3 )
-!       call init_ps_nloc3
-!       call prep_ps_nloc3
-!    case( 5 )
-!       call prep_ps_nloc_mr
 
 #ifdef _USPP_
     case( 102 )

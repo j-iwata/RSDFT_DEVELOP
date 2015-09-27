@@ -65,8 +65,8 @@ re:
 	$(MAKE) -f makefile.simple
 
 include makefile.common.program
-include makefile.common.dep
-include makefile.test
+#include makefile.common.dep
+#include makefile.test
 
 clean :
 	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog *.i90

@@ -4,7 +4,7 @@ MODULE test_force_module
   use parallel_module
   use atom_module
 
-  use ps_local_module
+  use force_local_sol_module, only: calc_force_local_sol
   use force_ewald_module
   use ps_nloc2_module
   use ps_pcc_force_module, only: calc_ps_pcc_force
@@ -51,11 +51,7 @@ CONTAINS
     allocate( forcet(3,Natom) ) ; forcet=0.d0
 
     call watcht(disp_switch,"floc",0)
-#ifdef _FFTE_
-    call calc_force_ps_local_ffte(Natom,force)
-#else
-    call calc_force_ps_local(Natom,force)
-#endif
+    call calc_force_local_sol( Natom, force )
     call watcht(disp_switch,"floc",1)
     forcet(:,:)=forcet(:,:)+force(:,:)
 
