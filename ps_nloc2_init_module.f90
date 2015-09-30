@@ -278,7 +278,7 @@ CONTAINS
        lm=max(m,lm)
     end do
 
-    NRc=max_psgrd
+    NRc=size( viod, 1 )
     allocate( dviod(NRc,lm,Nelement_) ) ; dviod=0.d0
     allocate( dvrad(NRc,lm,Nelement_) ) ; dvrad=0.d0
 
