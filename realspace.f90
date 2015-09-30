@@ -405,7 +405,7 @@ PROGRAM Real_Space_Solid
 ! --- Init force ---
 
   if ( iswitch_opt /= 0 ) then
-     call init_force( myrank, 1, SYStype )
+     call init_force( myrank, 1, SYStype, feps )
      if ( SYStype == 0 ) then
         select case( pselect )
         case( 2 )
