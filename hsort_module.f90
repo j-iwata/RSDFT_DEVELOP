@@ -14,7 +14,8 @@ CONTAINS
     real(8),intent(IN)  :: arr(n)
     integer,intent(OUT) :: indx(n)
     !call indexx_0( n, arr, indx )
-    call indexx_1( n, arr, indx )
+    !call indexx_1( n, arr, indx )
+    call ascending_sort_indexx_2( n, arr, indx )
   END SUBROUTINE indexx
 
 
@@ -222,6 +223,222 @@ CONTAINS
     i=j
     j=k
   END SUBROUTINE iswap
+
+
+  SUBROUTINE ascending_sort_indexx_2( ndat, arry, indx )
+    implicit none
+    integer,intent(IN)  :: ndat
+    real(8),intent(IN)  :: arry(ndat)
+    integer,intent(OUT) :: indx(ndat)
+    integer :: ipos, jpos,i,j,ndati,ndatj,loop,ipivo
+    real(8) :: apivo
+
+    do i=1,ndat
+       indx(i) = i
+    end do
+
+    if ( ndat <= 1 ) then
+       return
+    else if ( ndat == 2 ) then
+       if ( arry(2) < arry(1) ) then
+          indx(1) = 2
+          indx(2) = 1
+       end if
+       return
+    end if
+
+    apivo = arry(1)
+    if ( apivo < arry(2) ) apivo = arry(2)
+
+    ipos = 1
+    jpos = ndat
+
+! ---
+
+    do loop=1,ndat
+
+    if ( ipos == jpos ) then
+       if ( arry(indx(ipos)) >= apivo ) then
+          ipos = ipos - 1
+       else if ( arry(indx(jpos)) < apivo ) then
+          jpos = jpos + 1
+       end if
+       exit
+    end if
+
+    do i=ipos,jpos-1
+       if ( arry(indx(i)) >= apivo ) then
+          ipos = i
+          exit
+       end if
+    end do
+
+    do j=jpos,ipos+1,-1
+       if ( arry(indx(j)) < apivo ) then
+          jpos = j
+          exit
+       end if
+    end do
+
+    if ( i /= ipos .and. j == jpos ) then
+       ipos = jpos
+       jpos = jpos + 1
+       exit
+    else if ( i == ipos .and. j /= jpos ) then
+       ipos = ipos - 1
+       jpos = ipos + 1
+       exit
+    else if ( i /= ipos .and. j /= jpos ) then
+       jpos = ipos + 1
+       exit
+    end if
+
+    if ( arry(indx(ipos)) > arry(indx(jpos)) ) then
+       i=indx(ipos)
+       indx(ipos)=indx(jpos)
+       indx(jpos)=i
+    end if
+
+    if ( ipos+1 == jpos ) exit
+
+    ipos = ipos + 1
+    jpos = jpos - 1
+
+    end do
+
+    if ( ipos+1 == jpos ) then
+       ndati = ipos
+       ndatj = ndat-jpos+1
+       ipivo = 0
+       call indexx_2_sub( ipivo, ndat, ndati, arry, indx )
+       call indexx_2_sub( ipivo, ndat, ndatj, arry, indx(jpos) )
+    else
+       stop "error!:stop@ascending_sort_indexx_2"
+    end if
+
+  END SUBROUTINE ascending_sort_indexx_2
+
+  RECURSIVE SUBROUTINE indexx_2_sub( ipivo_in, ndat, ndat1, arry, indx )
+    implicit none
+    integer,intent(IN) :: ipivo_in, ndat, ndat1
+    real(8),intent(IN) :: arry(ndat)
+    integer,intent(INOUT) :: indx(ndat1)
+    integer :: i,j,ipos,jpos,ndati,ndatj,loop,ipivo
+    real(8) :: apivo,apivo0,apivo1,err
+
+    if ( ndat1 <= 1 ) then
+       return
+    else if ( ndat1 == 2 ) then
+       if ( arry(indx(2)) < arry(indx(1)) ) then
+          i=indx(1)
+          indx(1) = indx(2)
+          indx(2) = i
+       end if
+       return
+    end if
+
+    if ( ipivo_in == 0 ) then
+       apivo = arry(indx(1))
+       if ( apivo < arry(indx(2)) ) apivo = arry(indx(2))
+    else if ( ipivo_in == 1 ) then
+       apivo0 = 1.d100
+       apivo1 =-1.d100
+       do i=1,ndat1
+          apivo = arry(indx(i))
+          apivo0 = min( apivo, apivo0 )
+          apivo1 = max( apivo, apivo1 )
+       end do
+       apivo = 0.5d0*( apivo0 + apivo1 )
+    else
+       stop "error!: stop@indexx_sub_2(1)"
+    end if
+       
+    ipos = 1
+    jpos = ndat1
+
+! ---
+
+    do loop=1,ndat1
+
+    if ( ipos == jpos ) then
+       if ( arry(indx(ipos)) >= apivo ) then
+          ipos = ipos - 1
+       else if ( arry(indx(jpos)) < apivo ) then
+          jpos = jpos + 1
+       end if
+       exit
+    end if
+
+    do i=ipos,jpos-1
+       if ( arry(indx(i)) >= apivo ) then
+          ipos = i
+          exit
+       end if
+    end do
+
+    do j=jpos,ipos+1,-1
+       if ( arry(indx(j)) < apivo ) then
+          jpos = j
+          exit
+       end if
+    end do
+
+    if ( i /= ipos .and. j == jpos ) then
+       ipos = jpos
+       jpos = jpos + 1
+       exit
+    else if ( i == ipos .and. j /= jpos ) then
+       ipos = ipos - 1
+       jpos = ipos + 1
+       exit
+    else if ( i /= ipos .and. j /= jpos ) then
+       jpos = ipos + 1
+       exit
+    end if
+
+    if ( arry(indx(ipos)) > arry(indx(jpos)) ) then
+       i=indx(ipos)
+       indx(ipos)=indx(jpos)
+       indx(jpos)=i
+    end if
+
+    if ( ipos+1 == jpos ) exit
+
+    ipos = ipos + 1
+    jpos = jpos - 1
+
+    end do
+
+    if ( ipos+1 == jpos ) then
+
+       ndati = ipos
+       ndatj = ndat1-jpos+1
+       ipivo = 0
+
+       if ( ipos == 0 .or. jpos == 0 ) then
+          do i=1,ndat1
+             err=abs(arry(indx(i))-apivo)
+             if ( err > 1.d-12 ) exit
+          end do
+          if ( i > ndat1 ) return
+          ipivo=1
+       end if
+
+       if ( ipos > 1 ) then
+          call indexx_2_sub( ipivo,ndat,ndati,arry,indx )
+       end if
+
+       if ( jpos >= 1 .and. jpos < ndat1 ) then
+          call indexx_2_sub( ipivo,ndat,ndatj,arry,indx(jpos) )
+       end if
+
+    else
+
+       stop "error!: stop@indexx_2_sub"
+
+    end if
+
+  END SUBROUTINE indexx_2_sub
 
 
 END MODULE hsort_module
