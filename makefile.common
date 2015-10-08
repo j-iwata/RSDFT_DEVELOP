@@ -184,6 +184,7 @@ MODS1 = \
        xc_module.o\
        esp_calc_module.o\
        iter_lin_solvers.o\
+       cggs_module.o\
        cg_lobpcg_module.o\
        subspace_mate_sl_module.o\
        subspace_mate_eigen_module.o \

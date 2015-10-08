@@ -1,4 +1,5 @@
 MODULE cg_module
+
   use rgrid_module, only: zdV,dV
   use hamiltonian_module
   use cgpc_module
@@ -6,6 +7,7 @@ MODULE cg_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
   use cg_u_module, only: init_cg_u, cg_u
+  use cggs_module
   use wf_module, only: hunk, iflag_hunk
   use kinetic_module, only: SYStype
   use watch_module
@@ -249,6 +251,12 @@ CONTAINS
 
           call watchb( ttmp, timecg(:,4) )
 
+! --- orthogonalization
+
+          do n=ns,ne
+             call cggs( iswitch_gs, ML0, MB, n, dV, unk(n1,1), Pgk(n1,n-ns+1) )
+          end do
+
 ! ---
 
           do n=1,nn
@@ -441,6 +449,7 @@ CONTAINS
 !       call write_watchb( time_cgpc_max(1,8),6, time_cgpc_indx(8) ) 
 !       write(*,'(a20," cg_1")') repeat("-",20)
        call write_watchb( timecg(1,1), 7, timecg_indx ) 
+       write(*,*) "iswitch_gs=",iswitch_gs
     end if
 
   END SUBROUTINE conjugate_gradient_1
@@ -564,6 +573,12 @@ CONTAINS
           call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
+
+! --- orthogonalization
+
+          do n=ns,ne
+             call cggs( iswitch_gs, ML0, MB, n, dV, unk(n1,1), Pgk(n1,n-ns+1) )
+          end do
 
 ! ---
 
@@ -734,6 +749,7 @@ CONTAINS
 !       write(*,*) "time(op_cg   )",ctt(2),ett(2)
 !       write(*,*) "time(com_cg  )",ctt(3),ett(3)
 !       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+       write(*,*) "iswitch_gs=",iswitch_gs
     end if
 
   END SUBROUTINE conjugate_gradient_1
