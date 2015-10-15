@@ -39,12 +39,15 @@ MODS1 = \
        band_variables.o\
        real_complex.o\
        init_occ_electron_module.o\
+       basic_type_factory.o\
+       grid_module.o\
        rgrid_mol_module.o\
+       fft_module.o\
        ffte_sub_module.o\
        localpot2_variables.o\
-       basic_type_factory.o\
        var_para_ps_nloc_g.o\
        mixing_broyden_module.o\
+       mixing_pulay_module.o\
        ps_gth_module.o\
        basic_type_methods.o\
        simc_module.o\
@@ -61,7 +64,6 @@ MODS1 = \
        var_ps_member.o\
        bc_mol_module.o\
        physical_type_methods.o\
-       grid_module.o\
        esm_rgrid_module.o\
        para_rgrid_comm.o\
        rgrid_module.o\
