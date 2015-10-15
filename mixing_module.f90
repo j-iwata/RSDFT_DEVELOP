@@ -1,6 +1,7 @@
 MODULE mixing_module
 
   use mixing_broyden_module
+  use mixing_pulay_module
 
   implicit none
 
@@ -168,9 +169,10 @@ CONTAINS
             ,Xold(1,MSP+1,1),m,MPI_REAL8,comm_spin,ierr )
 
        if ( mod(imix,2) == 0 ) then
-          Xin(:,:,mmix) = Xold(:,1:MSP,1)
+          call set_init_pulay( Xold(:,:,1), Xin(:,:,mmix) )
        else if ( mod(imix,2) == 1 ) then
-          Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
+!          Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
+          call set_init_pulay( Xold(:,MSP+1:2*MSP,1), Xin(:,:,mmix) )
        end if
 
        dif0(:) = 0.0d0
@@ -248,10 +250,11 @@ CONTAINS
           call pulay_r_mixing( ML0, MSP, h )
        case(20:29)
           call pulay_r2_mixing( ML0, MSP, h )
-!          write(*,*) "imix=",imix
-!          stop "this mixing is not available"
        case(30:39)
           call broyden_mixing &
+               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
+       case(40:49)
+          call pulay_mixing &
                ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        end select
 

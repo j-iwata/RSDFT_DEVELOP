@@ -9,6 +9,7 @@ MODULE grid_module
   PRIVATE
   PUBLIC :: grid, get_range_rgrid
   PUBLIC :: get_map_3d_to_1d
+  PUBLIC :: mpi_allgatherv_grid, zmpi_allgatherv_grid
 
   type grid
      type( ArrayRange1D ) :: g1
@@ -66,5 +67,23 @@ CONTAINS
      end do
      call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER, MPI_SUM, comm_grid, ierr )
   END SUBROUTINE get_map_3d_to_1d
+
+  SUBROUTINE mpi_allgatherv_grid( f, g )
+    implicit none
+    real(8),intent(IN)  :: f(:)
+    real(8),intent(OUT) :: g(:)
+    integer :: ierr
+    call MPI_ALLGATHERV( f, size(f), MPI_REAL8, g, ir_grid, id_grid, &
+                         MPI_REAL8, comm_grid, ierr )
+  END SUBROUTINE mpi_allgatherv_grid
+
+  SUBROUTINE zmpi_allgatherv_grid( zf, zg )
+    implicit none
+    complex(8),intent(IN)  :: zf(:)
+    complex(8),intent(OUT) :: zg(:)
+    integer :: ierr
+    call MPI_ALLGATHERV( zf, size(zf), MPI_COMPLEX16, zg, ir_grid, &
+                         id_grid, MPI_COMPLEX16, comm_grid, ierr )
+  END SUBROUTINE zmpi_allgatherv_grid
 
 END MODULE grid_module
