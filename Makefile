@@ -5,13 +5,9 @@ include make.inc
 
 include makefile.common
 
-DIR1 = ext1
-MINPACOBJ  = $(DIR1)/ext_sub_minpac.o
-
 DIR2 = ext2
 EXTOBJ2 = $(DIR2)/p4sn.o \
           $(DIR2)/dotp.o \
-          $(DIR2)/spline.o \
           $(DIR2)/convert_capital.o \
           $(DIR2)/write_info.o \
 
@@ -52,7 +48,6 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
 
 all :
 	@$(MAKE) lda0
-	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
 	cd $(DIR3) ; $(MAKE) -j1
@@ -70,7 +65,6 @@ include makefile.common.program
 
 clean :
 	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog *.i90
-	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean
 	cd $(DIR3) ; $(MAKE) clean
 	cd $(DIR4) ; $(MAKE) clean

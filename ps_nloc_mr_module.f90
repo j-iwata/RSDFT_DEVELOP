@@ -16,6 +16,7 @@ MODULE ps_nloc_mr_module
   use ylm_module
   use hsort_module
   use polint_module
+  use spline_module
 
   implicit none
 
@@ -235,7 +236,7 @@ CONTAINS
                    if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
                         abs(z)>1.d-14 .or. L==0 ) then
 #ifdef _SPLINE_
-                      call splint(rad1(1,ik),viod(1,iorb,ik),y2a,NRc,r,v0)
+                      call splint(rad1(1,ik),viod(1,iorb,ik),y2a(1,iorb,ik),NRc,r,v0)
 #else
                       ir0=irad( int(100.d0*r),ik )
                       do ir=ir0,NRc
@@ -1474,7 +1475,7 @@ CONTAINS
                    if ( r < rad1(2,ik) ) then
                       tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
                    else
-                      call splint(rad1(1,ik),dviod(1,lm1,ik),y2b,NRc,r,tmp0)
+                      call splint(rad1(1,ik),dviod(1,lm1,ik),y2b(1,lm1,ik),NRc,r,tmp0)
                       tmp0=tmp0/(r*r)
                    end if
 #else

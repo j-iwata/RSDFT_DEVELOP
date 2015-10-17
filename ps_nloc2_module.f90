@@ -25,6 +25,7 @@ MODULE ps_nloc2_module
   use ylm_module
   use hsort_module
   use polint_module
+  use spline_module
 
   implicit none
 
@@ -58,7 +59,7 @@ CONTAINS
     integer,allocatable :: itmp2(:),LLp(:,:)
     integer,allocatable :: jtmp3(:,:,:),mtmp3(:),istatus(:,:)
     integer :: a,i,j,k,L,m,n,mm1,mm2,mm3,m1,m2,ML0,k1,k2,k3
-    integer :: i1,i2,i3,j1,j2,j3,ik,ir,m0,iorb,mm,ierr,ir0,irlma
+    integer :: i1,i2,i3,j1,j2,j3,ik,ir,m0,iorb,mm,ierr,ir0,ir1,irlma
     integer :: ic1,ic2,ic3,id1,id2,id3,ii1,ii2,ii3,iii1,iii2,iii3
     integer :: Nintp_0,nzlma_0,M_irad,NRc,MMJJ_0,lma,lma0,i1_0,i2_0,i3_0
     integer :: nreq,ibuf(3,3),irank
@@ -232,7 +233,7 @@ CONTAINS
 !$OMP parallel do schedule(dynamic) firstprivate( maxerr ) &
 !$OMP    private( Rx,Ry,Rz,ic1,ic2,ic3,ik,iorb,Rps2,NRc,L,j,i,i1,i2,i3 &
 !$OMP            ,id1,id2,id3,k1,k2,k3,i1_0,i2_0,i3_0,d1,d2,d3,x,y,z,r2,r &
-!$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err )
+!$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err,ir1 )
     do a=1,Natom
 
 ! Rx,Ry,Rz : atom position in real grid
@@ -307,12 +308,24 @@ CONTAINS
                 if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
                      abs(z)>1.d-14 .or. L==0 ) then
 #ifdef _SPLINE_
-                   call splint(rad1(1,ik),viod(1,iorb,ik),y2a,NRc,r,v0)
+                   call splint(rad1(1,ik),viod(1,iorb,ik),y2a(1,iorb,ik),NRc,r,v0)
 #else
-                   ir0=irad( int(100.d0*r),ik )
-                   do ir=ir0,NRc
-                      if ( r < rad1(ir,ik) ) exit
-                   end do
+!                   ir0=irad( int(100.d0*r),ik )
+!                   do ir=ir0,NRc
+!                      if ( r < rad1(ir,ik) ) exit
+!                   end do
+                   ir0 = 1
+                   ir1 = NRc
+111                if ( ir1 - ir0 > 1 ) then
+                      ir = ( ir0 + ir1 )/2
+                      if ( rad1(ir) > r ) then
+                         ir1 = ir
+                      else
+                         ir0 = ir
+                      end if
+                      goto 111
+                   end if
+                   ir = ir0
                    if ( ir <= 2 ) then
                       v0=viod(2,iorb,ik)
                       if ( ir < 1 ) stop "ps_nloc2(0)"
@@ -1292,7 +1305,7 @@ CONTAINS
     integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq,ib,ib1,ib2,nnn
     integer :: a,a0,ik,m,lm0,lm1,lma,im,m1,m2
-    integer :: ierr,M_irad,ir0
+    integer :: ierr,M_irad,ir0,ir1
     integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
     real(8),parameter :: ep=1.d-8
     real(8),save :: Y1(0:3,-3:3,0:4,-4:4)
@@ -1592,7 +1605,7 @@ CONTAINS
 !$OMP do schedule(dynamic) firstprivate( maxerr ) &
 !$OMP    private( a,L,m,iorb,ik,Rx,Ry,Rz,NRc,d1,d2,d3,x,y,z,r  &
 !$OMP            ,ir,ir0,yy1,yy2,yy3,err0,err,tmp0,tmp1,m1,m2  &
-!$OMP            ,lma,j,L1,L1z,lm1,im )
+!$OMP            ,lma,j,L1,L1z,lm1,im,ir1 )
     do lma=1,nzlma
        a    = amap(lma)
        if ( a <= 0 ) cycle
@@ -1615,12 +1628,12 @@ CONTAINS
           y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
           z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
           r = sqrt(x*x+y*y+z*z)
-#ifndef _SPLINE_
-          ir0=irad( int(100.d0*r),ik )
-          do ir=ir0,NRc
-             if ( r<rad1(ir,ik) ) exit
-          end do
-#endif
+!#ifndef _SPLINE_
+!          ir0=irad( int(100.d0*r),ik )
+!          do ir=ir0,NRc
+!             if ( r<rad1(ir,ik) ) exit
+!          end do
+!#endif
           yy1=0.d0
           yy2=0.d0
           yy3=0.d0
@@ -1632,10 +1645,22 @@ CONTAINS
                 if ( r < rad1(2,ik) ) then
                    tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)
                 else
-                   call splint(rad1(1,ik),dviod(1,lm1,ik),y2b,NRc,r,tmp0)
+                   call splint(rad1(1,ik),dviod(1,lm1,ik),y2b(1,lm1,ik),NRc,r,tmp0)
                    tmp0=tmp0/(r*r)
                 end if
 #else
+                ir0 = 1
+                ir1 = NRc
+111             if ( ir1 - ir0 > 1 ) then
+                   ir = ( ir0 + ir1 )/2
+                   if ( rad1(ir) > r ) then
+                      ir1 = ir
+                   else
+                      ir0 = ir
+                   end if
+                   goto 111
+                end if
+                ir = ir0
                 if ( ir <= 2 ) then
                    err0=0.d0
                    tmp0=dviod(2,lm1,ik)/(rad1(2,ik)**2)

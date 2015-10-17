@@ -15,6 +15,7 @@ MODULE PSQRijPrep
   use watch_module
   use array_bound_module, only: ML_0
   use polint_module
+  use spline_module
 
   implicit none
 

@@ -2,6 +2,7 @@ MODULE ForceSub
 
   use parallel_module, only: myrank
   use polint_module
+  use spline_module
 
   implicit none
 
@@ -222,7 +223,7 @@ CONTAINS
     if ( r < rad1(2,ikind) ) then
       tmp0=dviod(2,lm1,ikind)/(rad1(2,ikind)**2)
     else
-      call splint(rad1(1,ikind),dviod(1,lm1,ikind),y2b,NRc,r,tmp0)
+      call splint(rad1(1,ikind),dviod(1,lm1,ikind),y2b(1,lm1,ikind),NRc,r,tmp0)
       tmp0=tmp0/(r*r)
     end if
 #else

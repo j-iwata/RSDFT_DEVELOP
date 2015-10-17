@@ -236,7 +236,7 @@ CONTAINS
     deallocate( Hes  )
   END SUBROUTINE levenberg_marquardt
 
-
+#ifdef _TEST_
   SUBROUTINE simc_0(rad,vin,rc,zv,parloc,mesh)
 !     $Id: simc.F,v 1.2 1997/06/25 05:07:08 skimu Exp $
 !
@@ -358,6 +358,6 @@ CONTAINS
     end if
     return
   END SUBROUTINE uscfit
-
+#endif
 
 END MODULE simc_module

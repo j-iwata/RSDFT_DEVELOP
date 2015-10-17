@@ -16,6 +16,7 @@ MODULE force_ps_nonloc2
   use para_rgrid_comm, only: do3StepComm_F,do3StepComm_dQ
   use ForceSub
   use ylm_module
+  use spline_module
 
   implicit none
 

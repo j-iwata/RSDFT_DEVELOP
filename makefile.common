@@ -1,5 +1,6 @@
 MODS1 = \
        polint_module.o\
+       spline_module.o\
        hsort_module.o\
        bberf_module.o\
        ylm_module.o\
