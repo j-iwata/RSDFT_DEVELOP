@@ -318,7 +318,7 @@ CONTAINS
                    ir1 = NRc
 111                if ( ir1 - ir0 > 1 ) then
                       ir = ( ir0 + ir1 )/2
-                      if ( rad1(ir) > r ) then
+                      if ( rad1(ir,ik) > r ) then
                          ir1 = ir
                       else
                          ir0 = ir
@@ -1653,7 +1653,7 @@ CONTAINS
                 ir1 = NRc
 111             if ( ir1 - ir0 > 1 ) then
                    ir = ( ir0 + ir1 )/2
-                   if ( rad1(ir) > r ) then
+                   if ( rad1(ir,ik) > r ) then
                       ir1 = ir
                    else
                       ir0 = ir
