@@ -475,7 +475,7 @@ CONTAINS
 
     allocate( work(ML) ) ; work=z0
 
-    call mpi_allgatherv(trho(n1),ir_grid(myrank_g),TYPE_MAIN &
+    call mpi_allgatherv(trho(n1),ir_grid(myrank_g),MPI_COMPLEX16 &
          ,work,ir_grid,id_grid,MPI_COMPLEX16,comm_grid,ierr)
 
     i=0
