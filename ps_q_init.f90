@@ -3,7 +3,7 @@ MODULE PSQInit
   use VarPSMemberG
   use parallel_module, only: myrank
   use VarSysParameter
-
+  use polint_module
   use maskf_module
 
   use Filtering, only: opFiltering
