@@ -150,7 +150,7 @@ CONTAINS
     real(8),intent(INOUT) :: fvec(ndim),fjac(ndim,nvec)
     integer,parameter :: max_loop=10000, max_loop0=5
     integer,allocatable :: ipiv(:)
-    integer :: m,n,ierr,loop,loop0
+    integer :: m,n,ierr,loop,loop0,num_conv
     real(8),parameter :: delta=1.d-8
     real(8),allocatable :: Hes(:,:),dJ(:),du(:),xtmp(:),ftmp(:),xmin(:)
     real(8) :: c,J,Jtmp,err,Jmin
@@ -165,6 +165,7 @@ CONTAINS
 
     xmin = x
     Jmin = 1.d100
+    num_conv = 0
 
     do loop0=1,max_loop0
 
@@ -195,11 +196,8 @@ CONTAINS
 
           err = sum( du(:)**2 )
           if ( err < delta ) then
+             num_conv = num_conv + 1
              exit
-          else if ( loop == max_loop ) then
-             if ( loop0 == max_loop0 ) then
-                stop "error@levenberg_marquardt"
-             end if
           end if
 
           if ( Jtmp > J ) then
@@ -224,6 +222,8 @@ CONTAINS
        call random_number(x)
 
     end do ! loop0
+
+    if ( num_conv == 0 ) stop "error@levenberg_marquardt"
 
     x = xmin
 
