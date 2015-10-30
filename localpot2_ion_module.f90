@@ -19,6 +19,7 @@ MODULE localpot2_ion_module
   use ggrid_module
   use strfac_module
   use bberf_module
+  use fft_module
 
   implicit none
 
@@ -39,9 +40,6 @@ CONTAINS
     integer :: m1,m2,m3
     real(8),allocatable :: vqlg(:,:)
     complex(8),allocatable :: vg(:)
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     complex(8),allocatable :: zw0(:,:,:),zw1(:,:,:)
     integer :: i1,i2,i3,j1,j2,j3,mm,a,ik
     real(8) :: Gx,Gy,Gz,GG,Gr,a1,a2,a3,pi2,ct0,et0,ct1,et1
@@ -123,17 +121,9 @@ CONTAINS
 
     allocate( zw1(0:m1-1,0:m2-1,0:m3-1) )
 
-    mm=m1*m2*m3
-    allocate( lx1(mm),lx2(mm),ly1(mm),ly2(mm),lz1(mm),lz2(mm) )
-    allocate( wsavex(m1),wsavey(m2),wsavez(m3) )
-
-    call prefft(m1,m2,m3,mm,wsavex,wsavey,wsavez,ifacx,ifacy,ifacz &
-               ,lx1,lx2,ly1,ly2,lz1,lz2)
-    call fft3bx(m1,m2,m3,mm,zw0,zw1,wsavex,wsavey,wsavez,ifacx,ifacy,ifacz &
-               ,lx1,lx2,ly1,ly2,lz1,lz2)
-
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call init_fft
+    call backward_fft( zw0, zw1 )
+    call finalize_fft
 
     j1=Igrid_dense(1,1)-1
     j2=Igrid_dense(1,2)-1

@@ -6,6 +6,7 @@ MODULE band_unfold_module
   use band_variables, only: nbk, ak, nfki
   use parallel_module
   use wf_module, only: unk, esp
+  use fft_module
 
   implicit none
 
@@ -284,9 +285,6 @@ CONTAINS
     implicit none
     integer,intent(IN) :: jktrj
     logical,intent(IN) :: disp_switch
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
     integer :: ML,ML1,ML2,ML3,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1,ML_0,ML_1
     integer :: s,k,n,i,i1,i2,i3,ierr,LG_sc(3),iktrj
@@ -308,11 +306,7 @@ CONTAINS
     MSP_0 = id_spin(myrank_s) + 1
     MSP_1 = id_spin(myrank_s) + ir_spin(myrank_s)
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
 ! ---
 
@@ -354,8 +348,7 @@ CONTAINS
           call mpi_allreduce( MPI_IN_PLACE, zwork0, ML, MPI_COMPLEX16 &
                ,MPI_SUM, comm_grid, ierr )
 
-          call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
-               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+          call forward_fft( zwork0, zwork1 )
 
           sum0=0.0d0
           do i=1,mg_pc
@@ -391,8 +384,8 @@ CONTAINS
 
     deallocate( zwork1 )
     deallocate( zwork0 )
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+
+    call finalize_fft
 
     if ( disp_switch ) write(*,'(a40," band_unfold(end)")') repeat("-",40)
 

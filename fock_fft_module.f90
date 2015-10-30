@@ -9,6 +9,7 @@ MODULE fock_fft_module
   use watch_module
   use bz_module, only: kbb
   use fock_ffte_module
+  use fft_module
 
   implicit none
 
@@ -47,9 +48,6 @@ CONTAINS
     complex(8),intent(IN)    :: trho(n1:n2)
     complex(8),intent(INOUT) :: tVh(n1:n2)
 #endif
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:5),ett(0:5)
 
 #ifdef _FFTE_
@@ -111,16 +109,11 @@ CONTAINS
 
     allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=z0
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call watch(ctt(1),ett(1))
 
-    call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call forward_fft( zwork0, zwork1 )
 
     call watch(ctt(2),ett(2))
 
@@ -195,28 +188,19 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    call fft3bx(ML1,ML2,ML3,ML,zwork1,zwork0,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call backward_fft( zwork1, zwork0 )
 
     call watch(ctt(4),ett(4))
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
+
     deallocate( zwork0 )
 
-    i=n1-1
-    do i3=Igrid(1,3),Igrid(2,3)
-    do i2=Igrid(1,2),Igrid(2,2)
-    do i1=Igrid(1,1),Igrid(2,1)
-       i=i+1
 #ifdef _DRSDFT_        
-       tVh(i)=real( zwork1(i1,i2,i3) )
+    call z3_to_d1_fft( zwork1, tVh )
 #else
-       tVh(i)=zwork1(i1,i2,i3)
+    call z3_to_z1_fft( zwork1, tVh )
 #endif
-    end do
-    end do
-    end do
 
     deallocate( zwork1 )
 
@@ -250,9 +234,6 @@ CONTAINS
     complex(8),allocatable :: work(:)
     complex(8),parameter :: z0=(0.d0,0.d0)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
 
     pi  = acos(-1.0d0)
     pi4 = 4.d0*pi
@@ -309,15 +290,11 @@ CONTAINS
 
     allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=z0
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
     call watch(ct0,et0)
     ct_fock_fft(6) = ct_fock_fft(6) + ct0-ct1
     et_fock_fft(6) = et_fock_fft(6) + et0-et1
 
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call watch(ct1,et1)
     ct_fock_fft(7) = ct_fock_fft(7) + ct1-ct0
@@ -325,24 +302,17 @@ CONTAINS
 
     call watch(ct0,et0)
 
-    call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call forward_fft( zwork0, zwork1 )
 
     call watch(ct1,et1)
     ct_fock_fft(2) = ct_fock_fft(2) + ct1-ct0
     et_fock_fft(2) = et_fock_fft(2) + et1-et0
 
-!    call construct_Ggrid(2)
-
     const1 = 0.25d0/(omega*omega)
     const2 = pi/(omega*omega)
 
     zwork1(:,:,:)=z0
-!    do i=1,NGgrid(0)
-!       i1=LLG(1,i)
-!       i2=LLG(2,i)
-!       i3=LLG(3,i)
-!       g2=GG(MGL(i))
+
     do i3=-NGgrid(3),NGgrid(3)
     do i2=-NGgrid(2),NGgrid(2)
     do i1=-NGgrid(1),NGgrid(1)
@@ -383,32 +353,21 @@ CONTAINS
     end do
     end do
 
-!    call destruct_Ggrid
-
     call watch(ct0,et0)
     ct_fock_fft(3) = ct_fock_fft(3) + ct0-ct1
     et_fock_fft(3) = et_fock_fft(3) + et0-et1
 
-    call fft3bx(ML1,ML2,ML3,ML,zwork1,zwork0,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call backward_fft( zwork1, zwork0 )
 
     call watch(ct1,et1)
     ct_fock_fft(4) = ct_fock_fft(4) + ct1-ct0
     et_fock_fft(4) = et_fock_fft(4) + et1-et0
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
+
     deallocate( zwork0 )
 
-    i=n1-1
-    do i3=Igrid(1,3),Igrid(2,3)
-    do i2=Igrid(1,2),Igrid(2,2)
-    do i1=Igrid(1,1),Igrid(2,1)
-       i=i+1
-       tVh(i)=zwork1(i1,i2,i3)
-    end do
-    end do
-    end do
+    call z3_to_z1_fft( zwork1, tVh )
 
     deallocate( zwork1 )
 
@@ -439,9 +398,6 @@ CONTAINS
     complex(8),parameter :: z0=(0.d0,0.d0)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
     complex(8),allocatable :: work(:)
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     real(8) :: ctt(0:5),ett(0:5)
 
 #ifdef _FFTE_
@@ -505,16 +461,11 @@ CONTAINS
 
     allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=z0
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call watch(ctt(1),ett(1))
 
-    call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call forward_fft( zwork0, zwork1 )
 
     call watch(ctt(2),ett(2))
 
@@ -589,24 +540,15 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    call fft3bx(ML1,ML2,ML3,ML,zwork1,zwork0,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call backward_fft( zwork1, zwork0 )
 
     call watch(ctt(4),ett(4))
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
+
     deallocate( zwork0 )
 
-    i=n1-1
-    do i3=Igrid(1,3),Igrid(2,3)
-    do i2=Igrid(1,2),Igrid(2,2)
-    do i1=Igrid(1,1),Igrid(2,1)
-       i=i+1
-       tVh(i)=zwork1(i1,i2,i3)
-    end do
-    end do
-    end do
+    call z3_to_z1_fft( zwork1, tVh )
 
     deallocate( zwork1 )
 

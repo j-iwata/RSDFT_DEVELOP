@@ -1,6 +1,7 @@
 MODULE fft_module
 
   use grid_module
+  use rsdft_fft_module
 
   implicit none
 
@@ -121,11 +122,12 @@ CONTAINS
 
   SUBROUTINE forward_fft( z3, w3 )
     implicit none
-    complex(8),intent(INOUT) :: z3(:,:,:)
+    complex(8),intent(INOUT) :: z3(0:,0:,0:)
     complex(8),allocatable   :: w3(:,:,:)
     if ( .not.allocated(w3) ) then
        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
     end if
+    call rsdft_fft3d( z3,  1 ) ; return
     call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
                ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
   END SUBROUTINE forward_fft
@@ -138,6 +140,7 @@ CONTAINS
     if ( .not.allocated(w3) ) then
        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
     end if
+    call rsdft_fft3d( z3, -1 ) ; return
     call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
                ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
   END SUBROUTINE backward_fft

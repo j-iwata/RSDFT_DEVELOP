@@ -14,6 +14,7 @@ MODULE ps_nloc3_module
   use ps_nloc2_variables
   use ylm_module
   use hsort_module
+  use fft_module
 
   implicit none
 
@@ -259,17 +260,14 @@ CONTAINS
 
   SUBROUTINE prep_ps_nloc3
     implicit none
-    complex(8),parameter :: zi=(0.d0,1.d0)
-    complex(8),allocatable :: zwork(:,:,:),fftwork(:)
+    complex(8),parameter :: zi=(0.0d0,1.0d0), z0=(0.0d0,0.0d0)
+    complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
     complex(8) :: zum,ztmp,phase
     integer :: nn1,nn2,ML0,l1,l2,l3,m1,m2,m3
     integer :: i0,i1,i2,i3,j1,j2,j3,irank_g,ierr
     integer :: ik,i,j,k,a,L,m,iorb,lma,lma0,lma1
     real(8) :: a1,a2,a3,c1,c2,c3,Gr,x,y,z,pi2
     integer :: k1,kk1,ig,ML1,ML2,ML3,ML,MG
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
 
     nn1     = idisp(myrank)+1
     nn2     = idisp(myrank)+ircnt(myrank)
@@ -334,16 +332,13 @@ CONTAINS
     end if
 
 !- allocate -----------------------------------------------------
-    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1),fftwork(ML) )
-    allocate( utmp(ML) )
-    allocate( utmp3(nn1:nn2,0:nprocs_g-1,0:nprocs_b-1) )
+    allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork0=z0
+    allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=z0
+    allocate( utmp(ML) ) ; utmp=z0
+    allocate( utmp3(nn1:nn2,0:nprocs_g-1,0:nprocs_b-1) ) ; utmp3=z0
 !----------------------------------------------------------------
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call construct_Ggrid(0)
 
@@ -366,7 +361,7 @@ CONTAINS
              phase=(-zi)**L
 !$OMP parallel private( i1,i2,i3,Gr,c1,c2,c3,x,y,z,j )
 !$OMP workshare
-             zwork=(0.d0,0.d0)
+             zwork0=z0
 !$OMP end workshare
 !$OMP do
              do i=1,MG
@@ -382,22 +377,18 @@ CONTAINS
                 z=bb(3,1)*c1+bb(3,2)*c2+bb(3,3)*c3
                 if ( x==0.d0 .and. y==0.d0 .and. z==0.d0 .and. L/=0 ) cycle
                 j=mapgk(i,k)
-                zwork(i1,i2,i3)=viodgk2(j,iorb,ik) &
+                zwork0(i1,i2,i3)=viodgk2(j,iorb,ik) &
                      *phase*Ylm(x,y,z,L,m)*dcmplx(cos(Gr),-sin(Gr))
              end do
 !$OMP end do
 !$OMP end parallel
-             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
-                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
 
-!             i=0
-!             irank_g=-1
-!!$OMP parallel do collapse(3) private( irank_g,l1,l2,l3,m1,m2,m3,i )
+             call backward_fft( zwork0, zwork1 )
+
 !$OMP parallel private( irank_g,l1,l2,l3,m1,m2,m3,i )
              do i3=1,node_partition(3)
              do i2=1,node_partition(2)
              do i1=1,node_partition(1)
-!                irank_g=irank_g+1
                 irank_g=i1-1+(i2-1)*node_partition(1) &
                      +(i3-1)*node_partition(1)*node_partition(2)
                 l1=pinfo_grid(1,irank_g)
@@ -411,9 +402,8 @@ CONTAINS
                 do j3=l3,m3
                 do j2=l2,m2
                 do j1=l1,m1
-!                   i=i+1
                    i=(j1-l1)+(j2-l2)*(m1-l1+1)+(j3-l3)*(m2-l2+1)*(m1-l1+1) + i0
-                   utmp(i)=zwork(j1,j2,j3)
+                   utmp(i)=zwork0(j1,j2,j3)
                 end do
                 end do
                 end do
@@ -449,12 +439,12 @@ CONTAINS
 
     call destruct_Ggrid
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
 
     deallocate( utmp3 )
     deallocate( utmp  )
-    deallocate( zwork,fftwork )
+    if ( allocated(zwork1) ) deallocate( zwork1 )
+    if ( allocated(zwork0) ) deallocate( zwork0 )
 
     return
 
@@ -522,17 +512,14 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: MI
     real(8),intent(OUT) :: force2(3,MI)
-    integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,ierr,ML0
+    integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,ierr,ML0,j1,j2,j3,irank
     integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir,n
-    integer :: ifacx(30),ifacy(30),ifacz(30),j1,j2,j3,irank
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     integer,allocatable :: LL2(:,:),a2lma(:)
     real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,kx,ky,kz,const
     real(8),allocatable :: work2(:,:)
     complex(8) :: phase,ztmp
     complex(8),parameter :: zi=(0.0d0,1.0d0),z0=(0.0d0,0.0d0)
-    complex(8),allocatable :: zwork0(:),zwork(:,:,:),fftwork(:)
+    complex(8),allocatable :: zwork0(:),zwork(:,:,:),zwork1(:,:,:)
 #ifdef _DRSDFT_
     character(1),parameter :: TRANSA='T', TRANSB='N'
     real(8),allocatable :: wtmp3(:,:,:),wtmp4(:,:,:,:)
@@ -560,8 +547,7 @@ CONTAINS
 
     pi2 = 2.0d0*acos(-1.0d0)
 
-    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
-    allocate( fftwork(ML) )
+    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork=z0
     allocate( zwork0(MG) )
     allocate( utmp3(nn1:nn2,Mlma,3) )
     allocate( vtmp3(MB,Mlma,0:3)  )
@@ -604,19 +590,7 @@ CONTAINS
        end do
     end do
 
-!    Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
-
-!    icnt(0:nprocs_g-1)=ML0
-!    idis(0)=0
-!    do i=1,nprocs_g-1
-!       idis(i)=sum( icnt(0:i) )-icnt(i)
-!    end do
-
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call construct_ggrid(0)
 
@@ -669,8 +643,9 @@ CONTAINS
              end do
 !$OMP end do
 !$OMP end parallel
-             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
-                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+             call backward_fft( zwork, zwork1 )
+
 !$OMP parallel private( i1,i2,i3,Gy )
 !$OMP do
              do i=1,ML
@@ -691,8 +666,9 @@ CONTAINS
              end do
 !$OMP end do
 !$OMP end parallel
-             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
-                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+             call backward_fft( zwork, zwork1 )
+
 !$OMP parallel private( Gz,i1,i2,i3 )
 !$OMP do
              do i=1,ML
@@ -713,8 +689,9 @@ CONTAINS
              end do
 !$OMP end do
 !$OMP end parallel
-             call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
-                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+
+             call backward_fft( zwork, zwork1 )
+
 !$OMP parallel do private( i1,i2,i3 )
              do i=1,ML
                 i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
@@ -770,17 +747,6 @@ CONTAINS
        end do
 #endif
 
-!       do lma=1,Mlma
-!          a=amap(lma)
-!          const=-iuV(lma)*2.d0*dV*dV
-!          wtmp3(MB_0:MB_1,lma,0)=const*occ(MB_0:MB_1,k,s)*wtmp3(MB_0:MB_1,lma,0)
-!          force2(1,a)=force2(1,a) &
-!               +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,1),8) )
-!          force2(2,a)=force2(2,a) &
-!               +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,2),8) )
-!          force2(3,a)=force2(3,a) &
-!               +sum( real(wtmp3(MB_0:MB_1,lma,0)*wtmp3(MB_0:MB_1,lma,3),8) )
-!       end do
 !$OMP parallel do private( lma,ik,L,const )
        do a=1,Natom
           lma=a2lma(a)
@@ -808,8 +774,7 @@ CONTAINS
 
     call destruct_ggrid
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
 
     deallocate( a2lma )
     deallocate( LL2 )
@@ -818,7 +783,8 @@ CONTAINS
     deallocate( wtmp3,vtmp3 )
     deallocate( utmp3 )
     deallocate( zwork0 )
-    deallocate( zwork,fftwork )
+    deallocate( zwork )
+    if ( allocated(zwork1) ) deallocate( zwork1 )
 
     allocate( work2(3,MI) )
 

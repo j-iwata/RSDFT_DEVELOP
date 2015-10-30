@@ -10,6 +10,7 @@ MODULE force_local_sol_module
   use ps_local_variables, only: vqlg
   use ffte_sub_module
   use watch_module
+  use fft_module
 
   implicit none
 
@@ -48,15 +49,11 @@ CONTAINS
     integer,allocatable :: icnt(:),idis(:)
     real(8) :: a1,a2,a3,pi2,Gr,Gx,Gy,Gz,Vcell
     real(8),allocatable :: work(:)
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: fftwork(:)
-    complex(8),allocatable :: zrho3(:,:,:),zrho(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
-    complex(8),parameter :: z0=(0.d0,0.d0)
+    complex(8),allocatable :: zrho3(:,:,:),zrho(:),zwork(:,:,:)
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
     complex(8) :: zsum1,zsum2,zsum3,ztmp
 
-    force(:,:)=0.d0
+    force(:,:)=0.0d0
 
     MG    = NGgrid(0)
     ML    = Ngrid(0)
@@ -85,50 +82,24 @@ CONTAINS
     MI_1 = idis(myrank)+icnt(myrank)
     deallocate( idis, icnt )
 
-    allocate( zrho3(0:ML1-1,0:ML2-1,0:ML3-1) )
+    call init_fft
 
-    allocate( work(ML) )
-    work(1:ML)=0.d0
+    allocate( work(ML_0:ML_1) ) ; work=0.0d0
     do ispin=1,size(rho,2)
-       work(ML_0:ML_1)=work(ML_0:ML_1)+rho(ML_0:ML_1,ispin)
+       work(:) = work(:) + rho(:,ispin)
     end do
-    call mpi_allgatherv(work(ML_0),ML_1-ML_0+1,mpi_real8,work &
-         ,ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-    i=0
-    irank=-1
-    do i3=1,node_partition(3)
-    do i2=1,node_partition(2)
-    do i1=1,node_partition(1)
-       irank=irank+1
-       l1=pinfo_grid(1,irank) ; m1=pinfo_grid(2,irank)+l1-1
-       l2=pinfo_grid(3,irank) ; m2=pinfo_grid(4,irank)+l2-1
-       l3=pinfo_grid(5,irank) ; m3=pinfo_grid(6,irank)+l3-1
-       do j3=l3,m3
-       do j2=l2,m2
-       do j1=l1,m1
-          i=i+1
-          zrho3(j1,j2,j3)=work(i)
-       end do
-       end do
-       end do
-    end do
-    end do
-    end do
+    call d1_to_z3_fft( work, zrho3 )
     deallocate( work )
 
-    allocate( fftwork(ML) )
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+    call forward_fft( zrho3, zwork )
 
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    if ( allocated(zwork) ) deallocate( zwork )
 
-    call fft3fx(ML1,ML2,ML3,ML,zrho3,fftwork,wsavex,wsavey,wsavez &
-               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call finalize_fft
 
     call construct_Ggrid(0)
 
-    allocate( zrho(MG) )
+    allocate( zrho(MG) ) ; zrho=z0
 
     do i=1,NGgrid(0)
        i1=mod(ML1+LLG(1,i),ML1)
@@ -136,6 +107,8 @@ CONTAINS
        i3=mod(ML3+LLG(3,i),ML3)
        zrho(i) = conjg( zrho3(i1,i2,i3) )
     end do
+
+    if ( allocated(zrho3) ) deallocate( zrho3 )
 
     do a=MI_0,MI_1
 
@@ -166,11 +139,7 @@ CONTAINS
 
     call destruct_Ggrid
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
-    deallocate( fftwork )
     deallocate( zrho )
-    deallocate( zrho3 )
 
     allocate( work(3*MI) )
     n=0

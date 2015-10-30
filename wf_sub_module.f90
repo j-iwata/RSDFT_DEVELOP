@@ -3,6 +3,7 @@ MODULE wf_sub_module
   use parallel_module
   use rgrid_module
   use rgrid_mol_module, only: LL
+  use fft_module
 
   implicit none
 
@@ -24,9 +25,6 @@ CONTAINS
     complex(8),intent(OUT) :: unk(ML_0:ML_1,MB,MK_0:MK_1,MS_0:MS_1)
 #endif
     integer :: s,k,n,i1,i2,i3,i,m0,m1,m12,ML1,ML2,ML3
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     complex(8),allocatable :: z0(:,:,:),z1(:,:,:)
     real(8) :: c(2)
 
@@ -40,11 +38,7 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     allocate( z0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; z0=(0.0d0,0.0d0)
     allocate( z1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; z1=(0.0d0,0.0d0)
@@ -63,8 +57,7 @@ CONTAINS
              if ( MB_0 <= n .and. n <= MB_1 .and. &
                   MK_0 <= k .and. k <= MK_1 .and. &
                   MS_0 <= s .and. s <= MS_1 ) then
-                call fft3bx(ML1,ML2,ML3,ML,z0,z1,wsavex,wsavey,wsavez &
-                     ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+                call backward_fft( z0, z1 )
                 i=m0-1
                 do i3=Igrid(1,3),Igrid(2,3)
                 do i2=Igrid(1,2),Igrid(2,2)
@@ -82,8 +75,7 @@ CONTAINS
     deallocate( z1 )
     deallocate( z0 )
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
 
   END SUBROUTINE fft_initial_wf_sub
 

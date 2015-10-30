@@ -9,6 +9,7 @@ MODULE ps_initrho_module
   use electron_module, only: Nspin, dspin, NSelectron
   use parallel_module
   use aa_module
+  use fft_module
 
   implicit none
 
@@ -116,10 +117,7 @@ CONTAINS
     implicit none
     integer :: a,i,i1,i2,i3,ik,j,MG,ierr
     integer :: ML1,ML2,ML3,ML,ML_0,ML_1
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+    complex(8),allocatable :: zwork(:,:,:),zwork1(:,:,:),vg(:)
     real(8) :: c,c0
     real(8),allocatable :: rho_tmp(:,:),nelectron_ik(:)
 
@@ -142,9 +140,6 @@ CONTAINS
     rho=0.0d0
 
     allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
-    allocate( fftwork(ML) )
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
     allocate( vg(MG) ) ; vg=(0.d0,0.d0)
     allocate( rho_tmp(ML_0:ML_1,Nelement) ) ; rho_tmp=0.d0
     allocate( nelectron_ik(Nelement) ) ; nelectron_ik=0.0d0
@@ -155,6 +150,8 @@ CONTAINS
     end do
 
     call construct_Ggrid(2)
+
+    call init_fft
 
     do ik=1,Nelement
 
@@ -170,11 +167,7 @@ CONTAINS
        zwork(LLG(1,i),LLG(2,i),LLG(3,i))=vg(i)
     end do
 
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
-
-    call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call backward_fft( zwork, zwork1 )
 
     i=ML_0-1
     do i3=Igrid(1,3),Igrid(2,3)
@@ -207,13 +200,12 @@ CONTAINS
 
     end do ! ik
 
+    call finalize_fft
     call destruct_Ggrid
 
     deallocate( nelectron_ik )
     deallocate( vg )
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
-    deallocate( fftwork )
+    if ( allocated(zwork1) ) deallocate( zwork1 )
     deallocate( zwork )
 
     if ( Nspin>1 ) then

@@ -5,6 +5,7 @@ MODULE localpot2_vh_module
   use localpot2_variables, only: fecut_loc, Ngrid_dense, Igrid_dense
   use parallel_module
   use watch_module
+  use fft_module
 
   implicit none
 
@@ -17,12 +18,9 @@ CONTAINS
     implicit none
     real(8),intent(IN) :: ecut_in, n_in(:,:,:)
     real(8),intent(OUT) :: vout(:,:,:), eh
-    integer :: ifacx(30),ifacy(30),ifacz(30),mm,m1,m2,m3
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     complex(8),allocatable :: zw0(:,:,:),zw1(:,:,:)
     integer :: i1,i2,i3,j1,j2,j3,mm1,mm2,mm3,ierr
-    integer :: i10,i20,i30
+    integer :: i10,i20,i30,m1,m2,m3,mm
     real(8) :: Gx,Gy,Gz,GG,pi4,c,ecut,et0,et1,ct0,ct1
 
     call watch(ct0,et0)
@@ -55,14 +53,9 @@ CONTAINS
 
     call mpi_allreduce(zw1,zw0,mm,mpi_complex16,mpi_sum,comm_grid,ierr)
 
-    allocate( lx1(mm),lx2(mm),ly1(mm),ly2(mm),lz1(mm),lz2(mm) )
-    allocate( wsavex(m1),wsavey(m2),wsavez(m3) )
+    call init_fft
 
-    call prefft(m1,m2,m3,mm,wsavex,wsavey,wsavez,ifacx,ifacy,ifacz &
-               ,lx1,lx2,ly1,ly2,lz1,lz2)
-
-    call fft3fx(m1,m2,m3,mm,zw0,zw1,wsavex,wsavey,wsavez,ifacx,ifacy,ifacz &
-               ,lx1,lx2,ly1,ly2,lz1,lz2)
+    call forward_fft( zw0, zw1 )
 
     mm1=(m1-1)/2
     mm2=(m2-1)/2
@@ -90,8 +83,7 @@ CONTAINS
     end do
     end do
 
-    call fft3bx(m1,m2,m3,mm,zw1,zw0,wsavex,wsavey,wsavez,ifacx,ifacy,ifacz &
-               ,lx1,lx2,ly1,ly2,lz1,lz2)
+    call backward_fft( zw1, zw0 )
 
     do i3=Igrid_dense(1,3),Igrid_dense(2,3)
     do i2=Igrid_dense(1,2),Igrid_dense(2,2)
@@ -101,8 +93,7 @@ CONTAINS
     end do
     end do
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
 
     deallocate( zw1,zw0 )
 

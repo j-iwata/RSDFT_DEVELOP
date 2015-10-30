@@ -15,6 +15,7 @@ MODULE ps_local_module
   use ffte_sub_module
   use bberf_module
   use ps_local_variables, only: vqlg
+  use fft_module
 
   implicit none
 
@@ -204,10 +205,8 @@ CONTAINS
     implicit none
     integer :: a,i,i1,i2,i3,ik,j,MG
     integer :: ML1,ML2,ML3,ML,ML_0,ML_1
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: fftwork(:),zwork(:,:,:),vg(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+    complex(8),allocatable :: zwork0(:,:,:),vg(:)
+    complex(8),allocatable :: zwork1(:,:,:)
     real(8) :: ctt(0:3),ett(0:3)
     logical :: disp_sw
 
@@ -234,8 +233,6 @@ CONTAINS
        Vion=0.0d0
     end if
 
-    allocate( zwork(0:ML1-1,0:ML2-1,0:ML3-1) )
-
     allocate( vg(MG) )
 
     do i=MG_0,MG_1
@@ -252,43 +249,31 @@ CONTAINS
 
     call construct_Ggrid(2)
 
-    zwork(:,:,:)=(0.d0,0.d0)
+    allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) )
+    zwork0(:,:,:)=(0.d0,0.d0)
+
     do i=1,NGgrid(0)
-       zwork(LLG(1,i),LLG(2,i),LLG(3,i))=vg(i)
+       zwork0(LLG(1,i),LLG(2,i),LLG(3,i))=vg(i)
     end do
 
     call destruct_Ggrid
 
     deallocate( vg )
 
-    allocate( fftwork(ML) )
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call watch(ctt(1),ett(1))
 
-    call fft3bx(ML1,ML2,ML3,ML,zwork,fftwork,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call backward_fft( zwork0, zwork1 )
 
     call watch(ctt(2),ett(2))
 
-    i=ML_0-1
-    do i3=Igrid(1,3),Igrid(2,3)
-    do i2=Igrid(1,2),Igrid(2,2)
-    do i1=Igrid(1,1),Igrid(2,1)
-       i=i+1
-       Vion(i)=real( zwork(i1,i2,i3) )
-    end do
-    end do
-    end do
+    call z3_to_d1_fft( zwork0, Vion )
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
-    deallocate( fftwork )
-    deallocate( zwork )
+    call finalize_fft
+
+    if ( allocated(zwork1) ) deallocate( zwork1 )
+    if ( allocated(zwork0) ) deallocate( zwork0 )
 
     call watch(ctt(3),ett(3))
 

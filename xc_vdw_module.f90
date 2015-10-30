@@ -9,6 +9,7 @@ MODULE xc_vdw_module
   use fd_module, only: fd, construct_nabla_fd, destruct_nabla_fd
   use lattice_module, only: lattice,construct_aa_lattice,get_reciprocal_lattice
   use BasicTypeFactory
+  use fft_module
 
   implicit none
 
@@ -863,9 +864,6 @@ CONTAINS
     implicit none
     type( grid ),intent(IN) :: rgrid
     complex(8),intent(INOUT) :: theta(:,0:)
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     integer :: ML,ML1,ML2,ML3,mm,i1,i2,i3,i,j,info
     complex(8),allocatable :: work0(:,:,:), work1(:,:,:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
@@ -878,11 +876,7 @@ CONTAINS
     allocate( work0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work0=zero
     allocate( work1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work1=zero
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call construct_ggrid(1)
 
@@ -902,8 +896,7 @@ CONTAINS
        call MPI_ALLREDUCE( work1, work0, size(work0) &
             , MPI_COMPLEX16, MPI_SUM, comm_grid, info )
 
-       call fft3fx(ML1,ML2,ML3,ML,work0,work1,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call forward_fft( work0, work1 )
 
        theta(:,j) = zero
        do i=MG_0,MG_1
@@ -917,8 +910,8 @@ CONTAINS
 
     call destruct_ggrid
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
+
     deallocate( work1 )
     deallocate( work0 )
 
@@ -971,9 +964,6 @@ CONTAINS
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: work0(:,:,:),work1(:,:,:)
     integer :: ML1,ML2,ML3,ML,info
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
 
     ML  = rgrid%g1%size_global
     ML1 = rgrid%g3%x%size_global
@@ -983,11 +973,7 @@ CONTAINS
     allocate( work0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work0=zero
     allocate( work1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work1=zero
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     call construct_ggrid(1)
 
@@ -1012,8 +998,7 @@ CONTAINS
        call MPI_ALLREDUCE(work1,work0,size(work0),MPI_COMPLEX16 &
             ,MPI_SUM,MPI_COMM_WORLD,info)
 
-       call fft3bx(ML1,ML2,ML3,ML,work0,work1,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call backward_fft( work0, work1 )
 
        i=0
        do i3=rgrid%g3%z%head,rgrid%g3%z%tail
@@ -1029,8 +1014,8 @@ CONTAINS
 
     call destruct_ggrid
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
+
     deallocate( work1 )
     deallocate( work0 )
 

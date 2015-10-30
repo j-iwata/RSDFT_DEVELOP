@@ -7,6 +7,7 @@ MODULE ps_pcc_force_module
   use parallel_module
   use xc_module, only: Vxc
   use ps_pcc_module, only: cdcg
+  use fft_module
 
   implicit none
 
@@ -27,9 +28,6 @@ CONTAINS
     complex(8),allocatable :: z0(:),z1(:,:,:),z2(:,:,:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     real(8),allocatable :: w0(:),w1(:),w2(:,:,:)
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     include 'mpif.h'
 
     force(:,:) = 0.0d0
@@ -101,11 +99,7 @@ CONTAINS
 
     call construct_Ggrid(0)
 
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     allocate( z0(MG) ) ; z0=zero
     allocate( z1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; z1=zero
@@ -132,8 +126,7 @@ CONTAINS
           Gx=bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
           z1(i1,i2,i3) = Gx*z0(i)
        end do
-       call fft3bx(ML1,ML2,ML3,ML,z1,z2,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call backward_fft( z1, z2 )
        force(1,a) = sum( w2(:,:,:)*z1(:,:,:) )*dV
 
        z1(:,:,:)=zero
@@ -144,8 +137,7 @@ CONTAINS
           Gy=bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
           z1(i1,i2,i3) = Gy*z0(i)
        end do
-       call fft3bx(ML1,ML2,ML3,ML,z1,z2,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call backward_fft( z1, z2 )
        force(2,a) = sum( w2(:,:,:)*z1(:,:,:) )*dV
 
        z1(:,:,:)=zero
@@ -156,8 +148,7 @@ CONTAINS
           Gz=bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
           z1(i1,i2,i3) = Gz*z0(i)
        end do
-       call fft3bx(ML1,ML2,ML3,ML,z1,z2,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call backward_fft( z1, z2 )
        force(3,a) = sum( w2(:,:,:)*z1(:,:,:) )*dV
 
     end do ! a
@@ -166,8 +157,7 @@ CONTAINS
     deallocate( z1 )
     deallocate( z0 )
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
 
     call destruct_Ggrid
 

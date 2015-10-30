@@ -3,6 +3,7 @@ MODULE kinetic_fft_module
   use parallel_module
   use rgrid_module
   use bb_module
+  use fft_module
 
   implicit none
 
@@ -32,9 +33,6 @@ CONTAINS
     real(8) :: Gx,Gy,Gz,GG
     integer :: ierr,i,ib,irank,i1,i2,i3,j1,j2,j3
     integer :: ML,ML1,ML2,ML3
-    integer :: ifacx(30),ifacy(30),ifacz(30)
-    integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-    complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
 
     ML  = Ngrid(0)
@@ -45,11 +43,8 @@ CONTAINS
     allocate( work(ML) ) ; work=zero
     allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork0=(0.0d0,0.0d0)
     allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=(0.0d0,0.0d0)
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
 
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-         ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    call init_fft
 
     do ib=ib1,ib2
 
@@ -74,8 +69,7 @@ CONTAINS
        end do
        end do
 
-       call fft3fx(ML1,ML2,ML3,ML,zwork0,zwork1,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call forward_fft( zwork0, zwork1 )
 
        zwork1(:,:,:)=(0.0d0,0.0d0)
        do i3=-ML3/2,ML3/2
@@ -102,8 +96,7 @@ CONTAINS
        end do ! i2
        end do ! i3
 
-       call fft3bx(ML1,ML2,ML3,ML,zwork1,zwork0,wsavex,wsavey,wsavez &
-            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+       call backward_fft( zwork1, zwork0 )
 
        i=n1-1
        do i3=Igrid(1,3),Igrid(2,3)
@@ -117,8 +110,8 @@ CONTAINS
 
     end do ! ib
 
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    call finalize_fft
+
     deallocate( zwork0 )
     deallocate( zwork1 )
     deallocate( work )

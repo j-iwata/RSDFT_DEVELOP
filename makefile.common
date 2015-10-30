@@ -43,6 +43,7 @@ MODS1 = \
        basic_type_factory.o\
        grid_module.o\
        rgrid_mol_module.o\
+       rsdft_fft_module.o\
        fft_module.o\
        ffte_sub_module.o\
        localpot2_variables.o\
