@@ -169,10 +169,11 @@ CONTAINS
             ,Xold(1,MSP+1,1),m,MPI_REAL8,comm_spin,ierr )
 
        if ( mod(imix,2) == 0 ) then
-          call set_init_pulay( Xold(:,:,1), Xin(:,:,mmix) )
+          Xin(:,:,mmix) = Xold(:,1:MSP,1)
+!          call set_init_pulay( Xold(:,:,1), Xin(:,:,mmix) )
        else if ( mod(imix,2) == 1 ) then
-!          Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
-          call set_init_pulay( Xold(:,MSP+1:2*MSP,1), Xin(:,:,mmix) )
+          Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
+!          call set_init_pulay( Xold(:,MSP+1:2*MSP,1), Xin(:,:,mmix) )
        end if
 
        dif0(:) = 0.0d0
