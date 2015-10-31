@@ -89,17 +89,23 @@ CONTAINS
   SUBROUTINE z1_to_z3_fft( z1, z3 )
     implicit none
     complex(8),intent(IN)  :: z1(:)
-    complex(8),intent(OUT) :: z3(0:,0:,0:)
+    complex(8),allocatable :: z3(:,:,:)
     integer :: i1,i2,i3,i
-    i=0
-    do i3=rgrid%g3%z%head,rgrid%g3%z%tail
-    do i2=rgrid%g3%y%head,rgrid%g3%y%tail
-    do i1=rgrid%g3%x%head,rgrid%g3%x%tail
-       i=i+1
-       z3(i1,i2,i3) = z1(i)
+    complex(8),allocatable :: work(:)
+    allocate( work(ML) ) ; work=0.0d0
+    call zmpi_allgatherv_grid( z1, work )
+    if ( .not.allocated(z3) ) then
+       allocate( z3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; z3=zero
+    end if
+    do i3=0,ML3-1
+    do i2=0,ML2-1
+    do i1=0,ML1-1
+       i=LLL(i1,i2,i3)
+       z3(i1,i2,i3) = work(i)
     end do
     end do
     end do
+    deallocate( work )
   END SUBROUTINE z1_to_z3_fft
 
 

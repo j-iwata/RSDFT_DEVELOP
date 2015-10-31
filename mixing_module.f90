@@ -168,12 +168,18 @@ CONTAINS
        call mpi_allgather( g(1,nf1),m,MPI_REAL8 &
             ,Xold(1,MSP+1,1),m,MPI_REAL8,comm_spin,ierr )
 
-       if ( mod(imix,2) == 0 ) then
-          Xin(:,:,mmix) = Xold(:,1:MSP,1)
-!          call set_init_pulay( Xold(:,:,1), Xin(:,:,mmix) )
-       else if ( mod(imix,2) == 1 ) then
-          Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
-!          call set_init_pulay( Xold(:,MSP+1:2*MSP,1), Xin(:,:,mmix) )
+       if ( imix < 40 ) then
+          if ( mod(imix,2) == 0 ) then
+             Xin(:,:,mmix) = Xold(:,1:MSP,1)
+          else if ( mod(imix,2) == 1 ) then
+             Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
+          end if
+       else
+          if ( mod(imix,2) == 0 ) then
+             call set_init_pulay( Xold(:,:,1), Xin(:,:,mmix) )
+          else if ( mod(imix,2) == 1 ) then
+             call set_init_pulay( Xold(:,MSP+1:2*MSP,1), Xin(:,:,mmix) )
+          end if
        end if
 
        dif0(:) = 0.0d0
@@ -248,14 +254,15 @@ CONTAINS
        case default
           call simple_mixing( ML0, MSP, h_old, h )
        case(10:19)
-          call pulay_r_mixing( ML0, MSP, h )
+          call pulay_mixing &
+               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        case(20:29)
           call pulay_r2_mixing( ML0, MSP, h )
        case(30:39)
           call broyden_mixing &
                ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        case(40:49)
-          call pulay_mixing &
+          call pulay_g_mixing &
                ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        end select
 
