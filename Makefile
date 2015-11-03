@@ -41,6 +41,28 @@ FFTOBJ = $(DIR4)/pzfft3dv.o \
          $(DIR4)/zfft3d.o \
          $(DIR4)/pzfft3d.o \
 
+DIR5 = localpot2
+LPOT2OBJ = $(DIR5)/localpot2_variables.o\
+           $(DIR5)/localpot2_module.o\
+           $(DIR5)/localpot2_Smatrix_module.o\
+           $(DIR5)/localpot2_density_module.o\
+           $(DIR5)/localpot2_ion_module.o\
+           $(DIR5)/localpot2_te_module.o\
+           $(DIR5)/localpot2_xc_module.o\
+           $(DIR5)/localpot2_vh_module.o\
+           $(DIR5)/gram_schmidt_u_module.o\
+           $(DIR5)/cg_u_module.o\
+
+DIR6 = esm
+ESMOBJ = $(ESMOBJ)/esm_cylindrical_testl.o\
+         $(ESMOBJ)/esm_genpot_module.o\
+         $(ESMOBJ)/esm_hartree_module.o\
+         $(ESMOBJ)/esm_ion_module.o\
+         $(ESMOBJ)/esm_kinetic_module.o\
+         $(ESMOBJ)/esm_rgrid_module.o\
+         $(ESMOBJ)/esm_rshell_module.o\
+         $(ESMOBJ)/ps_local_rs_module.o\
+
 ########################################################################
 ########################################################################
 
@@ -51,8 +73,9 @@ all :
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
 	cd $(DIR3) ; $(MAKE) -j1
+	cd $(DIR5) ; $(MAKE)
 	@$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LAPACK_L) $(MODS1) realspace.o $(LIBS) -o realspace.x
+	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LPOT2OBJ) $(LAPACK_L) $(MODS1) realspace.o $(LIBS) -o realspace.x
 
 lda0 : $(MODS1)
 
@@ -68,4 +91,5 @@ clean :
 	cd $(DIR2) ; $(MAKE) clean
 	cd $(DIR3) ; $(MAKE) clean
 	cd $(DIR4) ; $(MAKE) clean
+	cd $(DIR5) ; $(MAKE) clean
 

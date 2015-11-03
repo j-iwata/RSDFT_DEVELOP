@@ -1,6 +1,7 @@
 MODULE PSreadPSV
 
   use VarPSMember
+  use PSreadPSVG
 
   implicit none
 
@@ -10,9 +11,10 @@ MODULE PSreadPSV
 CONTAINS
   
 !-------------------------------------------------------
-  SUBROUTINE read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
+  SUBROUTINE read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,psp )
     implicit none
     integer,intent(IN) :: unit_ps,ielm
+    type(ps1d),intent(INOUT) :: psp
     character(30) :: file_name
     real(8) :: znuc
     integer :: nsmpl,ndlc,ndlc_1,ndata
@@ -234,21 +236,33 @@ CONTAINS
 
     i = max( ndlc,nsmpl,ndata ) + 1
     j = max( 1, sum(nr(1:nl)) )
-!    i=8000
-!    j=6
     call ps_allocate(i,j)
+    psp%Mr = max( ndlc,nsmpl,ndata ) + 1
+    psp%norb = max( 1, sum(nr(1:nl)) )
+    call ps_allocate_ps1d( psp )
 
     iorb=0
     do l=1,nl
        nrf(l,ielm)=nr(l)
+!
+       psp%nrf(l) = nr(l)
+!
        do j=1,nr(l)
           iorb=iorb+1
           lo(iorb,ielm)=l-1
           no(iorb,ielm)=j
           anorm(iorb,ielm)=abs( ddi_(j,j,l) )
-          inorm(iorb,ielm)=sign( 1.d0, ddi_(j,j,l) )
+          inorm(iorb,ielm)=sign( 1.0d0, ddi_(j,j,l) )
           NRps(iorb,ielm)=nsmpl+1
           Rps(iorb,ielm)=Rc_in
+!
+          psp%lo(iorb)    = l-1
+          psp%no(iorb)    = j
+          psp%anorm(iorb) = abs( ddi_(j,j,l) )
+          psp%inorm(iorb) = sign( 1.0d0, ddi_(j,j,l) )
+          psp%NRps(iorb)  = nsmpl+1
+          psp%Rps(iorb)   = Rc_in
+!
        end do
     end do
     norb(ielm)=iorb
@@ -256,16 +270,28 @@ CONTAINS
     Mr(ielm)=max( ndlc,nsmpl,ndata )+1
     Zps(ielm)=znuc
     Zelement(ielm)=zatom
-
+!
+    psp%nlf      = nl
+    psp%Zps      = znuc
+    psp%Zelement = zatom
+!
 ! r=0
     do i=1,ndlc
        vql(i+1,ielm)=vl(i)
        cdc(i+1,ielm)=cc(i)
        rad(i+1,ielm)=rr(i)
+!
+       psp%vql(i+1) = vl(i)
+       psp%cdc(i+1) = cc(i)
+       psp%rad(i+1) = rr(i)
+!
     end do
     rad(1,ielm)=0.d0
     vql(1,ielm)=vql(2,ielm)
-
+!
+    psp%rad(1) = 0.0d0
+    psp%vql(1) = psp%vql(2)
+!
     iorb=0
     do l=1,nl
        do j=1,nr(l)
@@ -274,75 +300,122 @@ CONTAINS
              temp=sqrt( anorm(iorb,ielm) )
              do i=1,nsmpl
                 viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
+!
+                psp%viod(i+1,iorb) = bet_(i,j,l)*temp
+!
              end do
-          else
+          else !-----------------> USPP
              do i=1,nsmpl
                 viod(i+1,iorb,ielm)=bet_(i,j,l)
+!
+                psp%viod(i+1,iorb) = bet_(i,j,l)
+!
              end do
           end if
           viod(1,iorb,ielm)=0.d0
-       end do
-    end do
+!
+          psp%viod(1,iorb) = 0.0d0
+!
+       end do ! j
+    end do ! l
 
 ! dr/dx
     h=log( rr(ndlc)/rr(1) )/(ndlc-1)
     rab(1,ielm)=0.d0
+!
+    psp%rab(1) = 0.0d0
+!
     do i=1,ndlc
        rab(i+1,ielm)=rr(i)*h
+!
+       psp%rab(i+1) = rr(i)*h
+!
     end do
 
     do i=1,ndlc
-        rabr2(i,ielm)=rab(i,ielm)*(rr(i)**2)
+        rabr2(i,ielm)=rab(i,ielm)*(rad(i,ielm)**2)
+!
+        psp%rabr2(i)=psp%rab(i)*(psp%rad(i)**2)
+!
     end do
 
     parloc(1,ielm)=a1
     parloc(2,ielm)=a2
     parloc(3,ielm)=a3
     parloc(4,ielm)=a4
-
+!
+    psp%parloc(1) = a1
+    psp%parloc(2) = a2
+    psp%parloc(3) = a3
+    psp%parloc(4) = a4
 !
 ! initial charge
 !
     select case( verpot )
     case default
+
        temp=16.d0*atan(1.d0)
        cdd(:,ielm)=0.d0
+!
+       psp%cdd(:)=0.0d0
+!
        do l=1,ngauss
           do i=1,ndlc
              cdd(i+1,ielm)=cdd(i+1,ielm) &
                   +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
+!
+             psp%cdd(i+1)=psp%cdd(i+1) &
+                  +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
+!
           end do
        end do
+
+       if ( max_ngauss == 0 ) then
+          allocate( cdd_coef(3,ngauss,Nelement_PP) )
+          cdd_coef=0.0d0
+          max_ngauss=ngauss
+          allocate( psp%cdd_coef(3,ngauss) )
+          psp%cdd_coef=0.0d0
+       else if ( ngauss > max_ngauss ) then
+          allocate( cdd_coef_0(3,max_ngauss,Nelement_PP) )
+          cdd_coef_0(:,:,:)=cdd_coef(:,:,:)
+          deallocate( cdd_coef )
+          allocate( cdd_coef(3,ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
+          deallocate( cdd_coef_0 )
+          cdd_coef(:,1:max_ngauss,:)=cdd_coef_0(:,:,:)
+          max_ngauss=ngauss
+       end if
+       cdd_coef(1,1:ngauss,ielm)=a0(1:ngauss)
+       cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
+       cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
+!
+       psp%cdd_coef(1,1:ngauss)=a0(1:ngauss)
+       psp%cdd_coef(2,1:ngauss)=b0(1:ngauss)
+       psp%cdd_coef(3,1:ngauss)=c0(1:ngauss)
+       psp%ngauss=ngauss
+!
     case( 3 )
+
        file_name=trim(file_ps(ielm))//".ichr"
        open(unit_ps+1,file=file_name,status='old')
        read(unit_ps+1,*) ndlc_1
        if ( ndlc /= ndlc_1 ) stop "ndlc/=ndlc_1!!!"
        temp=16.d0*atan(1.d0)
        cdd(:,ielm)=0.d0
+!
+       psp%cdd(:)=0.0d0
+!
        do i=1,ndlc
           read(unit_ps+1,*) dummy,cdd(i+1,ielm)
           cdd(i+1,ielm)=temp*cdd(i+1,ielm)*rr(i)**2
+!
+          psp%cdd(i+1)=temp*cdd(i+1,ielm)*rr(i)**2
+!
        end do
        close(unit_ps+1)
+
     end select
 
-    if ( max_ngauss == 0 ) then
-       allocate( cdd_coef(3,ngauss,Nelement_PP) )
-       cdd_coef=0.0d0
-       max_ngauss=ngauss
-    else if ( ngauss > max_ngauss ) then
-       allocate( cdd_coef_0(3,max_ngauss,Nelement_PP) )
-       cdd_coef_0(:,:,:)=cdd_coef(:,:,:)
-       deallocate( cdd_coef )
-       allocate( cdd_coef(3,ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
-       deallocate( cdd_coef_0 )
-       cdd_coef(:,1:max_ngauss,:)=cdd_coef_0(:,:,:)
-       max_ngauss=ngauss
-    end if
-    cdd_coef(1,1:ngauss,ielm)=a0(1:ngauss)
-    cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
-    cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
 
     write(*,*) "*** PSV format ***"
     write(*,*) zatom
@@ -366,6 +439,8 @@ CONTAINS
     deallocate( r )
     deallocate( cc,vl,rr )
     deallocate( nr )
+
+    call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,psp )
 
   END SUBROUTINE read_PSV
 

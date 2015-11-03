@@ -15,6 +15,9 @@ MODULE VarPSMember
   PUBLIC :: write_viod
   PUBLIC :: write_dviod
 #endif
+  PUBLIC :: ps1d
+  PUBLIC :: ps_allocate_ps1d, psg_allocate_ps1d
+  PUBLIC :: ps_send_ps1d
 
   integer,PUBLIC :: Nelement_PP
   integer,PUBLIC :: Nelement_
@@ -49,6 +52,42 @@ MODULE VarPSMember
   real(8),allocatable,PUBLIC :: Rcloc(:)
 
   integer,PUBLIC :: ps_type = 0
+
+  type ps1d
+     integer :: ps_type
+     integer :: ippform
+     character(30) :: file_ps
+     real(8),allocatable :: rad(:),rab(:),rad1(:),rabr2(:)
+     real(8),allocatable :: vql(:)
+     real(8),allocatable :: viod(:,:), dviod(:,:)
+     real(8),allocatable :: cdc(:), cdd(:)
+     real(8),allocatable :: anorm(:)
+     real(8),allocatable :: Rps(:)
+     integer,allocatable :: lo(:), inorm(:), NRps(:)
+     integer :: Mr, norb
+     real(8) :: parloc(4)
+     real(8) :: Zps, Zelement
+     integer,allocatable :: NRps0(:)
+     real(8),allocatable :: Rps0(:)
+     integer :: nlf, nrf_max
+     integer,allocatable :: nrf(:)
+     integer,allocatable :: no(:)
+     real(8),allocatable :: hnml(:,:,:),knml(:,:,:)
+     real(8),allocatable :: hnl(:,:),knl(:,:)
+     real(8) :: Rcloc
+     integer :: ngauss
+     real(8),allocatable :: cdd_coef(:,:)
+! uspp
+     integer ::npq
+     integer,allocatable :: nl3v(:)
+     integer,allocatable :: l3v(:,:)
+     real(8),allocatable :: ddi(:,:,:)
+     real(8),allocatable :: qqr(:,:,:)
+     real(8),allocatable :: qqc(:,:,:)
+     real(8),allocatable :: qrL(:,:,:)
+  end type ps1d
+
+  type(ps1d),allocatable,PUBLIC :: ps(:)
 
 CONTAINS
 
@@ -329,4 +368,95 @@ CONTAINS
     enddo
   end subroutine write_dviod
 #endif
+
+  SUBROUTINE ps_allocate_ps1d( ps )
+    implicit none
+    type(ps1d),intent(INOUT) :: ps
+    integer :: n_grd, n_orb
+    allocate( ps%hnl(3,0:2) ) ; ps%hnl=0.0d0
+    allocate( ps%knl(3,1:2) ) ; ps%knl=0.0d0
+    allocate( ps%hnml(3,3,0:2) ) ; ps%hnml=0.0d0
+    allocate( ps%knml(3,3,1:2) ) ; ps%knml=0.0d0
+    n_grd=ps%Mr
+    n_orb=ps%norb
+    ps%nlf=0
+    allocate( ps%nrf(n_orb) ) ; ps%nrf=0
+    ps%Zps=0.0d0
+    ps%Zelement=0.0d0
+    ps%parloc=0.0d0
+    allocate( ps%anorm(n_orb)      ) ; ps%anorm=0.0d0
+    allocate( ps%inorm(n_orb)      ) ; ps%inorm=0
+    allocate( ps%Rps(n_orb)        ) ; ps%Rps=0.0d0
+    allocate( ps%NRps(n_orb)       ) ; ps%NRps=0
+    allocate( ps%lo(n_orb)         ) ; ps%lo=0
+    allocate( ps%no(n_orb)         ) ; ps%no=0
+    allocate( ps%vql(n_grd)        ) ; ps%vql=0.0d0
+    allocate( ps%cdc(n_grd)        ) ; ps%cdc=0.0d0
+    allocate( ps%cdd(n_grd)        ) ; ps%cdd=0.0d0
+    allocate( ps%rad(n_grd)        ) ; ps%rad=0.0d0
+    allocate( ps%rab(n_grd)        ) ; ps%rab=0.0d0
+    allocate( ps%rabr2(n_grd)      ) ; ps%rabr2=0.0d0
+    allocate( ps%viod(n_grd,n_orb) ) ; ps%viod=0.0d0
+    ps%Rcloc=0.0d0  
+  END SUBROUTINE ps_allocate_ps1d
+
+  SUBROUTINE psg_allocate_ps1d( ps )
+    implicit none
+    type(ps1d),intent(INOUT) :: ps
+    integer :: n_g,n_k,n_l,n_r
+    n_g=ps%Mr
+    n_k=ps%npq
+    n_l=ps%nlf
+    n_r=ps%nrf_max
+    allocate( ps%ddi(n_r,n_r,n_l) ) ; ps%ddi(:,:,:)=0.0d0
+    allocate( ps%qqr(n_r,n_r,n_l) ) ; ps%qqr(:,:,:)=0.0d0
+    allocate( ps%qqc(n_r,n_r,n_l) ) ; ps%qqc(:,:,:)=0.0d0
+    allocate( ps%nl3v(n_k)        ) ; ps%nl3v(:)=0
+    allocate( ps%l3v(n_l,n_k)     ) ; ps%l3v(:,:)=0
+    allocate( ps%qrL(n_g,n_l,n_k) ) ; ps%qrL(:,:,:)=0.0d0
+  END SUBROUTINE psg_allocate_ps1d
+
+  SUBROUTINE ps_send_ps1d( ps )
+    implicit none
+    type(ps1d),intent(INOUT) :: ps
+    integer :: i
+    include 'mpif.h'
+    call mpi_bcast(ps%Mr,1,mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%norb,1,mpi_integer,0,mpi_comm_world,i)
+    if ( .not.allocated(ps%rad) ) call ps_allocate_ps1d( ps )
+    call mpi_bcast(ps%hnl,size(ps%hnl),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%knl,size(ps%knl),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%hnml,size(ps%hnml),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%knml,size(ps%knml),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%nlf,1,mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%nrf,size(ps%nrf),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%Zps,1,mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%Zelement,1,mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%parloc,size(ps%parloc),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%anorm,size(ps%anorm),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%inorm,size(ps%inorm),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%Rps,size(ps%Rps),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%NRps,size(ps%NRps),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%lo,size(ps%lo),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%no,size(ps%no),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%vql,size(ps%vql),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%cdc,size(ps%cdc),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%cdd,size(ps%cdd),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%rad,size(ps%rad),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%rab,size(ps%rab),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%rabr2,size(ps%rabr2),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%viod,size(ps%viod),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%Rcloc,1,mpi_real8,0,mpi_comm_world,i)
+! uspp
+    call mpi_bcast(ps%npq,1,mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%nrf_max,1,mpi_integer,0,mpi_comm_world,i)
+    if ( .not.allocated(ps%qrL) ) call psg_allocate_ps1d( ps )
+    call mpi_bcast(ps%ddi,size(ps%ddi),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%qqr,size(ps%qqr),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%qqc,size(ps%qqc),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%nl3v,size(ps%nl3v),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%l3v,size(ps%l3v),mpi_integer,0,mpi_comm_world,i)
+    call mpi_bcast(ps%qrL,size(ps%qrL),mpi_real8,0,mpi_comm_world,i)    
+  END SUBROUTINE ps_send_ps1d
+
 END MODULE VarPSMember

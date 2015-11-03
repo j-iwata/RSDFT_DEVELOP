@@ -1,6 +1,6 @@
 MODULE func2gp_module
 
-  use esm_rgrid_module
+ !use esm_rgrid_module
   use rgrid_module
   use rgrid_mol_module, LL_mol => LL
   use parallel_module
@@ -34,9 +34,9 @@ CONTAINS
     w=zero
 
     do i=n1,n2
-       i1=LL_ESM(1,i)
-       i2=LL_ESM(2,i)
-       i3=LL_ESM(3,i)
+       !i1=LL_ESM(1,i)
+       !i2=LL_ESM(2,i)
+       !i3=LL_ESM(3,i)
        w(i1,i2,i3,1) = abs( f(i) )**2
     end do
 
@@ -73,9 +73,9 @@ CONTAINS
     w=zero
 
     do i=n1,n2
-       i1=LL_ESM(1,i)
-       i2=LL_ESM(2,i)
-       i3=LL_ESM(3,i)
+!       i1=LL_ESM(1,i)
+!       i2=LL_ESM(2,i)
+!       i3=LL_ESM(3,i)
        w(i1,i2,i3,1) = f(i) 
     end do
 

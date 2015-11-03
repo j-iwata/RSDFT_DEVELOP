@@ -46,7 +46,6 @@ MODS1 = \
        rsdft_fft_module.o\
        fft_module.o\
        ffte_sub_module.o\
-       localpot2_variables.o\
        var_para_ps_nloc_g.o\
        mixing_broyden_module.o\
        mixing_pulay_module.o\
@@ -66,25 +65,21 @@ MODS1 = \
        var_ps_member.o\
        bc_mol_module.o\
        physical_type_methods.o\
-       esm_rgrid_module.o\
        para_rgrid_comm.o\
        rgrid_module.o\
-       ps_read_psv.o\
        ps_read_psv_g.o\
+       ps_read_psv.o\
        force_sub.o\
        symmetry_module.o\
-       esm_rshell_module.o\
        ps_q_init.o\
        xc_ldapz81_module.o\
        ps_nloc2_op_g.o\
        bcset_3_module.o\
        construct_matrix_ps_nloc2_module.o\
-       localpot2_xc_module.o\
        wf_sub_module.o\
        hartree_sol_ffte_module.o\
        hartree_sol_module.o\
        ps_nloc2_op_module.o\
-       localpot2_vh_module.o\
        minimal_box_module.o\
        pseudopot_module.o\
        func2gp_module.o\
@@ -124,8 +119,6 @@ MODS1 = \
        subspace_solv_sl_module.o\
        kinetic_sol_0_module.o\
        io_write_module.o\
-       localpot2_density_module.o\
-       localpot2_ion_module.o\
        ps_nloc3_module.o\
        inner_product.o\
        xc_hybrid_io_module.o\
@@ -136,7 +129,6 @@ MODS1 = \
        gradient_module.o\
        ps_nloc2_mol_module.o\
        eion_module.o\
-       esm_kinetic_module.o\
        hartree_mol_module.o\
        wf_test.o\
        xc_ggapbe96_module.o\
@@ -150,28 +142,21 @@ MODS1 = \
        nonlocal_module.o\
        kinetic_module.o\
        xc_hybrid_module.o\
-       localpot2_module.o\
        ps_initrho_mol_module.o\
        ps_initrho_module.o\
-       localpot2_Smatrix_module.o\
        gram_schmidt_t_module.o\
        localpot_module.o\
        xc_hse_module.o\
        fock_ffte_module.o\
        random_initrho_module.o\
-       ps_local_rs_module.o\
        cgpc_2_module.o\
-       esm_genpot_module.o\
        force_ps_nloc2.o\
        cgpc_diag_module.o\
-       gram_schmidt_u_module.o\
        hamiltonian_matrix_module.o\
        ps_nloc_dij.o\
        cgpc_seitsonen_module.o\
-       localpot2_te_module.o\
        fock_fft_module.o\
        ps_nloc2_module.o\
-       esm_hartree_module.o\
        gram_schmidt_module.o\
        fock_module.o\
        cgpc_module.o\
@@ -196,9 +181,7 @@ MODS1 = \
        subspace_rotv_eigen_module.o \
        subspace_diag_eigen_module.o \
        chebyshev_filter_module.o\
-       cg_u_module.o\
        conjugate_gradient_g.o\
-       esm_cylindrical_test.o\
        total_energy_module.o\
        io_module.o\
        pseudopotentials.o\

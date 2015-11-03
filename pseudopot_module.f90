@@ -3,40 +3,29 @@ MODULE pseudopot_module
   use parallel_module, only:myrank
   use VarPSMember
   use PSreadPSV
-#ifdef _USPP_
-  use VarPSMemberG
-  use PSReadPSVG
-#endif
+!#ifdef _USPP_
+  use VarPSMemberG, only: sendPSG
+!#endif
   use ps_read_TM_module
   use ps_read_YB_module
   use ps_read_UPF_module
   use ps_gth_module
+  use io_tools_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: pselect,ippform,file_ps,inorm,NRps,norb,Npseudopot &
+  PUBLIC :: ippform,file_ps,inorm,NRps,norb,Npseudopot &
            ,Mr,lo,no,vql,cdd,cdc,rad,anorm,viod,Rps,Zps,parloc,rab &
            ,cdd_coef,ps_type,Rcloc,hnml,knml,hnl,knl &
            ,read_ppname_pseudopot,read_pseudopot &
-           ,read_param_pseudopot,read_param_oldformat_pseudopot &
-           ,read_ppname_oldformat_pseudopot
+           ,read_param_pseudopot
 
-  integer :: pselect,Npseudopot
+
+  integer,PUBLIC :: pselect = 2
+
+  integer :: Npseudopot
   integer :: unit_ps,ielm
-!  integer,allocatable :: ippform(:)
-!  character(30),allocatable :: file_ps(:)
-!  integer,allocatable :: inorm(:,:),NRps(:,:),norb(:),Mr(:),lo(:,:),no(:,:)
-!  real(8),allocatable :: vql(:,:),cdd(:,:),cdc(:,:),rad(:,:),parloc(:,:)
-!  real(8),allocatable :: anorm(:,:),viod(:,:,:),Rps(:,:),Zps(:),rab(:,:)
-!  real(8),allocatable :: cdd_coef(:,:,:)
-!  real(8),allocatable :: hnml(:,:,:,:),knml(:,:,:,:)
-!  real(8),allocatable :: hnl(:,:,:),knl(:,:,:)
-!  real(8),allocatable :: Rcloc(:)
-!  integer :: unit_ps,ielm,Nelement_PP
-!  integer :: max_psgrd=0, max_psorb=0, max_ngauss=0
-
-!  integer :: ps_type = 0
 
 CONTAINS
 
@@ -99,27 +88,6 @@ CONTAINS
 
 !-------------------------------------------------------
 
-  SUBROUTINE read_ppname_oldformat_pseudopot(MKI,rank,unit)
-    implicit none
-    integer,intent(IN) :: MKI,rank,unit
-    integer :: i
-    Nelement_PP=MKI
-    Npseudopot =MKI
-    allocate( ippform(Nelement_PP),file_ps(Nelement_PP) )
-    if ( rank == 0 ) then
-       do i=1,Nelement_PP
-          read(unit,*) ippform(i),file_ps(i)
-       end do
-       do i=1,Nelement_PP
-          write(*,'(1x,"ippform, file_ps = ",i3,2x,a30,3x,3f10.5)') &
-               ippform(i),file_ps(i)
-       end do
-    end if
-    call send_ppname_2(0)
-  END SUBROUTINE read_ppname_oldformat_pseudopot
-
-!-------------------------------------------------------
-
   SUBROUTINE send_ppname_1(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -141,26 +109,9 @@ CONTAINS
 
 !-------------------------------------------------------
 
-  SUBROUTINE read_param_pseudopot(rank,unit)
+  SUBROUTINE read_param_pseudopot
     implicit none
-    integer,intent(IN) :: rank,unit
-    character(7) :: cbuf,ckey
-    integer :: i
-    pselect=2
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:7) == "PSELECT" ) then
-             backspace(unit)
-             read(unit,*) cbuf,pselect
-          end if
-       end do
-999    continue
-       write(*,*) "pslect=",pselect
-    end if
-    call send_param_pseudopot(0)
+    call IOTools_readIntegerKeyword( "PSELECT", pselect )
     if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
        stop "invalid pselect(stop@read_param_pseudopot)"
     end if
@@ -168,36 +119,19 @@ CONTAINS
 
 !-------------------------------------------------------
 
-  SUBROUTINE read_param_oldformat_pseudopot(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) pselect
-       write(*,*) "pselect=",pselect
-    end if
-    call send_param_pseudopot(0)
-  END SUBROUTINE read_param_oldformat_pseudopot
-
-
-  SUBROUTINE send_param_pseudopot(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(pselect,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_param_pseudopot
-
-!-------------------------------------------------------
   SUBROUTINE read_pseudopot(rank)
+
     implicit none
     integer,intent(IN) :: rank
     real(8),allocatable :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
     real(8),allocatable :: ddi_(:,:,:),qqr_(:,:,:)
+    integer :: i,j,io,jo,lj
 
 #ifdef _SHOWALL_
     if ( rank == 0 ) write(200+rank,*) '>>>>>>>> read_pseudopot'
 #endif
-    integer :: i,j,io,jo,lj
+
+    allocate( ps(Nelement_PP) )
 
     if ( rank == 0 ) then
 
@@ -235,10 +169,9 @@ CONTAINS
              viod(1:Mr(ielm),1:norb(ielm),ielm) &
                                       = ps_tm%vps(1:Mr(ielm),1:norb(ielm))
 
-          case(2)
+          case( 2, 102 )
 
-             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-!             call read_PSV
+             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,ps(ielm) )
 
           case(3)
 
@@ -312,12 +245,6 @@ CONTAINS
                 end do
              end if
 
-#ifdef _USPP_
-          case(102)
-             call read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-             call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_ )
-#endif
-
           case default
 
              stop "ippform error"
@@ -332,10 +259,17 @@ CONTAINS
 
     end if ! [ rank == 0 ]
 
+! --- bcast pseudopotential data
+
     call send_pseudopot(rank)
-#ifdef _USPP_
+!#ifdef _USPP_
     if ( all(ippform == 102) ) call sendPSG(rank,Nelement_PP)
-#endif
+!#endif
+    do ielm=1,Nelement_PP
+       call ps_send_ps1d( ps(ielm) )
+    end do
+
+! ---
 
 !    call chk_pot(1,rank)
 

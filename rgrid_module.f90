@@ -4,7 +4,7 @@ MODULE rgrid_module
   use rgrid_variables
   use rgrid_sol_module
   use rgrid_mol_module
-  use esm_rgrid_module
+ !use esm_rgrid_module
   use parallel_module
 
   implicit none
@@ -45,13 +45,13 @@ CONTAINS
        dV  = Hgrid(1)*Hgrid(2)*Hgrid(3)
        zdV = dV
 
-    case(2) ! ----- ESM Esm esm
-
-       call Init_RgridSol(aa)
-
-       call Read_RgridESM(myrank,unit)
-
-       call Init_RgridESM(aa,Ngrid,Md)
+!    case(2) ! ----- ESM Esm esm
+!
+!       call Init_RgridSol(aa)
+!
+!       call Read_RgridESM(myrank,unit)
+!
+!       call Init_RgridESM(aa,Ngrid,Md)
 
     end select
 
@@ -87,10 +87,10 @@ CONTAINS
 
        Nshift(1:3) = -1
 
-    case(2)
-
-       call InitParallel_RgridSol( node_partition, np_grid, pinfo_grid )
-       call InitParallel_RgridESM( np_grid, pinfo_grid, Nshift )
+!    case(2)
+!
+!       call InitParallel_RgridSol( node_partition, np_grid, pinfo_grid )
+!       call InitParallel_RgridESM( np_grid, pinfo_grid, Nshift )
 
     end select
 

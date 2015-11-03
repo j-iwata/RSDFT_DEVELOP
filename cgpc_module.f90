@@ -556,7 +556,7 @@ CONTAINS
 
 
   SUBROUTINE precond_cg_mat_esm(E,k,s,mm,nn)
-    use esm_rgrid_module
+!    use esm_rgrid_module
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
@@ -567,9 +567,9 @@ CONTAINS
     c1 = -0.5d0/Hgrid(1)**2
     c2 = -0.5d0/Hgrid(2)**2
     c3 = -0.5d0/Hgrid(3)**2
-    m1 = Nshift_ESM(1)
-    m2 = Nshift_ESM(2)
-    m3 = Nshift_ESM(3)
+!    m1 = Nshift_ESM(1)
+!    m2 = Nshift_ESM(2)
+!    m3 = Nshift_ESM(3)
 
 !$OMP parallel
 
@@ -585,12 +585,12 @@ CONTAINS
     www(:,:,:,:)=zero
 !$OMP end workshare
     do n=1,nn
-       do i=ML0_ESM,ML1_ESM
-          i1=LL_ESM(1,i)+m1
-          i2=LL_ESM(2,i)+m2
-          i3=LL_ESM(3,i)+m3
-          www(i1,i2,i3,n) = gtmp2(i-ML0_ESM+1,n)
-       end do
+!       do i=ML0_ESM,ML1_ESM
+!          i1=LL_ESM(1,i)+m1
+!          i2=LL_ESM(2,i)+m2
+!          i3=LL_ESM(3,i)+m3
+!          www(i1,i2,i3,n) = gtmp2(i-ML0_ESM+1,n)
+!       end do
     end do
 !$OMP barrier
 
@@ -598,26 +598,26 @@ CONTAINS
     call bcset(1,nn,Md,0)
 !$OMP end single
     do n=1,nn
-       do i=MK0_ESM,MK1_ESM
-          i1=KK(1,i)+m1
-          i2=KK(2,i)+m2
-          i3=KK(3,i)+m3
-          www(i1,i2,i3,n) = zero
-       end do
+!       do i=MK0_ESM,MK1_ESM
+!          i1=KK(1,i)+m1
+!          i2=KK(2,i)+m2
+!          i3=KK(3,i)+m3
+!          www(i1,i2,i3,n) = zero
+!       end do
     end do
 !$OMP barrier
 
     do n=1,nn
 !$OMP do
-       do i=ML0_ESM,ML1_ESM
-          i1=LL_ESM(1,i)+m1
-          i2=LL_ESM(2,i)+m2
-          i3=LL_ESM(3,i)+m3
-          j=i-ML0_ESM+1
-          ftmp2(j,n)=ftmp2(j,n)+c1*( www(i1-1,i2,i3,n)+www(i1+1,i2,i3,n) ) &
-                               +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
-                               +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
-       end do
+!       do i=ML0_ESM,ML1_ESM
+!          i1=LL_ESM(1,i)+m1
+!          i2=LL_ESM(2,i)+m2
+!          i3=LL_ESM(3,i)+m3
+!          j=i-ML0_ESM+1
+!          ftmp2(j,n)=ftmp2(j,n)+c1*( www(i1-1,i2,i3,n)+www(i1+1,i2,i3,n) ) &
+!                               +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
+!                               +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
+!       end do
 !$OMP end do
     end do
 !$OMP barrier

@@ -1,13 +1,13 @@
 MODULE aa_module
 
   use lattice_module, only: init_lattice
+  use io_tools_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: read_aa
+  PUBLIC :: init_aa
   PUBLIC :: construct_aa
-  PUBLIC :: read_oldformat_aa
   PUBLIC :: get_org_aa
   PUBLIC :: set_org_aa
 
@@ -20,74 +20,27 @@ MODULE aa_module
 
 CONTAINS
 
-  SUBROUTINE read_aa(rank,unit)
+  SUBROUTINE init_aa
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(2) :: cbuf,ckey
-    ax=0.d0
-    aa(:,:)=0.d0
-    aa(1,1)=1.d0
-    aa(2,2)=1.d0
-    aa(3,3)=1.d0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey == "AX" ) then
-             backspace(unit)
-             read(unit,*) cbuf,ax
-          else if ( ckey == "A1" ) then
-             backspace(unit)
-             read(unit,*) cbuf,aa(1:3,1)
-          else if ( ckey == "A2" ) then
-             backspace(unit)
-             read(unit,*) cbuf,aa(1:3,2)
-          else if ( ckey == "A3" ) then
-             backspace(unit)
-             read(unit,*) cbuf,aa(1:3,3)
-          end if
-       end do
-999    continue
-       write(*,*) "ax=",ax
-       write(*,'(1x,"aa(1:3,1)=",3F20.15)') aa(:,1)
-       write(*,'(1x,"aa(1:3,2)=",3F20.15)') aa(:,2)
-       write(*,'(1x,"aa(1:3,3)=",3F20.15)') aa(:,3)
-    end if
-    call send_aa(0)
+    call read_aa
     call set_org_aa( ax, aa )
     call init_lattice( ax, aa )
+    call construct_aa
+  END SUBROUTINE init_aa
+
+
+  SUBROUTINE read_aa
+    implicit none
+    ax=0.0d0
+    aa(:,:)=0.0d0
+    aa(1,1)=1.0d0
+    aa(2,2)=1.0d0
+    aa(3,3)=1.0d0
+    call IOTools_readReal8Keyword( "AX", ax )
+    call IOTools_readReal8Keywords( "A1", aa(:,1) )
+    call IOTools_readReal8Keywords( "A2", aa(:,2) )
+    call IOTools_readReal8Keywords( "A3", aa(:,3) )
   END SUBROUTINE read_aa
-
-
-  SUBROUTINE read_oldformat_aa(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) ax
-       read(unit,*) aa(1:3,1)
-       read(unit,*) aa(1:3,2)
-       read(unit,*) aa(1:3,3)
-       write(*,*) "ax=",ax
-       write(*,'(1x,"aa(1:3,1)=",3F20.15)') aa(:,1)
-       write(*,'(1x,"aa(1:3,2)=",3F20.15)') aa(:,2)
-       write(*,'(1x,"aa(1:3,3)=",3F20.15)') aa(:,3)
-    end if
-    call send_aa(0)
-    ax_org=ax
-    aa_org=aa(:,:)
-  END SUBROUTINE read_oldformat_aa
-
-
-  SUBROUTINE send_aa(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(ax,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(aa,9,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_aa
 
 
   SUBROUTINE construct_aa

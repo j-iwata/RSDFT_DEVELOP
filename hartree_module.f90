@@ -4,7 +4,7 @@ MODULE hartree_module
   use hartree_sol_module
   use hartree_sol_ffte_module
   use hartree_mol_module
-  use esm_hartree_module
+ !use esm_hartree_module
   use hartree_ene_module
 
   implicit none
@@ -38,8 +38,8 @@ CONTAINS
     select case( SYStype )
     case(1)
        call init_hartree_mol(Md)
-    case(2)
-       call init_esm_hartree(Md)
+    !case(2)
+    !   call init_esm_hartree(Md)
     end select
 
   END SUBROUTINE init_hartree
@@ -76,9 +76,9 @@ CONTAINS
        call calc_hartree_ene( trho, Vh, E_hartree )
        deallocate( trho )
 
-    case(3)
+!    case(3)
 
-       call calc_esm_hartree(n1,n2,n3,rho,Vh,E_hartree)
+!       call calc_esm_hartree(n1,n2,n3,rho,Vh,E_hartree)
 
     end select
 
