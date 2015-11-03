@@ -57,7 +57,6 @@ DIR6 = esm
 ESMOBJ = $(ESMOBJ)/esm_cylindrical_testl.o\
          $(ESMOBJ)/esm_genpot_module.o\
          $(ESMOBJ)/esm_hartree_module.o\
-         $(ESMOBJ)/esm_ion_module.o\
          $(ESMOBJ)/esm_kinetic_module.o\
          $(ESMOBJ)/esm_rgrid_module.o\
          $(ESMOBJ)/esm_rshell_module.o\
