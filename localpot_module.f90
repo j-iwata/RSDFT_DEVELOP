@@ -2,7 +2,7 @@ MODULE localpot_module
 
   use rgrid_module
   use array_bound_module
-  use localpot2_module
+ !use localpot2_module
   use parallel_module
 
   implicit none
@@ -43,29 +43,29 @@ CONTAINS
 #endif
     integer :: n,i,j,ierr
 
-    if ( flag_localpot2 ) then
-
-       allocate( ft(Ngrid(0)) )
-       ft(:)=zero
-
-!!$OMP PARALLEL
-       do n=1,nn
-!$OMP SINGLE
-       call mpi_allgatherv(f(1,n),mm,TYP,ft,ir_grid,id_grid,TYP,comm_grid,ierr)
-!$OMP END SINGLE
-!$OMP DO
-          do i=1,mm
-          do j=1,MLpot
-             vf(i,n)=vf(i,n)+vloc_nl(j,i+ML_0-1)*ft(Lpot(j,i+ML_0-1))
-          end do
-          end do
-!$OMP END DO
-       end do
-!!$OMP END PARALLEL
-
-       deallocate( ft )
-
-    else
+!    if ( flag_localpot2 ) then
+!
+!       allocate( ft(Ngrid(0)) )
+!       ft(:)=zero
+!
+!!!$OMP PARALLEL
+!       do n=1,nn
+!!$OMP SINGLE
+!       call mpi_allgatherv(f(1,n),mm,TYP,ft,ir_grid,id_grid,TYP,comm_grid,ierr)
+!!$OMP END SINGLE
+!!$OMP DO
+!          do i=1,mm
+!          do j=1,MLpot
+!             vf(i,n)=vf(i,n)+vloc_nl(j,i+ML_0-1)*ft(Lpot(j,i+ML_0-1))
+!          end do
+!          end do
+!!$OMP END DO
+!       end do
+!!!$OMP END PARALLEL
+!
+!       deallocate( ft )
+!
+!    else
 
 !!$OMP PARALLEL
        do n=1,nn
@@ -77,7 +77,7 @@ CONTAINS
        end do
 !!$OMP END PARALLEL
 
-    end if
+!    end if
 
   END SUBROUTINE op_localpot
 

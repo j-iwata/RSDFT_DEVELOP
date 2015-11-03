@@ -52,12 +52,12 @@ MODULE global_variables
   use array_bound_module
   use atomopt_module
 
-  use esm_rgrid_module
-  use esm_rshell_module
-  use esm_cylindrical_test
-  use ps_local_rs_module
-  use esm_genpot_module
-  use esm_kinetic_module
+!  use esm_rgrid_module
+!  use esm_rshell_module
+!  use esm_cylindrical_test
+!  use ps_local_rs_module
+!  use esm_genpot_module
+!  use esm_kinetic_module
 
   use rgrid_mol_module
   use ps_local_mol_module, only: init_ps_local_mol,construct_ps_local_mol
@@ -72,14 +72,14 @@ MODULE global_variables
 
   use bcast_module
 
-  use localpot2_variables
-  use localpot2_ion_module
-  use localpot2_density_module
-  use localpot2_vh_module
-  use localpot2_xc_module
-  use localpot2_module
-  use localpot2_te_module
-  use localpot2_Smatrix_module
+!  use localpot2_variables
+!  use localpot2_ion_module
+!  use localpot2_density_module
+!  use localpot2_vh_module
+!  use localpot2_xc_module
+!  use localpot2_module
+!  use localpot2_te_module
+!  use localpot2_Smatrix_module
 
   use ps_nloc3_module
 

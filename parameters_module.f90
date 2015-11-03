@@ -50,16 +50,13 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 
     call read_atom(myrank,unit_atom,ax_tmp,aa_tmp)
 
-    call read_xc(myrank,unit)
-
-    call read_aa(myrank,unit)
-
-    if ( ax == 0.0d0 ) then
-       ax = ax_tmp
-       aa(:,:) = aa_tmp(:,:)
-       call write_info("ax and aa given in fort.970 are used") 
-       call set_org_aa( ax, aa )
-    end if
+!    call read_aa(myrank,unit)
+!    if ( ax == 0.0d0 ) then
+!       ax = ax_tmp
+!       aa(:,:) = aa_tmp(:,:)
+!       call write_info("ax and aa given in fort.970 are used") 
+!       call set_org_aa( ax, aa )
+!    end if
 
     call read_electron(myrank,unit)
 
@@ -72,10 +69,6 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
     call read_kinetic(myrank,unit)
 
     call read_ppname_pseudopot(Nelement,myrank,unit)
-
-    call read_mixing(myrank,unit)
-
-    call read_param_pseudopot(myrank,unit)
 
     call read_ps_nloc1(myrank,unit)
     call read_ps_nloc2_init(myrank,unit)
@@ -218,10 +211,6 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
        end if
     end if
 
-    call read_oldformat_xc(myrank,unit)
-
-    call read_oldformat_aa(myrank,unit)
-
     call read_oldformat_electron(myrank,unit)
 
     call read_kgrid_oldformat_bz(myrank,unit)
@@ -232,11 +221,6 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
 
     call read_oldformat_kinetic(myrank,unit)
 
-    call read_ppname_oldformat_pseudopot(Nelement,myrank,unit)
-
-    call read_oldformat_mixing(myrank,unit)
-
-    call read_param_oldformat_pseudopot(myrank,unit)
     call read_oldformat_ps_nloc1(myrank,unit)
     call read_oldformat_ps_nloc2_init(myrank,unit)
 

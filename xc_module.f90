@@ -29,10 +29,11 @@ MODULE xc_module
   implicit none
 
   PRIVATE
-  PUBLIC :: XCtype,calc_xc,read_xc,Vxc,Exc,E_exchange,E_correlation &
-           ,read_oldformat_xc, E_exchange_exx
+  PUBLIC :: calc_xc,Vxc,Exc,E_exchange,E_correlation &
+           ,E_exchange_exx
 
-  character(8) :: XCtype
+  character(8),PUBLIC :: XCtype = 'LDAPZ81'
+
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
   real(8) :: E_exchange_exx
@@ -40,40 +41,16 @@ MODULE xc_module
   real(8),allocatable :: Vx(:,:), Vc(:,:)
 
   logical :: disp_sw
+  logical :: flag_init = .true.
 
 CONTAINS
 
 
-  SUBROUTINE read_xc( rank, unit )
+  SUBROUTINE init_xc
     implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       XCtype = "LDAPZ81"
-       call IOTools_readStringKeyword( "XCTYPE", unit, XCtype )
-    end if
-    call send_xc(0)
-  END SUBROUTINE read_xc
-
-
-  SUBROUTINE read_oldformat_xc(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    XCtype=""
-    if ( rank == 0 ) then
-       read(unit,*) XCtype
-       write(*,*) "XCtype= ",XCtype
-    end if
-    call send_xc(0)
-  END SUBROUTINE read_oldformat_xc
-
-
-  SUBROUTINE send_xc(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(XCtype,8,MPI_CHARACTER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_xc
+    call IOTools_readStringKeyword( "XCTYPE", XCtype )
+    flag_init = .false.
+  END SUBROUTINE init_xc
 
 
   SUBROUTINE chk_density(rho,rhoc)
@@ -148,6 +125,8 @@ CONTAINS
     if ( disp_sw ) then
        write(*,'(a40," calc_xc(start)")') repeat("-",40)
     end if
+
+    if ( flag_init ) call init_xc
 
     call get_range_rgrid( rg )
 

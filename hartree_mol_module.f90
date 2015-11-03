@@ -17,9 +17,11 @@ MODULE hartree_mol_module
   PUBLIC :: calc_hartree_mol, init_hartree_mol
   PUBLIC :: timer_reset_hartree_mol, timer_result_hartree_mol
 
+  integer :: MEO = 1
+  integer :: Lmax_ME = 8
+
   logical :: flag_init = .true.
-  integer :: MEO=1, Lmax_ME=8, M_max=8
-  integer :: lmmax_ME
+  integer :: M_max, lmmax_ME
   real(8),allocatable :: shf1(:,:),shf2(:,:)
   real(8),allocatable :: lap(:)
   integer :: NMadv
@@ -43,13 +45,11 @@ MODULE hartree_mol_module
 CONTAINS
 
 
-  SUBROUTINE read_param_hartree_mol( rank, unit )
+  SUBROUTINE read_param_hartree_mol
     implicit none
-    integer,intent(IN) :: rank,unit
     integer :: itmp(2)
     itmp=-1
-    if ( rank == 0 ) call IOTools_readIntegerKeyword( "MEO", unit, itmp )
-    call IOTools_bcastIntegerParameter( itmp )
+    call IOTools_readIntegerKeywords( "MEO", itmp )
     if ( itmp(1) > 0 ) MEO = itmp(1)
     if ( itmp(2) > 0 ) Lmax_ME = itmp(2)
   END SUBROUTINE read_param_hartree_mol
@@ -60,9 +60,7 @@ CONTAINS
     integer,intent(IN) :: Md_in
     integer :: i,j
 
-    call read_param_hartree_mol( myrank, 2 )
-
-    M_max = Lmax_ME
+! ---
 
     Md = Md_in
 
@@ -71,6 +69,12 @@ CONTAINS
     lap=0.0d0
     call get_coef_lapla_fd(Md,lap)
     lap=lap/Hgrid(1)**2
+
+! ---
+
+    call read_param_hartree_mol
+
+    M_max = Lmax_ME
 
     lmmax_ME = (Lmax_ME+1)**2
 

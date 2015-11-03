@@ -2,19 +2,25 @@ MODULE mixing_module
 
   use mixing_broyden_module
   use mixing_pulay_module
+  use io_tools_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: sqerr_out, imix, beta &
-           ,init_mixing,read_mixing,perform_mixing,read_oldformat_mixing &
+           ,init_mixing,read_mixing,perform_mixing &
            ,finalize_mixing, restart_mixing
   PUBLIC :: calc_sqerr_mixing
 
   include 'mpif.h'
 
-  integer :: imix,mmix
-  real(8) :: beta,scf_conv(2),sqerr_out(4)
+  integer :: imix = 20
+  integer :: mmix = 4
+  real(8) :: beta = 1.0d0
+  integer :: iomix = 0
+  integer :: iochk(2) = 0
+
+  real(8) :: scf_conv(2),sqerr_out(4)
   real(8),allocatable :: Xold(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
   real(8) :: beta0
@@ -27,7 +33,6 @@ MODULE mixing_module
   real(8) :: dV
   logical :: disp_switch
 
-  integer :: iomix,iochk(2)
   integer :: unit=2
   character(16),parameter :: file_name="vrho_mixing.dat1"
   integer,allocatable :: ir(:),id(:)
@@ -36,83 +41,21 @@ MODULE mixing_module
 CONTAINS
 
 
-  SUBROUTINE read_mixing(rank,unit)
+  SUBROUTINE read_mixing
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(5) :: cbuf,ckey
-    imix=20
-    mmix=4
-    beta=1.0d0
-    iomix=0
-    iochk=0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:4) == "IMIX" ) then
-             backspace(unit)
-             read(unit,*) cbuf,imix
-          else if ( ckey(1:4) == "MMIX" ) then
-             backspace(unit)
-             read(unit,*) cbuf,mmix
-          else if ( ckey(1:4) == "BETA" ) then
-             backspace(unit)
-             read(unit,*) cbuf,beta
-          else if ( ckey(1:5) == "IOMIX" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iomix
-          else if ( ckey(1:2) == "IC" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iochk(1)
-          else if ( ckey(1:3) == "OC" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iochk(2)
-          end if
-       end do
-999    continue
-       write(*,*) "imix       =",imix
-       write(*,*) "mmix       =",mmix
-       if ( mmix < 1 ) then
-          mmix=1
-          write(*,*) "mmix is replaced to 1 : mmix=",mmix
-       end if
-       write(*,*) "beta       =",beta
-       write(*,*) "iomix,IC,OC=",iomix,iochk(1:2)
+    call IOTools_readIntegerKeyword(  "IMIX",  imix )
+    call IOTools_readIntegerKeyword(  "MMIX",  mmix ) 
+    call IOTools_readIntegerKeyword( "IOMIX", iomix ) 
+    call IOTools_readIntegerKeyword( "IC", iochk(1) ) 
+    call IOTools_readIntegerKeyword( "OC", iochk(2) ) 
+    call IOTools_readReal8Keyword( "BETA", beta ) 
+    if ( mmix < 1 ) then
+       mmix=1
+       write(*,*) "mmix is replaced to 1 : mmix=",mmix
     end if
-    call send_mixing(0)
+    write(*,*) "beta       =",beta
+    write(*,*) "iomix,IC,OC=",iomix,iochk(1:2)
   END SUBROUTINE read_mixing
-
-
-  SUBROUTINE read_oldformat_mixing(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) imix, mmix, beta, scf_conv
-       write(*,*) "imix, mmix =",imix,mmix
-       if ( mmix < 1 ) then
-          mmix=1
-          write(*,*) "mmix is replaced to 1 : mmix=",mmix
-       end if
-       write(*,*) "beta =",beta
-       write(*,*) "scf_conv=",scf_conv
-    end if
-    call send_mixing(0)
-  END SUBROUTINE read_oldformat_mixing
-
-
-  SUBROUTINE send_mixing(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    call mpi_bcast(imix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(mmix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(beta,1,MPI_REAL8  ,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(scf_conv,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iomix,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iochk,2,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_mixing
 
 
   SUBROUTINE init_mixing(ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in &
@@ -123,6 +66,8 @@ CONTAINS
     real(8),intent(IN) :: dV_in,f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
     real(8),intent(IN) :: scf_conv_in(2)
     integer :: m,ierr
+
+    call read_mixing
 
     beta0      = 1.0d0-beta
     mmix_count = 0

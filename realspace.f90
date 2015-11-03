@@ -18,23 +18,25 @@ PROGRAM Real_Space_Solid
   use PSQInit
 #endif
 
-#ifdef _USPP_F_TEST_
-  use VarPSMember
-  use VarPSMemberG
-  use ps_nloc2_variables
-#endif
+!#ifdef _USPP_F_TEST_
+!  use VarPSMember
+!  use VarPSMemberG
+!  use ps_nloc2_variables
+!#endif
 
   use WFtest
+  use io_tools_module, only: init_io_tools
+  use lattice_module
 
   implicit none
-
+  integer,parameter :: unit_input_parameters = 1
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
   integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3,info
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
-
   real(8) :: totalScfTime
-
   logical :: isDebug=.false.
+
+  type(lattice) :: aa_obj, bb_obj
 
 ! --- start MPI ---
 
@@ -61,17 +63,25 @@ PROGRAM Real_Space_Solid
 
   call read_parameters
 
+  call init_io_tools( myrank, unit_input_parameters )
+
 ! --- R-space Lattice & Grid ---
 
-  call construct_aa
+  call init_aa
+  call construct_aa_lattice( aa_obj )
 
   call Init_Rgrid( SYStype, Md, unit=2 )
 
 ! --- Reciprocal Lattice ---
 
   call construct_bb(aa)
+  call get_reciprocal_lattice( aa_obj, bb_obj )
 
   if ( disp_switch ) then
+     write(*,*) "bx=",bb_obj%LatticeConstant
+     write(*,'(1x,3f20.15)') bb_obj%LatticeVector(1:3,1)
+     write(*,'(1x,3f20.15)') bb_obj%LatticeVector(1:3,2)
+     write(*,'(1x,3f20.15)') bb_obj%LatticeVector(1:3,3)
      write(*,*) "bx=",2.0d0*acos(-1.0d0)/ax
      write(*,'(1x,3f20.15)') bb(1:3,1)
      write(*,'(1x,3f20.15)') bb(1:3,2)
@@ -135,6 +145,8 @@ PROGRAM Real_Space_Solid
   call set_array_bound
 
 ! --- Pseudopotential, initial density, and partial core correction ---
+
+  call read_param_pseudopot
 
   call read_pseudopot(myrank)
 !  if (myrank==0) write(200,*) 'read ps complete'
@@ -217,37 +229,37 @@ PROGRAM Real_Space_Solid
 
 !----------------------- ESM esm -----
 
-  else if ( SYStype == 3 ) then
+!  else if ( SYStype == 3 ) then
 
-     call ps_nloc2_init(Gcut)
-     call prep_ps_nloc2_esm
+!     call ps_nloc2_init(Gcut)
+!     call prep_ps_nloc2_esm
 
-     call init_ps_local_rs
-     call read_rshell(myrank,1)
+!     call init_ps_local_rs
+!     call read_rshell(myrank,1)
 
-     if ( allocated(Vion) ) deallocate(Vion)
-     if ( allocated(rho) ) deallocate(rho)
-     allocate( Vion(ML0_ESM:ML1_ESM)      ) ; Vion=0.d0
-     allocate( rho(ML0_ESM:ML1_ESM,Nspin) ) ; rho=0.d0
+!     if ( allocated(Vion) ) deallocate(Vion)
+!     if ( allocated(rho) ) deallocate(rho)
+!     allocate( Vion(ML0_ESM:ML1_ESM)      ) ; Vion=0.d0
+!     allocate( rho(ML0_ESM:ML1_ESM,Nspin) ) ; rho=0.d0
 
-     call construct_ps_local_rs(Vion)
+!     call construct_ps_local_rs(Vion)
 
-     call construct_ps_initrho_rs(ML0_ESM,ML1_ESM,Nspin,rho)
-     call normalize_density
-!     c0=sum(rho)
-!     call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
-!     rho=rho-c/ML_ESM+Nelectron/(ML_ESM*dV)
-     write(*,'(1x,"sum(rho)*dV",3f15.10)') sum(rho)*dV,minval(rho),maxval(rho)
+!     call construct_ps_initrho_rs(ML0_ESM,ML1_ESM,Nspin,rho)
+!     call normalize_density
+!!     c0=sum(rho)
+!!     call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
+!!     rho=rho-c/ML_ESM+Nelectron/(ML_ESM*dV)
+!     write(*,'(1x,"sum(rho)*dV",3f15.10)') sum(rho)*dV,minval(rho),maxval(rho)
 
-     call flush(6)
+!     call flush(6)
 
-     call construct_ps_density_longloc
-     call read_esm_genpot(myrank,1)
-     allocate( vtmp(ML0_ESM:ML1_ESM) )
-     vtmp=0.d0
-     call esm_genpot(vtmp)
-     Vion(:) = Vion(:) + vtmp(:)
-     deallocate( vtmp )
+!     call construct_ps_density_longloc
+!     call read_esm_genpot(myrank,1)
+!     allocate( vtmp(ML0_ESM:ML1_ESM) )
+!     vtmp=0.d0
+!     call esm_genpot(vtmp)
+!     Vion(:) = Vion(:) + vtmp(:)
+!     deallocate( vtmp )
 
   end if
 
@@ -289,8 +301,8 @@ PROGRAM Real_Space_Solid
 
 ! --- Initialize localpot2 ---
 
-  call init_localpot2
-  call init_localpot2_Smatrix( ML, ML_0, ML_1 )
+!  call init_localpot2
+!  call init_localpot2_Smatrix( ML, ML_0, ML_1 )
 
 ! --- Initial wave functions ---
 
@@ -386,15 +398,15 @@ PROGRAM Real_Space_Solid
 
 ! --- Initial potential of Localpot2 ---
 
-  if ( flag_localpot2 ) then
-     call localpot2_ion( Nelement, Ecut, vion_nl )
-     call localpot2_density( rho_nl )
-     call localpot2_vh( Ecut, rho_nl, vh_nl, E_hartree )
-     call localpot2_xc( rho_nl, vxc_nl, Exc )
-     vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
-     vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
-     call test2_localpot2( vloc_dense )
-  end if
+!  if ( flag_localpot2 ) then
+!     call localpot2_ion( Nelement, Ecut, vion_nl )
+!     call localpot2_density( rho_nl )
+!     call localpot2_vh( Ecut, rho_nl, vh_nl, E_hartree )
+!     call localpot2_xc( rho_nl, vxc_nl, Exc )
+!     vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
+!     vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
+!     call test2_localpot2( vloc_dense )
+!  end if
 
 ! --- Init vdW ---
 

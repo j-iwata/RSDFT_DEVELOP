@@ -6,7 +6,7 @@ MODULE cg_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
-  use cg_u_module, only: init_cg_u, cg_u
+ !use cg_u_module, only: init_cg_u, cg_u
   use cggs_module
   use wf_module, only: hunk, iflag_hunk
   use kinetic_module, only: SYStype
@@ -107,11 +107,11 @@ CONTAINS
             write(*,'("--- LOBPCG ( with IPC=",i1," ) ---")') ipc
        call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
        call lobpcg( k,s,Mcg,igs,unk,esp,res )
-    case( 3 )
-       if ( disp_switch_parallel ) &
-            write(*,'("--- CG_U ( with IPC=",i1," ) ---")') ipc
-       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
+!    case( 3 )
+!       if ( disp_switch_parallel ) &
+!            write(*,'("--- CG_U ( with IPC=",i1," ) ---")') ipc
+!       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+!       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
     end select
 
   END SUBROUTINE conjugate_gradient

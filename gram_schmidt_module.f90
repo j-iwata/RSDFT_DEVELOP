@@ -2,7 +2,7 @@ MODULE gram_schmidt_module
 
   use gram_schmidt_m_module
   use gram_schmidt_t_module
-  use gram_schmidt_u_module
+ !use gram_schmidt_u_module
 
   implicit none
 
@@ -44,8 +44,8 @@ CONTAINS
        call gram_schmidt_t(n0,n1,k,s)
     case( 1 )
        call gram_schmidt_m(n0,n1,k,s)
-    case( 2 )
-       call gram_schmidt_u(n0,n1,k,s)
+    !case( 2 )
+    !   call gram_schmidt_u(n0,n1,k,s)
     end select
   END SUBROUTINE gram_schmidt
 

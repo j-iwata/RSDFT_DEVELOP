@@ -1945,7 +1945,7 @@ CONTAINS
   SUBROUTINE prep_ps_nloc2_esm
     use minimal_box_module
     use bz_module
-    use esm_rgrid_module
+!    use esm_rgrid_module
     implicit none
     complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
@@ -2071,9 +2071,9 @@ CONTAINS
              i2 = map_grid_ion(2,i)
              i3 = map_grid_ion(3,i)
 
-             id1 = ic1 + i1 + Nshift_ESM(1)
-             id2 = ic2 + i2 + Nshift_ESM(2)
-             id3 = ic3 + i3 + Nshift_ESM(3)
+!             id1 = ic1 + i1 + Nshift_ESM(1)
+!             id2 = ic2 + i2 + Nshift_ESM(2)
+!             id3 = ic3 + i3 + Nshift_ESM(3)
 
              k1=id1/ML1 ; if ( id1<0 ) k1=(id1+1)/ML1-1
              k2=id2/ML2 ; if ( id2<0 ) k2=(id2+1)/ML2-1
@@ -2081,9 +2081,9 @@ CONTAINS
 
              if ( k1 /= 0 .or. k2 /= 0 ) stop "prep_ps_nloc2_esm(1)"
 
-             id1 = id1 - Nshift_ESM(1)
-             id2 = id2 - Nshift_ESM(2)
-             id3 = id3 - Nshift_ESM(3)
+!             id1 = id1 - Nshift_ESM(1)
+!             id2 = id2 - Nshift_ESM(2)
+!             id3 = id3 - Nshift_ESM(3)
 
              i1_0 = id1 - k1*ML1
              i2_0 = id2 - k2*ML2
@@ -2644,12 +2644,12 @@ CONTAINS
     allocate( JJP(MAXMJJ,nzlma) ) ; JJP=0
     allocate( uVk(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk=0.d0
 
-    call prep_uvk_ps_nloc2_esm(MBZ_0,MBZ_1,kbb(1,MBZ_0))
+!    call prep_uvk_ps_nloc2_esm(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
   END SUBROUTINE prep_ps_nloc2_esm
 
   SUBROUTINE prep_uvk_ps_nloc2_esm(k0,k1,kbb)
-    use esm_rgrid_module
+!    use esm_rgrid_module
     implicit none
     integer,intent(IN) :: k0,k1
     real(8),intent(IN) :: kbb(3,k0:k1)
@@ -2679,9 +2679,9 @@ CONTAINS
     icheck_tmp4=0
 
     allocate( LLL(a1b:b1b,a2b:b2b,a3b:b3b) ) ; LLL=0
-    do i=ML0_ESM,ML1_ESM
-       LLL(LL_ESM(1,i),LL_ESM(2,i),LL_ESM(3,i))=i
-    end do
+!    do i=ML0_ESM,ML1_ESM
+!       LLL(LL_ESM(1,i),LL_ESM(2,i),LL_ESM(3,i))=i
+!    end do
 
     pi2 = 2.d0*acos(-1.d0)
 
@@ -2709,10 +2709,10 @@ CONTAINS
                 uVk(j,lma,k)=ztmp0
 !                JJP(j,lma) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
                 i0=LLL(i1,i2,i3)
-                if ( i0 < ML0_ESM .or. ML1_ESM < i0 ) then
-                   write(*,*) "i0,ML0_ESM,ML1_ESM=",i0,ML0_ESM,ML1_ESM
-                   stop "stop@prep_uvk_ps_nloc2_esm"
-                end if
+!                if ( i0 < ML0_ESM .or. ML1_ESM < i0 ) then
+!                   write(*,*) "i0,ML0_ESM,ML1_ESM=",i0,ML0_ESM,ML1_ESM
+!                   stop "stop@prep_uvk_ps_nloc2_esm"
+!                end if
                 JJP(j,lma) = i0
              else
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
