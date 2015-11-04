@@ -619,7 +619,7 @@ CONTAINS
 !$OMP barrier
 
     do n=1,nn
-!$OMP do
+!!$OMP do
       ! do i=ML0_ESM,ML1_ESM
       !    i1=LL_ESM(1,i)+m1
       !    i2=LL_ESM(2,i)+m2
@@ -629,7 +629,7 @@ CONTAINS
       !                         +c2*( www(i1,i2-1,i3,n)+www(i1,i2+1,i3,n) ) &
       !                         +c3*( www(i1,i2,i3-1,n)+www(i1,i2,i3+1,n) )
       ! end do
-!$OMP end do
+!!$OMP end do
     end do
 !$OMP barrier
 
