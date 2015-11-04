@@ -1,11 +1,11 @@
 MODULE bz_module
 
+  use io_tools_module
+
   implicit none
 
   PRIVATE
-  PUBLIC :: read_kgrid_bz
   PUBLIC :: generate_bz
-  PUBLIC :: read_kgrid_oldformat_bz
   PUBLIC :: generate_bz_sym
 
   integer,PUBLIC :: nk
@@ -20,86 +20,39 @@ MODULE bz_module
   integer :: ndata_read_k=0
   real(8) :: kbb0(3)
   data kbb0/0.d0,0.d0,0.d0/
+  integer :: use_inversion=1
 
 CONTAINS
 
-  SUBROUTINE read_kgrid_bz(rank,unit)
+
+  SUBROUTINE read_bz
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(6) :: cbuf,ckey
     nk=2
     mmm(1:3,1)=(/ 2,2,2 /)
     mmm(1:3,2)=(/ 2,2,2 /)
     ndata_read_k=0
-    kbb0(1:3)=0.d0
+    kbb0(1:3)=0.0d0
     npbz=0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:2) == "NK" ) then
-             backspace(unit)
-             read(unit,*) cbuf,nk
-          else if ( ckey(1:4) == "MMM1" ) then
-             backspace(unit)
-             read(unit,*) cbuf,mmm(1:3,1)
-          else if ( ckey(1:4) == "MMM2" ) then
-             backspace(unit)
-             read(unit,*) cbuf,mmm(1:3,2)
-          else if ( ckey(1:4) == "NPBZ" ) then
-             backspace(unit)
-             read(unit,*) cbuf,npbz
-          end if
-       end do
-999    continue
-       write(*,*) "nk =",nk
-       write(*,*) "mmm1 =",mmm(:,1)
-       write(*,*) "mmm2 =",mmm(:,2)
-!       write(*,*) "ndata_read_k=",ndata_read_k
-!       write(*,*) "kbb0=",kbb0(1:3)
-    end if
-    call send_kgrid_bz(0)
-  END SUBROUTINE read_kgrid_bz
+    use_inversion=1
+    call IOTools_readIntegerKeyword( "NK", nk )
+    call IOTools_readIntegerKeywords( "MMM1", mmm(:,1) )
+    call IOTools_readIntegerKeywords( "MMM2", mmm(:,2) )
+    call IOTools_readIntegerKeyword( "NPBZ", npbz )
+    call IOTools_readIntegerKeyword( "INVBZ", use_inversion )
+  END SUBROUTINE read_bz
 
-  SUBROUTINE read_kgrid_oldformat_bz(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) nk !,ndata_read_k,kbb0(1:3)
-       read(unit,*) mmm(1:3,1)
-       read(unit,*) mmm(1:3,2)
-       write(*,*) "nk =",nk
-       write(*,*) "mmm1 =",mmm(:,1)
-       write(*,*) "mmm2 =",mmm(:,2)
-!       write(*,*) "ndata_read_k=",ndata_read_k
-!       write(*,*) "kbb0=",kbb0(1:3)
-    end if
-    call send_kgrid_bz(0)
-  END SUBROUTINE read_kgrid_oldformat_bz
-
-  SUBROUTINE send_kgrid_bz(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(nk,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(mmm,6,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(ndata_read_k,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(kbb0,3,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(npbz,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_kgrid_bz
 
   SUBROUTINE generate_bz(disp_switch)
     implicit none
     logical,intent(IN) :: disp_switch
-    integer :: i,k,k1,iw,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
+    integer :: i,k,k1,iw,iw0,iw1,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
     integer,allocatable :: mm(:,:),m(:,:),w(:)
 
     if ( DISP_SWITCH ) then
        write(*,'(a60," generate_bz")') repeat("-",60)
     end if
+
+    call read_bz
 
     m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)
     mm1=mmm(1,2) ; mm2=mmm(2,2) ; mm3=mmm(3,2)
@@ -109,11 +62,14 @@ CONTAINS
     mm=0 ; m=0 ; w=0
     k=0 ; k1=0
 
+    iw1= 1
+    iw0=-1 ; if ( use_inversion < 1 ) iw0=1
+
     do i1=-m1,m1,mm1
     do i2=-m2,m2,mm2
     loop_A : do i3=-m3,m3,mm3
 
-       do iw=1,-1,-2
+       do iw=iw1,iw0,-2
 
           p1(1)=i1*iw ; p1(2)=i2*iw ; p1(3)=i3*iw ; p2(1:3)=p1(1:3)
           do i=1,3
@@ -184,12 +140,14 @@ CONTAINS
     logical,intent(IN) :: disp_switch
     integer,allocatable :: mm(:,:),m(:,:),w(:),w1(:),w2(:)
     integer :: m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
-    integer :: i,k,k1,iw,nkmax,p3(3),ns,ni,is,nni,ig
+    integer :: i,k,k1,iw,iw0,iw1,nkmax,p3(3),ns,ni,is,nni,ig
     real(8) :: c,tmp(3)
 
     if ( disp_switch ) then
        write(*,'(a60," generate_bz_sym")') repeat("-",60)
     end if
+
+    call read_bz
 
     m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)
     mm1=mmm(1,2) ; mm2=mmm(2,2) ; mm3=mmm(3,2)
@@ -197,6 +155,9 @@ CONTAINS
     nkmax=(2*m1+1)*(2*m2+1)*(2*m3+1)*2
     allocate( mm(3,nkmax),m(3,nkmax),w(nkmax) ) ; mm=0 ; m=0 ; w=0
     allocate( w1(nkmax),w2(nkmax) ) ; w1=0 ; w2=0
+
+    iw1= 1
+    iw0=-1 ; if ( use_inversion < 1 ) iw0=1
 
     ni=1
     is=1
@@ -220,8 +181,7 @@ CONTAINS
           ns =0
           nni=ni
 
-          do iw=1,-1,-2
-!          do iw=1,1
+          do iw=iw1,iw0,-2
              loop_sym : do ig=1,nsym
 
                 if ( ni>nkmax ) stop "generate_bz_sym(1)"

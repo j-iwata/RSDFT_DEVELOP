@@ -12,6 +12,7 @@ PROGRAM Real_Space_Solid
   use hamiltonian_matrix_module
   use rtddft_mol_module
   use omp_variables, only: init_omp
+  use test_rtsol_module
 
 #ifdef _USPP_
   use PSnonLocDij
@@ -362,6 +363,12 @@ PROGRAM Real_Space_Solid
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
 
+!-------------------- Real-Time Test
+
+  if ( iswitch_test == 3 ) then
+     call test_rtsol
+     goto 900
+  end if
 
 ! --- Read previous w.f. , density , potentials ---
 
