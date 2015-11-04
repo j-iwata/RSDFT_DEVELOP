@@ -60,8 +60,6 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 
     call read_electron(myrank,unit)
 
-    call read_kgrid_bz(myrank,unit)
-
     call read_cg(myrank,unit)
 
     call Read_RgridSol(myrank,unit)
@@ -212,8 +210,6 @@ if (myrank==0) write(200+myrank,*) '<<<<<<<<<< read_parameter'
     end if
 
     call read_oldformat_electron(myrank,unit)
-
-    call read_kgrid_oldformat_bz(myrank,unit)
 
     call read_oldformat_cg(myrank,unit)
 
