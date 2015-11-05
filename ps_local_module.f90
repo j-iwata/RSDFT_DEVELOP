@@ -14,8 +14,9 @@ MODULE ps_local_module
   use simc_module
   use ffte_sub_module
   use bberf_module
-  use ps_local_variables, only: vqlg
+  use ps_local_variables
   use fft_module
+  use VarPSMember
 
   implicit none
 
@@ -26,7 +27,7 @@ MODULE ps_local_module
   PUBLIC :: construct_ps_local_ffte
   real(8),PUBLIC :: const_ps_local
 
-  real(8),allocatable :: vqlgl(:,:),vqls(:,:)
+!  real(8),allocatable :: vqlgl(:,:),vqls(:,:)
   real(8),allocatable :: Vion(:)
 
   logical :: first_time1=.true.
@@ -38,12 +39,140 @@ MODULE ps_local_module
 CONTAINS
 
 
+  SUBROUTINE init_ps_local_test( GG, pr, pl )
+    implicit none
+    real(8),intent(IN) :: GG(:)
+    type(ps1d),intent(INOUT) :: pr(:)
+    type(pslocal),intent(INOUT) :: pl
+    integer :: i,ig,ik,iorb,MMr,NRc,MKI,NMGL
+    real(8) :: Rc,p1,p2,p3,p4,vlong,Pi,const,x,r,sb,sum0,G,G2
+    real(8) :: Vcell
+    real(8),allocatable :: vshort(:),tmp(:)
+
+    MKI   = size(pr)
+    NMGL  = size(GG)
+    Vcell = Ngrid(0)*dV
+    Pi    = acos(-1.0d0)
+    const = 4.0d0*Pi/Vcell
+
+    allocate( pl%vqlg(NMGL,MKI) ) ; pl%vqlg=0.0d0
+
+    MMr=0
+    do ik=1,MKI
+       MMr = max( pr(ik)%Mr, MMr )
+    end do
+
+    allocate( vshort(MMr) ) ; vshort=0.0d0
+    allocate( tmp(MMr)    ) ; tmp=0.0d0
+
+    do ik=1,MKI
+
+       if ( pr(ik)%ippform == 4 ) then
+          call init_ps_local_gth( Vcell, NMGL, ik, GG, pl%vqlg(:,ik) )
+          cycle
+       end if
+
+       MMr = pr(ik)%Mr
+
+       Rc=0.d0
+       NRc=0
+       do iorb=1,pr(ik)%norb
+          Rc=max( Rc, pr(ik)%Rps(iorb) )
+          NRc=max( NRc, pr(ik)%NRps(iorb) )
+       end do
+
+       if ( Rc < 1.d-8 ) Rc=5.d0
+       if ( NRc == 0 ) then
+          do i=1,MMr
+             if ( pr(ik)%rad(i) > Rc ) then
+                NRc=i
+                exit
+             end if
+          end do
+       end if
+
+       call simc(pr(ik)%rad,pr(ik)%vql,Rc,pr(ik)%Zps,pr(ik)%parloc,MMr)
+
+       p1=pr(ik)%parloc(1) ; p2=sqrt(pr(ik)%parloc(2))
+       p3=pr(ik)%parloc(3) ; p4=sqrt(pr(ik)%parloc(4))
+
+       do i=1,MMr
+          r=pr(ik)%rad(i)
+          if ( r < 1.d-9 ) then
+             vlong=-2.d0*pr(ik)%Zps/sqrt(Pi)*(p1*p2+p3*p4)
+          else
+             vlong=-pr(ik)%Zps/r*( p1*bberf(p2*r)+p3*bberf(p4*r) )
+          end if
+          vshort(i)=pr(ik)%vql(i)-vlong
+       end do
+
+       do ig=1,NMGL
+          G=sqrt(GG(ig))
+          if ( G == 0.d0 ) then
+             do i=1,MMr
+                tmp(i)=(pr(ik)%rad(i))**2*vshort(i)*pr(ik)%rab(i)
+             end do
+          else
+             do i=1,MMr
+                x=G*pr(ik)%rad(i)
+                if ( x < 1.d-1 ) then
+                   sb=-(1.d0/39916800.d0*x**10-1.d0/362880.d0*x**8 &
+                       +1.d0/5040.d0*x**6-1.d0/120.d0*x**4+1.d0/6.d0*x**2-1.d0)
+                else
+                   sb=sin(x)/x
+                end if
+                tmp(i)=(pr(ik)%rad(i))**2*vshort(i)*sb*pr(ik)%rab(i)
+             end do
+          end if
+          call simp(tmp(1:MMr),sum0,2)
+          pl%vqlg(ig,ik)=sum0*const
+       end do
+
+       p1=-pr(ik)%Zps*pr(ik)%parloc(1) ; p2=0.25d0/pr(ik)%parloc(2)
+       p3=-pr(ik)%Zps*pr(ik)%parloc(3) ; p4=0.25d0/pr(ik)%parloc(4)
+       do ig=1,NMGL
+          G2=GG(ig)
+          if ( G2 == 0.0d0 ) then
+             pl%vqlg(ig,ik) = pl%vqlg(ig,ik)-(p1*p2+p3*p4)*const
+          else
+             pl%vqlg(ig,ik) = pl%vqlg(ig,ik) &
+                  +(p1*exp(-G2*p2)+p3*exp(-G2*p4))/G2*const
+          end if
+       end do
+
+    end do ! ik
+
+    deallocate( tmp    )
+    deallocate( vshort )
+
+! --- const_ps_local
+
+   pl%const_ps_local=0.0d0
+
+   if ( flag_zero_ave ) then
+
+      do ig=1,NMGL
+        if ( GG(ig) == 0.0d0 ) exit
+      end do
+      do i=1,Natom
+         ik=ki_atom(i)
+         pl%const_ps_local = pl%const_ps_local + pl%vqlg(ig,ik)    
+      end do
+      pl%vqlg(ig,ik)=0.0d0
+
+   end if
+
+  END SUBROUTINE init_ps_local_test
+
+
   SUBROUTINE init_ps_local
     implicit none
     integer :: i,ig,ik,iorb,MMr,NRc,MKI
     real(8) :: Rc,p1,p2,p3,p4,vlong,Pi,const,x,r,sb,sum0,G,G2
     real(8) :: Vcell
     real(8),allocatable :: vshort(:),tmp(:)
+
+    !call init_ps_local_test( GG, ps, psloc )
 
     MKI   = Nelement
     Vcell = Ngrid(0)*dV
@@ -53,10 +182,10 @@ CONTAINS
     allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.0d0
 
     MMr=maxval(Mr)
-    allocate( vqls(MMr,MKI)   ) ; vqls=0.d0
-    allocate( vqlgl(NMGL,MKI) ) ; vqlgl=0.d0
+!    allocate( vqls(MMr,MKI)   ) ; vqls=0.d0
+!    allocate( vqlgl(NMGL,MKI) ) ; vqlgl=0.d0
 
-    allocate( vshort(MMr) )
+    allocate( vshort(MMr) ) ; vshort=0.0d0
 
     do ik=1,MKI
 
@@ -97,7 +226,7 @@ CONTAINS
              vlong=-Zps(ik)/r*( p1*bberf(p2*r)+p3*bberf(p4*r) )
           end if
           vshort(i)=vql(i,ik)-vlong
-          vqls(i,ik)=vql(i,ik)-vlong
+!          vqls(i,ik)=vql(i,ik)-vlong
        end do
 
        allocate( tmp(MMr) )
@@ -129,11 +258,13 @@ CONTAINS
        do ig=1,NMGL
           G2=GG(ig)
           if ( G2 == 0.d0 ) then
-             vqlgl(ig,ik)=-(p1*p2+p3*p4)*const
-             vqlg(ig,ik)=vqlg(ig,ik)+vqlgl(ig,ik)
+!             vqlgl(ig,ik)=-(p1*p2+p3*p4)*const
+!             vqlg(ig,ik)=vqlg(ig,ik)+vqlgl(ig,ik)
+             vqlg(ig,ik)=vqlg(ig,ik)-(p1*p2+p3*p4)*const
           else
-             vqlgl(ig,ik)=(p1*exp(-G2*p2)+p3*exp(-G2*p4))/G2*const
-             vqlg(ig,ik)=vqlg(ig,ik)+vqlgl(ig,ik)
+!             vqlgl(ig,ik)=(p1*exp(-G2*p2)+p3*exp(-G2*p4))/G2*const
+!             vqlg(ig,ik)=vqlg(ig,ik)+vqlgl(ig,ik)
+             vqlg(ig,ik)=vqlg(ig,ik)+(p1*exp(-G2*p2)+p3*exp(-G2*p4))/G2*const
           end if
        end do
        deallocate( tmp )
@@ -160,6 +291,7 @@ CONTAINS
    end if
 
   END SUBROUTINE init_ps_local
+
 
   SUBROUTINE simp(f,s,m)
     implicit none
@@ -201,6 +333,88 @@ CONTAINS
   END SUBROUTINE simp
 
 
+  SUBROUTINE construct_ps_local_test( SGK, pl )
+    implicit none
+    complex(8),intent(IN) :: SGK(:,:)
+    type(pslocal),intent(INOUT) :: pl
+    integer :: i,ik,j,MG,ML1,ML2,ML3,ML_0,ML_1,Nelement
+    complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:),vg(:)
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
+    real(8) :: ctt(0:3),ett(0:3)
+    logical :: disp_sw
+
+    Nelement = size( pl%vqlg, 2 )
+
+    MG  = NGgrid(0)
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+    ML_0= Igrid(1,0)
+    ML_1= Igrid(2,0)
+
+    ctt(:)=0.d0
+    ett(:)=0.d0
+
+    call watch(ctt(0),ett(0))
+
+    if ( .not.allocated(pl%Vion) ) then
+       allocate( pl%Vion(ML_0:ML_1) )
+       pl%Vion=0.0d0
+    end if
+
+    allocate( vg(MG) )
+
+    do i=MG_0,MG_1
+       j=MGL(i)
+       vg(i) = pl%vqlg(j,1)*SGK(i,1)
+    end do
+    do ik=2,Nelement
+       do i=MG_0,MG_1
+          j=MGL(i)
+          vg(i) = vg(i) + pl%vqlg(j,ik)*SGK(i,ik)
+       end do
+    end do
+    call allgatherv_Ggrid(vg)
+
+    call construct_Ggrid(2)
+
+    allocate( zwork0(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork0=z0
+
+    do i=1,NGgrid(0)
+       zwork0(LLG(1,i),LLG(2,i),LLG(3,i))=vg(i)
+    end do
+
+    call destruct_Ggrid
+
+    deallocate( vg )
+
+    call init_fft
+
+    call watch(ctt(1),ett(1))
+
+    call backward_fft( zwork0, zwork1 )
+
+    call watch(ctt(2),ett(2))
+
+    call z3_to_d1_fft( zwork0, pl%Vion )
+
+    call finalize_fft
+
+    if ( allocated(zwork1) ) deallocate( zwork1 )
+    if ( allocated(zwork0) ) deallocate( zwork0 )
+
+    call watch(ctt(3),ett(3))
+
+    call check_disp_switch( disp_sw, 0 )
+    if ( disp_sw ) then
+       write(*,*) "time(const_ps_loc_t1)",ctt(1)-ctt(0),ett(1)-ett(0)
+       write(*,*) "time(const_ps_loc_t2)",ctt(2)-ctt(1),ett(2)-ett(1)
+       write(*,*) "time(const_ps_loc_t3)",ctt(3)-ctt(2),ett(3)-ett(2)
+    end if
+
+  END SUBROUTINE construct_ps_local_test
+
+
   SUBROUTINE construct_ps_local
     implicit none
     integer :: a,i,i1,i2,i3,ik,j,MG
@@ -209,6 +423,8 @@ CONTAINS
     complex(8),allocatable :: zwork1(:,:,:)
     real(8) :: ctt(0:3),ett(0:3)
     logical :: disp_sw
+
+    !call construct_ps_local_test( SGK, psloc )
 
 #ifdef _FFTE_
     call construct_ps_local_ffte

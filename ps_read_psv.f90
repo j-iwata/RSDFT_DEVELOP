@@ -374,8 +374,6 @@ CONTAINS
           allocate( cdd_coef(3,ngauss,Nelement_PP) )
           cdd_coef=0.0d0
           max_ngauss=ngauss
-          allocate( psp%cdd_coef(3,ngauss) )
-          psp%cdd_coef=0.0d0
        else if ( ngauss > max_ngauss ) then
           allocate( cdd_coef_0(3,max_ngauss,Nelement_PP) )
           cdd_coef_0(:,:,:)=cdd_coef(:,:,:)
@@ -389,6 +387,8 @@ CONTAINS
        cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
        cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
 !
+       allocate( psp%cdd_coef(3,ngauss) )
+       psp%cdd_coef=0.0d0
        psp%cdd_coef(1,1:ngauss)=a0(1:ngauss)
        psp%cdd_coef(2,1:ngauss)=b0(1:ngauss)
        psp%cdd_coef(3,1:ngauss)=c0(1:ngauss)
