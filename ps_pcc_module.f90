@@ -178,6 +178,8 @@ CONTAINS
 !    end do
     call z3_to_d1_fft( zwork, rhoc ) 
 
+    call finalize_fft
+
     if ( allocated(zwork1) ) deallocate( zwork1 )
     deallocate( zwork )
 
