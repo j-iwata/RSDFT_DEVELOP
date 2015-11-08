@@ -1,37 +1,43 @@
 MODULE GramSchmidt_G
+
   use rgrid_module, only: dV,zdV
   use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
-  use parallel_module, only: COMM_GRID,COMM_BAND,ir_band,id_band,id_class,myrank,np_band,myrank_b
+  use parallel_module, only: COMM_GRID,COMM_BAND,ir_band,id_band &
+                            ,id_class,myrank,np_band,myrank_b
   use RealComplex, only: zero,one,TYPE_MAIN,TRANSA,TRANSB
   use InnerProduct
+  use VarSysParameter, only: pp_kind
+
   implicit none
+
   include 'mpif.h'
+
   PRIVATE
+  PUBLIC :: init_gram_schmidt_g
   PUBLIC :: GramSchmidtG
 
-#ifdef _SHOWALL_GS_
-  integer :: countGS_=0
-#endif
+  integer :: NBLK, NBLK1
 
 CONTAINS
 
-!---------------------------------------------------------------------------------------
+
+  SUBROUTINE init_gram_schmidt_g( iswitch_algorithm )
+    implicit none
+    integer,intent(INOUT) :: iswitch_algorithm
+    if ( pp_kind == "USPP" ) iswitch_algorithm=101
+  END SUBROUTINE init_gram_schmidt_g
+
+
   ! Gram-Schmidt orthogonalization
   ! ( Takahashi, Block cyclic )
-  SUBROUTINE GramSchmidtG(ni,nb,k,s,NBLK,NBLK1)
+  SUBROUTINE GramSchmidtG(ni,nb,k,s)
     implicit none
     integer,intent(IN) :: ni,nb,k,s
-    integer,intent(INOUT) :: NBLK,NBLK1
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
     integer,allocatable :: ir(:),id(:)
     integer :: n0,n1
-
-#ifdef _GS_SIMPLE_
-    call gram_schmidt_u(k,s)
-    return
-#endif
 
     ML0 = ML_1 - ML_0 + 1
     mrnk = id_class(myrank,4)
@@ -182,9 +188,8 @@ CONTAINS
       end do ! ns
     end do ! ms
 
-
-    return
   END SUBROUTINE GramSchmidtGSub
+
 
 #ifdef _GS_SIMPLE_
   SUBROUTINE gram_schmidt_u(k,s)

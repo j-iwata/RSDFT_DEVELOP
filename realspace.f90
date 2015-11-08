@@ -1,6 +1,5 @@
 PROGRAM Real_Space_Solid
 
-  use VarSysParameter
   use global_variables
   use parameters_module
   use func2gp_module
@@ -8,22 +7,14 @@ PROGRAM Real_Space_Solid
   use band_sseig_module
   use psv_initrho_module
   use random_initrho_module
-  use pseudopotentials
+  use ps_initiate_module
   use hamiltonian_matrix_module
   use rtddft_mol_module
   use omp_variables, only: init_omp
   use test_rtsol_module
 
-#ifdef _USPP_
-  use PSnonLocDij
-  use PSQInit
-#endif
-
-!#ifdef _USPP_F_TEST_
-!  use VarPSMember
-!  use VarPSMemberG
-!  use ps_nloc2_variables
-!#endif
+  use ps_getDij_module
+  use ps_q_init_module
 
   use WFtest
   use io_tools_module, only: init_io_tools
@@ -53,7 +44,7 @@ PROGRAM Real_Space_Solid
 
 ! --- DISP_SWITCH ---
 
-  call setDispSwitch(myrank,nprocs)
+! call setDispSwitch(myrank,nprocs)
 ! DISP_SWITCH = .true.
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
@@ -193,20 +184,7 @@ PROGRAM Real_Space_Solid
 
      call destruct_strfac !----- structure factor
 
-     select case( pselect )
-     case( 2 )
-        call ps_nloc2_init(Gcut)
-        if ( ps_type == 0 ) then
-           call prep_ps_nloc2
-        else if ( ps_type == 1 ) then
-           call prep_ps_nloc_mr
-        end if
-     case( 3 )
-        call init_ps_nloc3
-        call prep_ps_nloc3
-     end select
-
-     call initiatePS(gcut)
+     call ps_initiate( Gcut )
 
 !----------------------- MOL mol -----
 
@@ -316,11 +294,6 @@ PROGRAM Real_Space_Solid
   end do
   end do
 
-!  call test_on_wf(dV,myrank==0)
-#ifdef _USPP_
-!  call test_orthnorm_wf(myrank)
-#endif
-
 ! --- Initial occupation ---
 
   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
@@ -376,9 +349,7 @@ PROGRAM Real_Space_Solid
   call read_data(disp_switch)
   call watcht(disp_switch,"read_data",1)
 
-#ifdef _USPP_
   call getDij
-#endif
 
 ! the following GS should be performed when MB1_tmp is smaller than Nband,
 ! otherwise not necessary
@@ -402,6 +373,9 @@ PROGRAM Real_Space_Solid
 
   call calc_hartree(ML_0,ML_1,MSP,rho)
   call calc_xc
+  do s=MSP_0,MSP_1
+     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+  end do
 
 ! --- Initial potential of Localpot2 ---
 
@@ -430,18 +404,15 @@ PROGRAM Real_Space_Solid
         case( 2 )
            call ps_nloc2_init_derivative
         case( 102 )
-#ifdef _USPP_
            call ps_nloc2_init_derivative
            call ps_Q_init_derivative
-#else
-           write(*,*) "USPP is not available (recompile!)"
-           goto 900
-#endif
         end select
      end if
   end if
 
 ! ---
+
+  call getDij
 
   call calc_with_rhoIN_total_energy(disp_switch)
   call calc_total_energy(.true.,disp_switch,999)

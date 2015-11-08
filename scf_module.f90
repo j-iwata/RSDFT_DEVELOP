@@ -23,9 +23,9 @@ MODULE scf_module
   use esp_gather_module
   use density_module
   use watch_module
-#ifdef _USPP_
-  use PSnonLocDij
-#endif
+
+  use ps_getDij_module
+
   use ggrid_module, only: Ecut
   use rgrid_module, only: dV, Ngrid
   use esp_calc_module
@@ -359,9 +359,9 @@ CONTAINS
                 Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
              end do
           end if
-#ifdef _USPP_
+
           call getDij
-#endif
+
        end if
 
        call watcht(disp_switch,"mixing",1)
@@ -393,7 +393,6 @@ CONTAINS
 
        call watcht(disp_switch,"",0)
        call write_data(disp_switch,flag_exit)
-       if (myrank==0) write(200,'(A22,I4,A3,I4)') repeat('-',20),iter," / ",Diter
        call watcht(disp_switch,"io",1)
 
        if ( flag_exit ) then

@@ -16,7 +16,6 @@ MODS1 = \
        omp_variables.o\
        io_tools_module.o\
        xc_pw92_gth_module.o\
-       var_para.o\
        atom_module.o\
        lattice_module.o\
        ps_read_tm_module.o\
@@ -71,7 +70,7 @@ MODS1 = \
        ps_read_psv.o\
        force_sub.o\
        symmetry_module.o\
-       ps_q_init.o\
+       ps_q_init_module.o\
        xc_ldapz81_module.o\
        ps_nloc2_op_g.o\
        bcset_3_module.o\
@@ -106,14 +105,14 @@ MODS1 = \
        subspace_rotv_sl_0_module.o\
        cgpc_gausseidel_module.o\
        kinetic_sol_1_module.o\
-       ps_nloc_prep_g.o\
+       ps_prepNzqr_g_module.o\
        kinetic_mol_module.o\
        io_read_module.o\
        xc_ggapbe96_mol_module.o\
        momentum_module.o\
        gram_schmidt_m_module.o\
        band_unfold_module.o\
-       wf_density_g.o\
+       rhonks_g_module.o\
        ps_pcc_mol_module.o\
        ps_nloc_mr_module.o\
        subspace_solv_sl_module.o\
@@ -153,7 +152,7 @@ MODS1 = \
        force_ps_nloc2.o\
        cgpc_diag_module.o\
        hamiltonian_matrix_module.o\
-       ps_nloc_dij.o\
+       ps_getDij_module.o\
        cgpc_seitsonen_module.o\
        fock_fft_module.o\
        ps_nloc2_module.o\
@@ -185,7 +184,7 @@ MODS1 = \
        conjugate_gradient_g.o\
        total_energy_module.o\
        io_module.o\
-       pseudopotentials.o\
+       ps_initiate_module.o\
        subspace_diag_sl_module.o\
        sseig.o\
        ps_local_mol_gth_module.o\

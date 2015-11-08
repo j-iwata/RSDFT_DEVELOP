@@ -149,10 +149,14 @@ CONTAINS
     call watch(ctt(8),ett(8))
 
     nl3vmax = maxval(nl3v)
-    if ( .not.allocated(icheck_tmp5) ) allocate( icheck_tmp5(k1max,Natom)     ) ; icheck_tmp5=0
-    if ( .not.allocated(JJ_tmp)      ) allocate( JJ_tmp(6,MMJJ_0,k1max,Natom) ) ; JJ_tmp     =0
-    if ( .not.allocated(MJJ_tmp_Q)   ) allocate( MJJ_tmp_Q(k1max,Natom)       ) ; MJJ_tmp_Q  =0
-    if ( .not.allocated(QRij_tmp)    ) allocate( QRij_tmp(MMJJ_0,k1max,Natom) ) ; QRij_tmp   =0.d0
+    if ( .not.allocated(icheck_tmp5) ) allocate( icheck_tmp5(k1max,Natom) )
+    icheck_tmp5=0
+    if ( .not.allocated(JJ_tmp) ) allocate( JJ_tmp(6,MMJJ_0,k1max,Natom) )
+    JJ_tmp=0
+    if ( .not.allocated(MJJ_tmp_Q) ) allocate( MJJ_tmp_Q(k1max,Natom) )
+    MJJ_tmp_Q=0
+    if ( .not.allocated(QRij_tmp) ) allocate( QRij_tmp(MMJJ_0,k1max,Natom) )
+    QRij_tmp=0.d0
 
     call watch(ctt(0),ett(0))
     
@@ -207,10 +211,6 @@ CONTAINS
       ic3 = nint( aa_atom(3,ia)*Ngrid(3) )
       ik = ki_atom(ia)
       do ik1=1,N_k1(ik)
-#ifdef _SHOWALL_MAP_Q_
-        write(530+myrank,*) repeat('-',30)
-        write(530+myrank,*) "ia,ik,ik1=",ia,ik,ik1
-#endif
         j=0
         ik2 = k1_to_k2(ik1,ik)
         ik3 = k1_to_k3(ik1,ik)
@@ -266,22 +266,19 @@ CONTAINS
                   if ( ir <= 2 ) then
                     v0  = qrL(2,ll3,ik2,ik)
                     if ( ir < 1 ) stop "prep_QRij_p102(0)"
-!!!!!                  else if ( ir <= NRc ) then
                   else if ( ir <= NRc ) then
                     err0=1.d10
-!if (ik==2) write(5900+myrank,*) repeat('-',40) 
                     do mm=1,20
                       m1=max(1,ir-mm)
                       m2=min(ir+mm,NRc)
-                      call polint(rad1(m1,ik),qrL(m1,ll3,ik2,ik),m2-m1+1,r,v,err)
-!if (ik==2) write(5900+myrank,'(3I6,5G20.7)') mm,m1,m2,rad1(m1,ik),qrL(m1,ll3,ik2,ik),v,err,err0
+                      call polint(rad1(m1,ik),qrL(m1,ll3,ik2,ik) &
+                           ,m2-m1+1,r,v,err)
                       if ( abs(err)<err0 ) then
                         v0=v
                         err0=abs(err)
                         if ( err0<ep ) exit
                       end if
                     end do
-!if (ik==2) write(5900+myrank,'(I6,G20.7)') ik,v0
                   else
                     write(*,*) "prep_QRij_p102(1)",ir,NRc,qrL(NRc,ll3,ik2,ik)
                     write(*,*) qrL(NRc+1,ll3,ik3,ik),r,rad1(ir,ik)
@@ -290,10 +287,7 @@ CONTAINS
                   maxerr=max(maxerr,err0)
 #endif
                   QRtmp = v0/pi4* real(qaL(ik3,ll3)/(-zi)**L)
-!write(5900+myrank,'(6I6,5G20.7,I6)') ia,ik1,ik2,ll3,ir0,ir,x,y,z,r,v0,NRc
-!write(5200+myrank,'(4I6,5G20.7)') ia,ik1,j,ll3,QRtmp,qaL(ik3,ll3),v0
                 end if ! x,y,z
-!                if (abs(QRtmp)<1.d-10) cycle
 
                 QRij_tmp(j,ik1,ia) = QRij_tmp(j,ik1,ia)+QRtmp
               end do ! ll3
@@ -309,15 +303,9 @@ CONTAINS
               JJ_tmp(4,j,ik1,ia) = k1
               JJ_tmp(5,j,ik1,ia) = k2
               JJ_tmp(6,j,ik1,ia) = k3
-#ifdef _SHOWALL_MAP_Q_
-              write(530+myrank,'(2I5,A8,6I4)') i,j," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
-#endif
             end if ! Igrid
           end do ! i ( 1 - MMJJ_0 )
           MJJ_tmp_Q(ik1,ia)   = j
-#ifdef _SHOWALL_MAP_Q_
-          write(530+myrank,*) "MJJ_tmp_Q(ik1,ia)=",MJJ_tmp_Q(ik1,ia)
-#endif
        end do ! ik1
     end do ! ia
 !!$OMP end parallel do
@@ -335,7 +323,6 @@ CONTAINS
         Mqr=Mqr+1
         j=MJJ_tmp_Q(ik1,ia)
         if (j>0) then
-!        if ( isInThisNode_Q(ia,ik1) ) then
           c_nzqr_pre = c_nzqr_pre+1
           icheck_tmp5(ik1,ia) = c_nzqr_pre
         endif
@@ -363,10 +350,6 @@ CONTAINS
 ! for grid-parallel computation
 
     c_nzqr_0 = N_nzqr
-#ifdef _SHOWALL_MAP_Q_
-    write(1100+myrank,*) 'c_nzqr=    ',c_nzqr_0
-    write(1100+myrank,*) 'N_k1(max)= ',maxval(N_k1)
-#endif
 
     n=maxval( node_partition(1:3) )
     allocate( itmp(n,3)                   ) ; itmp            =0
@@ -382,20 +365,6 @@ CONTAINS
     np2 = node_partition(2)
     np3 = node_partition(3)
 
-#ifdef _SHOWALL_MAP_Q_
-    write(1100+myrank,*) repeat('-',50),'Q start'
-    write(1100+myrank,'(2A5,A12)') 'ia','ik1','icheck_tmp5'
-    do ia=1,Natom
-      do ik1=1,k1max
-        write(1100+myrank,'(2I5,I12)') ia,ik1,icheck_tmp5(ik1,ia)
-      enddo
-    enddo
-    write(1100+myrank,*) repeat('=',50),'Q end'
-#endif
-
-#ifdef _SHOWALL_MAP_Q_
-    write(1100+myrank,*) repeat('-',50),'icheck_tmp2'
-#endif
     nrqr=0
     iqr=0
     do ia=1,Natom
@@ -404,17 +373,12 @@ CONTAINS
         iqr=iqr+1
         kk1=kk1map(ik1,ia)
         icheck_tmp1(:)=0
-!        call MPI_ALLGATHER(icheck_tmp5(ik1,ia),1,MPI_INTEGER,icheck_tmp1,1,MPI_INTEGER,COMM_GRID,ierr)
         do n=0,np_grid-1
           if ( lcheck_tmp1(iqr,n) ) icheck_tmp1(n) = 1
         end do
         icheck_tmp1(myrank_g) = icheck_tmp5(ik1,ia)
 
         call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
-
-#ifdef _SHOWALL_MAP_Q_
-        write(1100+myrank,'(2I4," icheck_tmp2(myrank_g)= ",I5)') ia,ik1,icheck_tmp2(myrank_g)
-#endif
 
         if ( icheck_tmp1(myrank_g)/=0 ) then
           if ( icheck_tmp1(myrank_g)>0 ) then
@@ -486,19 +450,9 @@ CONTAINS
       ia  = maps_tmp(iqr,2)
       ik1 = maps_tmp(iqr,3)
       MJJ_MAP_Q(iqr) = MJJ_tmp_Q(ik1,ia)
-#ifdef _SHOWALL_MAP_Q_
-      write(530+myrank,'(4A5)') 'ia','ik1','l','MJJ_MAP_Q'
-      write(530+myrank,'(4I5)') ia,ik1,l,MJJ_MAP_Q(iqr)
-#endif
-!write(6100+myrank,'(5A6)') 'iqr','ia','ik1','l','MJJ_MAP_Q'
-!write(6100+myrank,'(5I6)') iqr,ia,ik1,l,MJJ_MAP_Q(iqr)
       do j=1,MJJ_MAP_Q(iqr)
         QRij_tmp2(j,iqr)    = QRij_tmp(j,ik1,ia)
         JJ_MAP_Q(1:6,j,iqr) = JJ_tmp(1:6,j,ik1,ia)
-!write(6000+myrank,'(2I6,G20.7,6I4)') iqr,j,QRij_tmp2(j,iqr),JJ_tmp(1:6,j,ik1,ia)
-#ifdef _SHOWALL_MAP_Q_
-        write(520+myrank,'(I5,A6,E15.7e2,A8,6I4)') j," QRij=",QRij_tmp2(j,iqr)," JJ_tmp=",JJ_tmp(1:6,j,ik1,ia)
-#endif
       end do
     end do
 !!$OMP end parallel do
@@ -511,9 +465,7 @@ CONTAINS
     call watch(ctt(3),ett(3))
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) ) ; icheck_tmp4=0
-#ifdef _SHOWALL_MAP_Q_
-    write(530+myrank,'(6I3)') a1b,b1b,a2b,b2b,a3b,b3b
-#endif
+
     do iqr=1,c_nzqr
        j=0
        icheck_tmp4=0
@@ -521,9 +473,6 @@ CONTAINS
           i1  = JJ_MAP_Q(1,i,iqr)
           i2  = JJ_MAP_Q(2,i,iqr)
           i3  = JJ_MAP_Q(3,i,iqr)
-#ifdef _SHOWALL_MAP_Q_
-          write(530+myrank,'(3I3)') i1,i2,i3
-#endif
           if ( icheck_tmp4(i1,i2,i3)==0 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)  = j
@@ -553,11 +502,9 @@ CONTAINS
             icheck_tmp4(i1,i2,i3)  = j
             QRij(j,iqr) = QRtmp
             JJP_Q(j,iqr) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
-!write(6200+myrank,'(4I6,G20.7)') iqr,i,j,JJP_Q(j,iqr),QRij(j,iqr)
           else
             j3  = icheck_tmp4(i1,i2,i3)
             QRij(j3,iqr) = QRij(j3,iqr) + QRtmp
-!write(6200+myrank,'(4I6,G20.7)') iqr,i,j3,JJP_Q(j3,iqr),QRij(j3,iqr)
           end if
        end do
     end do
@@ -614,14 +561,9 @@ CONTAINS
        write(*,*) "time(prepQRijp102_8)",ctt(8)-ctt(7),ett(8)-ett(7)
        write(*,*) "time(prepQRijp102_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
-    
-#ifdef _SHOWALL_INIT_
-    write(400+myrank,*) "<<<<< prepQRijp102"
-#endif
-    return
+
   END SUBROUTINE prepQRijp102
 
-!---------------------------------------------------------------------------------------
 
   SUBROUTINE get_qaL ( r,x,y,z )
     implicit none

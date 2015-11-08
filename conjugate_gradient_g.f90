@@ -11,15 +11,24 @@ MODULE ConjugateGradient_G
   use watch_module
   use InnerProduct, only: get_Sf,get_gf,get_gSf
   use RealComplex, only: TYPE_MAIN,zero
+  use VarSysParameter, only: pp_kind
 
   implicit none
 
   PRIVATE
+  PUBLIC :: init_conjugate_gradient_g
   PUBLIC :: ConjugateGradientG
 
 CONTAINS
 
-!---------------------------------------------------------------------------------------
+
+  SUBROUTINE init_conjugate_gradient_g( iswitch_cg )
+    implicit none
+    integer,intent(INOUT) :: iswitch_cg
+    if ( pp_kind == "USPP" ) iswitch_cg=101
+  END SUBROUTINE init_conjugate_gradient_g
+
+
   SUBROUTINE ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
@@ -46,10 +55,10 @@ CONTAINS
     real(8),allocatable :: pk(:,:),pko(:,:)
     real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     real(8),allocatable :: utmp2(:,:),btmp2(:,:)
-!----- _USPP_ -----
+!----- USPP -----
     real(8) :: gSf
     real(8),allocatable :: unk_tmp(:),Sf(:)
-!===== _USPP_ =====
+!===== USPP =====
 #else
     complex(8) :: tmp
     complex(8) :: work(9),zphase,ztmp
@@ -58,10 +67,10 @@ CONTAINS
     complex(8),allocatable :: pk(:,:),pko(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:)
-!----- _USPP_ -----
+!----- USPP -----
     complex(8) :: gSf
     complex(8),allocatable :: unk_tmp(:),Sf(:)
-!===== _USPP_ =====
+!===== USPP =====
 #endif
     
 
@@ -114,7 +123,7 @@ CONTAINS
        call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
 
        do n=1,nn
-!----- _USPP_ -----
+!----- USPP -----
           call get_Sf( unk(n1,n+ns-1),n1,n2,k,Sf )
 !$OMP parallel do
           do i=n1,n2
@@ -123,7 +132,7 @@ CONTAINS
 !$OMP end parallel do
           call get_gSf( gk,gk,n1,n2,k,gSf,0 )
           sb(n) = real( gSf,kind=8 )
-!===== _USPP_ =====
+!===== USPP =====
        end do
 
        call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
@@ -156,7 +165,7 @@ CONTAINS
 ! ---
 
           do n=1,nn
-!----- _USPP_ -----
+!----- USPP -----
 !--- <RSDFT-original>
 !             call get_gSf( Pgk(n1,n),gk(n1,n),n1,n2,k,gSf,0 )
 !--- <TAPP-style>
@@ -164,7 +173,7 @@ CONTAINS
 ! <Pgk|S|Pgk> is a real number
 ! get_gSf gets a complex number. This is a waste of time.
              sb(n) = real( gSf,kind=8 )
-!===== _USPP_ =====
+!===== USPP =====
           end do
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
@@ -194,7 +203,7 @@ CONTAINS
           do n=1,nn
              vtmp2(1:6,n)=zero
              m=n+ns-1
-!----- _USPP_ -----
+!----- USPP -----
 ! need omp_parallel
 !             call get_gSf( unk(n1,m,k,s),unk(n1,m,k,s),n1,n2,k,vtmp2(1:n),0 )
 !             call get_gSf( pk(n1,n),unk(n1,m,k,s),n1,n2,k,vtmp2(2:n),0 )
@@ -219,7 +228,7 @@ CONTAINS
              end do
              vtmp2(2,n) = dV*gSf
              call get_gSf( pk(n1,n),pk(n1,n),n1,n2,k,vtmp2(3,n),0 )
-!===== _USPP_ =====
+!===== USPP =====
              call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
              call dot_product(pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
              call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
@@ -283,7 +292,7 @@ CONTAINS
                 hxk(i,n)=utmp2(1,1)*hxk(i,n)+utmp2(2,1)*hpk(i,n)
              end do
 !$OMP end do
-!----- _USPP_ -----
+!----- USPP -----
 !$OMP do
              do i=n1,n2
                 unk_tmp(i) = utmp2(1,1)*unk(i,m) + utmp2(2,1)*pk(i,n)
@@ -301,7 +310,7 @@ CONTAINS
 
              call get_gSf( gk(n1,n),gk(n1,n),n1,n2,k,gSf,0 )
              sb(n) = real( gSf,kind=8 )
-!===== _USPP_ =====
+!===== USPP =====
 
           end do
 
@@ -351,7 +360,7 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-    return
   END SUBROUTINE ConjugateGradientG
+
 
 END MODULE ConjugateGradient_G

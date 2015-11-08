@@ -1,6 +1,9 @@
 MODULE VarPSMemberG
+
   use parallel_module, only: myrank
+
   implicit none
+
   PRIVATE
   PUBLIC :: allocateNzqr
   PUBLIC :: deallocateNzqr
@@ -10,11 +13,6 @@ MODULE VarPSMemberG
   PUBLIC :: deallocateQRps
   PUBLIC :: sendPSG
   PUBLIC :: allocatePSG
-#ifdef _USPP_F_TEST_
-  PUBLIC :: write_qrL
-  PUBLIC :: write_dqrL
-  PUBLIC :: check_VarPSMemberG
-#endif
 
   integer,allocatable,PUBLIC :: nl3v(:,:)
   integer,allocatable,PUBLIC :: l3v(:,:,:)
@@ -53,7 +51,7 @@ MODULE VarPSMemberG
   integer,allocatable,PUBLIC :: nzqr_pair(:,:)
   integer,allocatable,PUBLIC :: atommap(:),kk1map(:,:),k1map(:)
   integer,allocatable,PUBLIC :: nlop_pair(:,:)
-  real(8),allocatable,PUBLIC :: Dij(:,:),Dij00(:),Dij0(:)
+  real(8),allocatable,PUBLIC :: Dij(:,:),Dij00(:)
   real(8),allocatable,PUBLIC :: qij(:),qij_f(:)
 
   integer,PUBLIC :: max_Rref=0,max_Lref=0,max_k2=0,max_qgrd=0
@@ -66,6 +64,7 @@ MODULE VarPSMemberG
 
 
 CONTAINS
+
 !------------------------------------------
   SUBROUTINE allocateNzqr(nspin,Natom,k1max)
     implicit none
@@ -78,7 +77,6 @@ CONTAINS
     allocate(nlop_pair(2,N_nlop)) ; nlop_pair=0
     allocate(Dij(N_nzqr,nspin)  ) ; Dij=0.d0
     allocate(Dij00(N_nzqr)      ) ; Dij00=0.d0
-    allocate(Dij0(N_nzqr)       ) ; Dij0=0.d0
     allocate(qij(N_nzqr)        ) ; qij=0.d0
     allocate(qij_f(N_nzqr)      ) ; qij_f=0.d0
     return
@@ -94,7 +92,6 @@ CONTAINS
     if (allocated(nlop_pair)) deallocate(nlop_pair)
     if (allocated(Dij)      ) deallocate(Dij)
     if (allocated(Dij00)    ) deallocate(Dij00)
-    if (allocated(Dij0)     ) deallocate(Dij0)
     if (allocated(qij)      ) deallocate(qij)
     if (allocated(qij_f)    ) deallocate(qij_f)
     return
@@ -309,69 +306,5 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     return
   END SUBROUTINE allocatePSG
 
-#ifdef _USPP_F_TEST_
-  SUBROUTINE write_qrL(unit,rank,nki)
-    implicit none
-    integer,intent(IN) :: unit,rank,nki
-    integer :: ik,ik2,il,i
-    if (rank==0) write(200,'(A10,4I7)') 'qrL=',nki,max_k2,max_Lref,max_qgrd
-    write(unit+rank,'(4I7)') nki,max_k2,max_Lref,max_qgrd
-    do ik=1,nki
-      do ik2=1,max_k2
-        do il=1,max_Lref
-          do i=1,max_qgrd
-            write(unit+rank,'(g20.12)') qrL(i,il,ik2,ik)
-          enddo
-        enddo
-      enddo
-    enddo
-  END SUBROUTINE write_qrL
-!------------------------------------------
-  SUBROUTINE write_dqrL(unit,rank,nki)
-    implicit none
-    integer,intent(IN) :: unit,rank,nki
-    integer :: ik,ik2,il,i,cJ
-    if (rank==0) write(200,'(A10,5I7)') 'dqrL=',maxcJ,nki,max_k2,max_Lref,max_qgrd
-    write(unit+rank,'(5I7)') maxcJ,nki,max_k2,max_Lref,max_qgrd
-    do cJ=1,maxcJ
-      do ik=1,nki
-        do ik2=1,max_k2
-          do il=1,max_Lref
-            do i=1,max_qgrd
-              write(unit+rank,'(g20.12)') dqrL(i,il,ik2,ik,cJ)
-            enddo
-          enddo
-        enddo
-      enddo
-    enddo
-  END SUBROUTINE write_dqrL
-!------------------------------------------
-  SUBROUTINE check_VarPSMemberG(indexNumber,rank,nki)
-    implicit none
-    integer,intent(IN) :: indexNumber,rank
-    integer,intent(IN) :: nki
-    integer :: ik,ik1,ik2
-    write(indexNumber+rank+60,'(A6,A8)') 'ik','N_k1(ik)'
-    write(indexNumber+rank+80,'(A6,A8)') 'ik','N_k2(ik)'
-    do ik=1,nki
-      write(indexNumber+rank,'(2A6,A8)') 'ik','ik1','k1_to_k2(ik1,ik)'
-      write(indexNumber+rank+20,'(2A6,A8)') 'ik','ik1','k1_to_k3(ik1,ik)'
-      write(indexNumber+rank+40,'(2A6,2A8)') 'ik','ik1','k1_to_iorb(1:2,ik1,ik)'
-      do ik1=1,k1max
-        write(indexNumber+rank,'(2I6,I8)') ik,ik1,k1_to_k2(ik1,ik)
-        write(indexNumber+rank+20,'(2I6,I8)') ik,ik1,k1_to_k3(ik1,ik)
-        write(indexNumber+rank+40,'(2I6,2I8)') ik,ik1,k1_to_iorb(1:2,ik1,ik)
-      enddo
-      write(indexNumber+rank+60,'(I6,I8)') ik,N_k1(ik)
-      write(indexNumber+rank+80,'(I6,I8)') ik,N_k2(ik)
-    enddo
-    do ik=1,nki
-      write(indexNumber+rank+100,'(2A6,2A8)') 'ik','ik2','k2_to_iorb(1:2,ik2,ik)'
-      do ik2=1,k2max
-        write(indexNumber+rank+100,'(2I6,2I8)') ik,ik2,k2_to_iorb(1:2,ik2,ik)
-      enddo
-    enddo
-  END SUBROUTINE check_VarPSMemberG
-#endif
 
 END MODULE VarPSMemberG

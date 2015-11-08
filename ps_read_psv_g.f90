@@ -11,7 +11,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: unit_ps,ik
     type(ps1d) :: psp
-    character(9) :: cbuf9
+    character(80) :: cbuf9
     integer :: i,j,l,l1,l2,i1,i2,ic
     integer :: k2,ll1,ll2,ll3,ii1,ii2
     real(8) :: dif,r2
@@ -22,7 +22,7 @@ CONTAINS
     real(8),allocatable,intent(IN) :: ddi_(:,:,:),qqr_(:,:,:)
     ! psi(1:nsmpl-1,Rrefmax,Lrefmax)
     integer :: Rrefmax,Lrefmax,lpsmax,npqmax,ncfmax,nsmpl
-    integer :: nl3vmax,npq_
+    integer :: nl3vmax,npq_,iunit
     integer,parameter :: max_loop=1000000
 
     Lrefmax = nlf(ik)
@@ -31,7 +31,7 @@ CONTAINS
     npqmax  = lpsmax*(lpsmax+1)/2
     ncfmax  = 10
     nsmpl   = NRps(1,ik)-1
-    
+
     allocate( nl3v_(npqmax)                ) ; nl3v_=0
     allocate( l3v_(lpsmax,npqmax)          ) ; l3v_ =0
     allocate( ncf(lpsmax,npqmax)           ) ; ncf  =0
@@ -44,51 +44,60 @@ CONTAINS
 
     do j=1,max_loop
       read(unit_ps,'(A)') cbuf9
-      if (cbuf9=='#### DATA' ) exit
+      if ( index(cbuf9,'#### DATA') > 0 ) exit
     end do
     if ( j > max_loop ) stop "stop@readPSVG(1)" 
     read(unit_ps,*) npq_
-    
+iunit=19
     k2=0
     do l1=1,nlf(ik)
-      do i1=1,nrf(l1,ik)
-        do l2=1,l1
-          do i2=1,nrf(l2,ik)
-            if (l1==l2 .and. i2>i1) cycle
-            k2=k2+1
-            read(unit_ps,*) ll1,ii1,ll2,ii2
-            if ((ll1/=l1) .or. (ll2/=l2) .or. (ii1/=i1) .or. (ii2/=i2)) then
-              stop 'ERROR in pseudization data'
-            end if
-            read(unit_ps,*) nl3v_(k2)
-            do ll3=1,nl3v_(k2)
-              read(unit_ps,*) l3v_(ll3,k2),ncf(ll3,k2),nrin(ll3,k2),rin(ll3,k2)
-              if (ncf(ll3,k2)>0) then
-                read(unit_ps,*) coe(1:ncf(ll3,k2),ll3,k2)
-                dif=abs(rad(nrin(ll3,k2)+1,ik)-rin(ll3,k2))
-                if (dif>1.d-8) then
-                  stop 'ERROR in PSV read space cutoff'
-                end if
-              end if
-              qrL_(:,ll3,k2)=0.d0
-              do ic=ncf(ll3,k2),1,-1
-                do i=1,nrin(ll3,k2)
-                  r2=rad(i+1,ik)*rad(i+1,ik)
-                  qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*r2+coe(ic,ll3,k2)
-                end do
-              end do
-              do i=1,nrin(ll3,k2)
-                qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*rad(i+1,ik)**(l3v_(ll3,k2)+1)
-              end do
-              do i=nrin(ll3,k2)+1,nsmpl
-                qrL_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2)-phi_(i,i1,l1)*phi_(i,i2,l2)
-              end do
-            end do ! ll3
-          end do ! i2
-        end do ! l2
-      end do ! i1
+    do i1=1,nrf(l1,ik)
+    do l2=1,l1
+    do i2=1,nrf(l2,ik)
+       if ( l1 == l2 .and. i2 > i1 ) cycle
+       k2=k2+1
+       read(unit_ps,*) ll1,ii1,ll2,ii2
+       if ( (ll1/=l1) .or. (ll2/=l2) .or. (ii1/=i1) .or. (ii2/=i2) ) then
+          stop 'ERROR in pseudization data'
+       end if
+       read(unit_ps,*) nl3v_(k2)
+       do ll3=1,nl3v_(k2)
+          read(unit_ps,*) l3v_(ll3,k2),ncf(ll3,k2),nrin(ll3,k2),rin(ll3,k2)
+          if ( ncf(ll3,k2) > 0 ) then
+             read(unit_ps,*) coe(1:ncf(ll3,k2),ll3,k2)
+             dif=abs(rad(nrin(ll3,k2)+1,ik)-rin(ll3,k2))
+             if ( dif > 1.d-8 ) then
+                stop 'ERROR in PSV read space cutoff'
+             end if
+          end if
+          qrL_(:,ll3,k2)=0.d0
+          do ic=ncf(ll3,k2),1,-1
+             do i=1,nrin(ll3,k2)
+                r2=rad(i+1,ik)*rad(i+1,ik)
+                qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*r2+coe(ic,ll3,k2)
+             end do
+          end do
+          do i=1,nrin(ll3,k2)
+             qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*rad(i+1,ik)**(l3v_(ll3,k2)+1)
+          end do
+          do i=nrin(ll3,k2)+1,nsmpl
+             qrL_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2) &
+                           -phi_(i,i1,l1)*phi_(i,i2,l2)
+          end do
+!write(*,*) rin(ll3,k2),rad(nrin(ll3,k2)+1,ik)
+!          write(*,*) ll1,ii1,ll2,ii2,nsmpl,nrin(ll3,k2)
+          write(*,*) nl3v_(k2),l3v_(ll3,k2),ncf(ll3,k2)
+          iunit=iunit+1
+          rewind iunit
+          do i=1,nsmpl-1
+             write(iunit,*) rad(i+1,ik),qrL_(i,ll3,k2)
+          end do
+       end do ! ll3
+    end do ! i2
+    end do ! l2
+    end do ! i1
     end do ! l1
-    
+!stop
     if ( npq_ /= k2 ) stop 'ERROR npq/=k2'
 
     npqmax = npq_
@@ -102,8 +111,8 @@ CONTAINS
     npq(ik)=npq_
 
     do l=1,nlf(ik)
-      do j=1,nrf(l,ik)
-        do i=1,j
+       do j=1,nrf(l,ik)
+       do i=1,j
           ddi(i,j,l,ik)=ddi_(i,j,l)
           ddi(j,i,l,ik)=ddi_(i,j,l)
           qqr(i,j,l,ik)=qqr_(i,j,l)
@@ -114,27 +123,27 @@ CONTAINS
           psp%qqr(i,j,l) = qqr_(i,j,l)
           psp%qqr(j,i,l) = qqr_(i,j,l)
 !
-        end do
-      end do
+       end do
+       end do
     end do
 
     k2=0
     do l1=1,nlf(ik)
-      do i1=1,nrf(l1,ik)
-        do l2=1,l1
-          do i2=1,nrf(l2,ik)
-            if (l1==l2 .and. i2>i1) cycle
-            k2=k2+1
-            nl3v(k2,ik)=nl3v_(k2)
-            do ll3=1,nl3v_(k2)
-              l3v(ll3,k2,ik)=l3v_(ll3,k2)
-              do i=nsmpl,1,-1
-                qrL(i+1,ll3,k2,ik)=qrL_(i,ll3,k2)
-              end do
-            end do ! ll3
-          end do ! i2
-        end do ! l2
-      end do ! i1
+    do i1=1,nrf(l1,ik)
+    do l2=1,l1
+    do i2=1,nrf(l2,ik)
+       if ( l1 == l2 .and. i2 > i1 ) cycle
+       k2=k2+1
+       nl3v(k2,ik)=nl3v_(k2)
+       do ll3=1,nl3v_(k2)
+          l3v(ll3,k2,ik)=l3v_(ll3,k2)
+          do i=nsmpl,1,-1
+             qrL(i+1,ll3,k2,ik)=qrL_(i,ll3,k2)
+          end do
+       end do ! ll3
+    end do ! i2
+    end do ! l2
+    end do ! i1
     end do ! l1
 
     deallocate( nl3v_,l3v_ )

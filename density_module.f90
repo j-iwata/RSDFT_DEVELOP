@@ -5,9 +5,7 @@ MODULE density_module
   use symmetry_module, only: sym_rho
   use BasicTypeFactory
   use BasicTypeMethods
-#ifdef _USPP_
-  use WFDensityG, only: get_rhonks
-#endif
+  use rhonks_g_module, only: get_rhonks
   use VarSysParameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
@@ -91,15 +89,6 @@ CONTAINS
        call normalize_density
     end if
 
-#ifdef _SHOWALL_RHO_
-    write(410+myrank,*) 'i,s,rho(i,s)'
-    do s=MS_0_RHO,MS_1_RHO
-       do i=ML_0_RHO,ML_1_RHO
-          write(410+myrank,'(2I5,g20.7)') i,s,rho(i,s)
-       enddo
-    enddo
-#endif
-
   END SUBROUTINE init_density
 
 !-----------------------------------------------------------------------
@@ -124,10 +113,10 @@ CONTAINS
     integer :: n,k,s,i
     integer :: n1,n2,n0
     real(8),allocatable :: rhonks(:)
-#ifdef _USPP_
+
     select case ( pp_kind )
     case ( 'NCPP' )
-#endif
+
        rho(:,:)=0.0d0
        do s=MS_0_WF,MS_1_WF
           do k=MK_0_WF,MK_1_WF
@@ -139,7 +128,7 @@ CONTAINS
        call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
        call reduce_and_gather
        call calc_sum_dspin
-#ifdef _USPP_
+
     case ( 'USPP' )
 
        n1 = ML_0_WF
@@ -164,7 +153,7 @@ CONTAINS
        call reduce_and_gather
 
     end select
-#endif
+
   END SUBROUTINE calc_density
 
 !-----------------------------------------------------------------------
@@ -183,21 +172,6 @@ CONTAINS
     call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m,mpi_real8,rho,m,mpi_real8 &
          ,comm_spin,ierr)
   END SUBROUTINE reduce_and_gather
-  
-#ifdef _USPP_F_TEST_
-  SUBROUTINE write_rho(unit,rank)
-    implicit none
-    integer,intent(IN) :: unit,rank
-    integer :: s,i
-    if (rank==0) write(200,'(A10,4I7)') 'rho=',MS_0_RHO,MS_1_RHO,ML_0_RHO,ML_1_RHO
-    write(unit+rank,'(4I7)') MS_0_RHO,MS_1_RHO,ML_0_RHO,ML_1_RHO
-    do s=MS_0_RHO,MS_1_RHO
-       do i=ML_0_RHO,ML_1_RHO
-          write(unit+rank,'(g20.12)') rho(i,s)
-       end do
-    end do
-  END SUBROUTINE write_rho
-#endif
 
 
   SUBROUTINE calc_sum_dspin
@@ -227,7 +201,6 @@ CONTAINS
        end do
     end do
   END SUBROUTINE writeDensity
-
 
 
 END MODULE density_module

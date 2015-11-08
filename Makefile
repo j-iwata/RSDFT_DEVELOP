@@ -5,6 +5,9 @@ include make.inc
 
 include makefile.common
 
+DIR1 = ext1
+EXTOBJ1 = $(DIR1)/ext_sub_minpac.o
+
 DIR2 = ext2
 EXTOBJ2 = $(DIR2)/p4sn.o \
           $(DIR2)/dotp.o \
@@ -69,13 +72,14 @@ ESMOBJ = $(ESMOBJ)/esm_cylindrical_testl.o\
 
 all :
 	@$(MAKE) lda0
+	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
 	cd $(DIR3) ; $(MAKE) -j1
 	cd $(DIR5) ; $(MAKE)
 	cd $(DIR6) ; $(MAKE)
 	@$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LPOT2OBJ) $(LAPACK_L) $(MODS1) realspace.o $(LIBS) -o realspace.x
+	$(FC) $(LFLAGS) $(EXTOBJ1) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LPOT2OBJ) $(LAPACK_L) $(MODS1) realspace.o $(LIBS) -o realspace.x
 
 lda0 : $(MODS1)
 
@@ -88,6 +92,7 @@ include makefile.common.program
 
 clean :
 	rm -f *.o *.mod a.out mpif.h *.lst *.x *.optlog *.i90
+	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean
 	cd $(DIR3) ; $(MAKE) clean
 	cd $(DIR4) ; $(MAKE) clean

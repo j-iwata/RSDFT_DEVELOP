@@ -24,8 +24,8 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   use watch_module
   use force_module
 
-  use PSnonLocDij
-  use PSnonLocPrepG
+  use ps_getDij_module
+  use ps_prepNzqr_g_module, only: prepNzqr
   use PSQRijPrep
 
   implicit none
@@ -64,12 +64,10 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
      call prep_ps_nloc3
   case(5)
      call prep_ps_nloc_mr
-#ifdef _USPP_
   case(102)
      call prep_ps_nloc2
      call prepNzqr
      call prepQRijp102
-#endif
   end select
 
   if ( ltime ) call watch(ctime_force(3),etime_force(3))
@@ -90,9 +88,8 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
      Vloc(:,s)=Vh(:)+Vxc(:,s)+Vion(:)
   enddo
 
-#ifdef _USPP_
-       call getDij
-#endif
+  call getDij
+
   if ( ltime ) call watch(ctime_force(7),etime_force(7))
 
   call calc_force(Natom,Force)

@@ -209,16 +209,18 @@ CONTAINS
           qqr_(i,j,l)=qqr_(j,i,l)
        end do
        end do
+rewind 9+l
        do j=1,m
           read(unit_ps,*)
           do i=1,nsmpl
              read(unit_ps,*) psi_(i,j,l),phi_(i,j,l),bet_(i,j,l)
+             write(9+l,*) rr(i),bet_(i,j,l)
           end do
        end do
     end do
 
-    select case( verpot )
-    case default
+!    select case( verpot )
+!    case default
        do j=1,10000
           read(unit_ps,'(A)') inbuf18
           if ( inbuf18=='### initial charge' ) then
@@ -231,8 +233,8 @@ CONTAINS
           end if
        end do
        if ( j>10000 ) stop "read_psv"
-    case( 3 )
-    end select
+!    case( 3 )
+!    end select
 
     i = max( ndlc,nsmpl,ndata ) + 1
     j = max( 1, sum(nr(1:nl)) )
@@ -394,7 +396,7 @@ CONTAINS
        psp%cdd_coef(3,1:ngauss)=c0(1:ngauss)
        psp%ngauss=ngauss
 !
-    case( 3 )
+    case( 30 )
 
        file_name=trim(file_ps(ielm))//".ichr"
        open(unit_ps+1,file=file_name,status='old')

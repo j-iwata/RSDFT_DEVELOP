@@ -18,8 +18,8 @@ CONTAINS
     integer,intent(IN) :: mesh
     real(8),intent(IN) :: rad(mesh),vin(mesh),zv,rc
     real(8),intent(OUT) :: parloc(4)
-    !call simc_0(rad,vin,rc,zv,parloc,mesh)
-    call simc_1(rad,vin,rc,zv,parloc,mesh)
+    call simc_0(rad,vin,rc,zv,parloc,mesh)
+    !call simc_1(rad,vin,rc,zv,parloc,mesh)
   END SUBROUTINE simc
 
 
@@ -236,7 +236,7 @@ CONTAINS
     deallocate( Hes  )
   END SUBROUTINE levenberg_marquardt
 
-#ifdef _TEST_
+!#ifdef _TEST_
   SUBROUTINE simc_0(rad,vin,rc,zv,parloc,mesh)
 !     $Id: simc.F,v 1.2 1997/06/25 05:07:08 skimu Exp $
 !
@@ -358,6 +358,6 @@ CONTAINS
     end if
     return
   END SUBROUTINE uscfit
-#endif
+!#endif
 
 END MODULE simc_module

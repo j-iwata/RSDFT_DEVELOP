@@ -1,6 +1,6 @@
 MODULE hamiltonian_module
-  use parallel_module, only: myrank
 
+  use parallel_module, only: myrank
   use kinetic_module
   use localpot_module
   use nonlocal_module
@@ -54,11 +54,7 @@ CONTAINS
     call watchb_omp( ttmp, time_hmlt(1,2) )
 
 ! --- nonlocal potential ---
-#ifdef _SHOWALL_OP_
-write(200+myrank,*) '----------------------------hamiltonian'
-write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
-write(200+myrank,*) '----------------------------hamiltonian'
-#endif
+
     call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
 
 !$OMP barrier

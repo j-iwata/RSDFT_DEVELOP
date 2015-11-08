@@ -11,10 +11,6 @@ MODULE VarPSMember
   PUBLIC :: deallocateRad1
   PUBLIC :: send_pseudopot
   PUBLIC :: ps_allocate
-#ifdef _USPP_F_TEST_
-  PUBLIC :: write_viod
-  PUBLIC :: write_dviod
-#endif
   PUBLIC :: ps1d
   PUBLIC :: ps_allocate_ps1d, psg_allocate_ps1d
   PUBLIC :: ps_send_ps1d
@@ -164,11 +160,10 @@ CONTAINS
     call mpi_bcast(rab   ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(viod  ,m*n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(Rcloc ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-#ifdef _USPP_
+! uspp
     call mpi_bcast(nlf   ,Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(nrf   ,n*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(rabr2 ,m*Nelement_PP,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-#endif
 !
     call mpi_bcast(max_ngauss,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     if ( max_ngauss /= 0 ) then
@@ -334,40 +329,6 @@ CONTAINS
     max_psgrd = mg
     max_psorb = mo
   END SUBROUTINE ps_allocate
-
-#ifdef _USPP_F_TEST_
-  subroutine write_viod(unit,rank)
-    implicit none
-    integer,intent(IN) :: unit,rank
-    integer :: i,iorb,ielm
-    if (rank==0) write(200,'(A10,3I7)') 'viod=',Nelement_PP,max_psorb,max_psgrd
-    write(unit+rank,'(3I7)') Nelement_PP,max_psorb,max_psgrd
-    do ielm=1,Nelement_PP
-      do iorb=1,max_psorb
-        do i=1,max_psgrd
-          write(unit+rank,'(g20.12)') viod(i,iorb,ielm)
-        enddo
-      enddo
-    enddo
-  end subroutine write_viod
-
-  subroutine write_dviod(unit,rank)
-    implicit none
-    integer,intent(IN) :: unit,rank
-    integer :: i,iorb,ielm
-    integer :: l
-    l=size(dviod)/(Nelement_PP*max_psgrd)
-    if (rank==0) write(200,'(A10,3I7)') 'dviod=',Nelement_PP,l,max_psgrd
-    write(unit+rank,'(3I7)') Nelement_PP,l,max_psgrd
-    do ielm=1,Nelement_PP
-      do iorb=1,l
-        do i=1,max_psgrd
-          write(unit+rank,'(g20.12)') dviod(i,iorb,ielm)
-        enddo
-      enddo
-    enddo
-  end subroutine write_dviod
-#endif
 
   SUBROUTINE ps_allocate_ps1d( ps )
     implicit none

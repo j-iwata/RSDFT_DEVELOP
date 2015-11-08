@@ -18,6 +18,7 @@ MODULE nonlocal_module
 CONTAINS
 
   SUBROUTINE op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2,htpsi00)
+
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
@@ -42,11 +43,6 @@ CONTAINS
     case(5)
        call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(102)
-#ifdef _SHOWALL_OP_
-write(200+myrank,*) '----------------------------op_nonlocal'
-write(200+myrank,'(A17,6I7)') 'k,s,n1,n2,ib1,ib2',k,s,n1,n2,ib1,ib2
-write(200+myrank,*) '----------------------------op_nonlocal'
-#endif
       call op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2,htpsi00)
     case default
        stop "pselect/=2,4,5,102 are not implemented"

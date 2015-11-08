@@ -11,6 +11,7 @@ MODULE cg_module
   use wf_module, only: hunk, iflag_hunk
   use kinetic_module, only: SYStype
   use watch_module
+  use ConjugateGradient_G
 
   implicit none
 
@@ -96,6 +97,8 @@ CONTAINS
 
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 
+    call init_conjugate_gradient_g( iswitch_cg ) !---> check uspp or not
+
     select case( iswitch_cg )
     case default
     case( 1 )
@@ -112,11 +115,15 @@ CONTAINS
 !            write(*,'("--- CG_U ( with IPC=",i1," ) ---")') ipc
 !       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
 !       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
+
+    case( 101 ) !----------> uspp
+
+       call ConjugateGradientG &
+            ( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+
     end select
 
   END SUBROUTINE conjugate_gradient
-
-#ifndef _USPP_
 
 #ifdef _DRSDFT_
   SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
@@ -753,27 +760,6 @@ CONTAINS
     end if
 
   END SUBROUTINE conjugate_gradient_1
-#endif
-
-#else
-
-  SUBROUTINE conjugate_gradient_1( n1,n2,MB,k,s,Mcg,igs,unk,esp,res )
-    use ConjugateGradient_G
-    implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
-#ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
-#else
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
-#endif
-    real(8),intent(INOUT) :: esp(MB),res(MB)
-
-#ifdef _SHOWALL_CG_
-    write(200+myrank,*) '----> USPP CG routine'
-#endif
-    call ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
-  END SUBROUTINE conjugate_gradient_1
-
 #endif
 
   SUBROUTINE get_time_min( n, t_in, t_min )

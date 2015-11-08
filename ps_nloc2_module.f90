@@ -1,6 +1,5 @@
 MODULE ps_nloc2_module
 
-  use VarSysParameter
   use aa_module
   use atom_module
   use rgrid_module
@@ -14,9 +13,9 @@ MODULE ps_nloc2_module
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
   use para_rgrid_comm, only: prepThreeWayComm,do3StepComm,do3StepComm_F
-#ifdef _USPP_
+
   use force_ps_nonloc2
-#endif
+
   use minimal_box_module
   use bz_module
   use watch_module
@@ -1336,11 +1335,9 @@ CONTAINS
     if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
        return
-#ifdef _USPP_
     else if ( pselect == 102 ) then
        call calcForcePSnonLoc2(MI,force2)
        return
-#endif
     end if
     if ( ps_type == 1 ) then
        call calc_force_ps_nloc_mr(MI,force2)

@@ -3,9 +3,7 @@ MODULE pseudopot_module
   use parallel_module, only:myrank
   use VarPSMember
   use PSreadPSV
-!#ifdef _USPP_
   use VarPSMemberG, only: sendPSG
-!#endif
   use ps_read_TM_module
   use ps_read_YB_module
   use ps_read_UPF_module
@@ -262,9 +260,9 @@ CONTAINS
 ! --- bcast pseudopotential data
 
     call send_pseudopot(rank)
-!#ifdef _USPP_
+
     if ( all(ippform == 102) ) call sendPSG(rank,Nelement_PP)
-!#endif
+
     do ielm=1,Nelement_PP
        call ps_send_ps1d( ps(ielm) )
     end do
@@ -272,10 +270,6 @@ CONTAINS
 ! ---
 
 !    call chk_pot(1,rank)
-
-#ifdef _SHOWALL_
-    if ( rank == 0 ) write(200+rank,*) '<<<<<<<< read_pseudopot'
-#endif
 
   END SUBROUTINE read_pseudopot
 

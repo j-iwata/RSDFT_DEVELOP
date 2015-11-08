@@ -2,11 +2,9 @@ MODULE VarSysParameter
 
   implicit none
 
-#ifdef _USPP_
-  character(4) :: pp_kind='USPP'
-#else
-  character(4) :: pp_kind='NCPP'
-#endif
+  PRIVATE
+
+  character(4),PUBLIC :: pp_kind
 
   logical :: isRootRank
   logical :: isTestRank

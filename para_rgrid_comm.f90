@@ -1,23 +1,29 @@
 MODULE para_rgrid_comm
 
   use parallel_module, only: node_partition,myrank_g,nprocs_g,COMM_GRID,myrank
-  use VarPara
   use hsort_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: prepThreeWayComm,do3StepComm,do3StepComm_real,do3StepComm_dQ,do3StepComm_F
-  
+  PUBLIC :: prepThreeWayComm,do3StepComm,do3StepComm_real
+  PUBLIC :: do3StepComm_dQ,do3StepComm_F
+
+  include 'mpif.h'
+
+#ifdef _DRSDFT_
+  integer,parameter,PUBLIC :: TYPE_MAIN = MPI_REAL8
+#else
+  integer,parameter,PUBLIC :: TYPE_MAIN = MPI_COMPLEX16
+#endif
 
 CONTAINS
 
 !------------------------------------------------------------------------------
 
   SUBROUTINE prepThreeWayComm( nr,NLRankMap,NRxyz,Num2Rank0 )
+
     implicit none
-    include 'mpif.h'
-    
     integer,intent(IN) :: nr
     integer,intent(IN) :: NLRankMap(nr)
     integer,intent(OUT) :: NRxyz(1:6)

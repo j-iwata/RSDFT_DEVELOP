@@ -3,6 +3,7 @@ MODULE gram_schmidt_module
   use gram_schmidt_m_module
   use gram_schmidt_t_module
  !use gram_schmidt_u_module
+  use GramSchmidt_G
 
   implicit none
 
@@ -39,6 +40,7 @@ CONTAINS
   SUBROUTINE gram_schmidt(n0,n1,k,s)
     implicit none
     integer,intent(IN) :: n0,n1,k,s
+    call init_gram_schmidt_g( iswitch_algorithm )
     select case( iswitch_algorithm )
     case default
        call gram_schmidt_t(n0,n1,k,s)
@@ -46,6 +48,8 @@ CONTAINS
        call gram_schmidt_m(n0,n1,k,s)
     !case( 2 )
     !   call gram_schmidt_u(n0,n1,k,s)
+    case( 101 )
+       call GramSchmidtG( n0,n1,k,s )
     end select
   END SUBROUTINE gram_schmidt
 

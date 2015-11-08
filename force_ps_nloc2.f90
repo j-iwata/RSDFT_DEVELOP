@@ -377,7 +377,7 @@ CONTAINS
     return
   END SUBROUTINE calcForcePSnonLoc2
 
-#ifdef _USPP_
+
   SUBROUTINE calcForceQ(uVunk_tmp,MI,forceQ)
     use bz_module
     use wf_module
@@ -605,26 +605,5 @@ CONTAINS
     return
   END SUBROUTINE calcForceQ
 
-#else
-
-  SUBROUTINE calcForceQ(uVunk_tmp,MI,forceQ)
-    use bz_module
-    use wf_module
-    use watch_module
-    use VarParaPSnonLocG
-    use ps_nloc2_variables, only: lmap,amap,mmap,nzlma,iorbmap
-    implicit none
-    integer,intent(IN) :: MI
-#ifdef _DRSDFT_
-    real(8),intent(IN) :: uVunk_tmp(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1)
-#else
-    complex(8),intent(IN) :: uVunk_tmp(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1)
-#endif
-    real(8),intent(INOUT) :: forceQ(3,MI)
-
-    forceQ=0.d0
-    return
-  END SUBROUTINE calcForceQ
-#endif
 
 END MODULE force_ps_nonloc2

@@ -4,10 +4,6 @@ MODULE gram_schmidt_t_module
   use wf_module, only: unk,hunk,iflag_hunk
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module
-  use VarSysParameter, only: pp_kind
-#ifdef _USPP_
-  use GramSchmidt_G, only: GramSchmidtG
-#endif
 
   implicit none
 
@@ -91,13 +87,6 @@ CONTAINS
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
     integer,allocatable :: ir(:),id(:)
-
-#ifdef _USPP_
-    if ( pp_kind == "USPP" ) then
-       call GramSchmidtG(n0,n1,k,s,NBLK,NBLK1)
-       return
-    end if
-#endif
 
     ML0   = ML_1-ML_0+1
     mrnk  = id_class(myrank,4)

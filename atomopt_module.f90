@@ -22,10 +22,10 @@ MODULE atomopt_module
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
-#ifdef _USPP_
+
   use PSQRijPrep
-  use PSnonLocPrepG, only: prepNzqr
-#endif
+  use ps_prepNzqr_g_module, only: prepNzqr
+
 
   implicit none
 
@@ -643,12 +643,10 @@ CONTAINS
                 call prep_ps_nloc3
              case(5)
                 call prep_ps_nloc_mr
-#ifdef _USPP_
              case(102)
                 call prep_ps_nloc2
                 call prepNzqr
                 call prepQRijp102
-#endif
              end select
 
           case(1)
