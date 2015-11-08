@@ -34,7 +34,7 @@ MODULE ps_local_module
   integer :: NGHT
   integer,allocatable :: LGHT(:,:),IGHT(:)
   complex(8),allocatable :: fg(:)
-  logical :: flag_zero_ave = .true.
+  logical :: flag_zero_ave = .false.
 
 CONTAINS
 
