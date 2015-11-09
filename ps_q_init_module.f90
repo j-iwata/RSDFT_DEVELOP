@@ -297,10 +297,10 @@ CONTAINS
           enddo
        enddo
     enddo
-    NRc=max_psgrd
-    k2=max_k2
-    l=max_Lref
-    ik=Nelement_
+    NRc = size( qrL, 1 ) !max_psgrd
+    l   = size( qrL, 2 ) !max_Lref
+    k2  = size( qrL, 3 ) !max_k2
+    ik  = Nelement_
     allocate( dqrL(NRc,l,k2,ik,maxcJ) ) ; dqrL=0.d0
     allocate( dwork(NRc,l,k2,ik,3) ) ; dwork=0.d0
 
