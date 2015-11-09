@@ -1,6 +1,5 @@
 MODULE pseudopot_module
 
-  use parallel_module, only:myrank
   use VarPSMember
   use PSreadPSV
   use VarPSMemberG, only: allocatePSG, sendPSG, npq, ddi, qqr, nl3v, l3v, qrL

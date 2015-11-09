@@ -476,8 +476,10 @@ CONTAINS
 
     psp%vql(:) = 0.5d0*psp%vql(:)
 
+    no(:)=0
     do j=1,norb
        psp%lo(j) = lo(j)
+       no( lo(j) ) = no( lo(j) ) + 1
        psp%no(j) = no( lo(j) )
     end do
 
