@@ -13,7 +13,7 @@ MODULE VarPSMember
   PUBLIC :: ps_allocate
   PUBLIC :: ps1d
   PUBLIC :: ps_allocate_ps1d, psg_allocate_ps1d
-  PUBLIC :: ps_send_ps1d
+  PUBLIC :: ps_send_ps1d, psg_send_ps1d
 
   integer,PUBLIC :: Nelement_PP
   integer,PUBLIC :: Nelement_
@@ -50,6 +50,7 @@ MODULE VarPSMember
   integer,PUBLIC :: ps_type = 0
 
   type ps1d
+     integer :: allocation_status = 0
      integer :: ps_type
      integer :: ippform
      character(30) :: file_ps
@@ -87,6 +88,8 @@ MODULE VarPSMember
   end type ps1d
 
   type(ps1d),allocatable,PUBLIC :: ps(:)
+
+  include 'mpif.h'
 
 CONTAINS
 
@@ -137,7 +140,6 @@ CONTAINS
     implicit none
     integer,intent(IN) :: myrank
     integer :: m,n,ierr
-    include 'mpif.h'
     m=max_psgrd
     n=max_psorb
     call mpi_bcast(m,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -333,43 +335,63 @@ CONTAINS
     max_psorb = mo
   END SUBROUTINE ps_allocate
 
+
   SUBROUTINE ps_allocate_ps1d( ps )
     implicit none
     type(ps1d),intent(INOUT) :: ps
     integer :: n_grd, n_orb
-    allocate( ps%hnl(3,0:2) ) ; ps%hnl=0.0d0
-    allocate( ps%knl(3,1:2) ) ; ps%knl=0.0d0
+
+    if ( ps%allocation_status > 0 ) return
+    ps%allocation_status = 1
+
+    allocate( ps%hnl(3,0:2)    ) ; ps%hnl =0.0d0
+    allocate( ps%knl(3,1:2)    ) ; ps%knl =0.0d0
     allocate( ps%hnml(3,3,0:2) ) ; ps%hnml=0.0d0
     allocate( ps%knml(3,3,1:2) ) ; ps%knml=0.0d0
-    n_grd=ps%Mr
-    n_orb=ps%norb
-    ps%nlf=0
-    allocate( ps%nrf(n_orb) ) ; ps%nrf=0
-    ps%Zps=0.0d0
-    ps%Zelement=0.0d0
-    ps%parloc=0.0d0
-    allocate( ps%anorm(n_orb)      ) ; ps%anorm=0.0d0
-    allocate( ps%inorm(n_orb)      ) ; ps%inorm=0
-    allocate( ps%Rps(n_orb)        ) ; ps%Rps=0.0d0
-    allocate( ps%NRps(n_orb)       ) ; ps%NRps=0
-    allocate( ps%lo(n_orb)         ) ; ps%lo=0
-    allocate( ps%no(n_orb)         ) ; ps%no=0
-    allocate( ps%vql(n_grd)        ) ; ps%vql=0.0d0
-    allocate( ps%cdc(n_grd)        ) ; ps%cdc=0.0d0
-    allocate( ps%cdd(n_grd)        ) ; ps%cdd=0.0d0
-    allocate( ps%rad(n_grd)        ) ; ps%rad=0.0d0
-    allocate( ps%rab(n_grd)        ) ; ps%rab=0.0d0
-    allocate( ps%rabr2(n_grd)      ) ; ps%rabr2=0.0d0
-    allocate( ps%viod(n_grd,n_orb) ) ; ps%viod=0.0d0
-    ps%Rcloc=0.0d0  
-    allocate( ps%ups(n_grd,n_orb)  ) ; ps%ups=0.0d0
-    allocate( ps%Dij(n_orb,n_orb)  ) ; ps%Dij=0.0d0
+
+    n_grd = ps%Mr
+    n_orb = ps%norb
+
+    ps%nlf      = 0
+    ps%Zps      = 0.0d0
+    ps%Zelement = 0.0d0
+    ps%parloc   = 0.0d0
+    ps%Rcloc    = 0.0d0  
+
+    if ( n_orb /= 0 ) then
+       allocate( ps%nrf(n_orb)        ) ; ps%nrf=0
+       allocate( ps%anorm(n_orb)      ) ; ps%anorm=0.0d0
+       allocate( ps%inorm(n_orb)      ) ; ps%inorm=0
+       allocate( ps%Rps(n_orb)        ) ; ps%Rps=0.0d0
+       allocate( ps%NRps(n_orb)       ) ; ps%NRps=0
+       allocate( ps%lo(n_orb)         ) ; ps%lo=0
+       allocate( ps%no(n_orb)         ) ; ps%no=0
+       allocate( ps%Dij(n_orb,n_orb)  ) ; ps%Dij=0.0d0
+    end if
+
+    if ( n_grd /= 0 ) then
+       allocate( ps%vql(n_grd)        ) ; ps%vql=0.0d0
+       allocate( ps%cdc(n_grd)        ) ; ps%cdc=0.0d0
+       allocate( ps%cdd(n_grd)        ) ; ps%cdd=0.0d0
+       allocate( ps%rad(n_grd)        ) ; ps%rad=0.0d0
+       allocate( ps%rab(n_grd)        ) ; ps%rab=0.0d0
+       allocate( ps%rabr2(n_grd)      ) ; ps%rabr2=0.0d0
+    end if
+
+    if ( n_grd /=0 .and. n_orb /= 0 ) then
+       allocate( ps%viod(n_grd,n_orb) ) ; ps%viod=0.0d0
+       allocate( ps%ups(n_grd,n_orb)  ) ; ps%ups=0.0d0
+    end if
+
   END SUBROUTINE ps_allocate_ps1d
+
 
   SUBROUTINE psg_allocate_ps1d( ps )
     implicit none
     type(ps1d),intent(INOUT) :: ps
     integer :: n_g,n_k,n_l,n_r
+    if ( ps%allocation_status > 1 ) return
+    ps%allocation_status = 2
     n_g=ps%Mr
     n_k=ps%npq
     n_l=ps%nlf
@@ -382,50 +404,73 @@ CONTAINS
     allocate( ps%qrL(n_g,n_l,n_k) ) ; ps%qrL(:,:,:)=0.0d0
   END SUBROUTINE psg_allocate_ps1d
 
+
   SUBROUTINE ps_send_ps1d( ps )
     implicit none
     type(ps1d),intent(INOUT) :: ps
     integer :: i
-    include 'mpif.h'
+
     call mpi_bcast(ps%Mr,1,mpi_integer,0,mpi_comm_world,i)
     call mpi_bcast(ps%norb,1,mpi_integer,0,mpi_comm_world,i)
-    if ( .not.allocated(ps%rad) ) call ps_allocate_ps1d( ps )
+
+    call ps_allocate_ps1d( ps )
+
     call mpi_bcast(ps%hnl,size(ps%hnl),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%knl,size(ps%knl),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%hnml,size(ps%hnml),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%knml,size(ps%knml),mpi_real8,0,mpi_comm_world,i)
+
     call mpi_bcast(ps%nlf,1,mpi_integer,0,mpi_comm_world,i)
-    call mpi_bcast(ps%nrf,size(ps%nrf),mpi_integer,0,mpi_comm_world,i)
     call mpi_bcast(ps%Zps,1,mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%Zelement,1,mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%parloc,size(ps%parloc),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%anorm,size(ps%anorm),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%inorm,size(ps%inorm),mpi_integer,0,mpi_comm_world,i)
-    call mpi_bcast(ps%Rps,size(ps%Rps),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%NRps,size(ps%NRps),mpi_integer,0,mpi_comm_world,i)
-    call mpi_bcast(ps%lo,size(ps%lo),mpi_integer,0,mpi_comm_world,i)
-    call mpi_bcast(ps%no,size(ps%no),mpi_integer,0,mpi_comm_world,i)
-    call mpi_bcast(ps%vql,size(ps%vql),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%cdc,size(ps%cdc),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%cdd,size(ps%cdd),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%rad,size(ps%rad),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%rab,size(ps%rab),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%rabr2,size(ps%rabr2),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%viod,size(ps%viod),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%Rcloc,1,mpi_real8,0,mpi_comm_world,i)
-! atomic pseudo wave function
-    call mpi_bcast(ps%ups,size(ps%ups),mpi_real8,0,mpi_comm_world,i)
-    call mpi_bcast(ps%Dij,size(ps%Dij),mpi_real8,0,mpi_comm_world,i)
-! uspp
+
+    if ( ps%norb > 0 ) then
+       call mpi_bcast(ps%nrf,size(ps%nrf),mpi_integer,0,mpi_comm_world,i)
+       call mpi_bcast(ps%anorm,size(ps%anorm),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%inorm,size(ps%inorm),mpi_integer,0,mpi_comm_world,i)
+       call mpi_bcast(ps%Rps,size(ps%Rps),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%NRps,size(ps%NRps),mpi_integer,0,mpi_comm_world,i)
+       call mpi_bcast(ps%lo,size(ps%lo),mpi_integer,0,mpi_comm_world,i)
+       call mpi_bcast(ps%no,size(ps%no),mpi_integer,0,mpi_comm_world,i)
+       call mpi_bcast(ps%Dij,size(ps%Dij),mpi_real8,0,mpi_comm_world,i)
+    end if
+
+    if ( ps%Mr > 0 ) then
+       call mpi_bcast(ps%vql,size(ps%vql),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%cdc,size(ps%cdc),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%cdd,size(ps%cdd),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%rad,size(ps%rad),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%rab,size(ps%rab),mpi_real8,0,mpi_comm_world,i)
+    end if
+
+    if ( ps%Mr > 0 .and. ps%norb > 0 ) then
+       call mpi_bcast(ps%viod,size(ps%viod),mpi_real8,0,mpi_comm_world,i)
+       call mpi_bcast(ps%ups,size(ps%ups),mpi_real8,0,mpi_comm_world,i)
+    end if
+
+  END SUBROUTINE ps_send_ps1d
+
+
+  SUBROUTINE psg_send_ps1d( ps )
+    implicit none
+    type(ps1d),intent(INOUT) :: ps
+    integer :: i
+
     call mpi_bcast(ps%npq,1,mpi_integer,0,mpi_comm_world,i)
     call mpi_bcast(ps%nrf_max,1,mpi_integer,0,mpi_comm_world,i)
-    if ( .not.allocated(ps%qrL) ) call psg_allocate_ps1d( ps )
+
+    call psg_allocate_ps1d( ps )
+
     call mpi_bcast(ps%ddi,size(ps%ddi),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%qqr,size(ps%qqr),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%qqc,size(ps%qqc),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%nl3v,size(ps%nl3v),mpi_integer,0,mpi_comm_world,i)
     call mpi_bcast(ps%l3v,size(ps%l3v),mpi_integer,0,mpi_comm_world,i)
     call mpi_bcast(ps%qrL,size(ps%qrL),mpi_real8,0,mpi_comm_world,i)    
-  END SUBROUTINE ps_send_ps1d
+
+  END SUBROUTINE psg_send_ps1d
+
 
 END MODULE VarPSMember

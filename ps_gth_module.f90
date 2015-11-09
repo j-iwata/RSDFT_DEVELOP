@@ -1,37 +1,22 @@
 MODULE ps_gth_module
 
+  use VarPSMember, only: ps1d, ps_allocate_ps1d
+
   implicit none
 
   PRIVATE
-  PUBLIC :: read_ps_gth, ps_gth
+  PUBLIC :: read_ps_gth
 
   integer :: unit_pp
   integer,parameter :: lrefmax=6
 
-  TYPE gth
-     integer :: norb
-     integer :: inorm(lrefmax)
-     integer :: lo(lrefmax)
-     integer :: no(lrefmax)
-     real(8) :: znuc
-     real(8) :: Rc(lrefmax)
-     real(8) :: hnl(3,0:2)
-     real(8) :: knl(3,1:2)
-     real(8) :: hnml(3,3,0:2)
-     real(8) :: knml(3,3,1:2)
-     real(8) :: Dij(lrefmax,lrefmax)
-     real(8) :: parloc(4)
-     real(8) :: Rcloc
-  END TYPE gth
-
-  type(gth) :: ps_gth
-
 CONTAINS
 
 
-  SUBROUTINE read_ps_gth( unit_ps, ippform )
+  SUBROUTINE read_ps_gth( unit_ps, psp )
     implicit none
-    integer,intent(IN) :: unit_ps, ippform
+    integer,intent(IN) :: unit_ps
+    type(ps1d),intent(INOUT) :: psp
     integer :: i,j
     integer :: MMr,iorb,L,n
     character(2) :: name
@@ -43,20 +28,6 @@ CONTAINS
     logical :: iflag_hgh
 
     unit_pp = unit_ps
-
-    ps_gth%norb     =0
-    ps_gth%znuc     =0.0d0
-    ps_gth%Rc(:)    =0.0d0
-    ps_gth%inorm(:) =0
-    ps_gth%lo(:)    =0
-    ps_gth%no(:)    =0
-    ps_gth%Dij(:,:) =0.0d0
-    ps_gth%parloc(:)=0.0d0
-    ps_gth%Rcloc    =0.0d0
-    ps_gth%hnl(:,:) =0.0d0
-    ps_gth%knl(:,:) =0.0d0
-    ps_gth%hnml(:,:,:) =0.0d0
-    ps_gth%knml(:,:,:) =0.0d0
 
     iflag_hgh = .false.
 
@@ -153,18 +124,22 @@ CONTAINS
 
     end if
 
-    ps_gth%znuc        = Zps
-    ps_gth%parloc(:)   = parloc(:)
-    ps_gth%Rcloc       = Rcloc
-    ps_gth%Rc(:)       = Rps0(:)
-    ps_gth%lo(:)       = lo(:)
-    ps_gth%no(:)       = no(:)
-    ps_gth%norb        = norb
-    ps_gth%hnl(:,:)    = hnl(:,:)
-    ps_gth%knl(:,:)    = knl(:,:)
-    ps_gth%hnml(:,:,:) = hnml(:,:,:)
-    ps_gth%knml(:,:,:) = knml(:,:,:)
-    ps_gth%inorm(:)    = inorm(:)
+    psp%Mr   = 0
+    psp%norb = norb
+    call ps_allocate_ps1d( psp )
+
+    psp%Zelement    = znuc
+    psp%Zps         = Zps
+    psp%parloc(:)   = parloc(:)
+    psp%Rcloc       = Rcloc
+    psp%Rps(:)      = Rps0(1:norb)
+    psp%lo(:)       = lo(1:norb)
+    psp%no(:)       = no(1:norb)
+    psp%inorm(:)    = inorm(1:norb)
+    psp%hnl(:,:)    = hnl(:,:)
+    psp%knl(:,:)    = knl(:,:)
+    psp%hnml(:,:,:) = hnml(:,:,:)
+    psp%knml(:,:,:) = knml(:,:,:)
 
   END SUBROUTINE read_ps_gth
 

@@ -16,7 +16,9 @@ MODULE pseudopot_module
   PUBLIC :: ippform,file_ps,inorm,NRps,norb,Mr,lo,no,vql,cdd,cdc,rad &
            ,anorm,viod,Rps,Zps,parloc,rab,cdd_coef,ps_type,Rcloc &
            ,hnml,knml,hnl,knl
+
   PUBLIC :: read_pseudopot
+
   integer,PUBLIC :: pselect = 2
 
   integer :: Nelement
@@ -29,7 +31,7 @@ CONTAINS
     implicit none
     integer :: i
     do i=1,Nelement
-       call IOTools_readIntegerString( "PP", ippform(i),file_ps(i) )
+       call IOTools_readIntegerString( "PP", ippform(i), file_ps(i) )
     end do
   END SUBROUTINE read_ppname_pseudopot
 
@@ -37,9 +39,6 @@ CONTAINS
   SUBROUTINE read_param_pseudopot
     implicit none
     call IOTools_readIntegerKeyword( "PSELECT", pselect )
-    if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
-       stop "invalid pselect(stop@read_param_pseudopot)"
-    end if
   END SUBROUTINE read_param_pseudopot
 
 
@@ -58,6 +57,10 @@ CONTAINS
     Nelement_   = Nelement
 
     call read_param_pseudopot
+
+    if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
+       stop "invalid pselect(stop@read_param_pseudopot)"
+    end if
 
     allocate( ippform(Nelement) ) ; ippform=0
     allocate( file_ps(Nelement) ) ; file_ps=""
@@ -173,20 +176,21 @@ CONTAINS
 
           case( 4 )
 
-             call read_ps_gth( unit_ps, ippform(ielm) )
-             call ps_allocate(1,ps_gth%norb)
-             norb(ielm)             = ps_gth%norb
-             Zps(ielm)              = ps_gth%znuc
-             Rps(1:norb(ielm),ielm) = ps_gth%Rc(1:norb(ielm))
-             lo(1:norb(ielm),ielm)  = ps_gth%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)  = ps_gth%no(1:norb(ielm))
-             parloc(1:4,ielm)       = ps_gth%parloc(1:4)
-             Rcloc(ielm)            = ps_gth%Rcloc
-             hnl(:,:,ielm)          = ps_gth%hnl(:,:)
-             knl(:,:,ielm)          = ps_gth%knl(:,:)
-             hnml(:,:,:,ielm)       = ps_gth%hnml(:,:,:)
-             knml(:,:,:,ielm)       = ps_gth%knml(:,:,:)
-             inorm(:,ielm)          = ps_gth%inorm(:)
+             call read_ps_gth( unit_ps, ps(ielm) )
+
+             call ps_allocate( 1, ps(ielm)%norb )
+             norb(ielm)             = ps(ielm)%norb
+             Zps(ielm)              = ps(ielm)%Zps
+             Rps(1:norb(ielm),ielm) = ps(ielm)%Rps(1:norb(ielm))
+             lo(1:norb(ielm),ielm)  = ps(ielm)%lo(1:norb(ielm))
+             no(1:norb(ielm),ielm)  = ps(ielm)%no(1:norb(ielm))
+             parloc(1:4,ielm)       = ps(ielm)%parloc(1:4)
+             Rcloc(ielm)            = ps(ielm)%Rcloc
+             hnl(:,:,ielm)          = ps(ielm)%hnl(:,:)
+             knl(:,:,ielm)          = ps(ielm)%knl(:,:)
+             hnml(:,:,:,ielm)       = ps(ielm)%hnml(:,:,:)
+             knml(:,:,:,ielm)       = ps(ielm)%knml(:,:,:)
+             inorm(:,ielm)          = ps(ielm)%inorm(:)
 
              if ( any( hnml /= 0.0d0 ) ) ps_type=1
 
@@ -241,11 +245,11 @@ CONTAINS
 ! --- bcast pseudopotential data
 
     call send_pseudopot(rank)
-
-    if ( all(ippform == 102) ) call sendPSG( rank, Nelement )
+    if ( pselect > 100 ) call sendPSG( rank, Nelement )
 
     do ielm=1,Nelement
        call ps_send_ps1d( ps(ielm) )
+       if ( pselect > 100 ) call psg_send_ps1d( ps(ielm) )
     end do
 
 ! ---
