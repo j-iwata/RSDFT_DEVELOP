@@ -12,6 +12,7 @@ MODULE ps_nloc3_module
   use wf_module
   use electron_module
   use ps_nloc2_variables
+  use VarPSMember, only: ps_type
   use ylm_module
   use hsort_module
   use fft_module
@@ -58,7 +59,11 @@ CONTAINS
 
     if ( any( ippform == 4 ) ) then
        write(*,*) "ippform=4 & pselect=3 is not implemented yet"
-       stop "stop@init_ps_nloc3"
+       stop "stop@init_ps_nloc3(1)"
+    end if
+    if ( ps_type == 1 ) then
+       write(*,*) "Multi-reference with pselect=3 is not implemented yet"
+       stop "stop@init_ps_nloc3(2)"
     end if
 
     pi4   = 4.0d0*acos(-1.0d0)

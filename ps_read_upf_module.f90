@@ -426,7 +426,7 @@ CONTAINS
                 write(*,*) "nsize=",nsize
                 read(g,*) Dij(1:norb,1:norb)
                 j=count( Dij /= 0.0d0 )
-                k=0
+                k=0 !------> check single or multi reference
                 do l=1,norb
                    if ( Dij(l,l) /= 0.0d0 ) k=k+1
                 end do
@@ -435,7 +435,7 @@ CONTAINS
                       anorm(l) = Dij(l,l)
                    end do
                    Dij(:,:)=0.0d0
-                end if
+                end if !------> check single or multi reference (end)
                 exit
              end if
 
@@ -498,14 +498,15 @@ CONTAINS
        end do
     end do
 
-    if ( any( psp%anorm /= 0.0d0 ) ) then
+    if ( any( psp%anorm /= 0.0d0 ) ) then !------> single reference
        do j=1,norb
           psp%inorm(j)=1
           if ( psp%anorm(j) < 0.0d0 ) psp%inorm(j)=-1
           tmp = sqrt( abs( psp%anorm(j) ) )
           psp%viod(:,j) = sqrt(0.5d0)*psp%viod(:,j)*tmp
        end do
-    else
+    else !------> multi reference
+       psp%Dij(1:norb,1:norb) = Dij(1:norb,1:norb)
        do j=1,norb
           psp%viod(:,j) = sqrt(0.5d0)*psp%viod(:,j)
        end do
