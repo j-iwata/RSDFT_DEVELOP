@@ -9,6 +9,7 @@ MODULE io_tools_module
   PUBLIC :: IOTools_readIntegerKeywords
   PUBLIC :: IOTools_readReal8Keyword
   PUBLIC :: IOTools_readReal8Keywords
+  PUBLIC :: IOTools_readIntegerString
 !  PUBLIC :: IOTools_findKeyword
 !  PUBLIC :: IOTools_readRealVectorKeyword
 !  PUBLIC :: IOTools_readLogicalKeyword
@@ -146,6 +147,31 @@ CONTAINS
     end if
 999 call MPI_BCAST(variables,size(variables),MPI_REAL8,0,MPI_COMM_WORLD,i)
   END SUBROUTINE IOTools_readReal8Keywords
+
+
+  SUBROUTINE IOTools_readIntegerString( keyword, variable1, variable2 )
+    implicit none
+    character(*),intent(IN) :: keyword
+    integer,intent(INOUT) :: variable1
+    character(*),intent(INOUT) :: variable2
+    character(10) :: cbuf,ckey
+    integer :: i
+    if ( myrank == 0 ) then
+       rewind unit
+       do i=1,max_trial_read
+          read(unit,*,END=999) cbuf
+          call convertToCapital(cbuf,ckey)
+          if ( ckey == keyword ) then
+             backspace(unit)
+             read(unit,*) cbuf,variable1, variable2
+             write(*,'(1x,A10," : ",i4,2x,a20)') keyword,variable1,variable2
+             exit
+          end if
+       end do ! i
+    end if
+999 call MPI_BCAST(variable1,1,MPI_INTEGER,0,MPI_COMM_WORLD,i)
+    call MPI_BCAST(variable2,len(variable2),MPI_CHARACTER,0,MPI_COMM_WORLD,i)
+  END SUBROUTINE IOTools_readIntegerString
 
 
 #ifdef TEST

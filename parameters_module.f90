@@ -66,8 +66,6 @@ if (myrank==0) write(200+myrank,*) '>>>>>>>>>> read_parameter'
 
     call read_kinetic(myrank,unit)
 
-    call read_ppname_pseudopot(Nelement,myrank,unit)
-
     call read_ps_nloc1(myrank,unit)
     call read_ps_nloc2_init(myrank,unit)
 

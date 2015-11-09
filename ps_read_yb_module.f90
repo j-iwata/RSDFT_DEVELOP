@@ -1,151 +1,120 @@
 MODULE ps_read_YB_module
 
+  use VarPSMember, only: ps1d, ps_allocate_ps1d
+
   implicit none
 
   PRIVATE
-  PUBLIC :: ps_read_YB, ps_yb
-
-  integer,parameter :: nrmax = 5000
-  integer,parameter :: lmax  = 3
-
-  TYPE yb
-     integer :: nrr
-     integer :: norb
-     integer :: NRc(lmax+1)
-     integer :: inorm(lmax+1)
-     integer :: lo(lmax+1)
-     real(8) :: znuc
-     real(8) :: vps(nrmax,lmax+1)
-     real(8) :: ups(nrmax,lmax+1)
-     real(8) :: vql(nrmax)
-     real(8) :: cdc(nrmax)
-     real(8) :: cdd(nrmax)
-     real(8) :: rr(nrmax)
-     real(8) :: rx(nrmax)
-     real(8) :: Rc(lmax+1)
-     real(8) :: anorm(lmax+1)
-  END TYPE yb
-
-  type(yb) :: ps_yb
+  PUBLIC :: ps_read_YB
 
 CONTAINS
 
-  SUBROUTINE ps_read_YB(g)
+  SUBROUTINE ps_read_YB( g, ps )
     implicit none
     integer,intent(IN) :: g
+    type(ps1d),intent(INOUT) :: ps
     real(8),parameter :: E2=14.39965d0, H2M=3.80998d0
     real(8),parameter :: a_B=0.529177249d0
     real(8),parameter :: Ry=13.6056981d0, Pi=3.141592653589793d0
     integer :: i,j,L,Mlps0,Lref,nrr,norb
-    real(8) :: rPC,dr,c,znuc_tmp
-    real(8),allocatable :: tmp(:,:)
-
-    ps_yb%nrr     =0
-    ps_yb%norb    =0
-    ps_yb%znuc    =0.d0
-    ps_yb%vps(:,:)=0.d0
-    ps_yb%ups(:,:)=0.d0
-    ps_yb%vql(:)  =0.d0
-    ps_yb%cdc(:)  =0.d0
-    ps_yb%cdd(:)  =0.d0
-    ps_yb%rr(:)   =0.d0
-    ps_yb%rx(:)   =0.d0
-    ps_yb%Rc(:)   =0.d0
-    ps_yb%NRc(:)  =0
-    ps_yb%anorm(:)=0.d0
-    ps_yb%inorm(:)=0
-    ps_yb%lo(:)   =0
+    real(8) :: rPC,dr,c,znuc_tmp,Zps
+    real(8),allocatable :: vtmp(:,:),utmp(:,:),rtmp(:)
 
 ! Read
 
-     read(g,*) nrr, dr, Mlps0, ps_yb%znuc
+     read(g,*) nrr, dr, Mlps0, Zps
 
      nrr = nrr + 1
+     norb = Mlps0 + 1
 
-     if ( nrr > nrmax .or. Mlps0 > lmax ) then
-        write(*,*) "nrr0,nrmax,Mlps0,lmax",nrr,nrmax,Mlps0,lmax
-        stop "Array size is small (stop at KY_format)"
-     end if
+     allocate( vtmp(nrr,norb) ) ; vtmp=0.0d0
+     allocate( utmp(nrr,norb) ) ; utmp=0.0d0
+     allocate( rtmp(norb)     ) ; rtmp=0.0d0
 
-     read(g,*) rPC, ( ps_yb%Rc(L), L=1,Mlps0+1 )
+     ps%Mr = nrr
+     ps%norb = norb - 1
+
+     call ps_allocate_ps1d( ps )
+
+     ps%Zps = Zps
+
+     read(g,*) rPC, ( rtmp(L), L=1,Mlps0+1 )
 
      do i=1,nrr
-        read(g,*) ps_yb%rr(i),ps_yb%cdc(i),( ps_yb%vps(i,L), L=1,Mlps0+1 )
+        read(g,*) ps%rad(i),ps%cdc(i),( vtmp(i,L), L=1,Mlps0+1 )
      end do
      do i=1,nrr
-        read(g,*) ps_yb%rr(i),( ps_yb%ups(i,L), L=1,Mlps0+1 )
+        read(g,*) ps%rad(i),( utmp(i,L), L=1,Mlps0+1 )
      end do
-!
+
+     ps%rab(1:nrr) = dr
+
+     Lref = Mlps0
+
      i=0
-     do L=0,Mlps0-1
+     do L=0,Mlps0
+        if ( L == Lref ) then
+           ps%vql(1:nrr) = vtmp(1:nrr,L+1)
+           cycle
+        end if
         i=i+1
-        ps_yb%lo(i)=L
+        ps%lo(i)=L
+        ps%Rps(i)=rtmp(L+1)
+        ps%viod(1:nrr,i) = vtmp(1:nrr,L+1)
+        ps%ups(1:nrr,i) = utmp(1:nrr,L+1)
      end do
      norb=i
-     Lref=Mlps0
 
      do j=1,norb
         do i=1,nrr
-           if ( ps_yb%rr(i) >= ps_yb%Rc(j) ) then
-              ps_yb%NRc(j)=i
+           if ( ps%rad(i) >= ps%Rps(j) ) then
+              ps%NRps(j)=i
               exit
            end if
         end do
-        ps_yb%Rc(j) = ps_yb%rr(ps_yb%NRc(j))
+        ps%Rps(j) = ps%rad( ps%NRps(j) )
      end do
 
-     ps_yb%rx(1:nrr) = dr
-
-     ps_yb%vql(1:nrr) = ps_yb%vps(1:nrr,Mlps0+1)
-
-     allocate( tmp(nrr,norb) ) ; tmp=0.0d0
-     tmp(:,:)=ps_yb%vps(1:nrr,1:norb)
-     do i=1,norb
-        ps_yb%vps(1:nrr,i)=(tmp(1:nrr,i)-ps_yb%vql(1:nrr))*ps_yb%ups(1:nrr,i)
-        ps_yb%anorm(i)=sum( ps_yb%vps(1:nrr,i)*ps_yb%ups(1:nrr,i) )*dr
-        if ( ps_yb%anorm(i) < 0.0d0 ) then
-           ps_yb%inorm(i)=-1
-           ps_yb%anorm(i)=abs( ps_yb%anorm(i) )
-        else
-           ps_yb%inorm(i)=1
-        end if
-        ps_yb%vps(1:nrr,i)=ps_yb%vps(1:nrr,i)/sqrt( ps_yb%anorm(i) )
-     end do
-     deallocate( tmp )
-
-     ps_yb%rr(:)    = ps_yb%rr(:)/a_B
-     ps_yb%rx(:)    = ps_yb%rx(:)/a_B
-     ps_yb%Rc(:)    = ps_yb%Rc(:)/a_B
-     ps_yb%vql(:)   = ps_yb%vql(:)/(2.d0*Ry)
-     ps_yb%vps(:,:) = ps_yb%vps(:,:)/sqrt(2.d0*Ry/a_B)
-     ps_yb%anorm(:) = ps_yb%anorm(:)/(2.d0*Ry)
-
-     ps_yb%cdd(:)=0.d0
-     znuc_tmp=0.d0
      do j=1,norb
-        c=2.d0*(2*ps_yb%lo(j)+1)
-        znuc_tmp=znuc_tmp+c
-        write(*,*) j,ps_yb%lo(j),znuc_tmp,c
-        if ( znuc_tmp <= ps_yb%znuc ) then
-           ps_yb%cdd(1:nrr)=ps_yb%cdd(1:nrr)+c*ps_yb%ups(1:nrr,j)**2
-        end if
+        ps%viod(1:nrr,j)=( ps%viod(1:nrr,j) - ps%vql(1:nrr) )*ps%ups(1:nrr,j)
+        ps%anorm(j) = sum( ps%viod(1:nrr,j)*ps%ups(1:nrr,j) )*dr
+        ps%inorm(j) = sign( 1.0d0, ps%anorm(j) )
+        ps%anorm(j) = abs( ps%anorm(j) )
+        ps%viod(1:nrr,j) = ps%viod(1:nrr,j)/sqrt( ps%anorm(j) )
      end do
 
-     ps_yb%nrr  = nrr
-     ps_yb%norb = norb
+     ps%rad(:)    = ps%rad(:)/a_B
+     ps%rab(:)    = ps%rab(:)/a_B
+     ps%Rps(:)    = ps%Rps(:)/a_B
+     ps%vql(:)    = ps%vql(:)/(2.0d0*Ry)
+     ps%viod(:,:) = ps%viod(:,:)/sqrt(2.0d0*Ry/a_B)
+     ps%anorm(:)  = ps%anorm(:)/(2.0d0*Ry)
+
+     ps%cdd(:)=0.0d0
+     znuc_tmp=0.0d0
+     do j=1,norb
+        c=2.0d0*(2*ps%lo(j)+1)
+        znuc_tmp=znuc_tmp+c
+        if ( znuc_tmp <= ps%Zps ) then
+           ps%cdd(1:nrr) = ps%cdd(1:nrr) + c*ps%ups(1:nrr,j)**2
+        end if
+     end do
 
      write(*,*) "*** KY format ***"
-     write(*,*) "Znuc=",ps_yb%znuc
+     write(*,*) "Znuc=",ps%Zps
      write(*,*) "# of radial mesh points =",nrr
-     write(*,*) "# of orbitals =",norb
-     write(*,*) "angular momentum =",ps_yb%lo(1:norb)
+     write(*,*) "# of orbitals =",ps%norb
+     write(*,*) "angular momentum =",ps%lo(1:norb)
      write(*,*) "reference L =",Lref
-     write(*,*) "cut off radius =",ps_yb%Rc(1:norb)
+     write(*,*) "cut off radius =",ps%Rps(1:norb)
      write(*,*) "uVu integral (anorm) ="
-     write(*,*) "sum(rhov)=",sum(ps_yb%cdd*ps_yb%rx)
-     write(*,'(1x,8f10.5)') ( ps_yb%inorm(i)*ps_yb%anorm(i),i=1,norb )
+     write(*,'(1x,8f10.5)') ( ps%inorm(i)*ps%anorm(i),i=1,norb )
+     write(*,*) "sum(rhov)=",sum(ps%cdd*ps%rab)
 
-     return
+     deallocate( rtmp )
+     deallocate( utmp )
+     deallocate( vtmp )
+
    END SUBROUTINE ps_read_YB
 
  END MODULE ps_read_YB_module

@@ -1,7 +1,6 @@
 MODULE ps_local_mol_module
 
-  use pseudopot_module, only: Rps,norb,Mr,Npseudopot,NRps &
-                             ,rab,parloc,Zps,vql,rad,ippform
+  use pseudopot_module, only: Rps,norb,Mr,NRps,rab,parloc,Zps,vql,rad,ippform
   use maskf_module
   use simc_module
   use atom_module, only: Natom,Nelement,aa_atom,ki_atom
@@ -38,7 +37,7 @@ CONTAINS
        return
     end if
 
-    MKI = Npseudopot
+    MKI = Nelement
     qc  = qcut
     MMr = maxval( Mr )
     pi  = acos(-1.d0)

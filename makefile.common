@@ -18,10 +18,8 @@ MODS1 = \
        xc_pw92_gth_module.o\
        atom_module.o\
        lattice_module.o\
-       ps_read_tm_module.o\
        kinetic_variables.o\
        rgrid_variables.o\
-       ps_read_upf_module.o\
        parallel_module.o\
        info_module.o\
        subspace_diag_variables.o\
@@ -30,7 +28,6 @@ MODS1 = \
        expint_module.o\
        watch_module.o\
        fd_module.o\
-       ps_read_yb_module.o\
        bz_module.o\
        ewald_variables.o\
        bcast_module.o\
@@ -62,12 +59,15 @@ MODS1 = \
        rgrid_sol_module.o\
        scalapack_module.o\
        var_ps_member.o\
+       ps_read_upf_module.o\
+       ps_read_yb_module.o\
+       ps_read_tm_module.o\
+       ps_read_psv_g.o\
+       ps_read_psv.o\
        bc_mol_module.o\
        physical_type_methods.o\
        para_rgrid_comm.o\
        rgrid_module.o\
-       ps_read_psv_g.o\
-       ps_read_psv.o\
        force_sub.o\
        symmetry_module.o\
        ps_q_init_module.o\

@@ -1,6 +1,6 @@
 MODULE PSreadPSV
 
-  use VarPSMember
+  use VarPSMember, only: ps1d, file_ps, ippform, ps_allocate_ps1d
   use PSreadPSVG
 
   implicit none
@@ -11,7 +11,8 @@ MODULE PSreadPSV
 CONTAINS
   
 !-------------------------------------------------------
-  SUBROUTINE read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,psp )
+  SUBROUTINE read_PSV( unit_ps, ielm, psp )
+!  SUBROUTINE read_PSV( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,psp )
     implicit none
     integer,intent(IN) :: unit_ps,ielm
     type(ps1d),intent(INOUT) :: psp
@@ -32,8 +33,10 @@ CONTAINS
     character(8) :: xc_pot
 
     real(8),allocatable :: rr(:),vl(:),cc(:),r(:)
-    real(8),allocatable,intent(OUT) :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
-    real(8),allocatable,intent(OUT) :: ddi_(:,:,:),qqr_(:,:,:)
+!    real(8),allocatable,intent(OUT) :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
+!    real(8),allocatable,intent(OUT) :: ddi_(:,:,:),qqr_(:,:,:)
+    real(8),allocatable :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
+    real(8),allocatable :: ddi_(:,:,:),qqr_(:,:,:)
     real(8),allocatable :: a0(:),b0(:),c0(:),cdd_coef_0(:,:,:)
 
 ! Check pseudopotential type
@@ -182,17 +185,15 @@ CONTAINS
        stop "Radial grid is inconsistent."
     end if
 
-    if (allocated(psi_)) then
-      deallocate( psi_,phi_,bet_,ddi_,qqr_ )
-    endif
+!    if (allocated(psi_)) then
+!      deallocate( psi_,phi_,bet_,ddi_,qqr_ )
+!    endif
     m=maxval(nr(1:nl))
-    allocate( psi_(1:nsmpl,m,nl),phi_(1:nsmpl,m,nl),bet_(1:nsmpl,m,nl) )
-    allocate( ddi_(m,m,nl), qqr_(m,m,nl) )
-    psi_=0.d0
-    phi_=0.d0
-    bet_=0.d0
-    ddi_=0.d0
-    qqr_=0.d0
+    allocate( psi_(1:nsmpl,m,nl) ) ; psi_=0.0d0
+    allocate( phi_(1:nsmpl,m,nl) ) ; phi_=0.0d0
+    allocate( bet_(1:nsmpl,m,nl) ) ; bet_=0.0d0
+    allocate( ddi_(m,m,nl)       ) ; ddi_=0.0d0
+    allocate( qqr_(m,m,nl)       ) ; qqr_=0.0d0
 
     do l=1,nl
        read(unit_ps,*)
@@ -209,18 +210,15 @@ CONTAINS
           qqr_(i,j,l)=qqr_(j,i,l)
        end do
        end do
-rewind 9+l
        do j=1,m
           read(unit_ps,*)
           do i=1,nsmpl
              read(unit_ps,*) psi_(i,j,l),phi_(i,j,l),bet_(i,j,l)
-             write(9+l,*) rr(i),bet_(i,j,l)
           end do
        end do
     end do
 
-!    select case( verpot )
-!    case default
+    if ( verpot /= 3 ) then
        do j=1,10000
           read(unit_ps,'(A)') inbuf18
           if ( inbuf18=='### initial charge' ) then
@@ -233,64 +231,56 @@ rewind 9+l
           end if
        end do
        if ( j>10000 ) stop "read_psv"
-!    case( 3 )
-!    end select
+    end if
 
-    i = max( ndlc,nsmpl,ndata ) + 1
-    j = max( 1, sum(nr(1:nl)) )
-    call ps_allocate(i,j)
+!    i = max( ndlc,nsmpl,ndata ) + 1
+!    j = max( 1, sum(nr(1:nl)) )
+!    call ps_allocate(i,j)
+
     psp%Mr = max( ndlc,nsmpl,ndata ) + 1
     psp%norb = max( 1, sum(nr(1:nl)) )
     call ps_allocate_ps1d( psp )
 
     iorb=0
     do l=1,nl
-       nrf(l,ielm)=nr(l)
-!
+!       nrf(l,ielm)=nr(l)
        psp%nrf(l) = nr(l)
-!
        do j=1,nr(l)
           iorb=iorb+1
-          lo(iorb,ielm)=l-1
-          no(iorb,ielm)=j
-          anorm(iorb,ielm)=abs( ddi_(j,j,l) )
-          inorm(iorb,ielm)=sign( 1.0d0, ddi_(j,j,l) )
-          NRps(iorb,ielm)=nsmpl+1
-          Rps(iorb,ielm)=Rc_in
-!
+!          lo(iorb,ielm)=l-1
+!          no(iorb,ielm)=j
+!          anorm(iorb,ielm)=abs( ddi_(j,j,l) )
+!          inorm(iorb,ielm)=sign( 1.0d0, ddi_(j,j,l) )
+!          NRps(iorb,ielm)=nsmpl+1
+!          Rps(iorb,ielm)=Rc_in
           psp%lo(iorb)    = l-1
           psp%no(iorb)    = j
           psp%anorm(iorb) = abs( ddi_(j,j,l) )
           psp%inorm(iorb) = sign( 1.0d0, ddi_(j,j,l) )
           psp%NRps(iorb)  = nsmpl+1
           psp%Rps(iorb)   = Rc_in
-!
        end do
     end do
-    norb(ielm)=iorb
-    nlf(ielm)=nl
-    Mr(ielm)=max( ndlc,nsmpl,ndata )+1
-    Zps(ielm)=znuc
-    Zelement(ielm)=zatom
-!
+!    norb(ielm)=iorb
+!    nlf(ielm)=nl
+!    Mr(ielm)=max( ndlc,nsmpl,ndata )+1
+!    Zps(ielm)=znuc
+!    Zelement(ielm)=zatom
     psp%nlf      = nl
     psp%Zps      = znuc
     psp%Zelement = zatom
 !
 ! r=0
     do i=1,ndlc
-       vql(i+1,ielm)=vl(i)
-       cdc(i+1,ielm)=cc(i)
-       rad(i+1,ielm)=rr(i)
-!
+!       vql(i+1,ielm)=vl(i)
+!       cdc(i+1,ielm)=cc(i)
+!       rad(i+1,ielm)=rr(i)
        psp%vql(i+1) = vl(i)
        psp%cdc(i+1) = cc(i)
        psp%rad(i+1) = rr(i)
-!
     end do
-    rad(1,ielm)=0.d0
-    vql(1,ielm)=vql(2,ielm)
-!
+!    rad(1,ielm)=0.d0
+!    vql(1,ielm)=vql(2,ielm)
     psp%rad(1) = 0.0d0
     psp%vql(1) = psp%vql(2)
 !
@@ -298,54 +288,36 @@ rewind 9+l
     do l=1,nl
        do j=1,nr(l)
           iorb=iorb+1
-          if ( ippform(ielm) < 100 ) then
-             temp=sqrt( anorm(iorb,ielm) )
-             do i=1,nsmpl
-                viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
-!
-                psp%viod(i+1,iorb) = bet_(i,j,l)*temp
-!
-             end do
-          else !-----------------> USPP
-             do i=1,nsmpl
-                viod(i+1,iorb,ielm)=bet_(i,j,l)
-!
-                psp%viod(i+1,iorb) = bet_(i,j,l)
-!
-             end do
-          end if
-          viod(1,iorb,ielm)=0.d0
-!
+          temp=sqrt( psp%anorm(iorb) )
+          if ( ippform(ielm) > 100 ) temp=1.0d0 !--------> USPP
+          do i=1,nsmpl
+!             viod(i+1,iorb,ielm)=bet_(i,j,l)*temp
+             psp%viod(i+1,iorb) = bet_(i,j,l)*temp
+          end do
+!          viod(1,iorb,ielm)=0.d0
           psp%viod(1,iorb) = 0.0d0
-!
        end do ! j
     end do ! l
 
 ! dr/dx
     h=log( rr(ndlc)/rr(1) )/(ndlc-1)
-    rab(1,ielm)=0.d0
-!
+!    rab(1,ielm)=0.d0
     psp%rab(1) = 0.0d0
 !
     do i=1,ndlc
-       rab(i+1,ielm)=rr(i)*h
-!
+!       rab(i+1,ielm)=rr(i)*h
        psp%rab(i+1) = rr(i)*h
-!
     end do
 
-    do i=1,ndlc
-        rabr2(i,ielm)=rab(i,ielm)*(rad(i,ielm)**2)
-!
-        psp%rabr2(i)=psp%rab(i)*(psp%rad(i)**2)
-!
-    end do
+!    do i=1,ndlc
+!        rabr2(i,ielm)=rab(i,ielm)*(rad(i,ielm)**2)
+!        psp%rabr2(i)=psp%rab(i)*(psp%rad(i)**2)
+!    end do
 
-    parloc(1,ielm)=a1
-    parloc(2,ielm)=a2
-    parloc(3,ielm)=a3
-    parloc(4,ielm)=a4
-!
+!    parloc(1,ielm)=a1
+!    parloc(2,ielm)=a2
+!    parloc(3,ielm)=a3
+!    parloc(4,ielm)=a4
     psp%parloc(1) = a1
     psp%parloc(2) = a2
     psp%parloc(3) = a3
@@ -357,92 +329,95 @@ rewind 9+l
     case default
 
        temp=16.d0*atan(1.d0)
-       cdd(:,ielm)=0.d0
-!
+!       cdd(:,ielm)=0.d0
        psp%cdd(:)=0.0d0
-!
+
        do l=1,ngauss
           do i=1,ndlc
-             cdd(i+1,ielm)=cdd(i+1,ielm) &
-                  +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
-!
+!             cdd(i+1,ielm)=cdd(i+1,ielm) &
+!                  +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
              psp%cdd(i+1)=psp%cdd(i+1) &
                   +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
-!
           end do
        end do
 
-       if ( max_ngauss == 0 ) then
-          allocate( cdd_coef(3,ngauss,Nelement_PP) )
-          cdd_coef=0.0d0
-          max_ngauss=ngauss
-       else if ( ngauss > max_ngauss ) then
-          allocate( cdd_coef_0(3,max_ngauss,Nelement_PP) )
-          cdd_coef_0(:,:,:)=cdd_coef(:,:,:)
-          deallocate( cdd_coef )
-          allocate( cdd_coef(3,ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
-          deallocate( cdd_coef_0 )
-          cdd_coef(:,1:max_ngauss,:)=cdd_coef_0(:,:,:)
-          max_ngauss=ngauss
-       end if
-       cdd_coef(1,1:ngauss,ielm)=a0(1:ngauss)
-       cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
-       cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
-!
+!       if ( max_ngauss == 0 ) then
+!          allocate( cdd_coef(3,ngauss,Nelement_PP) )
+!          cdd_coef=0.0d0
+!          max_ngauss=ngauss
+!       else if ( ngauss > max_ngauss ) then
+!          allocate( cdd_coef_0(3,max_ngauss,Nelement_PP) )
+!          cdd_coef_0(:,:,:)=cdd_coef(:,:,:)
+!          deallocate( cdd_coef )
+!          allocate( cdd_coef(3,ngauss,Nelement_PP) ) ; cdd_coef=0.0d0
+!          deallocate( cdd_coef_0 )
+!          cdd_coef(:,1:max_ngauss,:)=cdd_coef_0(:,:,:)
+!          max_ngauss=ngauss
+!       end if
+!       cdd_coef(1,1:ngauss,ielm)=a0(1:ngauss)
+!       cdd_coef(2,1:ngauss,ielm)=b0(1:ngauss)
+!       cdd_coef(3,1:ngauss,ielm)=c0(1:ngauss)
+
        allocate( psp%cdd_coef(3,ngauss) )
        psp%cdd_coef=0.0d0
-       psp%cdd_coef(1,1:ngauss)=a0(1:ngauss)
-       psp%cdd_coef(2,1:ngauss)=b0(1:ngauss)
-       psp%cdd_coef(3,1:ngauss)=c0(1:ngauss)
-       psp%ngauss=ngauss
-!
-    case( 30 )
+       psp%cdd_coef(1,1:ngauss) = a0(1:ngauss)
+       psp%cdd_coef(2,1:ngauss) = b0(1:ngauss)
+       psp%cdd_coef(3,1:ngauss) = c0(1:ngauss)
+       psp%ngauss = ngauss
+
+    case( 3 )
 
        file_name=trim(file_ps(ielm))//".ichr"
        open(unit_ps+1,file=file_name,status='old')
        read(unit_ps+1,*) ndlc_1
        if ( ndlc /= ndlc_1 ) stop "ndlc/=ndlc_1!!!"
        temp=16.d0*atan(1.d0)
-       cdd(:,ielm)=0.d0
-!
+!       cdd(:,ielm)=0.d0
        psp%cdd(:)=0.0d0
 !
        do i=1,ndlc
-          read(unit_ps+1,*) dummy,cdd(i+1,ielm)
-          cdd(i+1,ielm)=temp*cdd(i+1,ielm)*rr(i)**2
-!
-          psp%cdd(i+1)=temp*cdd(i+1,ielm)*rr(i)**2
-!
+!          read(unit_ps+1,*) dummy,cdd(i+1,ielm)
+!          cdd(i+1,ielm)=temp*cdd(i+1,ielm)*rr(i)**2
+          read(unit_ps+1,*) dummy, r1
+          psp%cdd(i+1)=temp*r1*rr(i)**2
        end do
        close(unit_ps+1)
 
     end select
 
-
     write(*,*) "*** PSV format ***"
-    write(*,*) zatom
-    write(*,*) "# of radial mesh points =",Mr(ielm)
-    write(*,*) "r(1),...,r(end)         =",rad(1,ielm),rad(Mr(ielm),ielm)
-    write(*,*) "NRps                    =",NRps(1:norb(ielm),ielm)
-    write(*,*) "# of orbitals           =",norb(ielm)
-    write(*,*) "angular momentum        =",lo(1:norb(ielm),ielm)
-    write(*,*) "cut off radius          =",Rps(1:norb(ielm),ielm)
-    write(*,*) "Zps                     =",Zps(ielm)
+    write(*,*) "zatom                   =",psp%Zelement
+    write(*,*) "# of radial mesh points =",psp%Mr
+    write(*,*) "r(1),...,r(end)         =",psp%rad(1),psp%rad(psp%Mr)
+    write(*,*) "NRps                    =",psp%NRps(1:psp%norb)
+    write(*,*) "# of orbitals           =",psp%norb
+    write(*,*) "angular momentum        =",psp%lo(1:psp%norb)
+    write(*,*) "cut off radius          =",psp%Rps(1:psp%norb)
+    write(*,*) "Zps                     =",psp%Zps
     write(*,*) "xc_pot                  =   ",xc_pot
     write(*,*) "a1,a2,a3,a4             =",a1,a2
     write(*,*) "                         ",a3,a4
-    write(*,*) "Reference               =",nr(1:nl)
-    write(*,*) "anorm                   =",anorm(1:norb(ielm),ielm)
-    write(*,*) "inorm                   =",inorm(1:norb(ielm),ielm)
-    write(*,*) "sum(cdd)                =",sum( cdd(:,ielm)*rab(:,ielm) )
-    write(*,*) "sum(cdc)                =",sum( cdc(:,ielm)*rab(:,ielm) )*temp
+    write(*,*) "Reference               =",psp%nrf(1:psp%nlf)
+    write(*,*) "anorm                   =",psp%anorm(1:psp%norb)
+    write(*,*) "inorm                   =",psp%inorm(1:psp%norb)
+    write(*,*) "sum(cdd)                =",sum( psp%cdd(:)*psp%rab(:) )
+    write(*,*) "sum(cdc)                =",sum( psp%cdc(:)*psp%rab(:) )*temp
+
+    if ( any(qqr_/=0.0d0) ) then
+       call readPSVG( unit_ps,ddi_,qqr_,psi_,phi_,bet_,psp )
+    end if
 
     if ( verpot /= 3 ) deallocate( c0,b0,a0 )
+    deallocate( qqr_ )
+    deallocate( ddi_ )
+    deallocate( bet_ )
+    deallocate( phi_ )
+    deallocate( psi_ )
     deallocate( r )
     deallocate( cc,vl,rr )
     deallocate( nr )
 
-    call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,psp )
+!    call readPSVG( unit_ps,ielm,ddi_,qqr_,psi_,phi_,bet_,psp )
 
   END SUBROUTINE read_PSV
 

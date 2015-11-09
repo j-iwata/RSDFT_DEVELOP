@@ -138,10 +138,7 @@ PROGRAM Real_Space_Solid
 
 ! --- Pseudopotential, initial density, and partial core correction ---
 
-  call read_param_pseudopot
-
-  call read_pseudopot(myrank)
-!  if (myrank==0) write(200,*) 'read ps complete'
+  call read_pseudopot( Nelement, myrank )
 
 !-------- init density 
 

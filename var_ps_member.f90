@@ -73,6 +73,9 @@ MODULE VarPSMember
      real(8) :: Rcloc
      integer :: ngauss
      real(8),allocatable :: cdd_coef(:,:)
+! atomic pseudo wave function
+     real(8),allocatable :: ups(:,:)
+     real(8),allocatable :: Dij(:,:)
 ! uspp
      integer ::npq
      integer,allocatable :: nl3v(:)
@@ -359,6 +362,8 @@ CONTAINS
     allocate( ps%rabr2(n_grd)      ) ; ps%rabr2=0.0d0
     allocate( ps%viod(n_grd,n_orb) ) ; ps%viod=0.0d0
     ps%Rcloc=0.0d0  
+    allocate( ps%ups(n_grd,n_orb)  ) ; ps%ups=0.0d0
+    allocate( ps%Dij(n_orb,n_orb)  ) ; ps%Dij=0.0d0
   END SUBROUTINE ps_allocate_ps1d
 
   SUBROUTINE psg_allocate_ps1d( ps )
@@ -408,6 +413,9 @@ CONTAINS
     call mpi_bcast(ps%rabr2,size(ps%rabr2),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%viod,size(ps%viod),mpi_real8,0,mpi_comm_world,i)
     call mpi_bcast(ps%Rcloc,1,mpi_real8,0,mpi_comm_world,i)
+! atomic pseudo wave function
+    call mpi_bcast(ps%ups,size(ps%ups),mpi_real8,0,mpi_comm_world,i)
+    call mpi_bcast(ps%Dij,size(ps%Dij),mpi_real8,0,mpi_comm_world,i)
 ! uspp
     call mpi_bcast(ps%npq,1,mpi_integer,0,mpi_comm_world,i)
     call mpi_bcast(ps%nrf_max,1,mpi_integer,0,mpi_comm_world,i)

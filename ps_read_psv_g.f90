@@ -1,15 +1,18 @@
 MODULE PSReadPSVG
 
-  use VarPSMember
-  use VarPSMemberG, only: npq,nl3v,l3v,ddi,qqr,qrL,allocatePSG
+  use VarPSMember, only: ps1d, psg_allocate_ps1d
+!  use VarPSMemberG, only: npq,nl3v,l3v,ddi,qqr,qrL,allocatePSG
 
   implicit none
 
+  PRIVATE
+  PUBLIC :: readPSVG
+
 CONTAINS
 
-  SUBROUTINE readPSVG( unit_ps,ik,ddi_,qqr_,psi_,phi_,bet_,psp )
+  SUBROUTINE readPSVG( unit_ps,ddi_,qqr_,psi_,phi_,bet_,psp )
     implicit none
-    integer,intent(IN) :: unit_ps,ik
+    integer,intent(IN) :: unit_ps
     type(ps1d) :: psp
     character(80) :: cbuf9
     integer :: i,j,l,l1,l2,i1,i2,ic
@@ -25,12 +28,12 @@ CONTAINS
     integer :: nl3vmax,npq_,iunit
     integer,parameter :: max_loop=1000000
 
-    Lrefmax = nlf(ik)
-    Rrefmax = maxval(nrf(:,ik))
+    Lrefmax = psp%nlf
+    Rrefmax = maxval(psp%nrf)
     lpsmax  = Lrefmax*Rrefmax
     npqmax  = lpsmax*(lpsmax+1)/2
     ncfmax  = 10
-    nsmpl   = NRps(1,ik)-1
+    nsmpl   = maxval(psp%NRps)-1
 
     allocate( nl3v_(npqmax)                ) ; nl3v_=0
     allocate( l3v_(lpsmax,npqmax)          ) ; l3v_ =0
@@ -48,12 +51,12 @@ CONTAINS
     end do
     if ( j > max_loop ) stop "stop@readPSVG(1)" 
     read(unit_ps,*) npq_
-iunit=19
+
     k2=0
-    do l1=1,nlf(ik)
-    do i1=1,nrf(l1,ik)
+    do l1=1,psp%nlf
+    do i1=1,psp%nrf(l1)
     do l2=1,l1
-    do i2=1,nrf(l2,ik)
+    do i2=1,psp%nrf(l2)
        if ( l1 == l2 .and. i2 > i1 ) cycle
        k2=k2+1
        read(unit_ps,*) ll1,ii1,ll2,ii2
@@ -65,7 +68,7 @@ iunit=19
           read(unit_ps,*) l3v_(ll3,k2),ncf(ll3,k2),nrin(ll3,k2),rin(ll3,k2)
           if ( ncf(ll3,k2) > 0 ) then
              read(unit_ps,*) coe(1:ncf(ll3,k2),ll3,k2)
-             dif=abs(rad(nrin(ll3,k2)+1,ik)-rin(ll3,k2))
+             dif=abs(psp%rad(nrin(ll3,k2)+1)-rin(ll3,k2))
              if ( dif > 1.d-8 ) then
                 stop 'ERROR in PSV read space cutoff'
              end if
@@ -73,72 +76,61 @@ iunit=19
           qrL_(:,ll3,k2)=0.d0
           do ic=ncf(ll3,k2),1,-1
              do i=1,nrin(ll3,k2)
-                r2=rad(i+1,ik)*rad(i+1,ik)
+                r2=(psp%rad(i+1))**2
                 qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*r2+coe(ic,ll3,k2)
              end do
           end do
           do i=1,nrin(ll3,k2)
-             qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*rad(i+1,ik)**(l3v_(ll3,k2)+1)
+             qrL_(i,ll3,k2)=qrL_(i,ll3,k2)*psp%rad(i+1)**(l3v_(ll3,k2)+1)
           end do
           do i=nrin(ll3,k2)+1,nsmpl
              qrL_(i,ll3,k2)=psi_(i,i1,l1)*psi_(i,i2,l2) &
                            -phi_(i,i1,l1)*phi_(i,i2,l2)
-          end do
-!write(*,*) rin(ll3,k2),rad(nrin(ll3,k2)+1,ik)
-!          write(*,*) ll1,ii1,ll2,ii2,nsmpl,nrin(ll3,k2)
-          write(*,*) nl3v_(k2),l3v_(ll3,k2),ncf(ll3,k2)
-          iunit=iunit+1
-          rewind iunit
-          do i=1,nsmpl-1
-             write(iunit,*) rad(i+1,ik),qrL_(i,ll3,k2)
           end do
        end do ! ll3
     end do ! i2
     end do ! l2
     end do ! i1
     end do ! l1
-!stop
+
     if ( npq_ /= k2 ) stop 'ERROR npq/=k2'
 
-    npqmax = npq_
-
-    call allocatePSG( Lrefmax,Rrefmax,npqmax,max_psgrd,Nelement_PP )
+!    npqmax = npq_
+!    call allocatePSG( Lrefmax,Rrefmax,npqmax,max_psgrd,Nelement_PP )
 
     psp%npq = npq_
     psp%nrf_max = maxval( psp%nrf )
     call psg_allocate_ps1d( psp )
 
-    npq(ik)=npq_
+!    npq(ik)=npq_
 
-    do l=1,nlf(ik)
-       do j=1,nrf(l,ik)
+    do l=1,psp%nlf
+       do j=1,psp%nrf(l)
        do i=1,j
-          ddi(i,j,l,ik)=ddi_(i,j,l)
-          ddi(j,i,l,ik)=ddi_(i,j,l)
-          qqr(i,j,l,ik)=qqr_(i,j,l)
-          qqr(j,i,l,ik)=qqr_(i,j,l)
-!
+!          ddi(i,j,l,ik)=ddi_(i,j,l)
+!          ddi(j,i,l,ik)=ddi_(i,j,l)
+!          qqr(i,j,l,ik)=qqr_(i,j,l)
+!          qqr(j,i,l,ik)=qqr_(i,j,l)
           psp%ddi(i,j,l) = ddi_(i,j,l)
           psp%ddi(j,i,l) = ddi_(i,j,l)
           psp%qqr(i,j,l) = qqr_(i,j,l)
           psp%qqr(j,i,l) = qqr_(i,j,l)
-!
        end do
        end do
     end do
 
     k2=0
-    do l1=1,nlf(ik)
-    do i1=1,nrf(l1,ik)
+    do l1=1,psp%nlf
+    do i1=1,psp%nrf(l1)
     do l2=1,l1
-    do i2=1,nrf(l2,ik)
+    do i2=1,psp%nrf(l2)
        if ( l1 == l2 .and. i2 > i1 ) cycle
        k2=k2+1
-       nl3v(k2,ik)=nl3v_(k2)
+       psp%nl3v(k2)=nl3v_(k2)
        do ll3=1,nl3v_(k2)
-          l3v(ll3,k2,ik)=l3v_(ll3,k2)
+          psp%l3v(ll3,k2)=l3v_(ll3,k2)
           do i=nsmpl,1,-1
-             qrL(i+1,ll3,k2,ik)=qrL_(i,ll3,k2)
+             psp%qrL(i+1,ll3,k2)=qrL_(i,ll3,k2)
           end do
        end do ! ll3
     end do ! i2

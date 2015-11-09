@@ -5,62 +5,22 @@
 !--------------------------------------------
 MODULE ps_read_UPF_module
 
+  use VarPSMember, only: ps1d, ps_allocate_ps1d
+
   implicit none
 
   PRIVATE
-  PUBLIC :: ps_read_UPF, ps_upf
-
-  integer,parameter :: nrmax = 5000
-  integer,parameter :: lmax  = 3
-
-  TYPE upf
-     integer :: nrr
-     integer :: norb
-     integer :: NRc(lmax+1)
-     integer :: inorm(lmax+1)
-     integer :: lo(lmax+1)
-     integer :: no(lmax+1)
-     real(8) :: znuc
-     real(8) :: vps(nrmax,lmax+1)
-     real(8) :: ups(nrmax,lmax+1)
-     real(8) :: vql(nrmax)
-     real(8) :: cdc(nrmax)
-     real(8) :: cdd(nrmax)
-     real(8) :: rr(nrmax)
-     real(8) :: rx(nrmax)
-     real(8) :: Rc(lmax+1)
-     real(8) :: anorm(lmax+1)
-     real(8) :: Dij(lmax+1,lmax+1)
-  END TYPE upf
-
-  type(upf) :: ps_upf
+  PUBLIC :: ps_read_UPF
 
 CONTAINS
 
-  SUBROUTINE ps_read_UPF(g)
+  SUBROUTINE ps_read_UPF( g, psp )
     implicit none
     integer,intent(IN) :: g
+    type(ps1d),intent(INOUT) :: psp
     integer,parameter :: max_loop = 100000
     integer :: loop
     character(30) :: cbuf
-
-    ps_upf%nrr     =0
-    ps_upf%norb    =0
-    ps_upf%znuc    =0.0d0
-    ps_upf%vps(:,:)=0.0d0
-    ps_upf%ups(:,:)=0.0d0
-    ps_upf%vql(:)  =0.0d0
-    ps_upf%cdc(:)  =0.0d0
-    ps_upf%cdd(:)  =0.0d0
-    ps_upf%rr(:)   =0.0d0
-    ps_upf%rx(:)   =0.0d0
-    ps_upf%Rc(:)   =0.0d0
-    ps_upf%NRc(:)  =0
-    ps_upf%anorm(:)=0.0d0
-    ps_upf%inorm(:)=0
-    ps_upf%lo(:)   =0
-    ps_upf%no(:)   =0
-    ps_upf%Dij(:,:)=0.0d0
 
     do loop=1,max_loop
 
@@ -69,11 +29,11 @@ CONTAINS
 
        if ( cbuf(1:21) == '<UPF version="2.0.1">' ) then
           rewind g
-          call ps_read_upf_ver201(g)
+          call ps_read_upf_ver201( g, psp )
           return
        else if ( cbuf(1:9) == "<PP_INFO>" ) then
           rewind g
-          call ps_read_upf_verorg(g)
+          call ps_read_upf_verorg( g, psp )
           return
        end if
 
@@ -84,17 +44,23 @@ CONTAINS
   END SUBROUTINE ps_read_UPF
 
 
-  SUBROUTINE ps_read_upf_verorg(g)
+  SUBROUTINE ps_read_upf_verorg( g, psp )
     implicit none
     integer,intent(IN) :: g
-    integer,parameter :: max_loop = 100000
+    type(ps1d),intent(INOUT) :: psp
+    integer,parameter :: max_loop = 100000, max_array_size = 8
     integer :: i,j,n,i0,i1,loop,nrr,norb,nrc
-    real(8) :: tmp
+    integer,allocatable :: lo(:),NRps(:),inorm(:)
+    real(8) :: tmp,Zps
+    real(8),allocatable :: rr(:),rx(:),vql(:),cdc(:),cdd(:)
+    real(8),allocatable :: viod(:,:),anorm(:)
     character(30) :: cbuf
 
     write(*,'(a40," ps_read_upf_verorg")') repeat("-",40)
 
 ! Read
+
+    nrr=0
 
     do loop=1,max_loop
 
@@ -105,7 +71,7 @@ CONTAINS
           do i=1,5
              read(g,*)
           end do
-          read(g,*) ps_upf%znuc
+          read(g,*) Zps
 
           do i=1,3
              read(g,*)
@@ -123,6 +89,16 @@ CONTAINS
 
        end if
 
+       if ( nrr > 0 ) then
+          if ( .not.allocated(rr) ) then
+             allocate( rr(1:nrr)  ) ; rr =0.0d0
+             allocate( rx(1:nrr)  ) ; rx =0.0d0
+             allocate( vql(1:nrr) ) ; vql=0.0d0
+             allocate( cdc(1:nrr) ) ; cdc=0.0d0
+             allocate( cdd(1:nrr) ) ; cdd=0.0d0
+          end if
+       end if
+
        if ( cbuf(1:9) == "<PP_MESH>" ) then
 
           do i=1,max_loop
@@ -130,28 +106,38 @@ CONTAINS
              if ( cbuf(1:6) == "<PP_R>" ) exit
           end do
 
-          read(g,*) ps_upf%rr(1:nrr)
+          read(g,*) rr(1:nrr)
 
           do i=1,max_loop
              read(g,*) cbuf
              if ( cbuf(1:8) == "<PP_RAB>" ) exit
           end do ! i
 
-          read(g,*) ps_upf%rx(1:nrr)
+          read(g,*) rx(1:nrr)
 
        end if ! </PP_MESH>
 
        if ( cbuf(1:9) == "<PP_NLCC>" ) then
 
-          read(g,*) ps_upf%cdc(1:nrr)
+          read(g,*) cdc(1:nrr)
 
        end if
 
        if ( cbuf(1:10) == "<PP_LOCAL>" ) then
 
-          read(g,*) ps_upf%vql(1:nrr)
+          read(g,*) vql(1:nrr)
 
        end if ! </PP_LOCAL>
+
+       if ( nrr > 0 ) then
+          if ( .not.allocated(lo) ) then
+             allocate( lo(max_array_size)       ) ; lo=0
+             allocate( NRps(max_array_size)     ) ; NRps=0
+             allocate( inorm(max_array_size)    ) ; inorm=0
+             allocate( anorm(max_array_size)    ) ; anorm=0.0d0
+             allocate( viod(nrr,max_array_size) ) ; viod=0.0d0
+          end if
+       end if
 
        if ( cbuf(1:13) == "<PP_NONLOCAL>" ) then
 
@@ -159,20 +145,20 @@ CONTAINS
           do i=1,max_loop
              read(g,*) cbuf
              if ( cbuf(1:9) == "<PP_BETA>" ) then
-                read(g,*) j, ps_upf%lo(j)
-                read(g,*) nrc
-                read(g,*) ps_upf%vps(1:nrc,j)
+                read(g,*) j, lo(j)
+                read(g,*) nrc ; if ( nrc > nrr) stop"stop@ps_read_upf(1)"
+                read(g,*) viod(1:nrc,j)
                 read(g,*) cbuf
-                ps_upf%NRc(j)=nrc
+                NRps(j)=nrc
                 norb=max( j, norb )
              else if ( cbuf(1:8) == "<PP_DIJ>" ) then
                 read(g,*) n
                 do j=1,n
-                   read(g,*) i0,i1,ps_upf%anorm(j)
+                   read(g,*) i0,i1,anorm(j)
                 end do
                 do j=1,n
-                   ps_upf%inorm(j)=nint( sign(1.0d0,ps_upf%anorm(j)) )
-                   ps_upf%anorm(j)=abs( ps_upf%anorm(j) )
+                   inorm(j)=nint( sign(1.0d0,anorm(j)) )
+                   anorm(j)=abs( anorm(j) )
                 end do
                 read(g,*) cbuf
              else if ( cbuf(1:8) == "<" ) then
@@ -188,60 +174,76 @@ CONTAINS
 
        if ( cbuf(1:12) == "<PP_RHOATOM>" ) then
 
-          read(g,*) ps_upf%cdd(1:nrr)
+          read(g,*) cdd(1:nrr)
 
        end if
 
     end do ! loop
 10 continue
 
+    psp%Mr = nrr + 1
+    psp%norb = norb
+    call ps_allocate_ps1d( psp )
+
+    psp%Zps = Zps
+
     do i=nrr+1,2,-1
-       ps_upf%rr(i)    = ps_upf%rr(i-1)
-       ps_upf%rx(i)    = ps_upf%rx(i-1)
-       ps_upf%cdd(i)   = ps_upf%cdd(i-1)
-       ps_upf%cdc(i)   = ps_upf%cdc(i-1)
-       ps_upf%vql(i)   = ps_upf%vql(i-1)
-       ps_upf%vps(i,:) = ps_upf%vps(i-1,:)
-       ps_upf%rr(i)    = ps_upf%rr(i-1)
+       psp%rad(i) =  rr(i-1)
+       psp%rab(i) =  rx(i-1)
+       psp%cdd(i) = cdd(i-1)
+       psp%cdc(i) = cdc(i-1)
+       psp%vql(i) = vql(i-1)
     end do
-    ps_upf%rr(1)    = 0.0d0
-    ps_upf%rx(1)    = 0.0d0
-    ps_upf%cdd(1)   = 0.0d0
-    ps_upf%cdc(1)   = 0.0d0
-    ps_upf%vql(1)   = ps_upf%vql(2)
-    ps_upf%vps(1,:) = 0.0d0
+    psp%rad(1) = 0.0d0
+    psp%rab(1) = 0.0d0
+    psp%cdd(1) = 0.0d0
+    psp%cdc(1) = 0.0d0
+    psp%vql(1) = psp%vql(2)
+
+    psp%vql(:) = 0.5d0*psp%vql(:)
+
+    do j=1,norb
+       psp%lo(j)    = lo(j)
+       psp%inorm(j) = inorm(j)
+       psp%anorm(j) = anorm(j)
+    end do
+
+    do j=1,norb
+       do i=NRps(j)+1,2,-1
+          psp%viod(i,j) = viod(i-1,j)
+       end do
+       psp%viod(1,j) = 0.0d0
+    end do
 
     do j=1,norb
        do i=nrr,1,-1
-          if ( abs(ps_upf%vps(i,j)) >= 1.d-13 ) then
-             ps_upf%Rc(j) = ps_upf%rr(i-1)
-             ps_upf%NRc(j)= i-1
+          if ( abs(psp%viod(i,j)) >= 1.d-13 ) then
+             psp%Rps(j)  = psp%rad(i-1)
+             psp%NRps(j) = i-1
              exit
           end if
        end do
     end do
 
     do j=1,norb
-       tmp = sqrt( abs( ps_upf%anorm(j) ) )
-       ps_upf%vps(:,j) = sqrt(0.5d0)*ps_upf%vps(:,j)*tmp
+       tmp = sqrt( abs( psp%anorm(j) ) )
+       psp%viod(:,j) = sqrt(0.5d0)*psp%viod(:,j)*tmp
     end do
 
-    ps_upf%nrr  = nrr + 1
-    ps_upf%norb = norb
-
-    ps_upf%vql(:)   = 0.5d0*ps_upf%vql(:)
+    deallocate( viod, anorm, inorm, NRps, lo )
+    deallocate( cdd, cdc, vql, rx, rr )
 
     write(*,*) "*** Unified Pseudopotenetial Format (UPF) ***"
-    write(*,*) "Znuc=",ps_upf%znuc
-    write(*,*) "# of radial mesh points =",nrr
-    write(*,*) "# of orbitals =",norb
-    write(*,*) "angular momentum =",ps_upf%lo(1:norb)
-    write(*,*) "cut off radius =",ps_upf%Rc(1:norb)
-    write(*,*) "# of grid points within cut off radius",ps_upf%NRc(1:norb)
+    write(*,*) "Znuc=",psp%Zps
+    write(*,*) "# of radial mesh points =",psp%Mr
+    write(*,*) "# of orbitals =",psp%norb
+    write(*,*) "angular momentum =",psp%lo(1:psp%norb)
+    write(*,*) "cut off radius =",psp%Rps(1:psp%norb)
+    write(*,*) "# of grid points within cut off radius",psp%NRps(1:psp%norb)
     write(*,*) "uVu integral (anorm) ="
-    write(*,'(1x,8f10.5)') ( ps_upf%inorm(i)*ps_upf%anorm(i),i=1,norb )
-    write(*,*) "sum(rhov)=",sum(ps_upf%cdd*ps_upf%rx)
-    write(*,*) "sum(rhoc)=",sum(ps_upf%cdc*ps_upf%rx*(ps_upf%rr)**2)*4*acos(-1.d0)
+    write(*,'(1x,8f10.5)') ( psp%inorm(i)*psp%anorm(i),i=1,psp%norb )
+    write(*,*) "sum(rhov)=",sum(psp%cdd*psp%rab)
+    write(*,*) "sum(rhoc)=",sum(psp%cdc*psp%rab*(psp%rad)**2)*4*acos(-1.d0)
 
     write(*,'(a40," ps_read_upf_verorg(end)")') repeat("-",40)
 
@@ -249,18 +251,23 @@ CONTAINS
   END SUBROUTINE ps_read_upf_verorg
 
 
-  SUBROUTINE ps_read_upf_ver201(g)
+  SUBROUTINE ps_read_upf_ver201( g, psp )
     implicit none
     integer,intent(IN) :: g
-    integer,parameter :: max_loop=1000000
-    integer :: loop,i,j,k,l,no(0:5),lo
+    type(ps1d),intent(INOUT) :: psp
+    integer,parameter :: max_loop=1000000, max_array_size = 8
+    integer :: loop,i,j,k,l
+    integer,allocatable :: lo(:),no(:)
     character(100) :: cbuf, ckey
-    integer :: norb,nrr,nsize
-    real(8) :: tmp
+    integer :: norb,nrr,nsize,ltmp
+    real(8) :: tmp,Zps
+    real(8),allocatable :: rr(:),rx(:),vql(:),cdc(:),cdd(:)
+    real(8),allocatable :: viod(:,:),anorm(:),Dij(:,:)
 
     write(*,'(a40," ps_read_upf_ver201")') repeat("-",40)
 
-    no(:) = 0
+    nrr=0
+    norb=0
 
     do loop=1,max_loop
 
@@ -287,7 +294,7 @@ CONTAINS
                 j = j + len_trim( "z_valence=" )
                 k = index( cbuf(j+1:), '"' )
                 ckey=cbuf(j+1:j+k-1)
-                read(ckey,*) ps_upf%znuc
+                read(ckey,*) Zps
              end if
 
              j = index( cbuf, "mesh_size=" )
@@ -313,6 +320,16 @@ CONTAINS
 
        end if ! </PP_HEADER>
 
+       if ( nrr > 0 ) then
+          if ( .not.allocated(rr) ) then
+             allocate( rr(nrr)  ) ; rr =0.0d0
+             allocate( rx(nrr)  ) ; rx =0.0d0
+             allocate( cdc(nrr) ) ; cdc=0.0d0
+             allocate( vql(nrr) ) ; vql=0.0d0
+             allocate( cdd(nrr) ) ; cdd=0.0d0
+          end if
+       end if
+
        if ( ckey(1:9) == "<PP_MESH " ) then
 
           write(*,*) ckey(1:9)
@@ -322,14 +339,14 @@ CONTAINS
              ckey = adjustl( cbuf )
              if ( ckey(1:6) == "<PP_R " ) exit
           end do
-          read(g,*) ps_upf%rr(1:nrr)
+          read(g,*) rr(1:nrr)
 
           do i=1,max_loop
              read(g,'(a)') cbuf
              ckey = adjustl( cbuf )
              if ( ckey(1:8) == "<PP_RAB " ) exit
           end do
-          read(g,*) ps_upf%rx(1:nrr)
+          read(g,*) rx(1:nrr)
 
        end if ! </PP_MESH>
 
@@ -337,7 +354,7 @@ CONTAINS
 
           write(*,*) ckey(1:9)
 
-          read(g,*) ps_upf%cdc(1:nrr)
+          read(g,*) cdc(1:nrr)
 
        end if
 
@@ -345,9 +362,17 @@ CONTAINS
 
           write(*,*) ckey(1:10)
 
-          read(g,*) ps_upf%vql(1:nrr)
+          read(g,*) vql(1:nrr)
 
        end if ! </PP_LOCAL>
+
+       if ( nrr > 0 ) then
+          if ( .not.allocated(lo) ) then
+             allocate( lo(max_array_size)       ) ; lo=0
+             allocate( no(0:max_array_size)     ) ; no=0
+             allocate( viod(nrr,max_array_size) ) ; viod=0.0d0
+          end if
+       end if
 
        if ( ckey(1:13) == "<PP_NONLOCAL>" ) then
 
@@ -363,15 +388,14 @@ CONTAINS
 
                 do k=1,max_loop
 
-                   call get_num_from_string( cbuf, "angular_momentum=", lo )
+                   call get_num_from_string( cbuf, "angular_momentum=", ltmp )
 
                    l=index( cbuf, ">" )
                    if ( l /= 0 ) then
                       j=j+1
-                      read(g,*) ps_upf%vps(1:nrr,j)
-                      ps_upf%lo(j) = lo
-                      no(lo) = no(lo) + 1
-                      ps_upf%no(j) = no(lo)
+                      read(g,*) viod(1:nrr,j)
+                      lo(j)=ltmp
+                      no(lo(j)) = no(lo(j)) + 1
                       exit
                    end if
 
@@ -385,6 +409,13 @@ CONTAINS
 
           end do ! i
 
+          if ( norb > 0 ) then
+             if ( .not.allocated(Dij) ) then
+                allocate( Dij(norb,norb) ) ; Dij=0.0d0
+                allocate( anorm(norb)    ) ; anorm=0.0d0
+             end if
+          end if
+
           do i=1,max_loop
 
              read(g,'(a)') cbuf
@@ -393,17 +424,17 @@ CONTAINS
              if ( ckey(1:8) == "<PP_DIJ " ) then
                 call get_num_from_string( cbuf, "size=", nsize )
                 write(*,*) "nsize=",nsize
-                read(g,*) ps_upf%Dij(1:norb,1:norb)
-                j=count( ps_upf%Dij /= 0.0d0 )
+                read(g,*) Dij(1:norb,1:norb)
+                j=count( Dij /= 0.0d0 )
                 k=0
                 do l=1,norb
-                   if ( ps_upf%Dij(l,l) /= 0.0d0 ) k=k+1
+                   if ( Dij(l,l) /= 0.0d0 ) k=k+1
                 end do
                 if ( j == k ) then
                    do l=1,norb
-                      ps_upf%anorm(l) = ps_upf%Dij(l,l)
+                      anorm(l) = Dij(l,l)
                    end do
-                   ps_upf%Dij=0.0d0
+                   Dij(:,:)=0.0d0
                 end if
                 exit
              end if
@@ -416,7 +447,7 @@ CONTAINS
 
           write(*,*) ckey(1:12)
 
-          read(g,*) ps_upf%cdd(1:nrr)
+          read(g,*) cdd(1:nrr)
           exit
 
        end if
@@ -424,61 +455,79 @@ CONTAINS
     end do ! loop
 10 continue
 
+    psp%Mr = nrr + 1
+    psp%norb = norb
+    call ps_allocate_ps1d( psp )
+
+    psp%Zps = Zps
+
     do i=nrr+1,2,-1
-       ps_upf%rr(i)    = ps_upf%rr(i-1)
-       ps_upf%rx(i)    = ps_upf%rx(i-1)
-       ps_upf%cdd(i)   = ps_upf%cdd(i-1)
-       ps_upf%vql(i)   = ps_upf%vql(i-1)
-       ps_upf%vps(i,:) = ps_upf%vps(i-1,:)
-       ps_upf%rr(i)    = ps_upf%rr(i-1)
+       psp%rad(i) =  rr(i-1)
+       psp%rab(i) =  rx(i-1)
+       psp%cdd(i) = cdd(i-1)
+       psp%cdc(i) = cdc(i-1)
+       psp%vql(i) = vql(i-1)
     end do
-    ps_upf%rr(1)    = 0.0d0
-    ps_upf%rx(1)    = 0.0d0
-    ps_upf%cdd(1)   = 0.0d0
-    ps_upf%vql(1)   = ps_upf%vql(2)
-    ps_upf%vps(1,:) = 0.0d0
+    psp%rad(1) = 0.0d0
+    psp%rab(1) = 0.0d0
+    psp%cdd(1) = 0.0d0
+    psp%cdc(1) = 0.0d0
+    psp%vql(1) = psp%vql(2)
+
+    psp%vql(:) = 0.5d0*psp%vql(:)
+
+    do j=1,norb
+       psp%lo(j) = lo(j)
+       psp%no(j) = no( lo(j) )
+    end do
+
+    do j=1,norb
+       do i=nrr+1,2,-1
+          psp%viod(i,j) = viod(i-1,j)
+       end do
+       psp%viod(1,j) = 0.0d0
+    end do
 
     do j=1,norb
        do i=nrr,1,-1
-          if ( abs(ps_upf%vps(i,j)) >=1.d-13 ) then
-             ps_upf%Rc(j) = ps_upf%rr(i-1)
-             ps_upf%NRc(j)= i-1
+          if ( abs(psp%viod(i,j)) >=1.d-13 ) then
+             psp%Rps(j) = psp%rad(i-1)
+             psp%NRps(j)= i-1
              exit
           end if
        end do
     end do
 
-    if ( any( ps_upf%anorm /= 0.0d0 ) ) then
+    if ( any( psp%anorm /= 0.0d0 ) ) then
        do j=1,norb
-          ps_upf%inorm(j)=1
-          if ( ps_upf%anorm(j) < 0.0d0 ) ps_upf%inorm(j)=-1
-          tmp = sqrt( abs( ps_upf%anorm(j) ) )
-          ps_upf%vps(:,j) = sqrt(0.5d0)*ps_upf%vps(:,j)*tmp
+          psp%inorm(j)=1
+          if ( psp%anorm(j) < 0.0d0 ) psp%inorm(j)=-1
+          tmp = sqrt( abs( psp%anorm(j) ) )
+          psp%viod(:,j) = sqrt(0.5d0)*psp%viod(:,j)*tmp
        end do
     else
        do j=1,norb
-          ps_upf%vps(:,j) = sqrt(0.5d0)*ps_upf%vps(:,j)
+          psp%viod(:,j) = sqrt(0.5d0)*psp%viod(:,j)
        end do
     end if
 
-    ps_upf%vql(:)   = 0.5d0*ps_upf%vql(:)
-
-    ps_upf%nrr  = nrr + 1
-    ps_upf%norb = norb
+    deallocate( Dij, anorm )
+    deallocate( viod, no, lo )
+    deallocate( cdd, vql, cdc, rx, rr )
 
     write(*,*) "*** Unified Pseudopotenetial Format (UPF) ***"
-    write(*,*) "Znuc=",ps_upf%znuc
-    write(*,*) "# of radial mesh points =",nrr
-    write(*,*) "# of orbitals =",norb
-    write(*,*) "angular momentum =",ps_upf%lo(1:norb)
-    write(*,*) "cut off radius =",ps_upf%Rc(1:norb)
-    write(*,*) "# of grid points within cut off radius",ps_upf%NRc(1:norb)
+    write(*,*) "Znuc=",psp%Zps
+    write(*,*) "# of radial mesh points =",psp%Mr
+    write(*,*) "# of orbitals =",psp%norb
+    write(*,*) "angular momentum =",psp%lo(1:psp%norb)
+    write(*,*) "cut off radius =",psp%Rps(1:psp%norb)
+    write(*,*) "# of grid points within cut off radius",psp%NRps(1:psp%norb)
     write(*,*) "uVu integral (anorm) ="
-    write(*,'(1x,8f10.5)') ( ps_upf%inorm(i)*ps_upf%anorm(i),i=1,norb )
+    write(*,'(1x,8f10.5)') ( psp%inorm(i)*psp%anorm(i),i=1,psp%norb )
     write(*,*) "Dij ="
-    write(*,'(1x,9f10.5)') (( ps_upf%Dij(i,j),i=1,norb ),j=1,norb)
-    write(*,*) "sum(rhov)=",sum(ps_upf%cdd*ps_upf%rx)
-    write(*,*) "sum(rhoc)=",sum(ps_upf%cdc*ps_upf%rx*(ps_upf%rr)**2)*4*acos(-1.0d0)
+    write(*,'(1x,9f10.5)') (( psp%Dij(i,j),i=1,psp%norb ),j=1,psp%norb)
+    write(*,*) "sum(rhov)=",sum(psp%cdd*psp%rab)
+    write(*,*) "sum(rhoc)=",sum(psp%cdc*psp%rab*(psp%rad)**2)*4*acos(-1.d0)
 
     write(*,'(a40," ps_read_upf_ver201(end)")') repeat("-",40)
 

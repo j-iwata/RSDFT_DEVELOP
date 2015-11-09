@@ -1,5 +1,10 @@
 MODULE ps_initrho_mol_module
 
+  use pseudopot_module
+  use atom_module
+  use array_bound_module
+  use density_module
+  use rgrid_mol_module
   use polint_module
 
   PRIVATE
@@ -12,12 +17,11 @@ CONTAINS
 
 
   SUBROUTINE init_ps_initrho_mol
-    use pseudopot_module
     implicit none
     integer :: ir,ik,MKI
     real(8) :: pi4
 
-    MKI=Npseudopot
+    MKI=Nelement
     pi4=4.d0*acos(-1.d0)
 
     allocate( flag_initrho(MKI) )
@@ -47,11 +51,6 @@ CONTAINS
 
 
   SUBROUTINE construct_ps_initrho_mol
-    use pseudopot_module
-    use atom_module
-    use array_bound_module
-    use density_module
-    use rgrid_mol_module
     implicit none
     integer :: i,ir,ir0,ik,MKI,Mr0,Mr1,nr,a,M_irad,m,mm,m1,m2
     integer,allocatable ::NRc(:),irad(:,:)
@@ -64,7 +63,7 @@ CONTAINS
        rho=0.d0
     end if
 
-    MKI=Npseudopot
+    MKI=Nelement
 
     allocate( NRc(MKI) )
 
