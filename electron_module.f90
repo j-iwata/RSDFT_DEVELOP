@@ -11,14 +11,14 @@ MODULE electron_module
            ,Ndspin,Nfixed &
            ,read_electron,count_electron &
            ,read_oldformat_electron &
-           ,NSelectron, dspin
+           ,Nelectron_spin, dspin
 
   integer :: Nband, Nspin, Nfixed
   real(8) :: Nelectron,Next_electron,Ndspin
   integer :: MB_0,MB_1,MSP_0,MSP_1
 
   integer,parameter :: unit_sc=980
-  real(8) :: NSelectron(2)
+  real(8) :: Nelectron_spin(2)
   real(8),allocatable :: dspin(:)
 
 CONTAINS
@@ -128,17 +128,17 @@ CONTAINS
 
   SUBROUTINE count_electron
     integer :: i
-    Nelectron=0.d0
+    Nelectron=0.0d0
     do i=1,Natom
-       Nelectron=Nelectron+Zps(ki_atom(i))
+       Nelectron = Nelectron + Zps(ki_atom(i))
     end do
-    Nelectron=Nelectron+Next_electron
-    if ( nint(Nelectron)>2*Nband ) then
+    Nelectron = Nelectron + Next_electron
+    if ( nint(Nelectron) > 2*Nband ) then
        write(*,*) "Nband is too small!!!"
        stop 'count_eletron'
     end if
-    NSelectron(1)=0.5d0*Nelectron + 0.5d0*Ndspin
-    NSelectron(2)=0.5d0*Nelectron - 0.5d0*Ndspin
+    Nelectron_spin(1) = 0.5d0*Nelectron + 0.5d0*Ndspin
+    Nelectron_spin(2) = 0.5d0*Nelectron - 0.5d0*Ndspin
   END SUBROUTINE count_electron
 
 

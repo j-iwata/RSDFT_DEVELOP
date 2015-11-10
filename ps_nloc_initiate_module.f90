@@ -1,4 +1,4 @@
-MODULE ps_initiate_module
+MODULE ps_nloc_initiate_module
 
   use ps_nloc2_init_module, only: ps_nloc2_init,rcfac,qcfac,etafac
   use ps_nloc2_module, only: prep_ps_nloc2
@@ -14,11 +14,11 @@ MODULE ps_initiate_module
   implicit none
 
   PRIVATE
-  PUBLIC :: ps_initiate
+  PUBLIC :: ps_nloc_initiate
 
 CONTAINS
 
-  SUBROUTINE ps_initiate( Gcut )
+  SUBROUTINE ps_nloc_initiate( Gcut )
 
     implicit none
     real(8),intent(IN) :: Gcut
@@ -55,6 +55,6 @@ CONTAINS
 
     end select
 
-  END SUBROUTINE ps_initiate
+  END SUBROUTINE ps_nloc_initiate
 
-END MODULE ps_initiate_module
+END MODULE ps_nloc_initiate_module

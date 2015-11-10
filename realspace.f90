@@ -5,14 +5,12 @@ PROGRAM Real_Space_Solid
   use func2gp_module
   use band_module
   use band_sseig_module
-  use psv_initrho_module
-  use random_initrho_module
-  use ps_initiate_module
   use hamiltonian_matrix_module
   use rtddft_mol_module
   use omp_variables, only: init_omp
   use test_rtsol_module
 
+  use ps_nloc_initiate_module
   use ps_getDij_module
   use ps_q_init_module
 
@@ -152,7 +150,6 @@ PROGRAM Real_Space_Solid
 
      call init_ps_local
      call init_ps_pcc
-     call init_ps_initrho
 
      call watcht(disp_switch,"strf",0)
 
@@ -168,20 +165,11 @@ PROGRAM Real_Space_Solid
 
      call watcht(disp_switch,"pcc",1)
 
-     call read_psv_initrho( Nelement, myrank, 1, info )
-     select case( info )
-     case default
-        call construct_ps_initrho
-     case( 2 )
-        call construct_r_ps_initrho
-     case( 3 )
-        call construct_RandomInitrho
-     end select
-     call normalize_density
+     call construct_ps_initrho( rho )
 
      call destruct_strfac !----- structure factor
 
-     call ps_initiate( Gcut )
+     call ps_nloc_initiate( Gcut )
 
 !----------------------- MOL mol -----
 

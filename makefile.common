@@ -45,7 +45,6 @@ MODS1 = \
        var_para_ps_nloc_g.o\
        mixing_broyden_module.o\
        mixing_pulay_module.o\
-       ps_gth_module.o\
        basic_type_methods.o\
        simc_module.o\
        mixing_module.o\
@@ -59,6 +58,7 @@ MODS1 = \
        rgrid_sol_module.o\
        scalapack_module.o\
        var_ps_member.o\
+       ps_gth_module.o\
        ps_read_upf_module.o\
        ps_read_yb_module.o\
        ps_read_tm_module.o\
@@ -142,12 +142,12 @@ MODS1 = \
        kinetic_module.o\
        xc_hybrid_module.o\
        ps_initrho_mol_module.o\
+       random_initrho_module.o\
        ps_initrho_module.o\
        gram_schmidt_t_module.o\
        localpot_module.o\
        xc_hse_module.o\
        fock_ffte_module.o\
-       random_initrho_module.o\
        cgpc_2_module.o\
        force_ps_nloc2.o\
        cgpc_diag_module.o\
@@ -184,7 +184,7 @@ MODS1 = \
        conjugate_gradient_g.o\
        total_energy_module.o\
        io_module.o\
-       ps_initiate_module.o\
+       ps_nloc_initiate_module.o\
        subspace_diag_sl_module.o\
        sseig.o\
        ps_local_mol_gth_module.o\
