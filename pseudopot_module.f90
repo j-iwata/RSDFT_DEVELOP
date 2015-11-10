@@ -47,7 +47,7 @@ CONTAINS
     integer,intent(IN) :: Nelement_in, rank
     real(8),allocatable :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
     real(8),allocatable :: ddi_(:,:,:),qqr_(:,:,:)
-    integer :: i,j,io,jo,lj
+    integer :: i,j,io,jo,li,lj
     integer :: Lrefmax,Rrefmax,npqmax,nsmpl
 
     Nelement = Nelement_in
@@ -150,6 +150,21 @@ CONTAINS
                 qrL(1:nsmpl,1:Lrefmax,1:npqmax,ielm) = &
                      ps(ielm)%qrL(1:nsmpl,1:Lrefmax,1:npqmax)
 
+             else if (  count( ps(ielm)%anorm /= 0.0d0 ) &
+                      < count( ps(ielm)%Dij /= 0.0d0 )  ) then !--> MultiRef
+
+                ps_type=1
+                do j=1,ps(ielm)%norb
+                   jo=ps(ielm)%no(j)
+                   lj=ps(ielm)%lo(j)
+                do i=1,ps(ielm)%norb
+                   io=ps(ielm)%no(i)
+                   li=ps(ielm)%lo(i)
+                   if ( li /= lj ) cycle
+                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
+                end do
+                end do
+
              end if
 
           case( 3 )
@@ -214,15 +229,17 @@ CONTAINS
              rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
              viod(1:Mr(ielm),1:norb(ielm),ielm) &
                                       = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-             if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then
-                ps_type = 1 ! Multireference
+
+             if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
+                ps_type = 1
                 do j=1,norb(ielm)
                    jo=no(j,ielm)
                    lj=lo(j,ielm)
                 do i=1,norb(ielm)
                    io=no(i,ielm)
-                   if ( lo(i,ielm) /= lj ) cycle
-                   hnml(io,jo,lj,ielm) = ps(ielm)%Dij(i,j)
+                   li=lo(i,ielm)
+                   if ( li /= lj ) cycle
+                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
                 end do
                 end do
              end if
