@@ -33,17 +33,17 @@ CONTAINS
 
     pi4 = 4.0d0*acos(-1.0d0)
 
-    allocate( tlo(2*lmax) )
-    allocate( tviod(lmax,nrmax) )
-    allocate( tanorm(lmax) )
-    allocate( tinorm(lmax) )
+    allocate( tlo(2*lmax)       ) ; tlo=0
+    allocate( tviod(lmax,nrmax) ) ; tviod=0.0d0
+    allocate( tanorm(lmax)      ) ; tanorm=0.0d0
+    allocate( tinorm(lmax)      ) ; tinorm=0
 
     read(g) nameat,icorr,irel,nicore,iray,ititle,norb,numu,nrr,a0,b0,Zps
 
     nrr=nrr+1
 
     ps%Mr = nrr
-    ps%norb = norb
+    ps%norb = norb-1
     call ps_allocate_ps1d( ps )
 
     ps%Zps = Zps
