@@ -94,7 +94,7 @@ CONTAINS
   END SUBROUTINE construct_ps_initrho
 
 
-  SUBROUTINE init_ps_initrho
+  SUBROUTINE init_ps_initrho_g
     implicit none
     integer :: i,ig,ik,MKI
     real(8) :: sum0,G,x,sb,const,Vcell
@@ -142,7 +142,7 @@ CONTAINS
        end do
        deallocate( tmp )
     end do ! ik
-  END SUBROUTINE init_ps_initrho
+  END SUBROUTINE init_ps_initrho_g
 
   SUBROUTINE simp(f,s,m)
     implicit none
@@ -193,7 +193,7 @@ CONTAINS
     real(8),allocatable :: rho_tmp(:,:),nelectron_ik(:)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:),vg(:)
 
-    call init_ps_initrho
+    call init_ps_initrho_g
 
     if ( .not. flag_initrho_0 ) return
 

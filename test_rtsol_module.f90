@@ -6,6 +6,9 @@ MODULE test_rtsol_module
 
   implicit none
 
+  PRIVATE
+  PUBLIC :: test_rtsol
+
   real(8) :: dt    = 0.001d0
   integer :: nt    = 10
   integer :: nalg  = 4
@@ -17,6 +20,11 @@ CONTAINS
 
 
   SUBROUTINE test_rtsol
+
+#ifdef _DRSDFT_
+    write(*,*) "test_rtsol is available only for COMPLEX16 version !!!"
+    return
+#else
 
     implicit none
     logical :: disp_sw
@@ -84,6 +92,8 @@ CONTAINS
     deallocate( zcoef )
 
     call write_border(60," test_rtsol(end)")
+
+#endif
 
   END SUBROUTINE test_rtsol
 
