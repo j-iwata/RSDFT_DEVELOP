@@ -21,7 +21,7 @@ MODULE io_tools_module
   include 'mpif.h'
 
   integer :: myrank
-  integer :: unit
+  integer :: unit_default
 
 CONTAINS
 
@@ -30,16 +30,18 @@ CONTAINS
     implicit none
     integer,intent(IN) :: myrank_in, unit_in
     myrank = myrank_in
-    unit = unit_in
+    unit_default = unit_in
   END SUBROUTINE init_io_tools
 
 
-  SUBROUTINE IOTools_readStringKeyword( keyword, variable )
+  SUBROUTINE IOTools_readStringKeyword( keyword, variable, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     character(*),intent(INOUT) :: variable
+    integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
-    integer :: i
+    integer :: i,unit
+    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
        rewind unit
        do i=1,max_trial_read
@@ -57,12 +59,14 @@ CONTAINS
   END SUBROUTINE IOTools_readStringKeyword
 
 
-  SUBROUTINE IOTools_readIntegerKeyword( keyword, variable )
+  SUBROUTINE IOTools_readIntegerKeyword( keyword, variable, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     integer,intent(INOUT) :: variable
+    integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
-    integer :: i
+    integer :: i,unit
+    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
        rewind unit
        do i=1,max_trial_read
@@ -80,12 +84,14 @@ CONTAINS
   END SUBROUTINE IOTools_readIntegerKeyword
 
 
-  SUBROUTINE IOTools_readIntegerKeywords( keyword, variables )
+  SUBROUTINE IOTools_readIntegerKeywords( keyword, variables, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     integer,intent(INOUT) :: variables(:)
+    integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
-    integer :: i
+    integer :: i,unit
+    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
        rewind unit
        do i=1,max_trial_read
@@ -103,12 +109,14 @@ CONTAINS
   END SUBROUTINE IOTools_readIntegerKeywords
 
 
-  SUBROUTINE IOTools_readReal8Keyword( keyword, variable )
+  SUBROUTINE IOTools_readReal8Keyword( keyword, variable, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     real(8),intent(INOUT) :: variable
+    integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
-    integer :: i
+    integer :: i,unit
+    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
        rewind unit
        do i=1,max_trial_read
@@ -126,12 +134,14 @@ CONTAINS
   END SUBROUTINE IOTools_readReal8Keyword
 
 
-  SUBROUTINE IOTools_readReal8Keywords( keyword, variables )
+  SUBROUTINE IOTools_readReal8Keywords( keyword, variables, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     real(8),intent(INOUT) :: variables(:)
+    integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
-    integer :: i
+    integer :: i,unit
+    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
        rewind unit
        do i=1,max_trial_read
@@ -149,13 +159,15 @@ CONTAINS
   END SUBROUTINE IOTools_readReal8Keywords
 
 
-  SUBROUTINE IOTools_readIntegerString( keyword, variable1, variable2 )
+  SUBROUTINE IOTools_readIntegerString( keyword, variable1, variable2, u )
     implicit none
     character(*),intent(IN) :: keyword
     integer,intent(INOUT) :: variable1
     character(*),intent(INOUT) :: variable2
+    integer,optional,intent(IN) :: u
     character(10) :: cbuf,ckey
-    integer :: i
+    integer :: i,unit
+    unit=unit_default ; if ( present(u) ) unit=u
     if ( myrank == 0 ) then
        rewind unit
        do i=1,max_trial_read

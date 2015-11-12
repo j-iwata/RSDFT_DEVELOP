@@ -16,8 +16,8 @@ MODS1 = \
        omp_variables.o\
        io_tools_module.o\
        xc_pw92_gth_module.o\
-       atom_module.o\
        lattice_module.o\
+       atom_module.o\
        kinetic_variables.o\
        rgrid_variables.o\
        parallel_module.o\

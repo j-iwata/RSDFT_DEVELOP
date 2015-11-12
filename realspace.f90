@@ -15,11 +15,12 @@ PROGRAM Real_Space_Solid
   use ps_q_init_module
 
   use WFtest
-  use io_tools_module, only: init_io_tools
+  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
   use lattice_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
+  integer,parameter :: unit_atomic_coordinates = 970
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
   integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3,info
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
@@ -51,32 +52,36 @@ PROGRAM Real_Space_Solid
      
 ! --- input parameters ---
 
-  call read_parameters
-
   call init_io_tools( myrank, unit_input_parameters )
 
-! --- R-space Lattice & Grid ---
+  call read_parameters
 
-  call init_aa
-  call construct_aa_lattice( aa_obj )
+! ---  Type of System ( RS-SOL or RS-MOL ) ---
 
-  call Init_Rgrid( SYStype, Md, unit=2 )
+  call IOTools_readIntegerKeyword( "SYSTYPE", Systype )
+
+! --- atomic coordinates & R-space Lattice ---
+
+  call check_format_atom( myrank, unit_atomic_coordinates, aa_obj )
+
+  call init_aa( aa_obj )
+
+  if ( SYStype == 0 ) then
+     call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
+  else if ( SYStype == 1 ) then
+     call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
+  end if
+
+  call backup_aa_lattice( aa_obj )
 
 ! --- Reciprocal Lattice ---
 
   call construct_bb(aa)
   call get_reciprocal_lattice( aa_obj, bb_obj )
 
-  if ( disp_switch ) then
-     write(*,*) "bx=",bb_obj%LatticeConstant
-     write(*,'(1x,3f20.15)') bb_obj%LatticeVector(1:3,1)
-     write(*,'(1x,3f20.15)') bb_obj%LatticeVector(1:3,2)
-     write(*,'(1x,3f20.15)') bb_obj%LatticeVector(1:3,3)
-     write(*,*) "bx=",2.0d0*acos(-1.0d0)/ax
-     write(*,'(1x,3f20.15)') bb(1:3,1)
-     write(*,'(1x,3f20.15)') bb(1:3,2)
-     write(*,'(1x,3f20.15)') bb(1:3,3)
-  end if
+! --- R-space & G-space Grid ---
+
+  call Init_Rgrid( SYStype, Md, unit=2 )
 
   call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 

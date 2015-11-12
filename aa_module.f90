@@ -1,6 +1,6 @@
 MODULE aa_module
 
-  use lattice_module, only: init_lattice
+  use lattice_module, only: lattice, construct_aa_lattice
   use io_tools_module
 
   implicit none
@@ -20,11 +20,19 @@ MODULE aa_module
 
 CONTAINS
 
-  SUBROUTINE init_aa
+  SUBROUTINE init_aa( aa_obj )
     implicit none
+    type(lattice),intent(INOUT) :: aa_obj
     call read_aa
+    if ( ax == 0.0d0 ) then
+       ax = aa_obj%LatticeConstant
+       aa = aa_obj%LatticeVector/ax
+    else
+       aa_obj%LatticeConstant = ax
+       aa_obj%LatticeVector = aa
+       call construct_aa_lattice( aa_obj )
+    end if
     call set_org_aa( ax, aa )
-    call init_lattice( ax, aa )
     call construct_aa
   END SUBROUTINE init_aa
 

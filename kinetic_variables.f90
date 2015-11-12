@@ -11,7 +11,7 @@ MODULE kinetic_variables
   PUBLIC :: read_kinetic, read_oldformat_kinetic
   PUBLIC :: coef_kin
 
-  integer :: SYStype
+  integer :: SYStype=0
   integer :: Md
   logical :: flag_nab, flag_n12, flag_n23, flag_n31
   real(8) :: coef_lap0, ggg(6)

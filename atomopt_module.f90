@@ -3,7 +3,6 @@ MODULE atomopt_module
   use parallel_module
   use atom_module
   use total_energy_module
-  use aa_module
   use bb_module
   use scf_module
   use eion_module, only: calc_eion
@@ -39,7 +38,10 @@ MODULE atomopt_module
   logical :: disp_switch_loc
   integer :: diter_opt
 
-  integer :: strlog
+  integer :: strlog = 0
+  integer,parameter :: unit_strlog = 297
+  integer,parameter :: unit197 = 197
+  integer,parameter :: unit97 = 97
 
 CONTAINS
 
@@ -53,7 +55,6 @@ CONTAINS
     most      = 6
     nrfr      = 5
     diter_opt = 50
-    strlog    = 0
     okatom    = 0.5d0
     eeps      = 1.d-10
     feps      = 5.d-4
@@ -167,7 +168,9 @@ CONTAINS
 
     if ( iswitch_opt < 2  ) then
 
-       if ( iswitch_opt == 1 ) call calc_total_energy(.false.,disp_switch_loc,1000)
+       if ( iswitch_opt == 1 ) then
+          call calc_total_energy(.false.,disp_switch_loc,1000)
+       end if
 
        call calc_force( Natom, Force )
 
@@ -243,7 +246,7 @@ CONTAINS
     end if
 
     call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
-       
+
     disp_switch = .false.
     disp_switch_parallel = .false.
 
@@ -587,16 +590,27 @@ CONTAINS
 !
 ! --- Trial Configuration ---
 !                  
+          if ( SYStype == 0 ) then
 
-          c0=alpha1/(2.d0*pi)
-          do a=1,Natom
-             c1=c0*hi(1,a)
-             c2=c0*hi(2,a)
-             c3=c0*hi(3,a)
-             aa_atom(1,a)=aa_atom_0(1,a)+bb(1,1)*c1+bb(2,1)*c2+bb(3,1)*c3
-             aa_atom(2,a)=aa_atom_0(2,a)+bb(1,2)*c1+bb(2,2)*c2+bb(3,2)*c3
-             aa_atom(3,a)=aa_atom_0(3,a)+bb(1,3)*c1+bb(2,3)*c2+bb(3,3)*c3
-          end do
+             c0=alpha1/(2.d0*pi)
+             do a=1,Natom
+                c1=c0*hi(1,a)
+                c2=c0*hi(2,a)
+                c3=c0*hi(3,a)
+                aa_atom(1,a)=aa_atom_0(1,a)+bb(1,1)*c1+bb(2,1)*c2+bb(3,1)*c3
+                aa_atom(2,a)=aa_atom_0(2,a)+bb(1,2)*c1+bb(2,2)*c2+bb(3,2)*c3
+                aa_atom(3,a)=aa_atom_0(3,a)+bb(1,3)*c1+bb(2,3)*c2+bb(3,3)*c3
+             end do
+
+          else if ( SYStype == 1 ) then
+
+             do a=1,Natom
+                aa_atom(1,a) = aa_atom_0(1,a) + alpha1*hi(1,a)
+                aa_atom(2,a) = aa_atom_0(2,a) + alpha1*hi(2,a)
+                aa_atom(3,a) = aa_atom_0(3,a) + alpha1*hi(3,a)
+             end do
+
+          end if
 
           if ( disp_switch_loc ) then
              write(*,*) 'Trial configuration (see fort.97)'
@@ -620,7 +634,7 @@ CONTAINS
              end if
           end if
 
-          if ( myrank == 0 ) call write_atomic_coordinates_log(97,icy,itlin,0,iswitch_opt)
+          call write_atomic_coordinates_log(97,icy,itlin,0,iswitch_opt)
 
 !
 ! --- SCF ---
@@ -741,7 +755,7 @@ CONTAINS
              end do
           end if
 
-          if ( myrank == 0 ) call write_atomic_coordinates_log(97,icy,itlin,2,iswitch_opt)
+          call write_atomic_coordinates_log(97,icy,itlin,2,iswitch_opt)
 
 !
 ! --- Convergence check 2 ---
@@ -808,9 +822,10 @@ CONTAINS
 
 !  Best structure on a line.
 
-       if ( disp_switch_loc ) write(*,*) 'Best structure on a line (see fort.197)'
-
-       if ( myrank == 0 ) call write_atomic_coordinates_log(197,icy,itlin,1,iswitch_opt)
+       if ( disp_switch_loc ) then
+          write(*,*) 'Best structure on a line (see fort.197)'
+       end if  
+       call write_atomic_coordinates_log(197,icy,itlin,1,iswitch_opt)
 
 !
 ! --- Convergence check 3 ---
@@ -904,96 +919,23 @@ CONTAINS
   SUBROUTINE write_atomic_coordinates_log(unit,icy,itlin,flag,iswitch_opt)
     implicit none
     integer, intent(IN) :: unit,icy,itlin,flag,iswitch_opt
-    integer :: u1
 
-    call write_atomic_coordinates( unit, .true.  )
-    call write_atomic_coordinates( unit, .false. )
+    if ( myrank == 0 ) call write_coordinates_atom( unit, 3 )
 
-    if ( strlog == 0 .or. flag /= strlog ) return
-
-    u1 = 297
-
-    if ( icy == 0 ) then
-      open(u1,file="strlog.dat")
-      if ( iswitch_opt >= 2 ) return
-      call write_atomic_coordinates( u1, .true. )
+    if ( strlog /= 0 .and. flag == strlog ) then
+       if ( icy == 0 ) then
+          if ( myrank == 0 ) open(unit_strlog,file="strlog.dat")
+          if ( iswitch_opt >= 2 ) return
+          if ( myrank == 0 ) call write_coordinates_atom( unit_strlog, 1 )
+       end if
+       if ( myrank == 0 ) then
+          write(unit_strlog,'("#_STRLOG_",a63," icy, itlin =",2(X,I3))') &
+               repeat("-",63),icy,itlin
+          call write_coordinates_atom( unit_strlog, 2 )
+       end if
     end if
-
-    write(u1,'("#_STRLOG_",a63," icy, itlin =",2(X,I3))') repeat("-",63),icy,itlin
-
-    call write_atomic_coordinates( u1, .false. )
 
   END SUBROUTINE write_atomic_coordinates_log  
-
-
-  SUBROUTINE write_atomic_coordinates(unit,flag_header)
-    implicit none
-    integer,intent(IN) :: unit
-    logical,intent(IN) :: flag_header
-    integer :: a
-    real(8) :: ax_org,aa_org(3,3),bb_tmp(3,3),aa_inv(3,3),vtmp(3)
-
-    call get_org_aa(ax_org,aa_org)
-
-    if ( flag_header ) then
-       rewind unit
-       write(unit,'("AX",1f20.15)') ax_org
-       write(unit,'("A1",3f20.15)') aa_org(1:3,1)
-       write(unit,'("A2",3f20.15)') aa_org(1:3,2)
-       write(unit,'("A3",3f20.15)') aa_org(1:3,3)
-       if ( atom_format == 1 ) then
-          write(unit,'("AA")')
-       else if ( atom_format == 2 ) then
-          write(unit,'("XYZ")')
-       end if
-       write(unit,*) Nelement,Natom,zn_atom(1:Nelement), " /"
-       return
-    end if
-
-    select case( SYStype )
-    case default
-
-       if ( atom_format == 1 ) then
-
-          do a=1,Natom
-             write(unit,'(1x,i5,3f20.12,i4)') &
-                  ki_atom(a),aa_atom(:,a),md_atom(a)
-          end do
-
-       else if ( atom_format == 2 ) then
-
-          aa_org(:,:)=ax_org*aa_org(:,:)
-          do a=1,Natom
-             vtmp(:) = matmul( aa_org,aa_atom(:,a) )
-             write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
-          end do
-
-       end if
-
-    case( 1 )
-
-       if ( atom_format == 1 ) then
-
-          aa_org(:,:)=ax_org*aa_org(:,:)
-          call calc_bb(aa_org,bb_tmp)
-          aa_inv(:,:) = transpose( bb_tmp(:,:) )/( 2.0d0*acos(-1.0d0) )
-          do a=1,Natom
-             vtmp(1:3) = matmul( aa_inv,aa_atom(:,a) )
-             write(unit,'(1x,i5,3f20.12,i4)') ki_atom(a),vtmp(:),md_atom(a)
-          end do
-
-       else if ( atom_format == 2 ) then
-
-          do a=1,Natom
-             write(unit,'(1x,i5,3f20.12,i4)') &
-                  ki_atom(a),aa_atom(:,a),md_atom(a)
-          end do
-
-       end if
-
-    end select
-
-  END SUBROUTINE write_atomic_coordinates
 
    
 END MODULE atomopt_module
