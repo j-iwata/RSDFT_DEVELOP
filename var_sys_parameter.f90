@@ -4,7 +4,7 @@ MODULE VarSysParameter
 
   PRIVATE
 
-  character(4),PUBLIC :: pp_kind
+  character(4),PUBLIC :: pp_kind = "NCPP"
 
   logical :: isRootRank
   logical :: isTestRank

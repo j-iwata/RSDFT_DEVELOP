@@ -37,6 +37,7 @@ MODULE mixing_module
   character(16),parameter :: file_name="vrho_mixing.dat1"
   integer,allocatable :: ir(:),id(:)
   integer :: myrank
+  logical :: first_time=.true.
 
 CONTAINS
 
@@ -49,12 +50,14 @@ CONTAINS
     call IOTools_readIntegerKeyword( "IC", iochk(1) ) 
     call IOTools_readIntegerKeyword( "OC", iochk(2) ) 
     call IOTools_readReal8Keyword( "BETA", beta ) 
-    if ( mmix < 1 ) then
-       mmix=1
-       write(*,*) "mmix is replaced to 1 : mmix=",mmix
+    if ( myrank == 0 ) then
+       if ( mmix < 1 ) then
+          mmix=1
+          write(*,*) "mmix is replaced to 1 : mmix=",mmix
+       end if
+       write(*,*) "beta       =",beta
+       write(*,*) "iomix,IC,OC=",iomix,iochk(1:2)
     end if
-    write(*,*) "beta       =",beta
-    write(*,*) "iomix,IC,OC=",iomix,iochk(1:2)
   END SUBROUTINE read_mixing
 
 
@@ -67,7 +70,12 @@ CONTAINS
     real(8),intent(IN) :: scf_conv_in(2)
     integer :: m,ierr
 
-    call read_mixing
+    myrank = myrank_in
+
+    if ( first_time ) then
+       call read_mixing
+       first_time = .false.
+    end if
 
     beta0      = 1.0d0-beta
     mmix_count = 0
@@ -91,8 +99,6 @@ CONTAINS
        ir(:)=ir_in(:)
        id(:)=id_in(:)
     end if
-
-    myrank = myrank_in
 
     if ( allocated(Xou)  ) deallocate( Xou )
     if ( allocated(Xin)  ) deallocate( Xin )
