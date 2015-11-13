@@ -29,8 +29,9 @@ CONTAINS
   SUBROUTINE read_ppname_pseudopot
     implicit none
     integer :: i
-    do i=1,Nelement
-       call IOTools_readIntegerString( "PP", ippform(i), file_ps(i) )
+    call IOTools_readIntegerString( "PP", ippform(1), file_ps(1) )
+    do i=2,Nelement
+       call IOTools_readIntegerString( "PP", ippform(i), file_ps(i), norewind=.true. )
     end do
   END SUBROUTINE read_ppname_pseudopot
 

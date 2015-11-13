@@ -159,17 +159,18 @@ CONTAINS
   END SUBROUTINE IOTools_readReal8Keywords
 
 
-  SUBROUTINE IOTools_readIntegerString( keyword, variable1, variable2, u )
+  SUBROUTINE IOTools_readIntegerString( keyword, variable1, variable2, u, norewind )
     implicit none
     character(*),intent(IN) :: keyword
     integer,intent(INOUT) :: variable1
     character(*),intent(INOUT) :: variable2
     integer,optional,intent(IN) :: u
+    logical,optional,intent(IN) :: norewind
     character(10) :: cbuf,ckey
     integer :: i,unit
     unit=unit_default ; if ( present(u) ) unit=u
     if ( myrank == 0 ) then
-       rewind unit
+       if ( .not.present(norewind) ) rewind unit
        do i=1,max_trial_read
           read(unit,*,END=999) cbuf
           call convertToCapital(cbuf,ckey)
