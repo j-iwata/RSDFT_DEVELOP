@@ -522,9 +522,9 @@ CONTAINS
        call MPI_ALLREDUCE(c0,c,1,MPI_REAL8,MPI_MAX,comm_grid,ierr)
        if ( disp_switch_parallel ) then
           if ( m_spin == 1 ) then
-             write(*,'(1x,f12.5,3f20.15)') Nelectron,a,b,c
+             write(*,'(1x,f12.5,2x,3f20.10)') Nelectron,a,b,c
           else if ( m_spin == 2 ) then
-             write(*,'(1x,f12.5,3f20.15)') Nelectron_spin(s),a,b,c
+             write(*,'(1x,f12.5,2x,3f20.10)') Nelectron_spin(s),a,b,c
           end if
        end if
     end do

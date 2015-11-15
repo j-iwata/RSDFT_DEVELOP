@@ -129,7 +129,7 @@ CONTAINS
                   = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
              parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
              nlf(ielm)                = ps(ielm)%nlf
-             nrf(:,ielm)              = ps(ielm)%nrf(:)
+             nrf(1:norb(ielm),ielm)   = ps(ielm)%nrf(1:norb(ielm))
 
              if ( pselect == 102 ) then !-----> uspp
 
@@ -194,18 +194,18 @@ CONTAINS
              call read_ps_gth( unit_ps, ps(ielm) )
 
              call ps_allocate( 1, ps(ielm)%norb )
-             norb(ielm)             = ps(ielm)%norb
-             Zps(ielm)              = ps(ielm)%Zps
-             Rps(1:norb(ielm),ielm) = ps(ielm)%Rps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)  = ps(ielm)%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)  = ps(ielm)%no(1:norb(ielm))
-             parloc(1:4,ielm)       = ps(ielm)%parloc(1:4)
-             Rcloc(ielm)            = ps(ielm)%Rcloc
-             hnl(:,:,ielm)          = ps(ielm)%hnl(:,:)
-             knl(:,:,ielm)          = ps(ielm)%knl(:,:)
-             hnml(:,:,:,ielm)       = ps(ielm)%hnml(:,:,:)
-             knml(:,:,:,ielm)       = ps(ielm)%knml(:,:,:)
-             inorm(:,ielm)          = ps(ielm)%inorm(:)
+             norb(ielm)               = ps(ielm)%norb
+             Zps(ielm)                = ps(ielm)%Zps
+             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+             parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
+             Rcloc(ielm)              = ps(ielm)%Rcloc
+             hnl(:,:,ielm)            = ps(ielm)%hnl(:,:)
+             knl(:,:,ielm)            = ps(ielm)%knl(:,:)
+             hnml(:,:,:,ielm)         = ps(ielm)%hnml(:,:,:)
+             knml(:,:,:,ielm)         = ps(ielm)%knml(:,:,:)
+             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
 
              if ( any( hnml /= 0.0d0 ) ) ps_type=1
 

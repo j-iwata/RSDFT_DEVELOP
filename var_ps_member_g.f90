@@ -168,7 +168,7 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
   SUBROUTINE sendPSG(myrank,Nelement_PP)
     implicit none
     integer,intent(IN) :: myrank,Nelement_PP
-    integer :: maxs(1:4),ierr,l,m,n
+    integer :: maxs(1:4),ierr
     include 'mpif.h'
     maxs(1)=max_Lref
     maxs(2)=max_Rref
@@ -179,30 +179,13 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     if ( myrank /= 0 ) then
        call allocatePSG(maxs(1),maxs(2),maxs(3),maxs(4),Nelement_PP)
     end if
-    l=maxs(1)*Nelement_PP
-    m=maxs(2)*maxs(2)*l
-    n=maxs(3)*Nelement_PP
-    call mpi_bcast(npq   ,Nelement_PP,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(ddi   ,m,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(qqr   ,m,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(nl3v  ,n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(l3v   ,maxs(1)*n,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(qrL   ,maxs(4)*maxs(1)*n,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(npq ,size(npq) ,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(ddi ,size(ddi) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(qqr ,size(qqr) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(nl3v,size(nl3v),MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(l3v ,size(l3v) ,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(qrL ,size(qrL) ,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     return
-
-! FOR DEBUG
-    write(300+myrank,*) 'npq='
-    write(300+myrank,*) npq
-    write(300+myrank,*) 'ddi='
-    write(300+myrank,*) ddi
-    write(300+myrank,*) 'qqr='
-    write(300+myrank,*) qqr
-    write(300+myrank,*) 'nl3v='
-    write(300+myrank,*) nl3v
-    write(300+myrank,*) 'l3v='
-    write(300+myrank,*) l3v
-    write(300+myrank,*) 'qrL='
-    write(300+myrank,*) qrL
   END SUBROUTINE sendPSG
 
 !------------------------------------------
