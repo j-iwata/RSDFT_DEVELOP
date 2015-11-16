@@ -35,6 +35,8 @@ MODULE VarPSMemberG
   integer,allocatable,PUBLIC :: k1_to_k2(:,:)
   integer,allocatable,PUBLIC :: k1_to_k3(:,:)
   integer,allocatable,PUBLIC :: k1_to_iorb(:,:,:)
+  integer,allocatable,PUBLIC :: k1_to_l(:,:,:)
+  integer,allocatable,PUBLIC :: k1_to_m(:,:,:)
   integer,allocatable,PUBLIC :: N_k1(:)
 
   integer,allocatable,PUBLIC :: k2_to_iorb(:,:,:)
@@ -106,9 +108,10 @@ CONTAINS
     if ( allocated(k1_to_k2) ) then
       call deallocateKtoK
     end if
-k1max=(Rrefmax*(Lrefmax**2))*(Rrefmax*(Lrefmax**2)+1)/2
-lpsmax=max_Rref*max_Lref
-k3max=(max_Lref**2)*(max_Lref**2+1)/2
+
+    k1max  = (Rrefmax*(Lrefmax**2))*(Rrefmax*(Lrefmax**2)+1)/2
+    lpsmax = max_Rref*max_Lref
+    k3max  = (max_Lref**2)*(max_Lref**2+1)/2
 
     allocate( k1_to_k2(k1max,nki)     ) ; k1_to_k2(:,:)=0
     allocate( k1_to_k3(k1max,nki)     ) ; k1_to_k3(:,:)=0
@@ -118,7 +121,8 @@ k3max=(max_Lref**2)*(max_Lref**2+1)/2
     allocate( k2_to_iorb(2,k2max,nki) ) ; k2_to_iorb(:,:,:)=0
     allocate( N_k2(nki)               ) ; N_k2(:)=0
 
-!    allocate( qqc(Rrefmax,Rrefmax,Lrefmax,nki) ) ; qqc(:,:,:,:)=0.d0
+    allocate( k1_to_l(2,k1max,nki) ) ; k1_to_l=0
+    allocate( k1_to_m(2,k1max,nki) ) ; k1_to_m=0
 
     return
   END SUBROUTINE allocateKtoK

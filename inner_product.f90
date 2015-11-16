@@ -19,8 +19,10 @@ MODULE InnerProduct
   include 'mpif.h'
 
   PRIVATE
-  PUBLIC :: dot_product,get_Sf,get_gf,get_gSf,get_Sunk_Mat
-
+  PUBLIC :: dot_product
+  PUBLIC :: get_Sf
+  PUBLIC :: get_gSf
+  PUBLIC :: get_Sunk_Mat
 
 CONTAINS
 
@@ -97,44 +99,21 @@ CONTAINS
     integer :: istatus(MPI_STATUS_SIZE,512),ireq(512)
     real(8) :: ctt(0:1),ett(0:1)
 
-! ??????????????????????????????????
-    ib1=1
-    ib2=1
-    nb= ib2 - ib1 + 1
+    ib1 = 1
+    ib2 = 1
+    nb  = ib2 - ib1 + 1
 
     select case ( pselect )
     case ( 1,2,102 )
-!$OMP parallel do
-       do i=nn1,nn2
-          Sf(i) = fin(i)
-       end do
-!$OMP end parallel do
 
 !----- get uVunk (=<uV|fin>) -----
+
        allocate( uVunk(nzlma,ib1:ib2) ) ; uVunk=zero
+
 !----- within mygrid -----
-#ifndef _OMP_
+
        do ib=ib1,ib2
-          do lma=1,nzlma
-             uVunk(lma,ib)=zero
-             do j=1,MJJ(lma)
-                i=JJP(j,lma)
-#ifdef _DRSDFT_
-              uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*fin(i)
-#else
-              uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*fin(i)
-#endif
-             end do
-             uVunk(lma,ib) = dV*uVunk(lma,ib)
-          end do
-       end do
-#else
-!$OMP parallel
-!$OMP workshare
-       uVunk(:,:)=zero
-!$OMP end workshare
-       do ib=ib1,ib2
-!$OMP do
+!$OMP parallel do private( i )
           do lma=1,nzlma
              do j=1,MJJ(lma)
                 i=JJP(j,lma)
@@ -146,37 +125,36 @@ CONTAINS
              end do
              uVunk(lma,ib) = dV*uVunk(lma,ib)
           end do
-!$OMP end do
+!$OMP end parallel do
        end do
-!$OMP end parallel
-#endif
+
 !===== within mygrid =====
 
 !----- summation over all grids -----
+
        call watch( ctt(0),ett(0) )
 
 ! 3WayComm
 ! uVunk
-       call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
+       call do3StepComm( nrlma_xyz,num_2_rank,sendmap,recvmap &
+                        ,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,uVunk )
 
        call watch( ctt(1),ett(1) )
+
 !===== summation over all grids =====
 
 !----- total = term1 + term2 -----
-#ifndef _OMP_
+
+!$OMP parallel private(lma1,lma2,i,ib,j,m)
+
        do ib=ib1,ib2
-          do m=1,N_nlop
-             lma1 = nlop_pair(1,m)
-             lma2 = nlop_pair(2,m)
-             do j=1,MJJ(lma1)
-                i=JJP(j,lma1)
-                Sf(i) = Sf(i) + qij(m)*uVk(j,lma1,k)*uVunk(lma2,ib)
-             end do
+
+!$OMP do
+          do i=nn1,nn2
+             Sf(i) = fin(i)
           end do
-       end do
-#else
-       do ib=ib1,ib2
-!$OMP parallel private(lma1,lma2,i)
+!$OMP end do
+
           do m=1,N_nlop
              lma1 = nlop_pair(1,m)
              lma2 = nlop_pair(2,m)
@@ -186,10 +164,12 @@ CONTAINS
                 Sf(i) = Sf(i) + qij(m)*uVk(j,lma1,k)*uVunk(lma2,ib)
              end do
 !$OMP end do
-          end do
+          end do ! m
+
+       end do ! ib
+
 !$OMP end parallel
-       end do
-#endif
+
 !===== total = term1 + term2 =====
 
        deallocate( uVunk )
@@ -248,7 +228,7 @@ CONTAINS
     return
   END SUBROUTINE get_gf
 
-  !---------------------------------------------------------------------------------------
+!--------1---------2---------3---------4---------5---------6---------7--
 
   SUBROUTINE get_gSf( gin,fin,nn1,nn2,k,gSf,switch_zp )
     ! IN:	nn1,nn2,gin(nn1:nn2),fin(nn1:nn2),k,switch_zp,

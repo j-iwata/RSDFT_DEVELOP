@@ -148,7 +148,7 @@ CONTAINS
 !===== get Qrhonks =====
 
 !----- total = term1 + term2 -----
-       rhonks(nn1:nn2) = rhonks(nn1:nn2) + real( Qrhonks(nn1:nn2) )
+       rhonks(nn1:nn2) = rhonks(nn1:nn2) + dble( Qrhonks(nn1:nn2) )
 !===== total = term1 + term2 =====
 
        deallocate( uVunk  )

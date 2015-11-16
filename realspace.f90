@@ -143,6 +143,10 @@ PROGRAM Real_Space_Solid
 
   call read_pseudopot( Nelement, myrank )
 
+! ---
+
+  call write_info_atom( Zps, file_ps )
+
 !-------- init density 
 
   call count_electron
@@ -288,8 +292,6 @@ PROGRAM Real_Space_Solid
 
   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
 
-  call write_info_atom( Zps, file_ps )
-
   if ( DISP_SWITCH ) then
      write(*,'(a60," main")') repeat("-",60)
      write(*,*) "Natom    =",Natom
@@ -392,7 +394,7 @@ PROGRAM Real_Space_Solid
      if ( SYStype == 0 ) then
         select case( pselect )
         case( 2 )
-           call ps_nloc2_init_derivative
+!           call ps_nloc2_init_derivative
         case( 102 )
            call ps_nloc2_init_derivative
            call ps_Q_init_derivative
@@ -494,16 +496,12 @@ PROGRAM Real_Space_Solid
 
 ! --- finalize ---
 
-  if ( DISP_SWITCH ) then
-     write(*,*) "END_PROGRAM : MAIN" 
-     write(200,'(a40)') repeat('=',40)
-     write(200,*) ' normal end : main'
-  end if
+  if ( DISP_SWITCH ) write(*,*) "END_PROGRAM : MAIN" 
+
 900 continue
   if ( DISP_SWITCH ) write(*,*) 'intentional end'
   call global_watch(disp_switch)
   call close_info
-!  write(200+myrank,*) myrank,DISP_SWITCH,'before MPI_FINALIZE'
   call end_mpi_parallel
 
 END PROGRAM Real_Space_Solid

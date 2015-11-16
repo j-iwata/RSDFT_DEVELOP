@@ -701,11 +701,7 @@ CONTAINS
     deallocate( nl_rank_map_tmp )
 
     do lma=1,nzlma
-#ifdef _USPP_
-
-#else
        if ( maps_tmp(lma,1) == 0 ) cycle
-#endif
        iuV(lma)     = maps_tmp(lma,2)
        amap(lma)    = maps_tmp(lma,3)
        lmap(lma)    = maps_tmp(lma,4)
@@ -719,11 +715,7 @@ CONTAINS
 
 !$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
     do lma=1,nzlma
-#ifdef _USPP_
-
-#else
        if ( maps_tmp(lma,1) == 0 ) cycle
-#endif
        a    = amap(lma)
        l    = lmap(lma)
        m    = mmap(lma)
@@ -1329,8 +1321,14 @@ CONTAINS
     integer :: ML1,ML2,ML3,i0,iorb0
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
     logical :: disp_sw
+    logical :: flag_init_force = .true.
 
     call check_disp_switch( disp_sw, 0 )
+
+    if ( flag_init_force ) then
+       call ps_nloc2_init_derivative
+       flag_init_force = .false.
+    end if
 
     if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
