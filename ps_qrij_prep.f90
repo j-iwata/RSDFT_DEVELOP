@@ -6,8 +6,11 @@ MODULE PSQRijPrep
   use atom_module, only: Natom,ki_atom,aa_atom
   use rgrid_module, only: Igrid,Ngrid,Hgrid
   use VarPSMember
-  use VarPSMemberG
-  use VarParaPSnonLocG
+  use VarPSMemberG, only: QRij, k1_to_m, k1_to_iorb, nzqr_pair, N_nzqr, qrL &
+                         ,k1_to_k2, k1_to_k3, Q_Rps, Q_NRps &
+                         ,N_k1, k1max, nl3v, l3v
+  use VarParaPSnonLocG, only: MAXMJJ_Q,MJJ_Q,JJP_Q &
+                             ,MAXMJJ_MAP_Q,MJJ_MAP_Q,JJ_MAP_Q
   use ps_nloc2_module, only: prepMapsTmp
   use ps_nloc2_variables, only: amap,lmap,mmap,iorbmap
   use pseudopot_module, only: pselect

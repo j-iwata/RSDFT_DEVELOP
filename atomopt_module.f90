@@ -675,7 +675,7 @@ CONTAINS
 
           if ( disp_switch ) write(*,*) "SCF start"
 
-          call calc_scf( diter_opt, ierr, .false. )
+          call calc_scf( diter_opt, ierr, .false., feps )
 
           if ( ierr == -1 ) then
              if ( myrank == 0 ) write(*,*) "time limit !!!"

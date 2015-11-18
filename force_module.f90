@@ -5,83 +5,70 @@ MODULE force_module
   use symmetry_module, only: sym_force
   use force_sol_module
   use force_mol_module
+  use io_tools_module, only: IOTools_findKeyword, IOTools_readIntegerKeyword
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_force, calc_force, get_fmax_force
+  PUBLIC :: calc_force, get_fmax_force
 
   integer :: Ntim
   real(8),allocatable :: tim(:,:,:)
 
-  integer :: SYStype
+  integer :: SYStype   = 0
   logical :: flag_init = .true.
-  real(8) :: feps=0.0d0
 
   include 'mpif.h'
 
 CONTAINS
 
 
-  SUBROUTINE init_force( rank, unit, SYStype_in, feps_in )
+  SUBROUTINE init_force
     implicit none
-    integer,intent(IN) :: rank, unit, SYStype_in
-    real(8),optional,intent(IN) :: feps_in
-    if ( disp_switch_parallel ) &
-         write(*,'(1x,a60," init_force")') repeat("-",60)
-    if ( flag_init ) flag_init=.false.
-    SYStype = SYStype_in
-    if ( present(feps_in) ) feps=feps_in
-    Ntim=0
+    if ( .not.flag_init ) return
+    flag_init = .false.
+    call write_border( 60, " init_force(start)" )
     Ntim=maxval( md_atom )
-    if ( rank == 0 ) then
-       write(*,*) "SYStype=",SYStype
-       write(*,*) "Ntim=",Ntim
-    end if
-    if ( Ntim <= 0 ) return
+    if ( Ntim <= 0 ) Ntim=1
+    if ( disp_switch_parallel ) write(*,*) "Ntim=",Ntim
     allocate( tim(3,3,Ntim) ) ; tim=0.0d0
     tim(1,1,1) = 1.0d0
     tim(2,2,1) = 1.0d0
     tim(3,3,1) = 1.0d0
-    call read_force( rank, unit )
+    call read_force
+    call write_border( 60, " init_force(end)" )
   END SUBROUTINE init_force
 
 
-  SUBROUTINE read_force( rank, unit )
+  SUBROUTINE read_force
     implicit none
-    integer,intent(IN) :: rank, unit
-    integer :: i,j,k,kr,ierr,mchk
-    character(3) :: cbuf,ckey
-    mchk=0
-    if ( rank == 0 ) then
-       write(*,'(1x,a40," read_force")') repeat("-",40)
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital( cbuf, ckey )
-          if ( ckey == "TIM" ) then
-             do j=1,Ntim
-                do k=1,3
-                   read(unit,*) ( tim(kr,k,j), kr=1,3 )
-                   mchk=mchk+1
-                end do ! k
-             end do ! j
-             exit
-          end if
-       end do ! i
-999    continue
+    integer :: i,j,k,mchk,unit
+    logical :: exist_keyword
+    real(8) :: dummy(2)
+    character(8) :: cbuf
+    call write_border( 40, " read_force" )
+    call IOTools_readIntegerKeyword( "SYSTYPE", SYStype )
+    call IOTools_findKeyword( "TIM", exist_keyword, unit_out=unit )
+    if ( exist_keyword ) then
+       mchk=0
+       do k=1,Ntim
+          do i=1,3
+             read(unit,*) ( tim(i,j,k), j=1,3 )
+             mchk=mchk+1
+          end do ! j
+       end do ! k
        if ( mchk /= 3*Ntim ) then
           write(*,*) "WARNING: Insufficient data for tim-matrix !!!"
           write(*,*) "mchk, 3*Ntim =",mchk,3*Ntim
        end if
-       do j=1,Ntim
-          write(*,'(1x,"tim(",i1,")",2x,3f10.5)') j,(tim(kr,1,j),kr=1,3)
-          do k=2,3
-             write(*,'(1x,6x,2x,3f10.5)') (tim(kr,k,j),kr=1,3)
+       do k=1,Ntim
+          write(*,'(1x,"tim(",i1,")",2x,3f10.5)') k,(tim(1,j,k),j=1,3)
+          do i=2,3
+             write(*,'(1x,6x,2x,3f10.5)') (tim(i,j,k),j=1,3)
           end do
        end do
     end if
-    call mpi_bcast( tim, 9*Ntim, MPI_REAL8, 0, MPI_COMM_WORLD, ierr )
+    call mpi_bcast( tim, 9*Ntim, MPI_REAL8, 0, MPI_COMM_WORLD, i )
   END SUBROUTINE read_force
 
 
@@ -90,10 +77,7 @@ CONTAINS
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
 
-    if ( flag_init ) then
-       write(*,*) "init_force must be called first"
-       stop "stop@calc_force"
-    end if
+    if ( flag_init ) call init_force
 
     select case( SYStype )
     case( 0 )
@@ -125,27 +109,20 @@ CONTAINS
   END SUBROUTINE constraint_force
 
 
-  SUBROUTINE get_fmax_force( fmax, ierr )
+  SUBROUTINE get_fmax_force( fmax )
     implicit none
     real(8),intent(OUT) :: fmax
-    integer,intent(OUT) :: ierr
     real(8),allocatable :: force(:,:)
     real(8) :: ff
     integer :: a
-    fmax=-1.0d10
-    if ( flag_init ) then
-       ierr=1
-       return
-    end if
-    ierr=0
     allocate( force(3,Natom) ) ; force=0.0d0
     call calc_force( Natom, force )
+    fmax=-1.0d10
     do a=1,Natom
        ff=force(1,a)**2+force(2,a)**2+force(3,a)**2
        fmax=max(fmax,ff)
     end do
     fmax=sqrt(fmax)
-    if ( fmax <= feps ) ierr=2
     deallocate( force )
   END SUBROUTINE get_fmax_force
 

@@ -9,15 +9,19 @@ MODULE force_ps_nonloc2
   use aa_module, only: aa
   use VarPSMember
   use VarPSMemberG
-  use ps_nloc2_variables, only: amap,iorbmap,mmap
+  use VarParaPSnonLocG, only: MAXMJJ_MAP_Q, MJJ_MAP_Q, JJ_MAP_Q
+  use ps_nloc2_variables, only: amap,iorbmap,mmap,lmap,nzlma
   use rgrid_module
   use array_bound_module
   use parallel_module, only: MB_d, disp_switch_parallel, comm_grid
   use localpot_module, only: Vloc
-  use para_rgrid_comm, only: do3StepComm_F,do3StepComm_dQ
+  use para_rgrid_comm, only: do3StepComm_F
   use ForceSub
   use ylm_module
-  use spline_module
+  use ps_q_init_module, only: ps_q_init_derivative
+  use bz_module
+  use wf_module
+  use watch_module
 
   implicit none
 
@@ -49,7 +53,6 @@ CONTAINS
     real(8) :: ctt(0:4),ett(0:4)
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),duVdR(:,:,:)
-!    real(8) :: Dij_f,const_f
     real(8) :: Dij_f(MB_0:MB_1),const_f(MB_0:MB_1)
 #ifdef _DRSDFT_
     real(8) :: ztmp
@@ -271,71 +274,71 @@ CONTAINS
 
 !$OMP single
     do s=MSP_0,MSP_1
-       do k=MBZ_0,MBZ_1
-          do n=MB_0,MB_1,MB_d
-             ib1=n
-             ib2=min(ib1+MB_d-1,MB_1)
-             if ( occ(n,k,s) < 1.d-10 ) cycle
-             call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap &
-                  ,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))
-          end do ! n
-       end do ! k
+    do k=MBZ_0,MBZ_1
+    do n=MB_0,MB_1,MB_d
+       ib1=n
+       ib2=min(ib1+MB_d-1,MB_1)
+       if ( occ(n,k,s) < 1.d-10 ) cycle
+       call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap &
+            ,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))
+    end do ! n
+    end do ! k
     end do ! s
     do s=MSP_0,MSP_1
-       do k=MBZ_0,MBZ_1
-          do m=1,N_nzqr
-             lma1=nzqr_pair(m,1)
-             lma2=nzqr_pair(m,2)
-             a=amap(lma1)
-             if ( a <= 0 ) cycle
-             if ( isAtomInThisNode(a) ) then
-                do n=MB_0,MB_1
-                   Dij_f(n)=Dij(m,s)-esp(n,k,s)*qij_f(m)
-                   const_f(n)=Dij_f(n)*(-2.d0)*occ(n,k,s)*dV*dV
-                end do
-                if ( lma1 < lma2  ) stop 'Nzqr_pair is strange'
-                if ( lma1 == lma2 ) then
-                   force2(1,a)=force2(1,a) &
-                        +sum( const_f(MB_0:MB_1) &
+    do k=MBZ_0,MBZ_1
+       do m=1,N_nzqr
+          lma1=nzqr_pair(m,1)
+          lma2=nzqr_pair(m,2)
+          a=amap(lma1)
+          if ( a <= 0 ) cycle
+          if ( isAtomInThisNode(a) ) then
+             do n=MB_0,MB_1
+                Dij_f(n)=Dij(m,s)-esp(n,k,s)*qij_f(m)
+                const_f(n)=Dij_f(n)*(-2.d0)*occ(n,k,s)*dV*dV
+             end do
+             if ( lma1 < lma2  ) stop 'Nzqr_pair is strange'
+             if ( lma1 == lma2 ) then
+                force2(1,a)=force2(1,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real(wtmp5(0,lma1,MB_0:MB_1,k,s) &
                                   *wtmp5(1,lma2,MB_0:MB_1,k,s),8) )
-                   force2(2,a)=force2(2,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(2,a)=force2(2,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real(wtmp5(0,lma1,MB_0:MB_1,k,s) &
                                   *wtmp5(2,lma2,MB_0:MB_1,k,s),8) )
-                   force2(3,a)=force2(3,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(3,a)=force2(3,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma1,MB_0:MB_1,k,s) &
                                    *wtmp5(3,lma2,MB_0:MB_1,k,s),8) )
-                else
-                   force2(1,a)=force2(1,a) &
-                        +sum( const_f(MB_0:MB_1) &
+             else
+                force2(1,a)=force2(1,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma1,MB_0:MB_1,k,s) &
                                    *wtmp5(1,lma2,MB_0:MB_1,k,s),8) )
-                   force2(2,a)=force2(2,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(2,a)=force2(2,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma1,MB_0:MB_1,k,s) &
                                    *wtmp5(2,lma2,MB_0:MB_1,k,s),8) )
-                   force2(3,a)=force2(3,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(3,a)=force2(3,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma1,MB_0:MB_1,k,s) &
                                    *wtmp5(3,lma2,MB_0:MB_1,k,s),8) )
-                   force2(1,a)=force2(1,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(1,a)=force2(1,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma2,MB_0:MB_1,k,s) &
                                    *wtmp5(1,lma1,MB_0:MB_1,k,s),8) )
-                   force2(2,a)=force2(2,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(2,a)=force2(2,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma2,MB_0:MB_1,k,s) &
                                    *wtmp5(2,lma1,MB_0:MB_1,k,s),8) )
-                   force2(3,a)=force2(3,a) &
-                        +sum( const_f(MB_0:MB_1) &
+                force2(3,a)=force2(3,a) &
+                     +sum( const_f(MB_0:MB_1) &
                              *real( wtmp5(0,lma2,MB_0:MB_1,k,s) &
                                    *wtmp5(3,lma1,MB_0:MB_1,k,s),8) )
-                end if
-             endif
-          end do ! m
-       end do ! k
+             end if
+          endif
+       end do ! m
+    end do ! k
     end do ! s
 
     call mpi_allreduce &
@@ -368,7 +371,7 @@ CONTAINS
     enddo
 
 !$OMP master
-    call watch(ctt(3),ett(3))
+    call watch(ctt(4),ett(4))
 !$OMP end master
 
 !$OMP end parallel
@@ -385,11 +388,6 @@ CONTAINS
 
 
   SUBROUTINE calcForceQ(uVunk_tmp,MI,forceQ)
-    use bz_module
-    use wf_module
-    use watch_module
-    use VarParaPSnonLocG
-    use ps_nloc2_variables, only: lmap,amap,mmap,nzlma,iorbmap
     implicit none
     integer,intent(IN) :: MI
 #ifdef _DRSDFT_
@@ -420,6 +418,12 @@ CONTAINS
     integer :: i0,iorb0
     integer :: k1,k2,k3
     integer :: d1,d2,d3
+    logical,save :: flag_init=.true.
+
+    if ( flag_init ) then
+       call ps_q_init_derivative
+       flag_init = .false.
+    end if
 
     forceQ(:,:) = 0.0d0
 

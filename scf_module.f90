@@ -109,17 +109,19 @@ CONTAINS
   END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch, Etot_out )
+  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch, tol_force_in, Etot_out )
     implicit none
     integer,intent(IN)  :: Diter
     integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
+    real(8),optional,intent(IN)  :: tol_force_in
     real(8),optional,intent(OUT) :: Etot_out
     integer :: iter,s,k,n,m,ierr,idiag
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     real(8) :: ct0,et0,ct1,et1,ct(0:5),et(0:5),ctt(0:7),ett(0:7)
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f
     real(8),allocatable :: v(:,:)
+    real(8) :: tol_force
 
     if ( myrank == 0 ) write(*,*) "------------ SCF START ----------"
 
@@ -130,6 +132,7 @@ CONTAINS
     ierr_out    = 0
     fmax0       =-1.d10
     fdiff       =-1.d10
+    tol_force   = 0.0d0 ; if ( present(tol_force_in) ) tol_force=tol_force_in
 
     time_scf(:) = 0.0d0
 
@@ -321,17 +324,15 @@ CONTAINS
 ! --- convergence check by Fmax ---
 
        if ( fmax_conv > 0.0d0 ) then
-          call get_fmax_force( fmax, ierr )
+          call get_fmax_force( fmax )
           fdiff=fmax-fmax0
-          if ( ierr == 0 ) then
-             if ( disp_switch ) then
-                write(*,*) "fmax=",fmax,fdiff,flag_conv_f
-             end if
-             if ( abs(fdiff) < fmax_conv ) then
-                flag_conv_f=.true.
-             else
-                fmax0 = fmax
-             end if
+          if ( fmax > tol_force .and. abs(fdiff) < fmax_conv ) then
+             flag_conv_f=.true.
+          else
+             fmax0 = fmax
+          end if
+          if ( disp_switch ) then
+             write(*,*) "fmax=",fmax,fdiff,flag_conv_f
           end if
        end if
 

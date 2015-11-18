@@ -10,7 +10,7 @@ MODULE io_tools_module
   PUBLIC :: IOTools_readReal8Keyword
   PUBLIC :: IOTools_readReal8Keywords
   PUBLIC :: IOTools_readIntegerString
-!  PUBLIC :: IOTools_findKeyword
+  PUBLIC :: IOTools_findKeyword
 !  PUBLIC :: IOTools_readRealVectorKeyword
 !  PUBLIC :: IOTools_readLogicalKeyword
 !  PUBLIC :: IOTools_readIntegerVectorKeyword
@@ -187,30 +187,32 @@ CONTAINS
   END SUBROUTINE IOTools_readIntegerString
 
 
-#ifdef TEST
-  SUBROUTINE IOTools_findKeyword( keyword, unit_number, hasKeyword )
+  SUBROUTINE IOTools_findKeyword( keyword, hasKeyword, unit_out )
     implicit none
     character(*),intent(IN) :: keyword
-    integer,intent(IN) :: unit_number
     logical,intent(OUT) :: hasKeyword
-    integer :: i
+    integer,optional,intent(OUT) :: unit_out
+    integer :: i,unit
     character(10) :: cbuf,ckey
-    integer :: keyword_length
-    keyword_length=len_trim(keyword)
-    hasKeyword=.false.
-    rewind unit_number
-    do i=1,10000
-       read(unit_number,*,END=999) cbuf
-       call convertToCapital(cbuf,ckey)
-       if ( ckey==keyword ) then
-          hasKeyword=.true.
-          exit
-       endif
-    enddo
+    unit=unit_default
+    if ( present(unit_out) ) unit_out=unit
+    hasKeyword = .false.
+    if ( myrank == 0 ) then
+       rewind unit
+       do i=1,max_trial_read
+          read(unit,*,END=999) cbuf
+          call convertToCapital(cbuf,ckey)
+          if ( ckey == keyword ) then
+             hasKeyword = .true.
+             exit
+          end if
+       end do ! i
+       if ( hasKeyword ) write(*,'(1x,A10)') keyword
+    end if
 999 continue
-    if ( hasKeyword ) write(*,'(1x,A10)') keyword
   END SUBROUTINE IOTools_findKeyword
 
+#ifdef TEST
   SUBROUTINE IOTools_readRealKeyword(keyword,unit_number,keyword_variable)
     implicit none
     character(*),intent(IN) :: keyword

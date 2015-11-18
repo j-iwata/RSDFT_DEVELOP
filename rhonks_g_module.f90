@@ -6,7 +6,7 @@ MODULE rhonks_g_module
   use ps_nloc2_variables, only: Mlma,sbufnl,rbufnl,sendmap,recvmap,lma_nsend &
                                ,nzlma,nrlma_xyz,num_2_rank,uVk,JJP,MJJ
   use pseudopot_module, only: pselect
-  use VarPSMemberG
+  use VarPSMemberG, only: uVunk, QRij, nzqr_pair, N_nzqr
   use VarParaPSnonLocG, only: MJJ_Q,JJP_Q
   use para_rgrid_comm, only: do3StepComm
 

@@ -12,7 +12,6 @@ PROGRAM Real_Space_Solid
 
   use ps_nloc_initiate_module
   use ps_getDij_module
-  use ps_q_init_module
 
   use WFtest
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
@@ -387,21 +386,6 @@ PROGRAM Real_Space_Solid
   call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
   call calc_E_vdw_grimme( Natom, aa_atom )
 
-! --- Init force ---
-
-  if ( iswitch_opt /= 0 ) then
-     call init_force( myrank, 1, SYStype, feps )
-     if ( SYStype == 0 ) then
-        select case( pselect )
-        case( 2 )
-!           call ps_nloc2_init_derivative
-        case( 102 )
-!           call ps_nloc2_init_derivative
-           call ps_Q_init_derivative
-        end select
-     end if
-  end if
-
 ! ---
 
   call getDij
@@ -421,7 +405,7 @@ PROGRAM Real_Space_Solid
 
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( Diter_scf, ierr, disp_switch )
+     call calc_scf( Diter_scf, ierr, disp_switch, feps )
      if ( ierr < 0 ) goto 900
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
