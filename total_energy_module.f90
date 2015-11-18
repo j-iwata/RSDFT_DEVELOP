@@ -101,18 +101,13 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
        do n=MB_0,MB_1,MB_d
+
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
+
 !---------------------------------------------------- kinetic
+
           work=zero
-
-#ifdef _SHOWALL_ESP_
-write(350+myrank,'(5A5,1A20)') 'scf_iter','s','k','n','i','unk(i,n,k,s)'
-do i=n1,n2
-write(350+myrank,'(5I5,2g20.8)') scf_iter,s,k,n,i,unk(i,n,k,s)
-enddo
-#endif
-
 !$OMP parallel
           call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
 !$OMP end parallel
@@ -123,7 +118,9 @@ enddo
           esp0(i,k,s,1)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
           end do
+
 !---------------------------------------------------- local
+
           work=zero
 !$OMP parallel
           call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
@@ -181,15 +178,9 @@ enddo
           esp0(n,k,s,4)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
 #endif
 
-#ifdef _SHOWALL_ESP_
-write(450+myrank,'(5A5,1A20)') 'scf_iter','s','k','n','i','esp0(i,k,s,1:4)'
-do i=nb1,nb2
-write(450+myrank,'(5I5,4g20.8)') scf_iter,s,k,n,i,esp0(i,k,s,1:4)
-enddo
-#endif
-       end do
-       end do
-       end do
+       end do ! n
+       end do ! k
+       end do ! s
 
        deallocate( work )
        deallocate( work00 )
@@ -213,14 +204,6 @@ enddo
           Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
         endif
         esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
-!write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
-do s=MSP_0,MSP_1
-do k=MBZ_0,MBZ_1
-do n=MB_0,MB_1
-!write(1800+myrank,'(4I5,5g20.8)') scf_iter,s,k,n,esp(n,k,s),esp1(n,k,s,1:4)
-enddo
-enddo
-enddo
 
        deallocate( esp1 )
        deallocate( esp0 )
@@ -228,16 +211,6 @@ enddo
        deallocate( esp0_Q )
 
     end if ! flag_recalc_esp
-#ifdef _SHOWALL_ESP_
-write(1800+myrank,'(4A5,1A20)') 'scf_iter','s','k','n','esp(n,k,s)'
-do s=MSP_0,MSP_1
-do k=MBZ_0,MBZ_1
-do n=MB_0,MB_1
-write(1800+myrank,'(4I5,1g20.8)') scf_iter,s,k,n,esp(n,k,s)
-enddo
-enddo
-enddo
-#endif
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
     cnst = sum( occ(:,:,:) )*const_ps_local
@@ -248,14 +221,15 @@ enddo
     s0(:)=0.d0
     s1(:)=0.d0
     do s=MSP_0,MSP_1
-      do i=n1,n2
-        s0(1) = s0(1) + rho(i,s)*Vloc(i,s)
-        s0(2) = s0(2) + rho(i,s)*Vion(i)
-      end do
+       do i=n1,n2
+          s0(1) = s0(1) + rho(i,s)*Vloc(i,s) ! rho inlculdes Qij(r) terms
+          s0(2) = s0(2) + rho(i,s)*Vion(i)
+       end do
     end do
+    s1(:)=s0(:)*dV
 
-    s0(:)=s0(:)*dV/np_fkmb
-    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
+    call mpi_allreduce(s1,s0,2,mpi_real8,mpi_sum,comm_grid,ierr)
+    call mpi_allreduce(s0,s1,2,mpi_real8,mpi_sum,comm_spin,ierr)
 
     case( "NCPP" )
 
@@ -275,8 +249,13 @@ enddo
     end do
     end do
     end do
-    s0(:)=s0(:)*dV/np_fkmb
-    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
+    s1(:)=s0(:)*dV
+    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_grid,ierr)
+    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_band,ierr)
+    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_bzsm,ierr)
+    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_spin,ierr)
+!    s0(:)=s0(:)*dV/np_fkmb
+!    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
 
     end select
 
