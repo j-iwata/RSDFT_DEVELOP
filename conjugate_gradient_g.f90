@@ -9,7 +9,7 @@ MODULE ConjugateGradient_G
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
-  use InnerProduct, only: get_Sf,get_gf,get_gSf
+  use InnerProduct, only: get_Sf,get_gSf
   use RealComplex, only: TYPE_MAIN,zero
   use VarSysParameter, only: pp_kind
 
