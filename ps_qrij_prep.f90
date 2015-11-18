@@ -259,6 +259,16 @@ CONTAINS
 
 ! ---
 
+    if ( allocated(MJJ_MAP_Q) ) deallocate( MJJ_MAP_Q )
+    if ( allocated(JJ_MAP_Q)  ) deallocate( JJ_MAP_Q )
+
+    MAXMJJ_MAP_Q = maxval( MJJ_tmp )
+
+    allocate( MJJ_MAP_Q(N_nzqr) ) ; MJJ_MAP_Q=0
+    allocate( JJ_MAP_Q(6,MAXMJJ_MAP_Q,N_nzqr) ) ; JJ_MAP_Q=0
+
+! ---
+
     allocate( icheck_grid(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_grid=0
 
@@ -321,6 +331,11 @@ CONTAINS
 
        if ( ik1 > N_k1(ik) ) cycle
 
+       MJJ_MAP_Q(iqr) = MJJ_tmp(ik1,a1)
+       do i=1,MJJ_tmp(ik1,a1)
+          JJ_MAP_Q(1:6,i,iqr) = JJ_tmp(1:6,i,ik1,a1)
+       end do
+
        j=0
        icheck_grid(:,:,:)=0
        do i=1,MJJ_tmp(ik1,a1)
@@ -346,6 +361,7 @@ CONTAINS
     end do ! iqr
 
     deallocate( icheck_grid )
+    deallocate( QRij_tmp )
     deallocate( MJJ_tmp )
     deallocate( JJ_tmp )
 

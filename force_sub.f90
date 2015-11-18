@@ -144,23 +144,23 @@ CONTAINS
   END SUBROUTINE getAtomInfoFrom_lma
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomInfoFrom_iqr(iqr)
-    use VarParaPSnonLocG, only: amap_Q,lmamap_Q,k1map_Q
-    use ps_nloc2_variables, only: lmap,iorbmap,mmap
-    use VarPSMemberG, only: k1_to_k2
+    use ps_nloc2_variables, only: amap,lmap,iorbmap,mmap
+    use VarPSMemberG, only: k1_to_k2, nzqr_pair, k1map
     use atom_module, only: ki_atom
     implicit none
     integer,intent(IN) :: iqr
-    noAtomHere=.false.
-    iatom = amap_Q(iqr)
-    if (iatom<=0) then
-      noAtomHere=.true.
+    lma1  = nzqr_pair(iqr,1)
+    lma2  = nzqr_pair(iqr,2)
+    iatom = amap(lma1)
+    if ( iatom <= 0 ) then
+      noAtomHere = .true.
       return
-    endif
+    else
+       noAtomHere = .false.
+    end if
     ikind = ki_atom(iatom)
-    ik1   = k1map_Q(iqr)
+    ik1   = k1map(iqr)
     ik2   = k1_to_k2(ik1,ikind)
-    lma1  = lmamap_Q(iqr,1)
-    lma2  = lmamap_Q(iqr,2)
     l_1   = lmap(lma1)
     m_1   = mmap(lma1)
     l_2   = lmap(lma2)

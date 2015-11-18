@@ -396,7 +396,7 @@ PROGRAM Real_Space_Solid
         case( 2 )
 !           call ps_nloc2_init_derivative
         case( 102 )
-           call ps_nloc2_init_derivative
+!           call ps_nloc2_init_derivative
            call ps_Q_init_derivative
         end select
      end if

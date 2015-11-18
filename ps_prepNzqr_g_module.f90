@@ -2,7 +2,8 @@ MODULE ps_prepNzqr_g_module
 
   use parallel_module, only: myrank
   use VarPSMemberG, only: nlop_pair, nzqr_pair,qij_f, ddi, k1map, atommap &
-                         ,N_nzqr, N_nlop, Dij00, Dij, qqr, qij, k1max, kk1map
+                         ,N_nzqr, N_nlop, Dij00, Dij, qqr, qij &
+                         ,N_k1, k1max, k1_to_l, k1_to_m, k1_to_iorb
   use VarPSMember, only: no
   use atom_module, only: Natom,ki_atom
   use ps_nloc2_variables, only: nzlma, amap, lmap, mmap, iorbmap
@@ -18,7 +19,7 @@ CONTAINS
   SUBROUTINE prepNzqr
 
     implicit none
-    integer :: kk1
+    integer :: kk1,k1,iorb,lma
     integer :: i,j,ik
     integer :: lma1,lma2,a1,a2,l1,l2,m1,m2,i1,i2,a,l,m
     integer,allocatable :: k1a(:)
@@ -75,10 +76,17 @@ CONTAINS
 !===== get N_nlop =====
 
 !    call allocateNzqr( nspin,Natom,k1max )
+    if ( allocated(nzqr_pair) ) deallocate( nzqr_pair )
+    if ( allocated(k1map)     ) deallocate( k1map     )
+!    if ( allocated(kk1map)    ) deallocate( kk1map    )
+    if ( allocated(nlop_pair) ) deallocate( nlop_pair )
+    if ( allocated(Dij)       ) deallocate( Dij       )
+    if ( allocated(Dij00)     ) deallocate( Dij00     )
+    if ( allocated(qij)       ) deallocate( qij       )
+    if ( allocated(qij_f)     ) deallocate( qij_f     )
     allocate( nzqr_pair(N_nzqr,2) ) ; nzqr_pair=0
-    allocate( atommap(N_nzqr)     ) ; atommap=0
     allocate( k1map(N_nzqr)       ) ; k1map=0
-    allocate( kk1map(k1max,Natom) ) ; kk1map=0
+!    allocate( kk1map(k1max,Natom) ) ; kk1map=0
     allocate( nlop_pair(2,N_nlop) ) ; nlop_pair=0
     allocate( Dij(N_nzqr,nspin)   ) ; Dij=0.0d0
     allocate( Dij00(N_nzqr)       ) ; Dij00=0.0d0
@@ -87,7 +95,33 @@ CONTAINS
 
 !----- get nzqr_pair, atommap, k1map, kk1map -----
 
-    allocate( k1a(Natom) ) ; k1a(:)=0
+!    allocate( k1a(Natom) ) ; k1a(:)=0
+!    kk1=0
+!    do lma1=1,nzlma
+!       if ( amap(lma1) == 0 .or. iorbmap(lma1) == 0 ) cycle
+!       a1=amap(lma1)
+!       l1=lmap(lma1)
+!       m1=mmap(lma1)
+!       i1=no(iorbmap(lma1),ki_atom(a1))
+!       do lma2=1,nzlma
+!          if ( amap(lma2) == 0 .or. iorbmap(lma2) == 0 ) cycle
+!          a2=amap(lma2)
+!          l2=lmap(lma2)
+!          m2=mmap(lma2)
+!          i2=no(iorbmap(lma2),ki_atom(a2))
+!          if ( a2 /= a1 ) cycle
+!          if ( l2 > l1 ) cycle
+!          if ( l1 == l2 .and. i2 > i1 ) cycle
+!          if ( l1 == l2 .and. i1 == i2 .and. m2 > m1 ) cycle
+!          k1a(a1) = k1a(a1) + 1
+!          kk1 = kk1 + 1
+!          nzqr_pair(kk1,1)   = lma1
+!          nzqr_pair(kk1,2)   = lma2
+!          k1map(kk1)         = k1a(a1)
+!          kk1map(k1a(a1),a1) = kk1
+!       end do
+!    end do
+!    deallocate( k1a )
 
     kk1=0
     do lma1=1,nzlma
@@ -96,27 +130,35 @@ CONTAINS
        l1=lmap(lma1)
        m1=mmap(lma1)
        i1=no(iorbmap(lma1),ki_atom(a1))
-       do lma2=1,nzlma
-          if ( amap(lma2) == 0 .or. iorbmap(lma2) == 0 ) cycle
-          a2=amap(lma2)
-          l2=lmap(lma2)
-          m2=mmap(lma2)
-          i2=no(iorbmap(lma2),ki_atom(a2))
-          if ( a2 /= a1 ) cycle
-          if ( l2 > l1 ) cycle
-          if ( l1 == l2 .and. i2 > i1 ) cycle
-          if ( l1 == l2 .and. i1 == i2 .and. m2 > m1 ) cycle
-          k1a(a1) = k1a(a1) + 1
-          kk1 = kk1 + 1
-          nzqr_pair(kk1,1)   = lma1
-          nzqr_pair(kk1,2)   = lma2
-          atommap(kk1)       = a1
-          k1map(kk1)         = k1a(a1)
-          kk1map(k1a(a1),a1) = kk1
-       end do
-    end do
+    do lma2=1,nzlma
+       if ( amap(lma2) == 0 .or. iorbmap(lma2) == 0 ) cycle
+       a2=amap(lma2)
+       l2=lmap(lma2)
+       m2=mmap(lma2)
+       i2=no(iorbmap(lma2),ki_atom(a2))
+       if ( a2 /= a1 ) cycle
+       if ( l2 > l1 ) cycle
+       if ( l1 == l2 .and. i2 > i1 ) cycle
+       if ( l1 == l2 .and. i1 == i2 .and. m2 > m1 ) cycle
+       kk1=kk1+1
+       nzqr_pair(kk1,1) = lma1
+       nzqr_pair(kk1,2) = lma2
+       ik=ki_atom(a1)
+       do k1=1,N_k1(ik)
+          if ( k1_to_iorb(1,k1,ik) == iorbmap(lma1) .and. &
+               k1_to_iorb(2,k1,ik) == iorbmap(lma2) .and. &
+               k1_to_l(1,k1,ik) == l1 .and. &
+               k1_to_l(2,k1,ik) == l2 .and. &
+               k1_to_m(1,k1,ik) == m1 .and. &
+               k1_to_m(2,k1,ik) == m2 ) then
+             k1map(kk1) = k1
+             exit
+          end if
+       end do ! k1
+    end do ! lma2
+    end do ! lma1
 
-    deallocate( k1a )
+    if ( myrank == 0 ) write(*,*) "N_nzqr,kk1 (check) =",N_nzqr,kk1
 
 !===== get nzqr_pair, atommap, k1map, kk1map =====
 

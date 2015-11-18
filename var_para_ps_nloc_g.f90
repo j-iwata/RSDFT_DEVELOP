@@ -4,7 +4,7 @@ MODULE VarParaPSnonLocG
   integer :: Mqr
   integer :: c_nzqr
   integer :: MMJJ_Q,MMJJ_t_Q
-  integer :: MAXMJJ_Q
+  integer :: MAXMJJ_Q, MAXMJJ_MAP_Q
   integer :: nrqr_xyz(6)
 
   integer,allocatable :: JJP_Q(:,:)
