@@ -68,6 +68,7 @@ MODS1 = \
        physical_type_methods.o\
        para_rgrid_comm.o\
        rgrid_module.o\
+       force_sub_sub.o\
        force_sub.o\
        symmetry_module.o\
        ps_q_init_module.o\

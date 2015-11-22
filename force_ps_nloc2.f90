@@ -10,7 +10,10 @@ MODULE force_ps_nonloc2
   use VarPSMember
   use VarPSMemberG
   use VarParaPSnonLocG, only: MAXMJJ_MAP_Q, MJJ_MAP_Q, JJ_MAP_Q
-  use ps_nloc2_variables, only: amap,iorbmap,mmap,lmap,nzlma
+  use ps_nloc2_variables, only: amap,iorbmap,mmap,lmap,nzlma,Mlma &
+                               ,sendmap,sbufnl,recvmap,rbufnl &
+                               ,lma_nsend,num_2_rank, nrlma_xyz&
+                               ,MJJ,MJJ_MAP,JJ_MAP,JJP,MMJJ,uVk
   use rgrid_module
   use array_bound_module
   use parallel_module, only: MB_d, disp_switch_parallel, comm_grid
@@ -22,6 +25,7 @@ MODULE force_ps_nonloc2
   use bz_module
   use wf_module
   use watch_module
+  use force_sub_sub_module
 
   implicit none
 
@@ -30,13 +34,12 @@ MODULE force_ps_nonloc2
 
   include 'mpif.h'
 
+  type(gaunt) :: GCL1
+  type(gaunt_ll) :: GCLL
+
 CONTAINS
 
   SUBROUTINE calcForcePSnonLoc2(MI,force2)
-    use bz_module
-    use wf_module
-    use watch_module
-    use ps_nloc2_variables
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
@@ -58,10 +61,12 @@ CONTAINS
     real(8) :: ztmp
     real(8),allocatable :: wtmp5(:,:,:,:,:)
     real(8),allocatable :: uVunk_tmp(:,:,:,:)
+    real(8),parameter :: zero=0.0d0
 #else
     complex(8) :: ztmp
     complex(8),allocatable :: wtmp5(:,:,:,:,:)
     complex(8),allocatable :: uVunk_tmp(:,:,:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
 #endif
     integer :: i0,iorb0
     real(8) :: forceQ(3,MI)
@@ -70,9 +75,11 @@ CONTAINS
 ! d1,d2 need to be removed from this module, define a different variable name
     real(8) :: d1,d2,d3
     integer :: i1,i2,i3
-    
-    call getSHY
-    call getCijLM
+
+    L = max(  maxval(l3v), maxval(lo) )
+    call construct_gaunt_coef_L1( L, GCL1 )
+    L  = maxval( lo )
+    call construct_gaunt_coef_LL( L, L, GCLL )
 
     force2(:,:) = 0.0d0
 
@@ -127,7 +134,7 @@ CONTAINS
     do lma=1,nzlma
 
        call getAtomInfoFrom_lma(lma)
-       !OUT: a,L,m,iorb,ik,notAtom
+       !OUT: iatom,iL,im,iorb,ikind,notAtom
 
        if ( noAtomHere ) cycle
 
@@ -156,9 +163,9 @@ CONTAINS
                 call interpolate_dviod(lm1,ir,NRc) !OUT: tmp0
                 do L1z=-L1,L1
                    tmp=tmp0*Ylm(x,y,z,L1,L1z)
-                   yy1=yy1+tmp*SH_Y1(iL,im,L1,L1z)
-                   yy2=yy2+tmp*SH_Y2(iL,im,L1,L1z)
-                   yy3=yy3+tmp*SH_Y3(iL,im,L1,L1z)
+                   yy1=yy1+tmp*GCL1%x(iL,im,L1,L1z)
+                   yy2=yy2+tmp*GCL1%y(iL,im,L1,L1z)
+                   yy3=yy3+tmp*GCL1%z(iL,im,L1,L1z)
                 end do
              end if
           end do ! L1
@@ -484,9 +491,9 @@ CONTAINS
                      yq2=0.0d0
                      yq3=0.0d0
                      do M=-L,L
-                        yq1=yq1+C_ijLM(L,M,l_1,m_1,l_2,m_2)*SH_Y1(L,M,L1,L1z)
-                        yq2=yq2+C_ijLM(L,M,l_1,m_1,l_2,m_2)*SH_Y2(L,M,L1,L1z)
-                        yq3=yq3+C_ijLM(L,M,l_1,m_1,l_2,m_2)*SH_Y3(L,M,L1,L1z)
+                        yq1=yq1+GCLL%yyy(l_1,m_1,l_2,m_2,L,M)*GCL1%x(L,M,L1,L1z)
+                        yq2=yq2+GCLL%yyy(l_1,m_1,l_2,m_2,L,M)*GCL1%y(L,M,L1,L1z)
+                        yq3=yq3+GCLL%yyy(l_1,m_1,l_2,m_2,L,M)*GCL1%z(L,M,L1,L1z)
                      end do
                      tmp3=Ylm(x,y,z,L1,L1z)
                      yy1=yy1+yq1*tmp3
