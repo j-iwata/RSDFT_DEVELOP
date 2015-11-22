@@ -11,14 +11,13 @@ MODULE cg_module
   use wf_module, only: hunk, iflag_hunk
   use kinetic_module, only: SYStype
   use watch_module
-  use ConjugateGradient_G
+  use conjugate_gradient_g_module, only: conjugate_gradient_g, pp_kind
 
   implicit none
 
   PRIVATE
   PUBLIC :: conjugate_gradient
   PUBLIC :: read_cg
-  PUBLIC :: read_oldformat_cg
 
   integer,PUBLIC :: Ncg
   integer,PUBLIC :: iswitch_gs
@@ -27,7 +26,7 @@ MODULE cg_module
 
 CONTAINS
 
-!---------------------------------------------------------------------------------------
+
   SUBROUTINE read_cg(rank,unit)
     implicit none
     integer,intent(IN) :: rank,unit
@@ -60,19 +59,7 @@ CONTAINS
     call send_cg(0)
   END SUBROUTINE read_cg
 
-!---------------------------------------------------------------------------------------
-  SUBROUTINE read_oldformat_cg(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) Ncg,iswitch_gs
-       write(*,*) "Ncg=",Ncg
-       write(*,*) "iswitch_gs=",iswitch_gs
-    end if
-    call send_cg(0)
-  END SUBROUTINE read_oldformat_cg
 
-!---------------------------------------------------------------------------------------
   SUBROUTINE send_cg(rank)
     implicit none
     integer,intent(IN) :: rank
@@ -82,7 +69,6 @@ CONTAINS
     call mpi_bcast(iswitch_cg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_cg
 
-!---------------------------------------------------------------------------------------
 
   SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
     implicit none
@@ -97,29 +83,37 @@ CONTAINS
 
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 
-    call init_conjugate_gradient_g( iswitch_cg ) !---> check uspp or not
+    if ( pp_kind == "USPP" ) then
+
+       call conjugate_gradient_g &
+            ( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+       return
+
+    end if
 
     select case( iswitch_cg )
     case default
     case( 1 )
+
        if ( disp_switch_parallel ) &
             write(*,'("--- CG ( with IPC=",i1," ) ---")') ipc
        call conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+
     case( 2 )
+
        if ( disp_switch_parallel ) &
             write(*,'("--- LOBPCG ( with IPC=",i1," ) ---")') ipc
        call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
        call lobpcg( k,s,Mcg,igs,unk,esp,res )
+
 !    case( 3 )
 !       if ( disp_switch_parallel ) &
 !            write(*,'("--- CG_U ( with IPC=",i1," ) ---")') ipc
 !       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
 !       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
-
-    case( 101 ) !----------> uspp
-
-       call ConjugateGradientG &
-            ( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+!    case( 101 ) !----------> uspp
+!       call ConjugateGradientG &
+!            ( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
 
     end select
 

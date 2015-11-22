@@ -1,4 +1,4 @@
-MODULE ConjugateGradient_G
+MODULE conjugate_gradient_g_module
 !----------------------------------------------------------------------------
 ! this module is conjugate gradient calculation for ultrasoft PS
 !----------------------------------------------------------------------------
@@ -16,20 +16,20 @@ MODULE ConjugateGradient_G
   implicit none
 
   PRIVATE
-  PUBLIC :: init_conjugate_gradient_g
-  PUBLIC :: ConjugateGradientG
+  PUBLIC :: conjugate_gradient_g
+  PUBLIC :: pp_kind
 
 CONTAINS
 
 
-  SUBROUTINE init_conjugate_gradient_g( iswitch_cg )
-    implicit none
-    integer,intent(INOUT) :: iswitch_cg
-    if ( pp_kind == "USPP" ) iswitch_cg=101
-  END SUBROUTINE init_conjugate_gradient_g
+!  SUBROUTINE init_conjugate_gradient_g( iswitch_cg )
+!    implicit none
+!    integer,intent(INOUT) :: iswitch_cg
+!    if ( pp_kind == "USPP" ) iswitch_cg=101
+!  END SUBROUTINE init_conjugate_gradient_g
 
 
-  SUBROUTINE ConjugateGradientG( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+  SUBROUTINE conjugate_gradient_g( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
     integer,intent(IN) :: Ncg,iswitch_gs
@@ -360,7 +360,7 @@ CONTAINS
        write(*,*) "time(pc_cg   )",ctt(4),ett(4)
     end if
 
-  END SUBROUTINE ConjugateGradientG
+  END SUBROUTINE conjugate_gradient_g
 
 
-END MODULE ConjugateGradient_G
+END MODULE conjugate_gradient_g_module
