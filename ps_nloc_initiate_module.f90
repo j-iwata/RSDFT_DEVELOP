@@ -23,6 +23,8 @@ CONTAINS
     implicit none
     real(8),intent(IN) :: Gcut
 
+    call write_border( 80, " ps_nloc_initiate(start)" )
+
     select case( pselect )
     case default
 
@@ -54,6 +56,8 @@ CONTAINS
        call prepQRijp102
 
     end select
+
+    call write_border( 80, " ps_nloc_initiate(end)" )
 
   END SUBROUTINE ps_nloc_initiate
 

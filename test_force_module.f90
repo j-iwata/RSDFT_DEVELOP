@@ -28,16 +28,20 @@ CONTAINS
     implicit none
     integer,intent(IN) :: systype
 
+    call write_border( 60, " test_force(start)" )
+
     disp_switch = ( myrank == 0 )
 
     select case(systype)
     case default
-       if ( disp_switch ) write(*,'(a60,"test_force(solid)")') repeat("-",60)
+       if ( disp_switch ) write(*,'(a40,"test_force(solid)")') repeat("-",40)
        call test_force_sol
     case(1)
-       if ( disp_switch ) write(*,'(a60,"test_force(mol)")') repeat("-",60)
+       if ( disp_switch ) write(*,'(a40,"test_force(mol)")') repeat("-",40)
        call test_force_mol
     end select
+
+    call write_border( 60, " test_force(end)" )
 
   END SUBROUTINE test_force
 

@@ -195,6 +195,8 @@ CONTAINS
     integer,intent(INOUT) :: MB
     integer :: NPCOL0,i,j,n
 
+    call write_border( 80, " init_scalapack(start)" )
+
     MBSIZE = 0
     NBSIZE = 0
     iblacs = .false.
@@ -253,6 +255,8 @@ CONTAINS
        write(*,*) "replace MB"
        MB=n
     end if
+
+    call write_border( 80, " init_scalapack(end)" )
 
   END SUBROUTINE init_scalapack
 

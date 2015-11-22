@@ -62,6 +62,7 @@ CONTAINS
     character(6) :: cbuf,ckey
     integer :: i,ierr
     include 'mpif.h'
+    call write_border( 80, " read_xc_hybrid(start)" )
     omega=0.0d0
     IC=0
     IO_ctrl=0
@@ -90,6 +91,7 @@ CONTAINS
     call mpi_bcast(omega  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(IC     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(IO_ctrl,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call write_border( 80, " read_xc_hybrid(end)" )
   END SUBROUTINE read_xc_hybrid
 
 
@@ -113,13 +115,11 @@ CONTAINS
 
     if ( flag_init ) return
 
-    if ( disp_switch ) then
-       write(*,'(a41," Hybrid DFT prepearation")') repeat("-",41)
-    end if
+    if ( XCtype /= "HF"    .and. XCtype /= "HSE"    .and. &
+         XCtype /= "HSE06" .and. XCtype /= "HSE_"   .and. &
+         XCtype /= "PBE0"  .and. XCtype /= "LCwPBE" ) return
 
-    ML0 = n2 - n1 + 1
-
-    Pi = acos(-1.0d0)
+    call write_border( 80, " init_xc_hybrid(start)" )
 
 !
 ! --- set flags ---
@@ -275,6 +275,8 @@ CONTAINS
 ! --- Truncation cutoff of 1/r for HF, PBE0, and LCwPBE functionals ---
 !
 
+    Pi = acos(-1.0d0)
+
     if ( SYStype == 0 ) then
 
        if ( iflag_hf /= 0 .or. iflag_pbe0 /= 0 .or. iflag_lcwpbe /= 0 ) then
@@ -307,7 +309,7 @@ CONTAINS
     npart = 30
 
 !    call gather_wf
-
+!    ML0 = n2 - n1 + 1
 !    init_num=min(ML0,nint(size(unk)/1.024d3))
 !    best_time=1.d15
 !    do i=init_num,init_num-4,-1
@@ -336,11 +338,9 @@ CONTAINS
 
 ! ---
 
-    if ( disp_switch ) then
-       write(*,'(a40, " init_xc_hybrid(end)")') repeat("-",40)
-    end if
-
     flag_init = .true.
+
+    call write_border( 80, " init_xc_hybrid(end)" )
 
     return 
  
@@ -351,12 +351,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: ictrl
     if ( iflag_hybrid == 3 ) return
+    call write_border( 80, " control_xc_hybrid(start)" )
     if ( iflag_hf   == 0 .and. iflag_hse    == 0 .and. &
          iflag_pbe0 == 0 .and. iflag_lcwpbe == 0 ) then
        iflag_hybrid = 0
     else
        iflag_hybrid = ictrl
     end if
+    call write_border( 80, " control_xc_hybrid(end)" )
   END SUBROUTINE control_xc_hybrid
 
 

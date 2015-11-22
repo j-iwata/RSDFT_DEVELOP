@@ -510,6 +510,8 @@ goto 100
 
     if ( IC <= 0 ) return
 
+    call write_border( 60, " read_data(start)" )
+
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = ircnt(myrank)
@@ -1047,6 +1049,8 @@ goto 100
 
     deallocate( LL_tmp )
     deallocate( LL2 )
+
+    call write_border( 60, " read_data(end)" )
 
     return
 

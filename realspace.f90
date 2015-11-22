@@ -63,6 +63,8 @@ PROGRAM Real_Space_Solid
 
   call check_format_atom( myrank, unit_atomic_coordinates, aa_obj )
 
+  call write_border( 80, " main( aa & bb )(start)" )
+
   call init_aa( aa_obj )
 
   if ( SYStype == 0 ) then
@@ -72,6 +74,8 @@ PROGRAM Real_Space_Solid
   end if
 
   call backup_aa_lattice( aa_obj )
+
+  call write_border( 80, " main( aa & bb )(end)" )
 
 ! --- Reciprocal Lattice ---
 
@@ -159,23 +163,13 @@ PROGRAM Real_Space_Solid
      call init_ps_local
      call init_ps_pcc
 
-     call watcht(disp_switch,"strf",0)
-
-     call construct_strfac !----- structure factor
-
-     call watcht(disp_switch,"strf",1)
+     call construct_strfac  !----- structure factor
 
      call construct_ps_local
-
-     call watcht(disp_switch,"loc",1)
-
      call construct_ps_pcc
-
-     call watcht(disp_switch,"pcc",1)
-
      call construct_ps_initrho( rho )
 
-     call destruct_strfac !----- structure factor
+     call destruct_strfac   !----- structure factor
 
      call ps_nloc_initiate( Gcut )
 
@@ -198,40 +192,6 @@ PROGRAM Real_Space_Solid
      call prep_ps_nloc2_mol
 
      call ConstructBoundary_RgridMol(Md,Igrid)
-
-!----------------------- ESM esm -----
-
-!  else if ( SYStype == 3 ) then
-
-!     call ps_nloc2_init(Gcut)
-!     call prep_ps_nloc2_esm
-
-!     call init_ps_local_rs
-!     call read_rshell(myrank,1)
-
-!     if ( allocated(Vion) ) deallocate(Vion)
-!     if ( allocated(rho) ) deallocate(rho)
-!     allocate( Vion(ML0_ESM:ML1_ESM)      ) ; Vion=0.d0
-!     allocate( rho(ML0_ESM:ML1_ESM,Nspin) ) ; rho=0.d0
-
-!     call construct_ps_local_rs(Vion)
-
-!     call construct_ps_initrho_rs(ML0_ESM,ML1_ESM,Nspin,rho)
-!     call normalize_density
-!!     c0=sum(rho)
-!!     call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
-!!     rho=rho-c/ML_ESM+Nelectron/(ML_ESM*dV)
-!     write(*,'(1x,"sum(rho)*dV",3f15.10)') sum(rho)*dV,minval(rho),maxval(rho)
-
-!     call flush(6)
-
-!     call construct_ps_density_longloc
-!     call read_esm_genpot(myrank,1)
-!     allocate( vtmp(ML0_ESM:ML1_ESM) )
-!     vtmp=0.d0
-!     call esm_genpot(vtmp)
-!     Vion(:) = Vion(:) + vtmp(:)
-!     deallocate( vtmp )
 
   end if
 
@@ -270,11 +230,6 @@ PROGRAM Real_Space_Solid
 ! --- Initialization of subspace diagonalization ---
 
   call init_subspace_diag( Nband )
-
-! --- Initialize localpot2 ---
-
-!  call init_localpot2
-!  call init_localpot2_Smatrix( ML, ML_0, ML_1 )
 
 ! --- Initial wave functions ---
 
@@ -336,9 +291,7 @@ PROGRAM Real_Space_Solid
 
 ! --- Read previous w.f. , density , potentials ---
 
-  call watcht(disp_switch,"read_data",0)
   call read_data(disp_switch)
-  call watcht(disp_switch,"read_data",1)
 
   call getDij
 
@@ -367,18 +320,6 @@ PROGRAM Real_Space_Solid
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
-
-! --- Initial potential of Localpot2 ---
-
-!  if ( flag_localpot2 ) then
-!     call localpot2_ion( Nelement, Ecut, vion_nl )
-!     call localpot2_density( rho_nl )
-!     call localpot2_vh( Ecut, rho_nl, vh_nl, E_hartree )
-!     call localpot2_xc( rho_nl, vxc_nl, Exc )
-!     vloc_dense(:,:,:) = vion_nl(:,:,:)+vh_nl(:,:,:)+vxc_nl(:,:,:)
-!     vloc_dense_old(:,:,:) = vloc_dense(:,:,:)
-!     call test2_localpot2( vloc_dense )
-!  end if
 
 ! --- Init vdW ---
 
@@ -436,7 +377,6 @@ PROGRAM Real_Space_Solid
   select case( iswitch_opt )
   case( -1 )
 
-     if ( disp_switch ) write(*,'(a40," test_force")') repeat("-",40)
      call test_force(SYStype)
 
   case( 1,2 ) ! --- atomopt ---

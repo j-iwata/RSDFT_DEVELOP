@@ -15,6 +15,8 @@ CONTAINS
     integer :: n,k,s,Nspin,Nband
     real(8) :: sum0,d,Nel
 
+    call write_border( 80, " init_occ_electron(start)" )
+
     occ=0.0d0
 
     Nband = size(occ,1)
@@ -52,6 +54,9 @@ CONTAINS
        write(*,'(1x,"sum(occ), Nelectron =",2g30.20)') sum(occ),Nelectron
        stop "sum(occ) /= Nelectron !!!"
     end if
+
+    call write_border( 80, " init_occ_electron(end)" )
+
   END SUBROUTINE init_occ_electron
 
 END MODULE init_occ_electron_module

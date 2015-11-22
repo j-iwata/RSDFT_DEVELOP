@@ -428,6 +428,8 @@ CONTAINS
     integer :: ML1,ML2,ML3
     integer :: istatus(MPI_STATUS_SIZE,123)
 
+    call write_border( 80, " init_bcset_sol(start)" )
+
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
@@ -735,7 +737,7 @@ CONTAINS
 
     call allocate_bcset
 
-    if ( myrank == 0 ) write(*,'(a60," init_bcset_sol(end)")') repeat("-",60)
+    call write_border( 80, " init_bcset_sol(end)" )
 
   END SUBROUTINE init_bcset_sol
 

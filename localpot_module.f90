@@ -17,8 +17,10 @@ CONTAINS
 
 
   SUBROUTINE init_localpot
+    call write_border( 80, " init_localpot(start)" )
     allocate( Vloc(ML_0:ML_1,MSP_0:MSP_1) )
-    Vloc=0.d0
+    Vloc=0.0d0
+    call write_border( 80, " init_localpot(end)" )
   END SUBROUTINE init_localpot
 
 

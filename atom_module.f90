@@ -37,7 +37,7 @@ CONTAINS
     character(80) :: line
     integer :: idummy(2),ierr
 
-    call write_border( 40, " check_format_atom(start)" )
+    call write_border( 80, " check_format_atom(start)" )
 
     call read_lattice( aa_obj, unit )
 
@@ -91,7 +91,7 @@ CONTAINS
 
     iformat_org = iformat
  
-    call write_border( 40, " check_format_atom(end)" )
+    call write_border( 80, " check_format_atom(end)" )
 
   END SUBROUTINE check_format_atom
 
@@ -260,7 +260,7 @@ CONTAINS
     integer :: i
     integer,allocatable :: num(:)
     logical :: disp_sw
-    call write_border(60," write_info_atom")
+    call write_border( 80, " write_info_atom(start)" )
     call check_disp_switch( disp_sw, 0 )
     if ( disp_sw ) then
        allocate( num(Nelement) ) ; num=0
@@ -272,6 +272,7 @@ CONTAINS
        write(*,'(3x,"total",3i8)') sum(zn_atom*num), sum(nint(zps)*num), Natom
        deallocate( num )
     end if
+    call write_border( 80, " write_info_atom(end)" )
   END SUBROUTINE write_info_atom
 
 

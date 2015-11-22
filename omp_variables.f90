@@ -24,7 +24,7 @@ CONTAINS
     integer :: i1,i2,i3,m,n,k,j,i,ab1,ab2,ab3,nn(3),np(3)
     integer,allocatable :: ntmp(:,:)
 
-    if ( disp_switch ) write(*,'(a60," init_omp")') repeat("-",60)
+    call write_border( 80, " init_omp(start)" )
 
     ab1 = b1b-a1b+1
     ab2 = b2b-a2b+1
@@ -202,6 +202,8 @@ CONTAINS
 !$OMP end single
 
 !$OMP end parallel
+
+    call write_border( 80, " init_omp(end)" )
 
   END SUBROUTINE init_omp
 

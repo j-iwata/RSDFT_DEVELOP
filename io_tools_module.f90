@@ -22,6 +22,7 @@ MODULE io_tools_module
 
   integer :: myrank
   integer :: unit_default
+  integer :: unit_input_result = 110
 
 CONTAINS
 
@@ -31,6 +32,7 @@ CONTAINS
     integer,intent(IN) :: myrank_in, unit_in
     myrank = myrank_in
     unit_default = unit_in
+    if ( myrank == 0 ) open(unit_input_result,file="input_result")
   END SUBROUTINE init_io_tools
 
 
@@ -79,8 +81,9 @@ CONTAINS
              exit
           end if
        end do ! i
+999    write(unit_input_result,'(a10,3x,i10)') keyword,variable
     end if
-999 call MPI_BCAST(variable,1,MPI_INTEGER,0,MPI_COMM_WORLD,i)
+    call MPI_BCAST(variable,1,MPI_INTEGER,0,MPI_COMM_WORLD,i)
   END SUBROUTINE IOTools_readIntegerKeyword
 
 

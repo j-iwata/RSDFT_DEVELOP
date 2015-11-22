@@ -120,11 +120,8 @@ CONTAINS
     type( xcpot ) :: pot
     type( xcene ) :: ene
 
+    call write_border( 80, " calc_xc(start)" )
     call check_disp_switch( disp_sw, 0 )
-
-    if ( disp_sw ) then
-       write(*,'(a40," calc_xc(start)")') repeat("-",40)
-    end if
 
     if ( flag_init ) call init_xc
 
@@ -393,9 +390,7 @@ CONTAINS
 
     deallocate( rho_tmp )
 
-    if ( disp_sw ) then
-       write(*,'(a40," calc_xc(end)")') repeat("-",40)
-    end if
+    call write_border( 80, " calc_xc(end)" )
 
   END SUBROUTINE calc_xc
 

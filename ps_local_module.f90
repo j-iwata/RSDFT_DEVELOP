@@ -172,6 +172,8 @@ CONTAINS
     real(8) :: Vcell
     real(8),allocatable :: vshort(:),tmp(:)
 
+    call write_border( 80, " init_ps_local(start)" )
+
     !call init_ps_local_test( GG, ps, psloc )
 
     MKI   = Nelement
@@ -289,6 +291,8 @@ CONTAINS
       vqlg(ig,:)=0.0d0
 
    end if
+
+    call write_border( 80, " init_ps_local(end)" )
 
   END SUBROUTINE init_ps_local
 

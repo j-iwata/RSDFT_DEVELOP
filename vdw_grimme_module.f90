@@ -43,6 +43,7 @@ CONTAINS
     integer,intent(IN) :: rank, unit
     integer :: ierr,i
     character(3) :: cbuf,ckey
+    call write_border( 80, " read_vdw_grimme(start)" )
     iswitch_vdw = .false.
     if ( rank == 0 ) then
        rewind unit
@@ -58,6 +59,7 @@ CONTAINS
        write(*,*) "iswitch_vdW =",iswitch_vdW
     end if
     call MPI_BCAST(iswitch_vdw,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
+    call write_border( 80, " read_vdw_grimme(end)" )
   END SUBROUTINE read_vdw_grimme
 
 
@@ -69,6 +71,8 @@ CONTAINS
     integer,intent(IN) :: ki_in(Natm), z_in(:)
 
     if ( .not.iswitch_vdw ) return
+
+    call write_border( 80, " init_vdw_grimme(start)" )
 
     aa(:,:) = aa_in(:,:)
 
@@ -123,6 +127,8 @@ CONTAINS
 
     flag_init = .false.
 
+    call write_border( 80, " init_vdw_grimme(end)" )
+
   END SUBROUTINE init_vdw_grimme
 
 
@@ -139,6 +145,8 @@ CONTAINS
     real(8),save :: chk_sum0=1.d10
 
     if ( .not.iswitch_vdw ) return
+
+    call write_border( 80, " calc_vdw_grimme(start)" )
 
     if ( flag_init ) then
        write(*,*) "You should call init_vdw_grimme first"
@@ -223,6 +231,8 @@ CONTAINS
        write(*,*) "Edisp was not converged"
        write(*,*) "Edisp,err =",Edisp,err
     end if
+
+    call write_border( 80, " calc_vdw_grimme(end)" )
 
   END SUBROUTINE calc_E_vdw_grimme
 

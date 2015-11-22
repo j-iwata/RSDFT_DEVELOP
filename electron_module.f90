@@ -128,6 +128,7 @@ CONTAINS
 
   SUBROUTINE count_electron
     integer :: i
+    call write_border( 80, " count_electron(start)" )
     Nelectron=0.0d0
     do i=1,Natom
        Nelectron = Nelectron + Zps(ki_atom(i))
@@ -139,6 +140,7 @@ CONTAINS
     end if
     Nelectron_spin(1) = 0.5d0*Nelectron + 0.5d0*Ndspin
     Nelectron_spin(2) = 0.5d0*Nelectron - 0.5d0*Ndspin
+    call write_border( 80, " count_electron(end)" )
   END SUBROUTINE count_electron
 
 

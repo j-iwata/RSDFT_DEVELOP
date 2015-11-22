@@ -17,7 +17,7 @@ CONTAINS
     implicit none
 
     if ( disp_switch_parallel ) then
-       write(*,'(a60," read_parameters(START)")') repeat("-",60)
+       write(*,'(a50," read_parameters(START)")') repeat("-",50)
     end if
 
     call read_electron(myrank,unit)
@@ -70,7 +70,7 @@ CONTAINS
     end select
 
     if ( disp_switch_parallel ) then
-       write(*,'(a60," read_parameters(END)")') repeat("-",60)
+       write(*,'(a50," read_parameters(END)")') repeat("-",50)
     end if
 
   END SUBROUTINE read_parameters

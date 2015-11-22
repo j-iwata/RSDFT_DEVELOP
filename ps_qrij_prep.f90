@@ -86,7 +86,7 @@ CONTAINS
     real(8) :: ctt(0:9),ett(0:9)
     real(8),parameter :: ep=1.d-8
 
-    call write_border( 40, " prepQRijp102(start)" )
+    call write_border( 60, " prepQRijp102(start)" )
 
     ctt=0.0d0 ; ett=0.0d0
     call watch(ctt(6),ett(6))
@@ -381,7 +381,7 @@ CONTAINS
        write(*,*) "time(prepQRijp102_9)",ctt(0)-ctt(8),ett(0)-ett(8)
     end if
 
-    call write_border( 40, " prepQRijp102(en)" )
+    call write_border( 60, " prepQRijp102(en)" )
 
   END SUBROUTINE prepQRijp102
 

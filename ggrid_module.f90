@@ -33,6 +33,8 @@ CONTAINS
     real(8),intent(IN) :: bb_in(3,3), Hgrid_in(3)
     logical,intent(IN) :: disp_switch
 
+    call write_border( 80, " Init_Ggrid(start)" )
+
     Ngrid(:) = Ngrid_in(:)
     bb(:,:)  = bb_in(:,:)
     Hgrid(:) = Hgrid_in(:)
@@ -44,8 +46,9 @@ CONTAINS
        write(*,*) "Ecut,Gcut=",Ecut,Gcut
        write(*,*) "NGgrid=",NGgrid
        write(*,*) "NMGL=",NMGL
-       write(*,'(a60," Init_Ggrid(END)")') repeat("-",60)
     end if
+
+    call write_border( 80, " Init_Ggrid(end)" )
 
   END SUBROUTINE Init_Ggrid
 
@@ -295,6 +298,7 @@ CONTAINS
     integer,intent(IN) :: nprocs,myrank
     integer :: i,n
     integer,allocatable :: np(:)
+    call write_border( 80, " InitParallel_Ggrid(start)" )
     allocate( ircntg(0:nprocs-1) ) ; ircntg=0
     allocate( idispg(0:nprocs-1) ) ; idispg=0
     allocate( np(0:nprocs-1)     ) ; np=0
@@ -309,6 +313,7 @@ CONTAINS
     deallocate( np )
     MG_0 = idispg(myrank) + 1
     MG_1 = idispg(myrank) + ircntg(myrank)
+    call write_border( 80, " InitParallel_Ggrid(end)" )
   END SUBROUTINE InitParallel_Ggrid
 
 

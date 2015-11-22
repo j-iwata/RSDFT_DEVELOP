@@ -73,6 +73,8 @@ CONTAINS
 #endif
     include 'mpif.h'
 
+    call write_border( 80, " calc_total_energy(start)" )
+
     Etot_0 = Etot
 
     Etot = 0.d0
@@ -294,6 +296,8 @@ CONTAINS
     Eentropy_0 = Eentropy
     Fene_0     = Fene
 
+    call write_border( 80, " calc_total_energy(end)" )
+
   END SUBROUTINE calc_total_energy
 
 
@@ -303,6 +307,7 @@ CONTAINS
     real(8),optional,intent(OUT) :: Ehwf_out
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
+    call write_border( 80, " calc_with_rhoIN_total_energy(start)" )
     sb(:)=0.d0
     do s=MSP_0,MSP_1
        sb(1) = sb(1) + sum(Vloc(:,s)*rho(:,s))
@@ -323,6 +328,7 @@ CONTAINS
     end if
     Ehwf_0 = Ehwf
     if ( present(Ehwf_out) ) Ehwf_out=Ehwf
+    call write_border( 80, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
 

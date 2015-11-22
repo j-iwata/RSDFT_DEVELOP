@@ -33,6 +33,8 @@ CONTAINS
     integer,intent(IN) :: MB_in
     integer :: i,j,mm,ms,me,nme,ne,nn,je,MB
 
+    call write_border( 80, " init_subspace_diag(start)" )
+
     MB_diag = MB_in
 
     MB  = MB_diag
@@ -90,6 +92,8 @@ CONTAINS
           write(*,'(1x,6i10)') i,mat_block(i,0:4)
        end do
     end if
+
+    call write_border( 80, " init_subspace_diag(end)" )
 
   END SUBROUTINE init_subspace_diag
 

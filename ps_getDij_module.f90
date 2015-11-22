@@ -34,6 +34,8 @@ CONTAINS
 
     case ( 102 )
 
+       call write_border( 80, " getDij(start)" )
+
        i=maxval( norb )
        j=maxval( lo )
        allocate( IntQV(Natom,i,i,-j:j,-j:j) ) ; IntQV=0.0d0
@@ -86,6 +88,8 @@ CONTAINS
        end do ! s
 
        deallocate( IntQV )
+
+       call write_border( 80, " getDij(end)" )
 
     end select
 

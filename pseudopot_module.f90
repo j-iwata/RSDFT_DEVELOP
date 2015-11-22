@@ -51,6 +51,8 @@ CONTAINS
     integer :: i,j,io,jo,li,lj
     integer :: Lrefmax,Rrefmax,npqmax,nsmpl
 
+    call write_border( 80, " read_pseudopot(start)" )
+
     Nelement = Nelement_in
 
     Nelement_PP = Nelement
@@ -70,8 +72,6 @@ CONTAINS
     allocate( ps(Nelement) )
 
     if ( rank == 0 ) then
-
-       write(*,'(a60," read_pseudopot")') repeat("-",60) 
 
        max_psgrd=0
        max_psorb=0
@@ -272,6 +272,8 @@ CONTAINS
 ! ---
 
 !    call chk_pot(1,rank)
+
+    call write_border( 80, " read_pseudopot(end)" )
 
   END SUBROUTINE read_pseudopot
 

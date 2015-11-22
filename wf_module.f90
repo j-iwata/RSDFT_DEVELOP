@@ -54,6 +54,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i,ierr
     character(6) :: cbuf,ckey
+    call write_border( 80, " read_wf(start)" )
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -68,6 +69,7 @@ CONTAINS
        write(*,*) "iwork_wf=",iwork_wf
     end if
     call mpi_bcast(iwork_wf,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call write_border( 80, " read_wf(end)" )
   END SUBROUTINE read_wf
 
 
@@ -76,7 +78,7 @@ CONTAINS
     integer,optional,intent(IN) :: SYStype_in
     integer :: SYStype
 
-    if ( myrank == 0 ) write(*,'(a60," init_wf")') repeat("-",60)
+    call write_border( 80, " init_wf(start)" )
 
     SYStype=0
     if ( present(SYStype_in) ) SYStype=SYStype_in
@@ -118,6 +120,8 @@ CONTAINS
 !         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk,SYStype )
 
     if ( iwork_wf == 1 ) call allocate_work_wf( iwork_wf )
+
+    call write_border( 80, " init_wf(end)" )
 
   END SUBROUTINE init_wf
 

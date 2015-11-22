@@ -21,6 +21,7 @@ CONTAINS
 
 
   SUBROUTINE set_array_bound
+    call write_border( 80, " set_array_bound(start)" )
     ML_0  = id_grid(myrank_g)+1
     ML_1  = id_grid(myrank_g)+ir_grid(myrank_g)
     MB_0  = id_band(myrank_b)+1
@@ -33,6 +34,7 @@ CONTAINS
     MB  = sum(ir_band)
     MBZ = sum(ir_bzsm)
     MSP = sum(ir_spin)
+    call write_border( 80, " set_array_bound(end)" )
   END SUBROUTINE set_array_bound
 
 

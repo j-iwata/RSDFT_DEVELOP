@@ -40,6 +40,7 @@ CONTAINS
   SUBROUTINE gram_schmidt(n0,n1,k,s)
     implicit none
     integer,intent(IN) :: n0,n1,k,s
+    call write_border( 80, " gram_schmidt(start)" )
     call init_gram_schmidt_g( iswitch_algorithm )
     select case( iswitch_algorithm )
     case default
@@ -51,6 +52,7 @@ CONTAINS
     case( 101 )
        call GramSchmidtG( n0,n1,k,s )
     end select
+    call write_border( 80, " gram_schmidt(end)" )
   END SUBROUTINE gram_schmidt
 
 END MODULE gram_schmidt_module

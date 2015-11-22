@@ -48,9 +48,7 @@ CONTAINS
     integer :: i,k,k1,iw,iw0,iw1,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
     integer,allocatable :: mm(:,:),m(:,:),w(:)
 
-    if ( DISP_SWITCH ) then
-       write(*,'(a60," generate_bz")') repeat("-",60)
-    end if
+    call write_border( 80," generate_bz(start)" )
 
     call read_bz
 
@@ -130,6 +128,8 @@ CONTAINS
        end do
     end if
 
+    call write_border( 80," generate_bz(end)" )
+
   END SUBROUTINE generate_bz
 
 
@@ -143,9 +143,7 @@ CONTAINS
     integer :: i,k,k1,iw,iw0,iw1,nkmax,p3(3),ns,ni,is,nni,ig
     real(8) :: c,tmp(3)
 
-    if ( disp_switch ) then
-       write(*,'(a60," generate_bz_sym")') repeat("-",60)
-    end if
+    call write_border( 80," generate_bz_sym(start)" )
 
     call read_bz
 
@@ -274,9 +272,7 @@ CONTAINS
 
     deallocate( w2,w1,w,m,mm )
 
-    if ( DISP_SWITCH ) then
-       write(*,'(a60," genetrate_bz_sym(END)")') repeat("-",60)
-    end if
+    call write_border( 80," generate_bz_sym(end)" )
 
     return
 

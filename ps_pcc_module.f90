@@ -26,6 +26,8 @@ CONTAINS
     real(8) :: const,sum0,sb,x,G,Vcell
     real(8),allocatable :: tmp(:)
 
+    call write_border( 80, " init_ps_pcc(start)" )
+
     allocate( flag_pcc(Nelement) )
     flag_pcc(:) = .false.
     flag_pcc_0  = .false.
@@ -72,6 +74,9 @@ CONTAINS
           deallocate( tmp )
        end do !ik
     end if
+
+    call write_border( 80, " init_ps_local(end)" )
+
   END SUBROUTINE init_ps_pcc
 
   SUBROUTINE simp(f,s,m)

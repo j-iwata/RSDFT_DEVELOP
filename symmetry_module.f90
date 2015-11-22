@@ -63,9 +63,7 @@ CONTAINS
 
     if ( isymmetry == 0 ) return
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," init_symmetry")') repeat("-",60)
-    end if
+    call write_border( 60," init_symmetry(start)")
 
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
@@ -81,9 +79,7 @@ CONTAINS
 !    call input_symdat_3( MI, Kion, asi )
 !    call input_symdat_4( MI, Kion, asi )
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," init_symmetry(END)")') repeat("-",60)
-    end if
+    call write_border( 60," init_symmetry(end)")
 
   END SUBROUTINE init_symmetry
 
@@ -819,9 +815,7 @@ stop
 
     if ( isymmetry == 0 ) return
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," prep_symmetry")') repeat("-",60)
-    end if
+    call write_border( 60, " prep_symmetry(start)" )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -920,9 +914,7 @@ stop
     deallocate( LLL2 )
     deallocate( itmp )
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a60," prep_symmetry(END)")') repeat("-",60)
-    end if
+    call write_border( 60, " prep_symmetry(end)" )
 
     return
 
@@ -942,6 +934,8 @@ stop
     real(8),allocatable :: rho_tmp(:),rho3(:,:,:),work3(:,:,:)
 
     if ( isymmetry == 0 ) return
+
+    call write_border( 60, " sym_rho(start)" )
 
     allocate( rho3(0:ML1-1,0:ML2-1,0:ML3-1)  ) ; rho3=0.0d0
     allocate( work3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work3=0.0d0
@@ -1002,9 +996,7 @@ stop
     deallocate( work3 )
     deallocate( rho3  )
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "TIME(SYM_RHO)="
-    end if
+    call write_border( 60, " sym_rho(end)" )
 
     return
 

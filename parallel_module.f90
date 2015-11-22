@@ -117,7 +117,7 @@ CONTAINS
     integer,allocatable :: mtmp(:),ntmp(:,:),ireq(:)
     integer,allocatable :: map_grid_2_pinfo(:,:,:,:)
 
-    if ( disp_switch_parallel ) write(*,'(a60," init_parallel")') repeat("-",60)
+    call write_border( 80, " init_parallel(start)" )
 
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
@@ -484,6 +484,8 @@ CONTAINS
 
     allocate( idisp(0:nprocs-1) ) ; idisp=-1
     allocate( ircnt(0:nprocs-1) ) ; ircnt=0
+
+    call write_border( 80, " init_parallel(end)" )
 
   END SUBROUTINE init_parallel
 

@@ -37,6 +37,8 @@ CONTAINS
     logical :: first_time = .true.
     logical :: disp_sw
 
+    call write_border( 80, " init_kinetic(start)" )
+
     pi2 = 2.d0*acos(-1.d0)
     a1  = sqrt(sum(aa(1:3,1)**2))/pi2
     a2  = sqrt(sum(aa(1:3,2)**2))/pi2
@@ -149,6 +151,8 @@ CONTAINS
           zcoef_kin(1:3, n,k)=coef_lap(1:3,n)-zi*coef_nabk(1:3,n,k)
        end do
     end do
+
+    call write_border( 80, " init_kinetic(end)" )
 
   END SUBROUTINE init_kinetic
 

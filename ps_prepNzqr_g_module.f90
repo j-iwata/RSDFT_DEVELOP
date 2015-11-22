@@ -24,7 +24,7 @@ CONTAINS
     integer :: lma1,lma2,a1,a2,l1,l2,m1,m2,i1,i2,a,l,m
     integer,allocatable :: k1a(:)
 
-    call write_border( 40," prepNzqr(start)" )
+    call write_border( 60," prepNzqr(start)" )
 
 !----- get N_nzqr -----
 
@@ -181,7 +181,7 @@ CONTAINS
 
 !===== Nlop_type Matrix =====
 
-    call write_border( 40," prepNzqr(end)" )
+    call write_border( 60," prepNzqr(end)" )
 
   END SUBROUTINE prepNzqr  
 

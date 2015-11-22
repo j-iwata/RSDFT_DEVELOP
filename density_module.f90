@@ -73,6 +73,8 @@ CONTAINS
     real(8),intent(IN) :: Nelectron,dV
     integer :: i,s
 
+    call write_border( 80, " init_density(start)" )
+
     Nelectron_RHO = Nelectron
     dV_RHO        = dV
 
@@ -88,6 +90,8 @@ CONTAINS
        call random_number(rho)
        call normalize_density
     end if
+
+    call write_border( 80, " init_density(end)" )
 
   END SUBROUTINE init_density
 

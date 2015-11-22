@@ -45,7 +45,7 @@ CONTAINS
     real(8),intent(OUT) :: rho(:,:)
     integer :: s
 
-    call write_border( 40, " construct_ps_initrho(start)" )
+    call write_border( 80, " construct_ps_initrho(start)" )
 
 ! ---
 
@@ -89,7 +89,7 @@ CONTAINS
 
     call check_initrho( rho )
 
-    call write_border( 40, " construct_ps_initrho(end)" )
+    call write_border( 80, " construct_ps_initrho(end)" )
 
   END SUBROUTINE construct_ps_initrho
 

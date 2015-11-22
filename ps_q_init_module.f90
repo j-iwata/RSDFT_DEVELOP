@@ -28,7 +28,7 @@ CONTAINS
     logical :: disp_switch_local
     logical :: registered_k2(1:max_k2)
 
-    call write_border( 40," initKtoKPSQ_pq_q_init" )
+    call write_border( 60," initKtoKPSQ_pq_q_init" )
 
     disp_switch_local=(myrank==0)
 
@@ -111,7 +111,7 @@ CONTAINS
     real(8) :: qc,Q_rcfac,Q_etafac
     real(8),allocatable :: vrad(:),Q_wm(:,:,:)
 
-    call write_border(40," ps_q_init")
+    call write_border( 60, " ps_q_init" )
 
     Q_rcfac  = rcfac
     Q_etafac = etafac

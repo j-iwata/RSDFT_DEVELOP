@@ -6,7 +6,7 @@ SUBROUTINE write_border(n,indx)
   character(80) :: axx
   logical :: disp
 
-  write(axx,'(i2)') n
+  write(axx,'(i2)') n-len(indx)
   axx=adjustl(axx)
   axx="(a"//axx(1:len_trim(axx))//",a)"
 

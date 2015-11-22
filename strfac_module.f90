@@ -18,6 +18,8 @@ CONTAINS
     integer :: a,i,i1,i2,i3,ik,j,ierr,MG
     real(8) :: Gr,pi2,a1,a2,a3
 
+    call write_border( 80, " construct_strfac(start)" )
+
     pi2 = 2.d0*acos(-1.d0)
     MG  = NGgrid(0)
 
@@ -38,10 +40,14 @@ CONTAINS
 
     call destruct_Ggrid
 
+    call write_border( 80, " construct_strfac(end)" )
+
   END SUBROUTINE construct_strfac
 
   SUBROUTINE destruct_strfac
+    call write_border( 80, " destruct_strfac(start)" )
     deallocate( SGK )
+    call write_border( 80, " destruct_strfac(end)" )
   END SUBROUTINE destruct_strfac
 
 
