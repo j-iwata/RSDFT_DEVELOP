@@ -2,7 +2,7 @@
 
       implicit none
       integer :: l1_i,l2_i,m1_i,m2_i,L_i,M_i,j,i
-      real(8) :: l1,l2,m1,m2,L,M,l1_max
+      real(8) :: l1,l2,m1,m2,L,M,l1_max,l2_max
       real(8) :: rm,pi4,bm1,bm2,bM
       real(8) :: c,c1,c2,c3,c4,c5
       complex(8) :: am1,am2,aM,zc1,zc
@@ -17,18 +17,15 @@
       pi4    = atan(1.d0)*16.d0
       l2_i   = 1
       l1_max = 3
+      l2_max = 3
 
       i=0
-      do j=1,3
-         select case(j)
-         case(1) ; m2_i=1
-         case(2) ; m2_i=-1
-         case(3) ; m2_i=0
-         end select
-         do l1_i=0,l1_max
-         do L_i=abs(l1_i-l2_i),l1_i+l2_i
-         do M_i=-L_i,L_i
+      do l1_i=0,l1_max
+      do l2_i=0,l2_max
+      do L_i=abs(l1_i-l2_i),l1_i+l2_i
          do m1_i=-l1_i,l1_i
+         do m2_i=-l2_i,l2_i
+         do M_i=-L_i,L_i
 
             l1 = l1_i
             l2 = l2_i
@@ -95,15 +92,19 @@ c     &                     +(-1)**(-m1_i+m2_i+M_i)*bm2)
 c     &           *CG(l1_i,l2_i,m1_i,-m2_i,L_i,-M_i)
 
             zc=zc1*(c2+c3+c4+c5)
-            if ( abs(zc)==0.d0 ) cycle
+!            if ( abs(zc)==0.d0 ) cycle
+            if ( abs(zc) <= 1.d-10 ) cycle
             i=i+1
-            write(*,'(1x,i3,2x,4i3,1x,2i3,1x,2f20.16)')
-     &           i,l1_i,m1_i,L_i,M_i,l2_i,m2_i,real(zc),aimag(zc)
+!            write(*,'(1x,i3,2x,4i3,1x,2i3,1x,2f20.16)')
+!     &           i,l1_i,m1_i,L_i,M_i,l2_i,m2_i,real(zc),aimag(zc)
+            write(*,'(4x,"yyy(",i2,5(",",i2),") = ",f20.16)')
+     &           l1_i,m1_i,l2_i,m2_i,L_i,M_i,real(zc)
 
          end do
          end do
          end do
-         end do
+      end do
+      end do
       end do
 
       stop
@@ -117,7 +118,7 @@ c     &           *CG(l1_i,l2_i,m1_i,-m2_i,L_i,-M_i)
       real(8) :: CG
       integer,intent(IN) :: j1_in,j2_in,m1_in,m2_in,jj_in,mm_in
       real(8),parameter :: one=1.d0,two=2.d0
-      real(8) :: j1,j2,m1,m2,jj,mm
+      real(8) :: j1,j2,m1,m2,jj,mm,clgr
 
       CG=0.d0
 
@@ -130,14 +131,6 @@ c     &           *CG(l1_i,l2_i,m1_i,-m2_i,L_i,-M_i)
      &     ) return
 
 !
-! The following is a temporary restriction
-!
-      if ( j2_in/=1 ) then
-         write(*,*) "WARNING! j2/=1 is not available yet"
-         return
-      end if
-
-!
 ! --- CG for j2=1 ---
 !
       j1 = j1_in
@@ -146,6 +139,19 @@ c     &           *CG(l1_i,l2_i,m1_i,-m2_i,L_i,-M_i)
       m1 = m1_in
       m2 = m2_in
       mm = mm_in
+!
+! --- CG coefficients ---
+!
+      CG=clgr( j1, m1, j2, m2, jj, mm )
+      return
+
+!
+! The following is a temporary restriction
+!
+      if ( j2_in/=1 ) then
+         write(*,*) "WARNING! j2/=1 is not available yet"
+         return
+      end if
 
       if ( jj_in==j1_in+1 ) then
 
