@@ -75,10 +75,8 @@ CONTAINS
 
 !===== get N_nlop =====
 
-!    call allocateNzqr( nspin,Natom,k1max )
     if ( allocated(nzqr_pair) ) deallocate( nzqr_pair )
     if ( allocated(k1map)     ) deallocate( k1map     )
-!    if ( allocated(kk1map)    ) deallocate( kk1map    )
     if ( allocated(nlop_pair) ) deallocate( nlop_pair )
     if ( allocated(Dij)       ) deallocate( Dij       )
     if ( allocated(Dij00)     ) deallocate( Dij00     )
@@ -86,7 +84,6 @@ CONTAINS
     if ( allocated(qij_f)     ) deallocate( qij_f     )
     allocate( nzqr_pair(N_nzqr,2) ) ; nzqr_pair=0
     allocate( k1map(N_nzqr)       ) ; k1map=0
-!    allocate( kk1map(k1max,Natom) ) ; kk1map=0
     allocate( nlop_pair(2,N_nlop) ) ; nlop_pair=0
     allocate( Dij(N_nzqr,nspin)   ) ; Dij=0.0d0
     allocate( Dij00(N_nzqr)       ) ; Dij00=0.0d0
@@ -94,34 +91,6 @@ CONTAINS
     allocate( qij_f(N_nzqr)       ) ; qij_f=0.0d0
 
 !----- get nzqr_pair, atommap, k1map, kk1map -----
-
-!    allocate( k1a(Natom) ) ; k1a(:)=0
-!    kk1=0
-!    do lma1=1,nzlma
-!       if ( amap(lma1) == 0 .or. iorbmap(lma1) == 0 ) cycle
-!       a1=amap(lma1)
-!       l1=lmap(lma1)
-!       m1=mmap(lma1)
-!       i1=no(iorbmap(lma1),ki_atom(a1))
-!       do lma2=1,nzlma
-!          if ( amap(lma2) == 0 .or. iorbmap(lma2) == 0 ) cycle
-!          a2=amap(lma2)
-!          l2=lmap(lma2)
-!          m2=mmap(lma2)
-!          i2=no(iorbmap(lma2),ki_atom(a2))
-!          if ( a2 /= a1 ) cycle
-!          if ( l2 > l1 ) cycle
-!          if ( l1 == l2 .and. i2 > i1 ) cycle
-!          if ( l1 == l2 .and. i1 == i2 .and. m2 > m1 ) cycle
-!          k1a(a1) = k1a(a1) + 1
-!          kk1 = kk1 + 1
-!          nzqr_pair(kk1,1)   = lma1
-!          nzqr_pair(kk1,2)   = lma2
-!          k1map(kk1)         = k1a(a1)
-!          kk1map(k1a(a1),a1) = kk1
-!       end do
-!    end do
-!    deallocate( k1a )
 
     kk1=0
     do lma1=1,nzlma

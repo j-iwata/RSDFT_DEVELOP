@@ -43,7 +43,6 @@ CONTAINS
        do i1=1,nrf(l1,ik)
           nr1=nr1+1
           nr2=0
-!          do l2=1,l1
           do l2=1,nlf(ik)
           do i2=1,nrf(l2,ik)
              nr2=nr2+1
@@ -297,9 +296,8 @@ CONTAINS
   SUBROUTINE ps_q_init_derivative
     implicit none
     integer :: ik,L,NRc,J,i,m,m1,m2,lm,ll3,ik1,ik2,cJ
-    real(8) :: maxerr,y,dy,y0,dy0
-    real(8) :: pi4,const
-    real(8),allocatable :: dwork(:,:,:,:,:)
+    real(8) :: maxerr,y,dy,y0,dy0,r,const0,const1
+    real(8),allocatable :: dwork(:,:,:)
     real(8),parameter :: sqrt_4pi_3=sqrt(4.d0*acos(-1.d0)/3.d0)
 
     maxcJ=0
@@ -323,16 +321,18 @@ CONTAINS
     ik  = Nelement_
 
     allocate( dqrL(NRc,l,ik2,ik,maxcJ) ) ; dqrL=0.0d0
-    allocate( dwork(NRc,l,ik2,ik,3)    ) ; dwork=0.0d0
+
+    allocate( dwork(NRc,l,ik2) ) ; dwork=0.0d0
+
+    const0 = sqrt( 4.0d0*acos(-1.0d0)/3.0d0 )
 
     do ik=1,Nelement_
-       do ik1=1,N_k1(ik)
-          ik2=k1_to_k2(ik1,ik)
+
+       do ik2=1,N_k2(ik)
           NRc=Q_NRps(ik2,ik)
           do ll3=1,nl3v(ik2,ik)
              L=l3v(ll3,ik2,ik)-1
              maxerr=0.0d0
-rewind 10
              do i=1,NRc
                 dy0=1.d10
                 do m=1,20
@@ -343,18 +343,12 @@ rewind 10
                       y0=y ; dy0=abs(dy)
                    end if
                 end do ! m
-                dqrL(i,ll3,ik2,ik,1)=y0
-!write(10,*) rad1(i,ik),dqrL(i,ll3,ik2,ik,1),qrL(i,ll3,ik2,ik)
                 maxerr=max(maxerr,dy0)
+                dwork(i,ll3,ik2)=y0
              end do ! i
-!write(*,*) sum(dqrl(:,ll3,ik2,ik,1)**2)
-!stop
-             !write(*,*) sum(dqrL(:,ll3,ik2,ik,1)**2),sum(qrL(:,ll3,ik2,ik)**2)
           enddo ! ll3
        end do ! ik1
-    end do !ik
 
-    do ik=1,Nelement_
        do ik1=1,N_k1(ik)
           ik2=k1_to_k2(ik1,ik)
           NRc=Q_NRps(ik2,ik)
@@ -363,35 +357,20 @@ rewind 10
              cJ=0
              do J=abs(L-1),L+1
                 cJ=cJ+1
-                const=0.5d0*(2.d0+L*(L+1)-J*(J+1))
+                const1=0.5d0*(2.d0+L*(L+1)-J*(J+1))
                 do i=1,NRc
-                   dwork(i,ll3,ik2,ik,cJ)=(rad1(i,ik)**3)*dqrL(i,ll3,ik2,ik,1) &
-                        +const*qrL(i,ll3,ik2,ik)*(rad1(i,ik)**2)
+                   r = rad1(i,ik)
+                   dqrL(i,ll3,ik2,ik,cJ) = const0*r*r*( r*dwork(i,ll3,ik2) &
+                        + const1*qrL(i,ll3,ik2,ik) )
                 end do
-!                write(*,*) sum(dwork(:,ll3,ik2,ik,cJ)**2)
              end do ! J
           end do ! ll3
        enddo ! ik1
+
     end do ! ik
-!stop
-    do ik=1,Nelement_
-       do ik1=1,N_k1(ik)
-          ik2=k1_to_k2(ik1,ik)
-          NRc=Q_NRps(ik2,ik)
-          do ll3=1,nl3v(ik2,ik)
-             L=l3v(ll3,ik2,ik)-1
-             cJ=0
-             do J=abs(L-1),L+1
-                cJ=cJ+1
-                do i=1,NRc
-                   dqrL(i,ll3,ik2,ik,cJ)=sqrt_4pi_3*dwork(i,ll3,ik2,ik,cJ)
-                end do
-             enddo
-          end do
-       end do
-    end do
 
     deallocate( dwork )
+
   END SUBROUTINE ps_q_init_derivative
 
 
