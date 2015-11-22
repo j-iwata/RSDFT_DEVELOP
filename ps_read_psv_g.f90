@@ -95,22 +95,13 @@ CONTAINS
 
     if ( npq_ /= k2 ) stop 'ERROR npq/=k2'
 
-!    npqmax = npq_
-!    call allocatePSG( Lrefmax,Rrefmax,npqmax,max_psgrd,Nelement_PP )
-
-    psp%npq = npq_
+    psp%npq = npqmax  ! npqmax includes too large mergin ( npq_ is enough ) 
     psp%nrf_max = maxval( psp%nrf )
     call psg_allocate_ps1d( psp )
-
-!    npq(ik)=npq_
 
     do l=1,psp%nlf
        do j=1,psp%nrf(l)
        do i=1,j
-!          ddi(i,j,l,ik)=ddi_(i,j,l)
-!          ddi(j,i,l,ik)=ddi_(i,j,l)
-!          qqr(i,j,l,ik)=qqr_(i,j,l)
-!          qqr(j,i,l,ik)=qqr_(i,j,l)
           psp%ddi(i,j,l) = ddi_(i,j,l)
           psp%ddi(j,i,l) = ddi_(i,j,l)
           psp%qqr(i,j,l) = qqr_(i,j,l)
