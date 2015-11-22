@@ -22,8 +22,6 @@ CONTAINS
 
     call read_electron(myrank,unit)
 
-    call read_cg(myrank,unit)
-
     call Read_RgridSol(myrank,unit)
 
     call read_kinetic(myrank,unit)

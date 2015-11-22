@@ -4,7 +4,7 @@ MODULE sweep_module
   use electron_module, only: Nfixed, Ndspin, Nspin, Nband, Nelectron
   use bz_module, only: weight_bz, Nbzsm
   use wf_module
-  use cg_module, only: Ncg, conjugate_gradient
+  use cg_module, only: conjugate_gradient
   use array_bound_module, only: ML_0,ML_1,MBZ_0,MBZ_1,MSP_0,MSP_1,MB_0,MB_1
   use gram_schmidt_module
   use io_module
@@ -72,9 +72,9 @@ CONTAINS
   END SUBROUTINE init_sweep
 
 
-  SUBROUTINE calc_sweep( Diter, isw_gs, ierr_out, disp_switch )
+  SUBROUTINE calc_sweep( Diter, ierr_out, disp_switch )
     implicit none
-    integer,intent(IN)  :: Diter,isw_gs
+    integer,intent(IN)  :: Diter
     integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
     integer :: iter,s,k,n,m,iflag_hybrid,ierr
@@ -149,8 +149,8 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
           call watchs(ct(0),et(0),0)
-          call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,isw_gs &
-                                 ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+          call conjugate_gradient( ML_0,ML_1, Nband, k,s &
+                                 ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
           call watchs(ct(0),et(0),1)
           call gram_schmidt(1,Nband,k,s)
           call watchs(ct(1),et(1),1)

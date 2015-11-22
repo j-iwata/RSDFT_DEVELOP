@@ -29,10 +29,9 @@ CONTAINS
 !  END SUBROUTINE init_conjugate_gradient_g
 
 
-  SUBROUTINE conjugate_gradient_g( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
+  SUBROUTINE conjugate_gradient_g( n1,n2,MB,k,s,Mcg,unk,esp,res,iswitch_gs )
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
-    integer,intent(IN) :: Ncg,iswitch_gs
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,iswitch_gs
 #ifdef _DRSDFT_
     real(8),intent(INOUT) :: unk(n1:n2,MB)
 #else

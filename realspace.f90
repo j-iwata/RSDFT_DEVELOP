@@ -338,7 +338,7 @@ PROGRAM Real_Space_Solid
 
   if ( Nsweep > 0 ) then
 !     call init_sweep( 2, Nband, 1.d-7 )
-     call calc_sweep( Nsweep, iswitch_gs, ierr, disp_switch )
+     call calc_sweep( Nsweep, ierr, disp_switch )
      if ( ierr == -1 ) goto 900
   end if
 

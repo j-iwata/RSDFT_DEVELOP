@@ -223,7 +223,7 @@ CONTAINS
 
 ! --- sweep ---
 
-       call calc_sweep( Diter_band, iswitch_gs, ierr, disp_switch )
+       call calc_sweep( Diter_band, ierr, disp_switch )
 
 ! ---
 

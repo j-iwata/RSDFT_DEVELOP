@@ -240,7 +240,7 @@ CONTAINS
 
              call watchs(ct(1),et(1),0)
 
-             call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
+             call conjugate_gradient(ML_0,ML_1,Nband,k,s &
                                     ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
 
              call watchs(ct(1),et(1),1)

@@ -12,67 +12,33 @@ MODULE cg_module
   use kinetic_module, only: SYStype
   use watch_module
   use conjugate_gradient_g_module, only: conjugate_gradient_g, pp_kind
+  use io_tools_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: conjugate_gradient
-  PUBLIC :: read_cg
 
-  integer,PUBLIC :: Ncg
-  integer,PUBLIC :: iswitch_gs
-
-  integer :: iswitch_cg
+  integer :: Ncg = 2
+  integer :: iswitch_gs = 0
+  integer :: iswitch_cg = 1
+  logical :: flag_init_read = .true.
 
 CONTAINS
 
 
-  SUBROUTINE read_cg(rank,unit)
+  SUBROUTINE read_cg
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(4) :: cbuf,ckey
-    Ncg = 2
-    iswitch_gs = 0
-    iswitch_cg = 1
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:3) == "NCG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ncg
-          else if ( ckey(1:4) == "SWGS" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iswitch_gs
-          else if ( ckey(1:3) == "ICG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iswitch_cg
-          end if
-       end do
-999    continue
-       write(*,*) "Ncg=",Ncg
-       write(*,*) "iswitch_gs=",iswitch_gs
-       write(*,*) "iswitch_cg=",iswitch_cg
-    end if
-    call send_cg(0)
+    call IOTools_readIntegerKeyword( "NCG" , Ncg )
+    call IOTools_readIntegerKeyword( "ICG" , iswitch_cg )
+    call IOTools_readIntegerKeyword( "SWGS", iswitch_gs )
+    flag_init_read = .false.
   END SUBROUTINE read_cg
 
 
-  SUBROUTINE send_cg(rank)
+  SUBROUTINE conjugate_gradient( n1,n2, MB, k,s, unk, esp, res )
     implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    call mpi_bcast(Ncg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iswitch_gs,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iswitch_cg,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_cg
-
-
-  SUBROUTINE conjugate_gradient(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
-    implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    integer,intent(IN) :: n1,n2,MB,k,s
     real(8),intent(INOUT) :: esp(MB),res(MB)
 #ifdef _DRSDFT_
     real(8),intent(INOUT) :: unk(n1:n2,MB)
@@ -81,48 +47,45 @@ CONTAINS
 #endif
     integer :: ipc
 
+    call write_border( 60, " conjugate_gradient(start)" )
+
+    if ( flag_init_read ) call read_cg
+
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 
     if ( pp_kind == "USPP" ) then
 
-       call conjugate_gradient_g &
-            ( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
-       return
+       call conjugate_gradient_g( n1,n2,MB,k,s,Ncg,unk,esp,res,iswitch_gs )
+
+    else
+
+       select case( iswitch_cg )
+       case default
+       case( 1 )
+
+          if ( disp_switch_parallel ) &
+               write(*,'("--- CG ( with IPC=",i1," ) ---")') ipc
+          call conjugate_gradient_1(n1,n2,MB,k,s,Ncg,unk,esp,res)
+
+       case( 2 )
+
+          if ( disp_switch_parallel ) &
+               write(*,'("--- LOBPCG ( with IPC=",i1," ) ---")') ipc
+          call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+          call lobpcg( k,s,Ncg,iswitch_gs,unk,esp,res )
+
+       end select
 
     end if
 
-    select case( iswitch_cg )
-    case default
-    case( 1 )
-
-       if ( disp_switch_parallel ) &
-            write(*,'("--- CG ( with IPC=",i1," ) ---")') ipc
-       call conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
-
-    case( 2 )
-
-       if ( disp_switch_parallel ) &
-            write(*,'("--- LOBPCG ( with IPC=",i1," ) ---")') ipc
-       call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-       call lobpcg( k,s,Mcg,igs,unk,esp,res )
-
-!    case( 3 )
-!       if ( disp_switch_parallel ) &
-!            write(*,'("--- CG_U ( with IPC=",i1," ) ---")') ipc
-!       call init_cg_u( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-!       call cg_u( k,s,Mcg,igs,unk,esp,res,disp_switch_parallel )
-!    case( 101 ) !----------> uspp
-!       call ConjugateGradientG &
-!            ( n1,n2,MB,k,s,Mcg,igs,unk,esp,res,Ncg,iswitch_gs )
-
-    end select
+    call write_border( 60, " conjugate_gradient(end)" )
 
   END SUBROUTINE conjugate_gradient
 
 #ifdef _DRSDFT_
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg
     real(8),intent(INOUT) :: unk(n1:n2,MB)
     real(8),intent(INOUT) :: esp(MB),res(MB)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
@@ -430,11 +393,11 @@ CONTAINS
 !    call get_time_min( 13, time_cgpc, time_cgpc_min )
 !    call get_time_max( 13, time_cgpc, time_cgpc_max )
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(hmlt_kin)",( time_hmlt(i,1), i=1,2 )
-       write(*,*) "time(hmlt_loc)",( time_hmlt(i,2), i=1,2 )
-       write(*,*) "time(hmlt_nlc)",( time_hmlt(i,3), i=1,2 )
-       write(*,*) "time(hmlt_exx)",( time_hmlt(i,4), i=1,2 )
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(hmlt_kin)",( time_hmlt(i,1), i=1,2 )
+!       write(*,*) "time(hmlt_loc)",( time_hmlt(i,2), i=1,2 )
+!       write(*,*) "time(hmlt_nlc)",( time_hmlt(i,3), i=1,2 )
+!       write(*,*) "time(hmlt_exx)",( time_hmlt(i,4), i=1,2 )
 !       write(*,'(a20," kine")') repeat("-",20)
 !       call write_watchb( time_kine(1,6),6, time_kine_indx(6) ) 
 !       write(*,*) "(min)"
@@ -449,17 +412,17 @@ CONTAINS
 !       write(*,*) "(max)"
 !       call write_watchb( time_cgpc_max(1,8),6, time_cgpc_indx(8) ) 
 !       write(*,'(a20," cg_1")') repeat("-",20)
-       call write_watchb( timecg(1,1), 7, timecg_indx ) 
-       write(*,*) "iswitch_gs=",iswitch_gs
-    end if
+!       call write_watchb( timecg(1,1), 7, timecg_indx ) 
+!       write(*,*) "iswitch_gs=",iswitch_gs
+!    end if
 
   END SUBROUTINE conjugate_gradient_1
 
 #else
 
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,igs,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg,igs
+    integer,intent(IN) :: n1,n2,MB,k,s,Mcg
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
     real(8),intent(INOUT) :: esp(MB),res(MB)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
@@ -741,7 +704,7 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
-    if ( disp_switch_parallel ) then
+!    if ( disp_switch_parallel ) then
 !       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
 !       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
 !       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
@@ -750,8 +713,8 @@ CONTAINS
 !       write(*,*) "time(op_cg   )",ctt(2),ett(2)
 !       write(*,*) "time(com_cg  )",ctt(3),ett(3)
 !       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
-       write(*,*) "iswitch_gs=",iswitch_gs
-    end if
+!       write(*,*) "iswitch_gs=",iswitch_gs
+!    end if
 
   END SUBROUTINE conjugate_gradient_1
 #endif

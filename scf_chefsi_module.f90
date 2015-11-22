@@ -158,9 +158,6 @@ CONTAINS
 
              call ChebyshevFilter( k,s,MB_0,MB_1 )
 
-!             call conjugate_gradient(ML_0,ML_1,Nband,k,s,Ncg,iswitch_gs &
-!                                    ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-
              call watcht(disp_switch,"chef",1)
 
              call gram_schmidt(1,Nband,k,s)
