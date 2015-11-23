@@ -49,10 +49,8 @@ CONTAINS
     integer,parameter :: TYPE_WF=0
 #endif
 
-    if ( DISP_SWITCH ) then
-       write(*,'(a40," simple_wf_io_write(start)")') repeat("-",40)
-       write(*,*) "OC =",OC
-    end if
+    call write_border( 1, " simple_wf_io_write(start)" )
+    if ( DISP_SWITCH ) write(*,*) "OC =",OC
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -245,8 +243,9 @@ CONTAINS
     if ( DISP_SWITCH ) then
        write(*,*) "write to ",file_wf
        write(*,*) "MBwr1,MBwr2 =",MBwr1,MBwr2
-       write(*,'(a40," simple_wf_io_write(end)")') repeat("-",40)
     end if
+
+    call write_border( 1, " simple_wf_io_write(end)" )
 
   END SUBROUTINE simple_wf_io_write
 

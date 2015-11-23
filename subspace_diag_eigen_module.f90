@@ -27,6 +27,8 @@ CONTAINS
     real(8) :: time_temp(2),time_eigen(2,8)
     character(4) :: time_index(8)
 
+    call write_border( 1, " subspace_diag_eigen(start)" )
+
     time_eigen(:,:)=0.0d0
     time_index(:) = (/"init","alc1","mate","alc2" &
                      ,"solv","rotv","deal","free"/)
@@ -71,6 +73,8 @@ CONTAINS
     call watchb( time_temp, time_eigen(1,8) )
 
     if ( disp_switch ) call write_watchb( time_eigen, 8, time_index )
+
+    call write_border( 1, " subspace_diag_eigen(end)" )
 #endif
   END SUBROUTINE subspace_diag_eigen
 

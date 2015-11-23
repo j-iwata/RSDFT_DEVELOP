@@ -30,7 +30,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n0,n1,k,s
 
-    call write_border( 80, " gram_schmidt(start)" )
+    call write_border( 1, " gram_schmidt(start)" )
 
     if ( flag_init_read ) call read_gram_schmidt
 
@@ -51,7 +51,7 @@ CONTAINS
 
     end if
 
-    call write_border( 80, " gram_schmidt(end)" )
+    call write_border( 1, " gram_schmidt(end)" )
 
   END SUBROUTINE gram_schmidt
 

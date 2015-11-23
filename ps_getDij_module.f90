@@ -34,7 +34,7 @@ CONTAINS
 
     case ( 102 )
 
-       call write_border( 80, " getDij(start)" )
+       call write_border( 1, " getDij(start)" )
 
        i=maxval( norb )
        j=maxval( lo )
@@ -89,7 +89,7 @@ CONTAINS
 
        deallocate( IntQV )
 
-       call write_border( 80, " getDij(end)" )
+       call write_border( 1, " getDij(end)" )
 
     end select
 

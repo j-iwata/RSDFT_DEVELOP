@@ -8,6 +8,8 @@ MODULE info_module
   integer,parameter :: unit_info = 100, unit_stdout = 6
   character(30) :: file_name = "RSDFT_INFO"
   integer :: myrank
+  character(8)  :: date_start, date_end
+  character(10) :: time_start, time_end
 
 CONTAINS
 
@@ -39,18 +41,16 @@ CONTAINS
   SUBROUTINE header_info( unit )
     implicit none
     integer,intent(IN) :: unit
-    character(8)  :: date
-    character(10) :: time
+!    character(8)  :: date
+!    character(10) :: time
 
     write(unit,'(a70)') repeat("-",70)
     write(unit,*) "RSDFT ver.0.0.0"
 
     write(unit,'(a60," header_info")') repeat("-",60)
 
-    call date_and_time(DATE=date,TIME=time)
-    write(unit,*) "Start time  "//date(1:4)//"/"//date(5:6)//"/"//date(7:8) &
-                           //" "//time(1:2)//":"//time(3:4)//":"//time(5:10)
-    write(unit,*)
+    call date_and_time(DATE=date_start,TIME=time_start)
+    call write_date_and_time( unit, "Start time  ", date_start, time_start )
     write(unit,*) "preprocessor option list ( -cpp -Dxxxx )"
 #ifdef _DRSDFT_
        write(unit,*) "_DRSDFT_"," (wave functions are REAL8)"
@@ -70,15 +70,21 @@ CONTAINS
   END SUBROUTINE header_info
 
 
+  SUBROUTINE write_date_and_time( unit, indx, date, time )
+    implicit none
+    integer,intent(IN) :: unit
+    character(*),intent(IN) :: indx, date, time
+    write(unit,*) indx//date(1:4)//"/"//date(5:6)//"/"//date(7:8) &
+                      //" "//time(1:2)//":"//time(3:4)//":"//time(5:10)
+  END SUBROUTINE write_date_and_time
+
 
   SUBROUTINE footer_info( unit )
     implicit none
     integer,intent(IN) :: unit
-    character(8)  :: date
-    character(10) :: time
-    call date_and_time(DATE=date,TIME=time)
-    write(unit,*) "End time  "//date(1:4)//"/"//date(5:6)//"/"//date(7:8) &
-                           //" "//time(1:2)//":"//time(3:4)//":"//time(5:10)
+    call date_and_time(DATE=date_end,TIME=time_end)
+    call write_date_and_time( unit, "Start time  ", date_start, time_start )
+    call write_date_and_time( unit, "End   time  ", date_end, time_end )
   END SUBROUTINE footer_info
 
 

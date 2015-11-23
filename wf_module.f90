@@ -54,7 +54,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i,ierr
     character(6) :: cbuf,ckey
-    call write_border( 80, " read_wf(start)" )
+    call write_border( 0, " read_wf(start)" )
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -69,7 +69,7 @@ CONTAINS
        write(*,*) "iwork_wf=",iwork_wf
     end if
     call mpi_bcast(iwork_wf,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call write_border( 80, " read_wf(end)" )
+    call write_border( 0, " read_wf(end)" )
   END SUBROUTINE read_wf
 
 
@@ -78,7 +78,7 @@ CONTAINS
     integer,optional,intent(IN) :: SYStype_in
     integer :: SYStype
 
-    call write_border( 80, " init_wf(start)" )
+    call write_border( 0, " init_wf(start)" )
 
     SYStype=0
     if ( present(SYStype_in) ) SYStype=SYStype_in
@@ -121,7 +121,7 @@ CONTAINS
 
     if ( iwork_wf == 1 ) call allocate_work_wf( iwork_wf )
 
-    call write_border( 80, " init_wf(end)" )
+    call write_border( 0, " init_wf(end)" )
 
   END SUBROUTINE init_wf
 
@@ -210,6 +210,7 @@ end do
   SUBROUTINE gather_wf
     implicit none
     integer :: k,s,mm,ierr
+    call write_border( 1, " gather_wf(start)" )
     mm=ML_1_WF-ML_0_WF+1
     ir_band(:)=ir_band(:)*mm
     id_band(:)=id_band(:)*mm
@@ -227,6 +228,7 @@ end do
     end do
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
+    call write_border( 1, " gather_wf(end)" )
   END SUBROUTINE gather_wf
 
   SUBROUTINE write_wf(rankIN)

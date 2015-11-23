@@ -38,6 +38,8 @@ CONTAINS
     real(8) :: rtmp(1)
     integer :: itmp(1)
 
+    call write_border( 1, " subspace_diag_la(start)" )
+
     n1  = ML_0
     n2  = ML_1
     ML0 = ML_1-ML_0+1
@@ -196,6 +198,8 @@ CONTAINS
           write(*,'(1x,"time(sd_la",i1,")",2f12.5)') n,ct(n+1)-ct(n),et(n+1)-et(n)
        end do
     end if
+
+    call write_border( 1, " subspace_diag_la(end)" )
 
     return
 

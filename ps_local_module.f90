@@ -435,6 +435,8 @@ CONTAINS
     return
 #endif
 
+    call write_border( 80, " construct_ps_local(start)" )
+
     MG  = NGgrid(0)
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
@@ -497,12 +499,14 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    call check_disp_switch( disp_sw, 0 )
-    if ( disp_sw ) then
-       write(*,*) "time(const_ps_loc_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(const_ps_loc_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-    end if
+!    call check_disp_switch( disp_sw, 0 )
+!    if ( disp_sw ) then
+!       write(*,*) "time(const_ps_loc_1)",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(const_ps_loc_2)",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+!    end if
+
+    call write_border( 80, " construct_ps_local(end)" )
 
   END SUBROUTINE construct_ps_local
 
@@ -513,6 +517,8 @@ CONTAINS
     integer :: ML,ML1,ML2,ML3,MG,ML_0,ML_1
     real(8) :: ctt(0:3),ett(0:3)
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
+
+    call write_border( 80, " construct_ps_local_ffte(start)" )
 
     MG  = NGgrid(0)
     ML  = Ngrid(0)
@@ -621,11 +627,13 @@ CONTAINS
 
     call watch(ctt(3),ett(3))
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(const_ps_loc_ffte1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(const_ps_loc_ffte2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(const_ps_loc_ffte3)",ctt(3)-ctt(2),ett(3)-ett(2)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(const_ps_loc_ffte1)",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(const_ps_loc_ffte2)",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(const_ps_loc_ffte3)",ctt(3)-ctt(2),ett(3)-ett(2)
+!    end if
+
+    call write_border( 80, " construct_ps_local_ffte(end)" )
 
   END SUBROUTINE construct_ps_local_ffte
 

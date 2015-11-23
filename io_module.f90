@@ -135,10 +135,7 @@ CONTAINS
     icount=icount+1
     if ( .not.(flag .or. icount==OC2) ) return
 
-    if ( DISP_SWITCH ) then
-       write(*,*)
-       write(*,'(a60," write_data")') repeat("-",60)
-    end if
+    call write_border( 0, " write_data(start)" )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -483,6 +480,8 @@ goto 100
     deallocate( LL2 )
 
     icount=0
+
+    call write_border( 0, " write_data(end)" )
 
     return
   END SUBROUTINE write_data

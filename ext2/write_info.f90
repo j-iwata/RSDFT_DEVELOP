@@ -1,17 +1,32 @@
-SUBROUTINE write_border(n,indx)
+SUBROUTINE write_border( n, indx )
 
   implicit none
   integer,intent(IN) :: n
   character(*),intent(IN) :: indx
   character(80) :: axx
   logical :: disp
+  integer :: m=80
+  integer,save :: u0=6, u1=60
 
-  write(axx,'(i2)') n-len(indx)
+  write(axx,'(i2)') m-len(indx)
   axx=adjustl(axx)
   axx="(a"//axx(1:len_trim(axx))//",a)"
 
   call check_disp_switch( disp, 0 )
-  if ( disp ) write(*,axx) repeat("-",n),indx
+  if ( disp ) then
+     if ( n == 0 ) then
+        write(u0,axx) repeat("-",m),indx
+     else if ( n == 1 ) then
+!        open(u1,file="RSDFT_LOG",position="append")
+!        write(u1,axx) repeat("-",m),indx
+!        close(u1)
+     else
+        write(u0,axx) repeat("-",m),indx
+     end if
+     open(u1,file="RSDFT_LOG",position="append")
+     write(u1,axx) repeat("-",m),indx
+     close(u1)
+  end if
 
 END SUBROUTINE write_border
 

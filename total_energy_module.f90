@@ -73,7 +73,7 @@ CONTAINS
 #endif
     include 'mpif.h'
 
-    call write_border( 80, " calc_total_energy(start)" )
+    call write_border( 1, " calc_total_energy(start)" )
 
     Etot_0 = Etot
 
@@ -94,9 +94,9 @@ CONTAINS
     if ( flag_recalc_esp ) then
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
-! *****_Q can be not compiled for NCPP
-       allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
 
+       allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
+! *****_Q can be not compiled for NCPP
        allocate( work(n1:n2,MB_d) ) ; work=zero
        allocate( work00(n1:n2,MB_d) ) ; work00=zero
 
@@ -200,12 +200,17 @@ CONTAINS
        Ekin = sum( occ(:,:,:)*esp1(:,:,:,1) )
        Eloc = sum( occ(:,:,:)*esp1(:,:,:,2) )
         
-        if (pp_kind=='USPP') then
+       if ( pp_kind == 'USPP' ) then
+
           Enlc = sum( occ(:,:,:)*esp1_Q(:,:,:) )
-        elseif (pp_kind=='NCPP') then
+
+       else if ( pp_kind == 'NCPP' ) then
+
           Enlc = sum( occ(:,:,:)*esp1(:,:,:,3) )
-        endif
-        esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
+
+       endif
+
+       esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
 
        deallocate( esp1 )
        deallocate( esp0 )
@@ -274,12 +279,21 @@ CONTAINS
 
     Fene = Etot - Eentropy
 
-    diff_etot = Etot_0 - Etot
+ !   diff_etot = Etot_0 - Etot
+    diff_etot = Etot - Ehwf
 
-    if ( present(flag_rewind) ) then
-       call write_info_total_energy( disp_switch, flag_rewind )
-    else
-       call write_info_total_energy( disp_switch, .false. )
+!    if ( present(flag_rewind) ) then
+!       call write_info_total_energy( disp_switch, flag_rewind )
+!    else
+!       call write_info_total_energy( disp_switch, .false. )
+!    end if
+    if ( disp_switch ) then
+       write(*,'(1x,"Total Energy   =",f16.8,2x,"(Hartree)")') Etot
+       write(*,'(1x,"Harris Energy  =",f16.8,2x,"(Hartree)")') Ehwf
+!       write(*,'(1x,"difference    =",g13.5)') Etot-Ehwf
+!       write(*,'(1x,"Total (Harris) Energy =",f16.8,2x,"(",f16.8,")" &
+!            ,2x,"(Hartree)")') Etot, Ehwf
+!       write(*,'(1x,"difference =",g13.5)') Etot-Ehwf
     end if
 
     Ekin_0 = Ekin
@@ -296,7 +310,7 @@ CONTAINS
     Eentropy_0 = Eentropy
     Fene_0     = Fene
 
-    call write_border( 80, " calc_total_energy(end)" )
+    call write_border( 1, " calc_total_energy(end)" )
 
   END SUBROUTINE calc_total_energy
 
@@ -307,7 +321,7 @@ CONTAINS
     real(8),optional,intent(OUT) :: Ehwf_out
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
-    call write_border( 80, " calc_with_rhoIN_total_energy(start)" )
+    call write_border( 1, " calc_with_rhoIN_total_energy(start)" )
     sb(:)=0.d0
     do s=MSP_0,MSP_1
        sb(1) = sb(1) + sum(Vloc(:,s)*rho(:,s))
@@ -323,12 +337,10 @@ CONTAINS
     Ehwf = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
            + const_ps_local*sum(occ)
     diff_etot = Ehwf_0 - Ehwf
-    if ( disp_switch ) then
-       write(*,*) '(HWF) ',Ehwf, Ehwf_0-Ehwf
-    end if
+!    if ( disp_switch ) write(*,*) '(HWF) ',Ehwf, Ehwf_0-Ehwf
     Ehwf_0 = Ehwf
     if ( present(Ehwf_out) ) Ehwf_out=Ehwf
-    call write_border( 80, " calc_with_rhoIN_total_energy(end)" )
+    call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
 
@@ -360,7 +372,6 @@ CONTAINS
        !write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0
        call flush(u(i))
     end do
-    if (myrank==0) write(920,'(I4,12f15.7)') scf_iter_,Etot,Eewald,Ekin,Eloc,Enlc,Eion,E_hartree,Exc,E_exchange,E_correlation,Eeig,Ehwf
   END SUBROUTINE write_info_total_energy
 
 

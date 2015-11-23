@@ -8,6 +8,8 @@ MODULE watch_module
   PUBLIC :: watchb, write_watchb, watchb_omp
   PUBLIC :: time_cgpc, time_hmlt, time_kine, time_nlpp, time_bcfd
   PUBLIC :: time_cgpc_indx, time_hmlt_indx, time_kine_indx, time_nlpp_indx
+  PUBLIC :: time
+  PUBLIC :: init_time_watch, calc_time_watch
 
   include 'mpif.h'
 
@@ -37,6 +39,11 @@ MODULE watch_module
 
   integer,parameter :: max_timea_counter=64
   real(8) :: timea(0:max_timea_counter,2)
+
+  type time
+     real(8) :: t0, t1
+     real(8) :: tmin, tmax
+  end type time
 
 CONTAINS
 
@@ -209,6 +216,25 @@ CONTAINS
     t_tmp(:) = tnow(:)
 !$OMP end master
   END SUBROUTINE watchb_omp
+
+
+  SUBROUTINE init_time_watch( t )
+    implicit none
+    type(time),intent(INOUT) :: t
+    t%t0 = mpi_wtime()
+  END SUBROUTINE init_time_watch
+
+  SUBROUTINE calc_time_watch( t, comm_in )
+    implicit none
+    type(time),intent(INOUT) :: t
+    integer,optional,intent(IN) :: comm_in
+    integer :: i, comm
+    t%t1 = mpi_wtime()
+    t%t0 = t%t1 - t%t0
+    comm=MPI_COMM_WORLD ; if ( present(comm_in) ) comm=comm_in
+    call mpi_allreduce( t%t0, t%tmin, 1, MPI_REAL8, MPI_MIN, comm, i )
+    call mpi_allreduce( t%t0, t%tmax, 1, MPI_REAL8, MPI_MAX, comm, i )
+  END SUBROUTINE calc_time_watch
 
 
 END MODULE watch_module

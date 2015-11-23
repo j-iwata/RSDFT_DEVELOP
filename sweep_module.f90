@@ -78,10 +78,13 @@ CONTAINS
     integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
     integer :: iter,s,k,n,m,iflag_hybrid,ierr
-    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3),ctt(0:5),ett(0:5)
+!    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3),ctt(0:5),ett(0:5)
     logical :: flag_exit, flag_end, flag_conv
+    character(16) :: chr_iter
+    type(time) :: etime
 
-    if ( disp_switch ) write(*,*) "------------ SWEEP START ----------"
+    call write_border( 0, "" )
+    call write_border( 0, " SWEEP START ----------" )
 
     flag_end  = .false.
     flag_exit = .false.
@@ -135,41 +138,25 @@ CONTAINS
 
     do iter=1,Diter
 
-       if ( disp_switch ) then
-          write(*,'(a40," sweep_iter=",i4)') repeat("-",40),iter
-       end if
+       write(chr_iter,'(" sweep_iter=",i4)') iter
+       call write_border( 0, chr_iter )
 
-       call watch(ct0,et0)
-
-       ct(:)=0.0d0
-       et(:)=0.0d0
+       call init_time_watch( etime )
 
        Echk0=Echk
        esp0 =esp
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
-          call watchs(ct(0),et(0),0)
+
           call conjugate_gradient( ML_0,ML_1, Nband, k,s &
                                  ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
-          call watchs(ct(0),et(0),1)
+
           call gram_schmidt(1,Nband,k,s)
-          call watchs(ct(1),et(1),1)
+
           call subspace_diag(k,s)
-          call watchs(ct(2),et(2),1)
+
        end do
        end do
-
-       ctt(0)=et(0)
-       ctt(1)=et(1)
-       ctt(2)=et(2)
-       call mpi_allreduce(ctt,ett(0),3,mpi_real8,mpi_min,mpi_comm_world,ierr)
-       call mpi_allreduce(ctt,ett(3),3,mpi_real8,mpi_max,mpi_comm_world,ierr)
-
-       if ( disp_switch ) then
-          write(*,'(1x,"time(cg)  =",3f12.3)') ctt(0),ett(0),ett(3)
-          write(*,'(1x,"time(gs)  =",3f12.3)') ctt(1),ett(1),ett(4)
-          write(*,'(1x,"time(diag)=",3f12.3)') ctt(2),ett(2),ett(5)
-       end if
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
@@ -185,18 +172,20 @@ CONTAINS
 
        call calc_with_rhoIN_total_energy( .false., Echk )
 
-       call watch(ct1,et1)
-
        call conv_check( iter, flag_conv )
        call global_watch( .false., flag_end )
        flag_exit = (flag_end.or.flag_conv)
 
-       if ( disp_switch ) call write_info_sweep(ct1-ct0,et1-et0)
-! ---
-       call watcht(disp_switch,"",0)
+       if ( disp_switch ) call write_info_sweep
+
+       call calc_time_watch( etime )
+       if ( disp_switch ) then
+          write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)" &
+               ,f10.3,"(max)")') etime%t0, etime%tmin, etime%tmax
+       end if
+
        call write_data( disp_switch, flag_exit )
-       call watcht(disp_switch,"io",1)
-! ---
+
        if ( flag_exit ) exit
 
     end do ! iter
@@ -218,7 +207,8 @@ CONTAINS
 
     call gather_wf
 
-    if ( disp_switch ) write(*,*) "------------ SWEEP END ----------"
+    call write_border( 0, " SWEEP END ----------" )
+    call write_border( 0, "" )
 
   END SUBROUTINE calc_sweep
 
@@ -227,12 +217,14 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: iter
     logical,intent(OUT) :: flag_conv
+    call write_border( 1, " conv_check(start)" )
     select case( iconv_check )
     case( 1 )
          call conv_check_1( iter, flag_conv )
     case( 2 )
          call conv_check_2( flag_conv )
     end select
+    call write_border( 1, " conv_check(end)" )
   END SUBROUTINE conv_check
 
   SUBROUTINE conv_check_1( iter, flag_conv )
@@ -257,18 +249,18 @@ CONTAINS
   END SUBROUTINE conv_check_2
 
 
-  SUBROUTINE write_info_sweep(ct,et)
+  SUBROUTINE write_info_sweep
     implicit none
-    real(8),intent(IN) :: ct,et
     integer :: s,k,n
-    write(*,'(a4,a6,a20,2a13,1x)') &
-         "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
-    do k=1,Nbzsm
-    do n=max(1,nint(Nelectron/2)-20),min(nint(Nelectron/2)+80,Nband)
-       write(*,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
-            ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
-    end do
-    end do
+    call write_border( 1, " write_info_sweep(start)" )
+!    write(*,'(a4,a6,a20,2a13,1x)') &
+!         "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
+!    do k=1,Nbzsm
+!    do n=max(1,nint(Nelectron/2)-20),min(nint(Nelectron/2)+80,Nband)
+!       write(*,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+!            ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
+!    end do
+!    end do
     if ( iconv_check == 1 ) then
        write(*,'(1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",g12.5)') &
             Echk, Echk-Echk0, tol_Echk
@@ -276,8 +268,8 @@ CONTAINS
        write(*,'(1x,"max_esperr/tol, mb_ref =",g12.5," /",g12.5,i7)') &
             max_esperr,tol_esp,mb_ref
     end if
-    write(*,*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-    write(*,*) "time(sweep)=",ct,et
+!    write(*,*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
+    call write_border( 1, " write_info_sweep(end)" )
   END SUBROUTINE write_info_sweep
 
 

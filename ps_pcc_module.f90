@@ -128,6 +128,8 @@ CONTAINS
 
     if ( .not.flag_pcc_0 ) return
 
+    call write_border( 80, " construct_ps_pcc(start)" )
+
     MG   = NGgrid(0)
     ML   = Ngrid(0)
     ML1  = Ngrid(1)
@@ -187,6 +189,8 @@ CONTAINS
 
     if ( allocated(zwork1) ) deallocate( zwork1 )
     deallocate( zwork )
+
+    call write_border( 80, " construct_ps_pcc(end)" )
 
   END SUBROUTINE construct_ps_pcc
 

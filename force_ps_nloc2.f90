@@ -383,12 +383,12 @@ CONTAINS
 
 !$OMP end parallel
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(force_nloc_uspp_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(force_nloc_uspp_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(force_nloc_uspp_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(force_nloc_uspp_4)",ctt(4)-ctt(3),ett(4)-ett(3)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(force_nloc_uspp_1)",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(force_nloc_uspp_2)",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(force_nloc_uspp_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(force_nloc_uspp_4)",ctt(4)-ctt(3),ett(4)-ett(3)
+!    end if
 
     return
   END SUBROUTINE calcForcePSnonLoc2

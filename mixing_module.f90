@@ -70,6 +70,8 @@ CONTAINS
     real(8),intent(IN) :: scf_conv_in(2)
     integer :: m,ierr
 
+    call write_border( 0, " init_mixing(start)" )
+
     myrank = myrank_in
 
     if ( first_time ) then
@@ -137,6 +139,8 @@ CONTAINS
 
     end if
 
+    call write_border( 0, " init_mixing(end)" )
+
   END SUBROUTINE init_mixing
 
 
@@ -151,10 +155,12 @@ CONTAINS
     complex(8),allocatable :: Xou_bak(:,:,:),Xin_bak(:,:,:)
     real(8),allocatable :: f(:,:),g(:,:),h(:,:),h_old(:,:),h_bak(:,:)
 
+    call write_border( 1, " perform_mixing(start)" )
+
     disp_switch = .false.
     if ( present(disp_sw_in) ) disp_switch = disp_sw_in
 
-    if ( disp_switch ) write(*,'("----- mixing")')
+!    if ( disp_switch ) write(*,'("----- mixing")')
 
     allocate( f(ML0,MSP) ) ; f=0.0d0
     allocate( g(ML0,MSP) ) ; g=0.0d0
@@ -228,12 +234,12 @@ CONTAINS
           if ( dif0(i) /= 0.0d0 ) diff(i) = dif1(i)/dif0(i)
        end do
 
-       if ( present(disp_sw_in) ) then
-          if ( disp_switch ) then
-             write(*,'(1x,"diff=",i4,2x,2(4g14.6,2x))') &
-                  loop,(diff(i),dif1(i),dif0(i),beta,i=1,MSP)
-          end if
-       end if
+!       if ( present(disp_sw_in) ) then
+!          if ( disp_switch ) then
+!             write(*,'(1x,"diff=",i4,2x,2(4g14.6,2x))') &
+!                  loop,(diff(i),dif1(i),dif0(i),beta,i=1,MSP)
+!          end if
+!       end if
 
        if ( all( dif1(1:MSP) < dif_min(1:MSP) ) ) then
           beta_min = beta
@@ -289,6 +295,8 @@ CONTAINS
     deallocate( h_old )
     deallocate( h,g,f )
 
+    call write_border( 1, " perform_mixing(end)" )
+
   END SUBROUTINE perform_mixing
 
 
@@ -299,6 +307,7 @@ CONTAINS
     logical,intent(OUT)   :: flag_conv
     integer :: n,ierr
     real(8),allocatable :: f(:,:),g(:,:)
+    call write_border( 1, " calc_sqerr_mixing(start)" )
     allocate( f(m,MSP) ) ; f=0.0d0
     allocate( g(m,MSP) ) ; g=0.0d0
     n=m*(n2-n1+1)
@@ -306,6 +315,7 @@ CONTAINS
     call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
     call calc_sqerr( m, MSP, f, g, flag_conv )
     deallocate( g,f )
+    call write_border( 1, " calc_sqerr_mixing(end)" )
     return
   END SUBROUTINE calc_sqerr_mixing
 

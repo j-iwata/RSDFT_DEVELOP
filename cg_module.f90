@@ -47,7 +47,7 @@ CONTAINS
 #endif
     integer :: ipc
 
-    call write_border( 60, " conjugate_gradient(start)" )
+    call write_border( 1, " conjugate_gradient(start)" )
 
     if ( flag_init_read ) call read_cg
 
@@ -78,7 +78,7 @@ CONTAINS
 
     end if
 
-    call write_border( 60, " conjugate_gradient(end)" )
+    call write_border( 1, " conjugate_gradient(end)" )
 
   END SUBROUTINE conjugate_gradient
 

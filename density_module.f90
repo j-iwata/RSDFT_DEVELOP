@@ -73,7 +73,7 @@ CONTAINS
     real(8),intent(IN) :: Nelectron,dV
     integer :: i,s
 
-    call write_border( 80, " init_density(start)" )
+    call write_border( 1, " init_density(start)" )
 
     Nelectron_RHO = Nelectron
     dV_RHO        = dV
@@ -91,7 +91,7 @@ CONTAINS
        call normalize_density
     end if
 
-    call write_border( 80, " init_density(end)" )
+    call write_border( 1, " init_density(end)" )
 
   END SUBROUTINE init_density
 
@@ -102,10 +102,12 @@ CONTAINS
     real(8) :: c,d
     integer :: ierr
     include 'mpif.h'
+    call write_border( 1, " normalize_density(start)" )
     c=sum(rho)*dV_RHO
     call mpi_allreduce(c,d,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
     c=Nelectron_RHO/d
     rho=c*rho
+    call write_border( 1, " normalize_density(end)" )
   END SUBROUTINE normalize_density
 
 !-----------------------------------------------------------------------
@@ -117,6 +119,8 @@ CONTAINS
     integer :: n,k,s,i
     integer :: n1,n2,n0
     real(8),allocatable :: rhonks(:)
+
+    call write_border( 1, " calc_density(start)" )
 
     select case ( pp_kind )
     case ( 'NCPP' )
@@ -157,6 +161,8 @@ CONTAINS
        call reduce_and_gather
 
     end select
+
+    call write_border( 1, " calc_density(end)" )
 
   END SUBROUTINE calc_density
 

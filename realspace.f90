@@ -421,7 +421,7 @@ PROGRAM Real_Space_Solid
   if ( DISP_SWITCH ) write(*,*) "END_PROGRAM : MAIN" 
 
 900 continue
-  if ( DISP_SWITCH ) write(*,*) 'intentional end'
+
   call global_watch(disp_switch)
   call close_info
   call end_mpi_parallel

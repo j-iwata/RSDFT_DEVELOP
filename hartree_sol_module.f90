@@ -102,14 +102,14 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    call check_disp_switch( disp_sw, 0 )
-    if ( disp_sw ) then
-       write(*,*) "time(hatree1)=",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(hatree2)=",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(hatree3)=",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(hatree4)=",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(hatree5)=",ctt(5)-ctt(4),ett(5)-ett(4)
-    end if
+!    call check_disp_switch( disp_sw, 0 )
+!    if ( disp_sw ) then
+!       write(*,*) "time(hatree1)=",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(hatree2)=",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(hatree3)=",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(hatree4)=",ctt(4)-ctt(3),ett(4)-ett(3)
+!       write(*,*) "time(hatree5)=",ctt(5)-ctt(4),ett(5)-ett(4)
+!    end if
 
   END SUBROUTINE calc_hartree_sol
 

@@ -48,8 +48,10 @@ CONTAINS
 
   SUBROUTINE init_xc
     implicit none
+    call write_border( 0, " init_xc(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
     flag_init = .false.
+    call write_border( 0, " init_xc(end)" )
   END SUBROUTINE init_xc
 
 
@@ -93,13 +95,13 @@ CONTAINS
     call mpi_allreduce(sb,rb,3*n,mpi_real8,mpi_sum,comm_grid,ierr)
     call mpi_allreduce(ic,jc,3*n,mpi_integer,mpi_sum,comm_grid,ierr)
 
-    if ( disp_sw ) then
-       do j=1,n
-          write(*,'(1x,"(positive)",i8,2x,2g16.8)') jc(2,j),rb(2,j),rb(1,j)
-          write(*,'(1x,"(negative)",i8,2x,2g16.8)') jc(3,j),rb(3,j),rb(1,j)
-          if ( jc(1,j) /= 0 ) write(*,'(1x,"(zero    )",i8)') jc(1,j)
-       end do
-    end if
+!    if ( disp_sw ) then
+!       do j=1,n
+!          write(*,'(1x,"(positive)",i8,2x,2g16.8)') jc(2,j),rb(2,j),rb(1,j)
+!          write(*,'(1x,"(negative)",i8,2x,2g16.8)') jc(3,j),rb(3,j),rb(1,j)
+!          if ( jc(1,j) /= 0 ) write(*,'(1x,"(zero    )",i8)') jc(1,j)
+!       end do
+!    end if
 
     deallocate( jc,ic )
     deallocate( rb,sb )
@@ -120,7 +122,7 @@ CONTAINS
     type( xcpot ) :: pot
     type( xcene ) :: ene
 
-    call write_border( 80, " calc_xc(start)" )
+    call write_border( 1, " calc_xc(start)" )
     call check_disp_switch( disp_sw, 0 )
 
     if ( flag_init ) call init_xc
@@ -390,7 +392,7 @@ CONTAINS
 
     deallocate( rho_tmp )
 
-    call write_border( 80, " calc_xc(end)" )
+    call write_border( 1, " calc_xc(end)" )
 
   END SUBROUTINE calc_xc
 

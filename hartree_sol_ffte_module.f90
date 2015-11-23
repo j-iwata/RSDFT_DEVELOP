@@ -162,13 +162,13 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(hatree1_ffte)=",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(hatree2_ffte)=",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(hatree3_ffte)=",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(hatree4_ffte)=",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(hatree5_ffte)=",ctt(5)-ctt(4),ett(5)-ett(4)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(hatree1_ffte)=",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(hatree2_ffte)=",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(hatree3_ffte)=",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(hatree4_ffte)=",ctt(4)-ctt(3),ett(4)-ett(3)
+!       write(*,*) "time(hatree5_ffte)=",ctt(5)-ctt(4),ett(5)-ett(4)
+!    end if
 
   END SUBROUTINE calc_hartree_sol_ffte
 

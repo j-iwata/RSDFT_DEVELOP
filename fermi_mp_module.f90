@@ -104,6 +104,8 @@ CONTAINS
     real(8),parameter :: eps=0.d0
     integer,parameter :: mxcycl=1000
 
+    call write_border( 1, " calc_fermi_mp(start)" )
+
     if ( nsetocc > 0 ) then
        mb1=1
        mb2=MB
@@ -277,6 +279,8 @@ CONTAINS
        end do
     end do
     end do
+
+    call write_border( 1, " calc_fermi_mp(end)" )
 
   END SUBROUTINE calc_fermi
 

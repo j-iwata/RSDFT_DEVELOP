@@ -27,7 +27,7 @@ CONTAINS
     implicit none
     if ( .not.flag_init ) return
     flag_init = .false.
-    call write_border( 60, " init_force(start)" )
+    call write_border( 0, " init_force(start)" )
     Ntim=maxval( md_atom )
     if ( Ntim <= 0 ) Ntim=1
     if ( disp_switch_parallel ) write(*,*) "Ntim=",Ntim
@@ -36,7 +36,7 @@ CONTAINS
     tim(2,2,1) = 1.0d0
     tim(3,3,1) = 1.0d0
     call read_force
-    call write_border( 60, " init_force(end)" )
+    call write_border( 0, " init_force(end)" )
   END SUBROUTINE init_force
 
 
@@ -46,7 +46,7 @@ CONTAINS
     logical :: exist_keyword
     real(8) :: dummy(2)
     character(8) :: cbuf
-    call write_border( 40, " read_force" )
+    call write_border( 0, " read_force(start)" )
     call IOTools_readIntegerKeyword( "SYSTYPE", SYStype )
     call IOTools_findKeyword( "TIM", exist_keyword, unit_out=unit )
     if ( exist_keyword ) then
@@ -69,6 +69,7 @@ CONTAINS
        end do
     end if
     call mpi_bcast( tim, 9*Ntim, MPI_REAL8, 0, MPI_COMM_WORLD, i )
+    call write_border( 0, " read_force(end)" )
   END SUBROUTINE read_force
 
 

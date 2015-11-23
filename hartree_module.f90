@@ -24,7 +24,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: Igrid(2,0:3), Nspin_in, Md_in, SYStype_in
 
-    call write_border( 80, " init_hartree(start)" )
+    call write_border( 0, " init_hartree(start)" )
 
     ML0     = Igrid(1,0)
     ML1     = Igrid(2,0)
@@ -42,7 +42,7 @@ CONTAINS
     !   call init_esm_hartree(Md)
     end select
 
-    call write_border( 80, " init_hartree(end)" )
+    call write_border( 0, " init_hartree(end)" )
 
   END SUBROUTINE init_hartree
 
@@ -54,7 +54,7 @@ CONTAINS
     real(8),allocatable :: trho(:)
     integer :: i,s
 
-    call write_border( 80, " calc_hartree(start)" )
+    call write_border( 1, " calc_hartree(start)" )
 
     select case(SYStype)
     case default
@@ -86,7 +86,7 @@ CONTAINS
 
     end select
 
-    call write_border( 80, " calc_hartree(end)" )
+    call write_border( 1, " calc_hartree(end)" )
 
   END SUBROUTINE calc_hartree
 

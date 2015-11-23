@@ -16,6 +16,8 @@ CONTAINS
     integer :: MB_0,MBZ_0,MBZ_1,MSP_0,MSP_1
     integer,allocatable :: ir(:),id(:)
 
+    call write_border( 1, " esp_gather(start)" )
+
     np = max( np_band,np_bzsm,np_spin )
 
     MB_0  = id_band(myrank_b)+1
@@ -51,6 +53,8 @@ CONTAINS
                         esp(1,1,1),ir,id,mpi_real8,comm_spin,ierr)
 
     deallocate( id,ir )
+
+    call write_border( 1, " esp_gather(end)" )
 
   END SUBROUTINE esp_gather
 

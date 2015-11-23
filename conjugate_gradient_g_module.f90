@@ -22,13 +22,6 @@ MODULE conjugate_gradient_g_module
 CONTAINS
 
 
-!  SUBROUTINE init_conjugate_gradient_g( iswitch_cg )
-!    implicit none
-!    integer,intent(INOUT) :: iswitch_cg
-!    if ( pp_kind == "USPP" ) iswitch_cg=101
-!  END SUBROUTINE init_conjugate_gradient_g
-
-
   SUBROUTINE conjugate_gradient_g( n1,n2,MB,k,s,Mcg,unk,esp,res,iswitch_gs )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,iswitch_gs
@@ -92,7 +85,8 @@ CONTAINS
     allocate( gk(n1:n2,MB_d) , Pgk(n1:n2,MB_d) ) ; gk=zero ; Pgk=zero
     allocate( pk(n1:n2,MB_d) , pko(n1:n2,MB_d) ) ; pk=zero ; pko=zero
     allocate( sb(MB_d),rb(MB_d) ) ; sb=0.d0 ; rb=0.d0
-    allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) ) ; E=0.d0 ; E1=0.d0 ; gkgk=0.d0 ; bk=0.d0
+    allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
+    E=0.d0 ; E1=0.d0 ; gkgk=0.d0 ; bk=0.d0
     allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) ) ; vtmp2=zero ; wtmp2=zero
     allocate( utmp2(2,2),btmp2(2,2) ) ; utmp2=zero ; btmp2=zero
     allocate( Sf(n1:n2) ) ; Sf=zero
@@ -348,16 +342,16 @@ CONTAINS
     deallocate( Sf )
     deallocate( unk_tmp )
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
-       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
-       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
-       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
-       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
-       write(*,*) "time(op_cg   )",ctt(2),ett(2)
-       write(*,*) "time(com_cg  )",ctt(3),ett(3)
-       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
+!       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
+!       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
+!       write(*,*) "time(hamil_exx)",ctt_hamil(4),ett_hamil(4)
+!       write(*,*) "time(hamil_cg)",ctt(1),ett(1)
+!       write(*,*) "time(op_cg   )",ctt(2),ett(2)
+!       write(*,*) "time(com_cg  )",ctt(3),ett(3)
+!       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
+!    end if
 
   END SUBROUTINE conjugate_gradient_g
 

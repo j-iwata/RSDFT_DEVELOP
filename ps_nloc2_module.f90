@@ -75,14 +75,8 @@ CONTAINS
     logical,allocatable :: lcheck_tmp1(:,:)
     logical :: disp_sw
 
-#ifdef _SHOWALL_INIT_
-    if ( isParallelTest ) write(200+myrank,*) ">>>> prep_ps_nloc2"
-#endif
-
+    call write_border( 80, " prep_ps_nloc2(start)" )
     call check_disp_switch( disp_sw, 0 )
-    if ( disp_sw ) then
-       write(*,'(a60," prep_ps_nloc2")') repeat("-",60)
-    end if
 
     timer_counter = -1
     call watcha( timer_counter )
@@ -378,16 +372,6 @@ CONTAINS
     end do ! a
 !$OMP end parallel do
 
-#ifdef _SHOWALL_PSNLOC_
-    n=maxval(norb)
-    write(1100+myrank,'(2A5,A12)') 'a','iorb','MJJ_tmp'
-    do a=1,Natom
-       do iorb=1,n
-          write(1500+myrank,'(2I5,I12)') a,iorb,MJJ_tmp(iorb,a)
-       enddo
-    enddo
-#endif
-
 #ifndef _SPLINE_
     deallocate( irad )
 #endif
@@ -410,31 +394,6 @@ CONTAINS
        end do
     end do
     MMJJ = maxval( MJJ_tmp )
-
-
-#ifdef _SHOWALL_PSNLOC_
-! lma:
-    lma=0
-    write(1520+myrank,'(2A5)') 'a','iorb'
-    do a=1,Natom
-       ik=ki_atom(a)
-       do iorb=1,norb(ik)
-          j=MJJ_tmp(iorb,a)
-          if ( j > 0 ) then
-             write(1520+myrank,'(2I5)') a,iorb
-             L=lo(iorb,ik)
-! nzlma : # of atom*orb
-             nzlma=nzlma+2*L+1
-             do m=1,2*L+1
-                lma=lma+1
-                icheck_tmp3(a,iorb,m)=lma
-             end do
-          end if
-       end do ! iorb
-    end do ! a
-    write(1100+myrank,*) 'nzlma= ',nzlma
-#endif
-
 
     allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
     lma=0
@@ -481,25 +440,6 @@ CONTAINS
     np1 = node_partition(1)
     np2 = node_partition(2)
     np3 = node_partition(3)
-
-#ifdef _SHOWALL_PSNLOC_
-    L=maxval(lo)
-    n=maxval(norb)
-    write(1100+myrank,*) repeat('-',50),'ps start'
-    write(1100+myrank,'(3A5,A12)') 'a','iorb','m','icheck_tmp3'
-    do a=1,Natom
-       do iorb=1,n
-          do m=1,2*L+1
-             write(1100+myrank,'(3I5,I12)') a,iorb,m,icheck_tmp3(a,iorb,m)
-          enddo
-       enddo
-    enddo
-    write(1100+myrank,*) repeat('=',50),'ps end'
-#endif
-
-#ifdef _SHOWALL_PSNLOC_
-    write(1100+myrank,*) repeat('-',50),'icheck_tmp2'
-#endif
 
     nrlma=0
     lma=0
@@ -626,10 +566,6 @@ CONTAINS
 
 !       call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
 
-#ifdef _SHOWALL_PSNLOC_
-       write(1100+myrank,'(3I4," icheck_tmp2(myrank_g)= ",I5)') a,iorb,m,icheck_tmp2(myrank_g)
-#endif
-
        if ( icheck_tmp1(myrank_g) /= 0 ) then
           if ( icheck_tmp1(myrank_g) > 0 ) then
              maps_tmp(icheck_tmp2(myrank_g),1)=icheck_tmp1(myrank_g)
@@ -655,19 +591,10 @@ CONTAINS
     end do ! iorb
     end do ! a
 
-
-#ifdef _SHOWALL_PSNLOC_
-    write(1100+myrank,*) repeat('=',50),'icheck_tmp2'
-#endif
- 
     call watcha( timer_counter )
 
 
     nzlma = icheck_tmp2(myrank_g)
-
-#ifdef _SHOWALL_PSNLOC_
-    write(1100+myrank,*) 'nzlma= ',nzlma
-#endif
 
     deallocate( itmp )
     deallocate( icheck_tmp2 )
@@ -1001,9 +928,7 @@ CONTAINS
        call write_watcha( timer_counter,"prep_ps_nloc2" )
     end if
 
-#ifdef _SHOWALL_INIT_
-    write(200+myrank,*) "<<<<< prep_ps_nloc2"
-#endif
+    call write_border( 80, " prep_ps_nloc2(end)" )
 
   END SUBROUTINE prep_ps_nloc2
 
@@ -1014,10 +939,6 @@ CONTAINS
     integer,intent(INOUT) :: itmp(:,:),icheck_tmp1(0:),icheck_tmp2(0:)
     integer :: n,i,i1,i2,i3,j1,j2,j3
     integer :: k,k1,k2,k3,ic1,ic2,ic3,id1,id2,id3
-
-#ifdef _SHOWALL_INIT_
-    write(200+myrank,*) ">>>> prepMapsTmp"
-#endif
 
     if ( all(icheck_tmp1 == 0) ) return
 
@@ -1129,10 +1050,6 @@ CONTAINS
         icheck_tmp2(n)=icheck_tmp2(n)+1
       end if
     end do
-
-#ifdef _SHOWALL_INIT_
-    write(200+myrank,*) "<<<< prepMapsTmp"
-#endif
 
     return
   END SUBROUTINE prepMapsTmp

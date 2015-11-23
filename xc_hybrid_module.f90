@@ -90,6 +90,8 @@ CONTAINS
     real(8),allocatable :: qtmp(:,:)
     character(8) :: XCtype
 
+    call write_border( 0, " init_xc_hybrid(start)" )
+
     if ( flag_init ) return
 
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
@@ -97,8 +99,6 @@ CONTAINS
     if ( XCtype /= "HF"    .and. XCtype /= "HSE"    .and. &
          XCtype /= "HSE06" .and. XCtype /= "HSE_"   .and. &
          XCtype /= "PBE0"  .and. XCtype /= "LCwPBE" ) return
-
-    call write_border( 80, " init_xc_hybrid(start)" )
 
     call read_xc_hybrid
 
@@ -126,7 +126,7 @@ CONTAINS
        iflag_lcwpbe = 1
        alpha_hf     = 1.0d0
     case default
-       return
+       goto 99
     end select
 
     if ( disp_switch ) then
@@ -321,9 +321,11 @@ CONTAINS
 
 ! ---
 
+99  continue
+
     flag_init = .true.
 
-    call write_border( 80, " init_xc_hybrid(end)" )
+    call write_border( 0, " init_xc_hybrid(end)" )
 
     return 
  
@@ -334,14 +336,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: ictrl
     if ( iflag_hybrid == 3 ) return
-    call write_border( 80, " control_xc_hybrid(start)" )
+    call write_border( 1, " control_xc_hybrid(start)" )
     if ( iflag_hf   == 0 .and. iflag_hse    == 0 .and. &
          iflag_pbe0 == 0 .and. iflag_lcwpbe == 0 ) then
        iflag_hybrid = 0
     else
        iflag_hybrid = ictrl
     end if
-    call write_border( 80, " control_xc_hybrid(end)" )
+    call write_border( 1, " control_xc_hybrid(end)" )
   END SUBROUTINE control_xc_hybrid
 
 
