@@ -1,11 +1,12 @@
 MODULE xc_hybrid_module
 
   use xc_hybrid_io_module
+  use io_tools_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: read_xc_hybrid, init_xc_hybrid, control_xc_hybrid &
+  PUBLIC :: init_xc_hybrid, control_xc_hybrid &
            ,get_flag_xc_hybrid &
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
@@ -14,7 +15,7 @@ MODULE xc_hybrid_module
            ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
 
   integer :: npart
-  real(8) :: R_hf ,omega
+  real(8) :: R_hf
 
   integer :: iflag_hf     = 0
   integer :: iflag_pbe0   = 0
@@ -32,7 +33,6 @@ MODULE xc_hybrid_module
   real(8),parameter :: byte = 16.0d0
 #endif
 
-  real(8) :: alpha_hf
   real(8),allocatable :: occ_hf(:,:,:)
   real(8) :: occ_factor
 
@@ -50,61 +50,37 @@ MODULE xc_hybrid_module
 
   logical :: flag_init = .false.
 
-  integer :: IC, IO_ctrl
-  character(30) :: file_wf2="wf.dat1"
+  real(8) :: omega = 0.11d0
+  real(8) :: alpha_hf = 0.25d0
+  integer :: IC = 0
+  integer :: IO_ctrl = 0
+  character(30) :: file_wf2 = "wf.dat1"
 
 CONTAINS
 
 
-  SUBROUTINE read_xc_hybrid( rank, unit )
+  SUBROUTINE read_xc_hybrid
     implicit none
-    integer,intent(IN) :: rank,unit
-    character(6) :: cbuf,ckey
-    integer :: i,ierr
-    include 'mpif.h'
-    call write_border( 80, " read_xc_hybrid(start)" )
-    omega=0.0d0
-    IC=0
-    IO_ctrl=0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey == "HF" ) then
-             backspace(unit)
-             read(unit,*) cbuf,omega
-          else if ( ckey == "IC" ) then
-             backspace(unit)
-             read(unit,*) cbuf,IC
-          else if ( ckey == "IOCTRL" ) then
-             backspace(unit)
-             read(unit,*) cbuf,IO_ctrl
-          end if
-       end do
-999    continue
-       if ( omega == 0.0d0 ) omega=0.11d0 ! (HSE06)
-       write(*,*) "----- Parameters for Hybrid_XC -----"
-       write(*,*) "HSE Screening parameter: omega =",omega
-       write(*,*) "IC, IO_ctrl =",IC,IO_ctrl
-    end if
-    call mpi_bcast(omega  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(IC     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(IO_ctrl,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call write_border( 80, " read_xc_hybrid(end)" )
+    real(8) :: tmp(2)
+    call write_border( 60, " read_xc_hybrid(start)" )
+    tmp(1:2) = (/ omega, alpha_hf /)
+    call IOTools_readReal8Keywords( "HF", tmp )
+    omega    = tmp(1)
+    alpha_hf = tmp(2)
+    call IOTools_readIntegerKeyword( "IC", IC )
+    call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
+    call write_border( 60, " read_xc_hybrid(end)" )
   END SUBROUTINE read_xc_hybrid
 
 
   SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
        , MBZ,MBZ_0,MBZ_1, MSP,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell &
-       , SYStype, XCtype, np_fkmb, disp_switch )
+       , SYStype, np_fkmb, disp_switch )
     implicit none
     integer,intent(IN) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
     integer,intent(IN) :: MSP, MSP_0, MSP_1, MB_0, MB_1, np_fkmb
     real(8),intent(IN) :: Ntot, kbb(:,:), bb(3,3), Vcell
-    character(*),intent(IN) :: XCtype
     logical,intent(IN) :: disp_switch
-
     integer :: ML0,i,s,k,q,init_num,ierr,m,t
     integer,allocatable :: ir(:),id(:)
     real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
@@ -112,14 +88,19 @@ CONTAINS
     real(8),parameter :: eps=1.d-5
     real(8) :: mem(9),qtry(3),c,Pi,k_fock(3)
     real(8),allocatable :: qtmp(:,:)
+    character(8) :: XCtype
 
     if ( flag_init ) return
+
+    call IOTools_readStringKeyword( "XCTYPE", XCtype )
 
     if ( XCtype /= "HF"    .and. XCtype /= "HSE"    .and. &
          XCtype /= "HSE06" .and. XCtype /= "HSE_"   .and. &
          XCtype /= "PBE0"  .and. XCtype /= "LCwPBE" ) return
 
     call write_border( 80, " init_xc_hybrid(start)" )
+
+    call read_xc_hybrid
 
 !
 ! --- set flags ---
@@ -156,6 +137,7 @@ CONTAINS
        write(*,*) "iflag_lcwpbe =",iflag_lcwpbe
        write(*,*) "iflag_hybrid =",iflag_hybrid
        write(*,*) "alpha_hf     =",alpha_hf
+       write(*,*) "omega        =",omega
     end if
 
     if ( omega <= 0.0d0 ) then
@@ -266,7 +248,8 @@ CONTAINS
        gamma_hf = 1
 
        if ( disp_switch ) then      
-          write(*,*) "Hybrid DFT calculation on Gamma-point"
+          write(*,'(1x,"Hybrid DFT calculation on Gamma-point (gamma_hf=" &
+                   ,i1,")")') gamma_hf
        end if
 
     end if
