@@ -3,56 +3,56 @@ MODULE gram_schmidt_module
   use gram_schmidt_m_module
   use gram_schmidt_t_module
  !use gram_schmidt_u_module
-  use GramSchmidt_G
+  use gram_schmidt_g_module
+  use VarSysParameter
+  use io_tools_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: gram_schmidt, read_gram_schmidt
+  PUBLIC :: gram_schmidt
 
   integer :: iswitch_algorithm = 0
   include 'mpif.h'
 
+  logical :: flag_init_read = .true.
+
 CONTAINS
 
-  SUBROUTINE read_gram_schmidt(rank,unit)
+  SUBROUTINE read_gram_schmidt
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i,ierr
-    character(2) :: cbuf,ckey
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey == "GS" ) then
-             backspace(unit)
-             read(unit,*) cbuf, iswitch_algorithm
-             exit
-          end if
-       end do
-999    continue
-       write(*,*) "GS:iswitch_algorithm=",iswitch_algorithm
-    end if
-    call mpi_bcast(iswitch_algorithm,1,mpi_integer,0,mpi_comm_world,ierr)
+    call IOTools_readIntegerKeyword( "GS", iswitch_algorithm )
+    flag_init_read = .false.
   END SUBROUTINE read_gram_schmidt
 
   SUBROUTINE gram_schmidt(n0,n1,k,s)
+
     implicit none
     integer,intent(IN) :: n0,n1,k,s
+
     call write_border( 80, " gram_schmidt(start)" )
-    call init_gram_schmidt_g( iswitch_algorithm )
-    select case( iswitch_algorithm )
-    case default
-       call gram_schmidt_t(n0,n1,k,s)
-    case( 1 )
-       call gram_schmidt_m(n0,n1,k,s)
-    !case( 2 )
-    !   call gram_schmidt_u(n0,n1,k,s)
-    case( 101 )
-       call GramSchmidtG( n0,n1,k,s )
-    end select
+
+    if ( flag_init_read ) call read_gram_schmidt
+
+    if ( pp_kind == "USPP" ) then
+
+       call gram_schmidt_g( n0,n1,k,s )
+
+    else
+
+       select case( iswitch_algorithm )
+       case default
+          call gram_schmidt_t(n0,n1,k,s)
+       case( 1 )
+          call gram_schmidt_m(n0,n1,k,s)
+      !case( 2 )
+      !   call gram_schmidt_u(n0,n1,k,s)
+      end select
+
+    end if
+
     call write_border( 80, " gram_schmidt(end)" )
+
   END SUBROUTINE gram_schmidt
 
 END MODULE gram_schmidt_module

@@ -1,9 +1,9 @@
-MODULE GramSchmidt_G
+MODULE gram_schmidt_g_module
 
   use rgrid_module, only: dV,zdV
   use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
-  use parallel_module, only: COMM_GRID,COMM_BAND,ir_band,id_band &
+  use parallel_module, only: comm_grid,comm_band,ir_band,id_band &
                             ,id_class,myrank,np_band,myrank_b
   use RealComplex, only: zero,one,TYPE_MAIN,TRANSA,TRANSB
   use InnerProduct
@@ -15,7 +15,7 @@ MODULE GramSchmidt_G
 
   PRIVATE
   PUBLIC :: init_gram_schmidt_g
-  PUBLIC :: GramSchmidtG
+  PUBLIC :: gram_schmidt_g
 
   integer :: NBLK, NBLK1
 
@@ -31,7 +31,7 @@ CONTAINS
 
   ! Gram-Schmidt orthogonalization
   ! ( Takahashi, Block cyclic )
-  SUBROUTINE GramSchmidtG(ni,nb,k,s)
+  SUBROUTINE gram_schmidt_g(ni,nb,k,s)
     implicit none
     integer,intent(IN) :: ni,nb,k,s
     integer :: irank_b,ns,ne,ms,me,n,ML0,ierr
@@ -91,7 +91,7 @@ CONTAINS
     deallocate( id,ir )
 
     return
-  END SUBROUTINE GramSchmidtG
+  END SUBROUTINE gram_schmidt_g
 
 !---------------------------------------------------------------------------------------
   ! Gram-Schmidt orthogonalization
@@ -239,4 +239,4 @@ CONTAINS
   END SUBROUTINE gram_schmidt_u
 #endif
 
-END MODULE GramSchmidt_G
+END MODULE gram_schmidt_g_module

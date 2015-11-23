@@ -56,8 +56,6 @@ CONTAINS
 
     call read_symmetry( myrank, unit )
 
-    call read_gram_schmidt( myrank, unit )
-
     call read_sweep( myrank, unit )
 
     select case( iswitch_scf )
