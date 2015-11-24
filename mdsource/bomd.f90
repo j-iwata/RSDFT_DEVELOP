@@ -4,7 +4,7 @@
 SUBROUTINE bomd
 
   use atom_module, only: Natom,ki_atom
-  use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,KB,dt &
+  use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,KB,dt,Etot &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,linitnose,lmeta,dtsuz,lbath,lbathnewe &
                            ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue,AMU,pmass &
@@ -168,7 +168,7 @@ SUBROUTINE bomd
         disp_switch=(myrank==0)
         call getforce_cpmd(.true.,ltime) ! in 'getforce_cpmd.f90'
         call wf_force ! in 'wf_force.f90'
-        call calc_total_energy(.false.,disp_switch,9999)
+        call calc_total_energy( .false., Etot )
         disp_switch=.false.
      endif
   else
@@ -321,11 +321,11 @@ SUBROUTINE bomd
         call watch(ctime_cpmd(7),etime_cpmd(7))
         call calfke(fke)
         call watch(ctime_cpmd(8),etime_cpmd(8))
-        call calc_total_energy(.false.,disp_switch,999)
+        call calc_total_energy( .false., Etot )
         call watch(ctime_cpmd(9),etime_cpmd(9))
      else
         call getforce
-        call calc_total_energy(.false.,disp_switch,999)
+        call calc_total_energy( .false., Etot )
      endif
 
      if ( lmeta ) then

@@ -142,17 +142,18 @@ CONTAINS
     real(8) :: grad_hist(max_nhist),alpha_hist(max_nhist)
     real(8) :: Fmax,ss,Etot_save,dif,alpha1_0,okstep0
     real(8) :: al(3),all(3),ar(3),arr(3),alp,wd,xmin,emin
-    real(8) :: Etot0,Fmax0_2,alpha0,Fmax0,Fmax00,Etot00,Etsave
+    real(8) :: Etot,Etot0,Fmax0_2,alpha0,Fmax0,Fmax00,Etot00,Etsave
     real(8) :: gh,alpha,tmp,ddmax,almax,okstep,alpha0_2,Etot0_2
     real(8) :: alpha2,alpha1,grad0,signh,dif0,gamma,gigi,hh
     real(8) :: alsave,safe,c0,c1,c2,c3,pi,ddmin,grad,safety
     real(8),allocatable :: Force(:,:),aa_atom_0(:,:)
     real(8),allocatable :: gi(:,:),hi(:,:)
+    character(22) :: loop_info
 
     if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
 
     call check_disp_switch( disp_switch_loc, 0 )
-    call check_disp_switch( .false., 1 )
+!    call check_disp_switch( .false., 1 )
 
     ddmin  = 1.d-8
     safe   = 0.01d0
@@ -169,7 +170,8 @@ CONTAINS
     if ( iswitch_opt < 2  ) then
 
        if ( iswitch_opt == 1 ) then
-          call calc_total_energy(.false.,disp_switch_loc,1000)
+          call calc_total_energy( .false., Etot )
+          if ( disp_switch_loc ) write(*,*) "Etot(har)=",Etot
        end if
 
        call calc_force( Natom, Force )
@@ -247,8 +249,8 @@ CONTAINS
 
     call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
 
-    disp_switch = .false.
-    disp_switch_parallel = .false.
+!    disp_switch = .false.
+!    disp_switch_parallel = .false.
 
     dif0 = dif
 
@@ -264,9 +266,11 @@ CONTAINS
 
     opt_ion : do icy=ncycl0,ncycl0+ncycl-1
 
-       if ( disp_switch_loc ) then
-          write(*,'(a57," ICY (",i5,")")') repeat("-",57),icy
-       end if
+!       if ( disp_switch_loc ) then
+!          write(*,'(a57," ICY (",i5,")")') repeat("-",57),icy
+!       end if
+       write(loop_info,'(" ICY    (",i5,")")') icy
+       call write_border( 0, loop_info(1:len_trim(loop_info)) )
 
 !
 ! --- Ion configuration ---
@@ -437,10 +441,14 @@ CONTAINS
 
        linmin : do itlin=most0,most
 
-          if ( disp_switch_loc ) then
-             write(*,'(a57," ICY    (",i5,")")') repeat("-",57),icy
-             write(*,'(a57," LINMIN (",i5,")")') repeat("-",57),itlin
-          end if
+!          if ( disp_switch_loc ) then
+!             write(*,'(a57," ICY    (",i5,")")') repeat("-",57),icy
+!             write(*,'(a57," LINMIN (",i5,")")') repeat("-",57),itlin
+!          end if
+          write(loop_info,'(" ICY    (",i5,")")') icy
+          call write_border( 0, loop_info(1:len_trim(loop_info)) )
+          write(loop_info,'(" LINMIN (",i5,")")') itlin
+          call write_border( 0, loop_info(1:len_trim(loop_info)) )
 
           Etsave = Etot
           emin   = 0.d0
@@ -673,9 +681,8 @@ CONTAINS
 
           end select
 
-          if ( disp_switch ) write(*,*) "SCF start"
-
-          call calc_scf( diter_opt, ierr, .false., feps )
+          write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
+          call calc_scf( diter_opt, ierr, disp_switch, feps, Etot, loop_info )
 
           if ( ierr == -1 ) then
              if ( myrank == 0 ) write(*,*) "time limit !!!"

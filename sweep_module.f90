@@ -134,7 +134,7 @@ CONTAINS
 
     end select
 
-    call calc_with_rhoIN_total_energy( .false., Echk )
+    call calc_with_rhoIN_total_energy( Echk )
 
     do iter=1,Diter
 
@@ -170,7 +170,7 @@ CONTAINS
        call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                       ,esp,weight_bz,occ,disp_switch)
 
-       call calc_with_rhoIN_total_energy( .false., Echk )
+       call calc_with_rhoIN_total_energy( Echk )
 
        call conv_check( iter, flag_conv )
        call global_watch( .false., flag_end )

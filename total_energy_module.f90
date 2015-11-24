@@ -20,12 +20,12 @@ MODULE total_energy_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Etot,calc_total_energy,calc_with_rhoIN_total_energy, &
-            write_info_total_energy,diff_etot
+  PUBLIC :: calc_total_energy,calc_with_rhoIN_total_energy, &
+            write_info_total_energy
 
   integer :: scf_iter_
 
-  real(8) :: Etot,Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
+  real(8) :: Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
   real(8) :: Eloc_0=0.d0
@@ -53,11 +53,10 @@ MODULE total_energy_module
 CONTAINS
 
 
-  SUBROUTINE calc_total_energy(flag_recalc_esp,disp_switch,scf_iter,flag_rewind)
+  SUBROUTINE calc_total_energy( flag_recalc_esp, Etot )
     implicit none
-    logical,intent(IN) :: flag_recalc_esp,disp_switch
-    integer,intent(IN) :: scf_iter
-    logical,optional,intent(IN) :: flag_rewind
+    logical,intent(IN) :: flag_recalc_esp
+    real(8),intent(INOUT) :: Etot
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2
     real(8) :: s0(4),s1(4),uu,cnst
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
@@ -86,18 +85,14 @@ CONTAINS
     Fene = 0.d0
     Evdw = 0.d0
 
-    scf_iter_=scf_iter
-
     n1 = ML_0
     n2 = ML_1
 
     if ( flag_recalc_esp ) then
 
        allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
-
        allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
-! *****_Q can be not compiled for NCPP
-       allocate( work(n1:n2,MB_d) ) ; work=zero
+       allocate( work(n1:n2,MB_d)   ) ; work=zero
        allocate( work00(n1:n2,MB_d) ) ; work00=zero
 
        do s=MSP_0,MSP_1
@@ -184,7 +179,7 @@ CONTAINS
        end do ! k
        end do ! s
 
-       deallocate( work )
+       deallocate( work   )
        deallocate( work00 )
 
        allocate( esp1(MB,MBZ,MSP,4) )
@@ -279,22 +274,22 @@ CONTAINS
 
     Fene = Etot - Eentropy
 
- !   diff_etot = Etot_0 - Etot
-    diff_etot = Etot - Ehwf
+    diff_etot = Etot - Etot_0
+!    diff_etot = Etot - Ehwf
 
 !    if ( present(flag_rewind) ) then
 !       call write_info_total_energy( disp_switch, flag_rewind )
 !    else
 !       call write_info_total_energy( disp_switch, .false. )
 !    end if
-    if ( disp_switch ) then
-       write(*,'(1x,"Total Energy   =",f16.8,2x,"(Hartree)")') Etot
-       write(*,'(1x,"Harris Energy  =",f16.8,2x,"(Hartree)")') Ehwf
+!    if ( disp_switch ) then
+!       write(*,'(1x,"Total Energy   =",f16.8,2x,"(Hartree)")') Etot
+!       write(*,'(1x,"Harris Energy  =",f16.8,2x,"(Hartree)")') Ehwf
 !       write(*,'(1x,"difference    =",g13.5)') Etot-Ehwf
 !       write(*,'(1x,"Total (Harris) Energy =",f16.8,2x,"(",f16.8,")" &
 !            ,2x,"(Hartree)")') Etot, Ehwf
 !       write(*,'(1x,"difference =",g13.5)') Etot-Ehwf
-    end if
+!    end if
 
     Ekin_0 = Ekin
     Eloc_0 = Eloc
@@ -315,10 +310,9 @@ CONTAINS
   END SUBROUTINE calc_total_energy
 
 
-  SUBROUTINE calc_with_rhoIN_total_energy(disp_switch,Ehwf_out)
+  SUBROUTINE calc_with_rhoIN_total_energy( Etot )
     implicit none
-    logical,intent(IN) :: disp_switch
-    real(8),optional,intent(OUT) :: Ehwf_out
+    real(8),optional,intent(OUT) :: Etot
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
     call write_border( 1, " calc_with_rhoIN_total_energy(start)" )
@@ -334,12 +328,8 @@ CONTAINS
     Ehat_in = E_hartree
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
-    Ehwf = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
+    Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
            + const_ps_local*sum(occ)
-    diff_etot = Ehwf_0 - Ehwf
-!    if ( disp_switch ) write(*,*) '(HWF) ',Ehwf, Ehwf_0-Ehwf
-    Ehwf_0 = Ehwf
-    if ( present(Ehwf_out) ) Ehwf_out=Ehwf
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
@@ -365,8 +355,8 @@ CONTAINS
        write(u(i),*) '(EXG) ',E_exchange, E_exchange-Ex_0
        write(u(i),*) '(COR) ',E_correlation, E_correlation-Ec_0
        write(u(i),*) '(EIG) ',Eeig, Eeig-Eeig_0
-       write(u(i),*) '(HWF) ',Ehwf, Ehwf-Etot
-       write(u(i),*) '(TOT) ',Etot, Etot_0-Etot
+!       write(u(i),*) '(HWF) ',Ehwf, Ehwf-Etot
+!       write(u(i),*) '(TOT) ',Etot, Etot_0-Etot
        write(u(i),*) '(efermi)  ',efermi, efermi-efermi_0
        !write(u(i),*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
        !write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0

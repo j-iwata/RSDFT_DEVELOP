@@ -112,6 +112,7 @@ CONTAINS
     integer :: ML01,MSP01,ib1,ib2
     real(8) :: ct0,et0,ct1,et1
     logical :: flag_exit,flag_end,flag_conv
+    real(8) :: Etot, Ehwf
 
     flag_end  = .false.
     flag_exit = .false.
@@ -189,7 +190,7 @@ CONTAINS
 
        call watcht(disp_switch,"fermi",1)
 
-       call calc_with_rhoIN_total_energy(disp_switch)
+       call calc_with_rhoIN_total_energy( Ehwf )
 
        call watcht(disp_switch,"harris",1)
 
@@ -199,7 +200,7 @@ CONTAINS
        call control_xc_hybrid(1)
        call calc_xc
        call control_xc_hybrid(2)
-       call calc_total_energy( .false., disp_switch, iter )
+       call calc_total_energy( .false., Etot )
 ! ---
 
        call watcht(disp_switch,"etot",1)

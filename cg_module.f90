@@ -63,14 +63,10 @@ CONTAINS
        case default
        case( 1 )
 
-          if ( disp_switch_parallel ) &
-               write(*,'("--- CG ( with IPC=",i1," ) ---")') ipc
           call conjugate_gradient_1(n1,n2,MB,k,s,Ncg,unk,esp,res)
 
        case( 2 )
 
-          if ( disp_switch_parallel ) &
-               write(*,'("--- LOBPCG ( with IPC=",i1," ) ---")') ipc
           call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
           call lobpcg( k,s,Ncg,iswitch_gs,unk,esp,res )
 

@@ -75,7 +75,7 @@ CONTAINS
     logical,allocatable :: lcheck_tmp1(:,:)
     logical :: disp_sw
 
-    call write_border( 80, " prep_ps_nloc2(start)" )
+    call write_border( 0, " prep_ps_nloc2(start)" )
     call check_disp_switch( disp_sw, 0 )
 
     timer_counter = -1
@@ -924,11 +924,11 @@ CONTAINS
 
 ! ---
 
-    if ( disp_sw ) then
-       call write_watcha( timer_counter,"prep_ps_nloc2" )
-    end if
+!    if ( disp_sw ) then
+!       call write_watcha( timer_counter,"prep_ps_nloc2" )
+!    end if
 
-    call write_border( 80, " prep_ps_nloc2(end)" )
+    call write_border( 0, " prep_ps_nloc2(end)" )
 
   END SUBROUTINE prep_ps_nloc2
 
@@ -1731,12 +1731,12 @@ CONTAINS
 
 !$OMP end parallel
 
-    if ( disp_sw ) then
-       write(*,*) "time(force_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(force_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(force_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(force_nloc2_4)",ctt(5)-ctt(4),ett(5)-ett(4)
-    end if
+!    if ( disp_sw ) then
+!       write(*,*) "time(force_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(force_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(force_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(force_nloc2_4)",ctt(5)-ctt(4),ett(5)-ett(4)
+!    end if
 
   END SUBROUTINE calc_force_ps_nloc2
 

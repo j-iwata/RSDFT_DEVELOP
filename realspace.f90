@@ -23,10 +23,9 @@ PROGRAM Real_Space_Solid
   real(8) :: ct0,ct1,et0,et1,exc_tmp,eh_tmp,eion_tmp,tmp,shift_factor
   integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3,info
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
-  real(8) :: totalScfTime
-  logical :: isDebug=.false.
-
   type(lattice) :: aa_obj, bb_obj
+  logical :: recalc_esp=.true.
+  real(8) :: Etot, Ehwf
 
 ! --- start MPI ---
 
@@ -329,8 +328,8 @@ PROGRAM Real_Space_Solid
 
   call getDij
 
-  call calc_with_rhoIN_total_energy(disp_switch)
-  call calc_total_energy(.true.,disp_switch,999)
+  call calc_with_rhoIN_total_energy( Ehwf )
+  call calc_total_energy( recalc_esp, Etot )
 
 ! ---
 

@@ -112,10 +112,11 @@ CONTAINS
 
 !-----------------------------------------------------------------------
 
-  SUBROUTINE calc_density
+  SUBROUTINE calc_density( Ntot )
     ! IN:	unk(:.n.k.s),ML_0,ML_1,MS_0,MS_1
     ! OUT:	rho(n1:n2,s)
     implicit none
+    real(8),optional,intent(OUT) :: Ntot(:)
     integer :: n,k,s,i
     integer :: n1,n2,n0
     real(8),allocatable :: rhonks(:)
@@ -135,7 +136,6 @@ CONTAINS
        end do
        call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
        call reduce_and_gather
-       call calc_sum_dspin
 
     case ( 'USPP' )
 
@@ -162,6 +162,8 @@ CONTAINS
 
     end select
 
+    if ( present(Ntot) ) call calc_spin_density( Ntot )
+
     call write_border( 1, " calc_density(end)" )
 
   END SUBROUTINE calc_density
@@ -184,21 +186,21 @@ CONTAINS
   END SUBROUTINE reduce_and_gather
 
 
-  SUBROUTINE calc_sum_dspin
+  SUBROUTINE calc_spin_density( Ntot )
     implicit none
+    real(8),intent(OUT) :: Ntot(:)
     integer :: ierr
-    real(8) :: tmp(2)
-    sum_dspin(:)=0.0d0
+    real(8) :: tmp(4)
+    tmp(:) = 0.0d0
+    tmp(1) = sum( rho(:,1) )*dV_RHO
     if ( MS_RHO == 2 ) then
-       tmp(1)=sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
-       tmp(2)=sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
-       call mpi_allreduce( tmp,sum_dspin,2,mpi_real8,mpi_sum,comm_grid,ierr)
-!       if ( disp_switch_parallel ) then
-!          write(*,*) "sum  dspin(r)  = ",sum_dspin(1)
-!          write(*,*) "sum |dspin(r)| = ",sum_dspin(2)
-!       end if
+       tmp(2) = sum( rho(:,MS_RHO) )*dV_RHO
+       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
+       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
     end if
-  END SUBROUTINE calc_sum_dspin
+    call mpi_allreduce( tmp,Ntot,4,mpi_real8,mpi_sum,comm_grid,ierr)
+  END SUBROUTINE calc_spin_density
+
 
   SUBROUTINE writeDensity( iter )
     implicit none

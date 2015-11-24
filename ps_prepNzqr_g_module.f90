@@ -24,7 +24,7 @@ CONTAINS
     integer :: lma1,lma2,a1,a2,l1,l2,m1,m2,i1,i2,a,l,m
     integer,allocatable :: k1a(:)
 
-    call write_border( 60," prepNzqr(start)" )
+    call write_border( 0," prepNzqr(start)" )
 
 !----- get N_nzqr -----
 
@@ -51,7 +51,7 @@ CONTAINS
 
     N_nzqr = kk1
 
-    if ( myrank == 0 ) write(*,*) "N_nzqr= ",N_nzqr
+!    if ( myrank == 0 ) write(*,*) "N_nzqr= ",N_nzqr
 
 !===== get N_nzqr =====
 
@@ -71,7 +71,7 @@ CONTAINS
 
     N_nlop = kk1
 
-    if ( myrank == 0 ) write(*,*) "N_nlop= ",N_nlop
+!    if ( myrank == 0 ) write(*,*) "N_nlop= ",N_nlop
 
 !===== get N_nlop =====
 
@@ -127,12 +127,12 @@ CONTAINS
     end do ! lma2
     end do ! lma1
 
-    if ( myrank == 0 ) write(*,*) "N_nzqr,kk1 (check) =",N_nzqr,kk1
+!    if ( myrank == 0 ) write(*,*) "N_nzqr,kk1 (check) =",N_nzqr,kk1
 
 !===== get nzqr_pair, atommap, k1map, kk1map =====
 
-    if ( myrank == 0 ) write(*,*) "--- Dij00(1:N_nzqr) ---"
-    if ( myrank == 0 ) write(*,*) "  [ qij_f(1:N_nzqr) ]  "
+!    if ( myrank == 0 ) write(*,*) "--- Dij00(1:N_nzqr) ---"
+!    if ( myrank == 0 ) write(*,*) "  [ qij_f(1:N_nzqr) ]  "
     do kk1=1,N_nzqr
        i=nzqr_pair(kk1,1)
        j=nzqr_pair(kk1,2)
@@ -152,8 +152,8 @@ CONTAINS
 
 !----- Nlop_type Matrix -----
 
-    if ( myrank == 0 ) write(*,*) "--- Dij0 (1:N_nlop) ---"
-    if ( myrank == 0 ) write(*,*) "   [ qij(1:N_nlop) ]   "
+!    if ( myrank == 0 ) write(*,*) "--- Dij0 (1:N_nlop) ---"
+!    if ( myrank == 0 ) write(*,*) "   [ qij(1:N_nlop) ]   "
 
     kk1=0
     do lma1=1,nzlma
@@ -177,11 +177,11 @@ CONTAINS
        end do
     end do
 
-    if ( myrank == 0 ) write(*,*) "N_nlop= ",N_nlop,kk1
+!    if ( myrank == 0 ) write(*,*) "N_nlop= ",N_nlop,kk1
 
 !===== Nlop_type Matrix =====
 
-    call write_border( 60," prepNzqr(end)" )
+    call write_border( 0," prepNzqr(end)" )
 
   END SUBROUTINE prepNzqr  
 

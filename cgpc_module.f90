@@ -108,15 +108,15 @@ CONTAINS
     case( 2 )
        call init_cgpc_2( mloop, SYStype )
     case( 3 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
+!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_gausseidel ---"
        call init_cgpc_gausseidel(Igrid,Ngrid,Hgrid,ggg,mloop)
     case( 4 )
        call init_cgpc_hprsdft( mloop, SYStype )
     case( 10 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_diag ---"
+!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_diag ---"
        call init_cgpc_diag(n1,n2,k,s,dV_in)
     case( 20 )
-       if ( disp_switch_parallel ) write(*,*) "--- cgpc_seitsonen ---"
+!       if ( disp_switch_parallel ) write(*,*) "--- cgpc_seitsonen ---"
        call init_cgpc_seitsonen(n1,n2,comm_grid,dV_in)
     end select
 

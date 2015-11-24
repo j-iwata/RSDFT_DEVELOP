@@ -23,9 +23,11 @@ SUBROUTINE write_border( n, indx )
      else
         write(u0,axx) repeat("-",m),indx
      end if
-     open(u1,file="RSDFT_LOG",position="append")
-     write(u1,axx) repeat("-",m),indx
-     close(u1)
+     if ( u0 /= u1 ) then
+        open(u1,file="RSDFT_LOG",position="append")
+        write(u1,axx) repeat("-",m),indx
+        close(u1)
+     end if
   end if
 
 END SUBROUTINE write_border

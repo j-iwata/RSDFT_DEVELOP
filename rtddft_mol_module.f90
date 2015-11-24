@@ -102,6 +102,7 @@ CONTAINS
     real(8) :: c,t,ct(0:9),et(0:9)
     type(grid) :: rgrid
     logical :: disp_sw,flag_end
+    real(8) :: Etot
 
 #ifdef _DRSDFT_
 
@@ -185,7 +186,7 @@ CONTAINS
        call calc_density
        call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
        call calc_xc
-       call calc_total_energy( .true., .false., 0 )
+       call calc_total_energy( .true., Etot )
 
        call calc_dipole( dipole(0,it), rgrid%VolumeElement )
 

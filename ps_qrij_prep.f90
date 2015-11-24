@@ -86,7 +86,7 @@ CONTAINS
     real(8) :: ctt(0:9),ett(0:9)
     real(8),parameter :: ep=1.d-8
 
-    call write_border( 60, " prepQRijp102(start)" )
+    call write_border( 0, " prepQRijp102(start)" )
 
     ctt=0.0d0 ; ett=0.0d0
     call watch(ctt(6),ett(6))
@@ -370,18 +370,18 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(prepQRijp102_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(prepQRijp102_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(prepQRijp102_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(prepQRijp102_4)",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(prepQRijp102_5)",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(prepQRijp102_7)",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(prepQRijp102_8)",ctt(8)-ctt(7),ett(8)-ett(7)
-       write(*,*) "time(prepQRijp102_9)",ctt(0)-ctt(8),ett(0)-ett(8)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(prepQRijp102_1)",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(prepQRijp102_2)",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(prepQRijp102_3)",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(prepQRijp102_4)",ctt(4)-ctt(3),ett(4)-ett(3)
+!       write(*,*) "time(prepQRijp102_5)",ctt(5)-ctt(4),ett(5)-ett(4)
+!       write(*,*) "time(prepQRijp102_7)",ctt(7)-ctt(6),ett(7)-ett(6)
+!       write(*,*) "time(prepQRijp102_8)",ctt(8)-ctt(7),ett(8)-ett(7)
+!       write(*,*) "time(prepQRijp102_9)",ctt(0)-ctt(8),ett(0)-ett(8)
+!    end if
 
-    call write_border( 60, " prepQRijp102(en)" )
+    call write_border( 0, " prepQRijp102(en)" )
 
   END SUBROUTINE prepQRijp102
 
