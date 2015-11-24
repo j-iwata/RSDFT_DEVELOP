@@ -7,7 +7,7 @@ MODULE mixing_module
   implicit none
 
   PRIVATE
-  PUBLIC :: sqerr_out, imix, beta &
+  PUBLIC :: imix, beta &
            ,init_mixing,read_mixing,perform_mixing &
            ,finalize_mixing, restart_mixing
   PUBLIC :: calc_sqerr_mixing
@@ -20,7 +20,6 @@ MODULE mixing_module
   integer :: iomix = 0
   integer :: iochk(2) = 0
 
-  real(8) :: scf_conv(2),sqerr_out(4)
   real(8),allocatable :: Xold(:,:,:)
   complex(8),allocatable :: Xin(:,:,:),Xou(:,:,:)
   real(8) :: beta0
@@ -62,12 +61,11 @@ CONTAINS
 
 
   SUBROUTINE init_mixing(ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in &
-       ,dV_in,f,g,scf_conv_in,ir_in,id_in,myrank_in)
+       ,dV_in,f,g,ir_in,id_in,myrank_in)
     implicit none
     integer,intent(IN) :: ML0_in,MSP_in,nf1,nf2,comm_grid_in,comm_spin_in
     integer,intent(IN) :: ir_in(0:),id_in(0:),myrank_in
     real(8),intent(IN) :: dV_in,f(ML0_in,nf1:nf2), g(ML0_in,nf1:nf2)
-    real(8),intent(IN) :: scf_conv_in(2)
     integer :: m,ierr
 
     call write_border( 0, " init_mixing(start)" )
@@ -91,8 +89,6 @@ CONTAINS
     call mpi_allreduce( ML0, ML, 1,MPI_INTEGER,MPI_SUM,comm_grid,ierr )
 
     dV = dV_in
-
-    scf_conv = scf_conv_in
 
     if ( .not.allocated(ir) ) then
        m=size(ir_in)
@@ -144,11 +140,10 @@ CONTAINS
   END SUBROUTINE init_mixing
 
 
-  SUBROUTINE perform_mixing( m, n1, n2, f_io, g_io, flag_conv, disp_sw_in )
+  SUBROUTINE perform_mixing( m, n1, n2, f_io, g_io, disp_sw_in )
     implicit none
     integer,intent(IN)    :: m,n1,n2
     real(8),intent(INOUT) :: f_io(m,n1:n2),g_io(m,n1:n2)
-    logical,optional,intent(OUT)   :: flag_conv
     logical,optional,intent(IN) :: disp_sw_in
     real(8) :: err0(2),err(2),sum0(2),beta_bak,beta_min,dif_min(2)
     integer :: n,ierr,loop,max_loop,mmix_count_bak,i,i0
@@ -168,14 +163,6 @@ CONTAINS
     n=m*(n2-n1+1)
     call mpi_allgather( f_io(1,n1),n,MPI_REAL8,f,n,MPI_REAL8,comm_spin,ierr)
     call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
-
-    if ( present(flag_conv) ) then
-       call calc_sqerr( ML0, MSP, f, g, flag_conv )
-       if ( flag_conv ) then
-          deallocate( g,f )
-          return
-       end if
-    end if
 
     allocate( h(ML0,MSP)     ) ; h=0.0d0
     allocate( h_old(ML0,MSP) ) ; h_old=0.0d0
@@ -300,11 +287,11 @@ CONTAINS
   END SUBROUTINE perform_mixing
 
 
-  SUBROUTINE calc_sqerr_mixing( m, n1, n2, f_io, g_io, flag_conv )
+  SUBROUTINE calc_sqerr_mixing( m, n1, n2, f_io, g_io, sqerr_out )
     implicit none
     integer,intent(IN)    :: m,n1,n2
     real(8),intent(INOUT) :: f_io(m,n1:n2),g_io(m,n1:n2)
-    logical,intent(OUT)   :: flag_conv
+    real(8),intent(OUT)   :: sqerr_out(4)
     integer :: n,ierr
     real(8),allocatable :: f(:,:),g(:,:)
     call write_border( 1, " calc_sqerr_mixing(start)" )
@@ -313,17 +300,17 @@ CONTAINS
     n=m*(n2-n1+1)
     call mpi_allgather( f_io(1,n1),n,MPI_REAL8,f,n,MPI_REAL8,comm_spin,ierr)
     call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
-    call calc_sqerr( m, MSP, f, g, flag_conv )
+    call calc_sqerr( m, MSP, f, g, sqerr_out )
     deallocate( g,f )
     call write_border( 1, " calc_sqerr_mixing(end)" )
     return
   END SUBROUTINE calc_sqerr_mixing
 
-  SUBROUTINE calc_sqerr(m,n,f,g,flag_conv)
+  SUBROUTINE calc_sqerr(m,n,f,g,sqerr_out)
     implicit none
     integer,intent(IN)  :: m,n
     real(8),intent(IN)  :: f(m,n),g(m,n)
-    logical,intent(OUT) :: flag_conv 
+    real(8),intent(OUT) :: sqerr_out(4)
     real(8) :: err0(2*n),err(2*n)
     integer :: i,ierr
 
@@ -333,26 +320,7 @@ CONTAINS
     end do
     call mpi_allreduce(err0,err,2*n,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
-    if ( all( err(n+1:2*n) <= scf_conv(1) ) ) then
-       flag_conv = .true.
-    else
-       flag_conv = .false.
-       if ( all( err(1:n) <= scf_conv(2) ) ) flag_conv = .true.
-    end if
-
-!    if ( disp_switch ) then
-!       if ( MSP == 1 ) then
-!          write(*,'(1x,"RSQERR=",g12.5,3x,"VSQERR=",g12.5)') err(1:2)
-!          write(40,*) err(1:2)
-!       else if ( MSP == 2 ) then
-!          write(*,'(1x,"RSQERR=",2g12.5,3x,"VSQERR=",2g12.5)') err(1:4)
-!          write(40,'(1x,4g12.5)') err(1:4)
-!       else
-!          write(*,*) "MSP is invalid: MSP=",MSP
-!          stop "stop@parform_mixing"
-!       end if
-!    end if
-
+    sqerr_out(:)       = 0.0d0
     sqerr_out(1:n)     = err(1:n)
     sqerr_out(n+1:2*n) = err(n+1:2*n)
 

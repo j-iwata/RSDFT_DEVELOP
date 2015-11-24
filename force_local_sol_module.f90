@@ -348,17 +348,17 @@ CONTAINS
 
     call watch(ctt(9),ett(9))
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(force_local_ffte2)=",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(force_local_ffte3)=",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(force_local_ffte4)=",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(force_local_ffte5)=",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(force_local_ffte6)=",ctt(6)-ctt(5),ett(6)-ett(5)
-       write(*,*) "time(force_local_ffte7)=",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(force_local_ffte8)=",ctt(8)-ctt(7),ett(8)-ett(7)
-       write(*,*) "time(force_local_ffte9)=",ctt(9)-ctt(8),ett(9)-ett(8)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(force_local_ffte1)=",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(force_local_ffte2)=",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(force_local_ffte3)=",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(force_local_ffte4)=",ctt(4)-ctt(3),ett(4)-ett(3)
+!       write(*,*) "time(force_local_ffte5)=",ctt(5)-ctt(4),ett(5)-ett(4)
+!       write(*,*) "time(force_local_ffte6)=",ctt(6)-ctt(5),ett(6)-ett(5)
+!       write(*,*) "time(force_local_ffte7)=",ctt(7)-ctt(6),ett(7)-ett(6)
+!       write(*,*) "time(force_local_ffte8)=",ctt(8)-ctt(7),ett(8)-ett(7)
+!       write(*,*) "time(force_local_ffte9)=",ctt(9)-ctt(8),ett(9)-ett(8)
+!    end if
 
   END SUBROUTINE calc_force_ps_local_ffte
 

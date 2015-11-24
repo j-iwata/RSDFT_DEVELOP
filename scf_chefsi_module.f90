@@ -125,7 +125,7 @@ CONTAINS
     ib2       = min(nint(Nelectron/2)+80,Nband)
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
-                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
+                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0) &
                     ,ir_grid,id_grid,myrank)
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
@@ -211,7 +211,7 @@ CONTAINS
        end do
 
        call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-            ,Vloc(ML_0,MSP_0), flag_conv, disp_switch )
+            ,Vloc(ML_0,MSP_0), disp_switch )
 
        if ( mod(imix,2) == 0 ) then
           call normalize_density
@@ -302,7 +302,7 @@ CONTAINS
           write(u(i),'("ECUT ",f10.5)') Ecut
           write(u(i),'("XC",a10)') XCtype
           write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-          write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
+!          write(u(i),*) "iter,sqerr=",iter,sqerr_out(1:Nspin)
        end if
        write(u(i),'(a4,a6,a20,2a13,1x)') &
             "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"

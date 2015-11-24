@@ -5,7 +5,7 @@ MODULE scf_module
   use electron_module
   use localpot_module
   use mixing_module, only: init_mixing, perform_mixing, calc_sqerr_mixing &
-                         , finalize_mixing, imix, beta, sqerr_out
+                         , finalize_mixing, imix, beta
   use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use xc_module
   use hartree_variables, only: Vh
@@ -119,7 +119,7 @@ CONTAINS
     type(time) :: etime, etime_tot
     logical :: flag_recalc_esp = .false.
     real(8) :: Etot, Ehwf, diff_etot
-    real(8) :: Ntot(4)
+    real(8) :: Ntot(4), sqerr_out(4)
 
     call write_border( 0, "" )
     call write_border( 0, " SCF START -----------" )
@@ -150,7 +150,7 @@ CONTAINS
     end do
 
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
-                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0),scf_conv &
+                    ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0) &
                     ,ir_grid,id_grid,myrank)
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
@@ -272,9 +272,14 @@ CONTAINS
        call calc_xc
        call calc_total_energy( flag_recalc_esp, Etot )
        if ( present(Etot_out) ) Etot_out = Etot
+
+! --- convergence check by total energy ---
+
        diff_etot = Etot - Ehwf
 
        if ( abs(diff_etot) < etot_conv ) flag_conv_e = .true.
+
+! ---
 
        if ( disp_switch ) then
           write(*,*)
@@ -298,8 +303,11 @@ CONTAINS
        do s=MSP_0,MSP_1
           v(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
        end do
-       call calc_sqerr_mixing( ML01,MSP_0,MSP_1,rho(ML_0,MSP_0),v,flag_conv )
+       call calc_sqerr_mixing( ML01,MSP_0,MSP_1,rho(ML_0,MSP_0),v,sqerr_out )
        deallocate( v )
+
+       if ( maxval( sqerr_out(1:MSP) ) <= scf_conv(2) .or. &
+            maxval( sqerr_out(MSP+1:2*MSP) ) <= scf_conv(1) ) flag_conv=.true.
 
        if ( disp_switch ) then
           write(*,*)
@@ -346,7 +354,7 @@ CONTAINS
           end do
 
           call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-               ,Vloc(ML_0,MSP_0), disp_sw_in=disp_switch )
+               ,Vloc(ML_0,MSP_0), disp_switch )
 
           if ( mod(imix,2) == 0 ) then
              call normalize_density
