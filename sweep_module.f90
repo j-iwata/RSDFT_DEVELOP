@@ -254,9 +254,9 @@ CONTAINS
     integer :: s,k,n
     call write_border( 1, " write_info_sweep(start)" )
 !    write(*,'(a4,a6,a20,2a13,1x)') &
-!         "k","n","esp(n,k,s)","esp_err","occ(n,k,s)"
+!         "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
 !    do k=1,Nbzsm
-!    do n=max(1,nint(Nelectron/2)-20),min(nint(Nelectron/2)+80,Nband)
+!    do n=max(1,nint(Nelectron/2)-5),min(nint(Nelectron/2)+5,Nband)
 !       write(*,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
 !            ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
 !    end do

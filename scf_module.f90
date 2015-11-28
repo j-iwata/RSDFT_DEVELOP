@@ -374,7 +374,7 @@ CONTAINS
 
 ! ---
 
-       call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
+!       call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
 
        call global_watch(.false.,flag_end)
 

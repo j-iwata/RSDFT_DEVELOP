@@ -4,15 +4,16 @@ MODULE PSQRijPrep
        ,node_partition,COMM_GRID,disp_switch_parallel,MB_d
   use aa_module, only: aa
   use atom_module, only: Natom,ki_atom,aa_atom
-  use rgrid_module, only: Igrid,Ngrid,Hgrid
+  use rgrid_module, only: Igrid,Ngrid,Hgrid,dV
   use VarPSMember
   use VarPSMemberG, only: QRij, k1_to_m, k1_to_iorb, nzqr_pair, N_nzqr, qrL &
                          ,k1_to_k2, k1_to_k3, Q_Rps, Q_NRps &
-                         ,N_k1, k1max, nl3v, l3v
+                         ,N_k1, k1max, nl3v, l3v, qij_f, qij &
+                         ,k1_to_l, k1_to_m
   use VarParaPSnonLocG, only: MAXMJJ_Q,MJJ_Q,JJP_Q &
                              ,MAXMJJ_MAP_Q,MJJ_MAP_Q,JJ_MAP_Q
   use ps_nloc2_module, only: prepMapsTmp
-  use ps_nloc2_variables, only: amap,lmap,mmap,iorbmap
+  use ps_nloc2_variables, only: amap,lmap,mmap,iorbmap,nzlma
   use pseudopot_module, only: pselect
   use minimal_box_module
   use para_rgrid_comm
@@ -20,6 +21,8 @@ MODULE PSQRijPrep
   use array_bound_module, only: ML_0
   use polint_module
   use spline_module
+  use force_sub_sub_module, only: gaunt_ll, construct_gaunt_coef_LL
+  use ylm_module
 
   implicit none
 
@@ -27,22 +30,12 @@ MODULE PSQRijPrep
   PUBLIC :: prepQRijp102
 
   include 'mpif.h'
-  
-  complex(8),allocatable :: qaL(:,:) !qaL(k3max,Lrefmax)
 
   complex(8),parameter :: z0=(0.d0,0.d0),z1=(1.d0,0.d0),zi=(0.d0,1.d0)
   real(8),parameter :: pi4=16.d0*atan(1.d0)
   real(8),allocatable :: y2a(:,:,:,:)
 
 CONTAINS
-
-  SUBROUTINE allocateQaL
-    implicit none
-    if (allocated(qaL)) deallocate(qaL)
-!    allocate( qaL(k2max,max_Lref) ) ; qaL=z0
-    allocate( qaL(45,3) ) ; qaL=z0
-    return
-  END SUBROUTINE allocateQaL
 
 
   SUBROUTINE prepQRijp102
@@ -77,7 +70,7 @@ CONTAINS
     real(8) :: r2
 
     integer :: ll3,mm,m1,m2,iqr,lma1,lma2,a1,a2
-    integer :: j3
+    integer :: j3,l1,l2,m3
     real(8) :: v,v0,err,err0,QRtmp
 
     real(8),allocatable :: QRij_tmp(:,:,:)
@@ -85,13 +78,12 @@ CONTAINS
     
     real(8) :: ctt(0:9),ett(0:9)
     real(8),parameter :: ep=1.d-8
+    type(gaunt_ll) :: GCLL
 
     call write_border( 0, " prepQRijp102(start)" )
 
     ctt=0.0d0 ; ett=0.0d0
     call watch(ctt(6),ett(6))
-
-    call allocateQaL
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
@@ -125,6 +117,10 @@ CONTAINS
     if ( .not.allocated(QRij_tmp) ) allocate( QRij_tmp(MMJJ_Q_0,k1max,Natom) )
     QRij_tmp=0.0d0
 
+    l1 = maxval( k1_to_l(1,:,:) )
+    l2 = maxval( k1_to_l(2,:,:) )
+    call construct_gaunt_coef_ll( l1,l2,GCLL )
+
     call watch(ctt(0),ett(0))
 
     c1     = 1.d0/Ngrid(1)
@@ -146,8 +142,12 @@ CONTAINS
 
        do ik1=1,N_k1(ik)
 
+          l1 = k1_to_l(1,ik1,ik)
+          l2 = k1_to_l(2,ik1,ik)
+          m1 = k1_to_m(1,ik1,ik)
+          m2 = k1_to_m(2,ik1,ik)
+
           ik2 = k1_to_k2(ik1,ik)
-          ik3 = k1_to_k3(ik1,ik)
 
           Rps2 = Q_Rps(ik2,ik)*Q_Rps(ik2,ik)
           NRc  = Q_NRps(ik2,ik)
@@ -188,8 +188,6 @@ CONTAINS
 
                 j=j+1
                 r = sqrt(r2)
-
-                call get_qaL( r, x, y, z )
   
                 do ll3=1,nl3v(ik2,ik)
 
@@ -220,10 +218,10 @@ CONTAINS
                       else if ( ir <= NRc ) then
                          err0=1.d10
                          do mm=1,20
-                            m1=max(1,ir-mm)
-                            m2=min(ir+mm,NRc)
-                            call polint(rad1(m1,ik),qrL(m1,ll3,ik2,ik) &
-                                 ,m2-m1+1,r,v,err)
+                            mm1=max(1,ir-mm)
+                            mm2=min(ir+mm,NRc)
+                            call polint(rad1(mm1,ik),qrL(mm1,ll3,ik2,ik) &
+                                 ,mm2-mm1+1,r,v,err)
                             if ( abs(err) < err0 ) then
                                v0=v
                                err0=abs(err)
@@ -235,11 +233,13 @@ CONTAINS
                       end if
                       maxerr=max(maxerr,err0)
 
-                      QRtmp = v0/pi4 * dble( qaL(ik3,ll3)/(-zi)**L )
+                      do M=-L,L
+                         QRtmp=QRtmp+Ylm(x,y,z,L,M)*GCLL%yyy(l1,m1,l2,m2,L,M)
+                      end do
 
                    end if ! x,y,z
 
-                   QRij_tmp(j,ik1,ia) = QRij_tmp(j,ik1,ia) + QRtmp
+                   QRij_tmp(j,ik1,ia) = QRij_tmp(j,ik1,ia) + v0*QRtmp
 
                 end do ! ll3
 
@@ -370,6 +370,8 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
+    call update_qij
+
 !    if ( disp_switch_parallel ) then
 !       write(*,*) "time(prepQRijp102_1)",ctt(1)-ctt(0),ett(1)-ett(0)
 !       write(*,*) "time(prepQRijp102_2)",ctt(2)-ctt(1),ett(2)-ett(1)
@@ -386,135 +388,86 @@ CONTAINS
   END SUBROUTINE prepQRijp102
 
 
-  SUBROUTINE get_qaL ( r,x,y,z )
+  SUBROUTINE update_qij
+
     implicit none
+    integer :: i,j,kk1,lma1,lma2,a1,a2,i1,i2,l1,l2,m1,m2,ik
+    real(8),allocatable :: IntQV(:,:,:,:,:)
 
-    real(8) :: r,x,y,z
-    real(8),parameter :: sq3=sqrt(3.d0)
-    real(8),parameter :: sq5=sqrt(5.d0)
+    call write_border( 1, " update_qij(start)" )
 
-!----------------------------
-    qaL(:,:)   = z0
+    i=maxval( norb )
+    j=maxval( lo )
+    allocate( IntQV(Natom,i,i,-j:j,-j:j) ) ; IntQV=0.0d0
 
-    qaL(1,1)   = z1
-    qaL(3,1)   = z1
-    qaL(6,1)   = z1
-    qaL(10,1)  = z1
-    qaL(15,1)  = z1
-    qaL(21,1)  = z1
-    qaL(28,1)  = z1
-    qaL(36,1)  = z1
-    qaL(45,1)  = z1
+    do kk1=1,N_nzqr
 
-!--      
-    if ( r <= 1.0D-10 ) return
-!--      
-    x = x/r 
-    y = y/r 
-    z = z/r 
+       lma1 = nzqr_pair(kk1,1)
+       lma2 = nzqr_pair(kk1,2)
 
-    qaL(1,1)=1.d0
-    qaL(2,1)=sq3*zi*y
-    qaL(3,1)=1.d0
-    qaL(3,2)=(3.d0*x**2-3.d0*y**2+3.d0*z**2-1.d0)/2.d0
-    qaL(4,1)=-sq3*zi*z
-    qaL(5,1)=0.d0
-    qaL(5,2)=3.d0*y*z
-    qaL(6,1)=1.d0
-    qaL(6,2)=-(3.d0*z**2-1.d0)
-    qaL(7,1)=sq3*zi*x
-    qaL(8,1)=0.d0
-    qaL(8,2)=-3.d0*x*y
-    qaL(9,1)=0.d0
-    qaL(9,2)=3.d0*x*z
-    qaL(10,1)=1.d0
-    qaL(10,2)=-(3.d0*x**2-3.d0*y**2-3.d0*z**2+1.d0)/2.d0
-    qaL(11,1)=-sqrt(15.d0)*x*y
-    qaL(12,1)=3.d0*sq5*zi*x/5.d0
-    qaL(12,2)=(   3.d0*sq5*zi*x * (5.d0*x**2-15.d0*y**2+5.d0*z**2-1.d0) )/20.d0
-    qaL(13,1)=0.d0
-    qaL(13,2)=3.d0*sq5*zi*x*y*z
-    qaL(14,1)=3.d0*sq5*zi*y/5.d0
-    qaL(14,2)=-(3.d0*sq5*zi*y*(15.d0*x**2 -5.d0*y**2-5.d0*z**2+1.d0))/(20.d0)
-    qaL(15,1)=1.d0
-    qaL(15,2)=(5.d0*(3.d0*z**2-1.d0))/7.d0
-    qaL(15,3)=-(3.d0*(35.d0*x**4-210.d0*x**2*y**2 +35.d0*y**4-35.d0*z**4+30.d0*z**2-3.d0))/56.d0
-    qaL(16,1)=3.d0*sqrt(5.d0/3.0d0)*y*z
-    qaL(17,1)=-(3.d0*sq5*zi*z)/5.d0
-    qaL(17,2)=-(3.d0*sq5*zi*z *(5.d0*x**2-5.d0*y**2+5.d0*z**2-3.d0))/10.d0
-    qaL(18,1)=(3.d0*sq5*zi*y)/5.d0
-    qaL(18,2)=-(3.d0*zi*y*(5.d0*z**2-1.d0))/sq5
-    qaL(19,1)=0.d0
-    qaL(19,2)=3.d0*sq5*zi*x*y*z
-    qaL(20,1)=0.d0
-    qaL(20,2)=(15.d0*x*z)/7.d0
-    qaL(20,3)=(15.d0*x*z *(7.d0*x**2-21.d0*y**2+7.d0*z**2-3.d0))/28.d0
-    qaL(21,1)=1.d0
-    qaL(21,2)=(5.d0*(3.d0*x**2-3.d0*y**2-3.d0*z**2+1.d0))/14.d0
-    qaL(21,3)=-(3.d0*(35.d0*x**2*z**2-5.d0*x**2-35.d0*y**2*z**2 +5.d0*y**2+35.d0*z**4-30.d0*z**2+3.d0))/14.d0
-    qaL(22,1)=-(sq5*(3.d0*z**2-1.d0))/2.d0
-    qaL(23,1)=-(sqrt(15.d0)*zi*y)/5.d0
-    qaL(23,2)=-1.5d0*sqrt(3.d0/5.d0)*zi*y*(5.d0*z**2-1.d0)
-    qaL(24,1)=-(2.d0*sqrt(15.d0)*zi*z)/5.d0
-    qaL(24,2)=9.d0*zi*z*(5.d0*z**2-3.d0)/(2.d0*sqrt(15.d0))
-    qaL(25,1)=-(sqrt(15.d0)*zi*x)/5.d0
-    qaL(25,2)=-1.5d0*sqrt(3.d0/5.d0)*zi*x*(5.d0*z**2-1.d0)
-    qaL(26,1)=0.d0
-    qaL(26,2)=10.d0*sq3*x*y/7.d0
-    qaL(26,3)=15.d0*sq3*x*y*(7.d0*z**2-1.d0)/14.d0
-    qaL(27,1)=0.d0
-    qaL(27,2)=(15.d0*y*z)/(7.d0*sq3)
-    qaL(27,3)=-15.d0*sq3*y*z*(7.d0*z**2-3.d0)/14.d0
-    qaL(28,1)=1.d0
-    qaL(28,2)=-(5.d0*(3.d0*z**2-1.d0))/7.d0
-    qaL(28,3)=(9.d0*(35.d0*z**4-30.d0*z**2+3.d0))/28.d0
-    qaL(29,1)=(3.d0*sqrt(5.d0/3.d0)*x*z)
-    qaL(30,1)=0.d0
-    qaL(30,2)=3.d0*sq5*zi*x*y*z
-    qaL(31,1)=(3.d0*sq5*zi*x)/5.d0
-    qaL(31,2)=-(3.d0*zi*x*(5.d0*z**2-1.d0))/sq5
-    qaL(32,1)=-(3.d0*sq5*zi*z)/5.d0
-    qaL(32,2)=0.3d0*sq5*zi*z*(5.d0*x**2-5.d0*y**2-5.d0*z**2+3.d0)
-    qaL(33,1)=0.d0
-    qaL(33,2)=(15.d0*y*z)/7.d0
-    qaL(33,3)=-15.d0*y*z *(21.d0*x**2-7.d0*y**2-7.d0*z**2+3.d0)/28.d0
-    qaL(34,1)=0.d0
-    qaL(34,2)=-(15.d0*x*y)/7.d0
-    qaL(34,3)=(15.d0*x*y*(7.d0*z**2-1.d0))/7.d0
-    qaL(35,1)=0.d0
-    qaL(35,2)=(15.d0*x*z)/(7.d0*sq3)
-    qaL(35,3)=-15.d0*sq3*x*z*(7.d0*z**2-3.d0)/14.d0
-    qaL(36,1)=1.d0
-    qaL(36,2)=-5.d0*(3.d0*x**2-3.d0*y**2+3.d0*z**2-1.d0)/14.d0
-    qaL(36,3)=(3.d0*(35.d0*x**2*z**2-5.d0*x**2-35.d0*y**2*z**2 +5.d0*y**2-35.d0*z**4+30.d0*z**2-3.d0))/14.d0
-    qaL(37,1)=-(3.d0*sq5*(x**2-y**2))/(2.d0*sq3)
-    qaL(38,1)=-(3.d0*sqrt(10.d0)*zi*y)/(5.d0*sqrt(2.d0))
-    qaL(38,2)=-0.15d0*sq5*zi*y *(15.d0*x**2-5.d0*y**2+5.d0*z**2-1.d0)
-    qaL(39,1)=0.d0
-    qaL(39,2)=1.5d0*sq5*zi*z*(x**2-y**2)
-    qaL(40,1)=(3.d0*sq5*zi*x)/5.d0
-    qaL(40,2)=-0.15d0*sq5*zi*x  *(5.d0*x**2-15.d0*y**2-5.d0*z**2+1.d0)
-    qaL(41,1)=0.d0
-    qaL(41,2)=0.d0
-    qaL(41,3)=7.5d0*x*y*(x**2-y**2)
-    qaL(42,1)=0.d0
-    qaL(42,2)=-(15.d0*y*z)/7.d0
-    qaL(42,3)=-15.d0*y*z *(21.d0*x**2-7.d0*y**2+7.d0*z**2-3.d0)/28.d0
-    qaL(43,1)=0.d0
-    qaL(43,2)=(15.d0*(x**2-y**2))/(7.d0*sq3)
-    qaL(43,3)=15.d0*sq3 *(7.d0*x**2*z**2-x**2-7.d0*y**2*z**2+y**2)/28.d0
-    qaL(44,1)=0.d0
-    qaL(44,2)=(15.d0*x*z)/7.d0
-    qaL(44,3)=-15.d0*x*z *(7.d0*x**2-21.d0*y**2-7.d0*z**2+3.d0)/28.d0
-    qaL(45,1)=1.d0
-    qaL(45,2)=(5.d0*(3.d0*z**2-1.d0))/7.d0
-    qaL(45,3)=3.d0*(35.d0*x**4-210.d0*x**2*y**2 +35.d0*y**4+35.d0*z**4-30.d0*z**2+3.d0)/56.d0
+       a1 = amap(lma1)
 
-!--    THIS will be done when qaL is used.
-!      qaL(:,:)=qaL(:,:)/( (4.d0*Pi)*(-zi)**L )
+       i1 = iorbmap(lma1)
+       i2 = iorbmap(lma2)
 
-    return
+       m1 = mmap(lma1)
+       m2 = mmap(lma2)
 
-  END SUBROUTINE get_qaL
+       do j=1,MJJ_Q(kk1)
+          i=JJP_Q(j,kk1)
+          IntQV(a1,i1,i2,m1,m2) = IntQV(a1,i1,i2,m1,m2) + QRij(j,kk1)
+       end do
+
+       IntQV(a1,i2,i1,m2,m1) = IntQV(a1,i1,i2,m1,m2)
+
+    end do ! kk1
+
+    call mpi_allreduce( MPI_IN_PLACE, IntQV, size(IntQV) &
+         ,MPI_REAL8, MPI_SUM, comm_grid, i )
+
+    IntQV = IntQV*dV
+
+    do kk1=1,N_nzqr
+
+       lma1 = nzqr_pair(kk1,1)
+       lma2 = nzqr_pair(kk1,2)
+
+       a1 = amap(lma1)
+
+       i1 = iorbmap(lma1)
+       i2 = iorbmap(lma2)
+
+       m1 = mmap(lma1)
+       m2 = mmap(lma2)
+
+       qij_f(kk1) = IntQV(a1,i1,i2,m1,m2)
+
+    end do ! kk1
+
+    kk1=0
+    do lma1=1,nzlma
+       a1=amap(lma1)
+       l1=lmap(lma1)
+       m1=mmap(lma1)
+       i1=iorbmap(lma1)
+       if ( a1 == 0 .or. i1 == 0 ) cycle
+       do lma2=1,nzlma
+          a2=amap(lma2)
+          l2=lmap(lma2)
+          m2=mmap(lma2)
+          i2=iorbmap(lma2)
+          if ( a2 == 0 .or. i2 == 0 ) cycle
+          if ( a1 /= a2 .or. l1 /= l2 .or. m1 /= m2 ) cycle
+          kk1=kk1+1
+          qij(kk1)=IntQV(a1,i1,i2,m1,m2)
+       end do
+    end do
+
+    deallocate( IntQV )
+
+    call write_border( 1, " update_qij(end)" )
+
+  END SUBROUTINE update_qij
+
 
 END MODULE PSQRijPrep
