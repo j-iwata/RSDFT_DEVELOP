@@ -51,7 +51,7 @@ CONTAINS
     integer :: i,j,io,jo,li,lj
     integer :: Lrefmax,Rrefmax,npqmax,nsmpl
 
-    call write_border( 80, " read_pseudopot(start)" )
+    call write_border( 0, " read_pseudopot(start)" )
 
     Nelement = Nelement_in
 
@@ -273,7 +273,7 @@ CONTAINS
 
 !    call chk_pot(1,rank)
 
-    call write_border( 80, " read_pseudopot(end)" )
+    call write_border( 0, " read_pseudopot(end)" )
 
   END SUBROUTINE read_pseudopot
 

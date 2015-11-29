@@ -62,7 +62,7 @@ PROGRAM Real_Space_Solid
 
   call check_format_atom( myrank, unit_atomic_coordinates, aa_obj )
 
-  call write_border( 80, " main( aa & bb )(start)" )
+  call write_border( 0, " main( aa & bb )(start)" )
 
   call init_aa( aa_obj )
 
@@ -74,7 +74,7 @@ PROGRAM Real_Space_Solid
 
   call backup_aa_lattice( aa_obj )
 
-  call write_border( 80, " main( aa & bb )(end)" )
+  call write_border( 0, " main( aa & bb )(end)" )
 
 ! --- Reciprocal Lattice ---
 
@@ -333,17 +333,15 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
-  if ( Nsweep > 0 ) then
-!     call init_sweep( 2, Nband, 1.d-7 )
-     call calc_sweep( Nsweep, ierr, disp_switch )
-     if ( ierr == -1 ) goto 900
-  end if
+  call calc_sweep( disp_switch, ierr )
+  if ( ierr == -1 ) goto 900
 
 ! ---
 
+  call read_scf
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( Diter_scf, ierr, disp_switch, feps )
+     call calc_scf( disp_switch, ierr, tol_force_in=feps )
      if ( ierr < 0 ) goto 900
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
@@ -360,12 +358,11 @@ PROGRAM Real_Space_Solid
 !
 ! --- BAND ---
 !
-#ifndef _DRSDFT_
+
   if ( iswitch_band == 1 ) then
      call control_xc_hybrid(1)
      call band(nint(Nelectron*0.5d0),disp_switch)
   end if
-#endif
 
 !
 ! --- Force test, atomopt, CPMD ---

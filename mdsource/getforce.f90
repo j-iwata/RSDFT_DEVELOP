@@ -55,7 +55,7 @@ SUBROUTINE getforce
   MB_0=MB_0_SCF
   MB_1=MB_1_SCF
 
-  call calc_scf( Diter1, ierr, disp_switch )
+  call calc_scf( disp_switch, ierr, Diter1 )
   if ( ierr == -1 ) then
      if ( disp_switch ) write(*,*) "time limit !!!"
      call end_mpi_parallel

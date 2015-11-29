@@ -682,7 +682,7 @@ CONTAINS
           end select
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
-          call calc_scf( diter_opt, ierr, disp_switch, feps, Etot, loop_info )
+          call calc_scf( disp_switch, ierr, diter_opt, feps, loop_info, Etot )
 
           if ( ierr == -1 ) then
              if ( myrank == 0 ) write(*,*) "time limit !!!"

@@ -56,11 +56,7 @@ CONTAINS
 
     call read_symmetry( myrank, unit )
 
-    call read_sweep( myrank, unit )
-
     select case( iswitch_scf )
-    case default
-       call read_scf( myrank, unit )
     case( 2 )
        call read_scf_chefsi( myrank, unit )
     end select
