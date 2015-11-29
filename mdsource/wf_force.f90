@@ -13,7 +13,6 @@ SUBROUTINE wf_force
   include 'mpif.h'
   integer :: i,s,k,ns,ne,n,MBT,ierr
   real(8) :: c
-  real(8),allocatable :: esp0(:,:,:)
   real(8) :: ctime0,ctime1,etime0,etime1
   real(8) :: ct(0:7),et(0:7),ct0,ct1,ct2,et0,et1,et2
 

@@ -44,3 +44,26 @@ SUBROUTINE check_disp_switch( disp_switch, i )
      disp_switch_save = disp_switch
   end if
 END SUBROUTINE check_disp_switch
+
+
+SUBROUTINE write_string( string )
+  implicit none
+  character(*),intent(IN) :: string
+  integer,save :: u0=6, u1=60
+  logical :: disp
+  call check_disp_switch( disp, 0 )
+  if ( disp ) write(u0,'(a)') string
+END SUBROUTINE write_string
+
+
+SUBROUTINE write_int_and_real( format_string, m, fi, n, fr )
+  implicit none
+  character(*),intent(IN) :: format_string
+  integer,intent(IN) :: m,n,fi(m)
+  real(8),intent(IN) :: fr(n)
+  integer,save :: u0=6, u1=60
+  integer :: i,j
+  logical :: disp
+  call check_disp_switch( disp, 0 )
+  if ( disp ) write(u0,format_string) ( fi(i), i=1,m ), ( fr(j), j=1,n )
+END SUBROUTINE write_int_and_real

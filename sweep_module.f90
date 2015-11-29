@@ -23,8 +23,6 @@ MODULE sweep_module
 
   integer :: Nsweep
 
-  real(8),allocatable :: esp0(:,:,:)
-
   integer :: iconv_check=1
   real(8) :: Echk, Echk0
   real(8) :: tol_Echk=1.d-12
@@ -180,8 +178,10 @@ CONTAINS
 
        call calc_time_watch( etime )
        if ( disp_switch ) then
+          write(*,*)
           write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)" &
                ,f10.3,"(max)")') etime%t0, etime%tmin, etime%tmax
+          write(*,*)
        end if
 
        call write_data( disp_switch, flag_exit )
@@ -262,12 +262,14 @@ CONTAINS
 !    end do
 !    end do
     if ( iconv_check == 1 ) then
-       write(*,'(1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",g12.5)') &
+       write(*,'(/,1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",g12.5)') &
             Echk, Echk-Echk0, tol_Echk
     else
-       write(*,'(1x,"max_esperr/tol, mb_ref =",g12.5," /",g12.5,i7)') &
+       write(*,*)
+       write(*,'(/,1x,"max_esperr/tol, mb_ref =",g12.5," /",g12.5,i7)') &
             max_esperr,tol_esp,mb_ref
     end if
+    call write_esp_wf
 !    write(*,*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
     call write_border( 1, " write_info_sweep(end)" )
   END SUBROUTINE write_info_sweep

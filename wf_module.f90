@@ -6,13 +6,14 @@ MODULE wf_module
   implicit none
 
   PRIVATE
-  PUBLIC :: unk,esp,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
+  PUBLIC :: unk,esp,esp0,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
            ,Sunk &
            ,write_wf &
            ,hunk, read_wf, iflag_hunk, workwf &
            ,allocate_work_wf, deallocate_work_wf
+  PUBLIC :: write_esp_wf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -34,7 +35,7 @@ MODULE wf_module
     complex(8),allocatable :: Sunk(:,:)
 #endif
 
-  real(8),allocatable :: esp(:,:,:)
+  real(8),allocatable :: esp(:,:,:), esp0(:,:,:)
   real(8),allocatable :: occ(:,:,:)
   real(8),allocatable :: res(:,:,:)
 
@@ -148,17 +149,6 @@ CONTAINS
           end do
        end do
     end do
-#ifdef _SHOWALL_INIT_WF_
-do s=MS_0_WF,MS_1_WF
-do k=MK_0_WF,MK_1_WF
-do n=MB_0_WF,MB_1_WF
-do i=ML_0_WF,ML_1_WF
-write(310+myrank,'(4I5,2g20.7)') s,k,n,i,unk(i,n,k,s)
-end do
-end do
-end do
-end do
-#endif
 
   END SUBROUTINE random_initial_wf
 
@@ -317,6 +307,41 @@ end do
     implicit none
     if ( allocated(hunk) ) deallocate(hunk)
   END SUBROUTINE deallocate_work_wf
+
+
+  SUBROUTINE write_esp_wf( full_info )
+    implicit none
+    logical,optional,intent(IN) :: full_info
+    integer :: k,n,s,i,n1,n2,nn,fi(2)
+    real(8) :: f(6)
+    character(57) :: header_string, format_string
+    write(header_string,'(a4,a6,a20,2a13,1x)') &
+         "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
+    call write_string( "" )
+    call write_string( header_string )
+    nn=sum(occ)
+    n1=max( 1, nn/2-5 )
+    n2=min( nn/2+5, size(esp,1) )
+    if ( present(full_info) ) then
+       if ( full_info ) then
+          n1=1
+          n2=size(esp,1)
+       end if
+    end if
+    format_string='(i4,i6,2(f20.15,2g13.5,1x))'
+    do k=1,size(esp,2)
+    do n=n1,n2
+       i=0
+       do s=1,size(esp,3)
+          i=i+1 ; f(i)=esp(n,k,s)
+          i=i+1 ; f(i)=esp(n,k,s)-esp0(n,k,s)
+          i=i+1 ; f(i)=occ(n,k,s)
+       end do
+       fi(1:2)=(/ k, n /)
+       call write_int_and_real( format_string, 2, fi, i, f ) 
+    end do
+    end do
+  END SUBROUTINE write_esp_wf
 
 
 END MODULE wf_module

@@ -49,8 +49,6 @@ MODULE scf_chefsi_module
   real(8) :: fmax_conv        = 0.0d0
   real(8) :: etot_conv        = 0.0d0
 
-  real(8),allocatable :: esp0(:,:,:)
-
 CONTAINS
 
 

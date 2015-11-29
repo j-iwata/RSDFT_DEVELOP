@@ -45,7 +45,7 @@ MODULE scf_module
   real(8) :: fmax_conv   = 0.d0
   real(8) :: etot_conv   = 0.0d0
 
-  real(8),allocatable :: esp0(:,:,:),Vloc0(:,:)
+  real(8),allocatable :: Vloc0(:,:)
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
   real(8) :: diff_vrho(7)
   real(8) :: time_scf(4)
@@ -374,7 +374,7 @@ CONTAINS
 
 ! ---
 
-!       call write_info_scf( ib1, ib2, iter, disp_switch, 0 )
+       call write_esp_wf
 
        call global_watch(.false.,flag_end)
 
