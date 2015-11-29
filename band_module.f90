@@ -54,10 +54,21 @@ CONTAINS
     real(8),allocatable :: kbb_tmp(:,:),esp_tmp(:,:,:),esp0_tmp(:,:,:)
     complex(8),allocatable :: unk0(:,:,:),unk00(:,:,:)
     logical :: disp_switch_parallel_bak,flag_end
-    character(32) :: file_ovlp
+    character(32) :: file_ovlp, loop_info
     character(5) :: cc
 
-    call read_band( myrank, unit )
+#ifdef _DRSDFT_
+    if ( disp_switch ) then
+       write(*,*) "band calc is not available in REAL8 code"
+       write(*,*) "Recompile"
+    end if
+    return
+#endif
+
+    call write_border( 0, "" )
+    call write_border( 0, " BAND Calc. START -----------" )
+
+    call read_band
 
     disp_switch_parallel_bak = disp_switch_parallel
 !    disp_switch_parallel = .false.
@@ -223,7 +234,8 @@ CONTAINS
 
 ! --- sweep ---
 
-       call calc_sweep( Diter_band, ierr, disp_switch )
+       write(loop_info,'("( iktrj=",i4," )")') iktrj
+       call calc_sweep( disp_switch, ierr, Diter_band, loop_info )
 
 ! ---
 
@@ -370,6 +382,9 @@ CONTAINS
     disp_switch_parallel = disp_switch_parallel_bak
 
     call finalize_band_unfold
+
+    call write_border( 0, " BAND Calc. END -----------" )
+    call write_border( 0, "" )
 
   END SUBROUTINE band
 

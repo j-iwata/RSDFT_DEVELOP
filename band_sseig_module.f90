@@ -42,7 +42,7 @@ CONTAINS
 
 #else
 
-    call read_band( myrank, unit )
+    call read_band
 
     nktrj = sum( nfki(1:nbk) )
     if ( nktrj > 1 ) nktrj=nktrj+1

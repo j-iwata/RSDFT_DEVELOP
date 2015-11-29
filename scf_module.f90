@@ -32,6 +32,7 @@ MODULE scf_module
 
   use force_module, only: get_fmax_force
   use hamiltonian_module
+  use io_tools_module
 
   implicit none
 
@@ -42,7 +43,7 @@ MODULE scf_module
   integer :: Ndiag       = 1
   integer :: second_diag = 2
   real(8) :: scf_conv(2) = 0.0d0
-  real(8) :: fmax_conv   = 0.d0
+  real(8) :: fmax_conv   = 0.0d0
   real(8) :: etot_conv   = 0.0d0
 
   real(8),allocatable :: Vloc0(:,:)
@@ -54,62 +55,32 @@ MODULE scf_module
 CONTAINS
 
 
-  SUBROUTINE read_scf( rank, unit )
+  SUBROUTINE read_scf
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i,ierr
-    character(8) :: cbuf,ckey
+    integer :: itmp(2)
     scf_conv(1) = 1.d-20
     scf_conv(2) = 0.0d0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:7) == "SCFCONV" ) then
-             backspace(unit)
-             read(unit,*) cbuf,scf_conv
-          else if ( ckey(1:8) == "FMAXCONV" ) then
-             backspace(unit)
-             read(unit,*) cbuf,fmax_conv
-          else if ( ckey(1:8) == "ETOTCONV" ) then
-             backspace(unit)
-             read(unit,*) cbuf,etot_conv
-          else if ( ckey(1:5) == "DITER" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Diter_scf
-          else if ( ckey(1:5) == "NDIAG" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ndiag,second_diag
-          end if
-       end do
-999    continue
-       write(*,*) "scf_conv    =",scf_conv
-       write(*,*) "fmax_conv   =",fmax_conv
-       write(*,*) "etot_conv   =",etot_conv
-       write(*,*) "Diter_scf   =",Diter_scf
-       write(*,*) "Ndiag       =",Ndiag
-       write(*,*) "second_diag =",second_diag
-    end if
-    call mpi_bcast( scf_conv  ,2,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(fmax_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(etot_conv  ,1,MPI_REAL8  ,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Diter_scf  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Ndiag      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(second_diag,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call IOTools_readReal8Keywords( "SCFCONV" , scf_conv )
+    call IOTools_readReal8Keyword( "FMAXCONV", fmax_conv )
+    call IOTools_readReal8Keyword( "ETOTCONV", etot_conv )
+    call IOTools_readIntegerKeyword( "DITER", Diter_scf )
+    itmp=-1
+    call IOTools_readIntegerKeywords( "NDIAG", itmp )
+    if ( itmp(1) > 0 ) Ndiag=itmp(1)
+    if ( itmp(2) > 0 ) second_diag=itmp(2)
   END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf( Diter, ierr_out, disp_switch, tol_force_in, Etot_out &
-                      ,outer_loop_info )
+  SUBROUTINE calc_scf( disp_switch, ierr_out, Diter_in, tol_force_in &
+                      ,outer_loop_info, Etot_out )
     implicit none
-    integer,intent(IN)  :: Diter
-    integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
-    real(8),optional,intent(IN)  :: tol_force_in
-    real(8),optional,intent(OUT) :: Etot_out
+    integer,intent(OUT) :: ierr_out
+    integer,optional,intent(IN) :: Diter_in
+    real(8),optional,intent(IN) :: tol_force_in
     character(*),optional,intent(IN)  :: outer_loop_info
-    integer :: iter,s,k,n,m,ierr,idiag,i
+    real(8),optional,intent(OUT) :: Etot_out
+    integer :: iter,s,k,n,m,ierr,idiag,i,Diter
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     logical :: flag_exit,flag_end,flag_conv,flag_conv_f,flag_conv_e
     real(8),allocatable :: v(:,:)
@@ -135,6 +106,7 @@ CONTAINS
     fmax0       =-1.d10
     fdiff       =-1.d10
     tol_force   = 0.0d0 ; if ( present(tol_force_in) ) tol_force=tol_force_in
+    Diter       = Diter_scf ; if ( present(Diter_in) ) Diter=Diter_in
 
     time_scf(:) = 0.0d0
 

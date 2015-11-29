@@ -15,13 +15,12 @@ MODULE sweep_module
   use watch_module
   use hamiltonian_module
   use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
+  use io_tools_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_sweep, init_sweep, read_sweep, Nsweep
-
-  integer :: Nsweep
+  PUBLIC :: calc_sweep, init_sweep
 
   integer :: iconv_check=1
   real(8) :: Echk, Echk0
@@ -33,26 +32,26 @@ MODULE sweep_module
 CONTAINS
 
 
-  SUBROUTINE read_sweep( rank, unit )
-    implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i,ierr
-    character(8) :: cbuf,ckey
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:6) == "NSWEEP" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nsweep
-          end if
-       end do
-999    continue
-       write(*,*) "Nsweep =",Nsweep
-    end if
-    call mpi_bcast(Nsweep,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE read_sweep
+!  SUBROUTINE read_sweep( rank, unit )
+!    implicit none
+!    integer,intent(IN) :: rank,unit
+!    integer :: i,ierr
+!    character(8) :: cbuf,ckey
+!    if ( rank == 0 ) then
+!       rewind unit
+!       do i=1,10000
+!          read(unit,*,END=999) cbuf
+!          call convert_capital(cbuf,ckey)
+!          if ( ckey(1:6) == "NSWEEP" ) then
+!             backspace(unit)
+!             read(unit,*) cbuf,Nsweep
+!          end if
+!       end do
+!999    continue
+!       write(*,*) "Nsweep =",Nsweep
+!    end if
+!    call mpi_bcast(Nsweep,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+!  END SUBROUTINE read_sweep
 
 
   SUBROUTINE init_sweep( iconv_check_in, mb_ref_in, tol_in )
@@ -70,16 +69,26 @@ CONTAINS
   END SUBROUTINE init_sweep
 
 
-  SUBROUTINE calc_sweep( Diter, ierr_out, disp_switch )
+  SUBROUTINE calc_sweep( disp_switch, ierr_out, Diter_in, outer_loop_info )
     implicit none
-    integer,intent(IN)  :: Diter
-    integer,intent(OUT) :: ierr_out
     logical,intent(IN)  :: disp_switch
-    integer :: iter,s,k,n,m,iflag_hybrid,ierr
-!    real(8) :: ct0,et0,ct1,et1,ct(0:3),et(0:3),ctt(0:5),ett(0:5)
+    integer,intent(OUT) :: ierr_out
+    integer,optional,intent(IN)  :: Diter_in
+    character(*),optional,intent(IN) :: outer_loop_info
+    integer :: iter,s,k,n,m,iflag_hybrid,ierr,Diter
     logical :: flag_exit, flag_end, flag_conv
-    character(16) :: chr_iter
+    character(40) :: chr_iter
+    character(22) :: add_info
     type(time) :: etime
+
+    Diter = 0
+    if ( present(Diter_in) ) then
+       Diter = Diter_in
+    else
+       call IOTools_readIntegerKeyword( "NSWEEP", Diter )
+    end if
+
+    if ( Diter <= 0 ) return
 
     call write_border( 0, "" )
     call write_border( 0, " SWEEP START ----------" )
@@ -89,6 +98,7 @@ CONTAINS
     flag_conv = .false.
     Echk      = 0.0d0
     ierr_out  = 0
+    add_info  = "" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -136,8 +146,8 @@ CONTAINS
 
     do iter=1,Diter
 
-       write(chr_iter,'(" sweep_iter=",i4)') iter
-       call write_border( 0, chr_iter )
+       write(chr_iter,'(" sweep_iter=",i4,1x,a)') iter, add_info
+       call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
        call init_time_watch( etime )
 
@@ -262,11 +272,10 @@ CONTAINS
 !    end do
 !    end do
     if ( iconv_check == 1 ) then
-       write(*,'(/,1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",g12.5)') &
+       write(*,'(/,1x,"Echk,dif/tol =",g18.10,2x,g12.5," /",es12.5)') &
             Echk, Echk-Echk0, tol_Echk
     else
-       write(*,*)
-       write(*,'(/,1x,"max_esperr/tol, mb_ref =",g12.5," /",g12.5,i7)') &
+       write(*,'(/,1x,"max_esperr/tol, mb_ref =",g12.5," /",es12.5,i7)') &
             max_esperr,tol_esp,mb_ref
     end if
     call write_esp_wf

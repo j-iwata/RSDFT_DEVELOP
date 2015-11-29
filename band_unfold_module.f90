@@ -44,6 +44,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     character(6) :: cbuf,ckey
     integer :: i
+    call write_border( 0, " read_band_unfold(start)" )
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -65,6 +66,7 @@ CONTAINS
     call mpi_bcast(iswitch_banduf,1,MPI_LOGICAL,0,MPI_COMM_WORLD,i)
     call mpi_bcast(ax_pc,1,MPI_REAL8,0,MPI_COMM_WORLD,i)
     call mpi_bcast(aa_pc,9,MPI_REAL8,0,MPI_COMM_WORLD,i)
+    call write_border( 0, " read_band_unfold(end)" )
   END SUBROUTINE read_band_unfold
 
 
@@ -77,9 +79,7 @@ CONTAINS
     real(8),intent(OUT) :: ktrj_out(6,nktrj_io)
     integer :: iktrj,MB,MS
 
-    if ( disp_switch ) then
-       write(*,'(a20," init_band_unfold")') repeat("-",20)
-    end if
+    call write_border( 0, " init_band_unfold(start)" )
 
     unit_uf = unit_in
     if ( myrank == 0 ) open(unit_uf,file="band_ufld")
@@ -127,9 +127,7 @@ CONTAINS
        end do
     end if
 
-    if ( disp_switch ) then
-       write(*,'(a20," init_band_unfold(end)")') repeat("-",20)
-    end if
+    call write_border( 0, " init_band_unfold(end)" )
 
   END SUBROUTINE init_band_unfold
 
@@ -290,7 +288,9 @@ CONTAINS
     integer :: s,k,n,i,i1,i2,i3,ierr,LG_sc(3),iktrj
     real(8) :: vtmp(3),utmp(3),pi2,sum0
 
-    if ( disp_switch ) write(*,'(a40," band_unfold(start)")') repeat("-",40)
+    if ( .not.iswitch_banduf ) return
+
+    call write_border( 0, " band_unfold(start)" )
 
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
@@ -387,7 +387,7 @@ CONTAINS
 
     call finalize_fft
 
-    if ( disp_switch ) write(*,'(a40," band_unfold(end)")') repeat("-",40)
+    call write_border( 0, " band_unfold(end)" )
 
   END SUBROUTINE band_unfold
 
