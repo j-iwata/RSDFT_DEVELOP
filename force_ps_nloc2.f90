@@ -280,17 +280,19 @@ CONTAINS
 !$OMP end workshare
 
 !$OMP single
-    do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
-    do n=MB_0,MB_1,MB_d
-       ib1=n
-       ib2=min(ib1+MB_d-1,MB_1)
-       if ( occ(n,k,s) < 1.d-10 ) cycle
-       call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap &
-            ,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))
-    end do ! n
-    end do ! k
-    end do ! s
+    if ( nzlma > 0 ) then
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+       do n=MB_0,MB_1,MB_d
+          ib1=n
+          ib2=min(ib1+MB_d-1,MB_1)
+          if ( occ(n,k,s) < 1.d-10 ) cycle
+          call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap &
+               ,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))
+       end do ! n
+       end do ! k
+       end do ! s
+    end if
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
        do m=1,N_nzqr
