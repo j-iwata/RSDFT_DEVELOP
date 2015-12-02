@@ -265,15 +265,15 @@ CONTAINS
     do s=MSP_0,MSP_1
        if ( gamma_hf == 1 ) then
           do k=MBZ_0,MBZ_1
-             if ( SYStype == 0 ) then
-#ifdef _DRSDFT_
-                call Fock_4_Double( k,s,ML_0,ML_1 )
-#else
+!             if ( SYStype == 0 ) then
+!#ifdef _DRSDFT_
+!                call Fock_4_Double( k,s,ML_0,ML_1 )
+!#else
                 call Fock_4( k,s,ML_0,ML_1 )
-#endif
-             else if ( SYStype == 1 ) then
-                call Fock_4( k,s,ML_0,ML_1 )
-             end if
+!#endif
+!             else if ( SYStype == 1 ) then
+!                call Fock_4( k,s,ML_0,ML_1 )
+!             end if
           end do ! k
        else
           call Fock_5( s,ML_0,ML_1 )
@@ -308,6 +308,13 @@ CONTAINS
     real(8) :: c
     integer :: m,n,i,j,nwork,iwork,ierr,nwork_0,nwork_1
     integer,allocatable :: mapwork(:,:)
+
+#ifdef _DRSDFT_
+    if ( SYStype == 0 ) then
+       call Fock_4_Double( k,s,n1,n2 )
+       return
+    end if
+#endif
 
 ! ---
 

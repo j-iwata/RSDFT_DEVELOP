@@ -16,10 +16,6 @@ MODULE hartree_sol_fftw_module
   PRIVATE
   PUBLIC :: calc_hartree_sol_fftw
 
-#ifdef _FFTW_
-  include 'fftw3-mpi.f03'
-#endif
-
   logical :: first_time=.true.
   integer :: NGHT
   integer,allocatable :: LGHT(:,:)
@@ -33,11 +29,13 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,n3
     real(8),intent(IN) :: rho(n1:n2,n3)
+#ifdef _FFTW_
     integer :: i,i1,i2,i3,j1,j2,j3,n
     real(8) :: Eh0,g2,const
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     real(8),allocatable :: work(:)
     complex(8),allocatable :: zwork3(:,:,:)
+    include 'fftw3-mpi.f03'
 
     call write_border( 1, " calc_hartree_sol_fftw(start)" )
 
@@ -97,9 +95,7 @@ CONTAINS
        end do
     end do
 
-#ifdef _FFTW_
     call fftw_mpi_execute_dft( plan_forward, zwork3_ptr0, zwork3_ptr1 )
-#endif
 
     zwork3_ptr0(:,:,:)=z0
 
@@ -110,9 +106,7 @@ CONTAINS
        zwork3_ptr0(i1,i2,i3)=zwork3_ptr1(i1,i2,i3)*GGHT(i)
     end do
 
-#ifdef _FFTW_
     call fftw_mpi_execute_dft( plan_backward, zwork3_ptr0, zwork3_ptr1 )
-#endif
 
     call z3_to_d1_fftw( zwork3_ptr1, Vh )
 
@@ -122,7 +116,7 @@ CONTAINS
     deallocate( work )
 
     call write_border( 1, " calc_hartree_sol_fftw(end)" )
-
+#endif
   END SUBROUTINE calc_hartree_sol_fftw
 
 

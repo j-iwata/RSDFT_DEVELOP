@@ -12,10 +12,6 @@ MODULE ps_local_fftw_module
   PRIVATE
   PUBLIC :: construct_ps_local_fftw
 
-#ifdef _FFTW_
-  include "fftw3-mpi.f03"
-#endif
-
 CONTAINS
 
 
@@ -25,9 +21,11 @@ CONTAINS
     real(8),intent(IN) :: vqlg(:,:)
     complex(8),intent(IN) :: SGK(:,:)
     real(8),intent(OUT) :: Vion(:)
+#ifdef _FFTW_
     integer :: i,i1,i2,i3,j1,j2,j3,ik,j,MG
     integer :: ML1,ML2,ML3,ML,Nelement
     complex(8),allocatable :: zwork3(:,:,:),vg(:)
+    include "fftw3-mpi.f03"
 
     call write_border( 0, " construct_ps_local_fftw(start)" )
 
@@ -72,16 +70,14 @@ CONTAINS
        end do
     end do
 
-#ifdef _FFTW_
     call fftw_mpi_execute_dft( plan_backward, zwork3_ptr0, zwork3_ptr1 )
-#endif
 
     call z3_to_d1_fftw( zwork3_ptr1, Vion )
 
     deallocate( zwork3 )
 
     call write_border( 0, " construct_ps_local_fftw(end)" )
-
+#endif
   END SUBROUTINE construct_ps_local_fftw
 
 
