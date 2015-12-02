@@ -5,7 +5,6 @@ MODULE ps_q_init_module
   use parallel_module, only: myrank
   use polint_module
   use maskf_module
-
   use Filtering, only: opFiltering
 
   implicit none
@@ -28,7 +27,7 @@ CONTAINS
     logical :: disp_switch_local
     logical :: registered_k2(1:max_k2)
 
-    call write_border( 60," initKtoKPSQ_pq_q_init" )
+    call write_border( 0," initKtoKPSQ_pq_q_init" )
 
     disp_switch_local=(myrank==0)
 
@@ -111,7 +110,7 @@ CONTAINS
     real(8) :: qc,Q_rcfac,Q_etafac
     real(8),allocatable :: vrad(:),Q_wm(:,:,:)
 
-    call write_border( 60, " ps_q_init" )
+    call write_border( 0, " ps_q_init" )
 
     Q_rcfac  = rcfac
     Q_etafac = etafac
@@ -223,6 +222,7 @@ CONTAINS
           do ll3=1,nl3v(k2,ik)
              L=l3v(ll3,k2,ik)-1
              vrad(1:NRc)=qrL(1:NRc,ll3,k2,ik)*rab(1:NRc,ik)/Q_wm(1:NRc,k2,ik)
+             qrL(:,ll3,k2,ik)=0.0d0
              call opFiltering( qc,L,NRc,Q_NRps(k2,ik),rad(1,ik),rad1(1,ik) &
                               ,vrad,qrL(1,ll3,k2,ik) )
           end do ! ll3
@@ -262,7 +262,6 @@ CONTAINS
                 qrL(i,ll3,k2,ik)=y0*qrL(i,ll3,k2,ik)
              end do
           end do ! i
-
        end do ! k2
 
     end do ! ik
@@ -299,6 +298,8 @@ CONTAINS
     real(8) :: maxerr,y,dy,y0,dy0,r,const0,const1
     real(8),allocatable :: dwork(:,:,:)
     real(8),parameter :: sqrt_4pi_3=sqrt(4.d0*acos(-1.d0)/3.d0)
+
+    call write_border( 0, " ps_q_init_derivative(start)" )
 
     maxcJ=0
     do ik=1,Nelement_
@@ -347,10 +348,9 @@ CONTAINS
                 dwork(i,ll3,ik2)=y0
              end do ! i
           enddo ! ll3
-       end do ! ik1
+       end do ! ik2
 
-       do ik1=1,N_k1(ik)
-          ik2=k1_to_k2(ik1,ik)
+       do ik2=1,N_k2(ik)
           NRc=Q_NRps(ik2,ik)
           do ll3=1,nl3v(ik2,ik)
              L=l3v(ll3,ik2,ik)-1
@@ -365,11 +365,13 @@ CONTAINS
                 end do
              end do ! J
           end do ! ll3
-       enddo ! ik1
+       enddo ! ik2
 
     end do ! ik
 
     deallocate( dwork )
+
+    call write_border( 0, " ps_q_init_derivative(end)" )
 
   END SUBROUTINE ps_q_init_derivative
 

@@ -19,18 +19,24 @@ MODULE fft_module
   integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
   complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
   complex(8),parameter :: zero=(0.0d0,0.0d0)
+  logical :: keep_LLL=.false.
 
 CONTAINS
 
 
-  SUBROUTINE init_fft
+  SUBROUTINE init_fft( keep_flag )
     implicit none
+    logical,optional,intent(IN) :: keep_flag
     call get_range_rgrid( rgrid )
-    call get_map_3d_to_1d( LLL )
+    if ( .not.keep_LLL ) call get_map_3d_to_1d( LLL )
     ML  = rgrid%g1%size_global
     ML1 = rgrid%g3%x%size_global
     ML2 = rgrid%g3%y%size_global
     ML3 = rgrid%g3%z%size_global
+    if ( present(keep_flag) ) then
+       keep_LLL = keep_flag
+       return
+    end if
     allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
     allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
     call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
@@ -40,9 +46,11 @@ CONTAINS
 
   SUBROUTINE finalize_fft
     implicit none
-    deallocate( wsavez,wsavey,wsavex )
-    deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
-    deallocate( LLL )
+    if ( allocated(wsavez) ) deallocate( wsavez,wsavey,wsavex )
+    if ( allocated(lz2)    ) deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+    if ( .not.keep_LLL ) then
+       if ( allocated(LLL) ) deallocate( LLL )
+    end if
   END SUBROUTINE finalize_fft
 
 

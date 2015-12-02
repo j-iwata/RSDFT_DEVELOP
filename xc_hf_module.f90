@@ -66,9 +66,9 @@ CONTAINS
 
     if ( iflag_hybrid == 1 ) then
 
-       call watcht(disp_switch_parallel,"",0)
+!       call watcht(disp_switch_parallel,"",0)
        call UpdateWF_fock( SYStype )
-       call watcht(disp_switch_parallel,"UpdateWF_fock",1)
+!       call watcht(disp_switch_parallel,"UpdateWF_fock",1)
 
        sum0=0.0d0
        do s=MSP_0,MSP_1

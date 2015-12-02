@@ -268,11 +268,12 @@ CONTAINS
     implicit none
     integer,intent(IN) :: iflag
 
+    call write_border( 0, " allocate_work_wf(start)" )
+
     iflag_hunk=iflag
     if ( iwork_wf == 0 ) iflag_hunk=0
 
     if ( myrank == 0 ) then
-       write(*,*) "---- allocate_work_wf"
        write(*,*) "iflag,iwork_wf,iflag_hunk=",iflag,iwork_wf,iflag_hunk
     end if
 
@@ -299,6 +300,8 @@ CONTAINS
           write(*,*) "size(hunk)(MB)=",size(hunk)*8.d0/1024.d0**2
        end if
     end if
+
+    call write_border( 0, " allocate_work_wf(end)" )
 
   END SUBROUTINE allocate_work_wf
 

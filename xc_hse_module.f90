@@ -148,9 +148,7 @@ CONTAINS
 !
     real(8),parameter :: small_hse = 0.0d0
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a40," calc_xc_hse(start)")') repeat("-",40)
-    end if
+    call write_border( 1, " calc_xc_hse(start)" )
 
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
@@ -926,17 +924,19 @@ CONTAINS
 
        deallocate(LLL2)
 
-       if ( DISP_SWITCH_PARALLEL ) then
-          write(*,'(1x," E_exchange_pbe, E_exchange_pbe_sr =",2f20.14)') &
-               E_exchange_pbe, E_exchange_pbe_sr
-          write(*,'(1x," E_exchange                        =",2f20.14)') &
-               E_exchange
-          write(*,'(1x," E_correlation , Exc               =",2f20.14)') &
-               E_correlation, Exc
-          write(*,'(a40," calc_xc_hse(end)")') repeat("-",40)
-       end if
+!       if ( DISP_SWITCH_PARALLEL ) then
+!          write(*,'(1x," E_exchange_pbe, E_exchange_pbe_sr =",2f20.14)') &
+!               E_exchange_pbe, E_exchange_pbe_sr
+!          write(*,'(1x," E_exchange                        =",2f20.14)') &
+!               E_exchange
+!          write(*,'(1x," E_correlation , Exc               =",2f20.14)') &
+!               E_correlation, Exc
+!          write(*,'(a40," calc_xc_hse(end)")') repeat("-",40)
+!       end if
 
     end if
+
+    call write_border( 1, " calc_xc_hse(end)" )
 
     return
 

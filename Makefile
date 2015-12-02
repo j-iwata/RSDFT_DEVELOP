@@ -13,6 +13,7 @@ EXTOBJ2 = $(DIR2)/p4sn.o \
           $(DIR2)/dotp.o \
           $(DIR2)/convert_capital.o \
           $(DIR2)/write_info.o \
+          $(DIR2)/stop_program.o \
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o \
@@ -79,7 +80,7 @@ all :
 	cd $(DIR5) ; $(MAKE)
 	cd $(DIR6) ; $(MAKE)
 	@$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ1) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LPOT2OBJ) $(LAPACK_L) $(MODS1) realspace.o $(LIBS) -o realspace.x
+	$(FC) $(LFLAGS) $(EXTOBJ1) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(LPOT2OBJ) $(MODS1) realspace.o $(FFTW_L) $(LAPACK_L) $(LIBS) -o realspace.x
 
 lda0 : $(MODS1)
 

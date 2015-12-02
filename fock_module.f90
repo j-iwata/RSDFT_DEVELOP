@@ -205,7 +205,7 @@ CONTAINS
 
     if ( present(SYStype_in) ) SYStype = SYStype_in
 
-    if ( disp_switch_parallel ) write(*,*) "UpdateWF_fock"
+!    if ( disp_switch_parallel ) write(*,*) "UpdateWF_fock"
 
 ! ---
 
@@ -282,17 +282,17 @@ CONTAINS
 
     iflag_hybrid = 2
 
-    if ( disp_switch_parallel ) then
-       write(*,'(1x,"iflag_hybrid=",i2)') iflag_hybrid
-       write(*,*) "time(fock_fft1)=",ct_fock_fft(1),et_fock_fft(1)
-       write(*,*) "time(fock_fft2)=",ct_fock_fft(2),et_fock_fft(2)
-       write(*,*) "time(fock_fft3)=",ct_fock_fft(3),et_fock_fft(3)
-       write(*,*) "time(fock_fft4)=",ct_fock_fft(4),et_fock_fft(4)
-       write(*,*) "time(fock_fft5)=",ct_fock_fft(5),et_fock_fft(5)
-       write(*,*) "time(fock_fft6)=",ct_fock_fft(6),et_fock_fft(6)
-       write(*,*) "time(fock_fft7)=",ct_fock_fft(7),et_fock_fft(7)
-       write(*,*) "time(fock_fft8)=",ct_fock_fft(8),et_fock_fft(8)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,'(1x,"iflag_hybrid=",i2)') iflag_hybrid
+!       write(*,*) "time(fock_fft1)=",ct_fock_fft(1),et_fock_fft(1)
+!       write(*,*) "time(fock_fft2)=",ct_fock_fft(2),et_fock_fft(2)
+!       write(*,*) "time(fock_fft3)=",ct_fock_fft(3),et_fock_fft(3)
+!       write(*,*) "time(fock_fft4)=",ct_fock_fft(4),et_fock_fft(4)
+!       write(*,*) "time(fock_fft5)=",ct_fock_fft(5),et_fock_fft(5)
+!       write(*,*) "time(fock_fft6)=",ct_fock_fft(6),et_fock_fft(6)
+!       write(*,*) "time(fock_fft7)=",ct_fock_fft(7),et_fock_fft(7)
+!       write(*,*) "time(fock_fft8)=",ct_fock_fft(8),et_fock_fft(8)
+!    end if
 
   END SUBROUTINE UpdateWF_fock
 
@@ -322,10 +322,10 @@ CONTAINS
        end do
     end do
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "total # of me    =",i
-       write(*,*) "# of me of rank0 =",nwork
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "total # of me    =",i
+!       write(*,*) "# of me of rank0 =",nwork
+!    end if
 
     allocate( mapwork(2,nwork) ) ; mapwork=0
 
@@ -446,10 +446,10 @@ CONTAINS
        end do
     end do
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "total # of me    =",i
-       write(*,*) "# of me of rank0 =",nwork
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "total # of me    =",i
+!       write(*,*) "# of me of rank0 =",nwork
+!    end if
 
     allocate( mapwork(2,nwork) ) ; mapwork=0
 
@@ -605,10 +605,10 @@ CONTAINS
        end do
     end do
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "total # of me    =",a
-       write(*,*) "# of me of rank0 =",nwork
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "total # of me    =",a
+!       write(*,*) "# of me of rank0 =",nwork
+!    end if
 
     allocate( mapwork(2,nwork) ) ; mapwork=0
 

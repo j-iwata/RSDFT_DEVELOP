@@ -1,6 +1,7 @@
 MODULE scalapack_module
 
   use parallel_module
+  use io_tools_module
 
   implicit none
 
@@ -9,8 +10,10 @@ MODULE scalapack_module
            ,NPROW,NPCOL,MBSIZE,NBSIZE,LLD_R,LLD_C,DESCA,DESCB,DESCZ &
            ,NP0,NQ0,NPX,NQX,usermap
 
-  integer :: NPROW=0,NPCOL=0
-  integer :: MBSIZE=0,NBSIZE=0
+  integer :: NPROW=0
+  integer :: NPCOL=0
+  integer :: MBSIZE=0
+  integer :: NBSIZE=0
   integer :: LLD_R,LLD_C
   integer :: NP0,NQ0,NPX,NQX
   integer :: DESCA(9),DESCB(9),DESCZ(9)
@@ -23,29 +26,88 @@ MODULE scalapack_module
 CONTAINS
 
 
-  SUBROUTINE read_scalapack( rank, unit )
+  SUBROUTINE init_scalapack( MB )
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: ierr,i
-    character(3) :: cbuf,ckey
-    NPROW=0
-    NPCOL=0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:3) == "SCL" ) then
-             backspace(unit)
-             read(unit,*) cbuf,NPROW,NPCOL
+    integer,intent(INOUT) :: MB
+    integer :: NPCOL0,i,j,n,loop
+
+    call write_border( 0, " init_scalapack(start)" )
+
+    MBSIZE = 0
+    NBSIZE = 0
+    iblacs = .false.
+
+    if ( flag_read ) then
+       NPROW = 0
+       NPCOL = 0
+       call read_scalapack_parameter
+       flag_read = .false.
+    end if
+
+    if ( NPROW<1 .or. NPCOL<1 ) then
+       NPCOL0 = node_partition(1)*node_partition(2) &
+               *node_partition(3)*node_partition(4)
+       NPCOL  = NPCOL0
+       NPROW  = 1
+       do i=2,node_partition(1)*node_partition(2)*node_partition(3)
+          j=NPCOL0/i
+          if ( i*j==NPCOL0 .and. i<=j .and. j-i<NPCOL-NPROW ) then
+             NPCOL=j
+             NPROW=i
           end if
        end do
-999    continue
-       write(*,*) "NPROW,NPCOL=",NPROW,NPCOL
+    else
+       n=node_partition(1)*node_partition(2)*node_partition(3)*node_partition(4)
+       if ( NPROW*NPCOL > n ) then
+          write(*,*) "NPROW,NPCOL,np_band,np_grid=",NPROW,NPCOL &
+               ,node_partition(4) &
+               ,node_partition(1)*node_partition(2)*node_partition(3),myrank
+          stop
+       end if
     end if
-    call mpi_bcast(NPROW,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(NPCOL,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE read_scalapack
+
+    if ( MBSIZE<1 .or. NBSIZE<1 ) then
+       i=(MB+NPROW-1)/NPROW
+       j=(MB+NPCOL-1)/NPCOL
+       MBSIZE=min(i,j)
+       NBSIZE=MBSIZE
+    else
+       if ( MBSIZE/=NBSIZE ) then
+          write(*,*) "MBSIZE,NBSIZE=",MBSIZE,NBSIZE,myrank
+          write(*,*) "MBSIZE /= NBSIZE may not work well"
+          stop "stop@init_scalapack"
+       end if
+    end if
+
+    if ( disp_switch_parallel ) then
+       write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
+       write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
+    end if
+
+    if ( NBSIZE*NPCOL/=MB ) then
+       write(*,*) "NBSIZE*NPCOL/=MB!"
+       n=max( NBSIZE*NPCOL, MB )
+       n=min( n, (NBSIZE+1)*NPCOL )
+       write(*,*) "recommended value for MB =",n
+       write(*,*) "replace MB"
+       MB=n
+       MBSIZE=0
+       NBSIZE=0
+    end if
+
+    call write_border( 0, " init_scalapack(end)" )
+
+  END SUBROUTINE init_scalapack
+
+
+  SUBROUTINE read_scalapack_parameter
+    implicit none
+    integer :: itmp(2)
+    itmp(:)=-1
+    call IOTools_readIntegerKeywords( "SCL", itmp )
+    if ( itmp(1) > -1 ) NPROW=itmp(1)
+    if ( itmp(2) > -1 ) NPCOL=itmp(2)
+  END SUBROUTINE read_scalapack_parameter
 
 
   SUBROUTINE prep_scalapack( MB )
@@ -59,6 +121,8 @@ CONTAINS
 #ifndef _LAPACK_
 
     if ( iblacs ) return
+
+    call write_border( 0, " prep_scalapack(start)" )
 
     if ( icount_visit>0 ) then
        call blacs_gridexit(ICTXT)
@@ -185,80 +249,11 @@ CONTAINS
        write(*,*) "iblacs           =",iblacs
     end if
 
+    call write_border( 0, " prep_scalapack(end)" )
+
 #endif
 
   END SUBROUTINE prep_scalapack
-
-
-  SUBROUTINE init_scalapack( MB )
-    implicit none
-    integer,intent(INOUT) :: MB
-    integer :: NPCOL0,i,j,n
-
-    call write_border( 80, " init_scalapack(start)" )
-
-    MBSIZE = 0
-    NBSIZE = 0
-    iblacs = .false.
-
-    if ( flag_read ) then
-       NPROW = 0
-       NPCOL = 0
-       call read_scalapack(myrank,1)
-       flag_read = .false.
-    end if
-
-    if ( NPROW<1 .or. NPCOL<1 ) then
-       NPCOL0 = node_partition(1)*node_partition(2) &
-               *node_partition(3)*node_partition(4)
-       NPCOL  = NPCOL0
-       NPROW  = 1
-       do i=2,node_partition(1)*node_partition(2)*node_partition(3)
-          j=NPCOL0/i
-          if ( i*j==NPCOL0 .and. i<=j .and. j-i<NPCOL-NPROW ) then
-             NPCOL=j
-             NPROW=i
-          end if
-       end do
-    else
-       n=node_partition(1)*node_partition(2)*node_partition(3)*node_partition(4)
-       if ( NPROW*NPCOL > n ) then
-          write(*,*) "NPROW,NPCOL,np_band,np_grid=",NPROW,NPCOL &
-               ,node_partition(4) &
-               ,node_partition(1)*node_partition(2)*node_partition(3),myrank
-          stop
-       end if
-    end if
-
-    if ( MBSIZE<1 .or. NBSIZE<1 ) then
-       i=(MB+NPROW-1)/NPROW
-       j=(MB+NPCOL-1)/NPCOL
-       MBSIZE=min(i,j)
-       NBSIZE=MBSIZE
-    else
-       if ( MBSIZE/=NBSIZE ) then
-          write(*,*) "MBSIZE,NBSIZE=",MBSIZE,NBSIZE,myrank
-          stop
-       end if
-    end if
-
-    if ( disp_switch_parallel ) then
-       write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
-       write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
-    end if
-
-    if ( NBSIZE*NPCOL/=MB ) then
-       write(*,*) "NBSIZE*NPCOL/=MB!"
-       n=max( NBSIZE*NPCOL, MB )
-       n=min( n, (NBSIZE+1)*NPCOL )
-       write(*,*) "recommended value for MB =",n
-       write(*,*) "replace MB"
-       MB=n
-    end if
-
-    call write_border( 80, " init_scalapack(end)" )
-
-  END SUBROUTINE init_scalapack
 
 
 END MODULE scalapack_module

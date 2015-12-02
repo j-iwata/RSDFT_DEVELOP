@@ -10,6 +10,7 @@ MODULE grid_module
   PUBLIC :: grid, get_range_rgrid
   PUBLIC :: get_map_3d_to_1d
   PUBLIC :: mpi_allgatherv_grid, zmpi_allgatherv_grid
+  PUBLIC :: inner_product_grid
 
   type grid
      type( ArrayRange1D ) :: g1
@@ -85,5 +86,17 @@ CONTAINS
     call MPI_ALLGATHERV( zf, size(zf), MPI_COMPLEX16, zg, ir_grid, &
                          id_grid, MPI_COMPLEX16, comm_grid, ierr )
   END SUBROUTINE zmpi_allgatherv_grid
+
+
+  SUBROUTINE inner_product_grid( f, g, c, fgc )
+    implicit none
+    real(8),intent(IN) :: f(:), g(:), c
+    real(8),intent(OUT) :: fgc
+    real(8) :: fgc_tmp
+    integer :: i
+    fgc_tmp=sum(f*g)*c
+    call MPI_ALLREDUCE( fgc_tmp, fgc, 1, MPI_REAL8, MPI_SUM, comm_grid, i )
+  END SUBROUTINE inner_product_grid
+
 
 END MODULE grid_module

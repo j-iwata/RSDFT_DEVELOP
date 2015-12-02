@@ -87,7 +87,7 @@ CONTAINS
     real(8) :: tol_force
     character(40) :: chr_iter
     character(22) :: add_info
-    type(time) :: etime, etime_tot
+    type(time) :: etime, etime_tot, etime_lap(10)
     logical :: flag_recalc_esp = .false.
     real(8) :: Etot, Ehwf, diff_etot
     real(8) :: Ntot(4), sqerr_out(4)
@@ -96,6 +96,7 @@ CONTAINS
     call write_border( 0, " SCF START -----------" )
 
     call init_time_watch( etime_tot )
+    call init_time_watch( etime_lap(1) )
 
     flag_end    = .false.
     flag_exit   = .false.
@@ -146,12 +147,15 @@ CONTAINS
 
     end if
 
+    call calc_time_watch( etime_lap(1) )
+
     do iter=1,Diter
 
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
        call init_time_watch( etime )
+       call init_time_watch( etime_lap(2) )
 
        esp0=esp
 
@@ -223,6 +227,9 @@ CONTAINS
        end do ! k
        end do ! s
 
+       call calc_time_watch( etime_lap(2) )
+       call init_time_watch( etime_lap(3) )
+
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
 #ifdef _DRSDFT_
@@ -234,6 +241,9 @@ CONTAINS
 
        call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                       ,esp,weight_bz,occ,disp_switch)
+
+       call calc_time_watch( etime_lap(3) )
+       call init_time_watch( etime_lap(4) )
 
 ! --- total energy ---
 
@@ -269,6 +279,9 @@ CONTAINS
           end if
        end if
 
+       call calc_time_watch( etime_lap(4) )
+       call init_time_watch( etime_lap(5) )
+
 ! --- convergence check by density & potential ---
 
        allocate( v(ML_0:ML_1,MSP_0:MSP_1) ) ; v=0.0d0
@@ -296,6 +309,9 @@ CONTAINS
           end if
        end if
 
+       call calc_time_watch( etime_lap(5) )
+       call init_time_watch( etime_lap(6) )
+
 ! --- convergence check by Fmax ---
 
        if ( fmax_conv > 0.0d0 ) then
@@ -316,6 +332,9 @@ CONTAINS
        end if
 
        flag_conv = ( flag_conv .or. flag_conv_f .or. flag_conv_e )
+
+       call calc_time_watch( etime_lap(6) )
+       call init_time_watch( etime_lap(7) )
 
 ! --- mixing ---
 
@@ -344,6 +363,8 @@ CONTAINS
 
        end if
 
+       call calc_time_watch( etime_lap(7) )
+
 ! ---
 
        call write_esp_wf
@@ -357,7 +378,12 @@ CONTAINS
           write(*,*)
           write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)" &
                ,f10.3,"(max)")') etime%t0, etime%tmin, etime%tmax
-          write(*,*)
+          !do i=1,7
+          !   write(*,'(1x,"time(",i3,")=",f10.3,"(rank0)",f10.3,"(min)" &
+          !        ,f10.3,"(max)")') i,etime_lap(i)%t0, etime_lap(i)%tmin &
+          !                           ,etime_lap(i)%tmax
+          !end do
+          !write(*,*)
        end if
 
        call write_data(disp_switch,flag_exit)
