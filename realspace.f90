@@ -17,6 +17,9 @@ PROGRAM Real_Space_Solid
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
   use lattice_module
 
+  use ffte_sub_module, only: init_ffte_sub
+  use fftw_module
+
   implicit none
   integer,parameter :: unit_input_parameters = 1
   integer,parameter :: unit_atomic_coordinates = 970
@@ -128,6 +131,12 @@ PROGRAM Real_Space_Solid
   call init_omp( Igrid(1,1),Igrid(2,1),Igrid(1,2),Igrid(2,2) &
                 ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
                 ,SYStype, disp_switch )
+
+! --- Initialization for FFT ---
+
+  call init_ffte_sub(Igrid(1,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+
+  call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
 
 !- FD boundary set -
 
@@ -419,6 +428,7 @@ PROGRAM Real_Space_Solid
 900 continue
 
   call global_watch(disp_switch)
+  call finalize_fftw
   call close_info
   call end_mpi_parallel
 

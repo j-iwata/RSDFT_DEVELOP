@@ -34,6 +34,8 @@ CONTAINS
     integer :: MG,ML_0,ML_1,a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     integer :: MG1,MG2,MG3,NG1,NG2,NG3,np1,np2,np3
 
+    call write_border( 1, " calc_hartree_sol_ffte(start)" )
+
     pi4 = 4.d0*acos(-1.d0)
 
     ML  = Ngrid(0)
@@ -170,27 +172,9 @@ CONTAINS
 !       write(*,*) "time(hatree5_ffte)=",ctt(5)-ctt(4),ett(5)-ett(4)
 !    end if
 
+    call write_border( 1, " calc_hartree_sol_ffte(end)" )
+
   END SUBROUTINE calc_hartree_sol_ffte
-
-
-  SUBROUTINE prep_ffte
-    implicit none
-    integer :: ix,iy,iz,icolor,ierr
-    complex(8) :: z1(1),z2(1)
-    ix=Igrid(1,1)/(Ngrid(1)/node_partition(1))
-    iy=Igrid(1,2)/(Ngrid(2)/node_partition(2))
-    iz=Igrid(1,3)/(Ngrid(3)/node_partition(3))
-    icolor=iy+iz*node_partition(2)
-    call mpi_comm_split(comm_grid,icolor, 0, comm_fftx, ierr)
-    icolor=iz+ix*nprocs
-    call mpi_comm_split(comm_grid,icolor, 0, comm_ffty, ierr)
-    icolor=iy+ix*nprocs
-    call mpi_comm_split(comm_grid,icolor, 0, comm_fftz, ierr)
-    call mpi_comm_size(comm_fftx, npux, ierr)
-    call mpi_comm_size(comm_ffty, npuy, ierr)
-    call mpi_comm_size(comm_fftz, npuz, ierr)
-    call pzfft3dv(z1,z2,Ngrid(1),Ngrid(2),Ngrid(3),comm_ffty,comm_fftz,npuy,npuz,0)
-  END SUBROUTINE prep_ffte
 
 
 END MODULE hartree_sol_ffte_module

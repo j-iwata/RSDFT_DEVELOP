@@ -17,7 +17,7 @@ LAPACK_L = $(DIR1)/ext_sub_blas.o $(DIR1)/ext_sub_blas_tmp.o \
 #################### Generate COMPLEX16 code #####
 FFLAGS1 =
 #################### Generate REAL8 code #####
-#FFLAGS1 = -D_DRSDFT_
+#FFLAGS1 = -D_DRSDFT_ -D_FFTW_
 #################### Generate COMPLEX16-USPP code #####
 #FFLAGS1 = -D_USPP_
 #################### SPLINE interpolation is used in prep_ps #####
@@ -33,6 +33,7 @@ FFLAGS1 =
 #EigenExaLib = /home.org/iwata/rsdft/EigenExa-2.3c
 #LIBS = $(EigenExaLib)/libEigenExa.a
 INCLUDE_DIR = -I../
+#INCLUDE_DIR = -I../ -I/home/iwata/fftw-3.3.4/include/
 #INCLUDE_DIR = -I../ -I$(EigenExaLib)
 ########################################################################
 ##### INTEL                                                        #####
@@ -53,6 +54,8 @@ INCLUDE_DIR = -I../
            -lpthread
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
+#FFTW_L = -L/home/iwata/fftw-3.3.4/lib/ -lfftw3_mpi -lfftw3 -lm
+
 ## for oak lapack/scalapack
 #LAPACK_L = -llapack -lblas
 #LAPACK_L = -lm /Users/lhan/.homebrew/opt/scalapack/lib/libscalapack.dylib -lblas
@@ -228,6 +231,8 @@ INCLUDE_DIR = -I../
         -X9 -V -Ec -Qa,d,i,p,t,x -Cpp -Ccpp
 #LFLAGS = ${FFLAGS0} -SSL2BLAMP -SCALAPACK -Ntl_trt
 #LAPACK_L =
+#INCLUDE_DIR = -I../ -I/home/apps/fftw/3.3.3/include/
+#FFTW_L = -L/home/apps/fftw/3.3.3/lib64 -lfftw3_mpi -lfftw3 -lm
 ########################################################################
 ########################################################################
 #

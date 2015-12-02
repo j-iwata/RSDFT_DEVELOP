@@ -6,6 +6,7 @@ MODULE hartree_sol_module
   use parallel_module, only: comm_grid, mpi_real8, mpi_sum
   use watch_module
   use hartree_sol_ffte_module, only: calc_hartree_sol_ffte
+  use hartree_sol_fftw_module, only: calc_hartree_sol_fftw
   use fft_module
 
   implicit none
@@ -30,7 +31,12 @@ CONTAINS
 #ifdef _FFTE_
     call calc_hartree_sol_ffte(n1,n2,n3,rho)
     return
+#elif _FFTW_
+    call calc_hartree_sol_fftw(n1,n2,n3,rho)
+    return
 #endif
+
+    call write_border( 1, " calc_hartree_sol(start)" )
 
     ctt(:)=0.d0
     ett(:)=0.d0
@@ -110,6 +116,8 @@ CONTAINS
 !       write(*,*) "time(hatree4)=",ctt(4)-ctt(3),ett(4)-ett(3)
 !       write(*,*) "time(hatree5)=",ctt(5)-ctt(4),ett(5)-ett(4)
 !    end if
+
+    call write_border( 1, " calc_hartree_sol(end)" )
 
   END SUBROUTINE calc_hartree_sol
 

@@ -3,7 +3,7 @@ MODULE ffte_sub_module
   implicit none
 
   PRIVATE
-  PUBLIC :: prep_ffte_sub, free_ffte_sub, comm_fftx, comm_ffty, comm_fftz &
+  PUBLIC :: init_ffte_sub, free_ffte_sub, comm_fftx, comm_ffty, comm_fftz &
            ,npux, npuy, npuz, zwork1_ffte, zwork2_ffte
 
   integer :: comm_fftx, comm_ffty, comm_fftz
@@ -14,10 +14,11 @@ MODULE ffte_sub_module
 
 CONTAINS
 
-  SUBROUTINE prep_ffte_sub(ig,ng,np,comm)
+  SUBROUTINE init_ffte_sub(ig,ng,np,comm)
     implicit none
     integer,intent(IN) :: ig(3),ng(3),np(3),comm
-    integer :: ix,iy,iz,icolor,ierr,nprocs
+#ifdef _FFTE_
+    integer :: ix,iy,iz,icolor,ierr,nprocs,i,j,n
     complex(8) :: z1(1),z2(1)
     complex(8) :: z0=(0.0d0,0.0d0)
     include 'mpif.h'
@@ -35,9 +36,30 @@ CONTAINS
        write(*,'(1x,"Both NY and NZ must be divisible by NPUZ",6i5)') ng,np
        ierr=1
     end if
+    if ( ierr /= 0 ) call stop_program( "stop@init_ffte_sub(1)" )
+
+!---
+    ierr=0
+    do j=1,3
+       n=ng(j)
+       do i=1,ng(j)
+          if ( mod(n,2) == 0 ) then
+             n=n/2
+          else if ( mod(n,3) == 0 ) then
+             n=n/3
+          else if ( mod(n,5) == 0 ) then
+             n=n/5
+          else
+             if ( n /= 1 ) then
+                ierr=ierr+1
+                exit
+             end if
+          end if
+       end do ! i
+    end do ! j
     if ( ierr /= 0 ) then
-       call mpi_finalize(ierr)
-       stop "stop@prep_ffte_sub"
+       write(*,*) "ng(1:3)=",(ng(i),i=1,3)
+       call stop_program( "ng should be composit numbers of 2,3,5" )
     end if
 !------------------------------- parameter check (end)
     ix = ig(1)/( ng(1)/np(1) )
@@ -58,9 +80,11 @@ CONTAINS
     iz=ig(3)+ng(3)/np(3)-1
     allocate( zwork1_ffte(0:ng(1)-1,ig(2):iy,ig(3):iz) ) ; zwork1_ffte=z0
     allocate( zwork2_ffte(0:ng(1)-1,ig(2):iy,ig(3):iz) ) ; zwork2_ffte=z0
-  END SUBROUTINE prep_ffte_sub
+#endif
+  END SUBROUTINE init_ffte_sub
 
   SUBROUTINE free_ffte_sub
+#ifdef _FFTE_
     implicit none
     integer :: ierr
     include 'mpif.h'
@@ -69,6 +93,7 @@ CONTAINS
     call mpi_comm_free(comm_fftx,ierr)
     deallocate( zwork2_ffte )
     deallocate( zwork1_ffte )
+#endif
   END SUBROUTINE free_ffte_sub
 
 END MODULE ffte_sub_module

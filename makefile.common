@@ -39,6 +39,7 @@ MODS1 = \
        basic_type_factory.o\
        grid_module.o\
        rgrid_mol_module.o\
+       fftw_module.o\
        rsdft_fft_module.o\
        fft_module.o\
        ffte_sub_module.o\
@@ -77,6 +78,7 @@ MODS1 = \
        bcset_3_module.o\
        construct_matrix_ps_nloc2_module.o\
        wf_sub_module.o\
+       hartree_sol_fftw_module.o\
        hartree_sol_ffte_module.o\
        hartree_sol_module.o\
        ps_nloc2_op_module.o\
@@ -148,6 +150,7 @@ MODS1 = \
        gram_schmidt_t_module.o\
        localpot_module.o\
        xc_hse_module.o\
+       fock_fftw_module.o\
        fock_ffte_module.o\
        cgpc_2_module.o\
        force_ps_nloc2.o\
@@ -170,6 +173,7 @@ MODS1 = \
        test_hpsi2_module.o\
        test_rtsol_module.o\
        ps_local_variables.o\
+       ps_local_fftw_module.o\
        ps_local_module.o\
        xc_module.o\
        esp_calc_module.o\

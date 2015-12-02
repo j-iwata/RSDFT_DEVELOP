@@ -17,6 +17,7 @@ MODULE ps_local_module
   use ps_local_variables
   use fft_module
   use VarPSMember
+  use ps_local_fftw_module, only: construct_ps_local_fftw
 
   implicit none
 
@@ -430,12 +431,7 @@ CONTAINS
 
     !call construct_ps_local_test( SGK, psloc )
 
-#ifdef _FFTE_
-    call construct_ps_local_ffte
-    return
-#endif
-
-    call write_border( 80, " construct_ps_local(start)" )
+    call write_border( 0, " construct_ps_local(start)" )
 
     MG  = NGgrid(0)
     ML  = Ngrid(0)
@@ -454,6 +450,14 @@ CONTAINS
        allocate( Vion(ML_0:ML_1) )
        Vion=0.0d0
     end if
+
+#ifdef _FFTE_
+    call construct_ps_local_ffte
+    return
+#elif _FFTW_
+    call construct_ps_local_fftw( vqlg, SGK, Vion )
+    return
+#endif
 
     allocate( vg(MG) )
 
@@ -506,7 +510,7 @@ CONTAINS
 !       write(*,*) "time(const_ps_loc_3)",ctt(3)-ctt(2),ett(3)-ett(2)
 !    end if
 
-    call write_border( 80, " construct_ps_local(end)" )
+    call write_border( 0, " construct_ps_local(end)" )
 
   END SUBROUTINE construct_ps_local
 
@@ -537,7 +541,6 @@ CONTAINS
     ab12= (b2b-a2b+1)*(b1b-a1b+1)
 
     if ( first_time1 ) then
-       call prep_ffte_sub(Igrid(1,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
        if ( .not.allocated(Vion) ) then
           allocate( Vion(ML_0:ML_1) )
        end if
@@ -636,33 +639,6 @@ CONTAINS
     call write_border( 80, " construct_ps_local_ffte(end)" )
 
   END SUBROUTINE construct_ps_local_ffte
-
-  SUBROUTINE prep_ffte
-    implicit none
-    integer :: ix,iy,iz,icolor,ierr
-    complex(8) :: z1(1),z2(1)
-    ix=Igrid(1,1)/(Ngrid(1)/node_partition(1))
-    iy=Igrid(1,2)/(Ngrid(2)/node_partition(2))
-    iz=Igrid(1,3)/(Ngrid(3)/node_partition(3))
-    icolor=iy+iz*node_partition(2)
-    call mpi_comm_split(comm_grid,icolor, 0, comm_fftx, ierr)
-    icolor=iz+ix*nprocs
-    call mpi_comm_split(comm_grid,icolor, 0, comm_ffty, ierr)
-    icolor=iy+ix*nprocs
-    call mpi_comm_split(comm_grid,icolor, 0, comm_fftz, ierr)
-    call mpi_comm_size(comm_fftx, npux, ierr)
-    call mpi_comm_size(comm_ffty, npuy, ierr)
-    call mpi_comm_size(comm_fftz, npuz, ierr)
-    call pzfft3dv(z1,z2,Ngrid(1),Ngrid(2),Ngrid(3),comm_ffty,comm_fftz,npuy,npuz,0)
-  END SUBROUTINE prep_ffte
-
-  SUBROUTINE ffte_free
-    implicit none
-    integer :: ierr
-    call mpi_comm_free(comm_fftz,ierr)
-    call mpi_comm_free(comm_ffty,ierr)
-    call mpi_comm_free(comm_fftx,ierr)
-  END SUBROUTINE ffte_free
 
 
 END MODULE ps_local_module
