@@ -329,7 +329,7 @@ CONTAINS
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
-           + const_ps_local*sum(occ)
+         - 2*E_exchange_exx + const_ps_local*sum(occ)
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
