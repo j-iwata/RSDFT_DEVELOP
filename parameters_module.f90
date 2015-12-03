@@ -4,6 +4,8 @@ MODULE parameters_module
   use info_module
   use io_tools_module
 
+  use ps_initrho_module, only: read_ps_initrho
+
   implicit none
 
   PRIVATE
@@ -16,9 +18,13 @@ CONTAINS
   SUBROUTINE read_parameters
     implicit none
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a50," read_parameters(START)")') repeat("-",50)
-    end if
+    call write_border( 0, " read_parameters(start)" )
+
+    call read_aa
+
+    call read_bz
+
+    call read_scalapack
 
     call read_electron(myrank,unit)
 
@@ -26,14 +32,22 @@ CONTAINS
 
     call read_kinetic(myrank,unit)
 
+    call read_ps_initrho
+
     call read_ps_nloc1(myrank,unit)
     call read_ps_nloc2_init(myrank,unit)
 
     call read_parallel(myrank,unit)
 
+    call read_wf( myrank, unit )
+
     call read_gram_schmidt_t(myrank,unit)
 
+    call read_cg
+
     call read_cgpc(myrank,unit)
+
+    call read_mixing
 
     call read_fermi(myrank,unit)
 
@@ -56,14 +70,15 @@ CONTAINS
 
     call read_symmetry( myrank, unit )
 
+    call read_xc
+
+    call read_scf
     select case( iswitch_scf )
     case( 2 )
        call read_scf_chefsi( myrank, unit )
     end select
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a50," read_parameters(END)")') repeat("-",50)
-    end if
+    call write_border( 0," read_parameters(end)" )
 
   END SUBROUTINE read_parameters
 

@@ -1,12 +1,13 @@
 MODULE bz_module
 
   use io_tools_module
+  use symmetry_module, only: isymmetry, nsym, rgb
 
   implicit none
 
   PRIVATE
   PUBLIC :: generate_bz
-  PUBLIC :: generate_bz_sym
+  PUBLIC :: read_bz
 
   integer,PUBLIC :: nk
   integer,PUBLIC :: mmm(3,2)
@@ -42,15 +43,18 @@ CONTAINS
   END SUBROUTINE read_bz
 
 
-  SUBROUTINE generate_bz(disp_switch)
+  SUBROUTINE generate_bz
     implicit none
-    logical,intent(IN) :: disp_switch
+    logical :: disp_switch
     integer :: i,k,k1,iw,iw0,iw1,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
     integer,allocatable :: mm(:,:),m(:,:),w(:)
 
-    call write_border( 80," generate_bz(start)" )
+    if ( isymmetry > 0 ) then
+       call generate_bz_sym
+       return
+    end if
 
-    call read_bz
+    call write_border( 0," generate_bz(start)" )
 
     m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)
     mm1=mmm(1,2) ; mm2=mmm(2,2) ; mm3=mmm(3,2)
@@ -120,6 +124,7 @@ CONTAINS
 
     deallocate( w,m,mm )
 
+    call check_disp_switch( disp_switch, 0 )
     if ( disp_switch ) then
        write(*,*) "Nbzsm, MMBZ =",Nbzsm,MMBZ
        write(*,'(1x,a4,a30,a12)') "","kbb","weight_bz"
@@ -128,24 +133,20 @@ CONTAINS
        end do
     end if
 
-    call write_border( 80," generate_bz(end)" )
+    call write_border( 0," generate_bz(end)" )
 
   END SUBROUTINE generate_bz
 
 
-  SUBROUTINE generate_bz_sym( nsym,rgb,disp_switch )
+  SUBROUTINE generate_bz_sym
     implicit none
-    integer,intent(IN) :: nsym
-    real(8),intent(IN) :: rgb(3,3,nsym)
-    logical,intent(IN) :: disp_switch
+    logical :: disp_switch
     integer,allocatable :: mm(:,:),m(:,:),w(:),w1(:),w2(:)
     integer :: m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
     integer :: i,k,k1,iw,iw0,iw1,nkmax,p3(3),ns,ni,is,nni,ig
     real(8) :: c,tmp(3)
 
-    call write_border( 80," generate_bz_sym(start)" )
-
-    call read_bz
+    call write_border( 0," generate_bz_sym(start)" )
 
     m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)
     mm1=mmm(1,2) ; mm2=mmm(2,2) ; mm3=mmm(3,2)
@@ -260,7 +261,8 @@ CONTAINS
 
     wbz(1:Nbzsm) = weight_bz(1:Nbzsm)
 
-    if ( DISP_SWITCH ) then
+    call check_disp_switch( disp_switch, 0 )
+    if ( disp_switch ) then
        write(*,*) "Nbzsm, MMBZ =",Nbzsm,MMBZ
        write(*,*) "KBB"
        do k=1,Nbzsm
@@ -272,7 +274,7 @@ CONTAINS
 
     deallocate( w2,w1,w,m,mm )
 
-    call write_border( 80," generate_bz_sym(end)" )
+    call write_border( 0," generate_bz_sym(end)" )
 
     return
 

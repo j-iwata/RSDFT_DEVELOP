@@ -106,11 +106,15 @@ PROGRAM Real_Space_Solid
 
 ! --- Brillouin Zone sampling ---
 
-  if ( isymmetry == 0 ) then
-     call generate_bz( disp_switch )
-  else
-     call generate_bz_sym( nsym, rgb, disp_switch )
-  end if
+  call generate_bz
+
+! --- Pseudopotential ---
+
+  call read_pseudopot( Nelement, myrank )
+
+! --- info atoms ---
+
+  call write_info_atom( Zps, file_ps )
 
 ! --- initial set up for parallel computation ---
 
@@ -152,11 +156,8 @@ PROGRAM Real_Space_Solid
 
 ! --- Pseudopotential, initial density, and partial core correction ---
 
-  call read_pseudopot( Nelement, myrank )
+!  call read_pseudopot( Nelement, myrank )
 
-! ---
-
-  call write_info_atom( Zps, file_ps )
 
 !-------- init density 
 
@@ -239,7 +240,6 @@ PROGRAM Real_Space_Solid
 
 ! --- Initial wave functions ---
 
-  call read_wf( myrank, 1 )
   call init_wf( SYStype )
 
   do s=MSP_0,MSP_1
@@ -347,7 +347,6 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
-  call read_scf
   select case( iswitch_scf )
   case( 1 )
      call calc_scf( disp_switch, ierr, tol_force_in=feps )

@@ -18,6 +18,7 @@ MODULE cg_module
 
   PRIVATE
   PUBLIC :: conjugate_gradient
+  PUBLIC :: read_cg
 
   integer :: Ncg = 2
   integer :: iswitch_gs = 0
@@ -48,8 +49,6 @@ CONTAINS
     integer :: ipc
 
     call write_border( 1, " conjugate_gradient(start)" )
-
-    if ( flag_init_read ) call read_cg
 
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 

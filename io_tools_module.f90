@@ -128,7 +128,11 @@ CONTAINS
           if ( ckey == keyword ) then
              backspace(unit)
              read(unit,*) cbuf,variable
-             write(*,'(1x,A10," : ",F15.10)') keyword,variable
+             if ( abs(variable) < 1.d-2 ) then
+                write(*,'(1x,A10," : ",ES15.7)') keyword,variable
+             else
+                write(*,'(1x,A10," : ",F15.10)') keyword,variable
+             end if
              exit
           end if
        end do ! i
@@ -153,7 +157,11 @@ CONTAINS
           if ( ckey == keyword ) then
              backspace(unit)
              read(unit,*) cbuf,variables(:)
-             write(*,'(1x,A10," : ",3F15.10)') keyword,variables(:)
+             if ( any(abs(variables) < 1.d-2) ) then
+                write(*,'(1x,A10," : ",3ES15.7)') keyword,variables(:)
+             else
+                write(*,'(1x,A10," : ",3F15.10)') keyword,variables(:)
+             end if
              exit
           end if
        end do ! i

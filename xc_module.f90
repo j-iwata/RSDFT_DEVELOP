@@ -31,6 +31,7 @@ MODULE xc_module
   PRIVATE
   PUBLIC :: calc_xc,Vxc,Exc,E_exchange,E_correlation &
            ,E_exchange_exx
+  PUBLIC :: read_xc
 
   character(8),PUBLIC :: XCtype = 'LDAPZ81'
 
@@ -41,18 +42,18 @@ MODULE xc_module
   real(8),allocatable :: Vx(:,:), Vc(:,:)
 
   logical :: disp_sw
-  logical :: flag_init = .true.
+  logical :: flag_read = .true.
 
 CONTAINS
 
 
-  SUBROUTINE init_xc
+  SUBROUTINE read_xc
     implicit none
-    call write_border( 0, " init_xc(start)" )
+    call write_border( 0, " read_xc(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
-    flag_init = .false.
-    call write_border( 0, " init_xc(end)" )
-  END SUBROUTINE init_xc
+    flag_read = .false.
+    call write_border( 0, " read_xc(end)" )
+  END SUBROUTINE read_xc
 
 
   SUBROUTINE chk_density(rho,rhoc)
@@ -125,7 +126,7 @@ CONTAINS
     call write_border( 1, " calc_xc(start)" )
     call check_disp_switch( disp_sw, 0 )
 
-    if ( flag_init ) call init_xc
+    if ( flag_read ) call read_xc
 
     call get_range_rgrid( rg )
 

@@ -9,6 +9,7 @@ MODULE scalapack_module
   PUBLIC :: prep_scalapack, init_scalapack, UPLO &
            ,NPROW,NPCOL,MBSIZE,NBSIZE,LLD_R,LLD_C,DESCA,DESCB,DESCZ &
            ,NP0,NQ0,NPX,NQX,usermap
+  PUBLIC :: read_scalapack
 
   integer :: NPROW=0
   integer :: NPCOL=0
@@ -36,13 +37,6 @@ CONTAINS
     MBSIZE = 0
     NBSIZE = 0
     iblacs = .false.
-
-    if ( flag_read ) then
-       NPROW = 0
-       NPCOL = 0
-       call read_scalapack_parameter
-       flag_read = .false.
-    end if
 
     if ( NPROW<1 .or. NPCOL<1 ) then
        NPCOL0 = node_partition(1)*node_partition(2) &
@@ -100,14 +94,14 @@ CONTAINS
   END SUBROUTINE init_scalapack
 
 
-  SUBROUTINE read_scalapack_parameter
+  SUBROUTINE read_scalapack
     implicit none
     integer :: itmp(2)
     itmp(:)=-1
     call IOTools_readIntegerKeywords( "SCL", itmp )
     if ( itmp(1) > -1 ) NPROW=itmp(1)
     if ( itmp(2) > -1 ) NPCOL=itmp(2)
-  END SUBROUTINE read_scalapack_parameter
+  END SUBROUTINE read_scalapack
 
 
   SUBROUTINE prep_scalapack( MB )

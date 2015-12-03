@@ -72,11 +72,6 @@ CONTAINS
 
     myrank = myrank_in
 
-    if ( first_time ) then
-       call read_mixing
-       first_time = .false.
-    end if
-
     beta0      = 1.0d0-beta
     mmix_count = 0
 

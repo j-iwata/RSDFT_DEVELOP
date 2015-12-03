@@ -18,6 +18,7 @@ MODULE ps_initrho_module
 
   PRIVATE
   PUBLIC :: construct_ps_initrho
+  PUBLIC :: read_ps_initrho
 
   logical :: flag_initrho_0
   logical,allocatable :: flag_initrho(:)
@@ -48,8 +49,6 @@ CONTAINS
     call write_border( 80, " construct_ps_initrho(start)" )
 
 ! ---
-
-    call read_ps_initrho
 
     if ( allocated(cdd_coef) ) then
        if ( any(cdd_coef/=0.0d0) ) analytic=.true.

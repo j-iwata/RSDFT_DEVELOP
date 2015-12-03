@@ -6,7 +6,7 @@ MODULE aa_module
   implicit none
 
   PRIVATE
-  PUBLIC :: init_aa
+  PUBLIC :: init_aa, read_aa
   PUBLIC :: construct_aa
   PUBLIC :: get_org_aa
   PUBLIC :: set_org_aa
@@ -23,7 +23,6 @@ CONTAINS
   SUBROUTINE init_aa( aa_obj )
     implicit none
     type(lattice),intent(INOUT) :: aa_obj
-    call read_aa
     if ( ax == 0.0d0 ) then
        ax = aa_obj%LatticeConstant
        aa = aa_obj%LatticeVector/ax
