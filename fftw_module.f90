@@ -75,9 +75,10 @@ CONTAINS
     zwork3_ptr1=(0.0d0,0.0d0)
 
     plan_forward  = fftw_mpi_plan_dft_3d( ML3_c,ML2_c,ML1_c &
-         ,zwork3_ptr0,zwork3_ptr1,comm_fftw,fftw_forward,fftw_estimate )
+         ,zwork3_ptr0,zwork3_ptr1,comm_fftw,fftw_forward,fftw_measure )
+
     plan_backward = fftw_mpi_plan_dft_3d( ML3_c,ML2_c,ML1_c &
-         ,zwork3_ptr0,zwork3_ptr1,comm_fftw,fftw_backward,fftw_estimate )
+         ,zwork3_ptr0,zwork3_ptr1,comm_fftw,fftw_backward,fftw_measure )
 
     call write_border( 0, " init_fftw(end)" )
 #endif
