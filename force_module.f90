@@ -11,6 +11,7 @@ MODULE force_module
 
   PRIVATE
   PUBLIC :: calc_force, get_fmax_force
+  PUBLIC :: init_force
 
   integer :: Ntim
   real(8),allocatable :: tim(:,:,:)
@@ -32,9 +33,9 @@ CONTAINS
     if ( Ntim <= 0 ) Ntim=1
     if ( disp_switch_parallel ) write(*,*) "Ntim=",Ntim
     allocate( tim(3,3,Ntim) ) ; tim=0.0d0
-    tim(1,1,1) = 1.0d0
-    tim(2,2,1) = 1.0d0
-    tim(3,3,1) = 1.0d0
+    tim(1,1,1:Ntim) = 1.0d0
+    tim(2,2,1:Ntim) = 1.0d0
+    tim(3,3,1:Ntim) = 1.0d0
     call read_force
     call write_border( 0, " init_force(end)" )
   END SUBROUTINE init_force

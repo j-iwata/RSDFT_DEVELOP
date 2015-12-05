@@ -35,6 +35,7 @@ MODULE band_module
 
   PRIVATE
   PUBLIC :: band
+  PUBLIC :: read_band
 
   integer :: unit = 1
 
@@ -62,13 +63,13 @@ CONTAINS
        write(*,*) "band calc is not available in REAL8 code"
        write(*,*) "Recompile"
     end if
-    return
+    call stop_program( "" )
 #endif
 
     call write_border( 0, "" )
     call write_border( 0, " BAND Calc. START -----------" )
 
-    call read_band
+!    call read_band
 
     disp_switch_parallel_bak = disp_switch_parallel
 !    disp_switch_parallel = .false.
@@ -88,7 +89,7 @@ CONTAINS
 
     allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
 
-    call read_band_unfold( myrank, unit )
+!    call read_band_unfold( myrank, unit )
 
     if ( iswitch_banduf ) then
 

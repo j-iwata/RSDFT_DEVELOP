@@ -254,6 +254,8 @@ CONTAINS
 
     call z3_to_z1_fftw( zwork3_ptr1, tVh )
 
+#else
+    tVh=z0
 #endif
 
   END SUBROUTINE fock_fftw_double

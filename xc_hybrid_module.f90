@@ -13,6 +13,7 @@ MODULE xc_hybrid_module
            ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
            ,VFunk, unk_hf, occ_hf, occ_factor, npart &
            ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
+  PUBLIC :: read_xc_hybrid
 
   integer :: npart
   real(8) :: R_hf
@@ -55,6 +56,7 @@ MODULE xc_hybrid_module
   integer :: IC = 0
   integer :: IO_ctrl = 0
   character(30) :: file_wf2 = "wf.dat1"
+  character(8) :: XCtype
 
 CONTAINS
 
@@ -62,14 +64,15 @@ CONTAINS
   SUBROUTINE read_xc_hybrid
     implicit none
     real(8) :: tmp(2)
-    call write_border( 60, " read_xc_hybrid(start)" )
+    call write_border( 0, " read_xc_hybrid(start)" )
+    call IOTools_readStringKeyword( "XCTYPE", XCtype )
     tmp(1:2) = (/ omega, alpha_hf /)
     call IOTools_readReal8Keywords( "HF", tmp )
     omega    = tmp(1)
     alpha_hf = tmp(2)
     call IOTools_readIntegerKeyword( "IC", IC )
     call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
-    call write_border( 60, " read_xc_hybrid(end)" )
+    call write_border( 0, " read_xc_hybrid(end)" )
   END SUBROUTINE read_xc_hybrid
 
 
@@ -88,19 +91,14 @@ CONTAINS
     real(8),parameter :: eps=1.d-5
     real(8) :: mem(9),qtry(3),c,Pi,k_fock(3)
     real(8),allocatable :: qtmp(:,:)
-    character(8) :: XCtype
 
     call write_border( 0, " init_xc_hybrid(start)" )
-
-    if ( flag_init ) return
-
-    call IOTools_readStringKeyword( "XCTYPE", XCtype )
-
+write(*,*) XCtype
     if ( XCtype /= "HF"    .and. XCtype /= "HSE"    .and. &
          XCtype /= "HSE06" .and. XCtype /= "HSE_"   .and. &
          XCtype /= "PBE0"  .and. XCtype /= "LCwPBE" ) return
 
-    call read_xc_hybrid
+    if ( flag_init ) return
 
 !
 ! --- set flags ---

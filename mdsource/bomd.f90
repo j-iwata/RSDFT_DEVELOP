@@ -36,12 +36,19 @@ SUBROUTINE bomd
   integer,parameter :: ncalls=9
 !------------------------------------
   integer :: MI3
-
   integer,parameter :: unit_trjxyz = 90
+  character(90) :: error_message
+
+  call write_border( 0, "" )
+  call write_border( 0, " CPMD START -----------" )
+
+#ifndef _DRSDFT_
+  write(*,*) "RS-CPMD is not available for COMPLEX16 WFs"
+  write(*,*) "Please re-compile the program"
+  call stop_program( "" )
+#endif
 
   lblue = .false.
-
-  if ( myrank == 0 ) write(*,'(1x,a60," CPMD")') repeat("-",60)
 
   if ( myrank == 0 ) then
      call read_cpmd_variables ! in 'alloc_cpmd.f90'
@@ -469,6 +476,9 @@ SUBROUTINE bomd
 99 stop "stop@bomd(99)"
 
 10 format(10f15.8)
+
+  call write_border( 0, " CPMD END -----------" )
+  call write_border( 0, "" )
 
 END SUBROUTINE bomd
 

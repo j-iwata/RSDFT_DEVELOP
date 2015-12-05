@@ -13,9 +13,9 @@ CONTAINS
     integer,intent(IN)  :: n
     real(8),intent(IN)  :: arr(n)
     integer,intent(OUT) :: indx(n)
-    !call indexx_0( n, arr, indx )
+    call indexx_0( n, arr, indx )
     !call indexx_1( n, arr, indx )
-    call ascending_sort_indexx_2( n, arr, indx )
+    !call ascending_sort_indexx_2( n, arr, indx )
   END SUBROUTINE indexx
 
 
@@ -24,81 +24,73 @@ CONTAINS
     integer,intent(IN)  :: n
     real(8),intent(IN)  :: arr(n)
     integer,intent(OUT) :: indx(n)
-    integer,parameter :: m=7,nstack=50
-    integer :: i,j,k,l,jstack,indxt,ir,itemp,istack(nstack)
-    real(8) :: a
+    integer,parameter :: m=7,nstck=50
+    integer :: i,j,k,ll,jstck,jndx,lndx,ir,istck(nstck),loop0,loop1
+    real(8) :: arrj,arrl
 
-    do j=1,n
-       indx(j)=j
+    do i=1,n
+       indx(i)=i
     end do
-    jstack=0
-    l=1
+    jstck=0
+    ll=1
     ir=n
-1   if ( ir-l < m ) then
-       do j=l+1,ir
-          indxt=indx(j)
-          a=arr(indxt)
+    do loop0=1,n
+    if ( ir-ll < m ) then
+       do j=ll+1,ir
+          jndx=indx(j)
+          arrj=arr(jndx)
           do i=j-1,1,-1
-             if ( arr(indx(i))<=a ) goto 2
+             if ( arr(indx(i)) <= arrj ) exit
              indx(i+1)=indx(i)
           end do
-          i=0
-2         indx(i+1)=indxt
+          if ( i < 1 ) i=0
+          indx(i+1)=jndx
        end do
-       if ( jstack==0 ) return
-       ir=istack(jstack)
-       l=istack(jstack-1)
-       jstack=jstack-2
+       if ( jstck == 0 ) return
+       ir=istck(jstck)
+       ll=istck(jstck-1)
+       jstck=jstck-2
     else
-       k=(l+ir)/2
-       itemp=indx(k)
-       indx(k)=indx(l+1)
-       indx(l+1)=itemp
-       if ( arr(indx(l+1)) > arr(indx(ir)) ) then
-          itemp=indx(l+1)
-          indx(l+1)=indx(ir)
-          indx(ir)=itemp
+       k=(ll+ir)/2
+       call iswap( indx(k), indx(ll+1) )
+       if ( arr(indx(ll+1)) > arr(indx(ir)) ) then
+          call iswap( indx(ll+1), indx(ir) )
        end if
-       if ( arr(indx(l)) > arr(indx(ir)) ) then
-          itemp=indx(l)
-          indx(l)=indx(ir)
-          indx(ir)=itemp
+       if ( arr(indx(ll)) > arr(indx(ir)) ) then
+          call iswap( indx(ll), indx(ir) )
        end if
-       if ( arr(indx(l+1)) > arr(indx(l)) ) then
-          itemp=indx(l+1)
-          indx(l+1)=indx(l)
-          indx(l)=itemp
+       if ( arr(indx(ll+1)) > arr(indx(ll)) ) then
+          call iswap( indx(ll+1), indx(ll) )
        end if
-       i=l+1
+       i=ll+1
        j=ir
-       indxt=indx(l)
-       a=arr(indxt)
-3      continue
-       i=i+1
-       if ( arr(indx(i)) < a ) goto 3
-4      continue
-       j=j-1
-       if ( arr(indx(j)) > a ) goto 4
-       if ( j<i ) goto 5
-       itemp=indx(i)
-       indx(i)=indx(j)
-       indx(j)=itemp
-       goto 3
-5      indx(l)=indx(j)
-       indx(j)=indxt
-       jstack=jstack+2
-       if ( jstack>nstack ) stop "indexx"
-       if ( ir-i+1>= j-l ) then
-          istack(jstack)=ir
-          istack(jstack-1)=i
+       lndx=indx(ll)
+       arrl=arr(lndx)
+       do loop1=1,n
+          i=i+1
+          if ( arr(indx(i)) < arrl ) cycle
+          j=j-1
+          do while ( arr(indx(j)) > arrl )
+             j=j-1
+          end do
+          if ( j < i ) exit
+          call iswap( indx(i), indx(j) )
+       end do ! loop1
+       indx(ll)=indx(j)
+       indx(j )=lndx
+       jstck=jstck+2
+       if ( jstck > nstck ) call stop_program( "stop@indexx_0" )
+       if ( ir-i+1 >= j-ll ) then
+          istck(jstck)  =ir
+          istck(jstck-1)=i
           ir=j-1
        else
-          istack(jstack)=j-1
-          istack(jstack-1)=l
-          l=i
+          istck(jstck)  =j-1
+          istck(jstck-1)=ll
+          ll=i
        end if
     end if
-    goto 1
+    end do ! loop0
   END SUBROUTINE indexx_0
 
 

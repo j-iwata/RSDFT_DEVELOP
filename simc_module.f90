@@ -18,8 +18,8 @@ CONTAINS
     integer,intent(IN) :: mesh
     real(8),intent(IN) :: rad(mesh),vin(mesh),zv,rc
     real(8),intent(OUT) :: parloc(4)
-    call simc_0(rad,vin,rc,zv,parloc,mesh)
-    !call simc_1(rad,vin,rc,zv,parloc,mesh)
+    !call simc_0(rad,vin,rc,zv,parloc,mesh)
+    call simc_1(rad,vin,rc,zv,parloc,mesh)
   END SUBROUTINE simc
 
 
@@ -148,12 +148,13 @@ CONTAINS
     integer,intent(IN) :: ndim,nvec
     real(8),intent(INOUT) :: x(nvec)
     real(8),intent(INOUT) :: fvec(ndim),fjac(ndim,nvec)
-    integer,parameter :: max_loop=10000, max_loop0=5
+    integer,parameter :: max_loop=10000, max_loop0=20
     integer,allocatable :: ipiv(:)
     integer :: m,n,ierr,loop,loop0,num_conv
     real(8),parameter :: delta=1.d-8
     real(8),allocatable :: Hes(:,:),dJ(:),du(:),xtmp(:),ftmp(:),xmin(:)
-    real(8) :: c,J,Jtmp,err,Jmin
+    real(8) :: c,J,Jtmp,err,Jmin,errmin
+    character(80) :: error_message
 
     allocate( Hes(nvec,nvec) ) ; Hes=0.0d0
     allocate( dJ(nvec)       ) ; dJ=0.0d0
@@ -166,6 +167,7 @@ CONTAINS
     xmin = x
     Jmin = 1.d100
     num_conv = 0
+    errmin = 1.d100
 
     do loop0=1,max_loop0
 
@@ -195,6 +197,7 @@ CONTAINS
           Jtmp=sum( ftmp(:)**2 )
 
           err = sum( du(:)**2 )
+          errmin = min( err, errmin )
           if ( err < delta ) then
              num_conv = num_conv + 1
              exit
@@ -212,18 +215,22 @@ CONTAINS
 
        end do ! loop
 
-       if ( loop <= max_loop ) then
+!       if ( loop <= max_loop ) then
           if ( Jtmp < Jmin ) then
              Jmin = Jtmp
              xmin = xtmp
           end if
-       end if
+!       end if
 
        call random_number(x)
 
     end do ! loop0
 
-    if ( num_conv == 0 ) stop "error@levenberg_marquardt"
+    if ( num_conv == 0 ) then
+       write(error_message,*) "Jmin,errmin=",Jmin,errmin
+       call write_string( error_message )
+!       stop "error@levenberg_marquardt"
+    end if
 
     x = xmin
 
@@ -236,7 +243,7 @@ CONTAINS
     deallocate( Hes  )
   END SUBROUTINE levenberg_marquardt
 
-!#ifdef _TEST_
+#ifdef _TEST_
   SUBROUTINE simc_0(rad,vin,rc,zv,parloc,mesh)
 !     $Id: simc.F,v 1.2 1997/06/25 05:07:08 skimu Exp $
 !
@@ -358,6 +365,6 @@ CONTAINS
     end if
     return
   END SUBROUTINE uscfit
-!#endif
+#endif
 
 END MODULE simc_module

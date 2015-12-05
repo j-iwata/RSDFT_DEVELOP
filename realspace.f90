@@ -63,7 +63,7 @@ PROGRAM Real_Space_Solid
 
 ! --- atomic coordinates & R-space Lattice ---
 
-  call check_format_atom( myrank, unit_atomic_coordinates, aa_obj )
+  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
 
   call write_border( 0, " main( aa & bb )(start)" )
 
@@ -78,6 +78,18 @@ PROGRAM Real_Space_Solid
   call backup_aa_lattice( aa_obj )
 
   call write_border( 0, " main( aa & bb )(end)" )
+
+! --- Pseudopotential ---
+
+  call read_pseudopot( Nelement, myrank )
+
+! --- info atoms ---
+
+  call write_info_atom( Zps, file_ps )
+
+! --- init_force ---
+
+  call init_force
 
 ! --- Reciprocal Lattice ---
 
@@ -107,14 +119,6 @@ PROGRAM Real_Space_Solid
 ! --- Brillouin Zone sampling ---
 
   call generate_bz
-
-! --- Pseudopotential ---
-
-  call read_pseudopot( Nelement, myrank )
-
-! --- info atoms ---
-
-  call write_info_atom( Zps, file_ps )
 
 ! --- initial set up for parallel computation ---
 
@@ -328,10 +332,9 @@ PROGRAM Real_Space_Solid
   end do
 
 ! --- Init vdW ---
-
-  call read_vdw_grimme(myrank,1)
-  call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
-  call calc_E_vdw_grimme( Natom, aa_atom )
+!  call read_vdw_grimme(myrank,1)
+!  call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
+!  call calc_E_vdw_grimme( Natom, aa_atom )
 
 ! ---
 
@@ -387,12 +390,7 @@ PROGRAM Real_Space_Solid
 
   case( 3 ) ! --- CPMD ---
 
-#ifdef _DRSDFT_
      call bomd
-#else
-     write(*,*) "RS-CPMD is not available for COMPLEX16"
-     write(*,*) "Please re-compile the program"
-#endif
 
   end select
 

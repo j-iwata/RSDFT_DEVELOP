@@ -28,6 +28,8 @@ MODS1 = \
        expint_module.o\
        watch_module.o\
        fd_module.o\
+       aa_module.o\
+       symmetry_module.o\
        bz_module.o\
        ewald_variables.o\
        bcast_module.o\
@@ -50,7 +52,6 @@ MODS1 = \
        simc_module.o\
        mixing_module.o\
        var_ps_member_g.o\
-       aa_module.o\
        array_bound_module.o\
        esp_gather_module.o\
        ps_nloc2_variables.o\
@@ -71,7 +72,6 @@ MODS1 = \
        rgrid_module.o\
        force_sub_sub.o\
        force_sub.o\
-       symmetry_module.o\
        ps_q_init_module.o\
        xc_ldapz81_module.o\
        ps_nloc2_op_g.o\

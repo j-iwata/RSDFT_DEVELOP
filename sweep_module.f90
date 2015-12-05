@@ -20,7 +20,7 @@ MODULE sweep_module
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_sweep, init_sweep
+  PUBLIC :: calc_sweep, init_sweep, read_sweep
 
   integer :: iconv_check=1
   real(8) :: Echk, Echk0
@@ -28,30 +28,15 @@ MODULE sweep_module
   real(8) :: tol_esp=1.d-7
   real(8) :: max_esperr
   integer :: mb_ref
+  integer :: Nsweep
 
 CONTAINS
 
 
-!  SUBROUTINE read_sweep( rank, unit )
-!    implicit none
-!    integer,intent(IN) :: rank,unit
-!    integer :: i,ierr
-!    character(8) :: cbuf,ckey
-!    if ( rank == 0 ) then
-!       rewind unit
-!       do i=1,10000
-!          read(unit,*,END=999) cbuf
-!          call convert_capital(cbuf,ckey)
-!          if ( ckey(1:6) == "NSWEEP" ) then
-!             backspace(unit)
-!             read(unit,*) cbuf,Nsweep
-!          end if
-!       end do
-!999    continue
-!       write(*,*) "Nsweep =",Nsweep
-!    end if
-!    call mpi_bcast(Nsweep,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-!  END SUBROUTINE read_sweep
+  SUBROUTINE read_sweep
+    implicit none
+    call IOTools_readIntegerKeyword( "NSWEEP", Nsweep )
+  END SUBROUTINE read_sweep
 
 
   SUBROUTINE init_sweep( iconv_check_in, mb_ref_in, tol_in )
@@ -85,7 +70,7 @@ CONTAINS
     if ( present(Diter_in) ) then
        Diter = Diter_in
     else
-       call IOTools_readIntegerKeyword( "NSWEEP", Diter )
+       Diter = Nsweep
     end if
 
     if ( Diter <= 0 ) return

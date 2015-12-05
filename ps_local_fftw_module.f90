@@ -77,6 +77,8 @@ CONTAINS
     deallocate( zwork3 )
 
     call write_border( 0, " construct_ps_local_fftw(end)" )
+#else
+    Vion=0.0d0
 #endif
   END SUBROUTINE construct_ps_local_fftw
 

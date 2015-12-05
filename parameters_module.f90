@@ -3,8 +3,10 @@ MODULE parameters_module
   use global_variables
   use info_module
   use io_tools_module
-
   use ps_initrho_module, only: read_ps_initrho
+  use band_module, only: read_band
+  use band_unfold_module, only: read_band_unfold
+  use xc_hybrid_module, only: read_xc_hybrid
 
   implicit none
 
@@ -71,12 +73,17 @@ CONTAINS
     call read_symmetry( myrank, unit )
 
     call read_xc
+    call read_xc_hybrid
 
+    call read_sweep
     call read_scf
     select case( iswitch_scf )
     case( 2 )
        call read_scf_chefsi( myrank, unit )
     end select
+
+    call read_band
+    call read_band_unfold( myrank, unit )
 
     call write_border( 0," read_parameters(end)" )
 

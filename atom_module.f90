@@ -7,7 +7,7 @@ MODULE atom_module
 
   PRIVATE
   PUBLIC :: write_info_atom
-  PUBLIC :: check_format_atom
+  PUBLIC :: read_atom
   PUBLIC :: convert_to_aa_coordinates_atom
   PUBLIC :: convert_to_xyz_coordinates_atom
   PUBLIC :: write_coordinates_atom
@@ -28,7 +28,7 @@ MODULE atom_module
 CONTAINS
 
 
-  SUBROUTINE check_format_atom( rank, unit, aa_obj )
+  SUBROUTINE read_atom( rank, unit, aa_obj )
 
     implicit none
     integer,intent(IN) :: rank, unit
@@ -37,7 +37,7 @@ CONTAINS
     character(80) :: line
     integer :: idummy(2),ierr
 
-    call write_border( 80, " check_format_atom(start)" )
+    call write_border( 0, " read_atom(start)" )
 
     call read_lattice( aa_obj, unit )
 
@@ -91,9 +91,9 @@ CONTAINS
 
     iformat_org = iformat
  
-    call write_border( 80, " check_format_atom(end)" )
+    call write_border( 0, " read_atom(end)" )
 
-  END SUBROUTINE check_format_atom
+  END SUBROUTINE read_atom
 
 
   SUBROUTINE read_atom_rsdft( rank, unit )
