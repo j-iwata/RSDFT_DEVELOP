@@ -15,7 +15,7 @@ PROGRAM cubegen_simple
   real(8),allocatable :: rtmp(:)
   complex(8) ,parameter :: zi=(0.d0,1.d0)
   complex(8),allocatable :: unk(:,:,:,:,:),utmp(:)
-  character(4) :: name,cbuf
+  character(4) :: name,cbuf,ckey
   integer,allocatable :: ip1(:),ip2(:),ip3(:)
   integer,allocatable :: nip1(:),nip2(:),nip3(:)
   integer,allocatable :: LL2(:,:),LLL2(:,:,:)
@@ -26,7 +26,7 @@ PROGRAM cubegen_simple
   do i=1,3
      read(u1,*) cbuf,aa(1:3,i)
   end do
-  read(u1,*)
+  read(u1,*) ckey
   read(u1,*) MKI,MI,zatom(1:MKI)
 
   if ( MKI > 5 ) then
@@ -44,6 +44,8 @@ PROGRAM cubegen_simple
   do i=1,3
      aL(i)=sqrt( sum(aa(:,i)**2) )
   end do
+
+  if ( ckey == "XYZ" ) call convert_xyz2aa( MI, aa, asi )
 
   rsi=matmul( aa,asi )
 
@@ -76,5 +78,38 @@ PROGRAM cubegen_simple
 110 format(i5,4f12.6)
 
   deallocate( rsi,Kion,asi )
+
+
+CONTAINS
+
+
+  SUBROUTINE convert_xyz2aa( MI, aa, asi )
+    implicit none
+    integer,intent(IN) :: MI
+    real(8),intent(INOUT) :: aa(3,3),asi(3,MI)
+    real(8) :: LL(1:2,3),RG(3)
+
+    aa(:,:) = 0.0d0
+
+    do i=1,3
+       RG(i) = sum( asi(i,:) )
+    end do
+
+    write(*,'(1x,"RG=",3f10.5)') RG
+
+    do i=1,3
+       LL(1,i) = minval( asi(i,:) )
+       LL(2,i) = maxval( asi(i,:) )
+       aa(i,i) = LL(2,i) - LL(1,i) + 5.0d0
+    end do
+
+    do i=1,MI
+       asi(1,i) = ( asi(1,i) + 0.5d0*aa(1,1) )/aa(1,1)
+       asi(2,i) = ( asi(2,i) + 0.5d0*aa(2,2) )/aa(2,2)
+       asi(3,i) = ( asi(3,i) + 0.5d0*aa(3,3) )/aa(3,3)
+    end do
+
+  END SUBROUTINE convert_xyz2aa
+
 
 END PROGRAM cubegen_simple
