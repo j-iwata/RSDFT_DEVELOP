@@ -47,7 +47,6 @@ CONTAINS
 
        rewind unit
 1      read(unit,*,END=10) cbuf
-       write(10,*) cbuf
        call convert_capital(cbuf,ckey)
        if ( cbuf == "AA" ) then
           iformat=1

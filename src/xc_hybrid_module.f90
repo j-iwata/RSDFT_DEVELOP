@@ -93,7 +93,7 @@ CONTAINS
     real(8),allocatable :: qtmp(:,:)
 
     call write_border( 0, " init_xc_hybrid(start)" )
-write(*,*) XCtype
+
     if ( XCtype /= "HF"    .and. XCtype /= "HSE"    .and. &
          XCtype /= "HSE06" .and. XCtype /= "HSE_"   .and. &
          XCtype /= "PBE0"  .and. XCtype /= "LCwPBE" ) return

@@ -387,6 +387,7 @@ CONTAINS
        end if
 
        call write_data(disp_switch,flag_exit)
+       call write_info_scf( (myrank==0) )
 
        if ( flag_exit ) then
           call finalize_mixing
@@ -430,34 +431,22 @@ CONTAINS
   END SUBROUTINE calc_scf
 
 
-  SUBROUTINE write_info_scf( ib1, ib2, iter, disp_switch, flag )
+  SUBROUTINE write_info_scf( flag )
     implicit none
-    integer,intent(IN) :: ib1, ib2, iter, flag
-    logical,intent(IN) :: disp_switch
-    integer :: s,k,n,nb1,nb2,i,u(2)
+    logical,intent(IN) :: flag
+    integer :: s,k,n
+    integer,parameter :: u=99
     call write_border( 1, " write_info_scf(start)" )
-    u(:) = (/ 6, 99 /)
-    do i=1,1 !2
-       if ( myrank /= 0 ) cycle
-       if ( u(i) == 6 ) then
-          nb1 = ib1
-          nb2 = ib2
-       else
-          nb1 = 1
-          nb2 = Nband
-       end if
-       if ( u(i) == 99 .or. disp_switch ) then
-          write(u(i),*)
-          write(u(i),'(a4,a6,a20,2a13,1x)') &
-               "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
-          do k=1,Nbzsm
-          do n=nb1,nb2
-             write(u(i),'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
-                  ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
-          end do
-          end do
-!          write(u(i),*) "sum(occ)=",(sum(occ(:,:,s)),s=1,Nspin)
-       end if
+    if ( flag ) then
+       write(u,'(a4,a6,a20,2a13,1x)') &
+            "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
+       do k=1,Nbzsm
+       do n=1,Nband
+          write(u,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+               ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,Nspin)
+       end do
+       end do
+    end if
 !       if ( u(i) == 6 .and. flag == 0 ) then
 !          if ( NSPIN == 1 ) then
 !             write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X),A,E12.5)') &
@@ -497,7 +486,7 @@ CONTAINS
 !               "ECUT=",Ecut,"XC=",XCtype,"ITER=",iter, &
 !               "CTIME=",time_scf(3),"ETIME=",time_scf(4)
 !       end if
-    end do
+!    end do
     call write_border( 1, " write_info_scf(end)" )
   END SUBROUTINE write_info_scf
 

@@ -1,12 +1,8 @@
 MODULE kinetic_module
 
   use kinetic_variables
-  use kinetic_sol_0_module
-  use kinetic_sol_1_module
-  use kinetic_sol_simple_module
+  use kinetic_sol_module
   use kinetic_mol_module
- !use esm_kinetic_module
-  use kinetic_fft_module
   use fd_module
 
   implicit none
@@ -199,14 +195,9 @@ CONTAINS
 #endif
     select case(SYStype)
     case default
-!       call op_kinetic_sol_0(k,tpsi,htpsi,n1,n2,ib1,ib2)
-       call op_kinetic_sol_1(k,tpsi,htpsi,n1,n2,ib1,ib2)
-!       call op_kinetic_sol_simple(k,tpsi,htpsi,n1,n2,ib1,ib2)
-!       call op_kinetic_fft(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       call op_kinetic_sol(k,tpsi,htpsi,n1,n2,ib1,ib2)
     case(1)
        call op_kinetic_mol(n1,n2,ib1,ib2,tpsi,htpsi)
-!    case(3)
-!       call op_esm_kinetic(k,n1,n2,ib1,ib2,tpsi,htpsi)
     end select
   END SUBROUTINE op_kinetic
 

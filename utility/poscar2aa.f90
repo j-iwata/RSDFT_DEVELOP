@@ -78,13 +78,13 @@ PROGRAM poscar2aa
   write(u3,'("A3",3f20.15)') aa(1:3,3)/ax
   write(u3,'("AA")')
 
-  write(u2,*) ne, natm_tot
+  write(u2,*) ne, natm_tot, "   /"
 
   i=0
   do k=1,ne
      do j=1,natm(k)
         i=i+1
-        write(u2,'(1x,i4,3f20.15)') k, asi(1:3,i)
+        write(u2,'(1x,i4,3f20.15,i4," /")') k, asi(1:3,i), 1
      end do
   end do
 

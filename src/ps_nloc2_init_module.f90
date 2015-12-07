@@ -79,16 +79,10 @@ CONTAINS
     real(8) :: r,r1,sb0x,sb0y,sb1x,sb1y
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
 
-#ifdef _SHOWALL_INIT_
-    write(200+myrank,*) ">>>>> ps_nloc2_init"
-#endif
-
     if ( any( ippform == 4 ) ) return
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
-
-    if ( myrank == 0 ) write(200,*) 'qc(beta)= ',qc
 
     call allocateRps
 
@@ -148,10 +142,6 @@ CONTAINS
     end do
     MMr=max( maxval(Mr),maxval(NRps) )
 
-#ifdef _SHOWALL_PSINIT_
-    if ( myrank == 0 ) write(200,'(A12,I5)') 'rad1(ps)=',MMr
-#endif
-
     call allocateRad1(MMr)
 
     if ( MMr>maxval(Mr) ) then
@@ -185,33 +175,7 @@ CONTAINS
           vrad(1:NRc)=rad(1:NRc,ik)*viod(1:NRc,iorb,ik) &
                      *rab(1:NRc,ik)/wm(1:NRc,iorb,ik)
 
-#ifdef _SHOWALL_NONL_F_
-          write(630+myrank,'(a6,a2,2a5,3a20)') 'qc','L','NRc','NRps','rad','rad1','viod'
-          write(630+myrank,'(f6.3,I2,2I5,3g20.7)') qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),viod(1,iorb,ik)
-          write(630+myrank,*) '--------------------------------------- before filter'
-          write(630+myrank,*) "ik,iorb= ",ik,iorb
-          write(630+myrank,'(a5,5a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','wm(i,iorb,ik)','viod(i,iorb,ik)'
-          do i=1,50
-             write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
-          end do
-          do i=NRc-50,NRc
-             write(630+myrank,'(I5,5g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),wm(i,iorb,ik),viod(i,iorb,ik)
-          end do
-#endif
-
           call opFiltering( qc,L,NRc,NRps(iorb,ik),rad(1,ik),rad1(1,ik),vrad,viod(1,iorb,ik) )
-
-#ifdef _SHOWALL_NONL_F_
-          write(630+myrank,*) '--------------------------------------- after filter'
-          write(630+myrank,*) "ik,iorb= ",ik,iorb
-          write(630+myrank,'(a5,4a20)') 'i','rad(i,ik)','rad1(i,ik)','vrad(i)','viod(i,iorb,ik)'
-          do i=1,50
-             write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
-          end do
-          do i=NRc-50,NRc
-             write(630+myrank,'(I5,4g20.7)') i,rad(i,ik),rad1(i,ik),vrad(i),viod(i,iorb,ik)
-          end do
-#endif
 
        end do ! iorb
     end do ! ik
@@ -247,10 +211,6 @@ CONTAINS
     end do
 
     deallocate( wm )
-
-#ifdef _SHOWALL_INIT_
-    write(200+myrank,*) "<<<<< ps_nloc2_init"
-#endif
 
     return
   END SUBROUTINE ps_nloc2_init

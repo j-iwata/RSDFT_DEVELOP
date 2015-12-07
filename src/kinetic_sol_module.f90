@@ -1,4 +1,4 @@
-MODULE kinetic_sol_1_module
+MODULE kinetic_sol_module
 
 !$  use omp_lib
   use rgrid_module
@@ -11,13 +11,13 @@ MODULE kinetic_sol_1_module
   implicit none
 
   PRIVATE
-  PUBLIC :: op_kinetic_sol_1
-  PUBLIC :: construct_matrix_kinetic_sol_1
+  PUBLIC :: op_kinetic_sol
+  PUBLIC :: construct_matrix_kinetic_sol
 
 CONTAINS
 
 
-  SUBROUTINE op_kinetic_sol_1(k,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_kinetic_sol(k,tpsi,htpsi,n1,n2,ib1,ib2)
     implicit none
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
@@ -314,10 +314,10 @@ CONTAINS
     time_kine(1:2,6:11) = time_kine(1:2,6:11) + time_bcfd(1:2,1:6)
 !$OMP end master
 
-  END SUBROUTINE op_kinetic_sol_1
+  END SUBROUTINE op_kinetic_sol
 
 
-  SUBROUTINE construct_matrix_kinetic_sol_1( k, ML, Hmat )
+  SUBROUTINE construct_matrix_kinetic_sol( k, ML, Hmat )
     implicit none
     integer,intent(IN) :: k,ML
 #ifdef _DRSDFT_
@@ -551,7 +551,7 @@ CONTAINS
 
     end if
  
-  END SUBROUTINE construct_matrix_kinetic_sol_1
+  END SUBROUTINE construct_matrix_kinetic_sol
 
 
-END MODULE kinetic_sol_1_module
+END MODULE kinetic_sol_module

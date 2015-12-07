@@ -1,0 +1,11 @@
+These are dummy files.
+
+Get the following files from the FFTE web site  http://www.ffte.jp/ 
+
+fft235.f
+kernel.f
+pzfft3d.f
+pzfft3dv.f
+zfft3d.f
+param.h
+

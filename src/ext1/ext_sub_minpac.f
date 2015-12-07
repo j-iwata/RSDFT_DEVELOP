@@ -1,6 +1,6 @@
 C==================================================================
 C
-C     minpac.F .. Subroutines from MINPACK
+C     Subroutines from MINPACK
 C
 C==================================================================
       subroutine lmder1(fcn,m,n,x,fvec,fjac,ldfjac,tol,info,ipvt,wa,

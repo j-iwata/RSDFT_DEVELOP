@@ -1,6 +1,6 @@
 MODULE hamiltonian_matrix_module
 
-  use kinetic_sol_1_module
+  use kinetic_sol_module
   use construct_matrix_ps_nloc2_module
   use localpot_module
   use symmetry_module
@@ -50,7 +50,7 @@ CONTAINS
 
        Hmat(:,:) = zero
 
-       call construct_matrix_kinetic_sol_1( k, ML, Hmat )
+       call construct_matrix_kinetic_sol( k, ML, Hmat )
 !       call construct_matrix_localpot( s, ML, Hmat )
 !       call construct_matrix_ps_nloc2( k, ML, Hmat )
 
@@ -128,7 +128,7 @@ CONTAINS
 !          write(*,'(1x,4i5,2f20.15)') i,nint(real(w1(1:3,i))),real(w1(4,i)),r
 !       end do
 
-!       call construct_matrix_kinetic_sol_1( k, ML, Hmat )
+!       call construct_matrix_kinetic_sol( k, ML, Hmat )
        call construct_matrix_localpot( s, ML, Hmat )
        call construct_matrix_ps_nloc2( k, ML, Hmat )
 

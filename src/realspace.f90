@@ -4,7 +4,6 @@ PROGRAM Real_Space_Solid
   use parameters_module
   use func2gp_module
   use band_module
-  use band_sseig_module
   use hamiltonian_matrix_module
   use rtddft_mol_module
   use omp_variables, only: init_omp
@@ -13,7 +12,6 @@ PROGRAM Real_Space_Solid
   use ps_nloc_initiate_module
   use ps_getDij_module
 
-  use WFtest
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
   use lattice_module
 
@@ -91,14 +89,16 @@ PROGRAM Real_Space_Solid
 
   call init_force
 
+! --- R-space Grid ---
+
+  call Init_Rgrid( SYStype, Md, unit=2 )
+
 ! --- Reciprocal Lattice ---
 
   call construct_bb(aa)
   call get_reciprocal_lattice( aa_obj, bb_obj )
 
-! --- R-space & G-space Grid ---
-
-  call Init_Rgrid( SYStype, Md, unit=2 )
+! --- G-space Grid ---
 
   call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
@@ -142,9 +142,13 @@ PROGRAM Real_Space_Solid
 
 ! --- Initialization for FFT ---
 
-  call init_ffte_sub(Igrid(1,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+  if ( SYStype == 0 ) then
 
-  call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
+     call init_ffte_sub(Igrid(1,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+
+     call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
+
+  end if
 
 !- FD boundary set -
 
@@ -220,15 +224,6 @@ PROGRAM Real_Space_Solid
 
   if ( iswitch_test == 1 ) then
      call test_hpsi2( 10 )
-     goto 900
-  end if
-
-!-------------------- BAND with SSEIG
-
-  if ( iswitch_band == 2 ) then
-     call init_localpot
-     call read_localpot("vrho.dat1",myrank)
-     call band_sseig(disp_switch)
      goto 900
   end if
 
@@ -331,11 +326,6 @@ PROGRAM Real_Space_Solid
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
 
-! --- Init vdW ---
-!  call read_vdw_grimme(myrank,1)
-!  call init_vdw_grimme(XCtype,aa,Natom,nprocs,myrank,ki_atom,zn_atom)
-!  call calc_E_vdw_grimme( Natom, aa_atom )
-
 ! ---
 
   call getDij
@@ -388,10 +378,6 @@ PROGRAM Real_Space_Solid
 
      call atomopt(iswitch_opt,disp_switch)
 
-  case( 3 ) ! --- CPMD ---
-
-     call bomd
-
   end select
 
 !
@@ -425,7 +411,7 @@ PROGRAM Real_Space_Solid
 900 continue
 
   call global_watch(disp_switch)
-  call finalize_fftw
+  if ( SYStype == 0 ) call finalize_fftw
   call close_info
   call end_mpi_parallel
 

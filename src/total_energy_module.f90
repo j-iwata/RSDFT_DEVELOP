@@ -15,7 +15,6 @@ MODULE total_energy_module
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
   use VarSysParameter, only: pp_kind
-  use vdw_grimme_module, only: get_E_vdw_grimme
 
   implicit none
 
@@ -264,8 +263,6 @@ CONTAINS
     Eloc = s1(1)
     Eion = s1(2)
 
-    call get_E_vdw_grimme( Evdw )
-
     Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
          - 2*E_exchange_exx + Evdw + cnst
 
@@ -277,6 +274,7 @@ CONTAINS
     diff_etot = Etot - Etot_0
 !    diff_etot = Etot - Ehwf
 
+    call write_info_total_energy( Etot, (myrank==0), .true. )
 !    if ( present(flag_rewind) ) then
 !       call write_info_total_energy( disp_switch, flag_rewind )
 !    else
@@ -334,34 +332,51 @@ CONTAINS
   END SUBROUTINE calc_with_rhoIN_total_energy
 
 
-  SUBROUTINE write_info_total_energy( disp_switch, flag_rewind )
+  SUBROUTINE write_info_total_energy( Etot, flag_write, flag_rewind )
     implicit none
-    logical,intent(IN) :: disp_switch, flag_rewind
-    integer :: i,u(2)
-    u(:) = (/ 6, 99 /)
-    do i=1,2
-       if ( u(i) == 6 .and. .not.disp_switch ) cycle
-       if ( u(i) /= 6 .and. myrank /= 0 ) cycle
-       if ( u(i) /= 6 .and. myrank == 0 .and. flag_rewind ) rewind u(i)
-       if ( Evdw /= 0.0d0 ) write(u(i),*) '(VDW) ',Evdw
-       if ( const_ps_local /= 0.0d0 ) write(u(i),*) '(cnst)',const_ps_local*sum(occ)
-       write(u(i),*) '(EII) ',Eewald
-       write(u(i),*) '(KIN) ',Ekin, Ekin-Ekin_0
-       write(u(i),*) '(LOC) ',Eloc, Eloc-Eloc_0
-       write(u(i),*) '(NLC) ',Enlc, Enlc-Enlc_0
-       write(u(i),*) '(ION) ',Eion, Eion-Eion_0
-       write(u(i),*) '(HTR) ',E_hartree, E_hartree-Ehat_0
-       write(u(i),*) '(EXC) ',Exc,  Exc-Exc_0
-       write(u(i),*) '(EXG) ',E_exchange, E_exchange-Ex_0
-       write(u(i),*) '(COR) ',E_correlation, E_correlation-Ec_0
-       write(u(i),*) '(EIG) ',Eeig, Eeig-Eeig_0
-!       write(u(i),*) '(HWF) ',Ehwf, Ehwf-Etot
-!       write(u(i),*) '(TOT) ',Etot, Etot_0-Etot
-       write(u(i),*) '(efermi)  ',efermi, efermi-efermi_0
-       !write(u(i),*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
-       !write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0
-       call flush(u(i))
-    end do
+    real(8),intent(IN) :: Etot
+    logical,intent(IN) :: flag_write, flag_rewind
+    integer,parameter :: u=99
+    if ( flag_write ) then
+       if ( flag_rewind ) rewind u
+       write(u,*) "Total Energy ",Etot
+       write(u,*) "Harris Energy",Ehwf
+       write(u,*) "Ion-Ion                    ",Eewald
+       write(u,*) "Local Potential            ",Eloc
+       write(u,*) "Ion Local Potential        ",Eion
+       if ( Enlc /= 0.0d0 ) write(u,*) "Ion Nonlocal Potential     ",Enlc
+       if ( Ekin /= 0.0d0 ) write(u,*) "Kinetic Energy             ",Ekin
+       write(u,*) "Hartree Energy             ",E_hartree
+       write(u,*) "Exchange-Correlation Energy",Exc
+       write(u,*) "Exchange Energy            ",E_exchange
+       write(u,*) "Correlation Energy         ",E_correlation
+       write(u,*) "Sum of eigenvalues         ",Eeig
+       write(u,*) "Fermi energy               ",efermi
+    end if
+!    u(:) = (/ 6, 99 /)
+!    do i=1,2
+!       if ( u(i) == 6 .and. .not.disp_switch ) cycle
+!       if ( u(i) /= 6 .and. myrank /= 0 ) cycle
+!       if ( u(i) /= 6 .and. myrank == 0 .and. flag_rewind ) rewind u(i)
+!       if ( Evdw /= 0.0d0 ) write(u(i),*) '(VDW) ',Evdw
+!       if ( const_ps_local /= 0.0d0 ) write(u(i),*) '(cnst)',const_ps_local*sum(occ)
+!       write(u(i),*) '(EII) ',Eewald
+!       write(u(i),*) '(KIN) ',Ekin, Ekin-Ekin_0
+!       write(u(i),*) '(LOC) ',Eloc, Eloc-Eloc_0
+!       write(u(i),*) '(NLC) ',Enlc, Enlc-Enlc_0
+!       write(u(i),*) '(ION) ',Eion, Eion-Eion_0
+!       write(u(i),*) '(HTR) ',E_hartree, E_hartree-Ehat_0
+!       write(u(i),*) '(EXC) ',Exc,  Exc-Exc_0
+!       write(u(i),*) '(EXG) ',E_exchange, E_exchange-Ex_0
+!       write(u(i),*) '(COR) ',E_correlation, E_correlation-Ec_0
+!       write(u(i),*) '(EIG) ',Eeig, Eeig-Eeig_0
+!!       write(u(i),*) '(HWF) ',Ehwf, Ehwf-Etot
+!!       write(u(i),*) '(TOT) ',Etot, Etot_0-Etot
+!       write(u(i),*) '(efermi)  ',efermi, efermi-efermi_0
+!       !write(u(i),*) '(entropy) ',Eentropy,Eentropy-Eentropy_0
+!       !write(u(i),*) '(FreeEne) ',Fene,Fene-Fene_0
+!       call flush(u(i))
+!    end do
   END SUBROUTINE write_info_total_energy
 
 

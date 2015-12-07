@@ -16,8 +16,6 @@ MODULE band_module
   use esp_gather_module
   use electron_module
   use scalapack_module
-  use subspace_mate_sl_0_module, only: reset_subspace_mate_sl_0
-  use subspace_rotv_sl_0_module, only: reset_subspace_rotv_sl_0
   use band_variables, only: nfki,nbk,ak,nskip_band &
        ,esp_conv_tol, mb_band, mb2_band, maxiter_band, read_band &
        ,unit_band_eigv,unit_band_dedk,unit_band_ovlp,unit_band_ufld
@@ -561,8 +559,6 @@ CONTAINS
     MB_1 = id_band(myrank_b) + ir_band(myrank_b)
 
     call init_subspace_diag( Nband )
-    call reset_subspace_mate_sl_0
-    call reset_subspace_rotv_sl_0
 
   END SUBROUTINE modify_mb
 

@@ -1,6 +1,6 @@
 include ../make.inc
 
-OBJ = p4sn.o dotp.o convert_capital.o write_info.o stop_program.o
+OBJ = dotp.o convert_capital.o write_info.o stop_program.o
 
 all : $(OBJ)
 

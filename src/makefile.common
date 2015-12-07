@@ -5,12 +5,9 @@ MODS1 = \
        bberf_module.o\
        ylm_module.o\
        var_sys_parameter.o\
-       timer_module.o\
        bb_module.o\
-       test_assert.o\
        bc_variables.o\
        ggrid_module.o\
-       vdw_grimme_module.o\
        maskf_module.o\
        rsdft_mpi_module.o\
        omp_variables.o\
@@ -24,7 +21,6 @@ MODS1 = \
        info_module.o\
        subspace_diag_variables.o\
        filtering.o\
-       modified_bessel_module.o\
        expint_module.o\
        watch_module.o\
        fd_module.o\
@@ -86,7 +82,6 @@ MODS1 = \
        pseudopot_module.o\
        func2gp_module.o\
        bcset_1_module.o\
-       kinetic_fft_module.o\
        bcset_0_module.o\
        ps_nloc2_init_module.o\
        eion_mol_module.o\
@@ -105,9 +100,8 @@ MODS1 = \
        ewald_module.o\
        bc_module.o\
        subspace_rotv_sl_module.o\
-       subspace_rotv_sl_0_module.o\
        cgpc_gausseidel_module.o\
-       kinetic_sol_1_module.o\
+       kinetic_sol_module.o\
        ps_prepNzqr_g_module.o\
        kinetic_mol_module.o\
        io_read_module.o\
@@ -119,12 +113,10 @@ MODS1 = \
        ps_pcc_mol_module.o\
        ps_nloc_mr_module.o\
        subspace_solv_sl_module.o\
-       kinetic_sol_0_module.o\
        io_write_module.o\
        ps_nloc3_module.o\
        inner_product.o\
        xc_hybrid_io_module.o\
-       kinetic_sol_simple_module.o\
        cgpc_hprsdft_module.o\
        io2_module.o\
        force_nloc2_mol_module.o\
@@ -132,7 +124,6 @@ MODS1 = \
        ps_nloc2_mol_module.o\
        eion_module.o\
        hartree_mol_module.o\
-       wf_test.o\
        xc_ggapbe96_module.o\
        fock_cg_module.o\
        gram_schmidt_g_module.o\
@@ -140,7 +131,6 @@ MODS1 = \
        density_module.o\
        xc_vdw_module.o\
        xc_pbe_xsr_module.o\
-       xc_ggaak13_module.o\
        nonlocal_module.o\
        kinetic_module.o\
        xc_hybrid_module.o\
@@ -168,7 +158,6 @@ MODS1 = \
        hartree_module.o\
        xc_hf_module.o\
        ps_qrij_prep.o\
-       subspace_mate_sl_0_module.o\
        subspace_diag_la_module.o\
        test_hpsi2_module.o\
        test_rtsol_module.o\
@@ -177,7 +166,6 @@ MODS1 = \
        ps_local_module.o\
        xc_module.o\
        esp_calc_module.o\
-       iter_lin_solvers.o\
        cggs_module.o\
        cg_lobpcg_module.o\
        subspace_mate_sl_module.o\
@@ -191,19 +179,15 @@ MODS1 = \
        io_module.o\
        ps_nloc_initiate_module.o\
        subspace_diag_sl_module.o\
-       sseig.o\
        ps_local_mol_gth_module.o\
        ps_pcc_force_module.o\
        cg_module.o\
        subspace_diag_module.o\
        rtddft_mol_module.o\
        ps_local_mol_module.o\
-       apply_sseig_module.o\
        force_local_sol_module.o\
        force_sol_module.o\
-       prepare_sseig_module.o\
        force_local_mol_module.o\
-       band_sseig_module.o\
        sweep_module.o\
        scf_chefsi_module.o\
        test_force_module.o\

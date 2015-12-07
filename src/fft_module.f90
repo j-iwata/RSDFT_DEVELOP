@@ -15,9 +15,9 @@ MODULE fft_module
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3
   integer,allocatable :: LLL(:,:,:)
-  integer :: ifacx(30),ifacy(30),ifacz(30)
-  integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
-  complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
+!  integer :: ifacx(30),ifacy(30),ifacz(30)
+!  integer,allocatable :: lx1(:),lx2(:),ly1(:),ly2(:),lz1(:),lz2(:)
+!  complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
   complex(8),parameter :: zero=(0.0d0,0.0d0)
   logical :: keep_LLL=.false.
 
@@ -37,17 +37,17 @@ CONTAINS
        keep_LLL = keep_flag
        return
     end if
-    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
-    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
-    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
-               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
+!    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
+!    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
+!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
   END SUBROUTINE init_fft
 
 
   SUBROUTINE finalize_fft
     implicit none
-    if ( allocated(wsavez) ) deallocate( wsavez,wsavey,wsavex )
-    if ( allocated(lz2)    ) deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
+!    if ( allocated(wsavez) ) deallocate( wsavez,wsavey,wsavex )
+!    if ( allocated(lz2)    ) deallocate( lz2,lz1,ly2,ly1,lx2,lx1 )
     if ( .not.keep_LLL ) then
        if ( allocated(LLL) ) deallocate( LLL )
     end if
@@ -142,8 +142,8 @@ CONTAINS
        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
     end if
     call rsdft_fft3d( z3,  1 ) ; return
-    call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!    call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
   END SUBROUTINE forward_fft
 
 
@@ -155,8 +155,8 @@ CONTAINS
        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
     end if
     call rsdft_fft3d( z3, -1 ) ; return
-    call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+!    call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
   END SUBROUTINE backward_fft
 
 

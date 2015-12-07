@@ -36,9 +36,6 @@ CONTAINS
     integer,allocatable :: itmp(:,:),itmp1(:),itmp2(:),itmp3(:,:)
     real(8),allocatable :: work(:)
 
-#ifdef _SHOWALL_INIT_
-write(200+myrank,*) ">>>> prepThreeWayComm"
-#endif
     np1=node_partition(1)
     np2=node_partition(2)
     np3=node_partition(3)
@@ -226,9 +223,6 @@ write(200+myrank,*) ">>>> prepThreeWayComm"
     end do
     !===== adjust NRxyz =====
 
-#ifdef _SHOWALL_INIT_
-write(400+myrank,*) "<<<< prepThreeWayComm"
-#endif
     return
   END SUBROUTINE prepThreeWayComm
 
@@ -255,10 +249,6 @@ write(400+myrank,*) "<<<< prepThreeWayComm"
     integer :: irank,jrank
     integer :: nb,nb_b
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
-
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) ">>>> threeWayComm"
-#endif
 
     nb=ib2-ib1+1
     nb_b=nb*4
@@ -293,7 +283,6 @@ write(400+myrank,*) ">>>> threeWayComm"
           nreq=nreq+1
           call MPI_IRECV( RbufNL(1,jrank),TarNSend(jrank)*nb_b,TYPE_MAIN,jrank,1,COMM_GRID,ireq(nreq),ierr )
         end if
-!write(200+myrank,*) i,irank,jrank
         call MPI_WAITALL( nreq,ireq,istatus,ierr )
         if ( jrank>=0 ) then
           i2=0
@@ -341,10 +330,6 @@ write(400+myrank,*) "<<<< threeWayComm"
     integer :: irank,jrank
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
 
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) ">>>> threeWayComm"
-#endif
-
     n=maxval(TarNSend)*3
     allocate(SbufNL(n,0:nprocs_g-1)) ; SbufNL=zero
     allocate(RbufNL(n,0:nprocs_g-1)) ; RbufNL=zero
@@ -391,9 +376,6 @@ write(400+myrank,*) ">>>> threeWayComm"
     end do
 !!$OMP end single
 
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) "<<<< threeWayComm"
-#endif
     return
   END SUBROUTINE do3StepComm_dQ
 
@@ -420,10 +402,6 @@ write(400+myrank,*) "<<<< threeWayComm"
     integer :: irank,jrank
     integer :: nb
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
-
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) ">>>> 3StepComm"
-#endif
 
     nb=ib2-ib1+1
 
@@ -469,9 +447,6 @@ write(400+myrank,*) ">>>> 3StepComm"
     end do
 !!$OMP end single
 
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) "<<<< 3StepComm"
-#endif
     return
   END SUBROUTINE do3StepComm
 !---------------------------------------------------------------------------------------
@@ -495,10 +470,6 @@ write(400+myrank,*) "<<<< 3StepComm"
     integer :: nb
     integer :: n
     integer :: nreq,istatus(MPI_STATUS_SIZE,512),ireq(512),ierr
-
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) ">>>> 3StepComm"
-#endif
 
     nb=ib2-ib1+1
     n=nb*maxval(TarNSend)
@@ -550,9 +521,6 @@ write(400+myrank,*) ">>>> 3StepComm"
     deallocate(SbufNL)
     deallocate(RbufNL)
 
-#ifdef _SHOWALL_COMM_
-write(400+myrank,*) "<<<< 3StepComm"
-#endif
     return
   END SUBROUTINE do3StepComm_real
 
