@@ -14,7 +14,7 @@ MODULE total_energy_module
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
-  use VarSysParameter, only: pp_kind
+  use var_sys_parameter, only: pp_kind
 
   implicit none
 

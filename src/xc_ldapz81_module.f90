@@ -1,7 +1,7 @@
 MODULE xc_ldapz81_module
 
-  use BasicTypeFactory
-  use PhysicalTypeMethods
+  use basic_type_factory
+  use physical_type_methods
   use xc_variables, only: xcene, xcpot
 
   implicit none

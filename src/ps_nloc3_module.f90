@@ -12,7 +12,7 @@ MODULE ps_nloc3_module
   use wf_module
   use electron_module
   use ps_nloc2_variables
-  use VarPSMember, only: ps_type
+  use var_ps_member, only: ps_type
   use ylm_module
   use hsort_module
   use fft_module

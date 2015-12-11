@@ -1,4 +1,4 @@
-MODULE InnerProduct
+MODULE inner_product_module
 
   use watch_module, only: watch
   ! Mlma,nzlma,MMJ(lma),JJP(MJJ(lma),lma),TYPE_MAIN,lma_nsend(irank),sendmap(i1,irank),
@@ -9,11 +9,11 @@ MODULE InnerProduct
   use rgrid_module, only: dV
   use parallel_module, only: COMM_GRID,myrank
   ! N_nlop,nlop_pair(1:2,:),qij(m)
-  use VarPSMemberG, only: N_nlop,nlop_pair,qij,uVunk,uVunk0
+  use var_ps_member_g, only: N_nlop,nlop_pair,qij,uVunk,uVunk0
   ! unk(nn1,n,k,s)
   use wf_module, only: unk,Sunk
   ! Sunk(nn1,n)
-  use RealComplex, only: RCProduct,zero
+  use real_complex_module, only: RCProduct,zero
   use para_rgrid_comm, only: do3StepComm
 
   include 'mpif.h'
@@ -277,4 +277,4 @@ CONTAINS
     return
   END SUBROUTINE get_Sunk_Mat
 
-END MODULE InnerProduct
+END MODULE inner_product_module

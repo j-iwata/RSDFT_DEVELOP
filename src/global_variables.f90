@@ -13,7 +13,6 @@ MODULE global_variables
   use ps_local_module
   use ps_pcc_module
   use ps_initrho_module
-  use ps_nloc1_module
   use ps_nloc2_init_module
   use ps_nloc2_module
   use bc_module

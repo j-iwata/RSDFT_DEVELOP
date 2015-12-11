@@ -195,9 +195,9 @@ CONTAINS
 !       case(10:19)
 !          call pulay_mixing &
 !               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
-       case(10:29)
+       case(10:19)
           call pulay_r2_mixing( ML0, MSP, h )
-       case(20:39)
+       case(20:29)
           call broyden_mixing &
                ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
 !       case(40:49)

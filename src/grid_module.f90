@@ -2,7 +2,7 @@ MODULE grid_module
 
   use rgrid_variables
   use parallel_module
-  use BasicTypeFactory
+  use basic_type_factory
 
   implicit none
 

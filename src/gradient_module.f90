@@ -4,7 +4,7 @@ MODULE gradient_module
   use bc_module, only: www, bcset
   use fd_module, only: fd,construct_nabla_fd,destruct_nabla_fd
   use lattice_module, only: lattice,construct_aa_lattice,get_reciprocal_lattice
-  use BasicTypeFactory
+  use basic_type_factory
 
   implicit none
 

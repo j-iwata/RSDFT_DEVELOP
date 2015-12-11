@@ -1,4 +1,4 @@
-MODULE RealComplex
+MODULE real_complex_module
 
     implicit none
     include 'mpif.h'
@@ -38,4 +38,4 @@ CONTAINS
 #endif
   END SUBROUTINE RCProduct
 
-END MODULE RealComplex
+END MODULE real_complex_module

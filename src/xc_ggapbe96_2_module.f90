@@ -6,7 +6,7 @@ MODULE xc_ggapbe96_2_module
   use fd_module, only: fd, construct_nabla_fd
   use lattice_module
   use parallel_module
-  use BasicTypeFactory
+  use basic_type_factory
 
   implicit none
 

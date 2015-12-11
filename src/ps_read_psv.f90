@@ -1,7 +1,7 @@
-MODULE PSreadPSV
+MODULE ps_read_PSV
 
-  use VarPSMember, only: ps1d, file_ps, ippform, ps_allocate_ps1d
-  use PSreadPSVG
+  use var_ps_member, only: ps1d, file_ps, ippform, ps_allocate_ps1d
+  use ps_read_PSV_g
 
   implicit none
 
@@ -365,4 +365,4 @@ CONTAINS
 
   END SUBROUTINE read_PSV
 
-END MODULE PSreadPSV
+END MODULE ps_read_PSV

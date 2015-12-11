@@ -1,10 +1,10 @@
 MODULE ps_prepNzqr_g_module
 
   use parallel_module, only: myrank
-  use VarPSMemberG, only: nlop_pair, nzqr_pair,qij_f, ddi, k1map, atommap &
+  use var_ps_member_g, only: nlop_pair, nzqr_pair,qij_f, ddi, k1map, atommap &
                          ,N_nzqr, N_nlop, Dij00, Dij, qqr, qij &
                          ,N_k1, k1max, k1_to_l, k1_to_m, k1_to_iorb
-  use VarPSMember, only: no
+  use var_ps_member, only: no
   use atom_module, only: Natom,ki_atom
   use ps_nloc2_variables, only: nzlma, amap, lmap, mmap, iorbmap
   use electron_module, only: nspin

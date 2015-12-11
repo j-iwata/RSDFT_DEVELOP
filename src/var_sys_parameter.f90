@@ -1,4 +1,4 @@
-MODULE VarSysParameter
+MODULE var_sys_parameter
 
   implicit none
 
@@ -29,4 +29,4 @@ CONTAINS
     return
   END SUBROUTINE setDispSwitch
 
-END MODULE VarSysParameter
+END MODULE var_sys_parameter

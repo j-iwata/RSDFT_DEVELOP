@@ -1,7 +1,6 @@
 MODULE nonlocal_module
 
   use pseudopot_module, only: pselect, ps_type
-  use ps_nloc1_module
   use ps_nloc2_op_module, only: op_ps_nloc2, op_ps_nloc2_hp
   use ps_nloc3_module
   use ps_nloc_mr_module

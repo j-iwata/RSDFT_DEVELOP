@@ -2,14 +2,14 @@ MODULE ps_getDij_module
 
   use parallel_module, only: myrank,nprocs_g ! no need of nprocs_g
   use array_bound_module, only: MSP_0,MSP_1
-  use VarPSMemberG, only: Dij00,Dij,N_nzqr,QRij,nzqr_pair
-  use VarParaPSnonLocG, only: MJJ_Q,JJP_Q
+  use var_ps_member_g, only: Dij00,Dij,N_nzqr,QRij,nzqr_pair
+  use var_para_ps_nloc_g, only: MJJ_Q,JJP_Q
   use parallel_module, only: comm_grid
   use localpot_module, only: Vloc
   use rgrid_module, only: dV
   use pseudopot_module, only: pselect
   use ps_nloc2_variables, only: amap,iorbmap,mmap
-  use VarPSMember, only: norb, lo
+  use var_ps_member, only: norb, lo
   use atom_module, only: Natom
 
   implicit none

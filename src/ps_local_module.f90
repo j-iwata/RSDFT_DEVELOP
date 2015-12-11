@@ -16,7 +16,7 @@ MODULE ps_local_module
   use bberf_module
   use ps_local_variables
   use fft_module
-  use VarPSMember
+  use var_ps_member
   use ps_local_fftw_module, only: construct_ps_local_fftw
 
   implicit none

@@ -193,11 +193,11 @@ CONTAINS
     LWORK=max(LWORK,WORK1)
     LIWORK=max(LIWORK,WORK2)
 
-    if ( disp_switch_parallel ) then
-       do n=1,8
-          write(*,'(1x,"time(sd_la",i1,")",2f12.5)') n,ct(n+1)-ct(n),et(n+1)-et(n)
-       end do
-    end if
+!    if ( disp_switch_parallel ) then
+!       do n=1,8
+!          write(*,'(1x,"time(sd_la",i1,")",2f12.5)') n,ct(n+1)-ct(n),et(n+1)-et(n)
+!       end do
+!    end if
 
     call write_border( 1, " subspace_diag_la(end)" )
 

@@ -9,9 +9,9 @@ MODULE conjugate_gradient_g_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use watch_module
-  use InnerProduct, only: get_Sf,get_gSf
-  use RealComplex, only: TYPE_MAIN,zero
-  use VarSysParameter, only: pp_kind
+  use inner_product_module, only: get_Sf,get_gSf
+  use real_complex_module, only: TYPE_MAIN,zero
+  use var_sys_parameter, only: pp_kind
 
   implicit none
 

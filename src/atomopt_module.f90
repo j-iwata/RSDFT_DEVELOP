@@ -22,7 +22,7 @@ MODULE atomopt_module
   use ps_pcc_mol_module
   use eion_mol_module
 
-  use PSQRijPrep
+  use ps_qrij_prep_module
   use ps_prepNzqr_g_module, only: prepNzqr
 
 

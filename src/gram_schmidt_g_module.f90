@@ -5,9 +5,9 @@ MODULE gram_schmidt_g_module
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module, only: comm_grid,comm_band,ir_band,id_band &
                             ,id_class,myrank,np_band,myrank_b
-  use RealComplex, only: zero,one,TYPE_MAIN,TRANSA,TRANSB
-  use InnerProduct
-  use VarSysParameter, only: pp_kind
+  use real_complex_module, only: zero,one,TYPE_MAIN,TRANSA,TRANSB
+  use inner_product_module
+  use var_sys_parameter, only: pp_kind
 
   implicit none
 

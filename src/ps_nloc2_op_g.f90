@@ -1,8 +1,8 @@
 MODULE PSnonLocOpG2
 
   use parallel_module, only: myrank
-  use VarPSMember
-  use VarPSMemberG
+  use var_ps_member
+  use var_ps_member_g
   use ps_nloc2_variables, only: Mlma,nzlma,MJJ,JJP,nrlma_xyz &
        ,num_2_rank,sendmap,recvmap,lma_nsend,sbufnl,rbufnl,zero,uVk,iuV
   use rgrid_module, only: dV

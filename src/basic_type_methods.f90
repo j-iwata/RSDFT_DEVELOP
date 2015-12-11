@@ -1,6 +1,6 @@
-MODULE BasicTypeMethods
+MODULE basic_type_methods
 
-  USE BasicTypeFactory
+  USE basic_type_factory
 
   implicit none
 
@@ -70,4 +70,4 @@ CONTAINS
     gbks%val = z0
   END SUBROUTINE allocatecGBKS
 
-END MODULE BasicTypeMethods
+END MODULE basic_type_methods

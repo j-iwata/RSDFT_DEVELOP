@@ -8,7 +8,7 @@ MODULE xc_vdw_module
   use parallel_module, only: comm_grid, myrank, nprocs, ir_grid, id_grid
   use fd_module, only: fd, construct_nabla_fd, destruct_nabla_fd
   use lattice_module, only: lattice,construct_aa_lattice,get_reciprocal_lattice
-  use BasicTypeFactory
+  use basic_type_factory
   use fft_module
 
   implicit none

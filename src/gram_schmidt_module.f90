@@ -4,7 +4,7 @@ MODULE gram_schmidt_module
   use gram_schmidt_t_module
  !use gram_schmidt_u_module
   use gram_schmidt_g_module
-  use VarSysParameter
+  use var_sys_parameter
   use io_tools_module
 
   implicit none

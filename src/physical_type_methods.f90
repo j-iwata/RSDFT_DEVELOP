@@ -1,4 +1,4 @@
-MODULE PhysicalTypeMethods
+MODULE physical_type_methods
 
   use parallel_module
   use rgrid_variables, only: dV
@@ -20,4 +20,4 @@ CONTAINS
   END SUBROUTINE dSpatialIntegral
 
 
-END MODULE PhysicalTypeMethods
+END MODULE physical_type_methods

@@ -1,8 +1,8 @@
 MODULE pseudopot_module
 
-  use VarPSMember
-  use PSreadPSV
-  use VarPSMemberG, only: allocatePSG, sendPSG, npq, ddi, qqr, nl3v, l3v, qrL
+  use var_ps_member
+  use ps_read_PSV
+  use var_ps_member_g, only: allocatePSG, sendPSG, npq, ddi, qqr, nl3v, l3v, qrL
   use ps_read_TM_module
   use ps_read_YB_module
   use ps_read_UPF_module
@@ -58,16 +58,18 @@ CONTAINS
     Nelement_PP = Nelement
     Nelement_   = Nelement
 
-    call read_param_pseudopot
-
-    if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
-       stop "invalid pselect(stop@read_param_pseudopot)"
-    end if
-
     allocate( ippform(Nelement) ) ; ippform=0
     allocate( file_ps(Nelement) ) ; file_ps=""
 
     call read_ppname_pseudopot
+
+    call read_param_pseudopot
+
+    if ( any(ippform>100) ) pselect=102
+
+    if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
+       stop "invalid pselect(stop@read_param_pseudopot)"
+    end if
 
     allocate( ps(Nelement) )
 

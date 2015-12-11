@@ -36,7 +36,6 @@ CONTAINS
 
     call read_ps_initrho
 
-    call read_ps_nloc1(myrank,unit)
     call read_ps_nloc2_init(myrank,unit)
 
     call read_parallel(myrank,unit)

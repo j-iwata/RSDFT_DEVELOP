@@ -1,7 +1,6 @@
-MODULE PSReadPSVG
+MODULE ps_read_PSV_g
 
-  use VarPSMember, only: ps1d, psg_allocate_ps1d
-!  use VarPSMemberG, only: npq,nl3v,l3v,ddi,qqr,qrL,allocatePSG
+  use var_ps_member, only: ps1d, psg_allocate_ps1d
 
   implicit none
 
@@ -137,4 +136,4 @@ CONTAINS
 
   END SUBROUTINE readPSVG
 
-END MODULE PSReadPSVG
+END MODULE ps_read_PSV_g

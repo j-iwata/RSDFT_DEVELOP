@@ -32,7 +32,7 @@ MODS1 = \
        hartree_variables.o\
        fermi_mp_module.o\
        band_variables.o\
-       real_complex.o\
+       real_complex_module.o\
        init_occ_electron_module.o\
        basic_type_factory.o\
        grid_module.o\
@@ -66,8 +66,8 @@ MODS1 = \
        physical_type_methods.o\
        para_rgrid_comm.o\
        rgrid_module.o\
-       force_sub_sub.o\
-       force_sub.o\
+       force_sub_sub_module.o\
+       force_sub_module.o\
        ps_q_init_module.o\
        xc_ldapz81_module.o\
        ps_nloc2_op_g.o\
@@ -96,7 +96,6 @@ MODS1 = \
        electron_module.o\
        force_ion_mol_module.o\
        ps_nloc_hgh_module.o\
-       ps_nloc1_module.o\
        ewald_module.o\
        bc_module.o\
        subspace_rotv_sl_module.o\
@@ -115,7 +114,7 @@ MODS1 = \
        subspace_solv_sl_module.o\
        io_write_module.o\
        ps_nloc3_module.o\
-       inner_product.o\
+       inner_product_module.o\
        xc_hybrid_io_module.o\
        cgpc_hprsdft_module.o\
        io2_module.o\
@@ -130,7 +129,6 @@ MODS1 = \
        xc_ggapbe96_2_module.o\
        density_module.o\
        xc_vdw_module.o\
-       xc_pbe_xsr_module.o\
        nonlocal_module.o\
        kinetic_module.o\
        xc_hybrid_module.o\

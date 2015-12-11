@@ -5,7 +5,7 @@
 !--------------------------------------------
 MODULE ps_read_UPF_module
 
-  use VarPSMember, only: ps1d, ps_allocate_ps1d
+  use var_ps_member, only: ps1d, ps_allocate_ps1d
 
   implicit none
 

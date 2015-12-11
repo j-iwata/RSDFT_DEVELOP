@@ -1,4 +1,5 @@
-MODULE VarParaPSnonLocG
+MODULE var_para_ps_nloc_g
+
   implicit none
 
   integer :: Mqr
@@ -94,4 +95,4 @@ CONTAINS
     return
   END SUBROUTINE deallocateBufQ
 
-END MODULE VarParaPSnonLocG
+END MODULE var_para_ps_nloc_g

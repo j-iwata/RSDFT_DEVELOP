@@ -1,4 +1,4 @@
-MODULE VarPSMember
+MODULE var_ps_member
 
   use parallel_module, only: myrank
 
@@ -473,4 +473,4 @@ CONTAINS
   END SUBROUTINE psg_send_ps1d
 
 
-END MODULE VarPSMember
+END MODULE var_ps_member

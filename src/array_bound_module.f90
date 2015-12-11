@@ -3,7 +3,7 @@ MODULE array_bound_module
   use parallel_module, only: id_grid,ir_grid,id_band,ir_band &
                             ,id_bzsm,ir_bzsm,id_spin,ir_spin &
                             ,myrank_g,myrank_b,myrank_k,myrank_s
-  use BasicTypeFactory
+  use basic_type_factory
 
   implicit none
 

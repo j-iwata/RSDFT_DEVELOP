@@ -1,16 +1,16 @@
-MODULE PSQRijPrep
+MODULE ps_qrij_prep_module
 
   use parallel_module, only: myrank,myrank_g,nprocs_g,np_grid &
        ,node_partition,COMM_GRID,disp_switch_parallel,MB_d
   use aa_module, only: aa
   use atom_module, only: Natom,ki_atom,aa_atom
   use rgrid_module, only: Igrid,Ngrid,Hgrid,dV
-  use VarPSMember
-  use VarPSMemberG, only: QRij, k1_to_m, k1_to_iorb, nzqr_pair, N_nzqr, qrL &
+  use var_ps_member
+  use var_ps_member_g, only: QRij, k1_to_m, k1_to_iorb, nzqr_pair, N_nzqr, qrL &
                          ,k1_to_k2, k1_to_k3, Q_Rps, Q_NRps &
                          ,N_k1, k1max, nl3v, l3v, qij_f, qij &
                          ,k1_to_l, k1_to_m
-  use VarParaPSnonLocG, only: MAXMJJ_Q,MJJ_Q,JJP_Q &
+  use var_para_ps_nloc_g, only: MAXMJJ_Q,MJJ_Q,JJP_Q &
                              ,MAXMJJ_MAP_Q,MJJ_MAP_Q,JJ_MAP_Q
   use ps_nloc2_module, only: prepMapsTmp
   use ps_nloc2_variables, only: amap,lmap,mmap,iorbmap,nzlma
@@ -470,4 +470,4 @@ CONTAINS
   END SUBROUTINE update_qij
 
 
-END MODULE PSQRijPrep
+END MODULE ps_qrij_prep_module

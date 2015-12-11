@@ -1,7 +1,7 @@
 MODULE ps_q_init_module
 
-  use VarPSMember
-  use VarPSMemberG
+  use var_ps_member
+  use var_ps_member_g
   use parallel_module, only: myrank
   use polint_module
   use maskf_module

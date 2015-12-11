@@ -2,14 +2,14 @@ MODULE force_ps_nonloc2
 
 !----------------------------------------------------------------------------
 ! this module calculates force for ultrasoft PS
-! this module use subroutines from ForceSub.f90
+! this module use subroutines from force_sub_module.f90
 !----------------------------------------------------------------------------
 
   use atom_module, only: ki_atom,aa_atom,Natom
   use aa_module, only: aa
-  use VarPSMember
-  use VarPSMemberG
-  use VarParaPSnonLocG, only: MAXMJJ_MAP_Q, MJJ_MAP_Q, JJ_MAP_Q
+  use var_ps_member
+  use var_ps_member_g
+  use var_para_ps_nloc_g, only: MAXMJJ_MAP_Q, MJJ_MAP_Q, JJ_MAP_Q
   use ps_nloc2_variables, only: amap,iorbmap,mmap,lmap,nzlma,Mlma &
                                ,sendmap,sbufnl,recvmap,rbufnl &
                                ,lma_nsend,num_2_rank, nrlma_xyz&
@@ -19,7 +19,7 @@ MODULE force_ps_nonloc2
   use parallel_module, only: MB_d, disp_switch_parallel, comm_grid
   use localpot_module, only: Vloc
   use para_rgrid_comm, only: do3StepComm_F
-  use ForceSub
+  use force_sub_module
   use ylm_module
   use ps_q_init_module, only: ps_q_init_derivative
   use bz_module

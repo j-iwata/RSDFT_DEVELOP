@@ -1,4 +1,4 @@
-MODULE ForceSub
+MODULE force_sub_module
 
   use parallel_module, only: myrank
   use polint_module
@@ -145,7 +145,7 @@ CONTAINS
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomInfoFrom_iqr(iqr)
     use ps_nloc2_variables, only: amap,lmap,iorbmap,mmap
-    use VarPSMemberG, only: k1_to_k2, nzqr_pair, k1map
+    use var_ps_member_g, only: k1_to_k2, nzqr_pair, k1map
     use atom_module, only: ki_atom
     implicit none
     integer,intent(IN) :: iqr
@@ -196,7 +196,7 @@ CONTAINS
   END SUBROUTINE getAtomCenteredPositionFrom_lma
 !-------------------------------------------------------------------------
   SUBROUTINE getAtomCenteredPositionFrom_iqr(iqr,j)
-    use VarParaPSnonLocG, only: JJ_MAP_Q
+    use var_para_ps_nloc_g, only: JJ_MAP_Q
     use aa_module, only: aa
     implicit none
     integer,intent(IN) :: iqr,j
@@ -212,7 +212,7 @@ CONTAINS
   END SUBROUTINE getAtomCenteredPositionFrom_iqr
 !-------------------------------------------------------------------------
   SUBROUTINE interpolate_dviod(lm1,ir,NRc)
-    use VarPSMember, only: rad1,dviod
+    use var_ps_member, only: rad1,dviod
     implicit none
     integer,intent(IN) :: lm1
     integer,intent(IN) :: ir,NRc
@@ -253,8 +253,8 @@ CONTAINS
   END SUBROUTINE interpolate_dviod
 !-------------------------------------------------------------------------
   SUBROUTINE interpolate_dqrL(ll3,cJ,ir,NRc)
-    use VarPSMember, only: rad1
-    use VarPSMemberG, only: dqrL
+    use var_ps_member, only: rad1
+    use var_ps_member_g, only: dqrL
     implicit none
     integer,intent(IN) :: ll3,cJ
     integer,intent(IN) :: ir,NRc
@@ -296,7 +296,7 @@ CONTAINS
 
 !-------------------------------------------------------------------------
   SUBROUTINE getSHY
-    use VarPSMemberG, only: max_Lref
+    use var_ps_member_g, only: max_Lref
     implicit none
     integer :: L,Lp1
     if (.not. isFirstSHY) then
@@ -676,4 +676,4 @@ CONTAINS
     return
   End SUBROUTINE getCijLM
 
-END MODULE ForceSub
+END MODULE force_sub_module

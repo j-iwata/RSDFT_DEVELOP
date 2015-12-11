@@ -1,4 +1,4 @@
-MODULE BasicTypeFactory
+MODULE basic_type_factory
 
   implicit none
 
@@ -177,4 +177,4 @@ CONTAINS
     range%size = PRODUCT( range%r(:)%size )
   END SUBROUTINE getSize3C
 
-END MODULE BasicTypeFactory
+END MODULE basic_type_factory

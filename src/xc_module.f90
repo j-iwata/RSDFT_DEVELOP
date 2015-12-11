@@ -17,12 +17,11 @@ MODULE xc_module
   use xc_ggapbe96_2_module
   use xc_hybrid_module, only: iflag_hybrid,iflag_hse,alpha_hf
   use xc_hse_module
-  use xc_pbe_xsr_module
   use xc_hf_module
   use xc_vdw_module
 
-  use BasicTypeFactory
-  use BasicTypeMethods
+  use basic_type_factory
+  use basic_type_methods
   use io_tools_module
 
   implicit none
@@ -293,48 +292,6 @@ CONTAINS
           call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
                           ,MB_0,MB_1, SYStype, dV )
 
-          call calc_xc_hf( E_exchange_exx )
-
-          E_exchange = E_exchange + E_exchange_exx
-
-          Exc = E_exchange + E_correlation
-
-       end if
-
-    case('HSE_')
-
-       if ( iflag_hybrid == 0 ) then
-
-          if ( disp_sw ) then
-             write(*,*) "XCtype, iflag_hybrid =",XCtype, iflag_hybrid
-             write(*,*) "GGAPBE96 is called (iflag_hybrid==0)"
-          end if
-
-          call calc_GGAPBE96_2( rg, density, ene, pot )
-
-          E_exchange    = ene%Ex
-          E_correlation = ene%Ec
-          Exc           = ene%Exc
-          Vxc(:,:)      = pot%xc%val(:,:)
-
-       else
-
-          call calc_GGAPBE96_2( rg, density, ene, pot )
-
-          E_exchange    = ene%Ex
-          E_correlation = ene%Ec
-          Vxc(:,:)      = pot%xc%val(:,:)
-
-          call allocateGSArray( pot%x )
-
-          call calc_pbe_xsr( rg, density, ene, pot )
-
-          E_exchange = E_exchange - alpha_hf * ene%Ex
-
-          Vxc(:,:) = Vxc(:,:) - alpha_hf * pot%x%val(:,:)
-
-          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
-                          ,MB_0,MB_1, SYStype, dV )
           call calc_xc_hf( E_exchange_exx )
 
           E_exchange = E_exchange + E_exchange_exx

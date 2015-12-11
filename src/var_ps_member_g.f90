@@ -1,4 +1,4 @@
-MODULE VarPSMemberG
+MODULE var_ps_member_g
 
   use parallel_module, only: myrank
 
@@ -294,4 +294,4 @@ CONTAINS
   END SUBROUTINE allocatePSG
 
 
-END MODULE VarPSMemberG
+END MODULE var_ps_member_g

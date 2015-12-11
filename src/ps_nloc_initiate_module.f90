@@ -6,10 +6,10 @@ MODULE ps_nloc_initiate_module
   use ps_nloc_mr_module, only: prep_ps_nloc_mr
   use pseudopot_module, only: pselect
   use ps_q_init_module, only: initKtoKPSQ_ps_q_init, ps_q_init
-  use PSQRijPrep, only: prepQRijp102
+  use ps_qrij_prep_module, only: prepQRijp102
   use ps_prepNzqr_g_module, only: prepNzqr
-  use VarSysParameter, only: pp_kind
-  use VarPSMember, only: ps_type
+  use var_sys_parameter, only: pp_kind
+  use var_ps_member, only: ps_type
 
   implicit none
 

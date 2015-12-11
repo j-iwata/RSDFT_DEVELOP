@@ -1,7 +1,7 @@
 MODULE ps_nloc2_init_module
 
   use parallel_module, only: myrank
-  use VarPSMember
+  use var_ps_member
   use Filtering, only: opFiltering
   use pseudopot_module
   use atom_module, only: Nelement,Natom,ki_atom

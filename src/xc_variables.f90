@@ -1,6 +1,6 @@
 MODULE xc_variables
 
-  use BasicTypeFactory, only: GSArray
+  use basic_type_factory, only: GSArray
 
   implicit none
 

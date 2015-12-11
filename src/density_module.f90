@@ -3,10 +3,10 @@ MODULE density_module
   use wf_module
   use parallel_module, only: comm_grid,comm_band,comm_bzsm,comm_spin,ir_grid,id_grid,ir_spin,id_spin,myrank_g,myrank_s,myrank
   use symmetry_module, only: sym_rho
-  use BasicTypeFactory
-  use BasicTypeMethods
+  use basic_type_factory
+  use basic_type_methods
   use rhonks_g_module, only: get_rhonks
-  use VarSysParameter, only: pp_kind
+  use var_sys_parameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
 
