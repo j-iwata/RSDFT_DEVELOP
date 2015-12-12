@@ -50,7 +50,7 @@ CONTAINS
 
 #ifdef _DRSDFT_
     if ( SYStype == 0 ) then
-       call Fock_Double( k, s, n1, n2, psi, tpsi )
+       call Fock_Double( s, n1, n2, psi, tpsi )
        return
     end if
 #endif
@@ -264,17 +264,7 @@ CONTAINS
 
     do s=MSP_0,MSP_1
        if ( gamma_hf == 1 ) then
-          do k=MBZ_0,MBZ_1
-!             if ( SYStype == 0 ) then
-!#ifdef _DRSDFT_
-!                call Fock_4_Double( k,s,ML_0,ML_1 )
-!#else
-                call Fock_4( k,s,ML_0,ML_1 )
-!#endif
-!             else if ( SYStype == 1 ) then
-!                call Fock_4( k,s,ML_0,ML_1 )
-!             end if
-          end do ! k
+          call Fock_4( s,ML_0,ML_1 )
        else
           call Fock_5( s,ML_0,ML_1 )
        end if
@@ -297,24 +287,26 @@ CONTAINS
   END SUBROUTINE UpdateWF_fock
 
 
-  SUBROUTINE Fock_4( k,s,n1,n2 )
+  SUBROUTINE Fock_4( s,n1,n2 )
     implicit none
-    integer,intent(IN) :: k,s,n1,n2
+    integer,intent(IN) :: s,n1,n2
 #ifdef _DRSDFT_
     real(8),allocatable :: trho(:),tvht(:)
 #else
     complex(8),allocatable :: trho(:),tvht(:)
 #endif
     real(8) :: c
-    integer :: m,n,i,j,nwork,iwork,ierr,nwork_0,nwork_1
+    integer :: m,n,i,j,k,nwork,iwork,ierr,nwork_0,nwork_1
     integer,allocatable :: mapwork(:,:)
 
 #ifdef _DRSDFT_
     if ( SYStype == 0 ) then
-       call Fock_4_Double( k,s,n1,n2 )
+       call Fock_4_Double( s,n1,n2 )
        return
     end if
 #endif
+
+    k = 1
 
 ! ---
 
@@ -430,15 +422,17 @@ CONTAINS
   END SUBROUTINE Fock_4
 
 #ifdef _DRSDFT_
-  SUBROUTINE Fock_4_Double( k, s, ml0, ml1 )
+  SUBROUTINE Fock_4_Double( s, ml0, ml1 )
     implicit none
-    integer,intent(IN) :: k,s,ml0,ml1
+    integer,intent(IN) :: s,ml0,ml1
     complex(8),allocatable :: trho(:),tvht(:)
     real(8),parameter :: tol=1.d-10
     real(8) :: c
-    integer :: m1,n1,m2,n2,m,n,i,j,nwork,iwork1,iwork2,ierr
+    integer :: m1,n1,m2,n2,m,n,i,j,k,nwork,iwork1,iwork2,ierr
     integer :: nwork_0,nwork_1
     integer,allocatable :: mapwork(:,:)
+
+    k = 1
 
 ! ---
 
@@ -759,14 +753,16 @@ CONTAINS
   END SUBROUTINE Fock_5
 
 #ifdef _DRSDFT_
-  SUBROUTINE Fock_Double( k, s, n1, n2, psi, tpsi )
+  SUBROUTINE Fock_Double( s, n1, n2, psi, tpsi )
     implicit none
-    integer,intent(IN) :: k,s,n1,n2
+    integer,intent(IN) :: s,n1,n2
     real(8),intent(IN)  :: psi(n1:n2)
     real(8),intent(INOUT) :: tpsi(n1:n2)
     complex(8),allocatable :: trho(:),tvht(:)
     real(8) :: c1,c2
-    integer :: m1,m2,i
+    integer :: m1,m2,i,k
+
+    k = 1
 
     allocate( trho(n1:n2) ) ; trho=(0.0d0,0.0d0)
     allocate( tvht(n1:n2) ) ; tvht=(0.0d0,0.0d0)
