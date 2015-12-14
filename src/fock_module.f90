@@ -5,7 +5,7 @@ MODULE fock_module
                              ,occ_factor,gamma_hf
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1,MBZ,MBZ_0,MBZ_1 &
                                ,MSP_0,MSP_1
-  use wf_module, only: unk, occ, esp, hunk
+  use wf_module, only: unk, occ, hunk
   use fock_fft_module
   use fock_cg_module
   use parallel_module
@@ -212,29 +212,33 @@ CONTAINS
     occ_hf(:,:,:)   = 0.0d0
     unk_hf(:,:,:,:) = zero
 
+#ifdef _DRSDFT_
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-
        if ( k < FKBZ_0 .or. FKBZ_1 < k ) cycle
-
        i_orb=0
        i_occ=0
        do n=1,MB
-
           if ( abs(occ(n,k,s)) <= 1.d-10 ) cycle
-
           i_occ = i_occ + 1
-
           if ( mod(i_occ-1,np_fkmb) == myrank_f ) then 
              i_orb = i_orb + 1
              if ( MB_0 <= n .and. n <= MB_1 ) unk_hf(:,i_orb,k,s) = unk(:,n,k,s)
              occ_hf(i_orb,k,s) = occ(n,k,s)
           end if
-
        end do ! n
-
     end do ! k
     end do ! s
+#else
+    do s=MSP_0,MSP_1
+    do k=MBZ_0,MBZ_1
+    do n=MB_0,MB_1
+       unk_hf(:,n,k,s) = unk(:,n,k,s)
+       occ_hf(n,k,s) = occ(n,k,s)
+    end do ! n
+    end do ! k
+    end do ! s
+#endif
 
     m = size(unk_hf,1)*size(unk_hf,2)
     do s=MSP_0,MSP_1
@@ -248,6 +252,14 @@ CONTAINS
     do s=MSP_0,MSP_1
        call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,:,s), m, TYPE_MAIN &
             ,MPI_SUM, comm_bzsm, ierr )
+    end do ! s
+
+    m = size( occ_hf,1 )
+    do s=MSP_0,MSP_1
+    do k=MBZ_0,MBZ_1
+       call MPI_ALLREDUCE( MPI_IN_PLACE, occ_hf(:,k,s), m, MPI_REAL8 &
+            ,MPI_SUM, comm_band, ierr )
+    end do ! k
     end do ! s
 
     m = size( occ_hf,1 )*size( occ_hf,2 )
@@ -714,7 +726,7 @@ CONTAINS
 ! ---
 
     m=size( hunk,1 )*size( hunk,2 )
-    do k=MBZ_0,MBZ_1
+    do k=1,MBZ
        call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
                            MPI_SUM, comm_band, ierr )
     end do
@@ -743,8 +755,6 @@ CONTAINS
 
     deallocate( mapwork )
     deallocate( mapnk )
-
-!    deallocate( hunk_hf )
 
 ! ---
 

@@ -252,6 +252,10 @@ CONTAINS
 
     end if
 
+    if ( gamma_hf == 0 .and. np_fkmb > 1 ) then
+       call stop_program( " np_fkmb>1 is not available with gamma_hf==0" )
+    end if
+
 !
 ! --- Truncation cutoff of 1/r for HF, PBE0, and LCwPBE functionals ---
 !
