@@ -1,7 +1,7 @@
 MODULE subspace_diag_la_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk,esp
+  use wf_module, only: unk,esp,hunk,iflag_hunk,MB_0_WF
   use hamiltonian_module
   use parallel_module
   use subspace_diag_variables
@@ -37,6 +37,7 @@ CONTAINS
     real(8) :: ct(9),et(9)
     real(8) :: rtmp(1)
     integer :: itmp(1)
+    integer,allocatable :: ir(:),id(:)
 
     call write_border( 1, " subspace_diag_la(start)" )
 
@@ -55,6 +56,20 @@ CONTAINS
     idiag0 = "zheevd"
 #endif
 
+    allocate( id(0:np_band-1),ir(0:np_band-1) )
+
+    id(0:np_band-1) = id_band(0:np_band-1)*ML0
+    ir(0:np_band-1) = ir_band(0:np_band-1)*ML0
+
+    call mpi_allgatherv(unk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN &
+                       ,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    if ( iflag_hunk >= 1 ) then
+       call mpi_allgatherv(hunk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN &
+                          ,hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    end if
+
+    deallocate( ir,id )
+
     call watch(ct(1),et(1))
 
     allocate( Hsub(MB,MB) )
@@ -64,9 +79,13 @@ CONTAINS
 
     call watch(ct(2),et(2))
 
-    do m=1,MB
-       call hamiltonian(k,s,unk(n1,m,k,s),psit(1,m),n1,n2,m,m)
-    end do
+    if ( iflag_hunk >= 1 ) then
+       psit(:,:)=hunk(:,:,k,s)
+    else
+       do m=1,MB
+          call hamiltonian(k,s,unk(n1,m,k,s),psit(1,m),n1,n2,m,m)
+       end do
+    end if
 
     call watch(ct(3),et(3))
 
@@ -181,8 +200,18 @@ CONTAINS
     call zgemm('N','N',ML0,MB,MB,one,unk(n1,1,k,s),ML0 &
                ,Hsub(1,1),MB,zero,psit,ML0)
 #endif
-
     unk(:,:,k,s)=psit(:,:)
+
+    if ( iflag_hunk >= 1 ) then
+#ifdef _DRSDFT_
+       call dgemm('N','N',ML0,MB,MB,one,hunk(n1,1,k,s),ML0 &
+            ,Hsub(1,1),MB,zero,psit,ML0)
+#else
+       call zgemm('N','N',ML0,MB,MB,one,hunk(n1,1,k,s),ML0 &
+            ,Hsub(1,1),MB,zero,psit,ML0)
+#endif
+       hunk(:,:,k,s)=psit(:,:)
+    end if
 
     deallocate( psit )
 
@@ -192,12 +221,6 @@ CONTAINS
 
     LWORK=max(LWORK,WORK1)
     LIWORK=max(LIWORK,WORK2)
-
-!    if ( disp_switch_parallel ) then
-!       do n=1,8
-!          write(*,'(1x,"time(sd_la",i1,")",2f12.5)') n,ct(n+1)-ct(n),et(n+1)-et(n)
-!       end do
-!    end if
 
     call write_border( 1, " subspace_diag_la(end)" )
 
