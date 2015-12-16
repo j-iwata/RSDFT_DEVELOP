@@ -1,6 +1,0 @@
-runtest:
-	@echo ' Run test'
-	@cd TESTS ; ./test.py
-
-cleartest:
-	cd TESTS ; ./clear.sh

@@ -32,13 +32,9 @@ all :
 	cd $(DIR2) ; $(MAKE)
 	cd $(DIR4) ; $(MAKE)
 	@$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ1) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(MODS1) realspace.o $(FFTW_L) $(LAPACK_L) $(Eigen_L) -o rsdft.x
+	$(FC) $(LFLAGS) $(EXTOBJ1) $(EXTOBJ2) $(MINPACOBJ) $(MDOBJ) $(FFTOBJ) $(MODS1) realspace.o $(FFTW_L) $(LAPACK_L) -o rsdft.x
 
 lda0 : $(MODS1)
-
-include makefile.common.program
-#include makefile.common.dep
-#include makefile.test
 
 clean :
 	rm -f *.o *.mod mpif.h *.lst *.optlog *.i90

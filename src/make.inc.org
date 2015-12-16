@@ -40,12 +40,6 @@ CPP_FLAGS = -D_LAPACK_
 #CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
 #INCLUDE_DIR := -I/home/iwata/fftw-3.3.4/include/ $(INCLUDE_DIR)
 #FFTW_L = -L/home/iwata/fftw-3.3.4/lib/ -lfftw3_mpi -lfftw3 -lm
-#################################################### EIGEN is used #####
-#CPP_FLAGS := -D_EIGEN_ $(CPP_FLAGS)
-#EigenExaLib = /home.org/iwata/rsdft/EigenExa-2.3c
-#INCLUDE_DIR := -I$(EigenExaLib) $(INCLUDE_DIR)
-#Eigen_L = $(EigenExaLib)/libEigenExa.a
-############################################ Libraries & directories ###
 ########################################################################
 ################################################# compiler & options ###
 ########################################################################

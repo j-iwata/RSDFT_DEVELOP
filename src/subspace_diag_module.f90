@@ -5,7 +5,6 @@ MODULE subspace_diag_module
   use subspace_diag_variables
   use subspace_diag_la_module
   use subspace_diag_sl_module
-  use subspace_diag_eigen_module
 
   implicit none
 
@@ -20,8 +19,6 @@ CONTAINS
     integer,intent(IN) :: k,s
 #ifdef _LAPACK_
     call subspace_diag_la(k,s)
-#elif _EIGEN_
-    call subspace_diag_eigen(k,s,disp_switch_parallel)
 #else
     call subspace_diag_sl(k,s,disp_switch_parallel)
 #endif
