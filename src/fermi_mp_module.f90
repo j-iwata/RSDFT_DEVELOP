@@ -24,7 +24,7 @@ CONTAINS
     integer :: i,n1,n2
     character(6) :: cbuf,ckey
     ekbt=1.d-5
-    kinteg=0
+    kinteg=5
     nsetocc=0
     isetocc=0
     setocc=0.0d0

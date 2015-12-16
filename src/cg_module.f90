@@ -20,10 +20,11 @@ MODULE cg_module
   PUBLIC :: conjugate_gradient
   PUBLIC :: read_cg
 
-  integer :: Ncg = 2
+  integer :: Ncg = 3
   integer :: iswitch_gs = 0
   integer :: iswitch_cg = 1
   logical :: flag_init_read = .true.
+  logical :: flag_init_cg = .true.
 
 CONTAINS
 
@@ -37,6 +38,19 @@ CONTAINS
   END SUBROUTINE read_cg
 
 
+  SUBROUTINE init_cg
+    implicit none
+    logical :: disp
+    if ( .not.flag_init_cg ) return
+    call check_disp_switch( disp, 0 )
+    if ( disp ) then
+       write(*,*) "NCG =",Ncg
+       write(*,*) "ICG =",iswitch_cg
+       write(*,*) "SWGS=",iswitch_gs
+    end if
+    flag_init_cg=.false.
+  END SUBROUTINE init_cg
+
   SUBROUTINE conjugate_gradient( n1,n2, MB, k,s, unk, esp, res )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s
@@ -49,6 +63,8 @@ CONTAINS
     integer :: ipc
 
     call write_border( 1, " conjugate_gradient(start)" )
+
+    call init_cg
 
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 

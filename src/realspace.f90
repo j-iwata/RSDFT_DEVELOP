@@ -27,6 +27,7 @@ PROGRAM Real_Space_Solid
   type(lattice) :: aa_obj, bb_obj
   logical :: recalc_esp=.true.
   real(8) :: Etot, Ehwf
+  integer :: info_level=0
 
 ! --- start MPI ---
 
@@ -40,18 +41,22 @@ PROGRAM Real_Space_Solid
 
   call open_info(myrank)
 
+! --- init_io_tools ---
+
+  call init_io_tools( myrank, unit_input_parameters )
+
 ! --- DISP_SWITCH ---
 
-! call setDispSwitch(myrank,nprocs)
-! DISP_SWITCH = .true.
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
 
   call check_disp_switch( DISP_SWITCH, 1 )
+
+  call IOTools_readIntegerKeyword( "INFOLEVEL", info_level )
+
+  call check_disp_length( info_level, 1 )
      
 ! --- input parameters ---
-
-  call init_io_tools( myrank, unit_input_parameters )
 
   call read_parameters
 
@@ -84,6 +89,12 @@ PROGRAM Real_Space_Solid
 ! --- info atoms ---
 
   call write_info_atom( Zps, file_ps )
+
+! --- count the total # of electrons & check # of bands ---
+
+  call count_electron
+
+  call check_Nband_electron
 
 ! --- init_force ---
 
@@ -168,8 +179,6 @@ PROGRAM Real_Space_Solid
 
 
 !-------- init density 
-
-  call count_electron
 
   call init_density(Nelectron,dV)
 
@@ -267,7 +276,7 @@ PROGRAM Real_Space_Solid
         write(*,*) "sum(occ(up))  =",sum(occ(:,:,1))
         write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin))
      endif
-     do n=max(1,nint(Nelectron/2)-20),min(nint(Nelectron/2)+80,Nband)
+     do n=max(1,nint(Nelectron/2)-10),min(nint(Nelectron/2)+10,Nband)
         do k=1,Nbzsm
            write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
         end do
@@ -335,7 +344,9 @@ PROGRAM Real_Space_Solid
 
 ! ---
 
+  call Init_IO( "sweep" )
   call calc_sweep( disp_switch, ierr )
+  call Init_IO( "" )
   if ( ierr == -1 ) goto 900
 
 ! ---
@@ -362,7 +373,9 @@ PROGRAM Real_Space_Solid
 
   if ( iswitch_band == 1 ) then
      call control_xc_hybrid(1)
+     call Init_IO( "band" )
      call band(nint(Nelectron*0.5d0),disp_switch)
+     call Init_IO( "" )
   end if
 
 !

@@ -14,7 +14,7 @@ MODULE mixing_module
 
   include 'mpif.h'
 
-  integer :: imix = 20
+  integer :: imix = 10
   integer :: mmix = 4
   real(8) :: beta = 1.0d0
   integer :: iomix = 0
@@ -43,13 +43,16 @@ CONTAINS
 
   SUBROUTINE read_mixing
     implicit none
+    logical :: disp
+    call write_border( 0, " read_mixing(start)" )
     call IOTools_readIntegerKeyword(  "IMIX",  imix )
     call IOTools_readIntegerKeyword(  "MMIX",  mmix ) 
     call IOTools_readIntegerKeyword( "IOMIX", iomix ) 
     call IOTools_readIntegerKeyword( "IC", iochk(1) ) 
     call IOTools_readIntegerKeyword( "OC", iochk(2) ) 
     call IOTools_readReal8Keyword( "BETA", beta ) 
-    if ( myrank == 0 ) then
+    call check_disp_switch( disp, 0 )
+    if ( disp ) then
        if ( mmix < 1 ) then
           mmix=1
           write(*,*) "mmix is replaced to 1 : mmix=",mmix
@@ -57,6 +60,7 @@ CONTAINS
        write(*,*) "beta       =",beta
        write(*,*) "iomix,IC,OC=",iomix,iochk(1:2)
     end if
+    call write_border( 0, " read_mixing(end)" )
   END SUBROUTINE read_mixing
 
 
@@ -337,10 +341,10 @@ CONTAINS
     call mpi_allreduce(MPI_IN_PLACE,chrg,2*n,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
     if ( any( chrg(2,1:n) < 0.0d0 ) ) then
-       if ( disp_switch ) then
-          write(*,'(1x,"NEGATIVE density exist (tot,neg)=",4g18.9)') &
-               ( chrg(1,i),chrg(2,i), i=1,n )
-       end if
+!       if ( disp_switch ) then
+!          write(*,'(1x,"NEGATIVE density exist (tot,neg)=",4g18.9)') &
+!               ( chrg(1,i),chrg(2,i), i=1,n )
+!       end if
     end if
 
 !    where( f < 0.0d0 )

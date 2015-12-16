@@ -17,9 +17,9 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank
     myrank = rank
-    if ( rank == 0 ) then
-       open(unit_info,file=file_name)
-    end if
+!    if ( rank == 0 ) then
+!       open(unit_info,file=file_name)
+!    end if
     if ( myrank == 0 ) call header_info( unit_stdout )
   END SUBROUTINE open_info
 
@@ -35,7 +35,7 @@ CONTAINS
 
   SUBROUTINE close_info
     if ( myrank == 0 ) call footer_info( unit_stdout )
-    if ( myrank == 0 ) close(unit_info)
+!    if ( myrank == 0 ) close(unit_info)
   END SUBROUTINE close_info
 
   SUBROUTINE header_info( unit )

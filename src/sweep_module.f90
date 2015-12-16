@@ -167,7 +167,7 @@ CONTAINS
 
        call conv_check( iter, flag_conv )
        call global_watch( .false., flag_end )
-       flag_exit = (flag_end.or.flag_conv)
+       flag_exit = (flag_end.or.flag_conv.or.(iter==Diter))
 
        if ( disp_switch ) call write_info_sweep
 

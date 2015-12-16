@@ -46,6 +46,19 @@ SUBROUTINE check_disp_switch( disp_switch, i )
 END SUBROUTINE check_disp_switch
 
 
+SUBROUTINE check_disp_length( level, i )
+  implicit none
+  integer,intent(INOUT) :: level
+  integer,intent(IN)    :: i
+  logical,save :: info_level=0
+  if ( i == 0 ) then
+     level = info_level
+  else if ( i == 1 ) then
+     info_level = level
+  end if
+END SUBROUTINE check_disp_length
+
+
 SUBROUTINE write_string( string )
   implicit none
   character(*),intent(IN) :: string

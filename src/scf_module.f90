@@ -438,6 +438,7 @@ CONTAINS
     integer,parameter :: u=99
     call write_border( 1, " write_info_scf(start)" )
     if ( flag ) then
+       write(u,*) "Eigenvalues"
        write(u,'(a4,a6,a20,2a13,1x)') &
             "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
        do k=1,Nbzsm

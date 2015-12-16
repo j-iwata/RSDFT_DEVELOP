@@ -2,7 +2,7 @@ PROGRAM dos_simple
 
   implicit none
 
-  integer,parameter :: u5=5, u98=98, u10=10
+  integer,parameter :: u5=5, u99=99, u10=10
   integer,parameter :: max_loop=10000000
   integer :: mbv,mbc,ne,nbk,natom,ie,mb,msp,s
   integer :: func_type
@@ -37,7 +37,7 @@ PROGRAM dos_simple
 
 !------------------------------
 
-  call read_from_fort98(u98)
+  call read_from_fort99(u99)
 !  call read_from_band_eigv("band_eigv")
 
 !------------------------------
@@ -70,10 +70,10 @@ PROGRAM dos_simple
 
 !------------------------------
 
-  write(*,*) "# of energy grid: ne="
+  write(*,*) "# of energy grid: ne= ( 0: default value is set )"
   read(u5,*) ne
   write(*,*) ne
-  write(*,*) "energy range: e1,e2="
+  write(*,*) "energy range: e1,e2= ( 0,0: default values are set )"
   read(u5,*) e1,e2
   write(*,*) e1,e2
   write(*,*) "func type [0:gaussian, 1:Lorentzian]"
@@ -170,13 +170,18 @@ CONTAINS
   END SUBROUTINE dos1
 
 
-  SUBROUTINE read_from_fort98(u)
+  SUBROUTINE read_from_fort99(u)
     implicit none
     integer,intent(IN) :: u
     integer :: n,k,i,j,s
     real(8) :: dummy(3)
+    character(11) :: cbuf
 
     rewind u
+    do i=1,max_loop
+       read(u,*,end=999) cbuf
+       if ( cbuf == "Eigenvalues" ) exit
+    end do
     read(u,*)
     do i=1,max_loop
        read(u,*,end=99) k,n,dummy(1:3)
@@ -187,6 +192,10 @@ CONTAINS
     j=i
 
     rewind u
+    do i=1,max_loop
+       read(u,*,end=999) cbuf
+       if ( cbuf == "Eigenvalues" ) exit
+    end do
     read(u,*)
     do i=1,max_loop
        read(u,*,end=98) k,n,dummy(1:6)
@@ -202,6 +211,10 @@ CONTAINS
     allocate( occp(mb,nbk,msp) ) ; occp=0.0d0
 
     rewind u
+    do i=1,max_loop
+       read(u,*,end=999) cbuf
+       if ( cbuf == "Eigenvalues" ) exit
+    end do
     read(u,*)
     do k=1,nbk
        do n=1,mb
@@ -212,7 +225,12 @@ CONTAINS
        end do
     end do
 
-  END SUBROUTINE read_from_fort98
+    return
+
+999 continue
+    stop "The format of fort.99 is strange"
+
+  END SUBROUTINE read_from_fort99
 
 
 END PROGRAM dos_simple

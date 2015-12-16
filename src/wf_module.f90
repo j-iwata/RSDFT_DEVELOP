@@ -318,6 +318,7 @@ CONTAINS
     integer :: k,n,s,i,n1,n2,nn,fi(2)
     real(8) :: f(6)
     character(57) :: header_string, format_string
+    call check_disp_length( i, 0 ) ; if ( i < 1 ) return
     write(header_string,'(a4,a6,a20,2a13,1x)') &
          "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
     call write_string( "" )

@@ -48,9 +48,7 @@ CONTAINS
     real(8),allocatable :: dtmp(:)
     real(4),allocatable :: dtmpSP(:)
 
-    if ( DISP_SWITCH ) then
-       write(*,'(a40," simple_wf_io_read(start)")') repeat("-",40)
-    end if
+    call write_border( 0, " simple_wf_io_read(start)" )
 
 ! ---
 
@@ -368,8 +366,9 @@ CONTAINS
 
     if ( DISP_SWITCH ) then
        write(*,*) "read from ",file_wf2
-       write(*,'(a40," simple_wf_io_read(end)")') repeat("-",40)
     end if
+
+    call write_border( 0, " simple_wf_io_read(start)" )
 
     return
 

@@ -94,7 +94,7 @@ CONTAINS
     SYStype = SYStype_in
     if ( mloop == 0 ) then
        mloop = 3
-       if ( SYStype == 1 ) mloop = 2
+!       if ( SYStype == 1 ) mloop = 2
        if ( disp_switch_parallel ) then
           write(*,*) "SYStype=",SYStype
           write(*,*) "mloop  =",mloop

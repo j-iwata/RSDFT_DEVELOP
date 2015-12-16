@@ -132,13 +132,6 @@ CONTAINS
 
        if ( OC < 10 ) then
 
-          write(unit) ML,ML1,ML2,ML3
-          write(unit) MB,MBwr1,MBwr2
-          write(unit) LL2(:,:)
-          write(unit) occ(:,:,:)
-
-       else if ( OC >= 10 ) then
-
           write(unit) -1
           write(unit) ML,ML1,ML2,ML3
           write(unit) MB,MBwr1,MBwr2
@@ -147,6 +140,13 @@ CONTAINS
           write(unit) LL2(:,:)
           write(unit) occ(:,:,:)
           write(unit) aa,bb,kbb
+
+       else if ( OC >= 10 ) then   !--- old format ---
+
+          write(unit) ML,ML1,ML2,ML3
+          write(unit) MB,MBwr1,MBwr2
+          write(unit) LL2(:,:)
+          write(unit) occ(:,:,:)
 
        end if
 

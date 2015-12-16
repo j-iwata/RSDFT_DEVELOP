@@ -1,7 +1,6 @@
 MODULE parameters_module
 
   use global_variables
-  use info_module
   use io_tools_module
   use ps_initrho_module, only: read_ps_initrho
   use band_module, only: read_band

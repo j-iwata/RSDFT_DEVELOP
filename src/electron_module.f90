@@ -10,8 +10,8 @@ MODULE electron_module
   PUBLIC :: Nband,Nspin,Nelectron,Next_electron &
            ,Ndspin,Nfixed &
            ,read_electron,count_electron &
-           ,read_oldformat_electron &
            ,Nelectron_spin, dspin
+  PUBLIC :: check_Nband_electron
 
   integer :: Nband, Nspin, Nfixed
   real(8) :: Nelectron,Next_electron,Ndspin
@@ -93,28 +93,8 @@ CONTAINS
   END SUBROUTINE Read_SpinConf
 
 
-  SUBROUTINE read_oldformat_electron(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       Nband=0
-       Nspin=0
-       read(unit,*) Nband, Nspin
-       read(unit,*) Next_electron, Ndspin, Nfixed
-       write(*,*) "Nband=",Nband
-       write(*,*) "Nspin=",Nspin
-       write(*,*) "Next_electron=",Next_electron
-       write(*,*) "Ndspin=",Ndspin
-       write(*,*) "Nfixed=",Nfixed
-       if ( Nspin == 1 .and. Ndspin /= 0.d0 ) then
-          Ndspin=0.d0
-          write(*,*) "Ndspin is replaced to 0.0: Ndspin=",Ndspin
-       end if
-    end if
-    call send_electron(0)
-  END SUBROUTINE read_oldformat_electron
-
   SUBROUTINE send_electron(rank)
+    implicit none
     integer,intent(IN) :: rank
     integer :: ierr
     include 'mpif.h'
@@ -127,97 +107,32 @@ CONTAINS
 
 
   SUBROUTINE count_electron
+    implicit none
     integer :: i
-    call write_border( 80, " count_electron(start)" )
+    call write_border( 0, " count_electron(start)" )
     Nelectron=0.0d0
     do i=1,Natom
        Nelectron = Nelectron + Zps(ki_atom(i))
     end do
     Nelectron = Nelectron + Next_electron
-    if ( nint(Nelectron) > 2*Nband ) then
-       write(*,*) "Nband is too small!!!"
-       stop 'count_eletron'
-    end if
     Nelectron_spin(1) = 0.5d0*Nelectron + 0.5d0*Ndspin
     Nelectron_spin(2) = 0.5d0*Nelectron - 0.5d0*Ndspin
-    call write_border( 80, " count_electron(end)" )
+    call write_border( 0, " count_electron(end)" )
   END SUBROUTINE count_electron
 
 
-#ifdef TEST
-  SUBROUTINE init_occupation
-    integer :: n,k,s
-    real(8) :: sum0
-    allocate( occ(Nband,Nbzsm,Nspin) )
-    occ=0.d0
-    sum0=0.d0
-    do n=1,Nband
-       if ( sum0+2.d0 > Nelectron ) exit
-       sum0=sum0+2.d0
-       occ(n,1,s)=2.d0
-    end do
-    if ( sum0 < Nelectron ) then
-       if ( n > Nband ) then
-          stop "Nband is small (init_occupation)"
-       else
-          occ(n,1,1)=Nelectron-sum0
-       end if
+  SUBROUTINE check_Nband_electron
+    implicit none
+    real(8),parameter :: factor=1.5d0
+    character(30) :: mesg
+    call write_border( 0, " check_Nband_electron(start)" )
+    if ( dble(Nband) < 0.5d0*Nelectron ) then
+       Nband = nint( 0.5d0*Nelectron * factor )
+       write(mesg,'(1x,"Nband is replaced to ",i8)') Nband
+       call write_string( mesg )
     end if
-    do k=2,Nbzsm
-       do n=1,Nband
-          occ(n,k,1)=occ(n,1,1)*weight_bz(k)
-       end do
-    end do
-    do n=1,Nband
-       occ(n,1,1)=occ(n,1,1)*weight_bz(1)
-    end do
-    if ( Nspin > 1 ) then
-       occ(:,:,1)=occ(:,:,1)/dble(Nspin)
-       do s=2,Nspin
-          occ(:,:,s)=occ(:,:,1)
-       end do
-    end if
-  END SUBROUTINE init_occupation
-
-  SUBROUTINE init_occ_electron
-    integer :: n,k,s
-    real(8) :: sum0,d,Nel
-    allocate( occ(Nband,Nbzsm,Nspin) )
-    occ=0.d0
-    d=2.d0/Nspin
-    do s=1,Nspin
-       Nel = 0.5d0*d*Nelectron + (3-2*s)*0.5d0*Ndspin
-       if ( Nel < 0.d0 ) stop "Ndspin is too large !!!"
-       sum0=0.d0
-       do n=1,Nband
-          if ( sum0+d > Nel ) exit
-          sum0=sum0+d
-          occ(n,1,s)=d
-       end do
-       if ( sum0 < Nel ) then
-          if ( n > Nband ) then
-             stop "Nband is small (init_occupation)"
-          else
-             occ(n,1,s) = Nel-sum0
-             write(*,*) Nel,sum0
-          end if
-       end if
-       do k=2,Nbzsm
-          do n=1,Nband
-             occ(n,k,s)=occ(n,1,s)*weight_bz(k)
-          end do
-       end do
-       do n=1,Nband
-          occ(n,1,s)=occ(n,1,s)*weight_bz(1)
-       end do
-    end do
-    sum0=sum(occ)
-    if ( abs(sum0-Nelectron)>1.d-10 ) then
-       write(*,'(1x,"sum(occ), Nelectron =",2g30.20)') sum(occ),Nelectron
-       stop "sum(occ) /= Nelectron !!!"
-    end if
-  END SUBROUTINE init_occ_electron
-#endif
+    call write_border( 0, " check_Nband_electron(end)" )
+  END SUBROUTINE check_Nband_electron
 
 
 END MODULE electron_module
