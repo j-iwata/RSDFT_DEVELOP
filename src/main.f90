@@ -1,4 +1,4 @@
-PROGRAM Real_Space_Solid
+PROGRAM Real_Space_DFT
 
   use global_variables
   use parameters_module
@@ -428,4 +428,4 @@ PROGRAM Real_Space_Solid
   call close_info
   call end_mpi_parallel
 
-END PROGRAM Real_Space_Solid
+END PROGRAM Real_Space_DFT

@@ -32,8 +32,8 @@ all :
 	cd $(DIR0) ; $(MAKE)
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
-	@$(MAKE) realspace.o
-	$(FC) $(LFLAGS) $(EXTOBJ0) $(EXTOBJ1) $(EXTOBJ2) $(MDOBJ) $(MODS1) realspace.o $(FFTW_L) $(LAPACK_L) -o rsdft.x
+	@$(MAKE) main.o
+	$(FC) $(LFLAGS) $(EXTOBJ0) $(EXTOBJ1) $(EXTOBJ2) $(MODS1) main.o $(FFTW_L) $(LAPACK_L) -o rsdft.x
 
 lda0 : $(MODS1)
 
