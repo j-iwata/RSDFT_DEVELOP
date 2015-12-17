@@ -1,0 +1,19 @@
+FFTE - A Fast Fourier Transform Package -
+
+http://www.ffte.jp
+
+
+RSDFT use PZFFT3DV routine.
+To compile "pzfft3dv.f", the following files are also necessary:
+
+factor.f
+fft235.f
+kernel.f
+pzfft3d.f
+zfft3d.f
+param.h
+
+
+ffte-6.0 ( or ffte-6.0.tgz ) is the original package downloaded from the FFTE web site.
+
+
