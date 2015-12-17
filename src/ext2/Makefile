@@ -1,9 +1,10 @@
 include ../make.inc
 
-#FFLAGS_FFTE = -fast -xHOST -openmp
 FFLAGS_FFTE = $(FFLAGS)
+#FFLAGS_FFTE = -fast -xHOST -openmp
 
-FFTE_DIR = ffte-6.0
+FFTE_DIR = ffte_dummy
+#FFTE_DIR = ffte-6.0
 
 all : kernel.o factor.o pzfft3dv.o fft235.o zfft3d.o pzfft3d.o
 

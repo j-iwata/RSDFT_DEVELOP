@@ -1,7 +1,15 @@
 FFTE - A Fast Fourier Transform Package -
 
-http://www.ffte.jp
 
+------------------------------ How to link FFTE ----------------
+
+1) Download the package from http://www.ffte.jp
+2) Expand it in this directory
+3) Modify the line "FFTE_DIR = ffte_dumm" in the Makefile to the name of new directory
+4) Recompile the RSDFT program with "-D_FFTE_" option ( see make.inc.org ) 
+
+
+----------------------------------------------------------------
 
 RSDFT use PZFFT3DV routine.
 To compile "pzfft3dv.f", the following files are also necessary:
@@ -12,8 +20,5 @@ kernel.f
 pzfft3d.f
 zfft3d.f
 param.h
-
-
-ffte-6.0 ( or ffte-6.0.tgz ) is the original package downloaded from the FFTE web site.
 
 

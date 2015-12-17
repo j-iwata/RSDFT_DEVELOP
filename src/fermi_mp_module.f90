@@ -1,5 +1,7 @@
 MODULE fermi_module
 
+  use bberf_module
+
   implicit none
 
   PRIVATE
@@ -288,7 +290,7 @@ CONTAINS
     implicit none
     integer :: n,i
     real(8) :: x,ff,ff0,hp0,hp1,hp2,hp3
-    ff0 = 0.5d0*(1.d0-erf(x))
+    ff0 = 0.5d0*(1.d0-bberf(x))
     if ( n <= 0 ) return
     hp0 = 1.d0
     hp1 = 2.d0*x
