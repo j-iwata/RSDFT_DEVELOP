@@ -8,8 +8,9 @@ MODULE fock_fft_module
                              ,iflag_lcwpbe, iflag_hse, iflag_hf, iflag_pbe0
   use watch_module
   use bz_module, only: kbb
-  use fock_ffte_module
-  use fock_fftw_module, only: fock_fftw_double, fock_fftw
+  use fock_ffte_module, only: fock_ffte_double, fock_ffte, init_fock_ffte &
+                             ,ct_fock_ffte,et_fock_ffte
+  use fock_fftw_module, only: fock_fftw_double, fock_fftw, init_fock_fftw
   use fft_module
 
   implicit none
@@ -18,6 +19,7 @@ MODULE fock_fft_module
   PUBLIC :: ct_fock_fft, et_focK_fft
   PUBLIC :: Fock_FFT
   PUBLIC :: Fock_FFT_Double
+  PUBLIC :: init_fock_fft
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
@@ -28,6 +30,16 @@ MODULE fock_fft_module
   real(8) :: ct_fock_fft(10),et_fock_fft(10)
 
 CONTAINS
+
+
+  SUBROUTINE init_fock_fft
+    implicit none
+#ifdef _FFTE_
+    call init_fock_ffte
+#elif _FFTW_
+    call init_fock_fftw
+#endif
+  END SUBROUTINE init_fock_fft
 
 
   SUBROUTINE Fock_fft( n1, n2, k, q, trho, tVh, t )

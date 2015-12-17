@@ -20,6 +20,7 @@ MODULE fock_fftw_module
   PRIVATE
   PUBLIC :: fock_fftw
   PUBLIC :: fock_fftw_double
+  PUBLIC :: init_fock_fftw
 
 #ifdef _FFTW_
   include "fftw3-mpi.f03"

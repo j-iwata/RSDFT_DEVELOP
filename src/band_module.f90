@@ -25,7 +25,7 @@ MODULE band_module
   use ps_nloc3_module, only: prep_ps_nloc3, init_ps_nloc3
   use io_module, only: Init_IO
   use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
-  use fock_ffte_module, only: init_fock_ffte
+  use fock_fft_module, only: init_fock_fft
   use band_unfold_module
   use hsort_module
   
@@ -51,7 +51,6 @@ CONTAINS
     real(8) :: dak(3),sum0,sum1,max_err,max_err0
     real(8),allocatable :: ktrj(:,:),pxyz(:,:,:,:)
     real(8),allocatable :: kbb_tmp(:,:),esp_tmp(:,:,:),esp0_tmp(:,:,:)
-    complex(8),allocatable :: unk0(:,:,:),unk00(:,:,:)
     logical :: disp_switch_parallel_bak,flag_end
     character(32) :: loop_info
     character(5) :: cc
@@ -67,10 +66,7 @@ CONTAINS
     call write_border( 0, "" )
     call write_border( 0, " BAND Calc. START -----------" )
 
-!    call read_band
-
     disp_switch_parallel_bak = disp_switch_parallel
-!    disp_switch_parallel = .false.
 
     Diter_band = maxiter_band
 
@@ -86,8 +82,6 @@ CONTAINS
     if ( nktrj > 1 ) nktrj=nktrj+1
 
     allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
-
-!    call read_band_unfold( myrank, unit )
 
     if ( iswitch_banduf ) then
 
@@ -155,7 +149,6 @@ CONTAINS
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
     allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
     allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
-    allocate( unk0(ML_0:ML_1,MB,MSP_0:MSP_1) ) ; unk0=0.d0
 
 ! ---
 
@@ -215,8 +208,8 @@ CONTAINS
 
        if ( iflag_hybrid > 0 ) then
           if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
-          call prep_kq_xc_hybrid(Nbzsm,MBZ_0,MBZ_0,kbb,bb,disp_switch)
-          call init_fock_ffte
+          call prep_kq_xc_hybrid(Nbzsm,MBZ_0,MBZ_0,kbb,bb,1)
+          call init_fock_fft
        end if
 
 ! --- sweep ---
@@ -303,8 +296,6 @@ CONTAINS
        close(unit_band_eigv)
     end if
 
-    if ( allocated(unk00) ) deallocate( unk00 )
-    deallocate( unk0 )
     deallocate( pxyz )
     deallocate( kbb_tmp )
     deallocate( esp_tmp )

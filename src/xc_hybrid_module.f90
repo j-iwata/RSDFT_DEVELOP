@@ -231,7 +231,7 @@ CONTAINS
 
        q_fock(:,:,2) = -q_fock(:,:,1)
 
-       call prep_kq_xc_hybrid( MBZ, MBZ_0, MBZ_1, kbb, bb, disp_switch )
+       call prep_kq_xc_hybrid( MBZ, MBZ_0, MBZ_1, kbb, bb, 0 )
 
     end if
 
@@ -356,11 +356,11 @@ CONTAINS
   END SUBROUTINE get_flag_xc_hybrid
 
 
-  SUBROUTINE prep_kq_xc_hybrid( MBZ, MBZ_0, MBZ_1, kbb, bb, disp_switch )
+  SUBROUTINE prep_kq_xc_hybrid( MBZ, MBZ_0, MBZ_1, kbb, bb, iswitch )
     implicit none
     integer,intent(IN) :: MBZ,MBZ_0,MBZ_1
     real(8),intent(IN) :: kbb(3,MBZ), bb(3,3)
-    logical,intent(IN) :: disp_switch
+    integer,intent(IN) :: iswitch
     integer :: m,i,k,q,t,s
     real(8) :: qtry(3),k_fock(3),c
     real(8),allocatable :: qtmp(:,:)
@@ -368,7 +368,7 @@ CONTAINS
     if ( allocated(i_kq_fock) ) deallocate( i_kq_fock )
     if ( allocated(kq_fock) ) deallocate( kq_fock )
 
-    if ( FKBZ == MBZ ) then
+    if ( iswitch == 0 ) then
 
        allocate( i_kq_fock(FKBZ_0:FKBZ_1,FKBZ_0:FKBZ_1,2) )
        i_kq_fock=0
@@ -403,7 +403,7 @@ CONTAINS
        end do ! q
        end do ! k
 
-    else if ( FKBZ /= MBZ ) then
+    else if ( iswitch == 1 ) then
 
        allocate( i_kq_fock(MBZ_0:MBZ_1,FKBZ_0:FKBZ_1,2) )
        i_kq_fock=0
@@ -440,7 +440,7 @@ CONTAINS
        end do ! k
 
        iflag_hybrid = 3
-       if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
+!       if ( disp_switch ) write(*,*) "iflag_hybrid=",iflag_hybrid
 
     end if
 
@@ -448,13 +448,13 @@ CONTAINS
     allocate( kq_fock(3,n_kq_fock) ) ; kq_fock=0.0d0
     kq_fock(:,1:n_kq_fock) = qtmp(:,1:n_kq_fock)
 
-    if ( disp_switch ) then
-       write(*,*) "n_kq_fock",n_kq_fock
-       write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
-       do i=1,n_kq_fock
-          write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
-       end do
-    end if
+!    if ( disp_switch ) then
+!       write(*,*) "n_kq_fock",n_kq_fock
+!       write(*,'(1x,4x,5x,a)') "kq_fock(1:3)"
+!       do i=1,n_kq_fock
+!          write(*,'(1x,i4,3f12.5)') i,kq_fock(:,i)
+!       end do
+!    end if
 
     deallocate( qtmp )
 
