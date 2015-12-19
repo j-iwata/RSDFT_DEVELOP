@@ -58,15 +58,15 @@ PROGRAM Real_Space_DFT
      
 ! --- input parameters ---
 
+  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
+
   call read_parameters
 
 ! ---  Type of System ( RS-SOL or RS-MOL ) ---
 
   call IOTools_readIntegerKeyword( "SYSTYPE", Systype )
 
-! --- atomic coordinates & R-space Lattice ---
-
-  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
+! --- Lattice ---
 
   call write_border( 0, " main( aa & bb )(start)" )
 

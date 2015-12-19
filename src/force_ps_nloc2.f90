@@ -1,4 +1,4 @@
-MODULE force_ps_nonloc2
+MODULE force_ps_nloc2
 
 !----------------------------------------------------------------------------
 ! this module calculates force for ultrasoft PS
@@ -698,4 +698,4 @@ CONTAINS
   END SUBROUTINE comm_dQRij
 
 
-END MODULE force_ps_nonloc2
+END MODULE force_ps_nloc2

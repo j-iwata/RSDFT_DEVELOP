@@ -11,20 +11,20 @@
 #   OMPFLAG      ( OpenMP options )
 ########################################################################
 ###################################### Default ( do not edit ) #########
-CPP_FLAGS =
 INCLUDE_DIR = -I../
+CPP_FLAGS =
+LFLAGS0   =
+OMPFLAG   =
 ########################################################################
 ####### With the following options, an expedient code may be generated #
 ########################################################################
-FC = mpif90
-FFLAGS0   = -cpp
-LFLAGS0   =
-OMPFLAG   =
-LAPACK_L  = -llapack -lblas
-CPP_FLAGS = -D_LAPACK_
+#FC = mpif90
+#FFLAGS0   = -cpp
+#LAPACK_L  = -llapack -lblas
+#CPP_FLAGS = -D_LAPACK_
 ########################################################################
 ####### If you try to generate the code suitable for your systems,   ###
-####### comment out the above options and edit followings adequately ###
+####### edit followings adequately                                   ###
 ########################################################################
 ########################### preprocessor options, links and includes ###
 ########################################################################

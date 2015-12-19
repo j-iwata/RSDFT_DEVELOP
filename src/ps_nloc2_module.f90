@@ -14,7 +14,7 @@ MODULE ps_nloc2_module
   use rgrid_mol_module, only: iswitch_eqdiv
   use para_rgrid_comm, only: prepThreeWayComm,do3StepComm,do3StepComm_F
 
-  use force_ps_nonloc2
+  use force_ps_nloc2
   use force_sub_sub_module
 
   use minimal_box_module
