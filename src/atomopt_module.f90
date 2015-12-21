@@ -14,17 +14,14 @@ MODULE atomopt_module
   use ps_nloc3_module
   use ps_nloc_mr_module
   use force_module
-
   use kinetic_module, only: SYStype
-
   use ps_local_mol_module, only: construct_ps_local_mol
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
-
   use ps_qrij_prep_module
   use ps_prepNzqr_g_module, only: prepNzqr
-
+  use vdw_grimme_module
 
   implicit none
 
@@ -680,6 +677,8 @@ CONTAINS
              call prep_ps_nloc2_mol
 
           end select
+
+          call calc_E_vdw_grimme( aa_atom )
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
           call calc_scf( disp_switch, ierr, diter_opt, feps, loop_info, Etot )

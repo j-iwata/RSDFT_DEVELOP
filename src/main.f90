@@ -8,15 +8,13 @@ PROGRAM Real_Space_DFT
   use rtddft_mol_module
   use omp_variables, only: init_omp
   use test_rtsol_module
-
   use ps_nloc_initiate_module
   use ps_getDij_module
-
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
   use lattice_module
-
   use ffte_sub_module, only: init_ffte_sub
   use fftw_module
+  use vdw_grimme_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -338,6 +336,13 @@ PROGRAM Real_Space_DFT
 ! ---
 
   call getDij
+
+! --- init_vdW_Grimme ---
+
+  call init_vdw_grimme( aa, ki_atom, zn_atom )
+  call calc_E_vdw_grimme( aa_atom )
+
+! --- total energy ---
 
   call calc_with_rhoIN_total_energy( Ehwf )
   call calc_total_energy( recalc_esp, Etot )

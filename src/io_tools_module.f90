@@ -199,11 +199,12 @@ CONTAINS
   END SUBROUTINE IOTools_readIntegerString
 
 
-  SUBROUTINE IOTools_findKeyword( keyword, hasKeyword, unit_out )
+  SUBROUTINE IOTools_findKeyword( keyword, hasKeyword, unit_out, flag_bcast )
     implicit none
     character(*),intent(IN) :: keyword
     logical,intent(OUT) :: hasKeyword
     integer,optional,intent(OUT) :: unit_out
+    logical,optional,intent(IN) :: flag_bcast
     integer :: i,unit
     character(10) :: cbuf,ckey
     unit=unit_default
@@ -222,6 +223,9 @@ CONTAINS
        if ( hasKeyword ) write(*,'(1x,A10)') keyword
     end if
 999 continue
+    if ( present(flag_bcast) ) then
+       call MPI_BCAST( hasKeyword, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, i )
+    end if
   END SUBROUTINE IOTools_findKeyword
 
 #ifdef TEST

@@ -51,6 +51,7 @@ MODS1 = \
        array_bound_module.o\
        esp_gather_module.o\
        ps_nloc2_variables.o\
+       vdw_grimme_module.o\
        xc_variables.o\
        strfac_module.o\
        rgrid_sol_module.o\

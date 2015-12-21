@@ -6,6 +6,7 @@ MODULE parameters_module
   use band_module, only: read_band
   use band_unfold_module, only: read_band_unfold
   use xc_hybrid_module, only: read_xc_hybrid
+  use vdw_grimme_module, only: read_vdw_grimme
 
   implicit none
 
@@ -72,6 +73,7 @@ CONTAINS
 
     call read_xc
     call read_xc_hybrid
+    call read_vdw_grimme
 
     call read_sweep
     call read_scf

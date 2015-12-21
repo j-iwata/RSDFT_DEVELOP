@@ -15,6 +15,7 @@ MODULE total_energy_module
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use fock_module
   use var_sys_parameter, only: pp_kind
+  use vdw_grimme_module
 
   implicit none
 
@@ -263,6 +264,8 @@ CONTAINS
     Eloc = s1(1)
     Eion = s1(2)
 
+    call get_E_vdw_grimme( Evdw )
+
     Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
          - 2*E_exchange_exx + Evdw + cnst
 
@@ -326,8 +329,9 @@ CONTAINS
     Ehat_in = E_hartree
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
+    call get_E_vdw_grimme( Evdw )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
-         - 2*E_exchange_exx + const_ps_local*sum(occ)
+         - 2*E_exchange_exx + const_ps_local*sum(occ) + Evdw
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 

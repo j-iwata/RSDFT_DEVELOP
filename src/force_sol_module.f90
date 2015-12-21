@@ -7,6 +7,7 @@ MODULE force_sol_module
   use force_ewald_module, only: calc_force_ewald
   use watch_module
   use atom_module, only: aa_atom
+  use vdw_grimme_module, only: calc_F_vdw_grimme
 
   implicit none
 
@@ -49,6 +50,8 @@ CONTAINS
 
     call calc_force_ewald(MI,work)
     force = force + work
+
+    call calc_F_vdw_grimme( aa_atom, force )
 
 !    call watch(ctt(3),ett(3))
 
