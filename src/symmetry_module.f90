@@ -63,7 +63,7 @@ CONTAINS
 
     if ( isymmetry == 0 ) return
 
-    call write_border( 60," init_symmetry(start)")
+    call write_border( 0," init_symmetry(start)")
 
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
@@ -79,7 +79,7 @@ CONTAINS
 !    call input_symdat_3( MI, Kion, asi )
 !    call input_symdat_4( MI, Kion, asi )
 
-    call write_border( 60," init_symmetry(end)")
+    call write_border( 0," init_symmetry(end)")
 
   END SUBROUTINE init_symmetry
 
@@ -107,8 +107,9 @@ CONTAINS
     if ( .not.(abs(isymmetry)==1 .or. abs(isymmetry)==2 .or. &
                abs(isymmetry)==3) )  return
 
+    call write_border( 0, " input_symdat(start)" )
+
     if ( disp_switch_parallel ) then
-       write(*,'(a40," input_symdat")') repeat("-",40)
        write(*,*) "isymmetry=",isymmetry
     end if
 
@@ -319,8 +320,9 @@ CONTAINS
 
     if ( disp_switch_parallel ) then
        write(*,*) "nsym,nnp=",nsym,nnp
-       write(*,'(a40," input_symdat(END)")') repeat("-",40)
     end if
+
+    call write_border( 0, " input_symdat(end)" )
 
   END SUBROUTINE input_symdat
 
@@ -362,9 +364,7 @@ CONTAINS
     integer :: i,i1,i2,i3,isym,j,loop,m,m1,m2,n
     integer,allocatable :: itmp(:)
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a40," input_symdat_2")') repeat("-",40)
-    end if
+    call write_border( 0, " input_symdat_2(start)" )
 
     pi2 = 2.0d0*acos(-1.0d0)
 
@@ -529,9 +529,7 @@ CONTAINS
 
     deallocate( Rra )
 
-    if ( disp_switch_parallel ) then
-       write(*,'(a40," input_symdat_2(END)")') repeat("-",40)
-    end if
+    call write_border( 0, " input_symdat_2(end)" )
 
     return
 
@@ -815,7 +813,7 @@ stop
 
     if ( isymmetry == 0 ) return
 
-    call write_border( 60, " prep_symmetry(start)" )
+    call write_border( 0, " prep_symmetry(start)" )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -914,7 +912,7 @@ stop
     deallocate( LLL2 )
     deallocate( itmp )
 
-    call write_border( 60, " prep_symmetry(end)" )
+    call write_border( 0, " prep_symmetry(end)" )
 
     return
 
@@ -935,7 +933,7 @@ stop
 
     if ( isymmetry == 0 ) return
 
-    call write_border( 60, " sym_rho(start)" )
+    call write_border( 1, " sym_rho(start)" )
 
     allocate( rho3(0:ML1-1,0:ML2-1,0:ML3-1)  ) ; rho3=0.0d0
     allocate( work3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; work3=0.0d0
@@ -989,14 +987,14 @@ stop
 
        c0=sum(rho(n1:n2,ispin))*dV
        call mpi_allreduce(c0,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
-       if ( disp_switch_parallel ) write(*,*) "check sum(rho)=",c
+!       if ( disp_switch_parallel ) write(*,*) "check sum(rho)=",c
 
     end do ! ispin
 
     deallocate( work3 )
     deallocate( rho3  )
 
-    call write_border( 60, " sym_rho(end)" )
+    call write_border( 1, " sym_rho(end)" )
 
     return
 
@@ -1015,9 +1013,7 @@ stop
 
     if ( isymmetry /= 1 ) return
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "force is symmetrized."
-    end if
+    call write_border( 1, " sym_force(start)" )
 
     c1 = 1.0d0/dble(nnp)
     c2 = 1.0d0/dble(nsym)
@@ -1083,6 +1079,8 @@ stop
     end do
 
     deallocate( ftmp )
+
+    call write_border( 1, " sym_force(end)" )
 
     return
   END SUBROUTINE sym_force
