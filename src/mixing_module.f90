@@ -204,9 +204,9 @@ CONTAINS
        case(20:29)
           call broyden_mixing &
                ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
-!       case(40:49)
-!          call pulay_g_mixing &
-!               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
+       case(30:39)
+          call pulay_g_mixing &
+               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        end select
 
        sum0(:)=0.0d0
@@ -459,6 +459,8 @@ CONTAINS
     complex(8) :: zc
     complex(8),allocatable :: A0(:,:),A1(:,:),b1(:),X(:),Y(:)
 
+    call write_border( 1, " pulay_r2_mixing(start)" )
+
     Xou(:,:,mmix) = f(:,:)
 
     mmix_count = mmix_count + 1
@@ -472,6 +474,7 @@ CONTAINS
        end do
        Xin(:,:,mmix) = Xin(:,:,mmix) + beta*( Xou(:,:,mmix)-Xin(:,:,mmix) )
        f(:,:) = Xin(:,:,mmix)
+       call write_border( 1, " pulay_r2_mixing(return)" )
        return
     end if
 
@@ -529,8 +532,10 @@ CONTAINS
     f(:,:) = real( Xin(:,:,mmix) )
 
     deallocate( A0,A1,b1,Y,X,ipiv )
-    return
 
+    call write_border( 1, " pulay_r2_mixing(end)" )
+
+    return
   END SUBROUTINE pulay_r2_mixing
 
 

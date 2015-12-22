@@ -1,6 +1,9 @@
 MODULE mixing_pulay_module
 
   use fft_module
+  use grid_module
+  use bb_module
+  use parallel_module, only: comm_grid
 
   implicit none
 
@@ -128,13 +131,18 @@ CONTAINS
     complex(8),intent(INOUT) :: Xou(m,n,mmix)
     integer :: s,mmix0,ierr,i,i0,j0,mm,j
     integer,allocatable :: ipiv(:)
-    real(8),allocatable :: rwork(:,:)
+    real(8),allocatable :: rwork(:,:), wq(:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8) :: zc
     complex(8),allocatable :: A0(:,:),A1(:,:),b1(:),X(:),Y(:)
 
+    call write_border( 1, " pulay_g_mixing(start)" )
+
 !    Xou(:,:,mmix) = f(:,:)
     call pulay_sub1_fft( f, Xou(:,:,mmix) )
+
+    allocate( wq(m) ) ; wq=0.0d0
+    call get_Kerker_weight( wq )
 
     mmix_count = mmix_count + 1
 
@@ -167,8 +175,12 @@ CONTAINS
     do i0=j0,mmix0
        i=mmix-mmix0+i0
        j=mmix-mmix0+j0
-       A0(i0,j0)=sum( conjg(Xou(:,:,i)-Xin(:,:,i)) &
-                          *(Xou(:,:,j)-Xin(:,:,j)) )
+!       A0(i0,j0)=sum( conjg(Xou(:,:,i)-Xin(:,:,i)) &
+!                          *(Xou(:,:,j)-Xin(:,:,j)) )
+       do s=1,n
+          A0(i0,j0)=A0(i0,j0)+sum( conjg(Xou(:,s,i)-Xin(:,s,i)) &
+                                       *(Xou(:,s,j)-Xin(:,s,j))/wq(:) )
+       end do
        A0(j0,i0)=conjg( A0(i0,j0) )
     end do
     end do
@@ -207,6 +219,10 @@ CONTAINS
     call pulay_sub2_fft( Xin(:,:,mmix), f )
 
     deallocate( A0,A1,b1,Y,X,ipiv )
+    deallocate( wq )
+
+    call write_border( 1, " pulay_g_mixing(end)" )
+
     return
 
   END SUBROUTINE pulay_g_mixing
@@ -254,5 +270,48 @@ CONTAINS
 
   END SUBROUTINE pulay_sub2_fft
        
+
+  SUBROUTINE get_Kerker_weight( wq )
+    implicit none
+    real(8),intent(OUT) :: wq(:)
+    integer :: i1,i2,i3,i,j1,j2,j3,k1,k2,k3,ML1,ML2,ML3
+    real(8) :: gx,gy,gz,gg,gg_min
+    type(grid) :: rgrid
+    call get_range_rgrid( rgrid )
+    ML1=rgrid%g3%x%size_global
+    ML2=rgrid%g3%y%size_global
+    ML3=rgrid%g3%z%size_global
+    wq=0.0d0
+    gg_min=1.d100
+    i=0
+    do i3=rgrid%g3%z%head,rgrid%g3%z%tail
+    do i2=rgrid%g3%y%head,rgrid%g3%y%tail
+    do i1=rgrid%g3%x%head,rgrid%g3%x%tail
+       i=i+1
+       j1 = i1-ML1 ; if ( j1 < -(ML1-1)/2 ) j1=i1
+       j2 = i2-ML2 ; if ( j2 < -(ML2-1)/2 ) j2=i2
+       j3 = i3-ML3 ; if ( j3 < -(ML3-1)/2 ) j3=i3
+       k1 = mod(j1+ML1,ML1)
+       k2 = mod(j2+ML2,ML2)
+       k3 = mod(j3+ML3,ML3)
+       if ( k1/=i1 .or. k2/=i2 .or. k3/=i3 ) then
+          write(*,*) k1,k2,k3,i1,i2,i3
+          call stop_program_f( "stop@get_wq_fft" )
+       end if
+       gx=j1*bb(1,1)+j2*bb(1,2)+j3*bb(1,3)
+       gy=j1*bb(2,1)+j2*bb(2,2)+j3*bb(2,3)
+       gz=j1*bb(3,1)+j2*bb(3,2)+j3*bb(3,3)
+       gg=gx*gx+gy*gy+gz*gz
+       if ( gg > 1.d-10 ) gg_min=min(gg,gg_min)
+       wq(i)=gg
+    end do
+    end do
+    end do
+    call mpi_allreduce(gg_min,gg,1,MPI_REAL8,MPI_MIN,comm_grid,i)
+    do i=1,size(wq)
+       wq(i) = max( 0.5d0, wq(i)/(wq(i)+gg) )
+    end do
+  END SUBROUTINE get_Kerker_weight
+
 
 END MODULE mixing_pulay_module

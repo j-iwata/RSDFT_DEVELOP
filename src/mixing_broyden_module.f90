@@ -32,6 +32,8 @@ CONTAINS
     real(8),allocatable :: s0(:),s1(:),work(:)
     real(8) :: alpha,dFnorm,c1
 
+    call write_border( 1, " broyden_mixing(start)" )
+
     zXou(:,:,mmix) = g(:,:)
 
     iter = iter + 1
@@ -185,6 +187,8 @@ CONTAINS
     deallocate( F )
     deallocate( Xou )
     deallocate( Xin )
+
+    call write_border( 1, " broyden_mixing(end)" )
 
     return
   END SUBROUTINE broyden_mixing
