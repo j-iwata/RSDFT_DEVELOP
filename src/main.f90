@@ -420,6 +420,10 @@ PROGRAM Real_Space_DFT
 
      call calc_total_energy( recalc_esp, Etot, 6 )
 
+  case( 3 ) ! --- cpmd ---
+
+     call bomd
+
   end select
 
 !
