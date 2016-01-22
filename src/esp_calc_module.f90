@@ -4,6 +4,7 @@ MODULE esp_calc_module
   use rgrid_module, only: dV
   use parallel_module
   use wf_module, only: hunk, iflag_hunk
+  use rsdft_mpi_module
 
   implicit none
 
@@ -44,7 +45,7 @@ CONTAINS
 
     deallocate( hwf )
 
-    call mpi_allreduce(MPI_IN_PLACE,e,ne-ns+1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    call rsdft_allreduce_sum( e(ns:ne), comm_grid )
 
   END SUBROUTINE esp_calc
 

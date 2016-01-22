@@ -4,6 +4,7 @@ MODULE gram_schmidt_t_module
   use wf_module, only: unk,hunk,iflag_hunk
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -191,8 +192,7 @@ CONTAINS
                   ,ML0,unk(ML_0,ms,k,s),ML0,zero,utmp2,nn)
 #endif
 
-             call mpi_allreduce(MPI_IN_PLACE,utmp2,nn*mm,TYPE_MAIN,mpi_sum &
-                  ,comm_grid,ierr)
+             call rsdft_allreduce_sum( utmp2, comm_grid )
 
 #ifdef _DRSDFT_
              call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
@@ -219,7 +219,7 @@ CONTAINS
                    c=c+abs(unk(i,ms,k,s))**2
                 end do
 
-                call mpi_allreduce(MPI_IN_PLACE,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
+                call rsdft_allreduce_sum( c, comm_grid )
 
                 c=1.d0/sqrt(c*dV)
 
@@ -252,8 +252,7 @@ CONTAINS
                         ,ML0,unk(ML_0,m,k,s),1,zero,utmp,1)
 #endif
 
-                   call mpi_allreduce(MPI_IN_PLACE,utmp,n-ns+1,TYPE_MAIN &
-                        ,mpi_sum,comm_grid,ierr)
+                   call rsdft_allreduce_sum( utmp(1:n-ns+1), comm_grid )
 
 #ifdef _DRSDFT_
                    call dgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s) &
@@ -281,7 +280,7 @@ CONTAINS
                       c=c+abs(unk(i,m,k,s))**2
                    end do
 
-                   call mpi_allreduce(MPI_IN_PLACE,c,1,mpi_real8,mpi_sum,comm_grid,ierr)
+                   call rsdft_allreduce_sum( c, comm_grid )
 
                    c=1.d0/sqrt(c*dV)
 

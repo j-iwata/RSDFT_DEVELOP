@@ -1,10 +1,10 @@
 MODULE func2gp_module
 
- !use esm_rgrid_module
   use rgrid_module
   use rgrid_mol_module, LL_mol => LL
   use parallel_module
   use fd_module
+  use rsdft_mpi_module
   
   implicit none
 
@@ -393,7 +393,7 @@ CONTAINS
     end do
     end do
 
-    call mpi_allreduce(MPI_IN_PLACE,w,size(w),MPI_REAL8,MPI_SUM,comm_grid,i)
+    call rsdft_allreduce_sum( w, comm_grid )
 
     if ( myrank == 0 ) then
        rewind unit

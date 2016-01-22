@@ -2,6 +2,7 @@ MODULE physical_type_methods
 
   use parallel_module
   use rgrid_variables, only: dV
+  use rsdft_mpi_module
 
   implicit none
 
@@ -14,8 +15,7 @@ CONTAINS
   SUBROUTINE dSpatialIntegral( d )
     implicit none
     real(8) :: d(:)
-    integer :: i
-    call MPI_ALLREDUCE(MPI_IN_PLACE,d,size(d),MPI_REAL8,MPI_SUM,comm_grid,i)
+    call rsdft_allreduce_sum( d, comm_grid )
     d=d*dV
   END SUBROUTINE dSpatialIntegral
 

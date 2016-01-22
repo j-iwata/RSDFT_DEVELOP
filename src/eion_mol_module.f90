@@ -3,6 +3,7 @@ MODULE eion_mol_module
   use pseudopot_module, only: Zps
   use atom_module, only: Natom,ki_atom,aa_atom
   use parallel_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -18,7 +19,7 @@ CONTAINS
     implicit none
     real(8),intent(OUT) :: Eion
     real(8) :: r
-    integer :: i,j,ik,jk,ierr
+    integer :: i,j,ik,jk
 
     Eion=0.0d0
 
@@ -53,8 +54,7 @@ CONTAINS
 
     end do ! i
 
-    call mpi_allreduce &
-         (MPI_IN_PLACE,Eion,1,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call rsdft_allreduce_sum( Eion, MPI_COMM_WORLD )
 
   END SUBROUTINE calc_eion_mol
 

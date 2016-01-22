@@ -2,6 +2,7 @@ MODULE wf_module
 
   use parallel_module
   use wf_sub_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -167,7 +168,7 @@ CONTAINS
     implicit none
     real(8),intent(IN) :: dV          ! volume element
     logical,intent(IN) :: disp_switch ! diplay switch
-    integer :: ierr,s,k,m,n,mm
+    integer :: s,k,m,n,mm
 #ifdef _DRSDFT_
     real(8),allocatable :: uu(:,:)
 #else
@@ -190,8 +191,7 @@ CONTAINS
 #endif
        end do ! m
        end do ! n
-       call mpi_allreduce(MPI_IN_PLACE,uu,mm,TYPE_MAIN &
-            ,MPI_SUM,comm_grid,ierr)
+       call rsdft_allreduce_sum( uu, comm_grid )
        do n=1,MB_WF
        do m=1,n
           if ( disp_switch ) then

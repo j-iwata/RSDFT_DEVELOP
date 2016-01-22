@@ -8,6 +8,7 @@ MODULE ps_pcc_force_module
   use xc_module, only: Vxc
   use ps_pcc_module, only: cdcg
   use fft_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -70,7 +71,7 @@ CONTAINS
     do j=MSP_0,MSP_1
        w0(:) = w0(:) + Vxc(:,j)
     end do
-    call mpi_allreduce( mpi_in_place, w0,n,MPI_REAL8,MPI_SUM,comm_spin,ierr)
+    call rsdft_allreduce_sum( w0, comm_spin )
     call mpi_allgatherv(w0,ir_grid(myrank_g),MPI_REAL8 &
          ,w1,ir_grid,id_grid,MPI_REAL8,comm_grid,ierr)
     deallocate( w0 )

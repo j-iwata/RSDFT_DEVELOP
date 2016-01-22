@@ -8,6 +8,7 @@ MODULE ewald_module
   use parallel_module
   use watch_module
   use hsort_module
+  use bberf_module
 
   implicit none
 
@@ -204,7 +205,7 @@ CONTAINS
        alpha = sqrt(eta)
 !       do i=1,1000
 !          r=i
-!          t=erfc(alpha*r)/r
+!          t=bberfc(alpha*r)/r
 !          if ( t <= epsr ) exit
 !       end do
        r=6.d0/sqrt(eta)
@@ -589,7 +590,7 @@ CONTAINS
           z=aa(3,1)*a1+aa(3,2)*a2+aa(3,3)*a3
           r=sqrt(x*x+y*y+z*z)
           if ( r == 0.d0 ) cycle
-          t=erfc(alpha*r)/r
+          t=bberfc(alpha*r)/r
           sum0=sum0+t
        end do
 !$OMP end parallel do

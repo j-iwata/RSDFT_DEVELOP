@@ -31,6 +31,7 @@ MODULE scf_module
   use hamiltonian_module
   use io_tools_module
   use eigenvalues_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -569,8 +570,7 @@ CONTAINS
     end do ! i
 
     diff_vrho(:)=diff_vrho(:)/ML
-    call mpi_allreduce( MPI_IN_PLACE,diff_vrho,7,MPI_REAL8 &
-                       ,MPI_SUM,comm_grid,ierr )
+    call rsdft_allreduce_sum( diff_vrho, comm_grid )
 
     if ( disp_switch ) then
        do i=1,MSP

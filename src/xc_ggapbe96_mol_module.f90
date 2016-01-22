@@ -3,6 +3,7 @@ MODULE xc_ggapbe96_mol_module
   use parallel_module
   use rgrid_mol_module
   use bc_module, only: www, bcset
+  use rsdft_mpi_module
 
   implicit none
 
@@ -27,8 +28,7 @@ CONTAINS
        LLL( LL(1,i),LL(2,i),LL(3,i) ) = i
     end do
 
-    call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER &
-         , MPI_SUM, comm_grid, ierr )
+    call rsdft_allreduce_sum( LLL, comm_grid )
 
   END SUBROUTINE get_LLL_mol
 

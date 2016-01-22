@@ -13,7 +13,11 @@ MODULE gradient_module
            ,gradient16, construct_gradient16, destruct_gradient16
 
   integer,parameter :: DP=kind(0.0d0)
+#ifdef _NO_QPRECISION_
+  integer,parameter :: QP=kind(0.0d0)
+#else
   integer,parameter :: QP=kind(0.0q0)
+#endif
 
   type gradient
      real(DP),allocatable :: gx(:),gy(:),gz(:)
@@ -143,7 +147,7 @@ CONTAINS
 
     call get_aa_lattice( aa )
     call get_reciprocal_lattice( aa, bb )
-    pi2      = 2.0q0*acos(-1.0q0)
+    pi2      = 2.0_QP*acos(-1.0_QP)
     b(1:3,1) = aa%Length(1)*bb%LatticeVector(1:3,1)/( pi2*rgrid%spacing(1) )
     b(1:3,2) = aa%Length(2)*bb%LatticeVector(1:3,2)/( pi2*rgrid%spacing(2) )
     b(1:3,3) = aa%Length(3)*bb%LatticeVector(1:3,3)/( pi2*rgrid%spacing(3) )
@@ -152,10 +156,10 @@ CONTAINS
 
     m0 = rgrid%g1%head
     m1 = rgrid%g1%tail
-    allocate( grad%gx(m0:m1) ) ; grad%gx=0.0q0
-    allocate( grad%gy(m0:m1) ) ; grad%gy=0.0q0
-    allocate( grad%gz(m0:m1) ) ; grad%gz=0.0q0
-    allocate( grad%gg(m0:m1) ) ; grad%gg=0.0q0
+    allocate( grad%gx(m0:m1) ) ; grad%gx=0.0_QP
+    allocate( grad%gy(m0:m1) ) ; grad%gy=0.0_QP
+    allocate( grad%gz(m0:m1) ) ; grad%gz=0.0_QP
+    allocate( grad%gg(m0:m1) ) ; grad%gg=0.0_QP
 
     www(:,:,:,:)=0.0d0
     do s=rho%s_range%head_global,rho%s_range%tail_global
@@ -178,7 +182,7 @@ CONTAINS
     b2 = rgrid%g3%y%tail + Md
     a3 = rgrid%g3%z%head - Md
     b3 = rgrid%g3%z%tail + Md
-    allocate( w(a1:b1,a2:b2,a3:b3) ) ; w=0.0q0
+    allocate( w(a1:b1,a2:b2,a3:b3) ) ; w=0.0_QP
 
     w=www(:,:,:,1)
 
@@ -186,9 +190,9 @@ CONTAINS
     do i3=rgrid%g3%z%head,rgrid%g3%z%tail
     do i2=rgrid%g3%y%head,rgrid%g3%y%tail
     do i1=rgrid%g3%x%head,rgrid%g3%x%tail
-       g1=0.0q0
-       g2=0.0q0
-       g3=0.0q0
+       g1=0.0_QP
+       g2=0.0_QP
+       g3=0.0_QP
        do m=1,Md
           g1 = g1 - nabla%coef(m)*( w(i1-m,i2,i3) - w(i1+m,i2,i3) )
           g2 = g2 - nabla%coef(m)*( w(i1,i2-m,i3) - w(i1,i2+m,i3) )

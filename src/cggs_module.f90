@@ -1,6 +1,7 @@
 MODULE cggs_module
 
   use parallel_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -64,7 +65,7 @@ CONTAINS
 #endif
     end do
     xg(:)=xg(:)*dv
-    call mpi_allreduce( MPI_IN_PLACE, xg, ns, MPI_REAL8,MPI_SUM,comm_grid,i )
+    call rsdft_allreduce_sum( xg, comm_grid )
 
     do n=1,ns
        do i=1,ms
@@ -109,7 +110,7 @@ CONTAINS
 #endif
        xg(n)=xg(n)*dv
     end do
-    call mpi_allreduce( MPI_IN_PLACE, xg, ns, MPI_REAL8,MPI_SUM,comm_grid,i )
+    call rsdft_allreduce_sum( xg, comm_grid )
 
     do n=1,ns
        if ( n == nt ) cycle

@@ -354,8 +354,7 @@ CONTAINS
           end do
           if ( map_ktrj(iktrj,2) == 1 ) zwork0=conjg(zwork0)
 
-          call mpi_allreduce( MPI_IN_PLACE, zwork0, ML, MPI_COMPLEX16 &
-               ,MPI_SUM, comm_grid, ierr )
+          call rsdft_allreduce_sum( zwork0, comm_grid )
 
           call forward_fft( zwork0, zwork1 )
 

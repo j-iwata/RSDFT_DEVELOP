@@ -9,6 +9,7 @@ MODULE density_module
   use var_sys_parameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
+  use rsdft_mpi_module
 
   implicit none
 
@@ -176,8 +177,8 @@ CONTAINS
     include 'mpif.h'
     m=ML_1_RHO-ML_0_RHO+1
     do s=MS_0_RHO,MS_1_RHO
-       call mpi_allreduce(MPI_IN_PLACE,rho(ML_0_RHO,s),m,mpi_real8,mpi_sum,comm_band,ierr)
-       call mpi_allreduce(MPI_IN_PLACE,rho(ML_0_RHO,s),m,mpi_real8,mpi_sum,comm_bzsm,ierr)
+       call rsdft_allreduce_sum( rho(:,s), comm_band )
+       call rsdft_allreduce_sum( rho(:,s), comm_bzsm )
     end do
     ! The following assumes all 'MS_1-MS_0+1' are the same
     m=m*(MS_1_RHO-MS_0_RHO+1)

@@ -11,6 +11,7 @@ MODULE xc_vdw_module
   use basic_type_factory
   use fft_module
   use polint_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -18,7 +19,11 @@ MODULE xc_vdw_module
   PUBLIC :: init_xc_vdw, calc_xc_vdw
 
   integer,parameter :: DP=kind(0.0d0)
+#ifdef _NO_QPRECISION_
+  integer,parameter :: QP=kind(0.0d0)
+#else
   integer,parameter :: QP=kind(0.0q0)
+#endif
 
   real(8) :: Qmax=5.0d0
   real(8) :: Qmin=0.0d0
@@ -718,10 +723,10 @@ CONTAINS
 
     call write_border( 1, " calc_xc_vdw(start)" )
 
-    pi     = acos(-1.0q0)
-    onethr = 1.0q0/3.0q0
-    fouthr = 4.0q0/3.0q0
-    const  = Zab/9.0q0
+    pi     = acos(-1.0_QP)
+    onethr = 1.0_QP/3.0_QP
+    fouthr = 4.0_QP/3.0_QP
+    const  = Zab/9.0_QP
     m0     = rgrid%g1%head
     m1     = rgrid%g1%tail
     nspin  = rho%s_range%size_global
@@ -756,18 +761,18 @@ CONTAINS
           pot%c%val(i,j) = edc_lda + trho*vdc_lda(j)
        end do
 
-       kf = ( 3.0q0*pi*pi*trho )**onethr
+       kf = ( 3.0_QP*pi*pi*trho )**onethr
 
        if ( trho <= 0.0d0 ) then
           qsat(i)=Qmax
        else
-          ss = grad16%gg(i)/(2.0q0*kf*trho)**2
+          ss = grad16%gg(i)/(2.0_QP*kf*trho)**2
           q0 = -fouthr*pi*(edx_lda(1)+edc_lda) - const*ss*kf
-          c=0.0q0
+          c=0.0_QP
           do j=1,Mmax
              c=c+(q0/Qmax)**j/j
           end do
-          qsat(i) = Qmax*( 1.0q0 - exp(-c) )
+          qsat(i) = Qmax*( 1.0_QP - exp(-c) )
           ss_min = min( ss, ss_min )
           ss_max = max( ss, ss_max )
        end if
@@ -1271,12 +1276,12 @@ CONTAINS
     integer :: nspin
     integer,allocatable :: LLL(:,:,:)
 
-    pi       = acos(-1.0q0)
-    onethr   = 1.0q0/3.0q0
-    twothr   = 2.0q0/3.0q0
-    FouPiThr = 4.0q0*pi/3.0q0
-    sevthr   = 7.0q0/3.0q0
-    const    = Zab/9.0q0
+    pi       = acos(-1.0_QP)
+    onethr   = 1.0_QP/3.0_QP
+    twothr   = 2.0_QP/3.0_QP
+    FouPiThr = 4.0_QP*pi/3.0_QP
+    sevthr   = 7.0_QP/3.0_QP
+    const    = Zab/9.0_QP
 
     m0 = rgrid%g1%head
     m1 = rgrid%g1%tail
@@ -1287,9 +1292,9 @@ CONTAINS
 
     nspin = rho%s_range%size_global
 
-    allocate( rtmp(rgrid%g1%size_global,3) ) ; rtmp =0.0q0
-    allocate( rtmp0(m0:m1)                 ) ; rtmp0=0.0q0
-    allocate( ftmp(m0:m1)                  ) ; ftmp =0.0q0
+    allocate( rtmp(rgrid%g1%size_global,3) ) ; rtmp =0.0_QP
+    allocate( rtmp0(m0:m1)                 ) ; rtmp0=0.0_QP
+    allocate( ftmp(m0:m1)                  ) ; ftmp =0.0_QP
 
 ! ---
 
@@ -1306,15 +1311,15 @@ CONTAINS
        call calc_edx_lda( nspin, rho_tmp, edx_lda, vdx_lda )
        call calc_edc_lda( nspin, rho_tmp, edc_lda, vdc_lda )
 
-       kf = (3.0q0*pi*pi*qtrho)**onethr
-       ss = grad16%gg(i)/(2.0q0*kf*qtrho)**2
+       kf = (3.0_QP*pi*pi*qtrho)**onethr
+       ss = grad16%gg(i)/(2.0_QP*kf*qtrho)**2
        q0 = -FouPithr*(edx_lda(1)+edc_lda) - const*ss*kf
 
-       c=1.0q0
+       c=1.0_QP
        do j=1,Mmax-1
           c=c+(q0/Qmax)**j
        end do
-       d=0.0q0
+       d=0.0_QP
        do j=1,Mmax
           d=d+(q0/Qmax)**j/j
        end do
@@ -1323,7 +1328,7 @@ CONTAINS
        ftmp(i) = c*( -FouPiThr*( vdx_lda(1) + vdc_lda(1) )*trho &
                      +const*sevthr*kf*ss )*fin(i-m0+1)
 
-       rtmp0(i) = c*( -const/(2.0q0*qtrho*kf) )*fin(i-m0+1)
+       rtmp0(i) = c*( -const/(2.0_QP*qtrho*kf) )*fin(i-m0+1)
 
     end do ! i
 
@@ -1351,8 +1356,7 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE( MPI_IN_PLACE, LLL, size(LLL), MPI_INTEGER &
-         ,MPI_SUM, comm_grid, info )
+    call rsdft_allreduce_sum( LLL, comm_grid )
 
     call construct_nabla_fd( nabla )
     Md = nabla%md

@@ -243,29 +243,25 @@ CONTAINS
     m = size(unk_hf,1)*size(unk_hf,2)
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-       call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,k,s), m, TYPE_MAIN &
-            ,MPI_SUM, comm_band, ierr )
+       call rsdft_allreduce_sum( unk_hf(:,:,k,s), comm_band )
     end do ! k
     end do ! s
 
     m = size(unk_hf,1)*size(unk_hf,2)*size(unk_hf,3)
     do s=MSP_0,MSP_1
-       call MPI_ALLREDUCE( MPI_IN_PLACE, unk_hf(:,:,:,s), m, TYPE_MAIN &
-            ,MPI_SUM, comm_bzsm, ierr )
+       call rsdft_allreduce_sum( unk_hf(:,:,:,s), comm_bzsm )
     end do ! s
 
     m = size( occ_hf,1 )
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-       call MPI_ALLREDUCE( MPI_IN_PLACE, occ_hf(:,k,s), m, MPI_REAL8 &
-            ,MPI_SUM, comm_band, ierr )
+       call rsdft_allreduce_sum( occ_hf(:,k,s), comm_band )
     end do ! k
     end do ! s
 
     m = size( occ_hf,1 )*size( occ_hf,2 )
     do s=MSP_0,MSP_1
-       call MPI_ALLREDUCE( MPI_IN_PLACE, occ_hf(:,:,s), m, MPI_REAL8 &
-            ,MPI_SUM, comm_bzsm, ierr )
+       call rsdft_allreduce_sum( occ_hf(:,:,s), comm_bzsm )
     end do ! s
 
 ! ---
@@ -423,11 +419,8 @@ CONTAINS
 
 ! ---
 
-    call mpi_allreduce( MPI_IN_PLACE,hunk(n1,1,k,s),MB*(n2-n1+1) &
-                       ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
-    call mpi_allreduce( MPI_IN_PLACE,hunk(n1,1,k,s),MB*(n2-n1+1) &
-                       ,TYPE_MAIN,MPI_SUM,comm_fkmb,ierr )
-!    call rsdft_allreduce( comm_band, hunk(n1,1,k,s), MB*(n2-n1+1), 512 )
+    call rsdft_allreduce_sum( hunk(:,:,k,s), comm_band )
+    call rsdft_allreduce_sum( hunk(:,:,k,s), comm_fkmb )
 
     return
 
@@ -564,11 +557,8 @@ CONTAINS
 
 ! ---
 
-    call mpi_allreduce( MPI_IN_PLACE,hunk(ml0,1,k,s),MB*(ml1-ml0+1) &
-                       ,TYPE_MAIN,MPI_SUM,comm_band,ierr )
-    call mpi_allreduce( MPI_IN_PLACE,hunk(ml0,1,k,s),MB*(ml1-ml0+1) &
-                       ,TYPE_MAIN,MPI_SUM,comm_fkmb,ierr )
-!    call rsdft_allreduce( comm_band, hunk(ml0,1,k,s), MB*(ml1-ml0+1), 512 )
+    call rsdft_allreduce_sum( hunk(:,:,k,s), comm_band )
+    call rsdft_allreduce_sum( hunk(:,:,k,s), comm_fkmb )
 
     return
 
@@ -727,17 +717,14 @@ CONTAINS
 
     m=size( hunk,1 )*size( hunk,2 )
     do k=1,MBZ
-       call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,k,s), m, TYPE_MAIN, &
-                           MPI_SUM, comm_band, ierr )
+       call rsdft_allreduce_sum( hunk(:,:,k,s), comm_band )
     end do
 
     m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
-    call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
-                        MPI_SUM, comm_bzsm, ierr )
+    call rsdft_allreduce_sum( hunk(:,:,:,s), comm_bzsm )
 
     m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
-    call mpi_allreduce( MPI_IN_PLACE, hunk(n1,1,1,s), m, TYPE_MAIN, &
-                        MPI_SUM, comm_fkmb, ierr )
+    call rsdft_allreduce_sum( hunk(:,:,:,s), comm_fkmb )
 
     call watch(ctt(3),ett(3))
 

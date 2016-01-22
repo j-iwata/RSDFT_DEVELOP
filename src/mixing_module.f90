@@ -3,6 +3,7 @@ MODULE mixing_module
   use mixing_broyden_module
   use mixing_pulay_module
   use io_tools_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -338,7 +339,7 @@ CONTAINS
        chrg(1,i) = sum( f(:,i) )*dV
        chrg(2,i) = sum( f(:,i),mask=(f(:,i)<0.0d0) )*dV
     end do
-    call mpi_allreduce(MPI_IN_PLACE,chrg,2*n,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    call rsdft_allreduce_sum( chrg, comm_grid )
 
     if ( any( chrg(2,1:n) < 0.0d0 ) ) then
 !       if ( disp_switch ) then
