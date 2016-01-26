@@ -1,7 +1,7 @@
 MODULE gram_schmidt_g_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF
+  use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF,gather_b_wf
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module, only: comm_grid,comm_band,ir_band,id_band &
                             ,id_class,myrank,np_band,myrank_b
@@ -56,7 +56,6 @@ CONTAINS
     NBAND_BLK=NBLK
     ncycle=(MB-1)/NBAND_BLK+1
 
-    call MPI_ALLGATHERV( unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN,unk(ML_0,1,k,s),ir,id,TYPE_MAIN,COMM_BAND,ierr )
     do k1=1,ncycle
       irank_b = mod(k1-1,np_band)
 

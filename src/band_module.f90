@@ -28,6 +28,7 @@ MODULE band_module
   use fock_fft_module, only: init_fock_fft
   use band_unfold_module
   use hsort_module
+  use rsdft_mpi_module
   
   implicit none
 
@@ -256,18 +257,17 @@ CONTAINS
 #endif
 
        do s=MSP_0,MSP_1
-          call mpi_allgather(pxyz(1,1,myrank_k,s),3*MB,MPI_REAL8 &
-               ,pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
+          call rsdft_allgather( pxyz(:,:,myrank_k,s),pxyz(:,:,:,s),comm_bzsm )
        end do ! s
-       call mpi_allgather(pxyz(1,1,0,MSP_0),3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8 &
-            ,pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
+       call rsdft_allgather( pxyz(:,:,:,MSP_0),pxyz,comm_spin )
 
        do s=1,MSP
-          call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+          call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8 &
+               ,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
        do s=1,MSP
           esp0_tmp(:,myrank_k,s)=esp(:,MBZ_0,s)
-          call mpi_allgather(esp0_tmp(1,myrank_k,s),MB,mpi_real8,esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+          call rsdft_allgather(esp0_tmp(:,myrank_k,s),esp0_tmp(:,:,s),comm_bzsm)
        end do
 
        do ibz=0,np_bzsm-1

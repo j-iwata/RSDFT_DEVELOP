@@ -1,7 +1,7 @@
 MODULE subspace_diag_la_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk,esp,hunk,iflag_hunk,MB_0_WF
+  use wf_module, only: unk,esp,hunk,iflag_hunk,MB_0_WF,gather_b_wf
   use hamiltonian_module
   use parallel_module
   use subspace_diag_variables
@@ -59,19 +59,7 @@ CONTAINS
     idiag0 = "zheevd"
 #endif
 
-    allocate( id(0:np_band-1),ir(0:np_band-1) )
-
-    id(0:np_band-1) = id_band(0:np_band-1)*ML0
-    ir(0:np_band-1) = ir_band(0:np_band-1)*ML0
-
-    call mpi_allgatherv(unk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN &
-                       ,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-    if ( iflag_hunk >= 1 ) then
-       call mpi_allgatherv(hunk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN &
-                          ,hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-    end if
-
-    deallocate( ir,id )
+    call gather_b_wf( k, s )
 
     call watch(ct(1),et(1))
 

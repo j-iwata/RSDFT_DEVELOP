@@ -94,10 +94,8 @@ CONTAINS
        end do ! i
        end do ! j
 
-      !call MPI_ALLREDUCE( MPI_IN_PLACE, phiG, size(phiG), MPI_REAL8 &
-      !                   ,MPI_SUM, MPI_COMM_WORLD, info )
-       call MPI_ALLREDUCE( MPI_IN_PLACE, phiG_table, size(phiG_table) &
-                          ,MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, info )
+      !call rsdft_allreduce_sum( phiG, MPI_COMM_WORLD )
+       call rsdft_allreduce_sum( phiG_table, MPI_COMM_WORLD )
 
       !call write_file_phiG( phiG )
        call write_file_phiG( phiG_table )
@@ -144,10 +142,7 @@ CONTAINS
        end if
     end if
     call MPI_BCAST( flag, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, i )
-    if ( flag ) then
-       call MPI_ALLREDUCE( MPI_IN_PLACE, phiGread, size(phiGread) &
-                          ,MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, i )
-    end if
+    if ( flag ) call rsdft_allreduce_sum( phiGread, MPI_COMM_WORLD )
   END SUBROUTINE read_file_phiG
 
   SUBROUTINE write_file_phiG( phiGout )
@@ -1338,12 +1333,13 @@ CONTAINS
     rtmp(m0:m1,2) = rtmp0(m0:m1) * grad16%gy(m0:m1)
     rtmp(m0:m1,3) = rtmp0(m0:m1) * grad16%gz(m0:m1)
 
-    deallocate( rtmp0 )
-
     do i=1,3
-       call MPI_ALLGATHERV( rtmp(m0,i), m1-m0+1, MPI_REAL16, rtmp(1,i) &
+       rtmp0(m0:m1)=rtmp(m0:m1,i)
+       call MPI_ALLGATHERV( rtmp0(m0), m1-m0+1, MPI_REAL16, rtmp(1,i) &
             , ir_grid, id_grid, MPI_REAL16, comm_grid, info )
     end do
+
+    deallocate( rtmp0 )
 
     allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0
 

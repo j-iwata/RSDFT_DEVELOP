@@ -16,6 +16,7 @@ MODULE io_module
   use io2_module
   use io_read_module
   use io_write_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -179,8 +180,7 @@ CONTAINS
     irc(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     ids(0:np_grid-1)=3*id_grid(0:np_grid-1)
 
-    call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer, &
-         LL2,irc,ids,mpi_integer,comm_grid,ierr)
+    call rsdft_allgatherv( LL2(:,n1:n2), LL2, irc, ids, comm_grid )
 
     deallocate( ids, irc )
 
@@ -395,8 +395,7 @@ CONTAINS
 
     ir(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     id(0:np_grid-1)=3*id_grid(0:np_grid-1)
-    call mpi_allgatherv(LL2(1,n1),ir(myrank_g),mpi_integer &
-         ,LL2,ir,id,mpi_integer,comm_grid,ierr)
+    call rsdft_allgatherv( LL2(:,n1:n2), LL2, ir, id, comm_grid )
 
     deallocate( id,ir )
 

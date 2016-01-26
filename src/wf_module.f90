@@ -207,30 +207,6 @@ CONTAINS
   END SUBROUTINE test_on_wf
 
 
-  SUBROUTINE gather_wf
-    implicit none
-    integer :: k,s,mm,ierr
-    call write_border( 1, " gather_wf(start)" )
-    mm=ML_1_WF-ML_0_WF+1
-    ir_band(:)=ir_band(:)*mm
-    id_band(:)=id_band(:)*mm
-    do s=MS_0_WF,MS_1_WF
-    do k=MK_0_WF,MK_1_WF
-       call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
-            ,TYPE_MAIN,unk(ML_0_WF,1,k,s),ir_band,id_band &
-            ,TYPE_MAIN,comm_band,ierr )
-       if ( allocated(hunk) ) then
-          call mpi_allgatherv( hunk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
-               ,TYPE_MAIN,hunk(ML_0_WF,1,k,s),ir_band,id_band &
-               ,TYPE_MAIN,comm_band,ierr )
-       end if
-    end do
-    end do
-    ir_band(:)=ir_band(:)/mm
-    id_band(:)=id_band(:)/mm
-    call write_border( 1, " gather_wf(end)" )
-  END SUBROUTINE gather_wf
-
   SUBROUTINE write_wf(rankIN)
     implicit none
     integer,optional :: rankIN
@@ -259,18 +235,36 @@ CONTAINS
 
   END SUBROUTINE write_wf
 
+
+  SUBROUTINE gather_wf
+    implicit none
+    integer :: k,s
+    call write_border( 1, " gather_wf(start)" )
+    do s=MS_0_WF,MS_1_WF
+    do k=MK_0_WF,MK_1_WF
+       call gather_b_wf( k, s )
+    end do
+    end do
+    call write_border( 1, " gather_wf(end)" )
+  END SUBROUTINE gather_wf
+
   SUBROUTINE gather_b_wf( k, s )
     implicit none
     integer,intent(IN) :: k,s
     integer :: mm,ierr
+    call write_border( 1, " gather_b_wf(start)" )
     mm=ML_1_WF-ML_0_WF+1
     ir_band(:)=ir_band(:)*mm
     id_band(:)=id_band(:)*mm
-    call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
-            ,TYPE_MAIN,unk(ML_0_WF,1,k,s),ir_band,id_band &
-            ,TYPE_MAIN,comm_band,ierr )
+    call rsdft_allgatherv( unk(:,MB_0_WF:MB_1_WF,k,s) &
+         , unk(:,:,k,s), ir_band, id_band, comm_band )
+    if ( iflag_hunk >= 1 ) then
+       call rsdft_allgatherv( hunk(:,MB_0_WF:MB_1_WF,k,s) &
+            , hunk(:,:,k,s), ir_band, id_band, comm_band )
+    end if
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
+    call write_border( 1, " gather_b_wf(end)" )
   END SUBROUTINE gather_b_wf
 
 

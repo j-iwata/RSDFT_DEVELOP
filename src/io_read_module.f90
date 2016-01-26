@@ -4,6 +4,7 @@ MODULE io_read_module
   use wf_module
   use rgrid_module
   use rgrid_mol_module, only: LL
+  use rsdft_mpi_module
 
   implicit none
 
@@ -107,8 +108,7 @@ CONTAINS
 
     ir(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     id(0:np_grid-1)=3*id_grid(0:np_grid-1)
-    call mpi_allgatherv(LL2(1,n1),ir(myrank_g),mpi_integer &
-         ,LL2,ir,id,mpi_integer,comm_grid,ierr)
+    call rsdft_allgatherv( LL2(:,n1:n2), LL2, ir, id, comm_grid )
 
     deallocate( id,ir )
 

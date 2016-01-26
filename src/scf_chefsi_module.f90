@@ -25,6 +25,7 @@ MODULE scf_chefsi_module
   use ggrid_module, only: Ecut
   use rgrid_module, only: dV, Ngrid
   use esp_calc_module
+  use rsdft_mpi_module
 
   !use localpot2_variables, only: vloc_dense,vloc_dense_old,rho_nl &
   !                              ,vxc_nl,vh_nl,vion_nl
@@ -214,8 +215,7 @@ CONTAINS
        if ( mod(imix,2) == 0 ) then
           call normalize_density
           m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
-          call mpi_allgather &
-               (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
+          call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
           call calc_hartree(ML_0,ML_1,MSP,rho)
           call calc_xc
           do s=MSP_0,MSP_1

@@ -102,13 +102,6 @@ CONTAINS
     NBAND_BLK = NBLK
     ncycle    = (MB-1)/NBAND_BLK+1
 
-    call mpi_allgatherv(unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN &
-          ,unk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-    if ( iflag_hunk >= 1 ) then
-       call mpi_allgatherv(hunk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN &
-            ,hunk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-    end if
-
     do k1=1,ncycle
 
        irank_b=mod(k1-1,np_band)

@@ -25,8 +25,6 @@ CONTAINS
     integer :: n,m,ierr
     real(8) :: c,d
 
-    call gather_b_wf( k,s )
-
     do n=n0,n1
        do m=n0,n-1
 #ifdef _DRSDFT_

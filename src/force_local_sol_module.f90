@@ -339,8 +339,10 @@ CONTAINS
 !    call destruct_Ggrid
 
     if ( nprocs <= MI ) then
-       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+!       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+!                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+       call rsdft_allgatherv &
+            ( force(:,MI_0:MI_1), force, icnta, idisa, MPI_COMM_WORLD )
     else
        call rsdft_allreduce_sum( force, MPI_COMM_WORLD )
     end if

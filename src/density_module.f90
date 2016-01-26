@@ -182,8 +182,7 @@ CONTAINS
     end do
     ! The following assumes all 'MS_1-MS_0+1' are the same
     m=m*(MS_1_RHO-MS_0_RHO+1)
-    call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m,mpi_real8,rho,m,mpi_real8 &
-         ,comm_spin,ierr)
+    call rsdft_allgather( rho(:,MS_0_RHO:MS_1_RHO), rho, comm_spin )
   END SUBROUTINE reduce_and_gather
 
 

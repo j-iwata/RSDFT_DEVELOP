@@ -7,6 +7,7 @@ MODULE io_write_module
   use aa_module
   use bb_module
   use bz_module, only: kbb, MMBZ
+  use rsdft_mpi_module
 
   implicit none
 
@@ -100,8 +101,7 @@ CONTAINS
     irc(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     ids(0:np_grid-1)=3*id_grid(0:np_grid-1)
 
-    call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer, &
-         LL2,irc,ids,mpi_integer,comm_grid,ierr)
+    call rsdft_allgatherv( LL2(:,n1:n2), LL2, irc, ids, comm_grid )
 
     deallocate( ids, irc )
 

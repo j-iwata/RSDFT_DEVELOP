@@ -16,6 +16,7 @@ MODULE ps_nloc3_module
   use ylm_module
   use hsort_module
   use fft_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -423,8 +424,7 @@ CONTAINS
           call mpi_alltoallv(utmp,ir_grid,id_grid,TYPE_MAIN &
                ,utmp3(nn1,0,myrank_b),icnt,idis,TYPE_MAIN,comm_grid,ierr)
 
-          call mpi_allgather(utmp3(nn1,0,myrank_b),ML0*nprocs_g,TYPE_MAIN &
-               ,utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
+          call rsdft_allgather( utmp3(:,:,myrank_b), utmp3, comm_band )
 
           lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
           do j=0,nprocs_b-1
