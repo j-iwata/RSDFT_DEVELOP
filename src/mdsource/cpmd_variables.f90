@@ -28,7 +28,7 @@ MODULE cpmd_variables
   real(8) :: temp,trange,dsettemp
   real(8) :: omegan
   real(8) :: emass
-  integer,allocatable :: iatom(:)          ! ordering   of nuclei
+!  integer,allocatable :: iatom(:)          ! ordering   of nuclei
   real(8),allocatable :: Velocity(:,:)     ! velocity   of nuclei
 !_for Car-Parrinello molecualr dynamics
 #ifdef _DRSDFT_
@@ -82,11 +82,11 @@ MODULE cpmd_variables
        69.72d0,72.61d0,74.92d0,78.96d0,79.90d0,&
        83.80d0/
 !_atom
-  data batm/'H_','He','Li','Be','B_',&
-       'C_','N_','O_','F_','Ne',&
-       'Na','Mg','Al','Si','P_',&
-       'S_','Cl','Ar','K_','Ca',&
-       'Sc','Ti','V_','Cr','Mn',&
+  data batm/'H' ,'He','Li','Be','B' ,&
+       'C' ,'N' ,'O' ,'F' ,'Ne',&
+       'Na','Mg','Al','Si','P' ,&
+       'S' ,'Cl','Ar','K' ,'Ca',&
+       'Sc','Ti','V' ,'Cr','Mn',&
        'Fe','Co','Ni','Cu','Zn',&
        'Ga','Ge','As','Se','Br',&
        'Kr'/
@@ -178,7 +178,7 @@ MODULE cpmd_variables
   real(8),allocatable :: ylagr(:),xlagr(:)
   integer,allocatable :: ipvt(:)
   real(8),allocatable :: DT2BYM(:),DTB2MI(:)
-  real(8),allocatable :: pm_dim(:)
+!  real(8),allocatable :: pm_dim(:)
   real(8),allocatable :: Rion0(:,:)
   real(8),allocatable :: fc(:),fv(:)
   real(8),allocatable :: anorm(:,:)

@@ -3,7 +3,7 @@
 !-----------------------------------------------------------------------
 SUBROUTINE getforce
   use bb_module
-  use atom_module, only: Natom,aa_atom
+  use atom_module, only: Natom,aa_atom,ki_atom,zn_atom
   use strfac_module
   use ps_local_module
   use ps_pcc_module
@@ -13,7 +13,7 @@ SUBROUTINE getforce
   use ps_nloc_mr_module
   use eion_module, only: calc_eion
   use force_module
-  use cpmd_variables, only: Rion,Force,pmass,iatom,AMU,disp_switch &
+  use cpmd_variables, only: Rion,Force,pmass,AMU,disp_switch &
        ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
   use scf_module
   use array_bound_module, only: MB_0,MB_1
@@ -72,7 +72,7 @@ SUBROUTINE getforce
   call calc_force(Natom,Force)
 
   do a=1,Natom
-     Force(:,a)=Force(:,a)/(pmass(iatom(a))*AMU)
+     Force(:,a)=Force(:,a)/(pmass(zn_atom(ki_atom(a)))*AMU)
   enddo
 
   return
