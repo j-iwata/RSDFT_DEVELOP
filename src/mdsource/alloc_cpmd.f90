@@ -3,9 +3,8 @@
 !-----------------------------------------------------------------------
 
 subroutine alloc_md
-  use cpmd_variables, only: iatom,Rion,Rion0,Velocity,Force,MI
+  use cpmd_variables, only: Rion,Rion0,Velocity,Force,MI
   implicit none 
-  allocate( iatom(MI) )
   if ( .not.allocated(Rion) ) then
      allocate( Rion(3,MI) )
      allocate( Rion0(3,MI) )
@@ -23,7 +22,7 @@ end subroutine alloc_md
 subroutine dealloc_md
   use cpmd_variables
   implicit none 
-  deallocate(iatom,Rion0,Rion,Velocity,Force)
+  deallocate(Rion0,Rion,Velocity,Force)
   return
 end subroutine dealloc_md
 

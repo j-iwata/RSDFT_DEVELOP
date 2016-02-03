@@ -3,13 +3,13 @@
 !-----------------------------------------------------------------------
 SUBROUTINE bomd
 
-  use atom_module, only: Natom,ki_atom
+  use atom_module, only: Natom,ki_atom,zn_atom
   use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,KB,dt &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,linitnose,lmeta,dtsuz,lbath,lbathnewe &
                            ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue &
                            ,AMU,pmass,Etot &
-                           ,iatom,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
+                           ,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
   use parallel_module
   use total_energy_module
@@ -99,7 +99,6 @@ SUBROUTINE bomd
 !     allocate MD variables
 !
   call alloc_md   ! in 'alloc_cpmd.f90'
-  call asign_atom ! in 'asign_atom.f90'
 
 !
 !     initial velocity
@@ -166,7 +165,7 @@ SUBROUTINE bomd
      if ( inivel ) then
         call getforce ! in 'getforce.f90'
         do i=1,Natom
-           Force(:,i)=Force(:,i)/(pmass(iatom(i))*AMU)
+           Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)
         enddo
         call wf_force ! in 'wf_force.f90'
         call calc_total_energy( .false., Etot )
@@ -420,7 +419,7 @@ SUBROUTINE bomd
            write(unit_trjxyz,*) "CPMD on RSDFT STEP->",itime
            do i=1,Natom
               write(unit_trjxyz,'(a2,3f14.6)') &
-                   batm(iatom(i)),Rion(1:3,i)*0.529177210d0
+                   batm(zn_atom(ki_atom(i))),Rion(1:3,i)*0.529177210d0
            enddo
         endif
 !-------------------------------------------
@@ -490,16 +489,15 @@ END SUBROUTINE bomd
 
 !----------------------------------------------------------------
 subroutine scaling_velo
-!   use global_variables
   use cpmd_variables
-  use atom_module, only: Natom
+  use atom_module, only: Natom,ki_atom,zn_atom
   implicit none
   real(8) :: kine,settmp,pm,scale,velosum
   integer i
 
   kine=0.0d0
   do i=1,Natom
-     pm=pmass(iatom(i))*amu
+     pm=pmass(zn_atom(ki_atom(i)))*amu
      kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
   enddo
   kine=kine*0.5d0
@@ -814,8 +812,8 @@ end subroutine read_nose_data
 !-------Berendsen thermostat for ions 08/16 KK---------------------------------
 
 subroutine berendsen(dt2)
-!        use global_variables
   use cpmd_variables
+  use atom_module, only: ki_atom,zn_atom
   implicit none
   real(8) :: kine,settmp,pm,lambda,dt2
   integer i
@@ -825,7 +823,7 @@ subroutine berendsen(dt2)
 
   kine=0.0d0
   do i=1,Mi
-     pm=pmass(iatom(i))*amu
+     pm=pmass(zn_atom(ki_atom(i)))*amu
      kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
   enddo
   kine=kine*0.5d0
@@ -1115,8 +1113,8 @@ subroutine make_nose_time(delt_elec)
 end subroutine make_nose_time
 !-------------------------------------------------------------------
 subroutine comvel(vcmio,inout)
-  !      use global_variables
   use cpmd_variables
+  use atom_module, only: ki_atom,zn_atom
   implicit none
   real(8) :: kine,pm,temp1,temp2
   real(8) :: tscal,vscale,totmass
@@ -1126,7 +1124,7 @@ subroutine comvel(vcmio,inout)
 !calculate first temp.
   kine=0.0d0
   do i=1,Mi
-     pm=pmass(iatom(i))*amu
+     pm=pmass(zn_atom(ki_atom(i)))*amu
      kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
   enddo
   temp1=kine*0.5d0
@@ -1138,10 +1136,11 @@ subroutine comvel(vcmio,inout)
      totmass=0.0d0
 
      do i=1,Mi
-        vcm(1)=vcm(1)+pmass(iatom(i))*Velocity(1,i)
-        vcm(2)=vcm(2)+pmass(iatom(i))*Velocity(2,i)
-        vcm(3)=vcm(3)+pmass(iatom(i))*Velocity(3,i)
-        totmass=totmass+pmass(iatom(i))
+        pm=pmass(zn_atom(ki_atom(i)))
+        vcm(1)=vcm(1)+pm*Velocity(1,i)
+        vcm(2)=vcm(2)+pm*Velocity(2,i)
+        vcm(3)=vcm(3)+pm*Velocity(3,i)
+        totmass=totmass+pm
      enddo
 
      do j=1,3
@@ -1174,7 +1173,7 @@ subroutine comvel(vcmio,inout)
 !calculate second temp.
   kine=0.0d0
   do i=1,Mi
-     pm=pmass(iatom(i))*amu
+     pm=pmass(zn_atom(ki_atom(i)))*amu
      kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
   enddo
   temp2=kine*0.5d0

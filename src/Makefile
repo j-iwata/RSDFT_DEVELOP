@@ -27,7 +27,6 @@ EXTOBJ2 = $(DIR2)/pzfft3dv.o \
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o \
         $(DIR3)/active_band.o \
-        $(DIR3)/asign_atom.o \
         $(DIR3)/init_ion.o \
         $(DIR3)/alloc_cpmd.o \
         $(DIR3)/blue_moon_module.o \

@@ -1,11 +1,11 @@
 MODULE blue_moon_module
 
   use parallel_module
-  use cpmd_variables, only: ia,ib,ic,cval,DT2BYM,DTB2MI,pm_dim,iatom &
+  use cpmd_variables, only: ia,ib,ic,cval,DT2BYM,DTB2MI &
                            ,xlagr,ylagr,Rion0,Rion,anorm,fc,fv,Velocity &
                            ,ipvt,nodim,mcnstr,ityp,dt,amu,pmass &
                            ,index,cnpar,itime
-  use atom_module, only: Natom, ki_atom
+  use atom_module, only: Natom, ki_atom, zn_atom
   use aa_module, only: aa
 
   implicit none
@@ -30,7 +30,7 @@ CONTAINS
     real(8) :: vtest
     real(8) :: tau0(3,Natom),taup(3,Natom)
     real(8) :: v(mrdiis+1),diism(mrdiis+1,mrdiis+1),cnmax,fact,errf,errx,xval
-    real(8) :: dasum,ddot
+    real(8) :: dasum,ddot,pm
     real(8) :: tscr(3,Natom),dx(nodim),asl(mcnstr,mcnstr)
     real(8) :: xlo(mcnstr,mrdiis),err(mcnstr,mrdiis)
     real(8) :: an0(nodim,mcnstr)
@@ -59,17 +59,24 @@ CONTAINS
     if ( istart1 == 0 ) then
        allocate( DT2BYM(nodim) )
        allocate( DTB2MI(nodim) )
-       allocate( pm_dim(nodim) )
+!       allocate( pm_dim(nodim) )
        do i=1,Natom
-          pm_dim(3*i-2)=pmass(iatom(i))*amu
-          pm_dim(3*i-1)=pmass(iatom(i))*amu
-          pm_dim(3*i)  =pmass(iatom(i))*amu
-          DT2BYM(3*i-2)=(dt*dt)/pm_dim(3*i-2)
-          DT2BYM(3*i-1)=(dt*dt)/pm_dim(3*i-1)
-          DT2BYM(3*i)  =(dt*dt)/pm_dim(3*i)
-          DTB2MI(3*i-2)=dt/(2.0d0*pm_dim(3*i-2))
-          DTB2MI(3*i-1)=dt/(2.0d0*pm_dim(3*i-1))
-          DTB2MI(3*i)  =dt/(2.0d0*pm_dim(3*i))
+          pm = pmass( zn_atom(ki_atom(i)) )*amu
+!          pm_dim(3*i-2)=pmass(iatom(i))*amu
+!          pm_dim(3*i-1)=pmass(iatom(i))*amu
+!          pm_dim(3*i)  =pmass(iatom(i))*amu
+!          DT2BYM(3*i-2)=(dt*dt)/pm_dim(3*i-2)
+!          DT2BYM(3*i-1)=(dt*dt)/pm_dim(3*i-1)
+!          DT2BYM(3*i)  =(dt*dt)/pm_dim(3*i)
+!          DTB2MI(3*i-2)=dt/(2.0d0*pm_dim(3*i-2))
+!          DTB2MI(3*i-1)=dt/(2.0d0*pm_dim(3*i-1))
+!          DTB2MI(3*i)  =dt/(2.0d0*pm_dim(3*i))
+          DT2BYM(3*i-2)=(dt*dt)/pm
+          DT2BYM(3*i-1)=(dt*dt)/pm
+          DT2BYM(3*i)  =(dt*dt)/pm
+          DTB2MI(3*i-2)=dt/(2.0d0*pm)
+          DTB2MI(3*i-1)=dt/(2.0d0*pm)
+          DTB2MI(3*i)  =dt/(2.0d0*pm)
        end do
     end if
     call dcopy(mcnstr,ylagr(1),1,xlagr(1),1) !point: YLAGR comes from Rattle
@@ -887,7 +894,7 @@ CONTAINS
     deallocate(xlagr)
     deallocate(ipvt)
     deallocate(DT2BYM,DTB2MI)
-    deallocate(pm_dim)
+!    deallocate(pm_dim)
     return
   END SUBROUTINE dealloc_blue
 !----------------------------------------------------------------------------------------

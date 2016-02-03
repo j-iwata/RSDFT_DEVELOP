@@ -4,7 +4,7 @@
 SUBROUTINE getforce_cpmd(lewald,ltime)
 
   use eion_module, only: calc_eion
-  use atom_module, only: Natom,aa_atom
+  use atom_module, only: Natom,aa_atom,ki_atom,zn_atom
   use bb_module
   use parallel_module, only: myrank
   use strfac_module
@@ -20,7 +20,7 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   use xc_module
   use hartree_variables, only: Vh
   use hartree_module, only: calc_hartree
-  use cpmd_variables, only: Force,Rion,disp_switch,AMU,pmass,iatom
+  use cpmd_variables, only: Force,Rion,disp_switch,AMU,pmass
   use watch_module
   use force_module
 
@@ -106,7 +106,7 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   end if
 
   do i=1,Natom
-     Force(:,i)=Force(:,i)/(pmass(iatom(i))*AMU)
+     Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)
   enddo
 
   if ( ltime ) call watch(ctime_force(9),etime_force(9))

@@ -7,7 +7,6 @@ OBJ = mnhc.o\
       setv.o\
       vcom.o\
       mdio.o\
-      asign_atom.o\
       init_ion.o\
       active_band.o\
       alloc_cpmd.o\
