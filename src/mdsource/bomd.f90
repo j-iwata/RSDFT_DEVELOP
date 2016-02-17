@@ -8,7 +8,7 @@ SUBROUTINE bomd
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,linitnose,lmeta,dtsuz,lbath,lbathnewe &
                            ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue &
-                           ,AMU,pmass,Etot &
+                           ,AMU,pmass,Etot,trjstep &
                            ,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
   use parallel_module
@@ -51,12 +51,8 @@ SUBROUTINE bomd
 
   lblue = .false.
 
-  if ( myrank == 0 ) then
-     call read_cpmd_variables ! in 'alloc_cpmd.f90'
-     if ( lblue ) call read_blue
-  end if
-  call send_cpmd_variables ! in 'alloc_cpmd.f90'
-  if ( lblue ) call bcast_blue_data
+  call read_cpmd_variables ! in 'alloc_cpmd.f90'
+  if ( lblue ) call read_blue
 
   tote0       = 0.d0
   enose       = 0.d0
@@ -408,13 +404,13 @@ SUBROUTINE bomd
         ltemp = kine/KB*TOJOUL/1.5d0/dble(Natom)
         dif   = abs(tote-tote0)
 !-------------------------------------------trajectry
-        if ( mod(itime,1) == 0 ) then
+        if ( mod(itime-1,1) == 0 ) then
            do i=1, Natom
               write(3,'(6f18.9)') Rion(1:3,i),Velocity(1:3,i)
            enddo
         endif
 !-------------------------------------------
-        if ( mod(itime,1) == 0 ) then
+        if ( mod(itime-1,trjstep) == 0 ) then
            write(unit_trjxyz,*) Natom
            write(unit_trjxyz,*) "CPMD on RSDFT STEP->",itime
            do i=1,Natom

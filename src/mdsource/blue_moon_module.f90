@@ -13,7 +13,7 @@ MODULE blue_moon_module
   PRIVATE
   PUBLIC :: cpmdshake,rattle,write_blue_data,read_blue,gettau,solvs &
            ,dealloc_blue,diffd,difft,funcd,funct,fillc,cnstfc,solve &
-           ,bcast_blue_data,coornum,pbcdis
+           ,coornum,pbcdis
 
 CONTAINS
 
@@ -815,32 +815,39 @@ CONTAINS
     cval(:)=0.0d0
     cnpar(:,:)=0.0d0
 
-    open(888,file='blue_control.dat')
-    read(888,*) ityp
-    read(888,*) mcnstr
-    if ( ityp == 4 ) then
-       read(888,*) (ia(i),i=1,mcnstr)
-       read(888,*) (ib(i),i=1,mcnstr)
-       read(888,*) (cval(i),i=1,mcnstr)
+    if ( myrank == 0 ) then
+
+       open(888,file='blue_control.dat')
+       read(888,*) ityp
+       read(888,*) mcnstr
+       if ( ityp == 4 ) then
+          read(888,*) (ia(i),i=1,mcnstr)
+          read(888,*) (ib(i),i=1,mcnstr)
+          read(888,*) (cval(i),i=1,mcnstr)
+       end if
+       if ( ityp == 2 ) then
+          read(888,*) (ia(i),i=1,mcnstr)
+          read(888,*) (ib(i),i=1,mcnstr)
+          read(888,*) (ic(i),i=1,mcnstr)
+          read(888,*) (cval(i),i=1,mcnstr)
+       end if
+       if ( ityp == 6 ) then
+          read(888,*) ispecies
+          read(888,*) (ia(i)     ,i=1,mcnstr)
+          read(888,*) (cnpar(1,i),i=1,mcnstr)  !c_kappa
+          read(888,*) (cnpar(2,i),i=1,mcnstr)  !c_rc
+          read(888,*) (cval(i),i=1,mcnstr)
+          read(888,*) (index(i),i=1,ispecies)
+       end if
+       close(888)
+
     end if
-    if ( ityp == 2 ) then
-       read(888,*) (ia(i),i=1,mcnstr)
-       read(888,*) (ib(i),i=1,mcnstr)
-       read(888,*) (ic(i),i=1,mcnstr)
-       read(888,*) (cval(i),i=1,mcnstr)
-    end if
-    if ( ityp == 6 ) then
-       read(888,*) ispecies
-       read(888,*) (ia(i)     ,i=1,mcnstr)
-       read(888,*) (cnpar(1,i),i=1,mcnstr)  !c_kappa
-       read(888,*) (cnpar(2,i),i=1,mcnstr)  !c_rc
-       read(888,*) (cval(i),i=1,mcnstr)
-       read(888,*) (index(i),i=1,ispecies)
-    end if
-    close(888)
+
+    call bcast_blue_data
+
     return
   END SUBROUTINE read_blue
-!---------------------------------------------------------------------------------------
+
   SUBROUTINE bcast_blue_data 
     implicit none
     integer :: ierr
@@ -848,7 +855,8 @@ CONTAINS
     call mpi_bcast(ityp,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(mcnstr,1,mpi_integer,0,mpi_comm_world,ierr)
 
-!     Bcast and allocation
+!   Bcast and allocation
+
     if ( ityp == 4 ) then
        write(*,*) "ityp--->",ityp,myrank
        write(*,*) "mcnstr->",mcnstr,myrank
@@ -856,7 +864,6 @@ CONTAINS
        call mpi_bcast(ib(1),10,mpi_integer,0,mpi_comm_world,ierr)
        call mpi_bcast(cval(1),10,mpi_real8,0,mpi_comm_world,ierr)
     end if
-
 
     if ( ityp == 2 ) then
        write(*,*) "ityp--->",ityp,myrank
@@ -884,10 +891,11 @@ CONTAINS
     allocate(anorm(nodim,mcnstr))
     allocate(ipvt(mcnstr))
 
-    write(*,*) "PASS THE MYRANK-->", myrank
     return
   END SUBROUTINE bcast_blue_data
-!---------------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------
+
   SUBROUTINE dealloc_blue
     implicit none
     deallocate(ylagr)

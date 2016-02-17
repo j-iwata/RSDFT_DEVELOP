@@ -92,56 +92,61 @@ end subroutine dealloc_cpmd
 !-----------------------------------------------------------------------
 subroutine read_cpmd_variables
    use cpmd_variables
+   use io_tools_module
    implicit none 
-   open(2,file='cpmd_var.dat',status='old')
-   read(2,*) nstep
-   read(2,*) deltat
-   read(2,*) temp
-   read(2,*) omegan
-   read(2,*) emass
-   read(2,*) trange
-   read(2,*) ekinw, ekin1, ekin2
-   read(2,*) wnose0, ekinw
-   read(2,*) lcpmd
-   read(2,*) lbath
-   read(2,*) inivel
-   read(2,*) lmeta
-   read(2,*) lbere
-   read(2,*) lbathnew
-   read(2,*) lscale
-   read(2,*) lscaleele
-   read(2,*) lquench
-   read(2,*) lforce_fast
-   read(2,*) lbathnewe
-   read(2,*) linitnose
-   read(2,*) linitnosee
-   read(2,*) lblue
-   close(2)
-
-   write(*,*) "nstep =",nstep
-   write(*,*) "deltat=",deltat
-   write(*,*) "temp  =",temp
-   write(*,*) "omegan=",omegan
-   write(*,*) "emass =",emass
-   write(*,*) "trange=",trange
-   write(*,*) "ekin1,ekin2=",ekin1,ekin2
-   write(*,*) "wnose0=",wnose0
-   write(*,*) "ekinw =",ekinw
-   write(*,*) "lcpmd =",lcpmd
-   write(*,*) "lbath =",lbath
-   write(*,*) "inivel=",inivel
-   write(*,*) "lmeta =",lmeta
-   write(*,*) "lbere =",lbere
-   write(*,*) "lbathnew=",lbathnew
-   write(*,*) "lscale=",lscale
-   write(*,*) "lscalee=",lscaleele
-   write(*,*) "lquench=",lquench
-   write(*,*) "lforce_fast",lforce_fast
-   write(*,*) "linitnose=",linitnose
-   write(*,*) "linitnosee=",linitnosee
-   write(*,*) "lblue=",lblue
-   if(lblue) write(*,*) "Constraint ON"
-
+   if ( myrank == 0 ) then
+      open(2,file='cpmd_var.dat',status='old')
+      read(2,*) nstep
+      read(2,*) deltat
+      read(2,*) temp
+      read(2,*) omegan
+      read(2,*) emass
+      read(2,*) trange
+      read(2,*) ekinw, ekin1, ekin2
+      read(2,*) wnose0, ekinw
+      read(2,*) lcpmd
+      read(2,*) lbath
+      read(2,*) inivel
+      read(2,*) lmeta
+      read(2,*) lbere
+      read(2,*) lbathnew
+      read(2,*) lscale
+      read(2,*) lscaleele
+      read(2,*) lquench
+      read(2,*) lforce_fast
+      read(2,*) lbathnewe
+      read(2,*) linitnose
+      read(2,*) linitnosee
+      read(2,*) lblue
+   end if
+   call IOTools_readIntegerKeyword( "TRJSTEP", trjstep, 2 )
+   if ( myrank == 0 ) then
+      close(2)
+      write(*,*) "nstep =",nstep
+      write(*,*) "deltat=",deltat
+      write(*,*) "temp  =",temp
+      write(*,*) "omegan=",omegan
+      write(*,*) "emass =",emass
+      write(*,*) "trange=",trange
+      write(*,*) "ekin1,ekin2=",ekin1,ekin2
+      write(*,*) "wnose0=",wnose0
+      write(*,*) "ekinw =",ekinw
+      write(*,*) "lcpmd =",lcpmd
+      write(*,*) "lbath =",lbath
+      write(*,*) "inivel=",inivel
+      write(*,*) "lmeta =",lmeta
+      write(*,*) "lbere =",lbere
+      write(*,*) "lbathnew=",lbathnew
+      write(*,*) "lscale=",lscale
+      write(*,*) "lscalee=",lscaleele
+      write(*,*) "lquench=",lquench
+      write(*,*) "lforce_fast",lforce_fast
+      write(*,*) "linitnose=",linitnose
+      write(*,*) "linitnosee=",linitnosee
+      write(*,*) "lblue=",lblue
+      if ( lblue ) write(*,*) "Constraint ON"
+   end if
+   call send_cpmd_variables
    return
 end subroutine read_cpmd_variables
 
