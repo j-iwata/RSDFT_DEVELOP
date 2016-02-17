@@ -189,6 +189,7 @@ MODULE cpmd_variables
   real(8) :: cval(10)
   integer :: index(10)
   integer :: itime
+  integer :: trjstep=1
 
 END MODULE cpmd_variables
 
