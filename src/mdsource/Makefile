@@ -2,8 +2,9 @@ include ../make.inc
 
 MOBJ = cpmd_variables.o
 
-OBJ = mnhc.o\
-      cpmdio2_module.o\
+OBJ = cpmdio2_module.o\
+      calc_kine_temp_module.o\
+      berendsen_module.o\
       setv.o\
       vcom.o\
       mdio.o\
@@ -15,7 +16,6 @@ OBJ = mnhc.o\
       rotorb_module.o \
       blue_moon_module.o \
       bomd.o\
-      calkin.o\
       getforce_cpmd.o\
       getforce.o\
       rotorb2.o\

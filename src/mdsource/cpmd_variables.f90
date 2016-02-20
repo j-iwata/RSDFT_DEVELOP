@@ -110,6 +110,7 @@ MODULE cpmd_variables
   real(8) :: feta(nche+1)
   real(8) :: wnosee,wnose0
 
+  integer :: Ndof
   integer :: MI
 !  integer :: myrank
   integer,allocatable :: mkd(:)

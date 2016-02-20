@@ -6,9 +6,9 @@ SUBROUTINE bomd
   use atom_module, only: Natom,ki_atom,zn_atom
   use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,KB,dt &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
-                           ,inivel,linitnose,lmeta,dtsuz,lbath,lbathnewe &
+                           ,inivel,linitnose,dtsuz,lbathnewe &
                            ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue &
-                           ,AMU,pmass,Etot,trjstep &
+                           ,AMU,pmass,Etot,trjstep,Ndof &
                            ,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
   use parallel_module
@@ -17,15 +17,16 @@ SUBROUTINE bomd
   use watch_module
   use array_bound_module, only: MB_0,MB_1
   use cpmdio2_module
-
   use rotorb_module
   use blue_moon_module
+  use calc_kine_temp_module
+  use berendsen_module
 
   implicit none
 
   integer :: i,j,k,n,s,ierr,ib1,ib2
   real(8) :: tott,dif,kine,tote,tote0,dt2,ltemp
-  real(8) :: fke,bathe,engconf,enose
+  real(8) :: fke,bathe,enose
   real(8) :: ctime0,ctime1,etime0,etime1
   real(8) :: ctime_cpmd(0:11),etime_cpmd(0:11)
   real(8),allocatable :: mu(:)
@@ -36,7 +37,6 @@ SUBROUTINE bomd
   integer,parameter :: nit=1
   integer,parameter :: ncalls=9
 !------------------------------------
-  integer :: MI3
 
   integer,parameter :: unit_trjxyz = 90
 
@@ -58,31 +58,19 @@ SUBROUTINE bomd
   enose       = 0.d0
   dsettemp    = temp
   MI          = Natom
-  MI3         = 3*Natom
   disp_switch = (myrank==0)
   ltime       = .true.
   MB_0_SCF    = MB_0
   MB_1_SCF    = MB_1
   flag_etlimit= .false.
 
-  if ( myrank == 0 ) then
-     open(unit_trjxyz,file='TRAJECTORY.xyz')
-     if ( lcpmd ) then
-        if ( lbath ) then
-           write(*,*) "start NVT cpmd"
-        else if ( lbathnew ) then
-           write(*,*) "start NVT with new Nose-Hoover"
-        else
-           write(*,*) "start NVE cpmd"
-        endif
-     else
-        if ( lbath ) then
-           write(*,*) "start NVT bomd"
-        else
-           write(*,*) "start NVE bomd"
-        endif
-     endif
-  endif
+  if ( myrank == 0 ) open(unit_trjxyz,file='TRAJECTORY.xyz')
+
+  if ( lbathnew ) then
+     if ( disp_switch ) write(*,*) "start NVT with new Nose-Hoover"
+  else
+     if ( disp_switch ) write(*,*) "start NVE cpmd"
+  end if
 
 !
 !     setup variables
@@ -91,156 +79,128 @@ SUBROUTINE bomd
   dt2       = dt*0.50d0       ! dt/2
   temp      = temp*KB/TOJOUL  ! temperature in AU
 
-!
-!     allocate MD variables
-!
-  call alloc_md   ! in 'alloc_cpmd.f90'
+! --- allocate MD variables
 
-!
-!     initial velocity
-!
-  if ( myrank == 0 ) then
-     if ( inivel ) then
-        write(*,*) "generate initial velocity"
-        call setv ! in 'setv.f90'
-        call vcom(kine) ! in 'vcom.f90'
-     else
-        write(*,*) "read initial coordinate and velocity"
-        call mdio(0,tote0) ! in 'mdio.f90'
-        call calkin(kine) ! in 'calkin.f90'
+  call alloc_md
+
+! --- Degree of fredom
+
+  call calc_Ndof
+
+! --- initial velocity
+
+  if ( inivel ) then
+     if ( disp_switch ) write(*,*) "generate initial velocity"
+     if ( myrank == 0 ) then
+        call setv( dsettemp, Velocity ) ! Initial velocity
+        call vcom( Velocity )           ! Center of mass velocity
+     end if
+  else
+     if ( disp_switch ) write(*,*) "read initial coordinate and velocity"
+     if ( myrank == 0 ) then
+        call mdio( 0, tote0 )
+        call mdio( 2, tote0 )
      endif
-     call mdio(2,tote0)
   endif
 
-!
-!     broadcast initial data
-!
+! --- broadcast initial data
+
   if ( .not.inivel ) then
-     call mpi_bcast(Rion,MI3,mpi_real8,0,mpi_comm_world,ierr)
+     call mpi_bcast(Rion,size(Rion),mpi_real8,0,mpi_comm_world,ierr)
      call mpi_bcast(tote0,1,mpi_real8,0,mpi_comm_world,ierr)
   endif
-  call mpi_bcast(Velocity,MI3,mpi_real8,0,mpi_comm_world,ierr)
-  call mpi_bcast(kine,1,mpi_real8,0,mpi_comm_world,ierr)
+  call mpi_bcast(Velocity,size(Velocity),mpi_real8,0,mpi_comm_world,ierr)
 
-!
-!     initial wave function
-!
+! --- initial wave function
+
+  fke = 0.0d0
+
   if ( lcpmd ) then
-     call active_band ! in 'active_band.f90'
+     call active_band
      MB_0 = MB_0_CPMD
      MB_1 = MB_1_CPMD
      ib1  = MB_0_CPMD
      ib2  = MB_1_CPMD
-     call alloc_cpmd ! in 'bomd.f90' (this file)
+     call alloc_cpmd
      if ( lquench ) then
-        if ( myrank == 0 ) write(*,*) "Quench system to BO surface!!!!!!!!"
-        call getforce ! in 'getforce.f90'
-        psi_v(:,:,:,:)=0.0d0
-        psi_n(:,:,:,:)=0.0d0
-        fke=0.0d0
+        if ( disp_switch ) write(*,*) "Quench system to BO surface!!!!!!!!"
+        call getforce
      endif
-     if(.not. inivel) then
-        call read_data_cpmd_k_para
-!        call gather_wf_data(1)   ! In the case of band para
-     else
-         continue
-!        write(*,*) "point1!!!!!!!!!"
-!        call gather_wf_data(0)   ! In the case of band para
-!        write(*,*) "point2!!!!!!!!!"
-     endif
-     call calfke(fke) ! in 'calfke.f90'
-     if ( myrank == 0 ) write(*,*) "calfke=",fke
-  else
-     fke=0.0d0
-  endif
+     if ( .not.inivel ) call read_data_cpmd_k_para
+     call calfke( fke )
+     if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
+  end if
 
-!
-!     initial force
-!
+! --- initial force
+
   if ( lcpmd ) then
      if ( inivel ) then
-        call getforce ! in 'getforce.f90'
+        call getforce
         do i=1,Natom
            Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)
         enddo
-        call wf_force ! in 'wf_force.f90'
+        call wf_force
         call calc_total_energy( .false., Etot )
      else
-        if ( myrank == 0 ) then
+        if ( disp_switch ) then
            write(*,*) "energy and force evaluation form previous data"
         end if
-        disp_switch=(myrank==0)
-        call getforce_cpmd(.true.,ltime) ! in 'getforce_cpmd.f90'
-        call wf_force ! in 'wf_force.f90'
+        call getforce_cpmd( .true., ltime )
+        call wf_force
         call calc_total_energy( .false., Etot )
-        disp_switch=.false.
      endif
   else
-     call getforce ! in 'getforce.f90'
-  endif
+     call getforce
+  end if
 
-!
-!     initial bath parameters
-!
-  if ( lbath ) then
-     call sicoef ! in 'mnhc.f90'
-     call setmnhc(kine) ! in 'mnhc.f90'
-     call emnhc(bathe) ! in 'mnhc.f90'
-  else
-     bathe=0.0d0
-  endif
+! --- initial bath parameters
 
-!------------------------------------------------------
+  bathe=0.0d0
+  enose=0.0d0
 
   if ( lbathnewe .and. inivel )  then
-     call nosepae(dt) ! in 'bomd.f90'
-  endif
+     call nosepae(dt)
+  end if
 
   if ( linitnosee ) then
-     call nosepae(dt) ! in 'bomd.f90'
-  endif
+     call nosepae(dt)
+  end if
 
   if ( lbathnew .and. inivel ) then
-     call nosepa(dt) ! in 'bomd.f90'
-  endif
+     call nosepa(dt)
+  end if
 
   if ( linitnose ) then
-     call nosepa(dt) ! in 'bomd.f90'
-  endif
+     call nosepa(dt)
+  end if
 
 !------------------------------------------------------
 
   if ( (lbathnew.and.(.not.inivel)) .and. (.not.linitnose) ) then
-     call read_nose_data ! in 'bomd.f90'
-  endif
+     call read_nose_data
+  end if
   if ( (lbathnewe.and.(.not.inivel)) .and. (.not.linitnosee) ) then
-     call read_nosee_data ! in 'bomd.f90'
-  endif
+     call read_nosee_data
+  end if
   if ( (lbathnew.or.lbathnewe) .and. (.not.inivel) ) then
-     call make_nose_time(dt) ! in 'bomd.f90'
-  endif
+     call make_nose_time(dt)
+  end if
 
-!
-!     initialize Metadynamics (interface to PLUMED)
-!
-  if ( lmeta ) then
-!     allocate(mu(Natom))
-!     mem_new = mem_new + bdreal*Natom
-!     do i=1,Natom
-!        mu(i)=pmass(iatom(i))*amu
-!     enddo
-!     CALL init_metadyn(Natom,dt,mu,mu,1,1.0D0,"plumed.dat"//char(0))
-     stop "metadynamics is temporary unavailable:stop@bomd"
-  else
-     engconf=0.0d0
-  endif
+  if ( lbathnew  ) call noseene( bathe )
+  if ( lbathnewe ) then
+     call noseeneele( enose )
+     bathe=bathe+enose
+  end if
 
-!
-!     initial data output
-!
-  if ( inivel ) tote0=kine+Etot+fke+bathe+engconf
+  call calc_kine( Velocity, kine )
+
+! --- initial data output
+
+  if ( inivel ) tote0 = kine + Etot + fke + bathe
+
   if ( myrank == 0 ) then
      write(*,'(a)') "initial energy"
+     write(*,'(5a15)') "Etotal","Etot_DFT","kine","fke","Ebath"
      write(*,'(5f15.8)') tote0,Etot,kine,fke,bathe
      open( 3,file='traj.dat',status='unknown')
      open( 4,file='info.dat',status='unknown')
@@ -255,13 +215,14 @@ SUBROUTINE bomd
      end if
      dif   = 0.0d0
      tott  = 0.0d0
-     ltemp = kine*TOJOUL/KB/1.5d0/dble(Natom)
-     write(4,10) tott,tote0,dif,Etot,kine,fke,bathe,ltemp
-  endif
+     ltemp = kine /( 0.5d0*Ndof*KB/TOJOUL )
+     write(4,10) tott, tote0, dif, Etot, kine, fke, bathe, ltemp, sum(esp), enose
+  end if
 
 !
-! loop start
+! --- loop start
 !
+
   disp_switch = .false.
 
   vcmio(1:4)=0.0d0
@@ -270,35 +231,29 @@ SUBROUTINE bomd
 
      call watch(ctime0,etime0)
 
-     if ( lbere ) then
-        call berendsen(dt2) ! in 'bomd.f90'
-     endif
+     if ( lbere ) call berendsen( dsettemp, dt2, Velocity )
 
      if ( lbathnewe ) then
         sctot=1.0d0
-        call calfke(fke) ! in 'calfke.f90'
+        call calfke( fke )
         do i=1,nit
            do j=1,ncalls
-              call enosmove(fke,dtsuz(j),sctot) ! in 'bomd.f90'
-           enddo
-        enddo
+              call enosmove( fke, dtsuz(j), sctot )
+           end do
+        end do
         psi_v(:,ib1:ib2,:,:)=psi_v(:,ib1:ib2,:,:)*sctot
-        if ( myrank == 0 ) write(*,*) "sctot2------>", sctot
-     endif
+        if ( disp_switch ) write(*,*) "sctot2------>", sctot
+     end if
 
      if ( lbathnew ) then
         do i=1,nit
            do j=1,ncalls
               call nose(dtsuz(j))
-           enddo
-        enddo
-     endif
+           end do
+        end do
+     end if
 
-     if ( lbath ) call mnhc
-
-!-------subtruct center of mass
-     call comvel(vcmio,.true.) ! in 'bomd.f90'
-!------------------------------
+     call comvel( vcmio, .true. )
 
      Rion0(:,:)    = Rion(:,:)
      Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
@@ -332,17 +287,6 @@ SUBROUTINE bomd
         call calc_total_energy( .false., Etot )
      endif
 
-     if ( lmeta ) then
-!         do i=1,Natom
-!            Force(:,i)=Force(:,i)*(pmass(iatom(i))*amu)
-!         enddo
-!         call meta_force_calculation(aaL,itime,Rion,0,0,Force,0,0,engconf)
-!         do i=1,Natom
-!            Force(:,i)=Force(:,i)/(pmass(iatom(i))*amu)
-!         enddo
-        stop "metadynamics is temporary unavailable:stop@bomd"
-     endif
-
      Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
 
 !---------------------for constraint(2)----
@@ -352,73 +296,64 @@ SUBROUTINE bomd
      end if
 !------------------------------------------
 
-!-----------------subtruct center of mass (Nessesary for RS-CPMD)
-     call comvel(vcmio,.false.)
-!-----------------------------------------
-
-     if ( lbath ) then
-        call mnhc
-        call emnhc(bathe)
-     endif
+     call comvel( vcmio, .false. )
 
      if ( lbathnew ) then
         do i=1,nit
            do j=1,ncalls
-              call nose(dtsuz(j))
-           enddo
-        enddo
-        call noseene(bathe)
-     endif
+              call nose( dtsuz(j) )
+           end do
+        end do
+        call noseene( bathe )
+     end if
 
-     if ( lbere ) then
-        call berendsen(dt2)
-     endif
+     if ( lbere ) call berendsen( dsettemp, dt2, Velocity )
 
-     if ( lscale ) then
-        write(*,*) "lscale------->", lscale
-        call scaling_velo
-     endif
-
-     call calkin(kine)
+     if ( lscale ) call scaling_velo
 
      if ( lbathnewe ) then
         sctot=1.0d0
-        call calfke(fke)
+        call calfke( fke )
         do i=1,nit
            do j=1,ncalls
-              call enosmove(fke,dtsuz(j),sctot)
-           enddo
-        enddo
+              call enosmove( fke, dtsuz(j), sctot )
+           end do
+        end do
         psi_v(:,:,:,:)=psi_v(:,:,:,:)*sctot
-        if ( myrank == 0 ) write(*,*) "sctot2------>", sctot
-        call noseeneele(enose)
-        bathe=bathe+enose
-     endif
+        call noseeneele( enose )
+        bathe = bathe + enose
+     end if
 
      call watch(ctime1,etime1)
+
+     call calc_kine( Velocity, kine )
 
      if ( myrank == 0 ) then
 
         tott  = deltat*itime
-        tote  = kine+Etot+fke+bathe+engconf
-        ltemp = kine/KB*TOJOUL/1.5d0/dble(Natom)
+        tote  = kine+Etot+fke+bathe
+        ltemp = kine/( 0.5d0*Ndof*KB/TOJOUL )
         dif   = abs(tote-tote0)
-!-------------------------------------------trajectry
+
+! --- trajectry
+
         if ( mod(itime-1,1) == 0 ) then
-           do i=1, Natom
+           do i=1,Natom
               write(3,'(6f18.9)') Rion(1:3,i),Velocity(1:3,i)
-           enddo
-        endif
-!-------------------------------------------
+           end do
+        end if
+
         if ( mod(itime-1,trjstep) == 0 ) then
            write(unit_trjxyz,*) Natom
            write(unit_trjxyz,*) "CPMD on RSDFT STEP->",itime
            do i=1,Natom
               write(unit_trjxyz,'(a2,3f14.6)') &
                    batm(zn_atom(ki_atom(i))),Rion(1:3,i)*0.529177210d0
-           enddo
-        endif
-!-------------------------------------------
+           end do
+        end if
+
+! ---
+
         write(*,'(a,x,f8.2,x,a,x,f15.8,x,a,x,f6.1,x,a,x,f15.8)') &
              "t=",tott,"dif=",dif,"ltemp=",ltemp,"fke=",fke
         write(*,10) tott,tote,dif,Etot,kine,fke,bathe,ltemp,Sum(esp),enose
@@ -433,28 +368,26 @@ SUBROUTINE bomd
 
      call global_watch(.false.,flag_etlimit)
      if ( flag_etlimit ) then
-        if ( myrank == 0 ) write(*,*) "elapsed time limit exceeded : flag_etlimit=",flag_etlimit
+        if ( myrank == 0 ) write(*,*) &
+             "elapsed time limit exceeded : flag_etlimit=",flag_etlimit
         exit
      end if
 
-  enddo ! itime
+  end do ! itime
+
 !
-! loop end
+! --- loop end
 !
 
-  if ( myrank==0 ) call mdio(1,tote0)
+  if ( myrank == 0 ) call mdio( 1,tote0 )
+
   if ( lcpmd ) then
-!     call write_data2(0)
-     if (.not. allocated(unk)) write(*,*) "UNK IS NOT ALLOCATED!!!!!"
      if ( lbathnew  ) call write_nose_data
      if ( lbathnewe ) call write_nosee_data
      call write_data_cpmd_k_para
      call dealloc_cpmd
   endif
-  if ( lbath ) call unsetmnhc(bathe)
-  if ( lmeta ) then
-     deallocate(mu)
-  endif
+
   call dealloc_md
   close(3)
   close(4)
@@ -490,18 +423,14 @@ subroutine scaling_velo
   implicit none
   real(8) :: kine,settmp,pm,scale,velosum
   integer i
-
   kine=0.0d0
   do i=1,Natom
      pm=pmass(zn_atom(ki_atom(i)))*amu
      kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
   enddo
   kine=kine*0.5d0
-
   kine=kine/KB*TOJOUL/1.5d0/dble(Natom)
-
   if ( myrank == 0 ) write(*,*) "SCALE KINETIC ENERGY----temp---->",kine
-
   if(((kine.gt.dsettemp+trange).or.&
        &(kine.lt.(dsettemp-trange))).and.(kine.ne.0.0d0)) then
      scale=DSQRT(dsettemp/kine)
@@ -511,18 +440,17 @@ subroutine scaling_velo
         Velocity(3,i)=Velocity(3,i)*scale
      enddo
   endif
-
   velosum=sum(Velocity)
-
-  return
 end subroutine scaling_velo
 
 !---------------------------------------------------------------
 !---------------set Nose-Hoover parameters for ION  KK-----------
-subroutine nosepa(delt_elec)
-!        use global_variables
+
+subroutine nosepa( delt_elec )
+
   use cpmd_variables, only: omegan,dtsuz,dsettemp,Mi,nch,gkt,qnospc,etap1,pi,etap1dot
   use atom_module, only: Natom
+
   implicit none
   real(8) :: w_yosh7_1,w_yosh7_2,w_yosh7_3,w_yosh7_4,w_yosh7_0
   real(8) :: rnr(3)
@@ -539,8 +467,6 @@ subroutine nosepa(delt_elec)
   real*8  xranf
   external xranf
 
-
-
 !-------wnosp0 Nose freq. ------------------------
   WNOSP0=omegan
 !-------------------------------------------------
@@ -549,11 +475,10 @@ subroutine nosepa(delt_elec)
   wnosep2=wnosep*wnosep
 
   w_yosh7_1 = 0.192d0
-  w_yosh7_2 =  0.554910818409783619692725006662999D0
-  w_yosh7_3 =  0.124659619941888644216504240951585D0
-  w_yosh7_4 =  -0.843182063596933505315033808282941D0
-  w_yosh7_0 = 1.0d0 - 2.0d0*(w_yosh7_1+w_yosh7_2+  &
-       &             w_yosh7_3+w_yosh7_4)
+  w_yosh7_2 = 0.554910818409783619692725006662999D0
+  w_yosh7_3 = 0.124659619941888644216504240951585D0
+  w_yosh7_4 =-0.843182063596933505315033808282941D0
+  w_yosh7_0 = 1.0d0 - 2.0d0*(w_yosh7_1+w_yosh7_2+w_yosh7_3+w_yosh7_4)
   dtsuz(1) = w_yosh7_4*delt_elec/dble(nit)
   dtsuz(2) = w_yosh7_3*delt_elec/dble(nit)
   dtsuz(3) = w_yosh7_2*delt_elec/dble(nit)
@@ -608,11 +533,9 @@ subroutine mprand(seed,n,a)
   real*8  xranf
   external xranf
   integer i
-
   do i=1,n
      a(i)=xranf()
   enddo
-
   return
 end subroutine mprand
 
@@ -634,8 +557,8 @@ end function xranf
 !--------------Nose'-Hoover chain for ION (same as CPMD)
 
 subroutine nose(step)
-!        use global_variables
   use cpmd_variables, only: dsettemp,Mi,gkt,fetapv,nch,qnospc,etap1dot,Velocity,etap1
+  use calc_kine_temp_module, only: calc_kine
   implicit none
   integer :: l,ipp
   real(8),parameter :: ry=13.60569193D0
@@ -654,7 +577,7 @@ subroutine nose(step)
 !----------
 
   ekinp=0.d0
-  call calkin(ekinp)
+  call calc_kine( Velocity, ekinp )
 
   if(ipp.gt.1) then
      gkt(ipp,1) = 3.d0*(Mi-1)*tempw/factem
@@ -699,7 +622,7 @@ subroutine nose(step)
 !     == RECALCULATE CHAIN FORCE 1                                    ==
 !     ==--------------------------------------------------------------==
   ekinp=0.d0
-  call calkin(ekinp)
+  call calc_kine( Velocity, ekinp )
 
   pkewant = 0.5d0*gkt(ipp,1)
   fetapv(1) = 2.0d0*(ekinp - pkewant)
@@ -730,29 +653,24 @@ end subroutine nose
 !---------------------calculate energy of bath for ION 9/25 KK   -----------
 !---------------------------------------------------------------------------
 subroutine noseene(bathe)
-!        use global_variables
   use cpmd_variables
   implicit none
   real(8),parameter :: ry=13.60569193D0
   real(8),parameter :: evtokel=11604.505D0
   integer :: ipp,ip,l
   real(8) :: bathe,factem,tempw
-
-
   ipp=1
   factem=2.d0*ry*evtokel
   tempw=dsettemp
-
   bathe=0.0d0
-
   do ip=1,1
      bathe = 0.5d0*qnospc(1,ip)*etap1dot(1,ip)*etap1dot(1,ip) &
           &  + gkt(ipp,1)*etap1(1,ip)
      do l=2,nch
         bathe = bathe + 0.5d0*qnospc(l,ip)*etap1dot(l,ip)*     &
              &   etap1dot(l,ip) + tempw*etap1(l,ip)/factem
-     enddo
-  enddo
+     end do
+  end do
   return
 end subroutine noseene
 
@@ -760,7 +678,6 @@ end subroutine noseene
 !----------------Restart Nose'--------------------------------------------
 !-------------------------------------------------------------------------
 subroutine write_nose_data
-  !        use global_variables
   use cpmd_variables
   implicit none
   integer :: i
@@ -778,7 +695,6 @@ subroutine write_nose_data
 end subroutine write_nose_data
 
 subroutine read_nose_data
-!        use global_variables
   use cpmd_variables
   implicit none
   integer :: i,ierr
@@ -803,40 +719,6 @@ subroutine read_nose_data
 end subroutine read_nose_data
 
 
-!------------------------------------------------------------------------------
-!------------------------------------------------------------------------------
-!-------Berendsen thermostat for ions 08/16 KK---------------------------------
-
-subroutine berendsen(dt2)
-  use cpmd_variables
-  use atom_module, only: ki_atom,zn_atom
-  implicit none
-  real(8) :: kine,settmp,pm,lambda,dt2
-  integer i
-  real(8) :: thresh,taubp
-  parameter(thresh=1.0d-6)  ! don't scale if we are too "cold"
-  parameter(taubp=2.0d0)    ! time constant
-
-  kine=0.0d0
-  do i=1,Mi
-     pm=pmass(zn_atom(ki_atom(i)))*amu
-     kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
-  enddo
-  kine=kine*0.5d0
-
-  kine=kine/KB*TOJOUL/1.5d0/dble(Mi)
-
-  if((kine/dsettemp).gt.thresh) then
-     lambda=DSQRT(1.0d0+dt2/taubp*((dsettemp/kine)-1.0d0))
-     do i=1,Mi
-        Velocity(1,i)=Velocity(1,i)*lambda
-        Velocity(2,i)=Velocity(2,i)*lambda
-        Velocity(3,i)=Velocity(3,i)*lambda
-     enddo
-  endif
-
-  return
-end subroutine berendsen
 
 !-----------------------------------------------------------------------------
 !---------------Scaling fictitious kinetic energy KK--------------------------
@@ -853,76 +735,41 @@ subroutine rscve(fke)
   return
 end subroutine rscve
 
-
 !--------------------------------------------------------------------
 !-------------determine Nose parameters for electrons---10/1 KK------
 !----------------under construction----------------------------------
 subroutine nosepae(delt_elec)
-!        use global_variables
   use cpmd_variables
   implicit none
-  real(8) :: wntau
+  real(8),parameter :: wntau=7.26d-7
   real(8) :: omega,wnosee2,delt_elec 
-  integer :: ngws, i, n
-  parameter (wntau=7.26d-7)
   real(8) :: w_yosh7_1,w_yosh7_2,w_yosh7_3,w_yosh7_4,w_yosh7_0
+  integer :: ngws, i, n
   integer,parameter :: nit=1
   integer,parameter :: ip=1
   integer,parameter :: nedof0=6
 
-!        write(*,*) "wnose0-->", wnose0
-!        write(*,*) "ekinw--->", ekinw
+  wnosee = wnose0 * wntau
+  n = mstocck(1,1)
 
-  wnosee=wnose0*wntau
-  n=mstocck(1,1)
+  nedof = int(n*nedof0)
 
-!        omega=dV*ML1*ML2*ML3
-!        ngws=int((1.0d0/(2.0d0*3.1415d0*3.1415d0))*omega*(Ecut**(3/2)))
-!        write(*,*) "plane wave number->",ngws
+  wnosee2 = wnosee * wnosee
+  qnosee(1)      = 2.0d0*ekinw/wnosee2
+  qnosee(2:nche) = 2.0d0*ekinw/wnosee2/dble(nedof)
 
-!        n1=n*(2*ngws-1)
-!        nc=n*n
-!        ntrue=(n1-nc)
+  etadot(:,:)=0.0d0
 
-!       if NEDOF<0 use true number of DOFs
-!       We must determine only nedof !!!!!!!!!!
-!        nedof=n*ML1*ML2*ML3
-
-!        nedof=ngws
-!        nedof=2592
-
-  nedof=int(n*nedof0)
-
-!        write(*,*) "n------->", n
-!        write(*,*) "nedof--->", nedof
-
-
-  do i=1,nche
-     qnosee(i)=0.0d0
-  enddo
-
-  wnosee2 = wnosee*wnosee
-
-  qnosee(1) = 2.0d0*ekinw/wnosee2
+  etadot(1,ip) = sqrt( 2.0d0*ekinw/qnosee(1) )
   do i=2,nche
-     qnosee(i) = 2.d0*ekinw/wnosee2/dble(nedof)
-  enddo
-
-  do i=1,nche
-     etadot(i,ip)=0.0d0
-  enddo
-
-  etadot(1,ip) = dsqrt(2.d0*ekinw/qnosee(1))
-  do i=2,nche
-     etadot(i,ip) = dsqrt(2.d0*ekinw/qnosee(i)/dble(nedof))
-  enddo
+     etadot(i,ip) = sqrt( 2.0d0*ekinw/qnosee(i)/dble(nedof) )
+  end do
 
   w_yosh7_1 = 0.192d0
-  w_yosh7_2 =  0.554910818409783619692725006662999D0
-  w_yosh7_3 =  0.124659619941888644216504240951585D0
-  w_yosh7_4 =  -0.843182063596933505315033808282941D0
-  w_yosh7_0 = 1.0d0 - 2.0d0*(w_yosh7_1+w_yosh7_2+  &
-       &             w_yosh7_3+w_yosh7_4)
+  w_yosh7_2 = 0.554910818409783619692725006662999D0
+  w_yosh7_3 = 0.124659619941888644216504240951585D0
+  w_yosh7_4 =-0.843182063596933505315033808282941D0
+  w_yosh7_0 = 1.0d0 - 2.0d0*(w_yosh7_1+w_yosh7_2+w_yosh7_3+w_yosh7_4)
   dtsuz(1) = w_yosh7_4*delt_elec/dble(nit)
   dtsuz(2) = w_yosh7_3*delt_elec/dble(nit)
   dtsuz(3) = w_yosh7_2*delt_elec/dble(nit)
@@ -939,7 +786,6 @@ end subroutine nosepae
 !----------------Nose'-Hoover chain for electrons (same as CPMD) 10/1 KK------
 !-----------------------------------------------------------------------------
 subroutine enosmove(ekinc,step,sctot)
-!      use global_variables
   use cpmd_variables
   implicit none
   real(8) ::  ekinc,step,sctot
@@ -1017,7 +863,6 @@ end subroutine enosmove
 
 !----------------------------------------------------------------------
 subroutine noseeneele(enose)
-  !      use global_variables
   use cpmd_variables
   implicit none
   real(8) :: enose
@@ -1036,53 +881,50 @@ subroutine noseeneele(enose)
 end subroutine noseeneele
 !----------------------------------------------------------------------
 subroutine write_nosee_data
-  !      use global_variables
   use cpmd_variables
   implicit none
   integer :: i
   integer,parameter :: ip=1
 
-  if(myrank.eq.0) then
+  if ( myrank == 0 ) then
      open(999,file="Bathdata_ele.dat1")
      write(999,*)(etap(i,ip),etadot(i,ip),i=1,nche) 
      write(999,*)(feta(i),i=1,nche+1) 
      write(999,*)(qnosee(i),i=1,nche) 
      write(999,*) nedof
      close(999)
-  endif
+  end if
   return
 end subroutine write_nosee_data
 
 
 subroutine read_nosee_data
-!      use global_variables
   use cpmd_variables
   implicit none
   integer :: i, ierr
   integer,parameter :: ip=1
 
-  if(myrank.eq.0) then
+  if ( myrank == 0 ) then
      open(999,file="Bathdata_ele.dat")
      read(999,*)(etap(i,ip),etadot(i,ip),i=1,nche) 
      read(999,*)(feta(i),i=1,nche+1)
      read(999,*)(qnosee(i),i=1,nche) 
      read(999,*) nedof
      close(999)
-  endif
+  end if
 
   call mpi_bcast(etap(1,ip),nche,mpi_real8,0,mpi_comm_world,ierr)
   call mpi_bcast(etadot(1,ip),nche,mpi_real8,0,mpi_comm_world,ierr)
   call mpi_bcast(feta(1),nche+1,mpi_real8,0,mpi_comm_world,ierr)
   call mpi_bcast(qnosee(1),nche,mpi_real8,0,mpi_comm_world,ierr)
   call mpi_bcast(nedof,1,mpi_integer,0,mpi_comm_world,ierr)
-      
+
   return
 end subroutine read_nosee_data
 !--------------------------------------------------------------
 !--------------------------------------------------------------
 !--------------------------------------------------------------
 subroutine make_nose_time(delt_elec)
-!        use global_variables
   use cpmd_variables
   implicit none
   real(8) :: delt_elec
@@ -1090,11 +932,10 @@ subroutine make_nose_time(delt_elec)
   integer,parameter :: nit=1
 
   w_yosh7_1 = 0.192d0
-  w_yosh7_2 =  0.554910818409783619692725006662999D0
-  w_yosh7_3 =  0.124659619941888644216504240951585D0
-  w_yosh7_4 =  -0.843182063596933505315033808282941D0
-  w_yosh7_0 = 1.0d0 - 2.0d0*(w_yosh7_1+w_yosh7_2+  &
-       &             w_yosh7_3+w_yosh7_4)
+  w_yosh7_2 = 0.554910818409783619692725006662999D0
+  w_yosh7_3 = 0.124659619941888644216504240951585D0
+  w_yosh7_4 =-0.843182063596933505315033808282941D0
+  w_yosh7_0 = 1.0d0 - 2.0d0*(w_yosh7_1+w_yosh7_2+w_yosh7_3+w_yosh7_4)
   dtsuz(1) = w_yosh7_4*delt_elec/dble(nit)
   dtsuz(2) = w_yosh7_3*delt_elec/dble(nit)
   dtsuz(3) = w_yosh7_2*delt_elec/dble(nit)
@@ -1108,6 +949,7 @@ subroutine make_nose_time(delt_elec)
   return
 end subroutine make_nose_time
 !-------------------------------------------------------------------
+
 subroutine comvel(vcmio,inout)
   use cpmd_variables
   use atom_module, only: ki_atom,zn_atom
@@ -1124,7 +966,7 @@ subroutine comvel(vcmio,inout)
      kine=kine+(Velocity(1,i)**2+Velocity(2,i)**2+Velocity(3,i)**2)*pm
   enddo
   temp1=kine*0.5d0
-  if(inout) then
+  if ( inout ) then
 
      vcm(1)=0.0d0
      vcm(2)=0.0d0
@@ -1155,9 +997,9 @@ subroutine comvel(vcmio,inout)
 
   do i=1,Mi
      do j=1,3
-        Velocity(j,i)=Velocity(j,i)-0.5d0*vcm(j)/totmass
-     enddo
-  enddo
+        Velocity(j,i)=Velocity(j,i)-vcm(j)/totmass
+     end do
+  end do
 !----------------debug--------
 !      if(inout) then
 !         write(*,"(a3,4f15.8,i6)") 'in ',vcm(1),vcm(2),vcm(3),totmass,itime
@@ -1174,24 +1016,15 @@ subroutine comvel(vcmio,inout)
   enddo
   temp2=kine*0.5d0
 
-  if(temp2.gt.1.d-5) then
+  if ( temp2 > 1.d-5 ) then
      tscal=temp1/temp2
      vscale=DSQRT(tscal)
      do i=1,Mi
         Velocity(1,i)=Velocity(1,i)*vscale
         Velocity(2,i)=Velocity(2,i)*vscale
         Velocity(3,i)=Velocity(3,i)*vscale
-     enddo
-  endif
- 
+     end do
+  end if
       
   return
 end subroutine comvel
-!-------------------------------------------------------------------
-
-
-
-
-
-
-

@@ -12,6 +12,7 @@ MODULE force_module
   PRIVATE
   PUBLIC :: calc_force, get_fmax_force
   PUBLIC :: init_force
+  PUBLIC :: tim
 
   integer :: Ntim
   real(8),allocatable :: tim(:,:,:)
