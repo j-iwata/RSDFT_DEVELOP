@@ -26,6 +26,8 @@ EXTOBJ2 = $(DIR2)/pzfft3dv.o \
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o \
+        $(DIR3)/calc_kine_temp_module.o\
+        $(DIR3)/berendsen_module.o\
         $(DIR3)/active_band.o \
         $(DIR3)/init_ion.o \
         $(DIR3)/alloc_cpmd.o \
@@ -34,7 +36,6 @@ MDOBJ = $(DIR3)/cpmdio2_module.o \
         $(DIR3)/getforce.o \
         $(DIR3)/getforce_cpmd.o \
         $(DIR3)/wf_force.o \
-        $(DIR3)/calkin.o \
         $(DIR3)/calfke.o \
         $(DIR3)/calc_overlap_module.o \
         $(DIR3)/overlap_cpmd_module.o \
@@ -43,7 +44,6 @@ MDOBJ = $(DIR3)/cpmdio2_module.o \
         $(DIR3)/setv.o \
         $(DIR3)/vcom.o \
         $(DIR3)/mdio.o \
-        $(DIR3)/mnhc.o \
         $(DIR3)/cpmd_variables.o \
 
 ########################################################################
