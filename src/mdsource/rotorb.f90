@@ -64,7 +64,7 @@ subroutine rotorb
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
 
-     call watcht(myrank==0,"",0)
+     !call watcht(myrank==0,"",0)
 
      MBT=mstocck(k,s)
 
@@ -75,12 +75,12 @@ subroutine rotorb
      scr(:,:)=zr
      wrk(:,:)=zr
 
-     call watcht(myrank==0,"rotorb(0)",1)
+     !call watcht(myrank==0,"rotorb(0)",1)
 
      call overlap(s,k,4,0,lblas)
-     call watcht(myrank==0,"rotorb(1)",1)
+     !call watcht(myrank==0,"rotorb(1)",1)
      call overlap(s,k,2,0,lblas)
-     call watcht(myrank==0,"rotorb(2)",1)
+     !call watcht(myrank==0,"rotorb(2)",1)
 
      do i=ls,le
         sig(i,i)=on+sig(i,i) ! I-A
@@ -98,16 +98,16 @@ subroutine rotorb
      enddo
      enddo
 
-     call watcht(myrank==0,"rotorb(3)",1)
+     !call watcht(myrank==0,"rotorb(3)",1)
 
      call mpi_allgatherv(wrk(1,ls),ir_i(myrank),mpi_real8,wrk &
           ,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
-     call watcht(myrank==0,"rotorb(4)",1)
+     !call watcht(myrank==0,"rotorb(4)",1)
 
      call dgemm('n','n',MBT,li,MBT,hf,wrk,MBC,tau(1,ls),MBC,hf,sig(1,ls),MBC)
 
-     call watcht(myrank==0,"rotorb(5)",1)
+     !call watcht(myrank==0,"rotorb(5)",1)
 
      do it=1,maxit
 
@@ -150,16 +150,16 @@ subroutine rotorb
            write(*,*) "WARNING: iteration was not converged in rotorb"
         end if
 
-        call watcht(myrank==0,"rotorb(6)",1)
+        !call watcht(myrank==0,"rotorb(6)",1)
 
      end do ! it
 
-     call watcht(myrank==0,"",0)
+     !call watcht(myrank==0,"",0)
 
      call mpi_allgatherv(gam(1,ls),ir_i(myrank),mpi_real8,wrk &
           ,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
-     call watcht(myrank==0,"rotorb(7)",1)
+     !call watcht(myrank==0,"rotorb(7)",1)
 
 !     do ms=MB_0,min(MB_1,MBT),MBLK
 !        me=min(ms+MBLK-1,min(MB_1,MBT))
@@ -186,7 +186,7 @@ subroutine rotorb
 !     call dgemm('n','n',ML0,MB0,MBT,on,unk(n1,1,k,s),ML0 &
 !             ,wrk(1,MB_0_CPMD),MBC,on,psi_n(n1,MB_0_CPMD,k,s),ML0)
 
-     call watcht(myrank==0,"rotorb(8)",1)
+     !call watcht(myrank==0,"rotorb(8)",1)
 
 !     do ms=MB_0,min(MB_1,MBT),MBLK
 !        me=min(ms+MBLK-1,min(MB_1,MBT))
@@ -210,7 +210,7 @@ subroutine rotorb
 !     call dgemm('n','n',ML0,MB0,MBT,on/dt,unk(n1,1,k,s),ML0 &
 !             ,wrk(1,MB_0_CPMD),MBC,on,psi_v(n1,MB_0_CPMD,k,s),ML0)
 
-     call watcht(myrank==0,"rotorb(9)",1)
+     !call watcht(myrank==0,"rotorb(9)",1)
 
   enddo ! k
   enddo ! s
@@ -218,11 +218,11 @@ subroutine rotorb
   deallocate( psi_tmp )
   deallocate( ir_i, id_i )
 
-  call watcht(myrank==0,"",0)
+  !call watcht(myrank==0,"",0)
 
   unk(:,MB_0_CPMD:MB_1_CPMD,:,:)=psi_n(:,MB_0_CPMD:MB_1_CPMD,:,:)
 
-  call watcht(myrank==0,"rotorb(10)",1)
+  !call watcht(myrank==0,"rotorb(10)",1)
 
   return
 end subroutine rotorb

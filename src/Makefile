@@ -27,7 +27,11 @@ EXTOBJ2 = $(DIR2)/pzfft3dv.o \
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio2_module.o \
         $(DIR3)/calc_kine_temp_module.o\
+        $(DIR3)/nose_hoover_chain_ele_module.o\
+        $(DIR3)/nose_hoover_chain_module.o\
         $(DIR3)/berendsen_module.o\
+        $(DIR3)/velocity_scaling_module.o\
+        $(DIR3)/velocity_scaling_ele_module.o\
         $(DIR3)/active_band.o \
         $(DIR3)/init_ion.o \
         $(DIR3)/alloc_cpmd.o \

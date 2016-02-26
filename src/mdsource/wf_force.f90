@@ -62,14 +62,14 @@ SUBROUTINE wf_force
 
    call watch(ct(7),et(7))
 
-   if ( myrank == 0 ) then
-      write(*,*) "time(wf_fore1)=",ct(1)-ct(0),et(1)-et(0)
-      write(*,*) "time(wf_fore2)=",ct(2),et(2)
-      write(*,*) "time(wf_fore3)=",ct(3),et(3)
-      write(*,*) "time(wf_fore5)=",ct(5)-ct(4),et(5)-et(4)
-      write(*,*) "time(wf_fore6)=",ct(6)-ct(5),et(6)-et(5)
-      write(*,*) "time(wf_fore7)=",ct(7)-ct(6),et(7)-et(6)
-   end if
+!   if ( myrank == 0 ) then
+!      write(*,*) "time(wf_fore1)=",ct(1)-ct(0),et(1)-et(0)
+!      write(*,*) "time(wf_fore2)=",ct(2),et(2)
+!      write(*,*) "time(wf_fore3)=",ct(3),et(3)
+!      write(*,*) "time(wf_fore5)=",ct(5)-ct(4),et(5)-et(4)
+!      write(*,*) "time(wf_fore6)=",ct(6)-ct(5),et(6)-et(5)
+!      write(*,*) "time(wf_fore7)=",ct(7)-ct(6),et(7)-et(6)
+!   end if
 
    return
 END SUBROUTINE wf_force

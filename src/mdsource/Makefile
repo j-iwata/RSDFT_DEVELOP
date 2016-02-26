@@ -4,7 +4,11 @@ MOBJ = cpmd_variables.o
 
 OBJ = cpmdio2_module.o\
       calc_kine_temp_module.o\
+      nose_hoover_chain_ele_module.o\
+      nose_hoover_chain_module.o\
       berendsen_module.o\
+      velocity_scaling_module.o\
+      velocity_scaling_ele_module.o\
       setv.o\
       vcom.o\
       mdio.o\
