@@ -40,7 +40,7 @@ CONTAINS
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
 
-    call watcht(myrank==0,"",0)
+    !call watcht(myrank==0,"",0)
 
     if ( np_band > 1 ) then
        allocate( ir(0:np_band-1) ) ; ir=0
@@ -51,11 +51,11 @@ CONTAINS
             ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
-    call watcht(myrank==0,"overlap(2-1)",1)
+    !call watcht(myrank==0,"overlap(2-1)",1)
 
     call dsyrk('L','t',MBT,ML0,-dV,psi_n(n1,1,k,s),ML0,zero,sig,MBC)
 
-    call watcht(myrank==0,"overlap(2-2)",1)
+    !call watcht(myrank==0,"overlap(2-2)",1)
 
     n = (MBC*(MBC+1))/2
     if ( .not.allocated(w1) ) then
@@ -78,7 +78,7 @@ CONTAINS
     end do
     end do
 
-    call watcht(myrank==0,"overlap(2-3)",1)
+    !call watcht(myrank==0,"overlap(2-3)",1)
 
 !$OMP parallel do
     do j=1  ,MBC
@@ -91,7 +91,7 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    call watcht(myrank==0,"overlap(2-4)",1)
+    !call watcht(myrank==0,"overlap(2-4)",1)
 
     if ( np_band > 1 ) deallocate( id,ir )
 
@@ -122,7 +122,7 @@ CONTAINS
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
 
-    call watcht(myrank==0,"",0)
+    !call watcht(myrank==0,"",0)
 
     if ( np_band > 1 ) then
        allocate( ir(0:np_band-1) ) ; ir=0
@@ -135,13 +135,13 @@ CONTAINS
             ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
-    call watcht(myrank==0,"overlap(4-1)",1)
+    !call watcht(myrank==0,"overlap(4-1)",1)
 
 #ifdef _DRSDFT_
     call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_n(n1,1,k,s),-dV,tau)
 #endif
 
-    call watcht(myrank==0,"overlap(4-2)",1)
+    !call watcht(myrank==0,"overlap(4-2)",1)
 
 !$OMP parallel do
     do j=1,MBC
@@ -154,7 +154,7 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    call watcht(myrank==0,"overlap(4-3)",1)
+    !call watcht(myrank==0,"overlap(4-3)",1)
 
     if ( np_band > 1 ) deallocate( id,ir )
 
@@ -185,7 +185,7 @@ CONTAINS
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
 
-    call watcht(myrank==0,"",0)
+    !call watcht(myrank==0,"",0)
 
     if ( np_band > 1 ) then
        allocate( ir(0:np_band-1) ) ; ir=0
@@ -198,13 +198,13 @@ CONTAINS
             ,psi_v(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
-    call watcht(myrank==0,"overlap(5-1)",1)
+    !call watcht(myrank==0,"overlap(5-1)",1)
 
 #ifdef _DRSDFT_
     call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_v(n1,1,k,s),dV,wrk)
 #endif
 
-    call watcht(myrank==0,"overlap(5-2)",1)
+    !call watcht(myrank==0,"overlap(5-2)",1)
 
 !$OMP parallel do
     do j=1,MBC
@@ -216,7 +216,7 @@ CONTAINS
     end do
 !$OMP end parallel do 
 
-    call watcht(myrank==0,"overlap(5-3)",1)
+    !call watcht(myrank==0,"overlap(5-3)",1)
 
     if ( np_band > 1 ) deallocate( id,ir )
 

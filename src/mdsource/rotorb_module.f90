@@ -35,7 +35,7 @@ CONTAINS
     complex(8),parameter :: zz = (0.0d0,0.0d0)
     complex(8),allocatable :: zrk(:,:)
 
-    call watcht(myrank==0,"",0)
+    !call watcht(myrank==0,"",0)
 
     if ( MBC < nprocs ) then
        write(*,*) "MBC<nprocs!!!",MBC,nprocs,myrank
@@ -73,36 +73,36 @@ CONTAINS
     le = id_i(myrank)/MBC+ir_i(myrank)/MBC
     li = ir_i(myrank)/MBC
 
-    call watcht(myrank==0,"rotorb(00)",1)
+    !call watcht(myrank==0,"rotorb(00)",1)
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
 
-       call watcht(myrank==0,"",0)
+       !call watcht(myrank==0,"",0)
 
        MBT=mstocck(k,s)
 
-       call watcht(myrank==0,"rotorb(0)",1)
-       call watch(ct0,et0)
+       !call watcht(myrank==0,"rotorb(0)",1)
+       !call watch(ct0,et0)
 
        call overlap4(s,k) ! tau
 
-       call watch(ct1,et1) ; if ( myrank==0 ) write(*,*) "timet(rotorb(1)=",ct1-ct0,et1-et0
+       !call watch(ct1,et1) ; if ( myrank==0 ) write(*,*) "timet(rotorb(1)=",ct1-ct0,et1-et0
 
        call overlap2(s,k) ! sig
 
-       call watch(ct0,et0) ; if ( myrank == 0 ) write(*,*) "timet(rotorb(2)=",ct0-ct1,et0-et1
-       call watcht(myrank==0,"",0)
+       !call watch(ct0,et0) ; if ( myrank == 0 ) write(*,*) "timet(rotorb(2)=",ct0-ct1,et0-et1
+       !call watcht(myrank==0,"",0)
 
 !$OMP parallel workshare
        gam(1:MBC,ls:le) = sig(1:MBC,ls:le)*hf      ! (I-A)/2
 !$OMP end parallel workshare
 
-       call watcht(myrank==0,"rotorb(3)",1)
+       !call watcht(myrank==0,"rotorb(3)",1)
 
        call dgemm('n','n',MBT,li,MBT,hf,tau,MBC,tau(1,ls),MBC,hf,sig(1,ls),MBC)
 
-       call watcht(myrank==0,"rotorb(5)",1)
+       !call watcht(myrank==0,"rotorb(5)",1)
 
        do it=1,maxit
 
@@ -146,12 +146,12 @@ CONTAINS
 
        end do ! it
 
-       call watcht(myrank==0,"rotorb(6)",1)
+       !call watcht(myrank==0,"rotorb(6)",1)
 
        call mpi_allgatherv(gam(1,ls),ir_i(myrank),mpi_real8 &
             ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
-       call watcht(myrank==0,"rotorb(7)",1)
+       !call watcht(myrank==0,"rotorb(7)",1)
 
        call dgemm('n','n',ML0,MB0,MBT,on,unk(n1,1,k,s),ML0 &
             ,wrk(1,MB_0_CPMD),MBC,zr,psi_tmp(n1,MB_0_CPMD),ML0)
@@ -161,7 +161,7 @@ CONTAINS
        psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + psi_tmp(n1:n2,MB_0_CPMD:MB_1_CPMD)
 !$OMP end parallel workshare
 
-       call watcht(myrank==0,"rotorb(8)",1)
+       !call watcht(myrank==0,"rotorb(8)",1)
 
        tmp1=1.d0/dt
 !$OMP parallel workshare
@@ -169,18 +169,18 @@ CONTAINS
        psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,k,s) + tmp1*psi_tmp(n1:n2,MB_0_CPMD:MB_1_CPMD)
 !$OMP end parallel workshare
 
-       call watcht(myrank==0,"rotorb(9)",1)
+       !call watcht(myrank==0,"rotorb(9)",1)
 
     end do ! k
     end do ! s
 
-    call watcht(myrank==0,"",0)
+    !call watcht(myrank==0,"",0)
 
 !$OMP parallel workshare
     unk(:,MB_0_CPMD:MB_1_CPMD,:,:) = psi_n(:,MB_0_CPMD:MB_1_CPMD,:,:)
 !$OMP end parallel workshare
 
-    call watcht(myrank==0,"rotorb(10)",1)
+    !call watcht(myrank==0,"rotorb(10)",1)
 
     return
   END SUBROUTINE rotorb

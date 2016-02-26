@@ -7,11 +7,12 @@ MODULE calc_kine_temp_module
   implicit none
 
   PRIVATE
-  PUBLIC :: calc_Ndof
+  PUBLIC :: calc_Ndof, get_Ndof
   PUBLIC :: calc_kine
   PUBLIC :: calc_temp
 
 CONTAINS
+
 
   SUBROUTINE calc_Ndof   ! Degree of freedom
     implicit none
@@ -24,7 +25,17 @@ CONTAINS
        u(:) = matmul( tim(:,:,m), v(:) )
        Ndof = Ndof + count( u /= 0.0d0 )
     end do
+    Ndof = Ndof - 3  ! Subtract center-of-mass dof
   END SUBROUTINE calc_Ndof
+
+
+  SUBROUTINE get_Ndof( Ndof_out )
+    implicit none
+    integer,intent(OUT) :: Ndof_out
+    if ( Ndof == 0 ) call calc_Ndof
+    Ndof_out = Ndof
+  END SUBROUTINE get_Ndof
+
 
   SUBROUTINE calc_kine( Velocity, kine )
     implicit none
