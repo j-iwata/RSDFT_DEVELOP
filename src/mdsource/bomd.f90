@@ -3,13 +3,15 @@
 !-----------------------------------------------------------------------
 SUBROUTINE bomd
 
-  use atom_module, only: Natom,ki_atom,zn_atom
-  use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,KB,dt &
+  use aa_module, only: aa
+  use atom_module, only: Natom,ki_atom,zn_atom,aa_atom &
+                        ,convert_to_xyz_coordinates_atom
+  use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,dt &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,linitnose,dtsuz,lbathnewe &
                            ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue &
-                           ,AMU,pmass,Etot,trjstep,Ndof,omegan &
-                           ,TOJOUL,deltat,FS_TO_AU,dsettemp,temp,MI &
+                           ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
+                           ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
   use parallel_module
   use total_energy_module
@@ -30,7 +32,7 @@ SUBROUTINE bomd
 
   integer :: i,j,k,n,s,ierr,ib1,ib2
   real(8) :: tott,dif,kine,tote,tote0,dt2,ltemp
-  real(8) :: fke,Ebath,Ebath_ele
+  real(8) :: fke,Ebath_ion,Ebath_ele,Ebath
   real(8) :: ctime0,ctime1,etime0,etime1
   real(8) :: ctime_cpmd(0:11),etime_cpmd(0:11)
   real(8),allocatable :: mu(:)
@@ -54,7 +56,6 @@ SUBROUTINE bomd
   if ( lblue ) call read_blue
 
   tote0       = 0.d0
-  dsettemp    = temp
   MI          = Natom
   disp_switch = (myrank==0)
   ltime       = .true.
@@ -70,43 +71,32 @@ SUBROUTINE bomd
      if ( disp_switch ) write(*,*) "start NVE cpmd"
   end if
 
-!
-!     setup variables
-!
-  dt        = deltat*FS_TO_AU ! time in AU
-  dt2       = dt*0.50d0       ! dt/2
-  temp      = temp*KB/TOJOUL  ! temperature in hartree a.u.
+! --- setup variables
+
+  dt  = deltat*FS_TO_AU ! time in AU
+  dt2 = dt*0.50d0       ! dt/2
 
 ! --- allocate MD variables
 
-  call alloc_md
+  call alloc_md   ! Rion,Rion0,Velocity,Force
 
 ! --- Degree of fredom
 
   call calc_Ndof
 
-! --- initial velocity
+! --- initial coordinates & velocity
 
   if ( inivel ) then
      if ( disp_switch ) write(*,*) "generate initial velocity"
-     if ( myrank == 0 ) then
-        call setv( dsettemp, Velocity ) ! Initial velocity
-        call vcom( Velocity )           ! Center of mass velocity
-     end if
+     if ( myrank == 0 ) call setv( temp, Velocity )
+     call convert_to_xyz_coordinates_atom( aa, aa_atom, Rion )
   else
      if ( disp_switch ) write(*,*) "read initial coordinate and velocity"
-     if ( myrank == 0 ) then
-        call mdio( 0, tote0 )
-        call mdio( 2, tote0 )
-     endif
-  endif
+     if ( myrank == 0 ) call mdio( 0, tote0 )
+  end if
 
-! --- broadcast initial data
-
-  if ( .not.inivel ) then
-     call mpi_bcast(Rion,size(Rion),mpi_real8,0,mpi_comm_world,ierr)
-     call mpi_bcast(tote0,1,mpi_real8,0,mpi_comm_world,ierr)
-  endif
+  call mpi_bcast(Rion,size(Rion),mpi_real8,0,mpi_comm_world,ierr)
+  call mpi_bcast(tote0,1,mpi_real8,0,mpi_comm_world,ierr)
   call mpi_bcast(Velocity,size(Velocity),mpi_real8,0,mpi_comm_world,ierr)
 
 ! --- initial wave function
@@ -120,67 +110,43 @@ SUBROUTINE bomd
      ib1  = MB_0_CPMD
      ib2  = MB_1_CPMD
      call alloc_cpmd
-     if ( lquench ) then
-        if ( disp_switch ) write(*,*) "Quench system to BO surface!!!!!!!!"
-        call getforce
-     endif
-     if ( .not.inivel ) call read_data_cpmd_k_para
-     call calfke( fke )
-     if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
-  end if
-
-! --- initial force
-
-  if ( lcpmd ) then
      if ( inivel ) then
         call getforce
-        do i=1,Natom
-           Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)
-        end do
-        call wf_force
-        call calc_total_energy( .false., Etot )
      else
-        if ( disp_switch ) then
-           write(*,*) "energy and force evaluation form previous data"
+        if ( lquench ) then
+           if ( disp_switch ) write(*,*) "Quench system to BO surface!!!!!!!!"
+           call getforce
         end if
         call getforce_cpmd( .true., ltime )
-        call wf_force
-        call calc_total_energy( .false., Etot )
+        call read_data_cpmd_k_para
      end if
+     call wf_force
+     call calc_total_energy( .false., Etot )
+     call calfke( fke )
+     if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
   else
      call getforce
   end if
 
 ! --- initial bath parameters
 
-  if ( lbathnewe .and. (inivel.or.linitnosee) )  then
-     call nosepae(dt)
-  end if
-
-  if ( lbathnew .and. (inivel.or.linitnose) ) then
-     call init_nose_hoover_chain( dt, dsettemp, omegan )
-  end if
-
-  if ( (lbathnew.and.(.not.inivel)) .and. (.not.linitnose) ) then
-     call read_nose_data
-  end if
-  if ( (lbathnewe.and.(.not.inivel)) .and. (.not.linitnosee) ) then
-     call read_nosee_data
-  end if
-  if ( (lbathnew.or.lbathnewe) .and. (.not.inivel) ) then
-     call make_nose_time(dt)
-  end if
-
-  Ebath = 0.0d0
   Ebath_ele = 0.0d0
+  if ( lbathnewe ) then
+     call init_nose_hoover_chain_ele( dt, ekinw, wnose0 )
+     call noseeneele( Ebath_ele )
+  end if
 
-  if ( lbathnew  ) call noseene( Ebath )
-  if ( lbathnewe ) call noseeneele( Ebath_ele )
-  Ebath = Ebath + Ebath_ele
+  Ebath_ion = 0.0d0
+  if ( lbathnew  ) then
+     call init_nose_hoover_chain( dt, temp, omegan )
+     call noseene( Ebath_ion )
+  end if
+
+  Ebath = Ebath_ion + Ebath_ele
 
 ! --- initial data output
 
-  call calc_kine( Velocity, kine )
+  call calc_kine( Velocity, kine, ltemp )
 
   if ( inivel ) tote0 = kine + Etot + fke + Ebath
 
@@ -199,9 +165,8 @@ SUBROUTINE bomd
         write(17,'(9a10)') "EWALD","LOCAL&PCC","PS_NLOC","PSI_RHO" &
                    ,"HARTREE ","EXC","VLOC","FORCE","FORCE"
      end if
-     dif   = 0.0d0
-     tott  = 0.0d0
-     ltemp = kine /( 0.5d0*Ndof*KB/TOJOUL )
+     dif  = 0.0d0
+     tott = 0.0d0
      write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
   end if
 
@@ -218,9 +183,9 @@ SUBROUTINE bomd
         call nose_hoover_chain_ele( fke, psi_v, MB_0_CPMD,MB_1_CPMD )
      end if
 
-     if ( lscale ) call velocity_scaling( dsettemp, Velocity )
+     if ( lscale ) call velocity_scaling( temp, Velocity )
 
-     if ( lbere ) call berendsen( dsettemp, dt2, Velocity )
+     if ( lbere ) call berendsen( temp, dt2, Velocity )
 
      if ( lbathnew ) call nose_hoover_chain( Velocity )
 
@@ -289,29 +254,28 @@ SUBROUTINE bomd
 
      if ( lbathnew ) then
         call nose_hoover_chain( Velocity )
-        call noseene( Ebath )
+        call noseene( Ebath_ion )
      end if
 
-     if ( lbere ) call berendsen( dsettemp, dt2, Velocity )
+     if ( lbere ) call berendsen( temp, dt2, Velocity )
 
-     if ( lscale ) call velocity_scaling( dsettemp, Velocity )
+     if ( lscale ) call velocity_scaling( temp, Velocity )
 
      if ( lbathnewe ) then
         call calfke( fke )
         call nose_hoover_chain_ele( fke, psi_v, MB_0_CPMD,MB_1_CPMD )
         call noseeneele( Ebath_ele )
-        Ebath = Ebath + Ebath_ele
      end if
+     Ebath = Ebath_ion + Ebath_ele
 
      call watch(ctime1,etime1)
 
-     call calc_kine( Velocity, kine )
+     call calc_kine( Velocity, kine, ltemp )
 
      if ( myrank == 0 ) then
 
         tott  = deltat*itime
         tote  = kine+Etot+fke+Ebath
-        ltemp = kine/( 0.5d0*Ndof*KB/TOJOUL )
         dif   = abs(tote-tote0)
 
 ! --- trajectry
@@ -333,11 +297,10 @@ SUBROUTINE bomd
 
 ! ---
 
-        write(*,'(a,x,f8.2,x,a,x,f15.8,x,a,x,f6.1,x,a,x,f15.8)') &
-             "t=",tott,"dif=",dif,"ltemp=",ltemp,"fke=",fke
-        write(*,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,Sum(esp),Ebath_ele
-        write(*,*) Sum(occ), Sum(esp)
-
+!        write(*,'(a,x,f8.2,x,a,x,f15.8,x,a,x,f6.1,x,a,x,f15.8)') &
+!             "t=",tott,"dif=",dif,"ltemp=",ltemp,"fke=",fke
+        write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
+!        write(*,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
         write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,Sum(esp),Ebath_ele
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
         if ( ltime ) then

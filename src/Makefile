@@ -33,7 +33,6 @@ MDOBJ = $(DIR3)/cpmdio2_module.o \
         $(DIR3)/velocity_scaling_module.o\
         $(DIR3)/velocity_scaling_ele_module.o\
         $(DIR3)/active_band.o \
-        $(DIR3)/init_ion.o \
         $(DIR3)/alloc_cpmd.o \
         $(DIR3)/blue_moon_module.o \
         $(DIR3)/bomd.o \

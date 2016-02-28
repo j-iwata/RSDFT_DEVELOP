@@ -11,6 +11,10 @@ MODULE calc_kine_temp_module
   PUBLIC :: calc_kine
   PUBLIC :: calc_temp
 
+  real(8),parameter :: TOJOUL=4.35975d-18 ! (J/hartree)
+  real(8),parameter :: kB_J=1.380658d-23  ! (J/K)
+  real(8),parameter :: kB=kB_J/TOJOUL     ! (hartree/K)
+
 CONTAINS
 
 
@@ -37,10 +41,11 @@ CONTAINS
   END SUBROUTINE get_Ndof
 
 
-  SUBROUTINE calc_kine( Velocity, kine )
+  SUBROUTINE calc_kine( Velocity, kine, temp )
     implicit none
     real(8),intent(IN)  :: Velocity(:,:)
     real(8),intent(OUT) :: kine
+    real(8),optional,intent(OUT) :: temp
     integer :: i
     real(8) :: pm
     kine=0.0d0
@@ -49,15 +54,13 @@ CONTAINS
        kine = kine + sum( Velocity(:,i)**2 )*pm
     end do
     kine=kine*0.5d0*AMU
+    if ( present(temp) ) temp=kine/( 0.5d0*Ndof*kB )
   END SUBROUTINE calc_kine
 
   SUBROUTINE calc_temp( Velocity, temp )
     implicit none
     real(8),intent(IN)  :: Velocity(:,:)
     real(8),intent(OUT) :: temp
-    real(8),parameter :: TOJOUL=4.35975d-18 ! (J/hartree)
-    real(8),parameter :: kB_J=1.380658d-23  ! (J/K)
-    real(8),parameter :: kB=kB_J/TOJOUL     ! (hartree/K)
     real(8) :: kine
     call calc_kine( Velocity, kine )
     temp = kine/( 0.5d0*Ndof*kB )

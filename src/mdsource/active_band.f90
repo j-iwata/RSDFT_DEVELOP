@@ -12,12 +12,10 @@ subroutine active_band
   allocate( mstocck(MBZ_0:MBZ_1,MSP_0:MSP_1) )
   mstocck=0
 
-  if ( myrank == 0 ) write(13,'(a)') " spin   k   band      occ"
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
   do n=1,MB
      if ( occ(n,k,s)>1.d-10 ) mstocck(k,s)=mstocck(k,s)+1
-     if ( myrank == 0 ) write(13,'(3i6,e20.10)') s,k,n,occ(n,k,s)
   enddo
   enddo
   enddo

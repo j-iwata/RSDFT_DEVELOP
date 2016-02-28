@@ -12,7 +12,6 @@ OBJ = cpmdio2_module.o\
       setv.o\
       vcom.o\
       mdio.o\
-      init_ion.o\
       active_band.o\
       alloc_cpmd.o\
       calc_overlap_module.o \

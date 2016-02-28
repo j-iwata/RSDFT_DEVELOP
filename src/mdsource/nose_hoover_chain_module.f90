@@ -2,6 +2,7 @@ MODULE nose_hoover_chain_module
 
   use parallel_module, only: myrank
   use calc_kine_temp_module, only: calc_kine, get_Ndof
+  use cpmd_variables, only: inivel, linitnose
 
   implicit none
 
@@ -10,8 +11,6 @@ MODULE nose_hoover_chain_module
   PUBLIC :: init_nose_hoover_chain
   PUBLIC :: noseene
   PUBLIC :: write_nose_data
-  PUBLIC :: read_nose_data
-  PUBLIC :: make_nose_time
 
   integer,parameter :: ncall=9
   real(8) :: dt_ST(ncall)
@@ -44,6 +43,11 @@ CONTAINS
     pi = acos(-1.0d0)
 
     call make_nose_time( dt )
+
+    if ( .not.(inivel.or.linitnose) ) then
+       call read_nose_data
+       return
+    end if
 
     call get_Ndof( Ndof )
 
@@ -199,7 +203,7 @@ CONTAINS
     if ( myrank == 0 ) then
        open(999,file="Bathdata.dat1")
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
-       write(999,*) gkT
+       write(999,*) kT,gkT
        write(999,*)(Qeta(i),i=1,nchain) 
        write(999,*)(Feta(i),i=1,nchain)
        close(999)
@@ -215,7 +219,7 @@ CONTAINS
     if ( myrank == 0 ) then
        open(999,file="Bathdata.dat")
        read(999,*)(eta(i),etadot(i),i=1,nchain) 
-       read(999,*) gkT
+       read(999,*) kT,gkT
        read(999,*)(Qeta(i),i=1,nchain)
        read(999,*)(Feta(i),i=1,nchain)
        close(999)
