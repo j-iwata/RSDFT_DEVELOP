@@ -40,8 +40,6 @@ SUBROUTINE getforce_cpmd(lewald,ltime)
   aa_atom = matmul(transpose(bb),Rion)*c
   Force   = 0.0d0
 
-  call init_ion
-
   if ( ltime ) call watch(ctime_force(0),etime_force(0))
 
   if ( lewald ) then

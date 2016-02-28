@@ -9,9 +9,8 @@ subroutine alloc_md
      allocate( Rion(3,MI) )
      allocate( Rion0(3,MI) )
   end if
-  Rion=0.d0
+  Rion=0.0d0
   Rion0=0.0d0
-  call init_ion
   allocate( Velocity(3,MI) ) ; Velocity=0.0d0
   allocate(    Force(3,MI) ) ; Force   =0.0d0
   return

@@ -73,9 +73,9 @@ PROGRAM Real_Space_DFT
   call init_aa( aa_obj )
 
   if ( SYStype == 0 ) then
-     call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
+     call convert_to_aa_coordinates_atom( aa_obj%LatticeVector, aa_atom )
   else if ( SYStype == 1 ) then
-     call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
+     call convert_to_xyz_coordinates_atom( aa_obj%LatticeVector, aa_atom )
   end if
 
   call backup_aa_lattice( aa_obj )

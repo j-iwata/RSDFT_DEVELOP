@@ -28,6 +28,7 @@ SUBROUTINE setv( temp, Velocity )
   call calc_temp( Velocity, temp_now )
   rescale=sqrt(temp/temp_now)
   Velocity(:,:)=Velocity(:,:)*rescale
+  call vcom( Velocity ) ! Center-of-mass velocity
   return
 
 CONTAINS

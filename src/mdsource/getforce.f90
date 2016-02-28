@@ -29,9 +29,6 @@ SUBROUTINE getforce
   Diter1       = 100
   c            = 1.d0/(2.d0*acos(-1.d0))
   aa_atom(:,:) = matmul(transpose(bb),Rion)*c
-  Force(:,:)   = 0.0d0
-
-  call init_ion
 
   call calc_eion
 
@@ -69,6 +66,7 @@ SUBROUTINE getforce
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD
 
+  Force(:,:)=0.0d0
   call calc_force(Natom,Force)
 
   do a=1,Natom
