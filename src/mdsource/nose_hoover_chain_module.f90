@@ -226,6 +226,7 @@ CONTAINS
     end if
     call mpi_bcast(eta,nchain,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(etadot,nchain,mpi_real8,0,mpi_comm_world,ierr)
+    call mpi_bcast( kT,1,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(gkT,1,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Qeta,nchain,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Feta,nchain,mpi_real8,0,mpi_comm_world,ierr)

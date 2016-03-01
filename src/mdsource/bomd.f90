@@ -38,6 +38,7 @@ SUBROUTINE bomd
   real(8),allocatable :: mu(:)
   logical :: ltime,flag_etlimit
   integer,parameter :: unit_trjxyz = 90
+  logical,external :: exit_program
 
   call write_border( 0, "" )
   call write_border( 0, " CPMD START -----------" )
@@ -110,15 +111,12 @@ SUBROUTINE bomd
      ib1  = MB_0_CPMD
      ib2  = MB_1_CPMD
      call alloc_cpmd
-     if ( inivel ) then
+     if ( .not.inivel ) call read_data_cpmd_k_para
+     if ( lquench ) then
         call getforce
+        psi_v=0.0d0
      else
-        if ( lquench ) then
-           if ( disp_switch ) write(*,*) "Quench system to BO surface!!!!!!!!"
-           call getforce
-        end if
-        call getforce_cpmd( .true., ltime )
-        call read_data_cpmd_k_para
+        call getforce_cpmd( ltime )
      end if
      call wf_force
      call calc_total_energy( .false., Etot )
@@ -167,7 +165,7 @@ SUBROUTINE bomd
      end if
      dif  = 0.0d0
      tott = 0.0d0
-     write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
+     if ( inivel ) write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
   end if
 
 ! --- loop start
@@ -213,7 +211,7 @@ SUBROUTINE bomd
 
         call watch(ctime_cpmd(3),etime_cpmd(3))
 
-        call getforce_cpmd(.true.,ltime)
+        call getforce_cpmd( ltime )
 
         call watch(ctime_cpmd(4),etime_cpmd(4))
 
@@ -301,7 +299,7 @@ SUBROUTINE bomd
 !             "t=",tott,"dif=",dif,"ltemp=",ltemp,"fke=",fke
         write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
 !        write(*,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
-        write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,Sum(esp),Ebath_ele
+        write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
         if ( ltime ) then
            write(16,'(i6,9f10.5)') itime,(etime_cpmd(k+1)-etime_cpmd(k),k=0,8)
@@ -314,6 +312,8 @@ SUBROUTINE bomd
              "elapsed time limit exceeded : flag_etlimit=",flag_etlimit
         exit
      end if
+
+     if ( exit_program() ) exit
 
   end do ! itime
 

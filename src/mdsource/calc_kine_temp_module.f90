@@ -30,6 +30,7 @@ CONTAINS
        Ndof = Ndof + count( u /= 0.0d0 )
     end do
     Ndof = Ndof - 3  ! Subtract center-of-mass dof
+    if ( Ndof <= 0 ) Ndof=Ndof+3 
   END SUBROUTINE calc_Ndof
 
 

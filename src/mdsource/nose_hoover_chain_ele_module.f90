@@ -17,7 +17,7 @@ MODULE nose_hoover_chain_ele_module
   real(8) :: Qeta(nchain)
   real(8) :: eta(nchain)
   real(8) :: etadot(nchain)
-  real(8) :: Feta(nchain)
+  real(8) :: Feta(nchain+1)
 
   integer :: nedof
   real(8) :: ekinw
@@ -182,7 +182,7 @@ CONTAINS
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
        write(999,*)(Feta(i),i=1,nchain+1) 
        write(999,*)(Qeta(i),i=1,nchain) 
-       write(999,*) nedof
+       write(999,*) nedof, ekinw
        close(999)
     end if
     return
@@ -201,7 +201,7 @@ CONTAINS
        read(999,*)(eta(i),etadot(i),i=1,nchain) 
        read(999,*)(Feta(i),i=1,nchain+1)
        read(999,*)(Qeta(i),i=1,nchain) 
-       read(999,*) nedof
+       read(999,*) nedof, ekinw
        close(999)
     end if
 
@@ -210,6 +210,7 @@ CONTAINS
     call mpi_bcast(Feta,nchain+1,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Qeta,nchain,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(nedof,1,mpi_integer,0,mpi_comm_world,ierr)
+    call mpi_bcast(ekinw,1,mpi_real8,0,mpi_comm_world,ierr)
 
     return
 

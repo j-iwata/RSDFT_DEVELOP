@@ -224,16 +224,16 @@ CONTAINS
 
     call watch(ctt(8),ett(8))
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "time(force_local_fftw1)=",ctt(1)-ctt(0),ett(1)-ett(0)
-       write(*,*) "time(force_local_fftw2)=",ctt(2)-ctt(1),ett(2)-ett(1)
-       write(*,*) "time(force_local_fftw3)=",ctt(3)-ctt(2),ett(3)-ett(2)
-       write(*,*) "time(force_local_fftw4)=",ctt(4)-ctt(3),ett(4)-ett(3)
-       write(*,*) "time(force_local_fftw5)=",ctt(5)-ctt(4),ett(5)-ett(4)
-       write(*,*) "time(force_local_fftw6)=",ctt(6)-ctt(5),ett(6)-ett(5)
-       write(*,*) "time(force_local_fftw7)=",ctt(7)-ctt(6),ett(7)-ett(6)
-       write(*,*) "time(force_local_fftw8)=",ctt(8)-ctt(7),ett(8)-ett(7)
-    end if
+!    if ( disp_switch_parallel ) then
+!       write(*,*) "time(force_local_fftw1)=",ctt(1)-ctt(0),ett(1)-ett(0)
+!       write(*,*) "time(force_local_fftw2)=",ctt(2)-ctt(1),ett(2)-ett(1)
+!       write(*,*) "time(force_local_fftw3)=",ctt(3)-ctt(2),ett(3)-ett(2)
+!       write(*,*) "time(force_local_fftw4)=",ctt(4)-ctt(3),ett(4)-ett(3)
+!       write(*,*) "time(force_local_fftw5)=",ctt(5)-ctt(4),ett(5)-ett(4)
+!       write(*,*) "time(force_local_fftw6)=",ctt(6)-ctt(5),ett(6)-ett(5)
+!       write(*,*) "time(force_local_fftw7)=",ctt(7)-ctt(6),ett(7)-ett(6)
+!       write(*,*) "time(force_local_fftw8)=",ctt(8)-ctt(7),ett(8)-ett(7)
+!    end if
 
 #endif
 
