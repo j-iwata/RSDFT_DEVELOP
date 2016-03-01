@@ -61,12 +61,15 @@ subroutine alloc_cpmd
      allocate( gam(MBC,ls:le),gamn(MBC,ls:le) )
      allocate( scr(MBC,ls:le), wrk(MBC,MBC)   )
   endif
+  tau=0.0d0 ; sig =0.0d0
+  gam=0.0d0 ; gamn=0.0d0
+  scr=0.0d0 ; wrk =0.0d0
   n1=idisp(myrank)+1
   n2=idisp(myrank)+ircnt(myrank)
   allocate( psi_v(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
   allocate( psi_n(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-  psi_v=0.d0
-  psi_n=0.d0
+  psi_v=0.0d0
+  psi_n=0.0d0
   return
 end subroutine alloc_cpmd
 
