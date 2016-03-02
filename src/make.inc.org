@@ -75,6 +75,8 @@ OMPFLAG   =
         -X9 -V -Ec -Qa,d,i,p,t,x -Cpp -Ccpp
 #LFLAGS0 = ${FFLAGS0} -Ntl_trt
 #LAPACK_L = -SSL2BLAMP -SCALAPACK
+#INCLUDE_DIR = -I../ -I/home/apps/fftw/3.3.3/include/
+#FFTW_L = -L/home/apps/fftw/3.3.3/lib64 -lfftw3_mpi -lfftw3 -lm
 ########################################################################
 ########################################################################
 ########################################################################
