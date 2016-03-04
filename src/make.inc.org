@@ -40,6 +40,8 @@ OMPFLAG   =
 #FFTW_L = -L/home/iwata/fftw-3.3.4/lib/ -lfftw3_mpi -lfftw3 -lm
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_NO_QPRECISION_ $(CPP_FLAGS)
 ########################################################################
 ################################################# compiler & options ###
 ########################################################################
@@ -74,6 +76,8 @@ OMPFLAG   =
 #FFLAGS0 = -fastsse -O3 -tp amd64e -mp -Mpreprocess
 #FFLAGS0 = -fastsse -O3 -tp barcelona-64 -mp -Mpreprocess
 #FFLAGS0 = -fastsse -O3 -tp shanghai-64 -mp -Mpreprocess
+#FFLAGS0 = -Mcuda
+#LFLAGS0 = -Mcuda=cc20
 ########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx
