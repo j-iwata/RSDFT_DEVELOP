@@ -39,8 +39,8 @@ CONTAINS
 
     w  = omega * to_au
     w2 = w*w
-!    pi = 0.0d0
-    pi = acos(-1.0d0)
+    pi = 0.0d0
+!    pi = acos(-1.0d0)
 
     call make_nose_time( dt )
 
