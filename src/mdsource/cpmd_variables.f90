@@ -31,13 +31,13 @@ MODULE cpmd_variables
 !  integer,allocatable :: iatom(:)          ! ordering   of nuclei
   real(8),allocatable :: Velocity(:,:)     ! velocity   of nuclei
 !_for Car-Parrinello molecualr dynamics
-#ifdef _DRSDFT_
+!#ifdef _DRSDFT_
   real(8),allocatable :: psi_v(:,:,:,:) ! velocity   of wavefunction
   real(8),allocatable :: psi_n(:,:,:,:) ! updated    of wavefunction 
-#else
-  complex(8),allocatable :: psi_v(:,:,:,:) ! velocity   of wavefunction
-  complex(8),allocatable :: psi_n(:,:,:,:) ! updated    of wavefunction 
-#endif
+!#else
+!  complex(8),allocatable :: psi_v(:,:,:,:) ! velocity   of wavefunction
+!  complex(8),allocatable :: psi_n(:,:,:,:) ! updated    of wavefunction 
+!#endif
   real(8),allocatable :: zam(:,:)
   real(8),allocatable :: tau(:,:)
   real(8),allocatable :: sig(:,:)
