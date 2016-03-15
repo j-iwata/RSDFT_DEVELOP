@@ -91,7 +91,7 @@ CONTAINS
     real(8) :: Etot, Ehwf, diff_etot
     real(8) :: Ntot(4), sqerr_out(4)
     logical,external :: exit_program
-    type(eigv) :: eigv
+    type(eigv) :: eval
 
     call write_border( 0, "" )
     call write_border( 0, " SCF START -----------" )
@@ -369,8 +369,8 @@ CONTAINS
 ! ---
 
        call write_esp_wf
-       call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eigv )
-       if ( myrank == 0 ) call write_eigenvalues( eigv )
+       call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
+       if ( myrank == 0 ) call write_eigenvalues( eval )
 
        call global_watch( .false., flag_end1 )
 

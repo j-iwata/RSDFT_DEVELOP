@@ -69,7 +69,7 @@ CONTAINS
     character(40) :: chr_iter
     character(22) :: add_info
     type(time) :: etime
-    type(eigv) :: eigv
+    type(eigv) :: eval
     logical,external :: exit_program
 
     Diter = 0
@@ -178,8 +178,8 @@ CONTAINS
        flag_exit = (flag_end.or.flag_conv.or.(iter==Diter))
 
        if ( disp_switch ) call write_info_sweep
-       call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eigv )
-       if ( myrank == 0 ) call write_eigenvalues( eigv )
+       call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
+       if ( myrank == 0 ) call write_eigenvalues( eval )
 
        call calc_time_watch( etime )
        if ( disp_switch ) then

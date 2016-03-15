@@ -174,12 +174,16 @@ CONTAINS
 
     loop_iktrj : do iktrj = iktrj_0, iktrj_2
 
-       if ( iktrj <= nskip_band ) then
-          if ( DISP_SWITCH_PARALLEL ) write(*,*) "Band ",iktrj," is skipped"
+       iktrj_00 = id_k(0) + 1 + iktrj - iktrj_0
+
+       if ( iktrj_00 <= nskip_band ) then
+          if ( DISP_SWITCH_PARALLEL ) then
+             do i=0,np_bzsm-1
+                write(*,*) "Band ",iktrj_00-id_k(0)+id_k(i)," is skipped"
+             end do
+          end if
           cycle
        end if
-
-       iktrj_00 = id_k(0) + iktrj - iktrj_0 + 1
 
        if ( iktrj <= nktrj ) then
           kbb(1:3,MBZ_0) = ktrj(1:3,iktrj)

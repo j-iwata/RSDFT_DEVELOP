@@ -11,6 +11,7 @@ MODULE rsdft_mpi_module
 
   INTERFACE rsdft_allreduce_sum
      MODULE PROCEDURE d_rsdft_allreduce_sum_0, z_rsdft_allreduce_sum_0, &
+                      i_rsdft_allreduce_sum_1,                          &
                       d_rsdft_allreduce_sum_1, z_rsdft_allreduce_sum_1, &
                       d_rsdft_allreduce_sum_2, z_rsdft_allreduce_sum_2, &
                       i_rsdft_allreduce_sum_3,                          &
@@ -74,6 +75,27 @@ CONTAINS
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_0
 
+
+  SUBROUTINE i_rsdft_allreduce_sum_1( a, comm )
+    implicit none
+    integer,intent(INOUT) :: a(:)
+    integer,intent(IN) :: comm
+    integer :: n, ierr
+    integer,allocatable :: a0(:)
+#ifdef _NOMPI_
+    return
+#else
+    include 'mpif.h'
+    n=size(a)
+#ifdef _NO_MPI_INPLACE_
+    allocate( a0(n) ) ; a0=a
+    call MPI_ALLREDUCE( a0, a, n, MPI_INTEGER, MPI_SUM, comm, ierr )
+    deallocate( a0 )
+#else
+    call MPI_ALLREDUCE(MPI_IN_PLACE,a,n,MPI_INTEGER,MPI_SUM,comm,ierr)
+#endif
+#endif
+  END SUBROUTINE i_rsdft_allreduce_sum_1
 
   SUBROUTINE d_rsdft_allreduce_sum_1( a, comm )
     implicit none
