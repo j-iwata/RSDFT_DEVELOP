@@ -130,6 +130,8 @@ PROGRAM Real_Space_DFT
 
   call generate_bz
 
+  if ( myrank == 0 ) call write_info_bz( bb )
+
 ! --- initial set up for parallel computation ---
 
 !  call test_bcast

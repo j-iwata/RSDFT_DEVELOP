@@ -28,6 +28,7 @@ MODS1 = \
        aa_module.o\
        symmetry_module.o\
        bz_module.o\
+       eigenvalues_module.o\
        ewald_variables.o\
        bcast_module.o\
        hartree_variables.o\
