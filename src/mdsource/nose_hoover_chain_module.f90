@@ -9,7 +9,6 @@ MODULE nose_hoover_chain_module
   PRIVATE
   PUBLIC :: nose_hoover_chain
   PUBLIC :: init_nose_hoover_chain
-  PUBLIC :: noseene
   PUBLIC :: write_nose_data
 
   integer,parameter :: ncall=9
@@ -29,10 +28,11 @@ MODULE nose_hoover_chain_module
 CONTAINS
 
 
-  SUBROUTINE init_nose_hoover_chain( dt, temp, omega )
+  SUBROUTINE init_nose_hoover_chain( dt, temp, omega, ene )
 
     implicit none
     real(8),intent(IN) :: dt, temp, omega
+    real(8),optional,intent(OUT) :: ene
     real(8),parameter :: to_au=7.26d-7
     real(8) :: c,w,w2,sigma,pi,rnr(3)
     integer :: i, Ndof
@@ -52,6 +52,7 @@ CONTAINS
     call get_Ndof( Ndof )
 
     kT  = temp*kB
+!    gkT = (Ndof-3)*kT
     gkT = Ndof*kT
 
     Qeta(1) = gkT/w2
@@ -66,6 +67,8 @@ CONTAINS
        c=2.0d0*pi*rnr(1)
        etadot(i)=sqrt( log(xranf())*(-2.0d0) )*cos(c)*sigma
     end do
+
+    if ( present(ene) ) call noseene( ene )
 
     return
   END SUBROUTINE init_nose_hoover_chain
@@ -116,13 +119,15 @@ CONTAINS
 !----------------------------------------------------------
 
 
-  SUBROUTINE nose_hoover_chain( Velocity )
+  SUBROUTINE nose_hoover_chain( Velocity, ene )
     implicit none
     real(8),intent(INOUT) :: Velocity(:,:)
+    real(8),optional,intent(OUT) :: ene
     integer :: i
     do i=1,ncall
        call nose( dt_ST(i), Velocity )
     end do
+    if ( present(ene) ) call noseene( ene )
   END SUBROUTINE nose_hoover_chain
 
 

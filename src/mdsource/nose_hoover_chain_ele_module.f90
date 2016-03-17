@@ -8,7 +8,6 @@ MODULE nose_hoover_chain_ele_module
   PRIVATE
   PUBLIC :: nose_hoover_chain_ele
   PUBLIC :: init_nose_hoover_chain_ele
-  PUBLIC :: noseeneele
   PUBLIC :: write_nosee_data
 
   integer,parameter :: ncall=9
@@ -19,8 +18,9 @@ MODULE nose_hoover_chain_ele_module
   real(8) :: etadot(nchain)
   real(8) :: Feta(nchain+1)
 
-  integer :: nedof
+  integer :: Ndof_e
   real(8) :: ekinw
+  real(8) :: beta_e
 
 CONTAINS
 
@@ -47,14 +47,15 @@ CONTAINS
   END SUBROUTINE make_nosee_time
 
 
-  SUBROUTINE init_nose_hoover_chain_ele( dt, ekinw_in, omega )
+  SUBROUTINE init_nose_hoover_chain_ele( dt, ekinw_in, omega, Ndof_e_in, ene )
 
     implicit none
     real(8),intent(IN) :: dt, ekinw_in, omega
+    integer,intent(IN) :: Ndof_e_in
+    real(8),optional,intent(OUT) :: ene
     real(8),parameter :: to_au=7.26d-7
     real(8) :: w,w2
-    integer :: i,n
-    integer,parameter :: nedof0=6
+    integer :: i
 
     call make_nosee_time( dt )
 
@@ -66,28 +67,33 @@ CONTAINS
     w  = omega * to_au
     w2 = w*w
 
-    n = mstocck(1,1)
-    nedof = int(n*nedof0)
+!    Ndof_e = Ndof_e_in*3.0d0
+    Ndof_e = Ndof_e_in
 
     ekinw = ekinw_in
 
+    beta_e = dble(Ndof_e)/(2.0d0*ekinw)
+
     Qeta(1)        = 2.0d0*ekinw/w2
-    Qeta(2:nchain) = 2.0d0*ekinw/dble(nedof)/w2
+    Qeta(2:nchain) = 1.0d0/(beta_e*w2)
 
     etadot(1) = sqrt( 2.0d0*ekinw/Qeta(1) )
     do i=2,nchain
-       etadot(i) = sqrt( 2.0d0*ekinw/dble(nedof)/Qeta(i) )
+       etadot(i) = sqrt( (1.0d0/beta_e)/Qeta(i) )
     end do
+
+    if ( present(ene) ) call noseeneele( ene )
 
     return
   END SUBROUTINE init_nose_hoover_chain_ele
 
 
-  SUBROUTINE nose_hoover_chain_ele( fke, psi_v, n1,n2 )
+  SUBROUTINE nose_hoover_chain_ele( fke, psi_v, n1,n2, ene )
     implicit none
     real(8),intent(INOUT) :: fke
     real(8),intent(INOUT) :: psi_v(:,:,:,:)
     integer,intent(IN) :: n1,n2
+    real(8),optional,intent(OUT) :: ene
     integer :: i
     real(8) :: scale
     scale=1.0d0
@@ -95,29 +101,27 @@ CONTAINS
        call enosmove( fke, dt_ST(i), scale )
     end do
     psi_v(:,n1:n2,:,:) = scale*psi_v(:,n1:n2,:,:)
+    if ( present(ene) ) call noseeneele( ene )
   END SUBROUTINE nose_hoover_chain_ele
 
 
-  SUBROUTINE enosmove( ekinc, step, sctot )
+  SUBROUTINE enosmove( fke, step, sctot )
 
     implicit none
     real(8),intent(IN)    :: step
-    real(8),intent(INOUT) :: ekinc,sctot
-    real(8) :: ckewant,ckine,aae,f1,f2
+    real(8),intent(INOUT) :: fke,sctot
+    real(8) :: aae,f1,f2
     integer :: i
 
-    ckewant = ekinw/dble(nedof)
-    Feta(1) = 2.d0*(ekinc - ekinw)
+    Feta(1) = 2.0d0*( fke - ekinw )
     do i=2,nchain+1
-       ckine = 0.5d0*Qeta(i-1)*etadot(i-1)*etadot(i-1)
-       Feta(i) = 2.d0*(ckine - ckewant)
+       Feta(i) = Qeta(i-1)*etadot(i-1)**2 - 1.0d0/beta_e
     end do
 
     aae = exp( -0.125d0*step*etadot(nchain-1) )
     etadot(nchain) = etadot(nchain)*aae*aae &
-         + 0.25d0*step*Feta(nchain)*aae/Qeta(nchain)
-    ckine = 0.5d0*Qeta(nchain)*etadot(nchain)*etadot(nchain)
-    Feta(nchain+1) = 2.d0*(ckine - ckewant)
+                   + 0.25d0*step*Feta(nchain)*aae/Qeta(nchain)
+    Feta(nchain+1) = Qeta(nchain)*etadot(nchain)**2 -1.0d0/beta_e
     f1 = Feta(nchain-1)
     f2 = Feta(nchain+1)
     Feta(nchain-1) = f1 + f2
@@ -125,50 +129,43 @@ CONTAINS
     do i=1,nchain-1
        aae = exp(-0.125d0*step*etadot(nchain+1-i))
        etadot(nchain-i) = etadot(nchain-i)*aae*aae &
-            + 0.25d0*step*Feta(nchain-i)*aae/Qeta(nchain-i)
+                        + 0.25d0*step*Feta(nchain-i)*aae/Qeta(nchain-i)
     end do
 
     aae = exp(-0.5d0*step*etadot(1))
     sctot = sctot*aae
-    ekinc = ekinc*aae*aae
+    fke = fke*aae*aae
 
     do i=1,nchain
        eta(i) = eta(i) + 0.5d0*step*etadot(i)
-       Feta(i) = 0.0d0
     end do
 
-    Feta(1) = 2.d0*(ekinc - ekinw)
-    ckine = 0.5d0*Qeta(nchain)*etadot(nchain)*etadot(nchain)
-    Feta(nchain-1) = 2.d0*(ckine - ckewant)
+    Feta(:) = 0.0d0
+    Feta(1) = 2.0d0*( fke - ekinw )
+    Feta(nchain-1) = Qeta(nchain)*etadot(nchain)**2 - 1.0d0/beta_e
 
     do i=1,nchain-1
        aae = exp(-0.125d0*step*etadot(i+1))
-       etadot(i) = etadot(i)*aae*aae &
-            + 0.25d0*step*Feta(i)*aae/Qeta(i)
-       ckine = 0.5d0*Qeta(i)*etadot(i)*etadot(i)
-       Feta(i+1) = Feta(i+1) + 2.d0*(ckine - ckewant)
+       etadot(i) = etadot(i)*aae*aae + 0.25d0*step*Feta(i)*aae/Qeta(i)
+       Feta(i+1) = Feta(i+1) + Qeta(i)*etadot(i)**2 - 1.0d0/beta_e
     end do
     aae = exp(-0.125d0*step*etadot(nchain-1))
     etadot(nchain) = etadot(nchain)*aae*aae &
-         + 0.25d0*step*Feta(nchain)*aae/Qeta(nchain)
+                   + 0.25d0*step*Feta(nchain)*aae/Qeta(nchain)
 
     return
   END SUBROUTINE enosmove
 
 
   SUBROUTINE noseeneele( enose )
-
     implicit none
-    real(8) :: enose
+    real(8),intent(OUT) :: enose
     integer :: i
-
     enose = 0.5d0*Qeta(1)*etadot(1)**2 + 2.0d0*ekinw*eta(1)
     do i=2,nchain
-       enose = enose + 0.5d0*Qeta(i)*etadot(i)**2 &
-            + 2.0d0*ekinw/dble(nedof)*eta(i)
+       enose = enose + 0.5d0*Qeta(i)*etadot(i)**2 + eta(i)/beta_e
     end do
-    enose = enose + 2.d0*ekinw/dble(nedof)*eta(nchain-1)
-    return
+    enose = enose + eta(nchain-1)/beta_e
   END SUBROUTINE noseeneele
 
 
@@ -182,7 +179,7 @@ CONTAINS
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
        write(999,*)(Feta(i),i=1,nchain+1) 
        write(999,*)(Qeta(i),i=1,nchain) 
-       write(999,*) nedof, ekinw
+       write(999,*) Ndof_e, ekinw
        close(999)
     end if
     return
@@ -201,7 +198,7 @@ CONTAINS
        read(999,*)(eta(i),etadot(i),i=1,nchain) 
        read(999,*)(Feta(i),i=1,nchain+1)
        read(999,*)(Qeta(i),i=1,nchain) 
-       read(999,*) nedof, ekinw
+       read(999,*) Ndof_e, ekinw
        close(999)
     end if
 
@@ -209,8 +206,10 @@ CONTAINS
     call mpi_bcast(etadot,nchain,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Feta,nchain+1,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Qeta,nchain,mpi_real8,0,mpi_comm_world,ierr)
-    call mpi_bcast(nedof,1,mpi_integer,0,mpi_comm_world,ierr)
+    call mpi_bcast(Ndof_e,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(ekinw,1,mpi_real8,0,mpi_comm_world,ierr)
+
+    beta_e = dble(Ndof_e)/(2.0d0*ekinw)
 
     return
 
