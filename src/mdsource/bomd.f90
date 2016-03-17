@@ -130,14 +130,12 @@ SUBROUTINE bomd
 
   Ebath_ele = 0.0d0
   if ( lbathnewe ) then
-     call init_nose_hoover_chain_ele( dt, ekinw, wnose0 )
-     call noseeneele( Ebath_ele )
+     call init_nose_hoover_chain_ele(dt,ekinw,wnose0,nint(sum(occ)),Ebath_ele)
   end if
 
   Ebath_ion = 0.0d0
   if ( lbathnew  ) then
-     call init_nose_hoover_chain( dt, temp, omegan )
-     call noseene( Ebath_ion )
+     call init_nose_hoover_chain( dt, temp, omegan, Ebath_ion )
   end if
 
   Ebath = Ebath_ion + Ebath_ele
@@ -187,11 +185,12 @@ SUBROUTINE bomd
 
      if ( lbathnew ) call nose_hoover_chain( Velocity )
 
+     Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
+
      call vcom( Velocity ) ! center of mass motion off
 
-     Rion0(:,:)    = Rion(:,:)
-     Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
-     Rion(:,:)     = Rion(:,:)     + Velocity(:,:)*dt
+     Rion0(:,:) = Rion(:,:)
+     Rion(:,:)  = Rion(:,:) + Velocity(:,:)*dt
 
      if ( lblue ) call cpmdshake
 
@@ -251,8 +250,7 @@ SUBROUTINE bomd
      call vcom( Velocity ) ! center of mass motion off
 
      if ( lbathnew ) then
-        call nose_hoover_chain( Velocity )
-        call noseene( Ebath_ion )
+        call nose_hoover_chain( Velocity, Ebath_ion )
      end if
 
      if ( lbere ) call berendsen( temp, dt2, Velocity )
@@ -261,8 +259,7 @@ SUBROUTINE bomd
 
      if ( lbathnewe ) then
         call calfke( fke )
-        call nose_hoover_chain_ele( fke, psi_v, MB_0_CPMD,MB_1_CPMD )
-        call noseeneele( Ebath_ele )
+        call nose_hoover_chain_ele( fke,psi_v,MB_0_CPMD,MB_1_CPMD,Ebath_ele )
      end if
      Ebath = Ebath_ion + Ebath_ele
 
