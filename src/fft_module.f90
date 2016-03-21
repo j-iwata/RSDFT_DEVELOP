@@ -156,6 +156,10 @@ CONTAINS
     implicit none
     complex(8),intent(INOUT) :: z3(:,:,:)
     complex(8),allocatable   :: w3(:,:,:)
+#ifdef _FFTW_
+    call backward_fftw( z3 )
+    return
+#endif
     if ( .not.allocated(w3) ) then
        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
     end if

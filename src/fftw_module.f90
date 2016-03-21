@@ -14,6 +14,7 @@ MODULE fftw_module
   PUBLIC :: zwork3_ptr0, zwork3_ptr1
   PUBLIC :: z3_to_d1_fftw, z3_to_z1_fftw
   PUBLIC :: forward_fftw
+  PUBLIC :: backward_fftw
 
   integer :: comm_fftw
   type(c_ptr) :: plan_forward,plan_backward
@@ -169,6 +170,29 @@ CONTAINS
     z3(:,:,:)=const*z3(:,:,:)
 #endif
   END SUBROUTINE forward_fftw
+
+
+  SUBROUTINE backward_fftw( z3 )
+    implicit none
+    complex(8),intent(INOUT) :: z3(:,:,:)
+    integer :: i1,i2,i3,j3
+    real(8) :: const
+#ifdef _FFTW_
+    include "fftw3-mpi.f03"
+    do i3=1,N_ML3_c
+       j3=i3+ML3_c0
+       do i2=1,ML2_c
+       do i1=1,ML1_c
+          zwork3_ptr0(i1,i2,i3) = z3(i1,i2,j3)
+       end do
+       end do
+    end do
+    call fftw_mpi_execute_dft( plan_backward, zwork3_ptr0, zwork3_ptr1 )
+    call rsdft_allgatherv( zwork3_ptr1, z3, ir, id, comm_fftw )
+    const=1.0d0/size(z3)
+    z3(:,:,:)=const*z3(:,:,:)
+#endif
+  END SUBROUTINE backward_fftw
 
 
 END MODULE fftw_module
