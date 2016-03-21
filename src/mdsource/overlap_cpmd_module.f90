@@ -7,6 +7,7 @@ MODULE overlap_cpmd_module
        ,ir_band_cpmd,id_band_cpmd,MB_0_CPMD,MB_1_CPMD
   use watch_module
   use calc_overlap_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -23,7 +24,7 @@ CONTAINS
     integer,intent(IN) :: s,k
     integer :: i,j,l,m,n,mbn,mblocaldim
     integer :: n1,n2,ML0,nn1,nn2,irank_b,ns,ne,ms,me
-    integer :: mm1,mm2,ierr
+    integer :: mm1,mm2,ierr,m1,m2
     real(8) :: memax,mem,nop_tot,nop_max,nop_min,nop_0
     real(8) :: nop(13),ct(13),et(13)
     real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
@@ -39,6 +40,8 @@ CONTAINS
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
+    m1    = id_band_cpmd(myrank_b)+1
+    m2    = id_band_cpmd(myrank_b)+ir_band_cpmd(myrank_b)
 
     !call watcht(myrank==0,"",0)
 
@@ -47,8 +50,9 @@ CONTAINS
        allocate( id(0:np_band-1) ) ; id=0
        ir(0:np_band-1)=ir_band_cpmd(0:np_band-1)*ML0
        id(0:np_band-1)=id_band_cpmd(0:np_band-1)*ML0
-       call mpi_allgatherv(psi_n(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
-            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
+       call rsdft_allgatherv(psi_n(:,m1:m2,k,s),psi_n(:,:,k,s),ir,id,comm_band)
+!       call mpi_allgatherv(psi_n(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
+!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
     !call watcht(myrank==0,"overlap(2-1)",1)
@@ -105,7 +109,7 @@ CONTAINS
     integer,intent(IN) :: s,k
     integer :: i,j,ij,l,m,n,mbn,mblocaldim
     integer :: n1,n2,ML0,nn1,nn2,irank_b,ns,ne,ms,me
-    integer :: mm1,mm2,ierr
+    integer :: mm1,mm2,ierr,m1,m2
     real(8) :: memax,mem,nop_tot,nop_max,nop_min,nop_0
     real(8) :: nop(13),ct(13),et(13)
     real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
@@ -121,6 +125,8 @@ CONTAINS
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
+    m1    = id_band_cpmd(myrank_b)+1
+    m2    = id_band_cpmd(myrank_b)+ir_band_cpmd(myrank_b)
 
     !call watcht(myrank==0,"",0)
 
@@ -129,10 +135,12 @@ CONTAINS
        allocate( id(0:np_band-1) ) ; id=0
        ir(0:np_band-1)=ir_band_cpmd(0:np_band-1)*ML0
        id(0:np_band-1)=id_band_cpmd(0:np_band-1)*ML0
-       call mpi_allgatherv(  unk(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
-            ,  unk(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
-       call mpi_allgatherv(psi_n(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
-            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
+       call rsdft_allgatherv(unk(:,m1:m2,k,s),unk(:,:,k,s),ir,id,comm_band)
+!       call mpi_allgatherv(  unk(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
+!            ,  unk(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
+       call rsdft_allgatherv(psi_n(:,m1:m2,k,s),psi_n(:,:,k,s),ir,id,comm_band)
+!       call mpi_allgatherv(psi_n(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
+!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
     !call watcht(myrank==0,"overlap(4-1)",1)
@@ -168,7 +176,7 @@ CONTAINS
     integer,intent(IN) :: s,k
     integer :: i,j,ij,l,m,n,mbn,mblocaldim
     integer :: n1,n2,ML0,nn1,nn2,irank_b,ns,ne,ms,me
-    integer :: mm1,mm2,ierr
+    integer :: mm1,mm2,ierr,m1,m2
     real(8) :: memax,mem,nop_tot,nop_max,nop_min,nop_0
     real(8) :: nop(13),ct(13),et(13)
     real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
@@ -184,6 +192,8 @@ CONTAINS
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
+    m1    = id_band_cpmd(myrank_b)+1
+    m2    = id_band_cpmd(myrank_b)+ir_band_cpmd(myrank_b)
 
     !call watcht(myrank==0,"",0)
 
@@ -192,10 +202,12 @@ CONTAINS
        allocate( id(0:np_band-1) ) ; id=0
        ir(0:np_band-1)=ir_band_cpmd(0:np_band-1)*ML0
        id(0:np_band-1)=id_band_cpmd(0:np_band-1)*ML0
-       call mpi_allgatherv(  unk(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
-            ,unk(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
-       call mpi_allgatherv(psi_v(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
-            ,psi_v(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
+       call rsdft_allgatherv(unk(:,m1:m2,k,s),unk(:,:,k,s),ir,id,comm_band)
+!       call mpi_allgatherv(  unk(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
+!            ,unk(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
+       call rsdft_allgatherv(psi_v(:,m1:m2,k,s),psi_v(:,:,k,s),ir,id,comm_band)
+!       call mpi_allgatherv(psi_v(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
+!            ,psi_v(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
     !call watcht(myrank==0,"overlap(5-1)",1)
