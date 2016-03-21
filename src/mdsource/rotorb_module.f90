@@ -7,6 +7,7 @@ MODULE rotorb_module
                            ,mstocck,dt,disp_switch,MBC,MBT,MB_0_CPMD,MB_1_CPMD
   use overlap_cpmd_module
   use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -117,8 +118,9 @@ CONTAINS
           end do
           end do
 
-          call mpi_allgatherv(wrk(1,ls),ir_i(myrank),mpi_real8 &
-               ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
+          call rsdft_allgatherv(wrk(:,ls:le),wrk,ir_i,id_i,MPI_COMM_WORLD)
+!          call mpi_allgatherv(wrk(1,ls),ir_i(myrank),mpi_real8 &
+!               ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
           call dgemm &
                ('n','n',MBT,li,MBT,hm,wrk,MBC,wrk(1,ls),MBC,on,gamn(1,ls),MBC)
@@ -148,8 +150,9 @@ CONTAINS
 
        !call watcht(myrank==0,"rotorb(6)",1)
 
-       call mpi_allgatherv(gam(1,ls),ir_i(myrank),mpi_real8 &
-            ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
+       call rsdft_allgatherv(gam(:,ls:le),wrk,ir_i,id_i,MPI_COMM_WORLD)
+!       call mpi_allgatherv(gam(1,ls),ir_i(myrank),mpi_real8 &
+!            ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
        !call watcht(myrank==0,"rotorb(7)",1)
 

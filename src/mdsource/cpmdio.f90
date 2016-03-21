@@ -68,7 +68,8 @@
          j=count(itmp3/=0)
          if ( j/=i0 ) goto 900
          irtmp(myrank_g)=i0
-         call mpi_allgather(irtmp(myrank_g),1,mpi_integer,irtmp,1,mpi_integer,comm_grid,ierr)
+         call rsdft_allgather( irtmp(myrank_g:myrank_g),irtmp,comm_grid )
+!         call mpi_allgather(irtmp(myrank_g),1,mpi_integer,irtmp,1,mpi_integer,comm_grid,ierr)
          do n=0,np_grid-1
             idtmp(n)=sum(irtmp(0:n))-irtmp(n)
          end do
@@ -88,11 +89,13 @@
          end do
 
          i1=idtmp(myrank_g)+1
+         i2=idtmp(myrank_g)+irtmp(myrank_g)
 
          irtmp(0:np_grid-1)=irtmp(0:np_grid-1)*3
          idtmp(0:np_grid-1)=idtmp(0:np_grid-1)*3
 
-         call mpi_allgatherv(LL2(1,i1),irtmp(myrank_g),mpi_integer,LL2,irtmp,idtmp,mpi_integer,comm_grid,ierr)
+         call rsdft_allgatherv( LL2(:,i1:i2),LL2,irtmp,idtmp,comm_grid )
+!         call mpi_allgatherv(LL2(1,i1),irtmp(myrank_g),mpi_integer,LL2,irtmp,idtmp,mpi_integer,comm_grid,ierr)
 
          irtmp(0:np_grid-1)=irtmp(0:np_grid-1)/3
          idtmp(0:np_grid-1)=idtmp(0:np_grid-1)/3
@@ -116,7 +119,8 @@
          endif
          irc(0:np_grid-1)=3*ir_grid(0:np_grid-1)
          ids(0:np_grid-1)=3*id_grid(0:np_grid-1)
-         call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer,LL2,irc,ids,mpi_integer,comm_grid,ierr)
+         call rsdft_algatherv( LL2(:,n1:n2),LL2,irc,idc,comm_grid )
+!         call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer,LL2,irc,ids,mpi_integer,comm_grid,ierr)
 !         mem=mem-bsintg*np_grid-1
          deallocate( ids,irc )
 
@@ -445,7 +449,8 @@
          j=count(itmp3/=0)
          if ( j/=i0 ) goto 900
          irtmp(myrank_g)=i0
-         call mpi_allgather(irtmp(myrank_g),1,mpi_integer,irtmp,1,mpi_integer,comm_grid,ierr)
+         call rsdft_allgather( irtmp(myrank_g:myrank_g),irtmp,comm_grid )
+!         call mpi_allgather(irtmp(myrank_g),1,mpi_integer,irtmp,1,mpi_integer,comm_grid,ierr)
          do n=0,np_grid-1
             idtmp(n)=sum(irtmp(0:n))-irtmp(n)
          end do
@@ -465,12 +470,14 @@
          end do
 
          i1=idtmp(myrank_g)+1
+         i2=idtmp(myrank_g)+irtmp(myrank_g)
 
          irtmp(0:np_grid-1)=irtmp(0:np_grid-1)*3
          idtmp(0:np_grid-1)=idtmp(0:np_grid-1)*3
 
-         call mpi_allgatherv(LL2(1,i1),irtmp(myrank_g),mpi_integer &
-                            ,LL2,irtmp,idtmp,mpi_integer,comm_grid,ierr)
+         call rsdft_allgatherv( LL2(:,i1:i2),LL2,irtmp,idtmp,comm_grid )
+!         call mpi_allgatherv(LL2(1,i1),irtmp(myrank_g),mpi_integer &
+!                            ,LL2,irtmp,idtmp,mpi_integer,comm_grid,ierr)
 
          irtmp(0:np_grid-1)=irtmp(0:np_grid-1)/3
          idtmp(0:np_grid-1)=idtmp(0:np_grid-1)/3
@@ -498,8 +505,9 @@
 
          ir(0:np_grid-1)=3*ir_grid(0:np_grid-1)
          id(0:np_grid-1)=3*id_grid(0:np_grid-1)
-         call mpi_allgatherv(LL2(1,n1),ir(myrank_g),mpi_integer &
-              ,LL2,ir,id,mpi_integer,comm_grid,ierr)
+         call rsdft_allgatherv( LL2(:,n1:n2),ir,id,LL2,comm_grid )
+!         call mpi_allgatherv(LL2(1,n1),ir(myrank_g),mpi_integer &
+!              ,LL2,ir,id,mpi_integer,comm_grid,ierr)
 
 !         mem=mem-bsintg*np_grid-1 ;
          deallocate( id,ir )

@@ -1,5 +1,7 @@
 MODULE cpmdio2_module
 
+  use rsdft_mpi_module
+
   implicit none
 
   PRIVATE
@@ -101,7 +103,7 @@ subroutine gather_wf_data(iswitch_send)
 
    integer,allocatable :: id(:),ir(:)
    integer :: n1,n2,ML0,s,k,mrnk,memax,mem,ierr
-   integer :: iswitch_send,MBW_0
+   integer :: iswitch_send,MBW_0,m1,m2
 
    n1    = idisp(myrank)+1
    n2    = idisp(myrank)+ircnt(myrank)
@@ -115,26 +117,36 @@ subroutine gather_wf_data(iswitch_send)
 
    mrnk = id_class(myrank,4)
 
-   if(iswitch_send==0) then
+   if ( iswitch_send == 0 ) then
 
       id(0:np_band-1) = id_band(0:np_band-1)*ML0
       ir(0:np_band-1) = ir_band(0:np_band-1)*ML0
       MBW_0=MB_0
       do s=MSP_0,MSP_1
          do k=MBZ_0,MBZ_1
-            call mpi_allgatherv(  unk(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-         enddo
-      enddo
+!            call mpi_allgatherv(  unk(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+            call rsdft_allgatherv &
+                 ( unk(:,MB_0:MB_1,k,s),unk(:,:,k,s),ir,id,comm_band )
+         end do
+      end do
+
    else
 
       id(0:np_band-1) = id_band_cpmd(0:np_band-1)*ML0
       ir(0:np_band-1) = ir_band_cpmd(0:np_band-1)*ML0
-      MBW_0=MB_0_CPMD
+      m1=MB_0_CPMD
+      m2=MB_1_CPMD
       do s=MSP_0,MSP_1
          do k=MBZ_0,MBZ_1
-            call mpi_allgatherv(  unk(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-            call mpi_allgatherv(psi_v(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,psi_v(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-            call mpi_allgatherv(psi_n(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,psi_n(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+            call rsdft_allgatherv &
+                 ( unk(:,m1:m2,k,s),unk(:,:,k,s),ir,id,comm_band )
+!            call mpi_allgatherv(  unk(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+            call rsdft_allgatherv &
+                 ( psi_v(:,m1:m2,k,s),psi_v(:,:,k,s),ir,id,comm_band )
+!            call mpi_allgatherv(psi_v(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,psi_v(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+            call rsdft_allgatherv &
+                 ( psi_n(:,m1:m2,k,s),psi_n(:,:,k,s),ir,id,comm_band )
+!            call mpi_allgatherv(psi_n(n1,MBW_0,k,s),ir(mrnk),TYPE_MAIN,psi_n(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
          enddo
       enddo
    endif
