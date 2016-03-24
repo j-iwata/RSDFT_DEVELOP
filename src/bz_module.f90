@@ -312,8 +312,8 @@ CONTAINS
     bz%n_irwedge = n_ir
     bz%n_whole   = n_wh
     do i=1,3
-       bz%indx_range(1,i) = minval( mm(1,1:n_wh) )
-       bz%indx_range(2,i) = maxval( mm(1,1:n_wh) )
+       bz%indx_range(1,i) = minval( mm(i,1:n_wh) )
+       bz%indx_range(2,i) = maxval( mm(i,1:n_wh) )
     end do
     allocate( bz%kgrid(bz%indx_range(1,1):bz%indx_range(2,1) &
                       ,bz%indx_range(1,2):bz%indx_range(2,2) &
