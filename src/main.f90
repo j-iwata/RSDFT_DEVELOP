@@ -16,6 +16,7 @@ PROGRAM Real_Space_DFT
   use ffte_sub_module, only: init_ffte_sub
   use fftw_module
   use vdw_grimme_module
+  use efield_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -221,6 +222,12 @@ PROGRAM Real_Space_DFT
      call ConstructBoundary_RgridMol(Md,Igrid)
 
   end if
+
+! --- External electric field (included in the local ionic potential) ---
+
+  call sawtooth_efield( Vion )
+
+! --- symmetrize density ---
 
   call sym_rho( ML_0, ML_1, Nspin, MSP_0, MSP_1, rho )
 

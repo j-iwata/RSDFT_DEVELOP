@@ -88,6 +88,7 @@ MODS1 = \
        bcset_0_module.o\
        ps_nloc2_init_module.o\
        eion_mol_module.o\
+       efield_module.o\
        ps_local_gth_module.o\
        psv_initrho_module.o\
        ps_nloc_mol_gth_module.o\
