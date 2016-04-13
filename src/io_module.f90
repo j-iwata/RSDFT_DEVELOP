@@ -9,22 +9,29 @@ MODULE io_module
   use parallel_module
   use array_bound_module, only: ML,ML_0,ML_1,MB,MB_0,MB_1 &
                                ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
-
+  use io_tools_module
   use rgrid_mol_module, only: LL
   use kinetic_module, only: SYStype
 
   use io2_module
   use io_read_module
   use io_write_module
+  use aa_module, only: aa
+  use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
 
   implicit none
 
   PRIVATE
-  PUBLIC :: read_io, write_data, read_data, read_oldformat_io &
-           ,GetParam_IO, Init_IO
+  PUBLIC :: read_io
+  PUBLIC :: write_data
+  PUBLIC :: read_data
+  PUBLIC :: GetParam_IO
+  PUBLIC :: Init_IO
 
   integer :: IO_ctrl=0
-  integer :: IC,OC,OC2
+  integer :: IC=0
+  integer :: OC=5
+  integer :: OC2=100
   integer :: MBwr1=0
   integer :: MBwr2=0
   character(30) :: file_wf0   ="wf.dat1"
@@ -33,6 +40,8 @@ MODULE io_module
   character(30) :: file_vrho1 ="vrho.dat1"
   character(30) :: file_wf2   ="wf.dat1"
   character(30) :: file_vrho2 ="vrho.dat1"
+
+  character(16),parameter :: version="version3.0"
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
@@ -54,70 +63,23 @@ MODULE io_module
 
 CONTAINS
 
-  SUBROUTINE read_io(rank,unit)
+
+  SUBROUTINE read_io
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(6) :: cbuf,ckey
-    IC  = 0
-    OC  = 0
-    OC2 = 100
-    IO_ctrl = 0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:2) == "IC" ) then
-             backspace(unit)
-             read(unit,*) cbuf,IC
-          else if ( ckey(1:3) == "OC2" ) then
-             backspace(unit)
-             read(unit,*) cbuf,OC2
-          else if ( ckey(1:3) == "OC" ) then
-             backspace(unit)
-             read(unit,*) cbuf,OC
-          else if ( ckey(1:6) == "IOCTRL" ) then
-             backspace(unit)
-             read(unit,*) cbuf,IO_ctrl
-          else if ( ckey(1:4) == "MBWR" ) then
-             backspace(unit)
-             read(unit,*) cbuf,MBwr1,MBwr2
-          end if
-       end do
-999    continue
-       write(*,*) "IC =",IC
-       write(*,*) "OC =",OC
-       write(*,*) "OC2=",OC2
-       write(*,*) "IO_ctrl=",IO_ctrl
-       write(*,*) "MBwr1,MBwr2=",MBwr1,MBwr2
-    end if
-    call send_io(0)
+    integer :: itmp(2)
+    itmp = (/ MBwr1, MBwr2 /)
+    call IOTools_readIntegerKeyword( "IC"    , IC  )
+    call IOTools_readIntegerKeyword( "OC"    , OC  )
+    call IOTools_readIntegerKeyword( "OC2"   , OC2 )
+    call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
+    call IOTools_readIntegerKeyword( "MBWR"  , itmp )
+    MBwr1=itmp(1)
+    MBwr2=itmp(2)
   END SUBROUTINE read_io
 
-  SUBROUTINE read_oldformat_io(rank,unit)
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) IC,OC2,OC
-       write(*,*) "IC,OC,OC2=",IC,OC,OC2
-    end if
-    call send_io(0)
-  END SUBROUTINE read_oldformat_io
 
-  SUBROUTINE send_io(rank)
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(IC ,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(OC ,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(OC2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(IO_ctrl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(MBwr1,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(MBwr2,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_io
-
-  SUBROUTINE write_data(disp_switch,flag)
-    logical,intent(IN) :: flag,disp_switch
+  SUBROUTINE write_data( disp_switch, flag )
+    logical,intent(IN) :: flag, disp_switch
     integer :: i,j,k,n,n1,n2,ierr,i1,i2,i3,j1,j2,j3,isym,ir,ie,id,i0
     integer :: a1,a2,a3,b1,b2,b3,ML0,irank,s,lt(3),jd
     integer :: istatus(MPI_STATUS_SIZE,123)
@@ -193,10 +155,18 @@ CONTAINS
 
        allocate( rtmp(ML) )
 
-       if ( myrank==0 ) then
+       if ( myrank == 0 ) then
           open(2,file=file_vrho1,form='unformatted')
+          write(2) version
           write(2) ML,ML1,ML2,ML3
           write(2) LL2(:,:)
+          write(2) "lattice         "
+          write(2) aa
+          write(2) "atom            "
+          write(2) Nelement, Natom
+          write(2) aa_atom
+          write(2) ki_atom
+          write(2) zn_atom
        end if
 
        do s=1,MSP
@@ -291,7 +261,7 @@ CONTAINS
 
        end do ! s
 
-       if ( myrank==0 ) then
+       if ( myrank == 0 ) then
           close(2)
        end if
 
@@ -345,6 +315,7 @@ CONTAINS
     real(kind=8),allocatable :: rtmpDP(:)
     character(len=5) :: cmyrank
     character(len=32) :: file_wf_split
+    character(len=16) :: cbuf
 
     if ( IC <= 0 ) return
 
@@ -407,6 +378,12 @@ CONTAINS
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
+          read(80) cbuf
+          if ( cbuf(1:7) == "version" ) then
+             write(*,*) "file format version: "//cbuf
+          else
+             rewind(80)
+          end if
           read(80) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
           itmp(1)=ML_tmp
           itmp(2)=ML1_tmp
