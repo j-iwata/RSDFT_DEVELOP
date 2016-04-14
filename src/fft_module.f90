@@ -29,7 +29,7 @@ CONTAINS
     implicit none
     logical,optional,intent(IN) :: keep_flag
     call get_range_rgrid( rgrid )
-    if ( .not.keep_LLL ) call get_map_3d_to_1d( LLL )
+    if ( .not.keep_LLL ) call get_map_3d_to_1d_grid( rgrid, LLL )
     ML  = rgrid%g1%size_global
     ML1 = rgrid%g3%x%size_global
     ML2 = rgrid%g3%y%size_global

@@ -1,23 +1,24 @@
 MODULE io_module
 
-  use rgrid_module, only: Ngrid,Igrid
-  use wf_module, only: unk,occ
-  use density_module, only: rho
-  use xc_module, only: Vxc
-  use localpot_module, only: Vloc
-  use hartree_variables, only: Vh
   use parallel_module
-  use array_bound_module, only: ML,ML_0,ML_1,MB,MB_0,MB_1 &
-                               ,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
   use io_tools_module
+  use rgrid_module, only: Ngrid,Igrid
+  use array_bound_module, only: ML,ML_0,ML_1,MSP,MSP_0,MSP_1
   use rgrid_mol_module, only: LL
   use kinetic_module, only: SYStype
 
   use io2_module
   use io_read_module
   use io_write_module
+
+  use density_module, only: rho
+  use xc_module, only: Vxc
+  use localpot_module, only: Vloc
+  use hartree_variables, only: Vh
+
   use aa_module, only: aa
   use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
+  use grid_module, only: construct_map_1d_to_3d_grid
 
   implicit none
 
@@ -43,22 +44,6 @@ MODULE io_module
 
   character(16),parameter :: version="version3.0"
 
-#ifdef _DRSDFT_
-  integer,parameter :: TYPE_MAIN=MPI_REAL8
-  real(8),allocatable :: utmp(:)
-  real(8),allocatable :: utmp3(:,:,:)
-  real(4),allocatable :: utmpSP(:)
-  real(8),parameter :: zero=0.d0
-  real(4),parameter :: zeroSP=0.0
-#else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
-  complex(8),allocatable :: utmp(:)
-  complex(8),allocatable :: utmp3(:,:,:)
-  complex(4),allocatable :: utmpSP(:)
-  complex(8),parameter :: zero=(0.d0,0.d0)
-  complex(4),parameter :: zeroSP=(0.0,0.0)
-#endif
-
   integer,save :: icount=0
 
 CONTAINS
@@ -79,6 +64,7 @@ CONTAINS
 
 
   SUBROUTINE write_data( disp_switch, flag )
+    implicit none
     logical,intent(IN) :: flag, disp_switch
     integer :: i,j,k,n,n1,n2,ierr,i1,i2,i3,j1,j2,j3,isym,ir,ie,id,i0
     integer :: a1,a2,a3,b1,b2,b3,ML0,irank,s,lt(3),jd
@@ -87,10 +73,7 @@ CONTAINS
     integer,allocatable :: idtmp(:),LL2(:,:)
     real(8) :: c,fs,ct0,ct1,et0,et1,mem,memax
     real(8),allocatable :: rtmp(:)
-    logical :: flag_related
     integer :: ML1,ML2,ML3
-    character(len=5) :: cmyrank
-    character(len=32) :: file_wf_split
 
     if ( OC2 < 1 .or. OC < 1 .or. OC > 15 ) return
 
@@ -102,49 +85,11 @@ CONTAINS
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
     ML0 = ircnt(myrank)
-
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    if ( IO_ctrl==3 ) then
-       write(cmyrank,'(i5.5)') myrank
-       file_wf_split = trim(file_wf1)//"."//trim(adjustl(cmyrank))
-    end if
-
-    if ( MBwr1<1 .or. MBwr2<MBwr1 .or. MB<MBwr1 ) MBwr1=1
-    if ( MBwr2<1 .or. MBwr2<MBwr1 .or. MB<MBwr2 ) MBwr2=MB
-
-    allocate( LL2(3,ML) ) ; LL2=0
-
-    if ( SYStype == 0 ) then
-
-       i=n1-1
-       do i3=Igrid(1,3),Igrid(2,3)
-       do i2=Igrid(1,2),Igrid(2,2)
-       do i1=Igrid(1,1),Igrid(2,1)
-          i=i+1
-          LL2(1,i)=i1
-          LL2(2,i)=i2
-          LL2(3,i)=i3
-       end do
-       end do
-       end do
-
-    else if ( SYStype == 1 ) then
-
-       LL2(1:3,n1:n2) = LL(1:3,n1:n2)
-
-    end if
-
-    allocate( irc(0:np_grid-1),ids(0:np_grid-1) )
-    irc(0:np_grid-1)=3*ir_grid(0:np_grid-1)
-    ids(0:np_grid-1)=3*id_grid(0:np_grid-1)
-
-    call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer, &
-         LL2,irc,ids,mpi_integer,comm_grid,ierr)
-
-    deallocate( ids, irc )
+    call construct_gridmap_sub( LL2 )
 
 !
 ! --- density and potentials ---
@@ -153,7 +98,7 @@ CONTAINS
     if ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
          OC == 12 .or. OC == 13 ) then
 
-       allocate( rtmp(ML) )
+       allocate( rtmp(ML) ) ; rtmp=0.0d0
 
        if ( myrank == 0 ) then
           open(2,file=file_vrho1,form='unformatted')
@@ -178,9 +123,10 @@ CONTAINS
              j2=id_bzsm(id_class(irank,5))+ir_bzsm(id_class(irank,5))
              i3=id_spin(id_class(irank,6))+1
              j3=id_spin(id_class(irank,6))+ir_spin(id_class(irank,6))
-             if ( id_grid(id_class(irank,0))==0 .and. i1<=1 .and. &
-                  1<=j1 .and. i2<=1 .and. 1<=j2 .and. i3<=s &
-                  .and. s<=j3 ) exit
+             if ( id_grid(id_class(irank,0))==0 .and. &
+                  i1<=1 .and. 1<=j1 .and. &
+                  i2<=1 .and. 1<=j2 .and. &
+                  i3<=s .and. s<=j3 ) exit
           end do
           if ( irank>=nprocs ) then
              write(*,*) "ERROR(read_data)",myrank
@@ -300,22 +246,15 @@ CONTAINS
 
   SUBROUTINE read_data(disp_switch)
     logical,intent(IN) :: disp_switch
-    integer :: k,n,i,j,ML_tmp,MB_tmp,MB1_tmp,MB2_tmp,n1,n2,ML0,irank
+    integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
     integer :: ML1_tmp,ML2_tmp,ML3_tmp,ierr,i1,i2,i3,j1,j2,j3,s,i0
-    integer :: itmp(7),a1,a2,a3,b1,b2,b3,istatus(MPI_STATUS_SIZE,123)
-    integer :: lt(3),isym,ML1,ML2,ML3,mx,my,mz
-    integer,allocatable :: LL_tmp(:,:),ir(:),id(:),itmp3(:,:,:)
-    integer,allocatable :: idtmp(:),irtmp(:),LL2(:,:)
+    integer :: ML1,ML2,ML3,mx,my,mz,itmp(7)
+    integer,allocatable :: LL_tmp(:,:)
+    integer,allocatable :: LL2(:,:)
     real(8) :: fs,mem,memax,ct0,et0,ct1,et1
     real(8),allocatable :: rtmp(:),rtmp3(:,:,:)
-    logical :: flag_related
-    integer(kind=4) :: int4
-    logical :: flag_SP,flag_R2C
-    real(kind=4),allocatable :: rtmpSP(:)
-    real(kind=8),allocatable :: rtmpDP(:)
-    character(len=5) :: cmyrank
-    character(len=32) :: file_wf_split
     character(len=16) :: cbuf
+    logical :: flag_versioned
 
     if ( IC <= 0 ) return
 
@@ -329,47 +268,9 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    if ( IO_ctrl==3 ) then
-       write(cmyrank,'(i5.5)') myrank
-       file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
-    end if
-
-    allocate( LL2(3,ML)    ) ; LL2=0
     allocate( LL_tmp(3,ML) ) ; LL_tmp=0
 
-    if ( TYPE_MAIN==mpi_complex16 .and. (IC==4 .or. IC==5) ) then
-       flag_R2C=.true.
-    else
-       flag_R2C=.false.
-    end if
-
-    if ( SYStype == 0 ) then
-       i=n1-1
-       do i3=Igrid(1,3),Igrid(2,3)
-       do i2=Igrid(1,2),Igrid(2,2)
-       do i1=Igrid(1,1),Igrid(2,1)
-          i=i+1
-          LL2(1,i)=i1
-          LL2(2,i)=i2
-          LL2(3,i)=i3
-       end do
-       end do
-       end do
-
-    else if ( SYStype == 1 ) then
-
-       LL2(1:3,n1:n2) = LL(1:3,n1:n2)
-
-    end if
-
-    allocate( ir(0:np_grid-1),id(0:np_grid-1) )
-
-    ir(0:np_grid-1)=3*ir_grid(0:np_grid-1)
-    id(0:np_grid-1)=3*id_grid(0:np_grid-1)
-    call mpi_allgatherv(LL2(1,n1),ir(myrank_g),mpi_integer &
-         ,LL2,ir,id,mpi_integer,comm_grid,ierr)
-
-    deallocate( id,ir )
+    call construct_gridmap_sub( LL2 )
 
 !
 ! --- Read VRHO ---
@@ -381,7 +282,9 @@ CONTAINS
           read(80) cbuf
           if ( cbuf(1:7) == "version" ) then
              write(*,*) "file format version: "//cbuf
+             flag_versioned=.true.
           else
+             flag_versioned=.false.
              rewind(80)
           end if
           read(80) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
@@ -411,6 +314,15 @@ CONTAINS
 
        if ( myrank==0 ) then
           read(80) LL_tmp(:,:)
+          if ( flag_versioned ) then
+             read(80)
+             read(80)
+             read(80)
+             read(80)
+             read(80)
+             read(80)
+             read(80)
+          end if
        end if
        call mpi_bcast(LL_tmp,3*ML,mpi_integer,0,mpi_comm_world,ierr)
 
@@ -561,6 +473,30 @@ CONTAINS
        file_vrho1 = file_vrho0
     end if
   END SUBROUTINE Init_IO
+
+
+  SUBROUTINE construct_gridmap_sub( LL2 )
+    implicit none
+    integer,allocatable,intent(INOUT) :: LL2(:,:)
+    integer :: ierr
+    include 'mpif.h'
+
+    if ( SYStype == 0 ) then
+
+       call construct_map_1d_to_3d_grid( Ngrid, Igrid, comm_grid, LL2 )
+
+    else if ( SYStype == 1 ) then
+
+       allocate( LL2(3,Ngrid(0)) ) ; LL2=0
+
+       LL2(1:3,Igrid(1,0):Igrid(2,0)) = LL(1:3,Igrid(1,0):Igrid(2,0))
+
+       call MPI_ALLREDUCE( MPI_IN_PLACE, LL2, size(LL2), MPI_INTEGER &
+                          ,MPI_SUM, comm_grid, ierr )
+
+    end if
+
+  END SUBROUTINE construct_gridmap_sub
 
 
 END MODULE io_module
