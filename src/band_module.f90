@@ -28,6 +28,7 @@ MODULE band_module
   use fock_fft_module, only: init_fock_fft
   use band_unfold_module
   use hsort_module
+  use fermi_module, only: efermi
   
   implicit none
 
@@ -36,6 +37,8 @@ MODULE band_module
   PUBLIC :: read_band
 
   integer :: unit = 1
+
+  character(64),parameter :: version="version2.0"
 
 CONTAINS
 
@@ -155,6 +158,9 @@ CONTAINS
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
        open(unit_band_dedk,file="band_dedk")
+       write(unit_band_eigv,*) version
+       write(unit_band_eigv,'(1x,"Fermi_energy(hartree):",f20.15)') efermi
+       write(unit_band_eigv,'(1x,"Reciprocal_Lattice_Vectors:")')
        write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,1)
        write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,2)
        write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,3)

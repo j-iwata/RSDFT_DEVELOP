@@ -19,6 +19,7 @@ MODULE io_module
   use aa_module, only: aa
   use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
   use grid_module, only: construct_map_1d_to_3d_grid
+  use fermi_module, only: efermi
 
   implicit none
 
@@ -31,7 +32,7 @@ MODULE io_module
 
   integer :: IO_ctrl=0
   integer :: IC=0
-  integer :: OC=5
+  integer :: OC=3
   integer :: OC2=100
   integer :: MBwr1=0
   integer :: MBwr2=0
@@ -42,7 +43,8 @@ MODULE io_module
   character(30) :: file_wf2   ="wf.dat1"
   character(30) :: file_vrho2 ="vrho.dat1"
 
-  character(16),parameter :: version="version3.0"
+  character(64),parameter :: version="version3.0, comment_length=64"
+  character(64) :: comment
 
   integer,save :: icount=0
 
@@ -105,13 +107,18 @@ CONTAINS
           write(2) version
           write(2) ML,ML1,ML2,ML3
           write(2) LL2(:,:)
-          write(2) "lattice         "
+          comment="lattice aa(3,3)"
+          write(2) comment
           write(2) aa
-          write(2) "atom            "
+          comment="atom: Nelement Natom / aa_atom / ki_atom /zn_atom"
+          write(2) comment
           write(2) Nelement, Natom
           write(2) aa_atom
           write(2) ki_atom
           write(2) zn_atom
+          comment="Fermi energy"
+          write(2) comment
+          write(2) efermi
        end if
 
        do s=1,MSP
@@ -253,7 +260,7 @@ CONTAINS
     integer,allocatable :: LL2(:,:)
     real(8) :: fs,mem,memax,ct0,et0,ct1,et1
     real(8),allocatable :: rtmp(:),rtmp3(:,:,:)
-    character(len=16) :: cbuf
+    character(len=64) :: cbuf
     logical :: flag_versioned
 
     if ( IC <= 0 ) return
@@ -322,9 +329,12 @@ CONTAINS
              read(80)
              read(80)
              read(80)
+             read(80)
+             read(80) efermi
           end if
        end if
        call mpi_bcast(LL_tmp,3*ML,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(efermi,1,mpi_real8,0,mpi_comm_world,ierr)
 
        i=sum(abs(LL_tmp(:,:)-LL2(:,:)))
        if ( i/=0 ) then

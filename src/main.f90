@@ -25,7 +25,7 @@ PROGRAM Real_Space_DFT
   integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3,info
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
   type(lattice) :: aa_obj, bb_obj
-  logical :: recalc_esp=.true.
+  logical,parameter :: recalc_esp=.true.
   real(8) :: Etot, Ehwf
   integer :: info_level=0
 
@@ -380,9 +380,11 @@ PROGRAM Real_Space_DFT
   case( 1 )
      call calc_scf( disp_switch, ierr, tol_force_in=feps )
      if ( ierr < 0 ) goto 900
+     call calc_total_energy( recalc_esp, Etot, 6 )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
+     call calc_total_energy( recalc_esp, Etot, 6 )
   case( -1 )
      if ( nprocs == 1 ) then
         call construct_hamiltonian_matrix( Ngrid(0) )
@@ -415,6 +417,8 @@ PROGRAM Real_Space_DFT
   case( 1,2 ) ! --- atomopt ---
 
      call atomopt(iswitch_opt,disp_switch)
+
+     call calc_total_energy( recalc_esp, Etot, 6 )
 
   end select
 

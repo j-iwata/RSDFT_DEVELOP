@@ -4,12 +4,13 @@ PROGRAM cubegen_vrho
   integer,parameter :: u0=80, u1=1, u2=970, iu=2
   integer :: ML,ML1,ML2,ML3,zatom(9)
   integer :: i1,i2,i3,i,s,MI,MKI
+  integer :: m1,m2,m3,n1,n2,n3
   integer,allocatable :: LL(:,:),Kion(:)
   real(8),allocatable :: rho(:,:,:,:),vloc(:,:,:,:)
   real(8),allocatable :: vh(:,:,:),vxc(:,:,:),rtmp(:)
   real(8),allocatable :: asi(:,:),rsi(:,:)
   real(8) :: ax,aa(3,3),Va,dV
-  character(16) :: cbuf
+  character(64) :: cbuf
   logical :: flag_versioned=.false.
 
 ! ---
@@ -45,6 +46,8 @@ PROGRAM cubegen_vrho
      read(u0) asi
      read(u0) Kion
      read(u0) zatom(1:MKI)
+     read(u0) cbuf ; write(*,*) cbuf
+     read(u0)
 
   else
 
@@ -84,11 +87,18 @@ PROGRAM cubegen_vrho
 
 ! ---
 
+  m1 = minval( LL(1,:) )
+  m2 = minval( LL(2,:) )
+  m3 = minval( LL(3,:) )
+  n1 = maxval( LL(1,:) )
+  n2 = maxval( LL(2,:) )
+  n3 = maxval( LL(3,:) )
+
   allocate( rtmp(ML) ) ; rtmp=0.0d0
-  allocate( rho(0:ML1-1,0:ML2-1,0:ML3-1,2)  ) ; rho=0.0d0
-  allocate( vloc(0:ML1-1,0:ML2-1,0:ML3-1,2) ) ; vloc=0.0d0
-  allocate( vh(0:ML1-1,0:ML2-1,0:ML3-1)     ) ; vh=0.0d0
-  allocate( vxc(0:ML1-1,0:ML2-1,0:ML3-1)    ) ; vxc=0.0d0
+  allocate( rho(m1:n1,m2:n2,m3:n3,2)  ) ; rho=0.0d0
+  allocate( vloc(m1:n1,m2:n2,m3:n3,2) ) ; vloc=0.0d0
+  allocate( vh(m1:n1,m2:n2,m3:n3)     ) ; vh=0.0d0
+  allocate( vxc(m1:n1,m2:n2,m3:n3)    ) ; vxc=0.0d0
 
   dV=abs(Va)/dble(ML)
 
