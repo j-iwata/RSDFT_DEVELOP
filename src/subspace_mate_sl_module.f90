@@ -3,7 +3,7 @@ MODULE subspace_mate_sl_module
   use rgrid_module, only: dV,zdV
   use parallel_module
   use hamiltonian_module
-  use wf_module, only: unk,esp,hunk,iflag_hunk
+  use wf_module, only: unk,esp,hunk,iflag_hunk,gather_b_wf
   use scalapack_module
   use subspace_diag_variables
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
@@ -46,19 +46,7 @@ CONTAINS
 
     MBLK  = min( MBSIZE,NBSIZE )
 
-    allocate( id(0:np_band-1),ir(0:np_band-1) )
-
-    id(0:np_band-1) = id_band(0:np_band-1)*ML0
-    ir(0:np_band-1) = ir_band(0:np_band-1)*ML0
-
-    call mpi_allgatherv(unk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN &
-                       ,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-    if ( iflag_hunk >= 1 ) then
-       call mpi_allgatherv(hunk(n1,MB_0,k,s),ir(mrnk),TYPE_MAIN &
-                          ,hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
-    end if
-
-    deallocate( ir,id )
+    call gather_b_wf( k, s )
 
     allocate( irecv_me(99,0:8),isend_me(99,0:8) )
 

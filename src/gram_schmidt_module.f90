@@ -6,6 +6,7 @@ MODULE gram_schmidt_module
   use gram_schmidt_g_module
   use var_sys_parameter
   use io_tools_module
+  use wf_module, only: gather_b_wf
 
   implicit none
 
@@ -33,6 +34,8 @@ CONTAINS
     call write_border( 1, " gram_schmidt(start)" )
 
     if ( flag_init_read ) call read_gram_schmidt
+
+    call gather_b_wf( k, s )
 
     if ( pp_kind == "USPP" ) then
 

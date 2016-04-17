@@ -5,7 +5,8 @@ MODULE force_ewald_module
   use bb_module, only: bb
   use atom_module, only: Natom, aa_atom, ki_atom
   use pseudopot_module, only: Zps
-  use parallel_module
+  use bberf_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -23,9 +24,10 @@ CONTAINS
     real(8) :: GR,c,c1,c2,sum0
     real(8) :: Vcell,pi,pi2
     real(8) :: sum1,sum2,sum3,sum_tmp(3)
-    integer :: i,j,k,n,a,b,ab,ierr
+    integer :: i,j,k,n,a,b,ab
     real(8) :: gg,gx,gy,gz
     real(8),allocatable :: work(:,:)
+    include 'mpif.h'
 
     force3(:,:) = 0.d0
 
@@ -78,7 +80,7 @@ CONTAINS
              z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
              rr=x*x+y*y+z*z
              r=sqrt(rr)
-             c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+             c=-( bberfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
              sum1=sum1+c*x
              sum2=sum2+c*y
              sum3=sum3+c*z
@@ -106,7 +108,7 @@ CONTAINS
           z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
           rr=x*x+y*y+z*z
           r=sqrt(rr)
-          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+          c=-( bberfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
           sum1=sum1+c*x
           sum2=sum2+c*y
           sum3=sum3+c*z
@@ -125,7 +127,7 @@ CONTAINS
           z=sum( aa(3,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
           rr=x*x+y*y+z*z
           r=sqrt(rr)
-          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+          c=-( bberfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
           sum1=sum1+c*x
           sum2=sum2+c*y
           sum3=sum3+c*z
@@ -136,7 +138,7 @@ CONTAINS
        force3(3,a) = force3(3,a) - 0.5d0*sum3*c2
     end do
 
-    call mpi_allreduce(MPI_IN_PLACE,force3,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
+    call rsdft_allreduce_sum( force3, MPI_COMM_WORLD )
 
   END SUBROUTINE calc_force_ewald
 

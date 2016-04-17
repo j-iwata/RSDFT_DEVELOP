@@ -23,6 +23,7 @@ MODULE ps_qrij_prep_module
   use spline_module
   use force_sub_sub_module, only: gaunt_ll, construct_gaunt_coef_LL
   use ylm_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -422,8 +423,7 @@ CONTAINS
 
     end do ! kk1
 
-    call mpi_allreduce( MPI_IN_PLACE, IntQV, size(IntQV) &
-         ,MPI_REAL8, MPI_SUM, comm_grid, i )
+    call d_rsdft_allreduce_sum_5( IntQV, comm_grid )
 
     IntQV = IntQV*dV
 

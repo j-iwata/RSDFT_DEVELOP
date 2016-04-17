@@ -17,6 +17,7 @@ MODULE ps_nloc_mr_module
   use hsort_module
   use polint_module
   use spline_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -325,8 +326,7 @@ CONTAINS
           end do
        end do
     end do
-    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical &
-                      ,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+    call rsdft_allgather( lcheck_tmp1(:,myrank_g), lcheck_tmp1, comm_grid )
 
     call watch(ctt(1),ett(1))
 

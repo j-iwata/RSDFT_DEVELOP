@@ -12,6 +12,7 @@ MODULE force_local_mol_module
   use rgrid_module
   use force_local_mol_gth_module
   use polint_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -189,8 +190,7 @@ CONTAINS
 
     end do ! a
 
-    call mpi_allreduce &
-         (MPI_IN_PLACE,ftmp,3*Natom,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    call rsdft_allreduce_sum( ftmp, comm_grid )
 
     force(:,:) = force(:,:) + ftmp(:,:)*dV
 

@@ -22,7 +22,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: SYStype_in, Md, unit
 
-    call write_border( 80," init_rgrid(start)")
+    call write_border( 0," init_rgrid(start)")
 
     SYStype = SYStype_in
 
@@ -67,7 +67,7 @@ CONTAINS
        write(*,'(1x,"Hgrid(1:3)=",3f15.8)') Hgrid(1:3)
     end if
 
-    call write_border( 80," init_rgrid(end)")
+    call write_border( 0," init_rgrid(end)")
 
   END SUBROUTINE Init_Rgrid
 
@@ -76,7 +76,7 @@ CONTAINS
     implicit none
     integer :: ierr, Nshift(3)
 
-    call write_border( 80, " InitParallel_Rgrid(start)" )
+    call write_border( 0, " InitParallel_Rgrid(start)" )
 
     Nshift(:) = 0
 
@@ -116,10 +116,12 @@ CONTAINS
 
     idisp(myrank) = id_grid(myrank_g)
     ircnt(myrank) = ir_grid(myrank_g)
-    call mpi_allgather(idisp(myrank),1,mpi_integer,idisp,1,mpi_integer,mpi_comm_world,ierr)
-    call mpi_allgather(ircnt(myrank),1,mpi_integer,ircnt,1,mpi_integer,mpi_comm_world,ierr)
+    call mpi_allgather(id_grid(myrank_g),1,mpi_integer &
+         ,idisp,1,mpi_integer,mpi_comm_world,ierr)
+    call mpi_allgather(ir_grid(myrank_g),1,mpi_integer &
+         ,ircnt,1,mpi_integer,mpi_comm_world,ierr)
 
-    call write_border( 80, " InitParallel_Rgrid(end)" )
+    call write_border( 0, " InitParallel_Rgrid(end)" )
 
   END SUBROUTINE InitParallel_Rgrid
 

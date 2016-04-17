@@ -10,6 +10,7 @@ MODULE io_module
   use io2_module
   use io_read_module
   use io_write_module
+  use rsdft_mpi_module
 
   use density_module, only: rho
   use xc_module, only: Vxc

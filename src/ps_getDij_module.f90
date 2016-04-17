@@ -11,6 +11,7 @@ MODULE ps_getDij_module
   use ps_nloc2_variables, only: amap,iorbmap,mmap
   use var_ps_member, only: norb, lo
   use atom_module, only: Natom
+  use rsdft_mpi_module
 
   implicit none
 
@@ -65,8 +66,7 @@ CONTAINS
 
           end do ! kk1
 
-          call mpi_allreduce( MPI_IN_PLACE, IntQV, size(IntQV) &
-               ,MPI_REAL8, MPI_SUM, comm_grid, ierr )
+          call d_rsdft_allreduce_sum_5( IntQV, comm_grid )
 
           do kk1=1,N_nzqr
 

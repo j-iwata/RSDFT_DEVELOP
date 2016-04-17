@@ -5,6 +5,7 @@ MODULE test_hpsi2_module
   use hamiltonian_module
   use parallel_module
   use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -110,9 +111,8 @@ CONTAINS
 #endif
        end do
     end do
-    call mpi_allreduce(MPI_IN_PLACE, sums, nrhs, &
-         MPI_DOUBLE_PRECISION, MPI_SUM, comm_grid, ierr)
-  
+    call rsdft_allreduce_sum( sums(n1:n2), comm_grid )
+
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,*) 'nloop =',nloop
        write(*,*) 'nrhs = ', nrhs

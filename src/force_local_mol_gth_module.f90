@@ -6,6 +6,7 @@ MODULE force_local_mol_gth_module
   use parallel_module
   use bberf_module
   use pseudopot_module, only: parloc, Rcloc, Zps
+  use rsdft_mpi_module
 
   implicit none
 
@@ -80,8 +81,7 @@ CONTAINS
 
     end do ! a
 
-    call mpi_allreduce( MPI_IN_PLACE, ftmp, 3*Natom, MPI_REAL8, MPI_SUM &
-                       ,comm_grid, ierr)
+    call rsdft_allreduce_sum( ftmp, comm_grid )
 
     force(:,:) = force(:,:) + ftmp(:,:)*dV
 

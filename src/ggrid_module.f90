@@ -320,10 +320,21 @@ CONTAINS
   SUBROUTINE allgatherv_Ggrid(f)
     implicit none
     complex(8),intent(INOUT) :: f(*)
-    include 'mpif.h'
+    complex(8),allocatable :: t(:)
     integer :: ierr
+#ifdef _NO_MPI_
+    return
+#else
+    include 'mpif.h'
+#ifdef _NO_MPI_INPLACE_
+    allocate( t(MG_0:MG_1) ) ; t(:)=f(MG_0:MG_1)
+    call mpi_allgatherv(t,MG_1-MG_0+1,MPI_COMPLEX16 &
+         ,f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
+#else
     call mpi_allgatherv(f(MG_0),MG_1-MG_0+1,MPI_COMPLEX16 &
          ,f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
+#endif
+#endif
   END SUBROUTINE allgatherv_Ggrid
 
 

@@ -11,6 +11,7 @@ MODULE force_local_sol_module
   use ffte_sub_module
   use watch_module
   use fft_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -287,8 +288,7 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    call mpi_allreduce(MPI_IN_PLACE,fg,MG,MPI_COMPLEX16 &
-         ,MPI_SUM,comm_grid,ierr)
+    call rsdft_allreduce_sum( fg, comm_grid )
 
     call watch(ctt(6),ett(6))
 
@@ -339,11 +339,12 @@ CONTAINS
 !    call destruct_Ggrid
 
     if ( nprocs <= MI ) then
-       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+!       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+!                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+       call rsdft_allgatherv &
+            ( force(:,MI_0:MI_1), force, icnta, idisa, MPI_COMM_WORLD )
     else
-       call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
-                         ,mpi_sum,mpi_comm_world,ierr)
+       call rsdft_allreduce_sum( force, MPI_COMM_WORLD )
     end if
 
     call watch(ctt(9),ett(9))

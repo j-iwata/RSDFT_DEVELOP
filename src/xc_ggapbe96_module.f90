@@ -6,6 +6,7 @@ MODULE xc_ggapbe96_module
   use parallel_module
   use fd_module
   use xc_ggapbe96_mol_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -312,16 +313,16 @@ CONTAINS
        end do ! i
 
        rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
-       call mpi_allgatherv(rrrr(ML_0,1),ir_grid(myrank_g),mpi_real8 &
-            ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       call rsdft_allgatherv &
+            ( rrrr(ML_0:ML_1,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
 
        rrrr(ML_0:ML_1,2) = rtmp(ML_0:ML_1)*gy(ML_0:ML_1)
-       call mpi_allgatherv(rrrr(ML_0,2),ir_grid(myrank_g),mpi_real8 &
-            ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       call rsdft_allgatherv &
+            ( rrrr(ML_0:ML_1,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
 
        rrrr(ML_0:ML_1,3)=rtmp(ML_0:ML_1)*gz(ML_0:ML_1)
-       call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8 &
-            ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       call rsdft_allgatherv &
+            ( rrrr(ML_0:ML_1,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
        select case( SYStype )
        case default
@@ -546,16 +547,16 @@ CONTAINS
     end do ! i
 
     rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
-    call mpi_allgatherv(rrrr(ML_0,1),ir_grid(myrank_g),mpi_real8 &
-         ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,2) = rtmp(ML_0:ML_1)*gy(ML_0:ML_1)
-    call mpi_allgatherv(rrrr(ML_0,2),ir_grid(myrank_g),mpi_real8 &
-         ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,3) = rtmp(ML_0:ML_1)*gz(ML_0:ML_1)
-    call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8 &
-         ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
     select case( SYStype )
     case default
@@ -790,16 +791,16 @@ CONTAINS
     end do ! i
 
     rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
-    call mpi_allgatherv(rrrr(ML_0,1),ir_grid(myrank_g),mpi_real8 &
-         ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,2) = rtmp(ML_0:ML_1)*gy(ML_0:ML_1)
-    call mpi_allgatherv(rrrr(ML_0,2),ir_grid(myrank_g),mpi_real8 &
-         ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,3) = rtmp(ML_0:ML_1)*gz(ML_0:ML_1)
-    call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8 &
-         ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
     select case( SYStype )
     case default

@@ -3,6 +3,7 @@ MODULE grid_module
   use rgrid_variables
   use parallel_module
   use basic_type_factory
+  use rsdft_mpi_module
 
   implicit none
 
@@ -130,6 +131,22 @@ CONTAINS
     call MPI_ALLREDUCE(MPI_IN_PLACE,LL,size(LL),MPI_INTEGER,MPI_SUM,comm,i)
   END SUBROUTINE construct_map_1d_to_3d_grid
 
+  SUBROUTINE get_map_3d_to_1d( LLL )
+     implicit none
+     integer,allocatable,intent(OUT) :: LLL(:,:,:)
+     integer :: i,i1,i2,i3,ierr
+     allocate( LLL(0:Ngrid(1)-1,0:Ngrid(2)-1,0:Ngrid(3)-1) ) ; LLL=0
+     i=Igrid(1,0)-1
+     do i3=Igrid(1,3),Igrid(2,3)
+     do i2=Igrid(1,2),Igrid(2,2)
+     do i1=Igrid(1,1),Igrid(2,1)
+        i=i+1
+        LLL(i1,i2,i3)=i
+     end do
+     end do
+     end do
+     call rsdft_allreduce_sum( LLL, comm_grid )
+  END SUBROUTINE get_map_3d_to_1d
 
   SUBROUTINE mpi_allgatherv_grid( f, g )
     implicit none

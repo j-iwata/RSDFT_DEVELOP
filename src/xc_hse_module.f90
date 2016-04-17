@@ -11,6 +11,7 @@ MODULE xc_hse_module
   use wf_module, only: unk, occ
   use fd_module
   use bberf_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -637,14 +638,20 @@ CONTAINS
           if ( present(Vxc) ) then
 
              rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)+rtmp_sr(n1:n2)*gx(n1:n2)
-             call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8 &
-                  ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!             call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8 &
+!                  ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+             call rsdft_allgatherv &
+                  ( rrrr(n1:n2,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
              rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)+rtmp_sr(n1:n2)*gy(n1:n2)
-             call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8 &
-                  ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!             call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8 &
+!                  ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+             call rsdft_allgatherv &
+                  ( rrrr(n1:n2,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
              rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)+rtmp_sr(n1:n2)*gz(n1:n2)
-             call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8 &
-                  ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!             call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8 &
+!                  ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+             call rsdft_allgatherv &
+                  ( rrrr(n1:n2,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
              select case(SYStype)
              case default
@@ -814,14 +821,20 @@ CONTAINS
        if ( present(Vxc) ) then
 
           rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)
-          call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!          call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8 &
+!               ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+          call rsdft_allgatherv &
+               ( rrrr(n1:n2,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
           rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)
-          call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!          call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8 &
+!               ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+          call rsdft_allgatherv &
+               ( rrrr(n1:n2,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
           rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)
-          call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!          call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8 &
+!               ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+          call rsdft_allgatherv &
+               ( rrrr(n1:n2,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
           select case(SYStype)
           case default

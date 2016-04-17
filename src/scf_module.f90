@@ -31,6 +31,7 @@ MODULE scf_module
   use hamiltonian_module
   use io_tools_module
   use eigenvalues_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -351,8 +352,7 @@ CONTAINS
           if ( mod(imix,2) == 0 ) then
              call normalize_density
              m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
-             call mpi_allgather &
-                  (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
+             call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
              call calc_hartree(ML_0,ML_1,MSP,rho)
              call calc_xc
              do s=MSP_0,MSP_1
@@ -541,10 +541,8 @@ CONTAINS
     end do
 
     m=MSP_1-MSP_0+1
-    call mpi_allgather(diff_vrho(MSP_0),m,MPI_REAL8 &
-                      ,diff_vrho,m,MPI_REAL8,comm_spin,ierr)
-    call mpi_allgather(diff_vrho(MSP_0+2),m,MPI_REAL8 &
-                      ,diff_vrho(3),m,MPI_REAL8,comm_spin,ierr)
+    call rsdft_allgather( diff_vrho(MSP_0:MSP_1), diff_vrho, comm_spin )
+    call rsdft_allgather( diff_vrho(MSP_0+2:MSP_1+2),diff_vrho(3:4),comm_spin )
 
     diff_vrho(5) = sum( (Vh(:)-vht_0(:))**2 )
 
@@ -569,8 +567,7 @@ CONTAINS
     end do ! i
 
     diff_vrho(:)=diff_vrho(:)/ML
-    call mpi_allreduce( MPI_IN_PLACE,diff_vrho,7,MPI_REAL8 &
-                       ,MPI_SUM,comm_grid,ierr )
+    call rsdft_allreduce_sum( diff_vrho, comm_grid )
 
     if ( disp_switch ) then
        do i=1,MSP
