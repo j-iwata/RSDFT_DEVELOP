@@ -111,7 +111,7 @@ CONTAINS
     end do
 
     call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
-         ,mpi_complex16,mpi_sum,comm_fftx,ierr)
+         ,rsdft_mpi_complex16,mpi_sum,comm_fftx,ierr)
 
     call watch(ctt(1),ett(1))
 

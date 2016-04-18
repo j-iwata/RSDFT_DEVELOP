@@ -132,9 +132,9 @@ CONTAINS
 
     ML0 = ML_1-ML_0+1
 
-    mm  = ML0  ; if (TYPE_MAIN==mpi_complex16) mm=2*ML0
-    c1  = 2.d0 ; if (TYPE_MAIN==mpi_complex16) c1=1.d0
-    icmp= 1    ; if (TYPE_MAIN==mpi_complex16) icmp=2
+    mm  = ML0  ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) mm=2*ML0
+    c1  = 2.d0 ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) c1=1.d0
+    icmp= 1    ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) icmp=2
 
     Ncgtot = 0
     Nhpsi  = 0
@@ -293,7 +293,7 @@ CONTAINS
              utmp2(2,1)=wtmp2(5,n)
              utmp2(1,2)=wtmp2(5,n)
              utmp2(2,2)=wtmp2(6,n)
-             if (TYPE_MAIN==mpi_complex16) then
+             if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) then
                 ztmp=btmp2(1,2)
                 ztmp=conjg(ztmp)
                 btmp2(1,2)=ztmp
@@ -450,7 +450,7 @@ CONTAINS
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:)
 
-    TYPE_MAIN = MPI_COMPLEX16
+    TYPE_MAIN = RSDFT_MPI_COMPLEX16
 
     ctt(:)=0.d0
     ett(:)=0.d0
@@ -459,9 +459,9 @@ CONTAINS
 
     ML0 = ML_1-ML_0+1
 
-    mm  = ML0  ; if (TYPE_MAIN==mpi_complex16) mm=2*ML0
-    c1  = 2.d0 ; if (TYPE_MAIN==mpi_complex16) c1=1.d0
-    icmp= 1    ; if (TYPE_MAIN==mpi_complex16) icmp=2
+    mm  = ML0  ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) mm=2*ML0
+    c1  = 2.d0 ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) c1=1.d0
+    icmp= 1    ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) icmp=2
 
     Ncgtot = 0
     Nhpsi  = 0
@@ -616,7 +616,7 @@ CONTAINS
              utmp2(2,1)=wtmp2(5,n)
              utmp2(1,2)=wtmp2(5,n)
              utmp2(2,2)=wtmp2(6,n)
-             if (TYPE_MAIN==mpi_complex16) then
+             if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) then
                 ztmp=btmp2(1,2)
                 ztmp=conjg(ztmp)
                 btmp2(1,2)=ztmp

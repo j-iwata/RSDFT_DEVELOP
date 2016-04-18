@@ -162,7 +162,7 @@ CONTAINS
 #ifdef _DRSDFT_
        call mpi_bcast( unk, size(unk), MPI_REAL8, 0, comm_fkmb, ierr )
 #else
-       call mpi_bcast( unk, size(unk), MPI_COMPLEX16, 0, comm_fkmb, ierr )
+       call mpi_bcast( unk, size(unk), RSDFT_MPI_COMPLEX16, 0, comm_fkmb, ierr )
 #endif
        call mpi_bcast( esp, size(esp), MPI_REAL8, 0, comm_fkmb, ierr )
 

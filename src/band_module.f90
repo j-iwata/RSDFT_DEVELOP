@@ -329,7 +329,7 @@ CONTAINS
     complex(8),intent(IN) :: f(mm,nn)
     integer :: ierr,ireq,istatus(MPI_STATUS_SIZE)
     if ( myrank_k > 0 ) then
-       call MPI_ISEND(f,mm*nn,MPI_COMPLEX16,myrank_k-1,1,comm_bzsm,ireq,ierr)
+       call MPI_ISEND(f,mm*nn,RSDFT_MPI_COMPLEX16,myrank_k-1,1,comm_bzsm,ireq,ierr)
        call MPI_WAIT(ireq,istatus,ierr)
     end if
   END SUBROUTINE send_wf_band
@@ -339,7 +339,7 @@ CONTAINS
     complex(8),intent(OUT) :: f(mm,nn)
     integer :: ierr,ireq,istatus(MPI_STATUS_SIZE)
     if ( myrank_k < np_bzsm-1 ) then
-       call MPI_IRECV(f,mm*nn,MPI_COMPLEX16,myrank_k+1,1,comm_bzsm,ireq,ierr)
+       call MPI_IRECV(f,mm*nn,RSDFT_MPI_COMPLEX16,myrank_k+1,1,comm_bzsm,ireq,ierr)
        call MPI_WAIT(ireq,istatus,ierr)
     end if
   END SUBROUTINE recv_wf_band

@@ -30,7 +30,7 @@ MODULE wf_module
   complex(8),allocatable :: unk(:,:,:,:)
   complex(8),allocatable :: hunk(:,:,:,:)
   complex(8),allocatable :: workwf(:,:)
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
 #endif
 
 #ifdef _DRSDFT_
@@ -298,7 +298,7 @@ CONTAINS
     hunk(:,:,:,:)=zero
 
     if ( myrank == 0 ) then
-       if ( TYPE_MAIN == MPI_COMPLEX16 ) then
+       if ( TYPE_MAIN == RSDFT_MPI_COMPLEX16 ) then
           write(*,*) "size(hunk)(MB)=",size(hunk)*16.d0/1024.d0**2
        else if ( TYPE_MAIN == MPI_REAL8 ) then
           write(*,*) "size(hunk)(MB)=",size(hunk)*8.d0/1024.d0**2

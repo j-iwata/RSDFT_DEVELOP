@@ -5,7 +5,7 @@ MODULE xc_vdw_module
   use ggrid_module, only: NMGL, MGL, GG, NGgrid, LLG, MG_0, MG_1 &
                          ,construct_ggrid, destruct_ggrid
   use gradient_module
-  use parallel_module, only: comm_grid, myrank, nprocs, ir_grid, id_grid
+  use parallel_module, only: comm_grid, myrank, nprocs, ir_grid, id_grid, RSDFT_MPI_COMPLEX16
   use fd_module, only: fd, construct_nabla_fd, destruct_nabla_fd
   use lattice_module, only: lattice,get_aa_lattice,get_reciprocal_lattice
   use basic_type_factory
@@ -1088,7 +1088,7 @@ CONTAINS
        end do ! i3
 
        call MPI_ALLREDUCE( work1, work0, size(work0) &
-            , MPI_COMPLEX16, MPI_SUM, comm_grid, info )
+            , RSDFT_MPI_COMPLEX16, MPI_SUM, comm_grid, info )
 
        call forward_fft( work0, work1 )
 
@@ -1189,7 +1189,7 @@ CONTAINS
 
        end do ! b
 
-       call MPI_ALLREDUCE(work1,work0,size(work0),MPI_COMPLEX16 &
+       call MPI_ALLREDUCE(work1,work0,size(work0),RSDFT_MPI_COMPLEX16 &
             ,MPI_SUM,MPI_COMM_WORLD,info)
 
        call backward_fft( work0, work1 )

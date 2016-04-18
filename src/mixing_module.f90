@@ -4,6 +4,7 @@ MODULE mixing_module
   use mixing_pulay_module
   use io_tools_module
   use rsdft_mpi_module
+  use parallel_module, only: RSDFT_MPI_COMPLEX16
 
   implicit none
 
@@ -414,7 +415,7 @@ CONTAINS
        end do
        end do
 
-       call mpi_allreduce(A0,A1,mm,mpi_complex16,mpi_sum,comm_grid,ierr)
+       call mpi_allreduce(A0,A1,mm,RSDFT_MPI_COMPLEX16,mpi_sum,comm_grid,ierr)
 
        b1(1:mmix0) = (1.d0,0.d0)
        A0(:,:)     = A1(:,:)
@@ -500,7 +501,7 @@ CONTAINS
     end do
     end do
 
-    call mpi_allreduce(A0,A1,mm,mpi_complex16,mpi_sum,comm_grid,ierr)
+    call mpi_allreduce(A0,A1,mm,RSDFT_MPI_COMPLEX16,mpi_sum,comm_grid,ierr)
 
     b1(1:mmix0) = (1.d0,0.d0)
     A0(:,:)     = A1(:,:)
@@ -571,15 +572,15 @@ CONTAINS
     allocate( z(ML) ) ; z=(0.0d0,0.0d0)
     do m=1,mmix
     do s=1,MSP
-       call mpi_allgatherv( Xin(1,s,m),ML0,MPI_COMPLEX16,z,ir,id, &
-            MPI_COMPLEX16,comm_grid,ierr )
+       call mpi_allgatherv( Xin(1,s,m),ML0,RSDFT_MPI_COMPLEX16,z,ir,id, &
+            RSDFT_MPI_COMPLEX16,comm_grid,ierr )
        if ( myrank == 0 ) write(unit) z
     end do
     end do
     do m=1,mmix
     do s=1,MSP
-       call mpi_allgatherv( Xou(1,s,m),ML0,MPI_COMPLEX16,z,ir,id, &
-            MPI_COMPLEX16,comm_grid,ierr )
+       call mpi_allgatherv( Xou(1,s,m),ML0,RSDFT_MPI_COMPLEX16,z,ir,id, &
+            RSDFT_MPI_COMPLEX16,comm_grid,ierr )
        if ( myrank == 0 ) write(unit) z
     end do
     end do
@@ -625,15 +626,15 @@ CONTAINS
     do m=1,mmix
     do s=1,MSP
        if ( myrank == 0 ) read(unit) z
-       call mpi_scatterv(z,ir,id,MPI_COMPLEX16 &
-                        ,Xin(1,s,m),ML0,MPI_COMPLEX16,0,comm_grid,ierr)
+       call mpi_scatterv(z,ir,id,RSDFT_MPI_COMPLEX16 &
+                        ,Xin(1,s,m),ML0,RSDFT_MPI_COMPLEX16,0,comm_grid,ierr)
     end do
     end do
     do m=1,mmix
     do s=1,MSP
        if ( myrank == 0 ) read(unit) z
-       call mpi_scatterv(z,ir,id,MPI_COMPLEX16 &
-                        ,Xou(1,s,m),ML0,MPI_COMPLEX16,0,comm_grid,ierr)
+       call mpi_scatterv(z,ir,id,RSDFT_MPI_COMPLEX16 &
+                        ,Xou(1,s,m),ML0,RSDFT_MPI_COMPLEX16,0,comm_grid,ierr)
     end do
     end do
     deallocate( z )

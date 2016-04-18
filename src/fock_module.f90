@@ -23,7 +23,7 @@ MODULE fock_module
   integer,parameter :: TYPE_MAIN = MPI_REAL8
 #else
   complex(8),parameter :: zero = (0.0d0,0.0d0)
-  integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
 #endif
 
   integer :: SYStype=0
@@ -43,7 +43,7 @@ CONTAINS
     complex(8),intent(IN)  :: psi(n1:n2)
     complex(8),intent(INOUT) :: tpsi(n1:n2)
     complex(8),allocatable :: trho(:),tvht(:),tphi(:)
-    integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
+    integer,parameter :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
 #endif
     real(8) :: c
     integer :: ML0,m,q,i,t,ierr

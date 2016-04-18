@@ -47,7 +47,7 @@ CONTAINS
     complex(8),allocatable :: utmp(:)
     complex(4),allocatable :: utmpSP(:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+    integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
     integer,parameter :: TYPE_WF=0
 #endif
     type(para) :: pinfo

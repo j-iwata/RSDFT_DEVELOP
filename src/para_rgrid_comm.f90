@@ -1,6 +1,7 @@
 MODULE para_rgrid_comm
 
-  use parallel_module, only: node_partition,myrank_g,nprocs_g,COMM_GRID,myrank
+  use parallel_module, only: node_partition,myrank_g,nprocs_g,COMM_GRID,myrank &
+                            ,RSDFT_MPI_COMPLEX16
   use hsort_module
 
   implicit none
@@ -14,7 +15,7 @@ MODULE para_rgrid_comm
 #ifdef _DRSDFT_
   integer,parameter,PUBLIC :: TYPE_MAIN = MPI_REAL8
 #else
-  integer,parameter,PUBLIC :: TYPE_MAIN = MPI_COMPLEX16
+  integer,parameter,PUBLIC :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
 #endif
 
 CONTAINS

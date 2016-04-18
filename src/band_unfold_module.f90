@@ -33,7 +33,7 @@ MODULE band_unfold_module
   integer,parameter :: TYPE_MAIN=MPI_REAL8
   real(8),parameter :: zero=0.0d0
 #else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
   complex(8),parameter :: zero=(0.0d0,0.0d0)
 #endif
 

@@ -22,6 +22,12 @@ MODULE parallel_module
            ,disp_switch_parallel
   PUBLIC :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
 
+#ifdef _NO_MPI_COMPLEX16_
+  integer,parameter,PUBLIC :: RSDFT_MPI_COMPLEX16 = MPI_DOUBLE_COMPLEX
+#else
+  integer,parameter,PUBLIC :: RSDFT_MPI_COMPLEX16 = MPI_COMPLEX16
+#endif
+
   integer,parameter :: max_parallel=7
   integer :: node_partition(max_parallel)
   integer :: nprocs, myrank

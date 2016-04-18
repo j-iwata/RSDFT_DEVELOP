@@ -38,7 +38,7 @@ CONTAINS
     complex(8),intent(INOUT) :: vf(mm,nn)
     complex(8),allocatable :: ft(:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    integer,parameter :: TYP=MPI_COMPLEX16
+    integer,parameter :: TYP=RSDFT_MPI_COMPLEX16
 #endif
     integer :: n,i,j,ierr
 

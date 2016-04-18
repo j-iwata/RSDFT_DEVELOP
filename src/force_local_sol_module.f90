@@ -270,7 +270,7 @@ CONTAINS
     call watch(ctt(2),ett(2))
 
     call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
-         ,mpi_complex16,mpi_sum,comm_fftx,ierr)
+         ,RSDFT_MPI_COMPLEX16,mpi_sum,comm_fftx,ierr)
 
     call watch(ctt(3),ett(3))
 

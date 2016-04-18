@@ -41,6 +41,13 @@ MODULE rsdft_mpi_module
                       z_rsdft_allgatherv33
   END INTERFACE
 
+  include 'mpif.h'
+#ifdef _NO_MPI_COMPLEX16_
+  integer,parameter :: RSDFT_MPI_COMPLEX16=MPI_DOUBLE_COMPLEX
+#else
+  integer,parameter :: RSDFT_MPI_COMPLEX16=MPI_COMPLEX16
+#endif
+
 CONTAINS
 
 !-------------------------------------------------- rsdft_allreduce_sum
@@ -71,7 +78,7 @@ CONTAINS
 #else
     include 'mpif.h'
     a0=a
-    call MPI_ALLREDUCE( a0, a, 1, MPI_COMPLEX16, MPI_SUM, comm, ierr )
+    call MPI_ALLREDUCE( a0, a, 1, RSDFT_MPI_COMPLEX16, MPI_SUM, comm, ierr )
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_0
 
@@ -131,10 +138,10 @@ CONTAINS
     n=size(a)
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(n) ) ; a0=a
-    call MPI_ALLREDUCE( a0, a, n, MPI_COMPLEX16, MPI_SUM, comm, ierr )
+    call MPI_ALLREDUCE( a0, a, n, RSDFT_MPI_COMPLEX16, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
-    call MPI_ALLREDUCE(MPI_IN_PLACE,a,n,MPI_COMPLEX16,MPI_SUM,comm,ierr)
+    call MPI_ALLREDUCE(MPI_IN_PLACE,a,n,RSDFT_MPI_COMPLEX16,MPI_SUM,comm,ierr)
 #endif
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_1
@@ -176,10 +183,10 @@ CONTAINS
     n=size(a,2)
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(m,n) ) ; a0=a
-    call MPI_ALLREDUCE( a0, a, m*n, MPI_COMPLEX16, MPI_SUM, comm, ierr )
+    call MPI_ALLREDUCE( a0, a, m*n, RSDFT_MPI_COMPLEX16, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
-    call MPI_ALLREDUCE(MPI_IN_PLACE,a,m*n,MPI_COMPLEX16,MPI_SUM,comm,ierr)
+    call MPI_ALLREDUCE(MPI_IN_PLACE,a,m*n,RSDFT_MPI_COMPLEX16,MPI_SUM,comm,ierr)
 #endif
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_2
@@ -246,10 +253,10 @@ CONTAINS
     n=size(a,3)
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(l,m,n) ) ; a0=a
-    call MPI_ALLREDUCE( a0, a, l*m*n, MPI_COMPLEX16, MPI_SUM, comm, ierr )
+    call MPI_ALLREDUCE( a0, a, l*m*n, RSDFT_MPI_COMPLEX16, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
-    call MPI_ALLREDUCE(MPI_IN_PLACE,a,l*m*n,MPI_COMPLEX16,MPI_SUM,comm,ierr)
+    call MPI_ALLREDUCE(MPI_IN_PLACE,a,l*m*n,RSDFT_MPI_COMPLEX16,MPI_SUM,comm,ierr)
 #endif
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_3
@@ -330,7 +337,7 @@ CONTAINS
     return
 #else
     include 'mpif.h'
-    call MPI_BCAST( a, size(a), MPI_COMPLEX16, src, comm, ierr )
+    call MPI_BCAST( a, size(a), RSDFT_MPI_COMPLEX16, src, comm, ierr )
 #endif
   END SUBROUTINE z_rsdft_bcast2
 
@@ -475,10 +482,10 @@ CONTAINS
     include 'mpif.h'
 #ifdef _NO_MPI_INPLACE_
     allocate( t(size(f,1),size(f,2)) ) ; t=f
-    call MPI_ALLGATHER(t,size(f),MPI_COMPLEX16,g,size(f),MPI_COMPLEX16,comm,i)
+    call MPI_ALLGATHER(t,size(f),RSDFT_MPI_COMPLEX16,g,size(f),RSDFT_MPI_COMPLEX16,comm,i)
     deallocate( t )
 #else
-    call MPI_ALLGATHER(f,size(f),MPI_COMPLEX16,g,size(f),MPI_COMPLEX16,comm,i)
+    call MPI_ALLGATHER(f,size(f),RSDFT_MPI_COMPLEX16,g,size(f),RSDFT_MPI_COMPLEX16,comm,i)
 #endif
 #endif
   END SUBROUTINE z_rsdft_allgather23
@@ -582,10 +589,10 @@ CONTAINS
     include 'mpif.h'
 #ifdef _NO_MPI_INPLACE_
     allocate( t(size(f,1),size(f,2)) ) ; t=f
-    call MPI_ALLGATHERV(t,size(f),MPI_COMPLEX16,g,ir,id,MPI_COMPLEX16,comm,i)
+    call MPI_ALLGATHERV(t,size(f),RSDFT_MPI_COMPLEX16,g,ir,id,RSDFT_MPI_COMPLEX16,comm,i)
     deallocate( t )
 #else
-    call MPI_ALLGATHERV(f,size(f),MPI_COMPLEX16,g,ir,id,MPI_COMPLEX16,comm,i)
+    call MPI_ALLGATHERV(f,size(f),RSDFT_MPI_COMPLEX16,g,ir,id,RSDFT_MPI_COMPLEX16,comm,i)
 #endif
 #endif
   END SUBROUTINE z_rsdft_allgatherv22
@@ -603,10 +610,10 @@ CONTAINS
     include 'mpif.h'
 #ifdef _NO_MPI_INPLACE_
     allocate( t(size(f,1),size(f,2),size(f,3)) ) ; t=f
-    call MPI_ALLGATHERV(t,size(f),MPI_COMPLEX16,g,ir,id,MPI_COMPLEX16,comm,i)
+    call MPI_ALLGATHERV(t,size(f),RSDFT_MPI_COMPLEX16,g,ir,id,RSDFT_MPI_COMPLEX16,comm,i)
     deallocate( t )
 #else
-    call MPI_ALLGATHERV(f,size(f),MPI_COMPLEX16,g,ir,id,MPI_COMPLEX16,comm,i)
+    call MPI_ALLGATHERV(f,size(f),RSDFT_MPI_COMPLEX16,g,ir,id,RSDFT_MPI_COMPLEX16,comm,i)
 #endif
 #endif
   END SUBROUTINE z_rsdft_allgatherv33

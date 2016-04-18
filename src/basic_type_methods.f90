@@ -52,21 +52,30 @@ CONTAINS
   SUBROUTINE allocateGBKS( gbks )
     implicit none
     type( GBKSArray  ) ::  gbks
-    allocate( gbks%val(gbks%g_prange%head:gbks%g_prange%tail, gbks%b_prange%head:gbks%b_prange%tail, gbks%k_prange%head:gbks%k_prange%tail, gbks%s_prange%head:gbks%s_prange%tail) )
+    allocate( gbks%val(gbks%g_prange%head:gbks%g_prange%tail, &
+                       gbks%b_prange%head:gbks%b_prange%tail, &
+                       gbks%k_prange%head:gbks%k_prange%tail, &
+                       gbks%s_prange%head:gbks%s_prange%tail) )
     gbks%val = zero
   END SUBROUTINE allocateGBKS
 
   SUBROUTINE allocaterGBKS( gbks )
     implicit none
     type( rGBKSArray ) :: gbks
-    allocate( gbks%val(gbks%g_prange%head:gbks%g_prange%tail, gbks%b_prange%head:gbks%b_prange%tail, gbks%k_prange%head:gbks%k_prange%tail, gbks%s_prange%head:gbks%s_prange%tail) )
+    allocate( gbks%val(gbks%g_prange%head:gbks%g_prange%tail, &
+                       gbks%b_prange%head:gbks%b_prange%tail, &
+                       gbks%k_prange%head:gbks%k_prange%tail, &
+                       gbks%s_prange%head:gbks%s_prange%tail) )
     gbks%val = 0.d0
   END SUBROUTINE allocaterGBKS
 
   SUBROUTINE allocatecGBKS( gbks )
     implicit none
     type( cGBKSArray ) :: gbks
-    allocate( gbks%val(gbks%g_prange%head:gbks%g_prange%tail, gbks%b_prange%head:gbks%b_prange%tail, gbks%k_prange%head:gbks%k_prange%tail, gbks%s_prange%head:gbks%s_prange%tail) )
+    allocate( gbks%val(gbks%g_prange%head:gbks%g_prange%tail, &
+                       gbks%b_prange%head:gbks%b_prange%tail, &
+                       gbks%k_prange%head:gbks%k_prange%tail, &
+                       gbks%s_prange%head:gbks%s_prange%tail) )
     gbks%val = z0
   END SUBROUTINE allocatecGBKS
 

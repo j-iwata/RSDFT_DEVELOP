@@ -41,6 +41,7 @@ OMPFLAG   =
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_NO_MPI_COMPLEX16_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_QPRECISION_ $(CPP_FLAGS)
 ########################################################################
 ################################################# compiler & options ###
@@ -78,6 +79,13 @@ OMPFLAG   =
 #FFLAGS0 = -fastsse -O3 -tp shanghai-64 -mp -Mpreprocess
 #FFLAGS0 = -Mcuda
 #LFLAGS0 = -Mcuda=cc20
+########################################################################
+##### OPENMPI                                                      #####
+#FC = openmpif90
+#FFLAGS0 = -cpp
+#FFLAGS0 = -cpp -fcheck=all -fbacktrace
+#OMPFLAG= -fopenmp
+#LAPACK_L = -llapack -lblas
 ########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx

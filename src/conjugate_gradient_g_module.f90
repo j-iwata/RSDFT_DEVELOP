@@ -73,9 +73,9 @@ CONTAINS
 
     ML0 = ML_1-ML_0+1
 
-    mm  = ML0  ; if (TYPE_MAIN==mpi_complex16) mm=2*ML0
-    c1  = 2.d0 ; if (TYPE_MAIN==mpi_complex16) c1=1.d0
-    icmp= 1    ; if (TYPE_MAIN==mpi_complex16) icmp=2
+    mm  = ML0  ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) mm=2*ML0
+    c1  = 2.d0 ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) c1=1.d0
+    icmp= 1    ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) icmp=2
 
     Ncgtot = 0
     Nhpsi  = 0

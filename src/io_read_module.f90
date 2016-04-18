@@ -48,7 +48,7 @@ CONTAINS
     real(8),allocatable :: utmp(:), utmp3(:,:,:)
     real(4),allocatable :: utmpSP(:)
 #else
-    integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+    integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: utmp(:), utmp3(:,:,:)
     complex(4),allocatable :: utmpSP(:)
@@ -507,7 +507,7 @@ CONTAINS
 #ifdef _DRSDFT_
     call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
 #else
-    call mpi_bcast( unk,size(unk),MPI_COMPLEX16,0,comm_fkmb,ierr )
+    call mpi_bcast( unk,size(unk),RSDFT_MPI_COMPLEX16,0,comm_fkmb,ierr )
 #endif
 
     if ( DISP_SWITCH ) then

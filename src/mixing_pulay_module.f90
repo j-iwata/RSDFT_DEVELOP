@@ -3,7 +3,7 @@ MODULE mixing_pulay_module
   use fft_module
   use grid_module
   use bb_module
-  use parallel_module, only: comm_grid
+  use parallel_module, only: comm_grid, RSDFT_MPI_COMPLEX16
 
   implicit none
 
@@ -81,7 +81,7 @@ CONTAINS
     end do
     end do
 
-    call mpi_allreduce(A0,A1,mm,mpi_complex16,mpi_sum,comm,ierr)
+    call mpi_allreduce(A0,A1,mm,RSDFT_MPI_COMPLEX16,mpi_sum,comm,ierr)
 
     b1(1:mmix0) = (1.d0,0.d0)
     A0(:,:)     = A1(:,:)
@@ -185,7 +185,7 @@ CONTAINS
     end do
     end do
 
-    call mpi_allreduce(A0,A1,mm,mpi_complex16,mpi_sum,comm,ierr)
+    call mpi_allreduce(A0,A1,mm,RSDFT_MPI_COMPLEX16,mpi_sum,comm,ierr)
 
     b1(1:mmix0) = (1.d0,0.d0)
     A0(:,:)     = A1(:,:)

@@ -18,7 +18,7 @@ MODULE gram_schmidt_t_module
   real(8),allocatable :: utmp2(:,:),utmp(:)
   real(8),parameter :: zero=0.d0,one=1.d0
 #else
-  integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
   character(1),parameter :: TRANSA='C'
   character(1),parameter :: TRANSB='N'
   complex(8),allocatable :: utmp2(:,:),utmp(:)

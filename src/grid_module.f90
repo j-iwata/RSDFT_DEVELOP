@@ -162,8 +162,8 @@ CONTAINS
     complex(8),intent(IN)  :: zf(:)
     complex(8),intent(OUT) :: zg(:)
     integer :: ierr
-    call MPI_ALLGATHERV( zf, size(zf), MPI_COMPLEX16, zg, ir_grid, &
-                         id_grid, MPI_COMPLEX16, comm_grid, ierr )
+    call MPI_ALLGATHERV( zf, size(zf), RSDFT_MPI_COMPLEX16, zg, ir_grid, &
+                         id_grid, RSDFT_MPI_COMPLEX16, comm_grid, ierr )
   END SUBROUTINE zmpi_allgatherv_grid
 
 

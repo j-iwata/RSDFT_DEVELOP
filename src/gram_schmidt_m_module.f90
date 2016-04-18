@@ -13,7 +13,7 @@ MODULE gram_schmidt_m_module
   integer,parameter :: TYPE_MAIN=MPI_REAL8
   real(8) :: uu,vv
 #else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
   complex(8) :: uu,vv
 #endif
 
