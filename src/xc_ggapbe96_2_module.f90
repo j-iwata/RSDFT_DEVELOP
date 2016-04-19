@@ -188,8 +188,13 @@ CONTAINS
 
        do i=1,3
           rtmp(m1:m2)=rrrr(m1:m2,i)
+#ifdef _NO_QPRECISION_
+          call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real8 &
+               ,rrrr(1,i),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+#else
           call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real16 &
                ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
+#endif
        end do
 
        select case( SYStype )
@@ -417,8 +422,13 @@ CONTAINS
 
     do i=1,3
        rtmp(m1:m2)=rrrr(m1:m2,i)
+#ifdef _NO_QPRECISION_
+       call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real8 &
+            ,rrrr(1,i),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+#else
        call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real16 &
             ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
+#endif
     end do
 
     select case( SYStype )

@@ -1335,8 +1335,13 @@ CONTAINS
 
     do i=1,3
        rtmp0(m0:m1)=rtmp(m0:m1,i)
+#ifdef _NO_QPRECISION_
+       call MPI_ALLGATHERV( rtmp0(m0), m1-m0+1, MPI_REAL8, rtmp(1,i) &
+            , ir_grid, id_grid, MPI_REAL8, comm_grid, info )
+#else
        call MPI_ALLGATHERV( rtmp0(m0), m1-m0+1, MPI_REAL16, rtmp(1,i) &
             , ir_grid, id_grid, MPI_REAL16, comm_grid, info )
+#endif
     end do
 
     deallocate( rtmp0 )
