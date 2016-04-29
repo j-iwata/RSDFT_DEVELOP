@@ -50,7 +50,7 @@ SUBROUTINE check_disp_length( level, i )
   implicit none
   integer,intent(INOUT) :: level
   integer,intent(IN)    :: i
-  logical,save :: info_level=0
+  integer,save :: info_level=0
   if ( i == 0 ) then
      level = info_level
   else if ( i == 1 ) then
