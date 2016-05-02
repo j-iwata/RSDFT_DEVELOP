@@ -76,7 +76,7 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE(MPI_IN_PLACE,LLL,size(LLL),MPI_INTEGER,MPI_SUM,comm,i)
+    call rsdft_allreduce_sum( LLL, comm )
   END SUBROUTINE construct_map_3d_to_1d_grid
 
 
@@ -104,7 +104,7 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE(MPI_IN_PLACE,LLL,size(LLL),MPI_INTEGER,MPI_SUM,rgrid%comm,i)
+    call rsdft_allreduce_sum( LLL, rgrid%comm )
   END SUBROUTINE get_map_3d_to_1d_grid
 
 
@@ -128,7 +128,7 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE(MPI_IN_PLACE,LL,size(LL),MPI_INTEGER,MPI_SUM,comm,i)
+    call rsdft_allreduce_sum( LL, comm )
   END SUBROUTINE construct_map_1d_to_3d_grid
 
   SUBROUTINE get_map_3d_to_1d( LLL )
