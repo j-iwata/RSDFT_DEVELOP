@@ -128,7 +128,7 @@ CONTAINS
     time_nlpp(:,:)=0.0d0
     time_cgpc(:,:)=0.0d0
 
-    timecg_indx(1:7) = (/"hamil","dotp","allr","prec","init","deall","tot"/)
+    timecg_indx(1:7) = (/"hamil","dotp ","allr ","prec ","init ","deall","tot  "/)
 
     ML0 = ML_1-ML_0+1
 

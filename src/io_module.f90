@@ -287,15 +287,17 @@ CONTAINS
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
-          read(80) cbuf
+          read(80) cbuf(1:7)
+          rewind(80)
           if ( cbuf(1:7) == "version" ) then
+             read(80) cbuf
              write(*,*) "file format version: "//cbuf
              flag_versioned=.true.
           else
              flag_versioned=.false.
-             rewind(80)
           end if
           read(80) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
+          itmp=0
           itmp(1)=ML_tmp
           itmp(2)=ML1_tmp
           itmp(3)=ML2_tmp
@@ -323,14 +325,14 @@ CONTAINS
        if ( myrank==0 ) then
           read(80) LL_tmp(:,:)
           if ( flag_versioned ) then
+             read(80) cbuf
+             read(80)
+             read(80) cbuf
              read(80)
              read(80)
              read(80)
              read(80)
-             read(80)
-             read(80)
-             read(80)
-             read(80)
+             read(80) cbuf
              read(80) efermi
           end if
        end if
