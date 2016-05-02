@@ -73,7 +73,8 @@ CONTAINS
     end do
     end do
 
-    call mpi_allreduce(MPI_IN_PLACE,w1,n,mpi_real8,mpi_sum,comm_grid,ierr)
+    !call mpi_allreduce(MPI_IN_PLACE,w1,n,mpi_real8,mpi_sum,comm_grid,ierr)
+    call rsdft_allreduce_sum( w1(1:n), comm_grid )
 
     do j=1,MBC
     do i=j,MBC

@@ -2,6 +2,7 @@ MODULE calc_overlap_module
 
   use parallel_module
   use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -43,7 +44,8 @@ CONTAINS
 
     !call watcht(myrank==0,"calc_overlap(2)",1)
 
-    call mpi_allreduce(MPI_IN_PLACE,s,nme,mpi_real8,mpi_sum,comm_grid,ierr)
+    !call mpi_allreduce(MPI_IN_PLACE,s,nme,mpi_real8,mpi_sum,comm_grid,ierr)
+    call rsdft_allreduce_sum( s, comm_grid )
 
     !call watcht(myrank==0,"calc_overlap(3)",1)
 
