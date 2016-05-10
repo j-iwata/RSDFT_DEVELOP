@@ -11,6 +11,7 @@ MODULE force_local_fftw_module
   use fftw_module
   use watch_module
   use fft_module
+  use rsdft_mpi_module
   use,intrinsic :: iso_c_binding
 
   implicit none
@@ -163,8 +164,9 @@ CONTAINS
 
     call watch(ctt(4),ett(4))
 
-    call mpi_allreduce(MPI_IN_PLACE,fg,MG,MPI_COMPLEX16 &
-         ,MPI_SUM,comm_grid,ierr)
+    call rsdft_allreduce_sum( fg, comm_grid )
+!    call mpi_allreduce(MPI_IN_PLACE,fg,MG,MPI_COMPLEX16 &
+!         ,MPI_SUM,comm_grid,ierr)
 
     call watch(ctt(5),ett(5))
 
@@ -215,11 +217,13 @@ CONTAINS
 !    call destruct_Ggrid
 
     if ( nprocs <= MI ) then
-       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+       call rsdft_allgatherv( force(:,MI_0:MI_1), force, icnta, idisa, MPI_COMM_WORLD )
+!       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+!                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
     else
-       call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
-                         ,mpi_sum,mpi_comm_world,ierr)
+       call rsdft_allreduce_sum( force, MPI_COMM_WORLD )
+!       call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
+!                         ,mpi_sum,mpi_comm_world,ierr)
     end if
 
     call watch(ctt(8),ett(8))
