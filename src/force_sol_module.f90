@@ -24,6 +24,8 @@ CONTAINS
 !    real(8) :: ctt(0:4),ett(0:4)
 !    logical :: disp_sw
 
+    call write_border( 0, " calc_force_sol(start)" )
+
     force(:,:) = 0.d0
 
 !    ctt(:)=0.d0
@@ -63,6 +65,7 @@ CONTAINS
 !       write(*,*) "time(force2)",ctt(2)-ctt(1),ett(2)-ett(1)
 !       write(*,*) "time(force3)",ctt(3)-ctt(2),ett(3)-ett(2)
 !    end if
+    call write_border( 0, " calc_force_sol(end)" )
 
   END SUBROUTINE calc_force_sol
 

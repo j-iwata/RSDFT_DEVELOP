@@ -22,13 +22,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
-    integer :: a,ik,i,j,ierr,i1,i2,i3,j1,j2,j3,irank,n
+    integer :: a,ik,i,j,ierr,i1,i2,i3,j1,j2,j3,irank,n,n1,n2
     integer :: MG,ML,ML1,ML2,ML3,N_MI,MI_0,MI_1,MSP_0,MSP_1
     integer,allocatable :: icnt(:),idis(:)
-    real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr
-    complex(8),allocatable :: z0(:),z1(:,:,:),z2(:,:,:)
+    real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,Vcell
+    real(8),allocatable :: w1(:)
+    complex(8) :: zsum1,zsum2,zsum3,ztmp
+    complex(8),allocatable :: z1(:,:,:),zvxc(:),zvxc3(:,:,:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    real(8),allocatable :: w0(:),w1(:),w2(:,:,:)
     include 'mpif.h'
 
     force(:,:) = 0.0d0
@@ -39,6 +40,8 @@ CONTAINS
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
+
+    Vcell = ML*dV
 
 ! ---
 
@@ -60,51 +63,45 @@ CONTAINS
 
 ! ---
 
-    allocate( w2(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w2=0.0d0
-    allocate( w1(ML)                      ) ; w1=0.0d0
+    call init_fft
 
+    n     = size(Vxc,1)
+    n1    = Igrid(1,0)
+    n2    = Igrid(2,0)
     MSP_0 = id_spin(myrank_s) + 1
     MSP_1 = id_spin(myrank_s) + ir_spin(myrank_s)
-    n=size(Vxc,1)
-    allocate( w0(n) )
-    w0(:)=0.0d0
-    do j=MSP_0,MSP_1
-       w0(:) = w0(:) + Vxc(:,j)
-    end do
-    call rsdft_allreduce_sum( w0, comm_spin )
-    call mpi_allgatherv(w0,ir_grid(myrank_g),MPI_REAL8 &
-         ,w1,ir_grid,id_grid,MPI_REAL8,comm_grid,ierr)
-    deallocate( w0 )
 
-    i=0
-    irank=-1
-    do i3=1,node_partition(3)
-    do i2=1,node_partition(2)
-    do i1=1,node_partition(1)
-       irank=irank+1
-       do j3=pinfo_grid(5,irank),pinfo_grid(5,irank)+pinfo_grid(6,irank)-1
-       do j2=pinfo_grid(3,irank),pinfo_grid(3,irank)+pinfo_grid(4,irank)-1
-       do j1=pinfo_grid(1,irank),pinfo_grid(1,irank)+pinfo_grid(2,irank)-1
-          i=i+1
-          w2(j1,j2,j3)=w1(i)
-       end do ! i1
-       end do ! i2
-       end do ! i3
-    end do ! j1
-    end do ! j2
-    end do ! j3
+    allocate( w1(n1:n2) ) ; w1=0.0d0
+
+    do j=MSP_0,MSP_1
+       w1(n1:n2) = w1(n1:n2) + Vxc(n1:n2,j)
+    end do
+    call rsdft_allreduce_sum( w1(n1:n2), comm_spin )
+
+    call d1_to_z3_fft( w1, zvxc3 )
 
     deallocate( w1 )
+
+    call forward_fft( zvxc3, z1 )
+
+    if ( allocated(z1) ) deallocate( z1 )
+
+    call finalize_fft
 
 ! ---
 
     call construct_Ggrid(0)
 
-    call init_fft
+    allocate( zvxc(MG) ) ; zvxc=zero
 
-    allocate( z0(MG) ) ; z0=zero
-    allocate( z1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; z1=zero
-    allocate( z2(0:ML1-1,0:ML2-1,0:ML3-1) ) ; z2=zero
+    do i=1,MG
+       i1=mod(ML1+LLG(1,i),ML1)
+       i2=mod(ML2+LLG(2,i),ML2)
+       i3=mod(ML3+LLG(3,i),ML3)
+       zvxc(i) = conjg( zvxc3(i1,i2,i3) )
+    end do
+
+    if ( allocated(zvxc3) ) deallocate(zvxc3)
 
     do a=MI_0,MI_1
 
@@ -113,61 +110,31 @@ CONTAINS
        a2=pi2*aa_atom(2,a)
        a3=pi2*aa_atom(3,a)
 
+       zsum1=zero
+       zsum2=zero
+       zsum3=zero
        do i=1,MG
-          j=MGL(i)
-          Gr=a1*LLG(1,i)+a2*LLG(2,i)+a3*LLG(3,i)
-          z0(i)=cdcg(j,ik)*dcmplx(sin(Gr),cos(Gr))
-       end do
-
-       z1(:,:,:)=zero
-       do i=1,MG
-          i1=mod(ML1+LLG(1,i),ML1)
-          i2=mod(ML2+LLG(2,i),ML2)
-          i3=mod(ML3+LLG(3,i),ML3)
           Gx=bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i)
-          z1(i1,i2,i3) = Gx*z0(i)
-       end do
-       call backward_fft( z1, z2 )
-       force(1,a) = sum( w2(:,:,:)*z1(:,:,:) )*dV
-
-       z1(:,:,:)=zero
-       do i=1,MG
-          i1=mod(ML1+LLG(1,i),ML1)
-          i2=mod(ML2+LLG(2,i),ML2)
-          i3=mod(ML3+LLG(3,i),ML3)
           Gy=bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i)
-          z1(i1,i2,i3) = Gy*z0(i)
-       end do
-       call backward_fft( z1, z2 )
-       force(2,a) = sum( w2(:,:,:)*z1(:,:,:) )*dV
-
-       z1(:,:,:)=zero
-       do i=1,MG
-          i1=mod(ML1+LLG(1,i),ML1)
-          i2=mod(ML2+LLG(2,i),ML2)
-          i3=mod(ML3+LLG(3,i),ML3)
           Gz=bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i)
-          z1(i1,i2,i3) = Gz*z0(i)
+          Gr=a1*LLG(1,i)+a2*LLG(2,i)+a3*LLG(3,i)
+          j=MGL(i)
+          ztmp=cdcg(j,ik)*dcmplx(sin(Gr),cos(Gr))*zvxc(i)
+          zsum1=zsum1+Gx*ztmp
+          zsum2=zsum2+Gy*ztmp
+          zsum3=zsum3+Gz*ztmp
        end do
-       call backward_fft( z1, z2 )
-       force(3,a) = sum( w2(:,:,:)*z1(:,:,:) )*dV
+       force(1,a) = zsum1*Vcell
+       force(2,a) = zsum2*Vcell
+       force(3,a) = zsum3*Vcell
 
     end do ! a
 
-    deallocate( z2 )
-    deallocate( z1 )
-    deallocate( z0 )
-
-    call finalize_fft
-
     call destruct_Ggrid
 
-    deallocate( w2 )
+    deallocate( zvxc )
 
-    allocate( w2(3,Natom,1) ) ; w2=0.0d0
-    w2(1:3,MI_0:MI_1,1) = force(1:3,MI_0:MI_1)
-    call MPI_ALLREDUCE(w2,force,3*Natom,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
-    deallocate( w2 )
+    call rsdft_allreduce_sum( force, MPI_COMM_WORLD )
 
   END SUBROUTINE calc_ps_pcc_force
 
