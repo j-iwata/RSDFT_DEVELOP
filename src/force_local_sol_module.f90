@@ -12,6 +12,7 @@ MODULE force_local_sol_module
   use watch_module
   use fft_module
   use rsdft_mpi_module
+  use force_local_fftw_module
 
   implicit none
 
@@ -35,6 +36,8 @@ CONTAINS
     real(8),intent(OUT) :: force(3,Natom)
 #ifdef _FFTE_
     call calc_force_ps_local_ffte( Natom, force )
+#elif _FFTW_
+    call calc_force_local_fftw( Natom, force )
 #else
     call calc_force_ps_local( Natom, force )
 #endif
