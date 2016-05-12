@@ -245,7 +245,8 @@ CONTAINS
 
     call finalize_fft
 
-    deallocate( zwork1, zwork0 )
+    if ( allocated(zwork1) ) deallocate( zwork1 )
+    if ( allocated(zwork0) ) deallocate( zwork0 )
 
   END SUBROUTINE pulay_sub1_fft
 
@@ -266,7 +267,8 @@ CONTAINS
 
     call finalize_fft
 
-    deallocate( zwork0, zwork1 )
+    if ( allocated(zwork1) ) deallocate( zwork1 )
+    if ( allocated(zwork0) ) deallocate( zwork0 )
 
   END SUBROUTINE pulay_sub2_fft
        

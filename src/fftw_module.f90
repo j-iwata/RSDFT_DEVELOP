@@ -194,8 +194,8 @@ CONTAINS
     end do
     call fftw_mpi_execute_dft( plan_backward, zwork3_ptr0, zwork3_ptr1 )
     call rsdft_allgatherv( zwork3_ptr1, z3, ir, id, comm_fftw )
-    const=1.0d0/size(z3)
-    z3(:,:,:)=const*z3(:,:,:)
+    !const=1.0d0/size(z3)
+    !z3(:,:,:)=const*z3(:,:,:)
 #endif
   END SUBROUTINE backward_fftw
 
