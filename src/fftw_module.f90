@@ -92,10 +92,10 @@ CONTAINS
 !    m=ML1*ML2
 !    call mpi_allgather(m*N_ML3_c,1,MPI_INTEGER,ir,1,MPI_INTEGER,comm_fftw,ierr)
 !    call mpi_allgather(m*ML3_c0 ,1,MPI_INTEGER,id,1,MPI_INTEGER,comm_fftw,ierr)
-    ir(m) = ML1*ML2*N_ML3_c
-    id(m) = ML1*ML2*ML3_c0
-    call mpi_allgather(ir(m),1,MPI_INTEGER,ir,1,MPI_INTEGER,comm_fftw,ierr)
-    call mpi_allgather(id(m),1,MPI_INTEGER,id,1,MPI_INTEGER,comm_fftw,ierr)
+    i1 = ML1*ML2*N_ML3_c
+    i2 = ML1*ML2*ML3_c0
+    call mpi_allgather(i1,1,MPI_INTEGER,ir,1,MPI_INTEGER,comm_fftw,ierr)
+    call mpi_allgather(i2,1,MPI_INTEGER,id,1,MPI_INTEGER,comm_fftw,ierr)
 
     call write_border( 0, " init_fftw(end)" )
 #endif
