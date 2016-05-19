@@ -103,8 +103,8 @@ PROGRAM band_plot
 !------------------------------
 
   mbc = mbv + 1
-  mb1 = max(1,mbv-200)
-  mb2 = min(mbv+1000,mb)
+  mb1 = 1 !max(1,mbv-200)
+  mb2 = mb_max !min(mbv+1000,mb)
   evb = maxval( eval(1:mbv,1:nbk,:) )
   ecb = minval( eval(mbc:mb,1:nbk,:) )
 
