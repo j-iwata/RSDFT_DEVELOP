@@ -3,14 +3,12 @@
 !-----------------------------------------------------------------------
 
 subroutine alloc_md
-  use cpmd_variables, only: Rion,Rion0,Velocity,Force,MI
+  use cpmd_variables, only: Rion,Velocity,Force,MI
   implicit none 
   if ( .not.allocated(Rion) ) then
      allocate( Rion(3,MI) )
-     allocate( Rion0(3,MI) )
   end if
   Rion=0.0d0
-  Rion0=0.0d0
   allocate( Velocity(3,MI) ) ; Velocity=0.0d0
   allocate(    Force(3,MI) ) ; Force   =0.0d0
   return
@@ -21,7 +19,7 @@ end subroutine alloc_md
 subroutine dealloc_md
   use cpmd_variables
   implicit none 
-  deallocate(Rion0,Rion,Velocity,Force)
+  deallocate(Rion,Velocity,Force)
   return
 end subroutine dealloc_md
 

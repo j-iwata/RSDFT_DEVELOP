@@ -1,175 +1,143 @@
 MODULE blue_moon_module
 
   use parallel_module
-  use cpmd_variables, only: ia,ib,ic,cval,DT2BYM,DTB2MI &
-                           ,xlagr,ylagr,Rion0,Rion,anorm,fc,fv,Velocity &
-                           ,ipvt,nodim,mcnstr,ityp,dt,amu,pmass &
-                           ,index,cnpar,itime
+  use cpmd_variables, only: amu, pmass, dt, itime
   use atom_module, only: Natom, ki_atom, zn_atom
   use aa_module, only: aa
 
   implicit none
 
   PRIVATE
-  PUBLIC :: cpmdshake,rattle,write_blue_data,read_blue,gettau,solvs &
-           ,dealloc_blue,diffd,difft,funcd,funct,fillc,cnstfc,solve &
-           ,coornum,pbcdis
+  PUBLIC :: shake, rattle, write_blue_data, read_blue
+
+  real(8),allocatable :: xlagr(:), ylagr(:)
+  real(8),allocatable :: Rion0(:,:)
+  real(8),allocatable :: dtm3(:), dtm1(:)
+  integer,allocatable :: ia(:),ib(:),ic(:)
+  real(8),allocatable :: cval(:), cnpar(:,:)
+  real(8),allocatable :: anorm(:,:)
+  real(8),allocatable :: fc(:), fv(:)
+  integer,allocatable :: ipvt(:)
+  integer :: ityp, mcnstr, nodim
+  integer :: index(10)
 
 CONTAINS
 
-!==================================================================
-  SUBROUTINE cpmdshake
-!==--------------------------------------------------------------==
-!==  GENERAL CONSTRAINTS ON POSITIONS FOR VELOCITY VERLET        ==
-!==--------------------------------------------------------------==
+
+  SUBROUTINE shake( Rion, Velocity )
+
     implicit none
-    real(8) :: velp(3,Natom)
-!   Variables
+    real(8),intent(INOUT) :: Rion(:,:)
+    real(8),intent(INOUT) :: Velocity(:,:)
     integer,parameter :: maxrat=5000, mrdiis=5
+    integer :: i,j,iter,k,info,idiis,m,i_dim
+    integer,save :: istart1=0
     real(8),parameter :: tolf=1.d-7, tolx=1.d-8
-    real(8) :: vtest
     real(8) :: tau0(3,Natom),taup(3,Natom)
-    real(8) :: v(mrdiis+1),diism(mrdiis+1,mrdiis+1),cnmax,fact,errf,errx,xval
-    real(8) :: dasum,ddot,pm
+    real(8) :: v(mrdiis+1),diism(mrdiis+1,mrdiis+1),cnmax,fact,errf,errx
+    real(8) :: pm
     real(8) :: tscr(3,Natom),dx(nodim),asl(mcnstr,mcnstr)
     real(8) :: xlo(mcnstr,mrdiis),err(mcnstr,mrdiis)
     real(8) :: an0(nodim,mcnstr)
-    integer :: i,j,is,iter,k,info,idiis,m,i_dim
-    integer,save :: istart1
-    data      istart1 /0/
-!   SAVE      ISTART1,IP_TSCR,IP_DX,IP_ASL,IP_XLO,IP_ERR,IP_IPVT,IP_AN0
-!   LOGICAL   OLDSTATUS
-!==--------------------------------------------------------------==
-!   change constraint value according to growth rate
-!    do i=1,mcnstr
-!       cnsval(i)=cnsval(i)+grate(i)*dt
-!       if(cnsval_dest(i).ne.-999.d0) then
-!          if(grate(i).gt.0.d0.and.cnsval(i).gt.cnsval_dest(i)) then
-!             cnsval(i)=cnsval_dest(i) ! increase
-!          else if(grate(i).lt.0.d0.and.cnsval(i).lt.cnsval_dest(i)) then
-!             cnsval(i)=cnsval_dest(i) ! decrease
-!          endif
-!       endif
-!    enddo
 
-!GLOBAL: ylagr(alloc),xlagr(alloc),mcnstr,ipvt
-!GLOBAL: ia(alloc),ib(alloc),cval(alloc),istart
+    if ( mcnstr == 0 ) return
 
-!----------------------------------------------allocate and set !parameters
     if ( istart1 == 0 ) then
-       allocate( DT2BYM(nodim) )
-       allocate( DTB2MI(nodim) )
-!       allocate( pm_dim(nodim) )
+       allocate( Rion0(3,Natom) ) ; Rion0=0.0d0
+       allocate( dtm3(nodim)  ) ; dtm3=0.0d0
+       allocate( dtm1(Natom)  ) ; dtm1=0.0d0
        do i=1,Natom
           pm = pmass( zn_atom(ki_atom(i)) )*amu
-!          pm_dim(3*i-2)=pmass(iatom(i))*amu
-!          pm_dim(3*i-1)=pmass(iatom(i))*amu
-!          pm_dim(3*i)  =pmass(iatom(i))*amu
-!          DT2BYM(3*i-2)=(dt*dt)/pm_dim(3*i-2)
-!          DT2BYM(3*i-1)=(dt*dt)/pm_dim(3*i-1)
-!          DT2BYM(3*i)  =(dt*dt)/pm_dim(3*i)
-!          DTB2MI(3*i-2)=dt/(2.0d0*pm_dim(3*i-2))
-!          DTB2MI(3*i-1)=dt/(2.0d0*pm_dim(3*i-1))
-!          DTB2MI(3*i)  =dt/(2.0d0*pm_dim(3*i))
-          DT2BYM(3*i-2)=(dt*dt)/pm
-          DT2BYM(3*i-1)=(dt*dt)/pm
-          DT2BYM(3*i)  =(dt*dt)/pm
-          DTB2MI(3*i-2)=dt/(2.0d0*pm)
-          DTB2MI(3*i-1)=dt/(2.0d0*pm)
-          DTB2MI(3*i)  =dt/(2.0d0*pm)
+          dtm3(3*i-2)=dt/(2.0d0*pm)
+          dtm3(3*i-1)=dt/(2.0d0*pm)
+          dtm3(3*i)  =dt/(2.0d0*pm)
+          dtm1(i)    =dt/(2.0d0*pm)
        end do
-    end if
-    call dcopy(mcnstr,ylagr(1),1,xlagr(1),1) !point: YLAGR comes from Rattle
-    if ( istart1 == 0 ) then
        xlagr(:)=0.0d0
-       istart1=1
-    endif
-!--------------------------------------------------------------------------
+       istart1 =1
+    else
+       xlagr(:)=ylagr(:)
+    end if
 
-    tau0(:,:)=Rion0(:,:)
-    taup(:,:)=Rion(:,:)
+! ---
 
-    dx(:)=0.0d0
-    call cnstfc(tau0,dx) !point: TAU0 is position unrenewed
+    Rion0(:,:) = Rion(:,:)
+    Rion(:,:)  = Rion(:,:) + Velocity(:,:)*dt
 
-    call dcopy(mcnstr*nodim,anorm(1,1),1,an0(1,1),1)
-    xval=mcnstr
-! First guess for the force
+! ---
+
+    tau0(:,:) = Rion0(:,:)
+    taup(:,:) = Rion(:,:)
+
+    call calc_constraint( tau0, anorm, fc )
+
+    an0(:,:) = anorm(:,:)
+
     dx(:)=0.0d0
     do i=1,mcnstr
        do j=1,nodim
           dx(j)=dx(j)+xlagr(i)*an0(j,i)
        end do
     end do
-! Update the positions
-    tscr(:,:)=0.0d0
-    call gettau(tscr,dx)
-    do is=1,Natom
-       fact=-dt*DTB2MI(IS)
-       tau0(1,is)=taup(1,is)+fact*tscr(1,is)
-       tau0(2,is)=taup(2,is)+fact*tscr(2,is)
-       tau0(3,is)=taup(3,is)+fact*tscr(3,is)
+
+    call put_1d_to_2d( tscr, dx )
+    do i=1,Natom
+       fact=-dt*dtm1(i)
+       tau0(1:3,i)=taup(1:3,i)+fact*tscr(1:3,i)
     end do
 
-! Iterativ calculation of lambda
+! --- Iteration ---
 
     do iter=1,maxrat
 
-!      Calculate constraint function and forces
-!      for the current value of lambda
+       call calc_constraint( tau0, anorm, fc )
 
-       dx(:)=0.0d0
-       call cnstfc(tau0,dx)
+       fc(:)=-fc(:)
+       errf = sum( abs(fc) )
 
-       call dscal(mcnstr,-1.0d0,fc(1),1)
-       errf=dasum(mcnstr,fc(1),1)
+!       if ( myrank == 0 ) write(*,*) "ERRF--->", errf, iter
 
-       if ( myrank == 0 ) write(*,*) "ERRF--->", errf, iter
-!---------------------------------------------------------------------
        if ( errf < tolf ) then
           Rion(:,:)=tau0(:,:)
           goto 100
        end if
-!---------------------------------------------------------------------
-!      PERFORM DIIS CALCULATION
 
-!      Derivatives of sigma wrt lambda
+! --- DIIS CALCULATION ---
+
        do i=1,mcnstr
           do j=1,mcnstr
-             asl(i,j)=0.d0
+             asl(i,j)=0.0d0
              do k=1,nodim
-                asl(i,j)=asl(i,j)-dt*DT2BYM(k)*anorm(k,i)*an0(k,j)
+                asl(i,j)=asl(i,j)-2.0d0*dt*dt*dtm3(k)*anorm(k,i)*an0(k,j)
              end do
           end do
        end do
 
-!      Solve for asl*cg=fc
-!      LAPACK matrix solver
-       if ( nint(xval) == mcnstr ) then
-          info=0
-          call DGESV(mcnstr,1,asl,mcnstr,ipvt,fc,mcnstr,info)
-          if ( info /= 0 ) stop " ipmdshake|','error in dgesv"
-       else
-          call solvs(mcnstr,asl,fc)
-       end if
-       errx=dasum(mcnstr,fc(1),1)
-!      DIIS!
+       call DGESV(mcnstr,1,asl,mcnstr,ipvt,fc,mcnstr,info)
+       if ( info /= 0 ) stop "stop@shake(1)"
+
+       errx = sum( abs(fc) )
+
+! --- DIIS!
+
        idiis=mod(iter-1,mrdiis)+1
-       call dcopy(mcnstr,xlagr(1),1,xlo(1,idiis),1)
-       call dcopy(mcnstr,fc(1),1,err(1,idiis),1)
+       xlo(:,idiis)=xlagr(:)
+       err(:,idiis)=fc(:)
+
        if ( iter > mrdiis ) then
+
           m=mrdiis+1
           diism(:,:)=0.0d0
           v(:)=0.0d0
           do i=1,mrdiis
              do j=1,mrdiis
-                diism(i,j)=ddot(mcnstr,err(1,i),1,err(1,j),1)
+                diism(i,j)=sum( err(:,i)*err(:,j) )
              end do
-             diism(m,i)=1.d0
-             diism(i,m)=1.d0
+             diism(m,i)=1.0d0
+             diism(i,m)=1.0d0
           end do
-          v(m)=1.d0
-          call solve(diism,m,m,v)
+          v(m)=1.0d0
+          call least_square(diism,m,m,v)
           fc(:)=0.0d0
           xlagr(:)=0.0d0
           do i=1,mrdiis
@@ -178,484 +146,397 @@ CONTAINS
                 xlagr(j)=xlagr(j)+v(i)*xlo(j,i)
              end do
           end do
+
        end if
-       call DAXPY(mcnstr,1.0d0,fc(1),1,xlagr(1),1)
+
+       xlagr(:) = xlagr(:) + fc(:)
+
        if ( errx < tolx ) goto 100
-!      Update forces
+
+!--- Update forces
+
        dx(:)=0.0d0
        do i=1,mcnstr
           do j=1,nodim
              dx(j)=dx(j)+xlagr(i)*an0(j,i)
           end do
        end do
-!      Update the positions
-       tscr(:,:)=0.0d0
-       call gettau(tscr,dx)
-       do is=1,Natom
-          FACT=-dt*DTB2MI(IS)
-          tau0(1,is)=taup(1,is)+fact*tscr(1,is)
-          tau0(2,is)=taup(2,is)+fact*tscr(2,is)
-          tau0(3,is)=taup(3,is)+fact*tscr(3,is)
+
+!--- Update the positions
+
+       call put_1d_to_2d( tscr, dx )
+       do i=1,Natom
+          fact=-dt*dtm1(i)
+          tau0(1:3,i)=taup(1:3,i)+fact*tscr(1:3,i)
        end do
        Rion(:,:)=tau0(:,:)
-    end do
-    if ( myrank == 0 ) write(*,'(30a)') 'cpmdshake| did not converge!!!'
+
+    end do ! iter
+
+    if ( myrank == 0 ) write(*,'(30a)') 'shake| did not converge!!!'
+
     stop
 
 !   MODIFY THE VELOCITIIES
 
 100 continue
 
-    call dcopy(3*Natom,tau0(1,1),1,taup(1,1),1)
-!   Update velocities
     dx(:)=0.0d0
     do i=1,mcnstr
        do j=1,nodim
           dx(j)=dx(j)+xlagr(i)*an0(j,i)
        end do
     end do
-    tscr(:,:)=0.0d0
-    call gettau(tscr,dx)
-    velp(:,:)=Velocity(:,:)
-!   FIXME: add OpenMP?? AK
-    do is=1,Natom
-       fact=-DTB2MI(is)
-       velp(1,is)=velp(1,is)+fact*tscr(1,is)
-       velp(2,is)=velp(2,is)+fact*tscr(2,is)
-       velp(3,is)=velp(3,is)+fact*tscr(3,is)
+
+    call put_1d_to_2d( tscr, dx )
+
+    do i=1,Natom
+       Velocity(1:3,i) = Velocity(1:3,i) - dtm1(i)*tscr(1:3,i)
     end do
 
-    Velocity(:,:)=velp(:,:)
-!==--------------------------------------------------------------==
-    return
-  END SUBROUTINE cpmdshake
-!
+  END SUBROUTINE shake
 
-!==================================================================
-  SUBROUTINE rattle
-!==--------------------------------------------------------------==
-!==  GENERAL CONSTRAINTS ON VELOCITIES FOR VELOCITY VERLET       ==
-!==--------------------------------------------------------------==
+
+  SUBROUTINE rattle( Rion, Velocity )
+
     implicit none
-    real(8) :: tau0(3,Natom),velp(3,Natom)
-    real(8) :: tols,tolx
-    parameter (tols=1.d-12,tolx=1.d-8)
+    real(8),intent(IN) :: Rion(:,:)
+    real(8),intent(INOUT) :: Velocity(:,:)
+    real(8) :: tau0(3,Natom)
+    real(8),parameter :: tols=1.d-12, tolx=1.d-8
     real(8),allocatable :: aux(:) 
-    real(8) :: errx,cnmax,xval
-    real(8) :: dasum
+    real(8) :: errx,cnmax
     real(8) :: dx(nodim),dvv(nodim),asl(mcnstr,mcnstr)
-    external  dasum
     integer :: naux,i,j,k,info,nrank
-    logical :: oldstatus
-!==--------------------------------------------------------------==
 
     if ( mcnstr == 0 ) return
 
-! moved out of the if to keep in initialized (Joost) ...
-
-    naux=6*nodim+mcnstr
-    allocate( aux(naux) )
-
-    velp(:,:)=Velocity(:,:)
     tau0(:,:)=Rion(:,:) 
       
-    dx(:)=0.0d0
-    call cnstfc(tau0,dx)
-    call puttau(velp,dx)
+    call calc_constraint( tau0, anorm, fc )
+    call put_2d_to_1d( Velocity, dx )
     asl(:,:)=0.0d0
     do i=1,mcnstr
-       dvv(i)=0.d0
+       dvv(i)=0.0d0
        do j=1,nodim
           dvv(i)=dvv(i)+anorm(j,i)*dx(j)
        end do
        do j=1,mcnstr
           do k=1,nodim
-             asl(i,j)=asl(i,j)+anorm(k,i)*anorm(k,j)*DT2BYM(k)/dt/2.d0
+             asl(i,j)=asl(i,j)+anorm(k,i)*anorm(k,j)*dtm3(k)
           end do
        end do
     end do
+
+! ---
+
+    naux=6*nodim+mcnstr
+    allocate( aux(naux) )
 
     call DGELSS &
          (mcnstr,mcnstr,1,asl,mcnstr,dvv,mcnstr,fc,1.d-12,nrank,aux,naux,info)
     if ( info /= 0 ) stop "rattle','dgelss ended with info.ne.0"
 
+    deallocate( aux )
+
+! ---
+
     do i=1,mcnstr
        ylagr(i)=dvv(i)
     end do
     do j=1,nodim
-       dvv(j)=0.d0
+       dvv(j)=0.0d0
        do i=1,mcnstr
-          dvv(j)=dvv(j)-ylagr(i)*anorm(j,i)*DT2BYM(j)/dt/2.0d0
+          dvv(j)=dvv(j)-ylagr(i)*anorm(j,i)*dtm3(j)
        end do
     end do
     do j=1,nodim
        dx(j)=dx(j)+dvv(j)
     end do
-    call gettau(velp,dx)
 
-    Velocity(:,:)=velp(:,:)
+    call put_1d_to_2d( Velocity, dx )
 
-!   Check accuracy
+! ---
+
     do i=1,mcnstr
-       fc(i)=0.d0
+       fc(i)=0.0d0
        do j=1,nodim
           fc(i)=fc(i)+anorm(j,i)*dx(j)
        end do
     end do
-    errx=dasum(mcnstr,fc(1),1)
 
-    if ( errx > tolx ) stop ' rattle| CONSTRAINT CAN NOT BE FULFILLED'
+    errx = sum( abs(fc) )
+    if ( errx > tolx ) then
+       call stop_program( " rattle| CONSTRAINT CAN NOT BE FULFILLED" )
+    end if
 
-    deallocate( aux )
-!==--------------------------------------------------------------==
     return
   END SUBROUTINE rattle
-!==================================================================
 
 
-!==================================================================
-  SUBROUTINE gettau(tau1,xpar)
+  SUBROUTINE put_1d_to_2d( tau, xin )
     implicit none
-    real(8) ::  tau1(3,Natom),xpar(nodim)
+    real(8),intent(OUT) ::  tau(:,:)
+    real(8),intent(IN)  :: xin(:)
     integer :: j,k,i
-!==--------------------------------------------------------------==
     k=0
-    do i=1,Natom
-       do j=1,3
+    do i=1,size(tau,2)
+       do j=1,size(tau,1)
           k=k+1
-          tau1(j,i) = xpar(k)
+          tau(j,i) = xin(k)
        end do
     end do
-!==--------------------------------------------------------------==
-    return
-  END SUBROUTINE gettau
+  END SUBROUTINE put_1d_to_2d
 
-!==================================================================
-  SUBROUTINE puttau(tau1,xpar)
+
+  SUBROUTINE put_2d_to_1d( tau, xout )
     implicit none
-    real(8) ::  tau1(3,Natom),xpar(nodim)
+    real(8),intent(IN)  :: tau(:,:)
+    real(8),intent(OUT) :: xout(:)
     integer :: j,k,i
-!==--------------------------------------------------------------==
     k=0
-    do i=1,Natom
-       do j=1,3
+    do i=1,size(tau,2)
+       do j=1,size(tau,1)
           k=k+1
-          xpar(k) = tau1(j,i)
+          xout(k) = tau(j,i)
        end do
     end do
-!==--------------------------------------------------------------==
-    return
-  END SUBROUTINE puttau
+  END SUBROUTINE put_2d_to_1d
 
 
-!==================================================================
-  SUBROUTINE solvs(m,asl,fc_dum)
+  SUBROUTINE least_square(b,ldb,ndim,v)
+
     implicit none
-    integer :: m
-    real(8) :: asl(m,m),fc_dum(m)
-    integer,parameter :: mx=100
-    integer il(mx),i,n,info
-!==--------------------------------------------------------------==
-    if ( m > mx ) stop "solvs','mx'"
-    n=0
-    do i=1,m
-       if ( abs(asl(i,i)) > 1.d-12 ) then
-          n=n+1
-          il(i)=n
-          if ( i /= n ) then
-             call dcopy(m,asl(1,i),1,asl(1,n),1)
-             call dcopy(m,asl(i,1),m,asl(n,1),m)
-             fc_dum(n)=fc_dum(i)
-          end if
-       else
-          il(i)=0
-       end if
-    end do
-    info=0
-    call DGESV(n,1,asl,m,ipvt,fc_dum,m,info)
-    if ( info /= 0 ) stop "' solvs|','error in dgesv'"
-    call dcopy(n,fc_dum,1,asl,1)
-    do i=1,m
-       if ( il(i) /= 0 ) then
-          fc_dum(i)=asl(il(i),1)
-       else
-          fc_dum(i)=0.d0
-       end if
-    end do
-!==--------------------------------------------------------------==
-    return
-  END SUBROUTINE solvs
-!==================================================================
-!==================================================================
-  SUBROUTINE solve(b,ldb,ndim,v)
-!==--------------------------------------------------------------==
-    implicit none
-!   Arguments
     integer :: ldb,ndim, info
     real(8) :: b(:,:),v(:)
-!   Variables
     integer :: nr,lw
     integer,parameter :: maxdis=20
     integer,parameter ::mrdiis=5
     real(8) :: diism(mrdiis+1,mrdiis+1)
-    real(8) :: toleig
+    real(8) :: toleig=2.0d-16
     real(8) :: scr1(maxdis+1,maxdis+1),scr2(maxdis+1,maxdis+1)
-!==--------------------------------------------------------------==
-    if ( ndim > maxdis+1 ) then
-       write(*,*) 'solve! ndim=',ndim,' maxdis+1=',maxdis+1
-       write(*,*) 'SOLVE','MDIM GREATER THAN MAXDIS+1'
-       stop
-    end if
-    toleig=0.2d-15
-    lw=(maxdis+1)*(maxdis+1)
-    call dgelss(ndim,ndim,1,b,ldb,v,ldb,scr1,toleig,nr,scr2,lw,info)
-    if ( info /= 0 ) then
-       write(*,*) 'solve! info=',info
-       write(*,*) 'SOLVE','COULD NOT SOLVE DIIS EQUATION'
-       stop
-    end if
-    return
-  END SUBROUTINE solve
-!------------------------------------------------------------------------
-!------------------------------------------------------------------------
 
-  SUBROUTINE cnstfc(tau0,dxpar)
+    if ( ndim > maxdis+1 ) then
+       write(*,*) "ndim=",ndim," maxdis+1=",maxdis+1
+       call stop_program( "MDIM GREATER THAN MAXDIS+1" )
+    end if
+
+    lw=size( scr1 )
+    call dgelss(ndim,ndim,1,b,ldb,v,ldb,scr1,toleig,nr,scr2,lw,info)
+
+    if ( info /= 0 ) then
+       call stop_program( "COULD NOT SOLVE DIIS EQUATION(least_square)" )
+    end if
+
+  END SUBROUTINE least_square
+
+
+  SUBROUTINE calc_constraint( tau0, anorm, fc )
+
     implicit none
-    real(8) :: tau0(3,Natom)
-    real(8) :: dxpar(nodim)
+    real(8),intent(IN)  :: tau0(3,Natom)
+    real(8),intent(OUT) :: anorm(:,:), fc(:)
     real(8) :: x1(3),x2(3),x3(3),dx(9)
-    real(8) :: fcstr(nodim)
-    real(8) :: c_kappa,c_rc
-    real(8),allocatable :: askel(:,:,:)
+    real(8),allocatable :: msk(:,:,:)
     integer :: kmax,k,n,i,j,iaa,ibb,icc
     integer :: lskptr(3,Natom)
 
-    if ( mcnstr == 0 ) return
-
     anorm(:,:)=0.0d0
-    dx(:)=0.0d0
 
-    if ( ityp /= 4 .and. ityp /= 2 .and. ityp /= 6 ) then
-
-       stop "THIS TYPE OF CONSTRAINT HAS NOT BEEN IMPLIMENTED YET !!!"
-
-    else if ( ityp == 4 .or. ityp == 2 .or. ityp == 6 ) then
-
-       if ( ityp == 4 ) then
-          allocate( askel(nodim,mcnstr,6) )     !ASKEL for DIST!!!!!
-          do i=1,mcnstr
-!            ..distance
-             call fillc(ia(i),tau0,x1)             !a(i) is index for R1
-             call fillc(ib(i),tau0,x2)             !b(i) is index for R2
-             call pbc_correction( cval(i),x1,x2 )  !x1&x2 are modified by pbc
-             call funcd(fc(i),fv(i),cval(i),x1,x2) !FC and FV must be global
-             call diffd(dx,x1,x2)                  !derivative of sigma
-             kmax=6
-             do k=1,kmax
-                do n=1,nodim
-                   askel(:,:,:)=0.0d0
-                   iaa=(ia(i)-1)*3
-                   ibb=(ib(i)-1)*3
-                   askel(iaa+1,i,1)=1.0d0        !ASKEL for DIST!!!!
-                   askel(iaa+2,i,2)=1.0d0
-                   askel(iaa+3,i,3)=1.0d0
-                   askel(ibb+1,i,4)=1.0d0
-                   askel(ibb+2,i,5)=1.0d0
-                   askel(ibb+3,i,6)=1.0d0
-                   anorm(n,i)=anorm(n,i)+dx(k)*askel(n,i,k)  
-                end do
-             end do
-          end do
-          deallocate( askel )
-       end if
-
-       if ( ityp == 2 ) then
-          allocate( askel(nodim,mcnstr,9) )       !ASKEL for angle!!!!!
-          do i=1,mcnstr
-!            ..angle
-             call fillc(ia(i),tau0,x1)
-             call fillc(ib(i),tau0,x2)
-             call fillc(ic(i),tau0,x3)
-             call funct(fc(i),fv(i),cval(i),x1,x2,x3)
-             call difft(dx,x1,x2,x3)
-             kmax=9
-             do k=1,kmax
-                do n=1,nodim
-                   askel(:,:,:)=0.0d0
-                   iaa=(ia(i)-1)*3
-                   ibb=(ib(i)-1)*3
-                   icc=(ic(i)-1)*3
-                   askel(iaa+1,i,1)=1.0d0        !ASKEL for DIST!!!!
-                   askel(iaa+2,i,2)=1.0d0
-                   askel(iaa+3,i,3)=1.0d0
-                   askel(ibb+1,i,4)=1.0d0
-                   askel(ibb+2,i,5)=1.0d0
-                   askel(ibb+3,i,6)=1.0d0
-                   askel(icc+1,i,7)=1.0d0
-                   askel(icc+2,i,8)=1.0d0
-                   askel(icc+3,i,9)=1.0d0
-                   anorm(n,i)=anorm(n,i)+dx(k)*askel(n,i,k)
-                end do
-             end do
-          end do
-          deallocate( askel )
-       end if
-
-       if ( ityp == 6 ) then
-          allocate( askel(nodim,mcnstr,6) )
-          lskptr(:,:)=0
-          do i=1,Natom
-             do k=1,3
-                lskptr(k,i)=i*3-(3-k)
-             end do
-          end do
-          do i=1,mcnstr
-             c_kappa=cnpar(1,i)
-             c_rc   =cnpar(2,i)
-             call coornum(ia(i),c_kappa,c_rc,tau0 &
-                         ,anorm(:,i),lskptr,fc(i),fv(i),cval(i))
-          end do
-          deallocate( askel )
-       end if
-
-       do i=1,mcnstr
-          do j=1,nodim
-             fcstr(j)=fcstr(j)+xlagr(i)*anorm(j,i)
-          end do
-       end do
-       call daxpy(nodim,1.0d0,fcstr(1),1,dxpar(1),1)
-
+    if ( ityp /= 1 .and. ityp /= 2 .and. ityp /= 3 ) then
+       call stop_program( &
+            "THIS TYPE OF CONSTRAINT HAS NOT BEEN IMPLIMENTED YET !!!" )
     end if
 
-    return
-  END SUBROUTINE cnstfc
-!=======================================================================
+    select case( ityp )
+    case( 1 ) ! constraints on distances
 
-!==================================================================
-  SUBROUTINE fillc(iat,tau,x)
+       kmax=6
+
+       allocate( msk(nodim,mcnstr,kmax) ) ; msk=0.0d0
+
+       do i=1,mcnstr
+
+          x1(1:3)=tau0(1:3,ia(i))
+          x2(1:3)=tau0(1:3,ib(i))
+          call pbc_correction_distance( cval(i),x1,x2 )
+          call constraint_func_distance( fc(i),fv(i),cval(i),x1,x2 )
+          call diff_func_distance( dx,x1,x2 ) ! derivative of fc
+
+          iaa=(ia(i)-1)*3
+          ibb=(ib(i)-1)*3
+          msk(:,:,:)    =0.0d0 ! mask for relevant dof
+          msk(iaa+1,i,1)=1.0d0
+          msk(iaa+2,i,2)=1.0d0
+          msk(iaa+3,i,3)=1.0d0
+          msk(ibb+1,i,4)=1.0d0
+          msk(ibb+2,i,5)=1.0d0
+          msk(ibb+3,i,6)=1.0d0
+          do k=1,kmax
+             do n=1,nodim
+                anorm(n,i) = anorm(n,i) + dx(k) * msk(n,i,k)  
+             end do
+          end do
+
+       end do ! i
+
+       deallocate( msk )
+
+    case( 2 ) ! constraints on angles
+
+       kmax=9
+
+       allocate( msk(nodim,mcnstr,kmax) ) ; msk=0.0d0
+
+       do i=1,mcnstr
+
+          x1(:) = tau0(:,ia(i))
+          x2(:) = tau0(:,ib(i))
+          x3(:) = tau0(:,ic(i))
+
+          ! PBC correction may be necessary 
+          ! call pbc_correction_angle( ... )
+          call constraint_func_angle(fc(i),fv(i),cval(i),x1,x2,x3)
+          call diff_func_angle(dx,x1,x2,x3)
+
+          do k=1,kmax
+             do n=1,nodim
+                iaa=(ia(i)-1)*3
+                ibb=(ib(i)-1)*3
+                icc=(ic(i)-1)*3
+                msk(:,:,:)    =0.0d0
+                msk(iaa+1,i,1)=1.0d0
+                msk(iaa+2,i,2)=1.0d0
+                msk(iaa+3,i,3)=1.0d0
+                msk(ibb+1,i,4)=1.0d0
+                msk(ibb+2,i,5)=1.0d0
+                msk(ibb+3,i,6)=1.0d0
+                msk(icc+1,i,7)=1.0d0
+                msk(icc+2,i,8)=1.0d0
+                msk(icc+3,i,9)=1.0d0
+                anorm(n,i)=anorm(n,i)+dx(k)*msk(n,i,k)
+             end do
+          end do
+       end do
+       deallocate( msk )
+
+    case( 3 )
+
+       lskptr(:,:)=0
+       do i=1,Natom
+          do k=1,3
+             lskptr(k,i)=i*3-(3-k)
+          end do
+       end do
+
+       do i=1,mcnstr
+          call constraint_func_diff_Ncoordination &
+               ( ia(i), cnpar(1,i), cnpar(2,i), tau0 &
+                ,anorm(:,i), lskptr, fc(i), fv(i), cval(i) )
+       end do
+
+    end select
+
+  END SUBROUTINE calc_constraint
+
+
+  SUBROUTINE constraint_func_distance( fd, d, d0, x, y )
     implicit none
-    integer :: iat
-    real(8) ::  tau(3,Natom),x(3)
-    integer :: id,naa,ityp
-    x(1)=tau(1,iat)
-    x(2)=tau(2,iat)
-    x(3)=tau(3,iat)
-    return
-  END SUBROUTINE fillc
-!------------------------------------------------------------------------
-!------------------------------------------------------------------------
-  SUBROUTINE funcd(fd,d,R0,x,y)
-!   FUNCTION: R - R0  !Distance between x and y,fd becomes FC
+    real(8),intent(IN)  :: d0, x(3), y(3)
+    real(8),intent(OUT) :: d, fd
+    d  = sqrt( sum( (x-y)**2 ) )
+    fd = d - d0
+  END SUBROUTINE constraint_func_distance
+
+
+  SUBROUTINE constraint_func_angle( ft, t, t0, x,y,z )
     implicit none
-    real(8) :: d, fd, r0, x(3), y(3)
-    real(8) :: t3, t6, t9
-    t3 = (x(1)-y(1))**2
-    t6 = (x(2)-y(2))**2
-    t9 = (x(3)-y(3))**2
-    d  = sqrt(t3+t6+t9)
-    fd = d-R0
-    return
-  END SUBROUTINE funcd
-!-------------------------------------------------------------------------
-!-------------------------------------------------------------------------
-  SUBROUTINE funct(ft,t,T0,x,y,z)
-!   FUNCTION: COS(theta) - COS(theta0)
-    implicit none
-!   Argument variables
     real(8) :: ft, t, t0, x(3), y(3), z(3)
-!   Local variables
     real(8),parameter :: epsilon=1.d-12
-    real(8) :: ac, caa, cab, cbb, t1, t2, t3, t4, t5, t6
-    t1 = (x(1)-y(1))
-    t2 = (x(2)-y(2))
-    t3 = (x(3)-y(3))
-    t4 = (y(1)-z(1))
-    t5 = (y(2)-z(2))
-    t6 = (y(3)-z(3))
-    caa = t1*t1+t2*t2+t3*t3
-    cab = t1*t4+t2*t5+t3*t6
-    cbb = t4*t4+t5*t5+t6*t6
+    real(8) :: a(3), b(3), caa, cab, cbb, ac
+    a(1) = x(1)-y(1)
+    a(2) = x(2)-y(2)
+    a(3) = x(3)-y(3)
+    b(1) = y(1)-z(1)
+    b(2) = y(2)-z(2)
+    b(3) = y(3)-z(3)
+    caa = sum( a*a )
+    cab = sum( a*b )
+    cbb = sum( b*b )
     if ( caa < epsilon .or. cbb < epsilon ) then
-!      2 points at the same place (T.D. 16/12/1999).
-!      We give the desired value (T0) for satisfied constraint.
-!      ac=-cos(T0)
-       ft=0.D0
-       t = T0
+       ft=0.0d0
+       t =t0
     else
        ac = cab/sqrt(caa*cbb)
-       if ( ac < -1.D0 ) ac=-1.D0
-       if ( ac >  1.D0 ) ac= 1.D0
-       ft = ac+cos(T0)
+       if ( ac < -1.0d0 ) ac=-1.0d0
+       if ( ac >  1.0d0 ) ac= 1.0d0
+       ft = ac+cos(t0)
        t = acos(-ac)
     end if
     return
-  END SUBROUTINE funct
-!-------------------------------------------------------------------------
-!-------------------------------------------------------------------------
-  SUBROUTINE diffd(dR,x,y)
+  END SUBROUTINE constraint_func_angle
+
+
+  SUBROUTINE diff_func_distance( dr,r1,r2 )
     implicit none
-    real(8) :: dR(6),x(3),y(3)
+    real(8),intent(OUT) :: dr(6)
+    real(8),intent(IN) :: r1(3),r2(3)
     real(8),parameter :: epsilon=1.d-12
-    real(8) :: r, t3, t6, t9
-    t3 = (x(1)-y(1))
-    t6 = (x(2)-y(2))
-    t9 = (x(3)-y(3))
-    r  = sqrt(t3*t3+t6*t6+t9*t9)
+    real(8) :: r,x,y,z
+    x = r1(1) - r2(1)
+    y = r1(2) - r2(2)
+    z = r1(3) - r2(3)
+    r = sqrt( x*x + y*y + z*z )
     if ( r < epsilon ) then
-       dR(1) = 0.D0
-       dR(2) = 0.D0
-       dR(3) = 0.D0
-       dR(4) = 0.D0
-       dR(5) = 0.D0
-       dR(6) = 0.D0
+       dr(1) = 0.0d0
+       dr(2) = 0.0d0
+       dr(3) = 0.0d0
+       dr(4) = 0.0d0
+       dr(5) = 0.0d0
+       dr(6) = 0.0d0
     else
-       dR(1) =  t3/r
-       dR(2) =  t6/r
-       dR(3) =  t9/r
-       dR(4) = -t3/r
-       dR(5) = -t6/r
-       dR(6) = -t9/r
+       dr(1) =  x/r
+       dr(2) =  y/r
+       dr(3) =  z/r
+       dr(4) = -x/r
+       dr(5) = -y/r
+       dr(6) = -z/r
     end if
-    return
-  END SUBROUTINE diffd
-!--------------------------------------------------------------------------
-!--------------------------------------------------------------------------
-  SUBROUTINE difft(dT,x,y,z)
+  END SUBROUTINE diff_func_distance
+
+
+  SUBROUTINE diff_func_angle( dt,x,y,z )
     implicit none
-    real(8) :: dT(9), x(3), y(3), z(3)
+    real(8) :: dt(9), x(3), y(3), z(3)
     real(8),parameter :: epsilon=1.d-12
-    real(8) :: caa, cab, cbb, ccc, t1, t2, t3, t4, t5, t6
-    integer :: i
-    t1 = (x(1)-y(1))
-    t2 = (x(2)-y(2))
-    t3 = (x(3)-y(3))
-    t4 = (y(1)-z(1))
-    t5 = (y(2)-z(2))
-    t6 = (y(3)-z(3))
-    caa = t1*t1+t2*t2+t3*t3
-    cab = t1*t4+t2*t5+t3*t6
-    cbb = t4*t4+t5*t5+t6*t6
+    real(8) :: caa, cab, cbb, ccc, a(3), b(3)
+    a(1) = x(1)-y(1)
+    a(2) = x(2)-y(2)
+    a(3) = x(3)-y(3)
+    b(1) = y(1)-z(1)
+    b(2) = y(2)-z(2)
+    b(3) = y(3)-z(3)
+    caa = sum( a*a )
+    cab = sum( a*b )
+    cbb = sum( b*b )
     if ( caa < epsilon .or. cbb < epsilon ) then
-       do i=1,9
-          dT(i)=0.D0
-       end do
+       dt(:)=0.0d0
     else
-       ccc = -1.D0/sqrt(caa*cbb)
-       dT(1) =  ccc*(cab/caa*t1-t4)
-       dT(2) =  ccc*(cab/caa*t2-t5)
-       dT(3) =  ccc*(cab/caa*t3-t6)
-       dT(4) = -ccc*(cab/caa*t1-cab/cbb*t4+t1-t4)
-       dT(5) = -ccc*(cab/caa*t2-cab/cbb*t5+t2-t5)
-       dT(6) = -ccc*(cab/caa*t3-cab/cbb*t6+t3-t6)
-       dT(7) = -ccc*(cab/cbb*t4-t1)
-       dT(8) = -ccc*(cab/cbb*t5-t2)
-       dT(9) = -ccc*(cab/cbb*t6-t3)
+       ccc = -1.0d0/sqrt(caa*cbb)
+       dt(1) =  ccc*( cab/caa*a(1) - b(1) )
+       dt(2) =  ccc*( cab/caa*a(2) - b(2) )
+       dt(3) =  ccc*( cab/caa*a(3) - b(3) )
+       dt(4) = -ccc*( cab/caa*a(1) - cab/cbb*b(1) + a(1) - b(1) )
+       dt(5) = -ccc*( cab/caa*a(2) - cab/cbb*b(2) + a(2) - b(2) )
+       dt(6) = -ccc*( cab/caa*a(3) - cab/cbb*b(3) + a(3) - b(3) )
+       dt(7) = -ccc*( cab/cbb*b(1) - a(1) )
+       dt(8) = -ccc*( cab/cbb*b(2) - a(2) )
+       dt(9) = -ccc*( cab/cbb*b(3) - a(3) )
     end if
-    return
-  END SUBROUTINE difft
-!---------------------------------------------------------------------------
-!--------1---------2--------3---------4---------5---------6---------7--
-  SUBROUTINE pbc_correction( cnstr_dist, x, y )
+  END SUBROUTINE diff_func_angle
+
+
+  SUBROUTINE pbc_correction_distance( cnstr_dist, x, y )
     implicit none
     real(8),intent(IN) :: cnstr_dist
     real(8),intent(INOUT) :: x(3), y(3)
@@ -692,221 +573,217 @@ CONTAINS
     end do ! i3
     x(:)=xtmp(:)
     y(:)=ytmp(:)
-  END SUBROUTINE pbc_correction
-!----------------------------------------------------------------------
-!---------------------------------------------------------------------------
-  SUBROUTINE coornum(ia_dum,c1_kappa,c1_rc,tscr,an,lsk,fci,fvi,cval_dum)
-!==--------------------------------------------------------------==
+  END SUBROUTINE pbc_correction_distance
+
+
+  SUBROUTINE constraint_func_diff_Ncoordination &
+       ( ia_dum, kappa, rc, tscr, an, lsk, fci, fvi, cval_dum )
+
     implicit none
-    integer :: ia_dum,lsk(:,:)
-    real(8) ::  tscr(:,:),an(:),fci,fvi,cval_dum,c1_kappa,c1_rc,xx(3)
-    real(8) ::  x0,y0,z0,dx,dy,dz,dd,ff,df,fff
-    integer iat,k,l1,l2,l3
-    integer naa, jj,kx,jx,jy,jz,j,is,i
+    integer,intent(IN)  :: ia_dum, lsk(:,:)
+    real(8),intent(IN)  :: kappa, rc, cval_dum
+    real(8),intent(IN)  :: tscr(:,:)
+    real(8),intent(OUT) :: an(:),fci,fvi
+    real(8) :: x0,y0,z0,dx,dy,dz,dd,ff,df,fff
+    integer :: iat,i,k,l1,l2,l3
     real(8),save :: cval_save
-!==--------------------------------------------------------------==
+
     if ( ia_dum <= Natom ) then
        l1 = lsk(1,ia_dum)
        l2 = lsk(2,ia_dum)
        l3 = lsk(3,ia_dum)
-    endif
-    call fillc(ia_dum,tscr,xx)
-    x0 = xx(1)
-    y0 = xx(2)
-    z0 = xx(3)
-    fvi = 0.d0
+    end if
+
+    x0  = tscr(1,ia_dum)
+    y0  = tscr(2,ia_dum)
+    z0  = tscr(3,ia_dum)
+    fvi = 0.0d0
     dd  = 0.0d0
-    do iat=1,Natom
-!-------------------------------------------------------
+
+    loop_iat: do iat=1,Natom
+
        do i=1,10
-          if ( ki_atom(iat) == index(i) ) goto 101
-       enddo
-!-------------------------------------------------------
-       call pbcdis(tscr(:,iat),x0,y0,z0,dx,dy,dz,dd)
-!       dx=tscr(1,iat)-x0
-!       dy=tscr(2,iat)-Y0
-!       dz=tscr(3,iat)-z0
-!       dd=dsqrt(dx*dx+dy*dy+dz*dz)
+          if ( ki_atom(iat) == index(i) ) cycle loop_iat
+       end do
+
+       call pbc_distance( tscr(:,iat),x0,y0,z0, dx,dy,dz, dd )
+
        if ( dd > 1.d-2 ) then
-          df=c1_kappa*(dd-c1_rc)
-          fvi=fvi+1.d0/(dexp(df)+1.d0)
-          ff=-0.5d0*c1_kappa/(cosh(df)+1.d0)/dd
-          if ( lsk(1,iat) /= 0 ) then
-             k=lsk(1,iat)
-             an(k)=an(k)+ff*dx
-          endif
-          if ( lsk(2,iat) /= 0 ) then
-             k=lsk(2,iat)
-             an(k)=an(k)+ff*dy
-          endif
-          if ( lsk(3,iat) /= 0 ) then
-             k=lsk(3,iat)
-             an(k)=an(k)+ff*dz
-          end if
-          if ( l1 /= 0 ) an(l1)=an(l1)-ff*dx
-          if ( l2 /= 0 ) an(l2)=an(l2)-ff*dy
-          if ( l3 /= 0 ) an(l3)=an(l3)-ff*dz
+
+          df  = kappa*(dd-rc)
+          fvi = fvi + 1.0d0/( exp(df) + 1.0d0 )
+          ff  =-0.5d0*kappa/(cosh(df)+1.0d0)/dd
+
+          k=lsk(1,iat)
+          if ( k /= 0 ) an(k) = an(k) + ff*dx
+          k=lsk(2,iat)
+          if ( k /= 0 ) an(k) = an(k) + ff*dy
+          k=lsk(3,iat)
+          if ( k /= 0 ) an(k) = an(k) + ff*dz
+
+          if ( l1 /= 0 ) an(l1) = an(l1) - ff*dx
+          if ( l2 /= 0 ) an(l2) = an(l2) - ff*dy
+          if ( l3 /= 0 ) an(l3) = an(l3) - ff*dz
+
        end if
-!------------------------------------------------------
-101    continue
-!------------------------------------------------------
-    end do
-    if ( cval_dum == 999.9d0 .and. itime == 1 ) then
-       cval_save=fvi
-    end if
+
+    end do loop_iat
+
     if ( cval_dum == 999.9d0 ) then
-       fci=fvi-cval_save
+       if ( itime == 1 ) cval_save=fvi
+       fci = fvi - cval_save
     else
-       fci=fvi-cval_dum
+       fci = fvi - cval_dum
     end if
-    return
-  END SUBROUTINE coornum
-!-------------------------------------------------------------------------------
-!-------------------------------------------------------------------------------
-  SUBROUTINE pbcdis(target,x0,y0,z0,dx,dy,dz,dd)
+
+  END SUBROUTINE constraint_func_diff_Ncoordination
+
+
+  SUBROUTINE pbc_distance(target,x0,y0,z0,dx,dy,dz,dd)
     implicit none
-    integer :: fact1(27),fact2(27),fact3(27)
-    integer :: i
-    real(8) :: xx(27),yy(27),zz(27)
-    real(8) :: target(3,1)
-    real(8) :: d(27)
-    real(8) :: x0,y0,z0,dd,dx,dy,dz
+    real(8),intent(IN) :: target(3),x0,y0,z0
+    real(8),intent(OUT) :: dd,dx,dy,dz
+    integer :: i,fact1(27),fact2(27),fact3(27)
+    real(8) :: x,y,z,dd_try
 !           1 2 3 4 5 6 7 8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27      
     fact1=(/0,1,0,0,1,1,0,1,-1, 0, 0,-1, 1, 1,-1, 0, 0,-1,-1, 0, 1, 1,-1, 1,-1,-1,-1/)        
     fact2=(/0,0,1,0,1,0,1,1, 0,-1, 0, 1,-1, 0, 0,-1, 1,-1, 0,-1, 1,-1, 1,-1, 1,-1,-1/)        
     fact3=(/0,0,0,1,0,1,1,1, 0, 0,-1, 0, 0,-1, 1, 1,-1, 0,-1,-1,-1, 1, 1,-1,-1, 1,-1/)    
-    dd=0.0d0
-    dx=0.0d0
-    dy=0.0d0
-    dz=0.0d0
-!    write(*,*) "aa(1,1)--->", aa(1,1) 
-    do i=1,27             
-       xx(i)=target(1,1)-x0+fact1(i)*aa(1,1)+fact2(i)*aa(1,2)+fact3(i)*aa(1,3)
-       yy(i)=target(2,1)-y0+fact1(i)*aa(2,1)+fact2(i)*aa(2,2)+fact3(i)*aa(2,3)
-       zz(i)=target(3,1)-z0+fact1(i)*aa(3,1)+fact2(i)*aa(3,2)+fact3(i)*aa(3,3)
-    end do
 
-    do i=1,27
-       d(i)=DSQRT(xx(i)*xx(i)+yy(i)*yy(i)+zz(i)*zz(i))
-    enddo
-
-    dd=minval(d)
-
-    do i=1,27
-       if ( dd == d(i) ) then
-          dx=xx(i)
-          dy=yy(i)
-          dz=zz(i)
+    dd=1.d100
+    do i=1,27            
+       x=target(1)-x0+fact1(i)*aa(1,1)+fact2(i)*aa(1,2)+fact3(i)*aa(1,3)
+       y=target(2)-y0+fact1(i)*aa(2,1)+fact2(i)*aa(2,2)+fact3(i)*aa(2,3)
+       z=target(3)-z0+fact1(i)*aa(3,1)+fact2(i)*aa(3,2)+fact3(i)*aa(3,3)
+       dd_try = x*x + y*y + z*z
+       if ( dd_try < dd ) then
+          dx=x
+          dy=y
+          dz=z
+          dd=dd_try
        end if
     end do
 
-    return
-  END SUBROUTINE pbcdis
-!-----------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------
+  END SUBROUTINE pbc_distance
+
+
   SUBROUTINE read_blue
     implicit none
     integer :: i,ispecies
 
-    ia(:)=0
-    ib(:)=0
-    ic(:)=0
     index(:)=0
-    cval(:)=0.0d0
-    cnpar(:,:)=0.0d0
 
     if ( myrank == 0 ) then
 
        open(888,file='blue_control.dat')
        read(888,*) ityp
        read(888,*) mcnstr
-       if ( ityp == 4 ) then
+
+       allocate( ia(mcnstr)      ) ; ia=0
+       allocate( ib(mcnstr)      ) ; ib=0
+       allocate( ic(mcnstr)      ) ; ic=0
+       allocate( cval(mcnstr)    ) ; cval=0.0d0
+       allocate( cnpar(2,mcnstr) ) ; cnpar=0.0d0
+
+       select case( ityp )
+       case( 1 )
+
           read(888,*) (ia(i),i=1,mcnstr)
           read(888,*) (ib(i),i=1,mcnstr)
           read(888,*) (cval(i),i=1,mcnstr)
-       end if
-       if ( ityp == 2 ) then
+
+       case( 2 )
+
           read(888,*) (ia(i),i=1,mcnstr)
           read(888,*) (ib(i),i=1,mcnstr)
           read(888,*) (ic(i),i=1,mcnstr)
           read(888,*) (cval(i),i=1,mcnstr)
-       end if
-       if ( ityp == 6 ) then
+
+       case( 3 )
+
           read(888,*) ispecies
           read(888,*) (ia(i)     ,i=1,mcnstr)
           read(888,*) (cnpar(1,i),i=1,mcnstr)  !c_kappa
           read(888,*) (cnpar(2,i),i=1,mcnstr)  !c_rc
           read(888,*) (cval(i),i=1,mcnstr)
           read(888,*) (index(i),i=1,ispecies)
-       end if
+       end select
+
        close(888)
 
     end if
 
     call bcast_blue_data
 
-    return
   END SUBROUTINE read_blue
+
 
   SUBROUTINE bcast_blue_data 
     implicit none
     integer :: ierr
 
-    call mpi_bcast(ityp,1,mpi_integer,0,mpi_comm_world,ierr)
+    call mpi_bcast(ityp  ,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(mcnstr,1,mpi_integer,0,mpi_comm_world,ierr)
+
+    if ( .not.allocated(ia) ) then
+       allocate( ia(mcnstr)      ) ; ia=0
+       allocate( ib(mcnstr)      ) ; ib=0
+       allocate( ic(mcnstr)      ) ; ic=0
+       allocate( cval(mcnstr)    ) ; cval=0.0d0
+       allocate( cnpar(2,mcnstr) ) ; cnpar=0.0d0
+    end if
+
+! ---
 
 !   Bcast and allocation
 
-    if ( ityp == 4 ) then
-       write(*,*) "ityp--->",ityp,myrank
-       write(*,*) "mcnstr->",mcnstr,myrank
-       call mpi_bcast(ia(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(ib(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(cval(1),10,mpi_real8,0,mpi_comm_world,ierr)
-    end if
+    select case( ityp )
+    case( 1 )
 
-    if ( ityp == 2 ) then
-       write(*,*) "ityp--->",ityp,myrank
-       write(*,*) "mcnstr->",mcnstr,myrank
-       call mpi_bcast(ia(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(ib(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(ic(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(cval(1),10,mpi_real8,0,mpi_comm_world,ierr)
-    end if
+       call mpi_bcast(ia,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(ib,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(cval,mcnstr,mpi_real8,0,mpi_comm_world,ierr)
 
-    if ( ityp == 6 ) then
-       call mpi_bcast(ia(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(index(1),10,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(cnpar(1,1),20,mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(cval(1),10,mpi_real8,0,mpi_comm_world,ierr)
-    end if
+    case( 2 )
 
-    allocate( ylagr(mcnstr) )
-    allocate( xlagr(mcnstr) )
-    ylagr=0.0d0
-    xlagr=0.0d0
+       call mpi_bcast(ia,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(ib,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(ic,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(cval,mcnstr,mpi_real8,0,mpi_comm_world,ierr)
+
+    case( 3 )
+
+       call mpi_bcast(ia,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(index,size(index),mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(cnpar,size(cnpar),mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(cval,mcnstr,mpi_real8,0,mpi_comm_world,ierr)
+
+    end select
+
+    allocate( xlagr(mcnstr)       ) ; xlagr=0.0d0
+    allocate( ylagr(mcnstr)       ) ; ylagr=0.0d0
+    allocate( fc(mcnstr)          ) ; fc=0.0d0
+    allocate( fv(mcnstr)          ) ; fc=0.0d0
+    allocate( ipvt(mcnstr)        ) ; ipvt=0
     nodim=3*Natom
-    allocate(fc(mcnstr))
-    allocate(fv(mcnstr))
-    allocate(anorm(nodim,mcnstr))
-    allocate(ipvt(mcnstr))
+    allocate( anorm(nodim,mcnstr) ) ; anorm=0.0d0
 
     return
   END SUBROUTINE bcast_blue_data
 
-!----------------------------------------------------------------------------
 
   SUBROUTINE dealloc_blue
     implicit none
-    deallocate(ylagr)
-    deallocate(xlagr)
-    deallocate(ipvt)
-    deallocate(DT2BYM,DTB2MI)
-!    deallocate(pm_dim)
+    deallocate( ylagr  )
+    deallocate( xlagr  )
+    deallocate( ipvt   )
+    deallocate( dtm3 )
+    deallocate( dtm1 )
+    deallocate( Rion0  )
     return
   END SUBROUTINE dealloc_blue
-!----------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------
+
+
   SUBROUTINE write_blue_data(nfi)
     implicit none
     integer :: nfi,j
@@ -920,7 +797,8 @@ CONTAINS
     end if
     return
   END SUBROUTINE write_blue_data
-!----------------------------------------------------------------------------------------
+
+
 END MODULE blue_moon_module
 
 

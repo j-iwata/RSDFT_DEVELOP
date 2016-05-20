@@ -9,7 +9,7 @@ SUBROUTINE bomd
   use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,dt &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,linitnose,dtsuz,lbathnewe &
-                           ,lscaleele,Rion,Rion0,lscale,linitnosee,lblue &
+                           ,lscaleele,Rion,lscale,linitnosee,lblue &
                            ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
@@ -189,10 +189,11 @@ SUBROUTINE bomd
 
      call vcom( Velocity ) ! center of mass motion off
 
-     Rion0(:,:) = Rion(:,:)
-     Rion(:,:)  = Rion(:,:) + Velocity(:,:)*dt
-
-     if ( lblue ) call cpmdshake
+     if ( lblue ) then
+        call shake( Rion, Velocity )
+     else
+        Rion(:,:) = Rion(:,:) + Velocity(:,:)*dt
+     end if
 
      if ( lcpmd ) then
 
@@ -243,7 +244,7 @@ SUBROUTINE bomd
      Velocity(:,:) = Velocity(:,:) + Force(:,:)*dt2
 
      if ( lblue ) then ! Blue-Moon Method
-        call rattle
+        call rattle( Rion, Velocity )
         call write_blue_data(itime)
      end if
 

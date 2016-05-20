@@ -422,7 +422,12 @@ PROGRAM Real_Space_DFT
 
   case( 3 ) ! --- cpmd ---
 
-     call bomd
+     if ( SYStype == 0 ) then
+        call bomd
+     else
+        write(*,*) "MD for SYStype/=0 is not avaiable"
+        goto 900
+     end if
 
   end select
 

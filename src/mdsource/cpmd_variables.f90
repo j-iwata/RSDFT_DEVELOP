@@ -176,19 +176,20 @@ MODULE cpmd_variables
   character(30) :: FILE_WF2,FILE_WF
 !  include 'mpif.h'
 !--------------for blue-moon------------------------
-  real(8),allocatable :: ylagr(:),xlagr(:)
-  integer,allocatable :: ipvt(:)
-  real(8),allocatable :: DT2BYM(:),DTB2MI(:)
+!  real(8),allocatable :: ylagr(:),xlagr(:)
+!  integer,allocatable :: ipvt(:)
+!  real(8),allocatable :: DT2BYM(:),DTB2MI(:)
 !  real(8),allocatable :: pm_dim(:)
-  real(8),allocatable :: Rion0(:,:)
-  real(8),allocatable :: fc(:),fv(:)
-  real(8),allocatable :: anorm(:,:)
+!  real(8),allocatable :: Rion0(:,:)
+!  real(8),allocatable :: fc(:),fv(:)
+!  real(8),allocatable :: anorm(:,:)
   logical :: lblue
-  integer :: mcnstr,nodim,ityp
-  integer :: ia(10),ib(10),ic(10)
-  real(8) :: cnpar(2,10)
-  real(8) :: cval(10)
-  integer :: index(10)
+!  integer :: mcnstr,nodim,ityp
+!  integer :: ia(10),ib(10),ic(10)
+!  real(8) :: cnpar(2,10)
+!  real(8) :: cval(10)
+!  integer :: index(10)
+
   integer :: itime
   integer :: trjstep=1
 
