@@ -136,7 +136,7 @@ CONTAINS
   SUBROUTINE init0_band_unfold
 
     implicit none
-    real(8) :: pi2
+    real(8) :: pi2,x
     integer :: ibk,j,i,iktrj,loop
 
 ! --- k points in PC ---
@@ -162,6 +162,15 @@ CONTAINS
        kxyz_pc(2,iktrj) = sum( bb_pc(2,:)*kbb_pc(:,iktrj) )
        kxyz_pc(3,iktrj) = sum( bb_pc(3,:)*kbb_pc(:,iktrj) )
     end do
+
+    if ( disp_switch_parallel ) then
+       x=0.0d0
+       write(*,'(1x,i5,4f15.10)') 1,kbb_pc(:,1),x
+       do iktrj=2,nktrj_0
+          x=x+sqrt( sum((kxyz_pc(:,iktrj)-kxyz_pc(:,iktrj-1))**2) )
+          write(*,'(1x,i5,4f15.10)') iktrj, kbb_pc(:,iktrj), x
+       end do
+    end if
 
 ! --- corresponding k-points in SC ---
 
