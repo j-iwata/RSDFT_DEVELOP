@@ -36,8 +36,9 @@ MODULE bz_module
 
   type(bzinfo) :: bz_master
 
-  integer :: unit_out=20
+  integer :: unit_out=20, unit_in=21
   character(16) :: file_out="bz_info"
+  character(16) :: file_in=""
 
 CONTAINS
 
@@ -51,6 +52,7 @@ CONTAINS
     kbb0(1:3)=0.0d0
     npbz=0
     use_inversion=1
+    call IOTools_readStringKeyword( "FILEBZ", file_in )
     call IOTools_readIntegerKeyword( "NK", nk )
     call IOTools_readIntegerKeyword( "MMM1", mmm(:,1) )
     call IOTools_readIntegerKeyword( "MMM2", mmm(:,2) )
@@ -64,6 +66,11 @@ CONTAINS
     logical :: disp_switch
     integer :: i,k,k1,iw,iw0,iw1,m1,m2,m3,mm1,mm2,mm3,i1,i2,i3,p1(3),p2(3)
     integer,allocatable :: mm(:,:),m(:,:),w(:),map(:)
+
+    if ( file_in /= "" ) then
+       call read_from_file
+       return
+    end if
 
     if ( isymmetry > 0 ) then
        call generate_bz_sym
@@ -389,6 +396,46 @@ CONTAINS
     end do
     close(unit_out)
   END SUBROUTINE write_info_bz
+
+
+  SUBROUTINE read_from_file
+
+    implicit none
+    integer :: k,mrnk
+    integer,allocatable :: m(:,:),mm(:,:),map(:)
+    include 'mpif.h'
+
+    if ( file_in == "" ) return
+
+    call MPI_COMM_RANK( MPI_COMM_WORLD, mrnk, k )
+
+    if ( mrnk == 0 ) then
+       open(unit_in,file=file_in,status="old")
+       read(unit_in,*) Nbzsm
+       allocate( kbb(3,Nbzsm) ) ; kbb=0.0d0
+       do k=1,Nbzsm
+          read(unit_in,*) kbb(:,k)
+       end do
+       close(unit_in)
+    end if
+
+    call MPI_BCAST( Nbzsm, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, k )
+    if ( .not.allocated(kbb) ) then
+       allocate( kbb(3,Nbzsm) ) ; kbb=0.0d0
+    end if
+    call MPI_BCAST( kbb, size(kbb), MPI_REAL8, 0, MPI_COMM_WORLD, k )
+
+    allocate( weight_bz(Nbzsm) ) ; weight_bz=0.0d0
+
+    allocate( m(3,Nbzsm), mm(3,Nbzsm), map(Nbzsm) )
+    m=0 ; mm=0 ; map=0
+
+    call construct_bzinfo_master &
+         ( 1, Nbzsm, Nbzsm, m, mm, map, weight_bz, bz_master )
+
+    deallocate( map, mm, m )
+
+  END SUBROUTINE read_from_file
 
 
 END MODULE bz_module

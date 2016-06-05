@@ -15,6 +15,8 @@ CONTAINS
     integer :: n,k,s,Nspin,Nband
     real(8) :: sum0,d,Nel
 
+    if ( all(weight_bz==0.0d0) ) return
+
     call write_border( 80, " init_occ_electron(start)" )
 
     occ=0.0d0
