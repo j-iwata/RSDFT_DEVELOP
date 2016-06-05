@@ -8,6 +8,7 @@ MODULE band_unfold_module
   use wf_module, only: unk, esp
   use fft_module
   use rsdft_mpi_module
+  use bz_module, only: kbb
 
   implicit none
 
@@ -26,7 +27,7 @@ MODULE band_unfold_module
 
   real(8) :: ax_pc, aa_pc(3,3), bb_pc(3,3)
   real(8),allocatable :: kbb_pc(:,:),kxyz_pc(:,:)
-  real(8),allocatable :: kbb_0(:,:),kxyz_0(:,:),kbb(:,:)
+  real(8),allocatable :: kbb_0(:,:),kxyz_0(:,:),kbb_1(:,:)
   real(8),allocatable :: weight_uf(:,:,:)
 
 #ifdef _DRSDFT_
@@ -36,6 +37,8 @@ MODULE band_unfold_module
   integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
   complex(8),parameter :: zero=(0.0d0,0.0d0)
 #endif
+
+  integer :: job_ctrl=0
 
 CONTAINS
 
@@ -71,19 +74,23 @@ CONTAINS
   END SUBROUTINE read_band_unfold
 
 
-  SUBROUTINE init_band_unfold( nktrj_io, ktrj_out, unit_in, disp_switch )
+  SUBROUTINE init_band_unfold &
+       ( nktrj_io, ktrj_out, unit_in, disp_switch, job_ctrl_in )
 
     implicit none
     integer,intent(IN)  :: unit_in
     logical,intent(IN)  :: disp_switch
     integer,intent(INOUT) :: nktrj_io
     real(8),intent(OUT) :: ktrj_out(6,nktrj_io)
+    integer,optional,intent(IN) :: job_ctrl_in
     integer :: iktrj,MB,MS
 
     call write_border( 0, " init_band_unfold(start)" )
 
     unit_uf = unit_in
     if ( myrank == 0 ) open(unit_uf,file="band_ufld")
+
+    if ( present(job_ctrl_in) ) job_ctrl=job_ctrl_in
 
     aa_pc(:,:) = ax_pc*aa_pc(:,:)
 
@@ -94,7 +101,7 @@ CONTAINS
     call init0_band_unfold
 
     ktrj_out=0.0d0
-    ktrj_out(1:3,1:nktrj) = kbb(1:3,1:nktrj)
+    ktrj_out(1:3,1:nktrj) = kbb_1(1:3,1:nktrj)
 
     nktrj_io = nktrj
 
@@ -124,7 +131,7 @@ CONTAINS
        write(*,'(1x,a4,1x,10x,a10,10x,a4)') "iktrj","k'(SC)"," "
        do iktrj=1,nktrj
           write(*,'(1x,i4,1x,3f10.6,1x,i4)') &
-               iktrj,kbb(1:3,iktrj),count(map_ktrj(:,1)==iktrj)
+               iktrj,kbb_1(1:3,iktrj),count(map_ktrj(:,1)==iktrj)
        end do
     end if
 
@@ -144,18 +151,26 @@ CONTAINS
     allocate( kbb_pc(3,nktrj_0)  ) ; kbb_pc=0.0d0
     allocate( kxyz_pc(3,nktrj_0) ) ; kxyz_pc=0.0d0
 
-    j=0
-    do ibk=1,nbk
-       do i=0,nfki(ibk)-1
-          j=j+1
-          kbb_pc(1,j) = ak(1,ibk) + i*( ak(1,ibk+1) - ak(1,ibk) )/nfki(ibk)
-          kbb_pc(2,j) = ak(2,ibk) + i*( ak(2,ibk+1) - ak(2,ibk) )/nfki(ibk)
-          kbb_pc(3,j) = ak(3,ibk) + i*( ak(3,ibk+1) - ak(3,ibk) )/nfki(ibk)
-       end do ! i
-    end do ! ibk
-    kbb_pc(1,nktrj_0) = ak(1,nbk+1)
-    kbb_pc(2,nktrj_0) = ak(2,nbk+1)
-    kbb_pc(3,nktrj_0) = ak(3,nbk+1)
+    if ( job_ctrl == 2 ) then
+
+       kbb_pc(:,:) = kbb(:,:)
+
+    else
+
+       j=0
+       do ibk=1,nbk
+          do i=0,nfki(ibk)-1
+             j=j+1
+             kbb_pc(1,j) = ak(1,ibk) + i*( ak(1,ibk+1) - ak(1,ibk) )/nfki(ibk)
+             kbb_pc(2,j) = ak(2,ibk) + i*( ak(2,ibk+1) - ak(2,ibk) )/nfki(ibk)
+             kbb_pc(3,j) = ak(3,ibk) + i*( ak(3,ibk+1) - ak(3,ibk) )/nfki(ibk)
+          end do ! i
+       end do ! ibk
+       kbb_pc(1,nktrj_0) = ak(1,nbk+1)
+       kbb_pc(2,nktrj_0) = ak(2,nbk+1)
+       kbb_pc(3,nktrj_0) = ak(3,nbk+1)
+
+    end if
 
     do iktrj=1,nktrj_0
        kxyz_pc(1,iktrj) = sum( bb_pc(1,:)*kbb_pc(:,iktrj) )
@@ -202,21 +217,21 @@ CONTAINS
 
 ! ---
 
-    allocate( kbb(3,nktrj_0)      ) ; kbb=0.0d0
+    allocate( kbb_1(3,nktrj_0)    ) ; kbb_1=0.0d0
     allocate( map_ktrj(nktrj_0,2) ) ; map_ktrj=0
 
     nktrj=1
-    kbb(1:3,1)=kbb_0(1:3,1)
+    kbb_1(1:3,1)=kbb_0(1:3,1)
     map_ktrj(1,1)=1
     map_ktrj(1,2)=0
 
     do i=2,nktrj_0
        do j=1,nktrj
-          if ( all( abs(kbb_0(:,i)-kbb(:,j)) < 1.d-12 ) ) then
+          if ( all( abs(kbb_0(:,i)-kbb_1(:,j)) < 1.d-12 ) ) then
              map_ktrj(i,1)=j
              map_ktrj(i,2)=0
              exit
-          else if ( all( abs(kbb_0(:,i)+kbb(:,j)) < 1.d-12 ) ) then
+          else if ( all( abs(kbb_0(:,i)+kbb_1(:,j)) < 1.d-12 ) ) then
              map_ktrj(i,1)=j
              map_ktrj(i,2)=1
              exit
@@ -224,7 +239,7 @@ CONTAINS
        end do
        if ( j > nktrj ) then
           nktrj=nktrj+1
-          kbb(:,nktrj)=kbb_0(:,i)
+          kbb_1(:,nktrj)=kbb_0(:,i)
           map_ktrj(i,1)=j
           map_ktrj(i,2)=0
        end if

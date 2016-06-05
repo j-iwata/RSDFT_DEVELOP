@@ -278,11 +278,11 @@ PROGRAM Real_Space_DFT
         write(*,*) "sum(occ(up))  =",sum(occ(:,:,1))
         write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin))
      endif
-     do n=max(1,nint(Nelectron/2)-10),min(nint(Nelectron/2)+10,Nband)
-        do k=1,Nbzsm
-           write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
-        end do
-     end do
+     !do n=max(1,nint(Nelectron/2)-10),min(nint(Nelectron/2)+10,Nband)
+     !   do k=1,Nbzsm
+     !      write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
+     !   end do
+     !end do
   end if
 
 ! --- Initial setup for Hybrid XC functional ---
@@ -398,10 +398,10 @@ PROGRAM Real_Space_DFT
 ! --- BAND ---
 !
 
-  if ( iswitch_band == 1 ) then
+  if ( iswitch_band == 1 .or. iswitch_band == 2 ) then
      call control_xc_hybrid(1)
      call Init_IO( "band" )
-     call band(nint(Nelectron*0.5d0),disp_switch)
+     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
      call Init_IO( "" )
   end if
 

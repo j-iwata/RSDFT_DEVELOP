@@ -44,11 +44,13 @@ MODULE band_module
 CONTAINS
 
 
-  SUBROUTINE band( MBV_in, disp_switch )
+  SUBROUTINE band( MBV_in, disp_switch, job_ctrl_in )
 
     implicit none
     integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
+    integer,optional,intent(IN) :: job_ctrl_in
+    integer :: job_ctrl
     integer :: MBV,nktrj,i,j,k,s,n,ibz,ierr,iktrj,iter,Diter_band
     integer :: iktrj_0,iktrj_1,iktrj_2,iktrj_00,iktrj_tmp,ireq
     integer,allocatable :: ir_k(:),id_k(:)
@@ -80,16 +82,23 @@ CONTAINS
     if ( MBV < 1 .or. mb_band < MBV ) MBV=1
     if ( disp_switch_parallel ) write(*,*) "MBV=",MBV
 
+    job_ctrl = 0
+    if ( present(job_ctrl_in) ) job_ctrl=job_ctrl_in
+
 ! ---
 
-    nktrj = sum( nfki(1:nbk) )
-    if ( nktrj > 1 ) nktrj=nktrj+1
+    if ( job_ctrl == 2 ) then
+       nktrj = MBZ
+    else
+       nktrj = sum( nfki(1:nbk) )
+       if ( nktrj > 1 ) nktrj=nktrj+1
+    end if
 
     allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
 
     if ( iswitch_banduf ) then
 
-       call init_band_unfold( nktrj, ktrj, unit_band_ufld, disp_switch )
+       call init_band_unfold( nktrj,ktrj,unit_band_ufld,disp_switch,job_ctrl )
 
     else
 
