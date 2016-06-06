@@ -111,22 +111,34 @@ CONTAINS
   END SUBROUTINE constraint_force
 
 
-  SUBROUTINE get_fmax_force( fmax )
+  SUBROUTINE get_fmax_force( fmax, force_in )
     implicit none
     real(8),intent(OUT) :: fmax
+    real(8),optional,intent(IN) :: force_in(:,:)
     real(8),allocatable :: force(:,:)
+    if ( present(force_in) ) then
+       call get_fmax_force_sub( fmax, force_in )
+    else
+       allocate( force(3,Natom) ) ; force=0.0d0
+       call calc_force( Natom, force )
+       call get_fmax_force_sub( fmax, force )
+       deallocate( force )
+    end if
+  END SUBROUTINE get_fmax_force
+
+  SUBROUTINE get_fmax_force_sub( fmax, force )
+    implicit none
+    real(8),intent(OUT) :: fmax
+    real(8),intent(IN) :: force(:,:)
     real(8) :: ff
     integer :: a
-    allocate( force(3,Natom) ) ; force=0.0d0
-    call calc_force( Natom, force )
     fmax=-1.0d10
     do a=1,Natom
        ff=force(1,a)**2+force(2,a)**2+force(3,a)**2
        fmax=max(fmax,ff)
     end do
     fmax=sqrt(fmax)
-    deallocate( force )
-  END SUBROUTINE get_fmax_force
+  END SUBROUTINE get_fmax_force_sub
 
 
 END MODULE force_module

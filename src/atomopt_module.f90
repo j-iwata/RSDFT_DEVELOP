@@ -27,8 +27,9 @@ MODULE atomopt_module
   implicit none
 
   PRIVATE
-  PUBLIC :: ncycl,most,nrfr,okatom,eeps,feps,decr &
-           ,read_atomopt,atomopt,read_oldformat_atomopt
+  PUBLIC :: ncycl,most,nrfr,okatom,eeps,feps,decr
+  PUBLIC :: read_atomopt
+  PUBLIC :: atomopt
 
   integer :: ncycl,most,nrfr
   real(8) :: okatom,eeps,feps,decr
@@ -92,25 +93,6 @@ CONTAINS
   END SUBROUTINE read_atomopt
 
 
-  SUBROUTINE read_oldformat_atomopt(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) ncycl,most,nrfr,diter_opt
-       read(unit,*) okatom,eeps,feps,decr
-       write(*,*) "ncycl, most, nrfr =",ncycl,most,nrfr
-       write(*,*) "diter_opt         =",diter_opt
-       write(*,*) "okatom, eeps      =",okatom,eeps
-       write(*,*) "feps, decr        =",feps,decr
-       if ( diter_opt <= 0 ) then
-          diter_opt=50
-          write(*,*) "diter_opt         =",diter_opt
-       end if
-    end if
-    call send_atomopt
-  END SUBROUTINE read_oldformat_atomopt
-
-
   SUBROUTINE send_atomopt
     implicit none
     integer :: ierr
@@ -133,7 +115,7 @@ CONTAINS
     integer,parameter :: max_nhist=100000
     integer :: SCF_hist(max_nhist),ICY_hist(max_nhist)
     integer :: LIN_hist(max_nhist)
-    integer :: a,nhist,most0,ncycl0,ifar,ierr,icy,nhist0
+    integer :: a,nhist,most0,ncycl0,ncycl1,ifar,ierr,icy,nhist0
     integer :: i,itlin,amax,isafe,icflag,iter_final
     real(8) :: Fmax_hist(max_nhist),Etot_hist(max_nhist)
     real(8) :: dmax_hist(max_nhist)
@@ -151,7 +133,6 @@ CONTAINS
     if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
 
     call check_disp_switch( disp_switch_loc, 0 )
-!    call check_disp_switch( .false., 1 )
 
     ddmin  = 1.d-8
     safe   = 0.01d0
@@ -173,20 +154,14 @@ CONTAINS
        end if
 
        call calc_force( Natom, Force )
+       call get_fmax_force( Fmax, Force )
 
-       Fmax=0.d0
-       do a=1,Natom
-          ss=Force(1,a)**2+Force(2,a)**2+Force(3,a)**2
-          Fmax=max(Fmax,ss)
-       end do
-       Fmax=sqrt(Fmax)
-
-       Etot_save = 0.d0
+       Etot_save = 0.0d0
        dif       = 0.0d0
 
        nhist                = 1
        Etot_hist(nhist)     = Etot
-       alpha_hist(nhist)    = 0.d0
+       alpha_hist(nhist)    = 0.0d0
        Fmax_hist(nhist)     = Fmax
        SCF_hist(nhist)      = 0
        ICY_hist(nhist)      = 0
@@ -234,21 +209,14 @@ CONTAINS
        call mpi_bcast(hi,3*Natom,mpi_real8,0,mpi_comm_world,ierr)
        call mpi_bcast(aa_atom,3*Natom,mpi_real8,0,mpi_comm_world,ierr)
 
-       Fmax=0.d0
-       do a=1,Natom
-          ss=Force(1,a)**2+Force(2,a)**2+Force(3,a)**2
-          Fmax=max(Fmax,ss)
-       end do
-       Fmax=sqrt(Fmax)
+       call get_fmax_force( Fmax, Force )
 
        nhist = 0
 
     end if
 
     call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
-
-!    disp_switch = .false.
-!    disp_switch_parallel = .false.
+    if ( strlog == 3 .and. iswitch_opt < 2 ) call write_etot_force_log( 0,0, Etot, Force )
 
     dif0 = dif
 
@@ -262,11 +230,10 @@ CONTAINS
 ! -------------------- CG-loop start --------------------
 !
 
-    opt_ion : do icy=ncycl0,ncycl0+ncycl-1
+    ncycl1 = ncycl0 + ncycl - 1
 
-!       if ( disp_switch_loc ) then
-!          write(*,'(a57," ICY (",i5,")")') repeat("-",57),icy
-!       end if
+    opt_ion : do icy=ncycl0,ncycl1+1
+
        write(loop_info,'(" ICY    (",i5,")")') icy
        call write_border( 0, loop_info(1:len_trim(loop_info)) )
 
@@ -282,8 +249,8 @@ CONTAINS
 !
        if ( mod(icy-1,nrfr) == 0 ) then
 
-          gamma=0.d0
-          if ( icy>1 .and. disp_switch_loc ) then
+          gamma=0.0d0
+          if ( icy > 1 .and. disp_switch_loc ) then
              write(*,*) 'CG-direction is refreshed !!!'
           else
              if ( disp_switch_loc ) write(*,*) 'The first CG step !'
@@ -292,7 +259,7 @@ CONTAINS
        else
 
           gigi=sum(gi(:,:)*gi(:,:))
-          if ( gigi>0.d0 ) then
+          if ( gigi > 0.0d0 ) then
              gamma=sum((Force(:,:)-gi(:,:))*Force(:,:))/gigi
           end if
 
@@ -308,7 +275,7 @@ CONTAINS
        Etot_save = Etot
        hh        = sqrt( sum(hi(:,:)*hi(:,:)) )
        gh        = sum( gi(:,:)*hi(:,:) )
-       alpha     = 2.d0*abs(dif/gh)
+       alpha     = 2.0d0*abs(dif/gh)
        if ( dif == 0.0d0 ) alpha = 0.5d0
 
 !
@@ -439,10 +406,6 @@ CONTAINS
 
        linmin : do itlin=most0,most
 
-!          if ( disp_switch_loc ) then
-!             write(*,'(a57," ICY    (",i5,")")') repeat("-",57),icy
-!             write(*,'(a57," LINMIN (",i5,")")') repeat("-",57),itlin
-!          end if
           write(loop_info,'(" ICY    (",i5,")")') icy
           call write_border( 0, loop_info(1:len_trim(loop_info)) )
           write(loop_info,'(" LINMIN (",i5,")")') itlin
@@ -593,12 +556,14 @@ CONTAINS
              close(1)
           end if
 
+          if ( icy == ncycl1 + 1 ) exit opt_ion
+
 !
 ! --- Trial Configuration ---
 !                  
           if ( SYStype == 0 ) then
 
-             c0=alpha1/(2.d0*pi)
+             c0=alpha1/(2.0d0*pi)
              do a=1,Natom
                 c1=c0*hi(1,a)
                 c2=c0*hi(2,a)
@@ -696,6 +661,7 @@ CONTAINS
           iter_final=ierr
 
           call calc_force( Natom, Force )
+          call get_fmax_force( Fmax, Force )
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')
@@ -718,14 +684,7 @@ CONTAINS
 
           grad=sum( Force(1:3,1:Natom)*hi(1:3,1:Natom) )
 
-          Fmax=0.d0
-          do a=1,Natom
-             ss=Force(1,a)**2+Force(2,a)**2+Force(3,a)**2
-             Fmax=max(Fmax,ss)
-          end do
-          Fmax=sqrt( Fmax )
-
-          if ( (al(2)<Etot) .or. (grad<=0.d0) ) then
+          if ( (al(2)<Etot) .or. (grad<=0.0d0) ) then
              ifar  = 1
              arr(1:3) = ar(1:3)
              ar(1)    = alpha1
@@ -764,8 +723,10 @@ CONTAINS
              end do
           end if
 
-          call write_atomic_coordinates_log(97,icy,itlin,2,iswitch_opt)
-
+          if ( strlog >= 2 ) then
+             call write_atomic_coordinates_log(97,icy,itlin,strlog,iswitch_opt)
+             if ( strlog == 3 ) call write_etot_force_log(icy,itlin,Etot,Force)
+          end if
 !
 ! --- Convergence check 2 ---
 !
@@ -945,6 +906,23 @@ CONTAINS
     end if
 
   END SUBROUTINE write_atomic_coordinates_log  
+
+
+  SUBROUTINE write_etot_force_log( icy, itlin, Etot, Force )
+    implicit none
+    integer,intent(IN) :: icy, itlin
+    real(8),intent(IN) :: etot, force(:,:)
+    integer :: i
+    if ( myrank == 0 ) then
+       write(unit_strlog,'("#_Etot_and_Force_",a63," icy, itlin =",2(X,I3))') &
+            repeat("-",63),icy,itlin
+       write(unit_strlog,'("Etot(hartree)        :",f24.16)') Etot
+       write(unit_strlog,'("Force(Cartesian,hartree/bohr):")')
+       do i=1,size(Force,2)
+          write(unit_strlog,'(1x,3es22.10)') Force(:,i)
+       end do
+    end if
+  END SUBROUTINE write_etot_force_log
 
    
 END MODULE atomopt_module
