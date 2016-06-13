@@ -18,6 +18,7 @@ MODULE wf_module
   PUBLIC :: write_info_esp_wf
   PUBLIC :: wfrange
   PUBLIC :: allocate_b_wf, allocate_b_occ
+  PUBLIC :: referred_orbital
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -42,6 +43,7 @@ MODULE wf_module
   real(8),allocatable :: esp(:,:,:), esp0(:,:,:)
   real(8),allocatable :: occ(:,:,:)
   real(8),allocatable :: res(:,:,:)
+  logical,allocatable :: referred_orbital(:,:,:)
 
   integer :: ML_WF, ML_0_WF, ML_1_WF
   integer :: MB_WF, MB_0_WF, MB_1_WF
@@ -115,6 +117,7 @@ CONTAINS
     if ( allocated(res) ) deallocate(res)
     if ( allocated(esp) ) deallocate(esp)
     if ( allocated(unk) ) deallocate(unk)
+    if ( allocated(referred_orbital) ) deallocate(referred_orbital)
 
     allocate( unk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
     unk=zero
@@ -124,6 +127,8 @@ CONTAINS
     res=0.0d0
     allocate( occ(MB_WF,MK_WF,MS_WF) )
     occ=0.0d0
+    allocate( referred_orbital(MB_WF,MK_WF,MS_WF) )
+    referred_orbital=.true.
 
     call random_initial_wf
 !    call fft_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
@@ -339,6 +344,7 @@ CONTAINS
     format_string='(i4,i6,2(f20.15,2g13.5,1x))'
     do k=1,size(esp,2)
     do n=n1,n2
+       if ( all(.not.referred_orbital(n,k,:)) ) cycle
        i=0
        do s=1,size(esp,3)
           i=i+1 ; f(i)=esp(n,k,s)

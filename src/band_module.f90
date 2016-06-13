@@ -30,6 +30,7 @@ MODULE band_module
   use hsort_module
   use fermi_module, only: efermi
   use rsdft_mpi_module
+  use eigenvalues_module, only: control_eigenvalues
   
   implicit none
 
@@ -102,18 +103,22 @@ CONTAINS
 
     else
 
-       k=0
-       do i=1,nbk
-          dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
-          do j=1,nfki(i)
-             k=k+1
-             ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
-             ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+       if ( job_ctrl == 2 ) then
+          ktrj(1:3,1:nktrj) = kbb(1:3,1:MBZ)
+       else
+          k=0
+          do i=1,nbk
+             dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
+             do j=1,nfki(i)
+                k=k+1
+                ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
+                ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+             end do
           end do
-       end do
-       if ( nktrj > 1 ) then
-          ktrj(1:3,k+1) = ak(1:3,nbk+1)
-          ktrj(4:6,k+1) = 0.d0
+          if ( nktrj > 1 ) then
+             ktrj(1:3,k+1) = ak(1:3,nbk+1)
+             ktrj(4:6,k+1) = 0.0d0
+          end if
        end if
 
     end if
@@ -162,6 +167,14 @@ CONTAINS
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
     allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
     allocate( pxyz(3,MB,0:np_bzsm-1,MSP)     ) ; pxyz=0.d0
+
+! ---
+
+    do k=np_bzsm+1,Nbzsm
+       referred_orbital(:,k,:)=.false.
+    end do
+
+    call control_eigenvalues( .true. ) ! all eigenvalues routines are skipped
 
 ! ---
 
@@ -296,7 +309,7 @@ CONTAINS
           end if
           do n=1,mb2_band
              if ( disp_switch ) then
-                write(*,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
+                write(*,'(1x,i5,2x,2(1x,g22.15,1x,g15.5))') n &
            ,( esp_tmp(n,ibz,s),abs(esp_tmp(n,ibz,s)-esp0_tmp(n,ibz,s)),s=1,MSP )
              end if
              if ( myrank == 0 ) then
