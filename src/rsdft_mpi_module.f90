@@ -49,6 +49,8 @@ MODULE rsdft_mpi_module
   integer,parameter :: RSDFT_MPI_COMPLEX16=MPI_COMPLEX16
 #endif
 
+  integer :: ndiv_allreduce = 100
+
 CONTAINS
 
 !-------------------------------------------------- rsdft_allreduce_sum
@@ -182,12 +184,16 @@ CONTAINS
     include 'mpif.h'
     m=size(a,1)
     n=size(a,2)
+#ifdef _DIV_ALLREDUCE_
+    call allreduce_sub( m*n, comm, a, ndiv_allreduce )
+#else
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(m,n) ) ; a0=a
     call MPI_ALLREDUCE( a0, a, m*n, MPI_REAL8, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
     call MPI_ALLREDUCE(MPI_IN_PLACE,a,m*n,MPI_REAL8,MPI_SUM,comm,ierr)
+#endif
 #endif
 #endif
   END SUBROUTINE d_rsdft_allreduce_sum_2
@@ -204,12 +210,16 @@ CONTAINS
     include 'mpif.h'
     m=size(a,1)
     n=size(a,2)
+#ifdef _DIV_ALLREDUCE_
+    call allreduce_sub( 2*m*n, comm, a, ndiv_allreduce )
+#else
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(m,n) ) ; a0=a
     call MPI_ALLREDUCE( a0, a, m*n, RSDFT_MPI_COMPLEX16, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
     call MPI_ALLREDUCE(MPI_IN_PLACE,a,m*n,RSDFT_MPI_COMPLEX16,MPI_SUM,comm,ierr)
+#endif
 #endif
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_2
@@ -251,12 +261,16 @@ CONTAINS
     l=size(a,1)
     m=size(a,2)
     n=size(a,3)
+#ifdef _DIV_ALLREDUCE_
+    call allreduce_sub( l*m*n, comm, a, ndiv_allreduce )
+#else
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(l,m,n) ) ; a0=a
     call MPI_ALLREDUCE( a0, a, l*m*n, MPI_REAL8, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
     call MPI_ALLREDUCE(MPI_IN_PLACE,a,l*m*n,MPI_REAL8,MPI_SUM,comm,ierr)
+#endif
 #endif
 #endif
   END SUBROUTINE d_rsdft_allreduce_sum_3
@@ -274,12 +288,16 @@ CONTAINS
     l=size(a,1)
     m=size(a,2)
     n=size(a,3)
+#ifdef _DIV_ALLREDUCE_
+    call allreduce_sub( 2*l*m*n, comm, a, ndiv_allreduce )
+#else
 #ifdef _NO_MPI_INPLACE_
     allocate( a0(l,m,n) ) ; a0=a
     call MPI_ALLREDUCE( a0, a, l*m*n, RSDFT_MPI_COMPLEX16, MPI_SUM, comm, ierr )
     deallocate( a0 )
 #else
     call MPI_ALLREDUCE(MPI_IN_PLACE,a,l*m*n,RSDFT_MPI_COMPLEX16,MPI_SUM,comm,ierr)
+#endif
 #endif
 #endif
   END SUBROUTINE z_rsdft_allreduce_sum_3

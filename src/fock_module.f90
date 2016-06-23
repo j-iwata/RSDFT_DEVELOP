@@ -205,7 +205,7 @@ CONTAINS
 
     if ( present(SYStype_in) ) SYStype = SYStype_in
 
-!    if ( disp_switch_parallel ) write(*,*) "UpdateWF_fock"
+    call write_border( 1, " UpdateWF_fock(start)" )
 
 ! ---
 
@@ -240,26 +240,30 @@ CONTAINS
     end do ! s
 !#endif
 
-    m = size(unk_hf,1)*size(unk_hf,2)
+    call write_border( 1, " UpdateWF_fock(allreduce1)" )
+
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
        call rsdft_allreduce_sum( unk_hf(:,:,k,s), comm_band )
     end do ! k
     end do ! s
 
-    m = size(unk_hf,1)*size(unk_hf,2)*size(unk_hf,3)
+    call write_border( 1, " UpdateWF_fock(allreduce2)" )
+
     do s=MSP_0,MSP_1
        call rsdft_allreduce_sum( unk_hf(:,:,:,s), comm_bzsm )
     end do ! s
 
-    m = size( occ_hf,1 )
+    call write_border( 1, " UpdateWF_fock(allreduce3)" )
+
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
        call rsdft_allreduce_sum( occ_hf(:,k,s), comm_band )
     end do ! k
     end do ! s
 
-    m = size( occ_hf,1 )*size( occ_hf,2 )
+    call write_border( 1, " UpdateWF_fock(allreduce4)" )
+
     do s=MSP_0,MSP_1
        call rsdft_allreduce_sum( occ_hf(:,:,s), comm_bzsm )
     end do ! s
@@ -292,6 +296,8 @@ CONTAINS
 !       write(*,*) "time(fock_fft8)=",ct_fock_fft(8),et_fock_fft(8)
 !    end if
 
+    call write_border( 1, " UpdateWF_fock(end)" )
+
   END SUBROUTINE UpdateWF_fock
 
 
@@ -313,6 +319,8 @@ CONTAINS
        return
     end if
 #endif
+
+    call write_border( 1, " Fock_4(start)" )
 
     k = 1
 
@@ -419,8 +427,12 @@ CONTAINS
 
 ! ---
 
+    call write_border( 1, " Fock_4(allreduce)" )
+
     call rsdft_allreduce_sum( hunk(:,:,k,s), comm_band )
     call rsdft_allreduce_sum( hunk(:,:,k,s), comm_fkmb )
+
+    call write_border( 1, " Fock_4(end)" )
 
     return
 
@@ -436,6 +448,8 @@ CONTAINS
     integer :: m1,n1,m2,n2,m,n,i,j,k,nwork,iwork1,iwork2,ierr
     integer :: nwork_0,nwork_1
     integer,allocatable :: mapwork(:,:)
+
+    call write_border( 1, " Fock_4_Double(start)" )
 
     k = 1
 
@@ -557,8 +571,12 @@ CONTAINS
 
 ! ---
 
+    call write_border( 1, " Fock_4_Double(allreduce)" )
+
     call rsdft_allreduce_sum( hunk(:,:,k,s), comm_band )
     call rsdft_allreduce_sum( hunk(:,:,k,s), comm_fkmb )
+
+    call write_border( 1, " Fock_4_Double(end)" )
 
     return
 
@@ -575,6 +593,8 @@ CONTAINS
     real(8) :: c,ctt(0:3),ett(0:3)
     integer :: m,n,q,k,i,j,a,b,nwork,iwork,ierr,nwork_0,nwork_1
     integer,allocatable :: mapnk(:,:),mapwork(:,:)
+
+    call write_border( 1, " Fock_5(start)" )
 
     call watch(ctt(0),ett(0))
 
@@ -715,13 +735,19 @@ CONTAINS
 
 ! ---
 
+    call write_border( 1, " Fock_5(allreduce1)" )
+
     m=size( hunk,1 )*size( hunk,2 )
     do k=1,MBZ
        call rsdft_allreduce_sum( hunk(:,:,k,s), comm_band )
     end do
 
+    call write_border( 1, " Fock_5(allreduce2)" )
+
     m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
     call rsdft_allreduce_sum( hunk(:,:,:,s), comm_bzsm )
+
+    call write_border( 1, " Fock_5(allreduce3)" )
 
     m=size( hunk,1 )*size( hunk,2 )*size( hunk,3 )
     call rsdft_allreduce_sum( hunk(:,:,:,s), comm_fkmb )
@@ -744,6 +770,8 @@ CONTAINS
     deallocate( mapnk )
 
 ! ---
+
+    call write_border( 1, " Fock_5(end)" )
 
     return
 #endif
