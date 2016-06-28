@@ -3,6 +3,8 @@ MODULE fft_module
   use grid_module
   use rsdft_fft_module
   use fftw_module
+  use bb_module
+  use hsort_module
 
   implicit none
 
@@ -12,6 +14,7 @@ MODULE fft_module
   PUBLIC :: d1_to_z3_fft, z3_to_d1_fft
   PUBLIC :: z1_to_z3_fft, z3_to_z1_fft
   PUBLIC :: forward_fft, backward_fft
+  PUBLIC :: grid_util_fft
 
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3
@@ -167,6 +170,39 @@ CONTAINS
 !    call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
 !               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
   END SUBROUTINE backward_fft
+
+
+  SUBROUTINE grid_util_fft( gg, indx )
+    implicit none
+    real(8),allocatable,intent(INOUT) :: gg(:)
+    integer,allocatable,intent(INOUT) :: indx(:)
+    integer :: i1,i2,i3,j1,j2,j3,jj
+    real(8) :: gx,gy,gz
+    if ( .not.allocated(gg) ) allocate( gg(ML) )
+    if ( .not.allocated(indx) ) allocate( indx(ML) )
+    gg=0.0d0
+    do i3=-(ML3-1)/2,ML3/2
+    do i2=-(ML2-1)/2,ML2/2
+    do i1=-(ML1-1)/2,ML1/2
+       j1=mod(i1+ML1,ML1)
+       j2=mod(i2+ML2,ML2)
+       j3=mod(i3+ML3,ML3)
+       jj=1+j1+ML1*j2+ML1*ML2*j3
+       gx=bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3
+       gy=bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3
+       gz=bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3
+       gg(jj)=gx*gx+gy*gy+gz*gz
+    end do
+    end do
+    end do
+    call indexx( ML, gg, indx )
+!    write(*,*) minval(gg),maxval(gg)
+!    write(*,*) count(gg/=0.0d0),size(gg)
+!    do jj=1,ML
+!       write(*,*) jj,gg(jj),gg(indx(jj))
+!    end do
+!    stop
+  END SUBROUTINE grid_util_fft
 
 
 END MODULE fft_module
