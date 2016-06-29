@@ -105,7 +105,7 @@ CONTAINS
 
     nktrj_io = nktrj
 
-    call init1_band_unfold
+    call init1_band_unfold ! generate G-vectors of PC
 
     MB=sum(ir_band)
     MS=sum(ir_spin)
@@ -205,7 +205,7 @@ CONTAINS
           do loop=1,1000
              if ( kbb_0(i,iktrj) > 0.5d0 ) then
                 kbb_0(i,iktrj) = kbb_0(i,iktrj) - 1.0d0
-             else if ( kbb_0(i,iktrj) < -0.5d0 ) then
+             else if ( kbb_0(i,iktrj) <= -0.50001d0 ) then
                 kbb_0(i,iktrj) = kbb_0(i,iktrj) + 1.0d0
              else
                 exit
