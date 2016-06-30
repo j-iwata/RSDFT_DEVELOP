@@ -9,6 +9,7 @@ MODULE band_unfold_module
   use fft_module
   use rsdft_mpi_module
   use bz_module, only: kbb
+  use watch_module
 
   implicit none
 
@@ -245,6 +246,10 @@ CONTAINS
        end if
     end do
 
+    do i=1,nktrj
+       write(*,'(1x,i4,3f10.5)') i,kbb_1(:,i)
+    end do
+
   END SUBROUTINE init0_band_unfold
 
 
@@ -313,6 +318,7 @@ CONTAINS
     integer :: MB,MS,s,k,n,i,i1,i2,i3,ierr,LG_sc(3),iktrj
     integer,allocatable :: iktrj_2_k(:)
     real(8) :: vtmp(3),utmp(3),pi2,sum0
+    real(8) :: t1(2),t2(2)
 
     if ( .not.iswitch_banduf ) return
 
@@ -349,6 +355,8 @@ CONTAINS
     do iktrj=1,nktrj_0
 
        if ( map_ktrj(iktrj,1) /= jktrj ) cycle
+
+       call watchb( t1 )
 
        vtmp(:) = kxyz_0(:,iktrj) - kxyz_pc(:,iktrj)
        utmp(:) = matmul( vtmp, aa(:,:) )/pi2
@@ -394,6 +402,12 @@ CONTAINS
        end do ! n
        end do ! k
        end do ! s
+
+       call watchb( t2 )
+       if ( disp_switch_parallel ) then
+          write(*,'(1x,"iktrj/nktrj_0=",i4," /",i4 &
+                   ,4x,"time=",2f10.3)') iktrj,nktrj_0,t2-t1
+       end if
 
     end do ! iktrj
 

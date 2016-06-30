@@ -54,6 +54,7 @@ CONTAINS
     integer :: job_ctrl
     integer :: MBV,nktrj,i,j,k,s,n,ibz,ierr,iktrj,iter,Diter_band
     integer :: iktrj_0,iktrj_1,iktrj_2,iktrj_00,iktrj_tmp,ireq
+    integer :: nk,nksm,nkto
     integer,allocatable :: ir_k(:),id_k(:)
     real(8) :: dak(3),sum0,sum1,max_err,max_err0
     real(8),allocatable :: ktrj(:,:),pxyz(:,:,:,:)
@@ -88,8 +89,13 @@ CONTAINS
 
 ! ---
 
+    if ( job_ctrl == 3 ) then
+       call read_from_file_bz( "bz_info.band",kbb,weight_bz,nk,nksm,nkto )
+       job_ctrl = 2
+    end if
+
     if ( job_ctrl == 2 ) then
-       nktrj = MBZ
+       nktrj = size(kbb,2)
     else
        nktrj = sum( nfki(1:nbk) )
        if ( nktrj > 1 ) nktrj=nktrj+1
@@ -104,7 +110,7 @@ CONTAINS
     else
 
        if ( job_ctrl == 2 ) then
-          ktrj(1:3,1:nktrj) = kbb(1:3,1:MBZ)
+          ktrj(1:3,1:nktrj) = kbb(:,:)
        else
           k=0
           do i=1,nbk

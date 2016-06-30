@@ -398,7 +398,7 @@ PROGRAM Real_Space_DFT
 ! --- BAND ---
 !
 
-  if ( iswitch_band == 1 .or. iswitch_band == 2 ) then
+  if ( iswitch_band > 0 ) then
      call control_xc_hybrid(1)
      call Init_IO( "band" )
      call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
