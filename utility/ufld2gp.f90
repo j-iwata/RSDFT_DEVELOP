@@ -4,9 +4,11 @@ PROGRAM ufld2gp
   integer,parameter :: u1=1, u2=10, u3=11
   integer,parameter :: maxloop=1000000
   integer :: loop,ik,k,n,i,j,s,nk,nk0,nb,ns,ne,kmax
+  integer :: unit_conv=1
   character(5) :: cbuf
   character(128) :: cbuf_long
-  real(8),parameter :: aB=0.529177d0, HT=27.2116d0
+  real(8),parameter :: aB_=0.529177d0, HT_=27.2116d0
+  real(8) :: aB, HT
   real(8),allocatable :: kxyz_pc(:,:),kxyz_sc(:,:)
   real(8),allocatable :: esp(:,:,:), weight(:,:,:)
   real(8) :: emax,emin,e_mergin,eta,de,pi,f(2),e,x,dummy(4)
@@ -101,6 +103,19 @@ PROGRAM ufld2gp
   write(*,*) "ne, de=",ne,de
 
   write(*,*) "eta=",eta
+
+! ---
+
+  write(*,*) "Chose the unit [ 0: Hartree a.u.,  1: eV & angstrome^-1 ]"
+  read(*,*) unit_conv
+
+  if ( unit_conv == 0 ) then
+     aB=1.0d0
+     HT=1.0d0
+  else
+     aB=aB_
+     HT=HT_
+  end if
 
 ! ---
 
