@@ -23,6 +23,7 @@ MODULE atomopt_module
   use ps_prepNzqr_g_module, only: prepNzqr
   use vdw_grimme_module
   use efield_module
+  use atomopt_bfgs_module
 
   implicit none
 
@@ -43,6 +44,21 @@ MODULE atomopt_module
   integer,parameter :: unit97 = 97
 
 CONTAINS
+
+
+  SUBROUTINE atomopt( iswitch_opt )
+    implicit none
+    integer,intent(IN) :: iswitch_opt
+    select case( iswitch_opt )
+    case( 1, 2 )
+       call atomopt_cg( iswitch_opt )
+    case( 4 )
+       call atomopt_bfgs( SYStype, feps )
+    case default
+       write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
+       call stop_program("atomopt")
+    end select
+  END SUBROUTINE atomopt
 
 
   SUBROUTINE read_atomopt(rank,unit)
@@ -108,10 +124,11 @@ CONTAINS
   END SUBROUTINE send_atomopt
 
 
-  SUBROUTINE atomopt(iswitch_opt,disp_switch)
+!-------------------------------------------------- atomopt_cg
+
+  SUBROUTINE atomopt_cg( iswitch_opt )
     implicit none
     integer,intent(IN) :: iswitch_opt
-    logical,intent(INOUT) :: disp_switch
     integer,parameter :: max_nhist=100000
     integer :: SCF_hist(max_nhist),ICY_hist(max_nhist)
     integer :: LIN_hist(max_nhist)
@@ -130,7 +147,7 @@ CONTAINS
     real(8),allocatable :: gi(:,:),hi(:,:)
     character(22) :: loop_info
 
-    if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
+    call write_border( 0, " atomopt_cg(start)" )
 
     call check_disp_switch( disp_switch_loc, 0 )
 
@@ -649,7 +666,7 @@ CONTAINS
           call calc_E_vdw_grimme( aa_atom )
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
-          call calc_scf( disp_switch, ierr, diter_opt, feps, loop_info, Etot )
+          call calc_scf( disp_switch_loc,ierr,diter_opt,feps,loop_info,Etot )
 
           if ( ierr == -1 ) then
              if ( myrank == 0 ) write(*,*) "time limit !!!"
@@ -831,15 +848,16 @@ CONTAINS
        end do
     end if
 
-    call check_disp_switch( disp_switch_loc, 1 )
-    call check_disp_switch( disp_switch, 0 )
+!    call check_disp_switch( disp_switch_bak, 1 )
 
     deallocate( Force )
     deallocate( aa_atom_0, gi, hi )
 
+    call write_border( 1, " atomopt_cg(end)" )
+
     return
 
-  END SUBROUTINE atomopt
+  END SUBROUTINE atomopt_cg
 
 
   SUBROUTINE get_min_parabola(g1,g2,xmin,emin)

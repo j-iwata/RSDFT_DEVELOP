@@ -74,10 +74,11 @@ CONTAINS
   END SUBROUTINE read_force
 
 
-  SUBROUTINE calc_force( MI, force )
+  SUBROUTINE calc_force( MI, force, fmax )
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
+    real(8),optional,intent(OUT) :: fmax
 
     if ( flag_init ) call init_force
 
@@ -93,6 +94,8 @@ CONTAINS
     call sym_force ( MI, ki_atom, aa_atom, force )
 
     if ( Ntim > 0 ) call constraint_force( MI, force )
+
+    if ( present(fmax) ) call get_fmax_force( fmax, force )
 
   END SUBROUTINE calc_force
 

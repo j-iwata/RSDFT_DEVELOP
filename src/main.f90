@@ -45,12 +45,13 @@ PROGRAM Real_Space_DFT
 
   call init_io_tools( myrank, unit_input_parameters )
 
-! --- DISP_SWITCH ---
+! --- STDOUT and LOG control (ext0/write_info.f90) ---
 
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
 
   call check_disp_switch( DISP_SWITCH, 1 )
+  call check_log_switch( DISP_SWITCH, 1 )
 
   call IOTools_readIntegerKeyword( "INFOLEVEL", info_level )
 
@@ -414,9 +415,9 @@ PROGRAM Real_Space_DFT
 
      call test_force(SYStype)
 
-  case( 1,2 ) ! --- atomopt ---
+  case( 1,2,4 ) ! --- atomopt ---
 
-     call atomopt(iswitch_opt,disp_switch)
+     call atomopt( iswitch_opt )
 
      call calc_total_energy( recalc_esp, Etot, 6 )
 

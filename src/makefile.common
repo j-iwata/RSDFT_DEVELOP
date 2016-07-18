@@ -193,6 +193,7 @@ MODS1 = \
        force_mol_module.o\
        force_module.o\
        scf_module.o\
+       atomopt_bfgs_module.o\
        atomopt_module.o\
        global_variables.o\
        parameters_module.o\
