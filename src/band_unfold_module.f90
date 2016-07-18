@@ -101,6 +101,8 @@ CONTAINS
 
     call init0_band_unfold
 
+!    call possible_kpoints_in_PC( kbb_1 )
+
     ktrj_out=0.0d0
     ktrj_out(1:3,1:nktrj) = kbb_1(1:3,1:nktrj)
 
@@ -139,6 +141,94 @@ CONTAINS
     call write_border( 0, " init_band_unfold(end)" )
 
   END SUBROUTINE init_band_unfold
+
+
+  SUBROUTINE possible_kpoints_in_PC( ksc )
+    implicit none
+    real(8),intent(IN) :: ksc(:,:)
+    integer :: nksc,i1,i2,i3,k
+    real(8) :: q1,q2,q3,qxyz_sc(3),pi2,kpc(3)
+    real(8),allocatable :: kpc_0(:,:)
+    pi2=2.0d0*acos(-1.0d0)
+    nksc=size(ksc,2)
+    do k=1,nksc
+       do i3=-(Ngrid(3)-1)/2,Ngrid(3)/2
+       do i2=-(Ngrid(2)-1)/2,Ngrid(2)/2
+       do i1=-(Ngrid(1)-1)/2,Ngrid(1)/2
+          q1 = ksc(1,k) + i1
+          q2 = ksc(2,k) + i2
+          q3 = ksc(3,k) + i3
+          qxyz_sc(1) = bb(1,1)*q1 + bb(1,2)*q2 + bb(1,3)*q3
+          qxyz_sc(2) = bb(2,1)*q1 + bb(2,2)*q2 + bb(2,3)*q3
+          qxyz_sc(3) = bb(3,1)*q1 + bb(3,2)*q2 + bb(3,3)*q3
+          kpc(1) = sum( aa_pc(:,1)*qxyz_sc(:) )/pi2
+          kpc(2) = sum( aa_pc(:,2)*qxyz_sc(:) )/pi2
+          kpc(3) = sum( aa_pc(:,3)*qxyz_sc(:) )/pi2
+          call fold_into_primitive( kpc )
+!          if ( disp_switch_parallel ) write(*,'(1x,3f10.5)') kpc(:)
+          call store_independent_vectors( kpc, kpc_0 )
+       end do
+       end do
+       end do
+    end do ! k
+    do k=1,size(kpc_0,2)
+       if ( disp_switch_parallel ) write(*,'(1x,i8,3f15.5)') k,kpc_0(:,k)
+    end do
+    deallocate( kpc_0 )
+    call end_mpi_parallel
+    stop
+  END SUBROUTINE possible_kpoints_in_PC
+
+
+  SUBROUTINE store_independent_vectors( v, v0 )
+    implicit none
+    real(8),intent(IN) :: v(:)
+    real(8),allocatable,intent(INOUT) :: v0(:,:)
+    real(8),allocatable :: vtmp(:,:)
+    integer :: m,n,i
+    m=size( v )
+    if ( .not.allocated(v0) ) then
+       allocate( v0(m,1) ) ; v0=0.0d0
+       v0(:,1)=v(:)
+    else
+       n=size( v0, 2 )
+       do i=1,n
+          if ( all( abs(v-v0(:,i)) < 1.d-6 ) ) return
+       end do
+       allocate( vtmp(m,n) ) ; vtmp=0.0d0
+       vtmp=v0
+       deallocate( v0 )
+       allocate( v0(m,n+1) ) ; v0=0.0d0
+       v0(:,1:n)=vtmp
+       v0(:,n+1)=v
+       if ( disp_switch_parallel ) write(*,'(1x,i4,3f15.5)') n+1,v
+       deallocate( vtmp )
+    end if
+  END SUBROUTINE store_independent_vectors
+
+
+  SUBROUTINE fold_into_primitive( v )
+    implicit none
+    real(8),intent(INOUT) :: v(3)
+    integer,parameter :: maxloop=100000
+    integer :: i,loop
+    do i=1,3
+       do loop=1,maxloop
+          if ( v(i) > 0.5001d0 ) then
+             v(i) = v(i) - 1.0d0
+          else if ( v(i) <= -0.4999d0 ) then
+             v(i) = v(i) + 1.0d0
+          else
+             exit
+          end if
+       end do ! loop
+       if ( loop > maxloop ) then
+          write(*,*) i,v(i)
+          call end_mpi_parallel
+          stop "error!"
+       end if
+    end do
+  END SUBROUTINE fold_into_primitive
 
 
   SUBROUTINE init0_band_unfold
