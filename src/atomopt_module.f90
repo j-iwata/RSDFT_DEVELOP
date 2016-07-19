@@ -24,6 +24,7 @@ MODULE atomopt_module
   use vdw_grimme_module
   use efield_module
   use atomopt_bfgs_module
+  use atomopt_diis_module
 
   implicit none
 
@@ -53,6 +54,8 @@ CONTAINS
     case( 1, 2 )
        call atomopt_cg( iswitch_opt )
     case( 4 )
+       call atomopt_diis( SYStype, feps )
+    case( 5 )
        call atomopt_bfgs( SYStype, feps )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
