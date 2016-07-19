@@ -74,7 +74,7 @@ CONTAINS
        end do
     end if
 
-    call scf( etot, ierr )
+    call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
     call calc_force( ion%natom, ion%force, fmax )
 
     if ( fmax <= fmax_tol ) goto 900
@@ -125,7 +125,7 @@ CONTAINS
 
        call write_coordinates_atom( 97, 3 )
 
-       call scf( etot, ierr )
+       call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
        call calc_force( ion%natom, ion%force, fmax )
 
        if ( fmax <= fmax_tol ) goto 900
@@ -162,9 +162,10 @@ CONTAINS
        write(*,'(1x,"fmax/tol:",es12.5," /",es12.5)') fmax,fmax_tol
     end if
 
-    call check_disp_switch( disp_sw, 1 )
+999 call check_disp_switch( disp_sw, 1 )
     call write_border( 0, "atomopt_diis(end)" )
 
+    if ( allocated(history) ) deallocate( history )
     if ( allocated(x) ) deallocate( x )
     if ( allocated(g) ) deallocate( g )
 
