@@ -54,7 +54,7 @@ CONTAINS
     case( 1, 2 )
        call atomopt_cg( iswitch_opt )
     case( 4 )
-       call atomopt_diis( SYStype, feps )
+       call atomopt_diis( SYStype, feps, diter_opt )
     case( 5 )
        call atomopt_bfgs( SYStype, feps )
     case default

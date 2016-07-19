@@ -25,15 +25,17 @@ MODULE atomopt_diis_module
   logical :: disp_sw
   integer :: SYStype
   real(8) :: beta=0.5d0
+  integer :: NiterSCF
 
 CONTAINS
 
 
-  SUBROUTINE atomopt_diis( SYStype_in, fmax_tol )
+  SUBROUTINE atomopt_diis( SYStype_in, fmax_tol, NiterSCF_in )
 
     implicit none
     integer,intent(IN) :: SYStype_in
     real(8),intent(IN) :: fmax_tol
+    integer,optional,intent(IN) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa
     integer,parameter :: max_loop=50
@@ -48,7 +50,13 @@ CONTAINS
     call check_disp_switch( disp_sw, 0 )
     call check_disp_switch( .false., 1 )
 
+! ---
+
     SYStype = SYStype_in
+
+    NiterSCF = 50 ; if ( present(NiterSCF_in) ) NiterSCF=NiterSCF_in
+
+! ---
 
     call get_aa_lattice( aa )
     call get_inverse_lattice( aa%LatticeVector, aa_inv )
@@ -66,7 +74,7 @@ CONTAINS
        end do
     end if
 
-    call scf( etot )
+    call scf( etot, ierr )
     call calc_force( ion%natom, ion%force, fmax )
 
     if ( fmax <= fmax_tol ) goto 900
@@ -77,10 +85,11 @@ CONTAINS
     allocate( g(3,ion%natom,0:np) ) ; g=0.0d0
     allocate( x(3,ion%natom,0:np) ) ; x=0.0d0
 
-    allocate( history(0:max_loop,2) ) ; history=0.0d0
+    allocate( history(0:max_loop,3) ) ; history=0.0d0
 
     history(0,1) = etot
     history(0,2) = fmax
+    history(0,3) = ierr
 
 ! ---
 
@@ -116,17 +125,19 @@ CONTAINS
 
        call write_coordinates_atom( 97, 3 )
 
-       call scf( etot )
+       call scf( etot, ierr )
        call calc_force( ion%natom, ion%force, fmax )
 
        if ( fmax <= fmax_tol ) goto 900
 
        history(loop,1) = etot
        history(loop,2) = fmax
+       history(loop,3) = ierr
 
        if ( disp_sw ) then
           do i=0,loop
-             write(*,*) i, (history(i,j),j=1,2)
+             write(*,'(1x,i4,f20.10,es14.5,i4)') &
+                  i, (history(i,j),j=1,2), nint(history(i,3))
           end do
        end if
 
@@ -194,10 +205,10 @@ CONTAINS
   END SUBROUTINE diis
 
 
-  SUBROUTINE scf( etot )
+  SUBROUTINE scf( etot, ierr_out )
     implicit none
     real(8),intent(OUT) :: etot
-    integer :: ierr
+    integer,intent(OUT) :: ierr_out
 
     select case(SYStype)
     case default
@@ -228,7 +239,7 @@ CONTAINS
 
     end select
 
-    call calc_scf( .false., ierr, 50, Etot_out=etot )
+    call calc_scf( .false., ierr_out, NiterSCF, Etot_out=etot )
 
   END SUBROUTINE scf
 
