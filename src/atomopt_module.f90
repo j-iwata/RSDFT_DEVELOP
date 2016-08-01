@@ -910,8 +910,13 @@ CONTAINS
   SUBROUTINE write_atomic_coordinates_log(unit,icy,itlin,flag,iswitch_opt)
     implicit none
     integer, intent(IN) :: unit,icy,itlin,flag,iswitch_opt
+    character(8) :: fname
 
-    if ( myrank == 0 ) call write_coordinates_atom( unit, 3 )
+    if ( myrank == 0 ) then
+       write(fname,'(i3)') unit
+       fname="fort."//adjustl(fname)
+       call write_coordinates_atom( unit, 3, fname )
+    end if
 
     if ( strlog /= 0 .and. flag == strlog ) then
        if ( icy == 0 ) then

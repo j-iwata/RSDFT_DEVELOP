@@ -73,13 +73,19 @@ PROGRAM Real_Space_DFT
 
   call init_aa( aa_obj )
 
+  call backup_aa_lattice( aa_obj )
+
   if ( SYStype == 0 ) then
      call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
+     if ( myrank == 0 ) then
+        call write_coordinates_atom( 1, 3, "atomic_coordinates_aa_ini" )
+     end if
   else if ( SYStype == 1 ) then
      call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
+     if ( myrank == 0 ) then
+        call write_coordinates_atom( 1, 3, "atomic_coordinates_xyz_ini" )
+     end if
   end if
-
-  call backup_aa_lattice( aa_obj )
 
   call write_border( 0, " main( aa & bb )(end)" )
 

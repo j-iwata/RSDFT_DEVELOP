@@ -355,11 +355,14 @@ CONTAINS
   END SUBROUTINE shift_aa_coordinates_atom
 
 
-  SUBROUTINE write_coordinates_atom( unit, write_ctrl )
+  SUBROUTINE write_coordinates_atom( unit, write_ctrl, file_name )
     implicit none
     integer,intent(IN) :: unit, write_ctrl
+    character(*),optional,intent(IN) :: file_name
     integer :: a
     type(lattice) :: aa
+
+    if ( present(file_name) ) open(unit,file=file_name)
 
     if ( write_ctrl == 1 .or. write_ctrl == 3 ) then
        call get_aa_lattice( aa )
@@ -383,6 +386,8 @@ CONTAINS
                ki_atom(a),aa_atom(:,a),md_atom(a)
        end do
     end if
+
+    if ( present(file_name) ) close(unit)
 
   END SUBROUTINE write_coordinates_atom
 
