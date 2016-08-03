@@ -20,8 +20,10 @@ CONTAINS
     logical,intent(IN) :: disp_switch
     integer,intent(IN) :: k,s
     real(8) :: ct(5),et(5),ct0,et0,ct1,et1
+    type(time) :: t
 
     call write_border( 1, " subspace_diag_sl(start)" )
+    call start_timer( t )
 
     ct(:)=0.d0
     et(:)=0.d0
@@ -58,6 +60,7 @@ CONTAINS
 !!       write(*,'(1x,"time(diag_rotv2)",2g10.3)') ct(5),et(5)
 !    end if
 
+    call result_timer( t, "sd" )
     call write_border( 1, " subspace_diag_sl(end)" )
 
   END SUBROUTINE subspace_diag_sl

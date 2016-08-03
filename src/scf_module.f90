@@ -93,6 +93,7 @@ CONTAINS
     real(8) :: Ntot(4), sqerr_out(4)
     logical,external :: exit_program
     type(eigv) :: eval
+    type(time) :: tt
 
     call write_border( 0, "" )
     call write_border( 0, " SCF START -----------" )
@@ -155,6 +156,8 @@ CONTAINS
 
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
+
+       call start_timer( tt )
 
        call init_time_watch( etime )
        call init_time_watch( etime_lap(2) )
@@ -395,6 +398,8 @@ CONTAINS
 
        call write_data(disp_switch,flag_exit)
        call write_info_scf( (myrank==0) )
+
+       call result_timer( tt, "scf" )
 
        if ( flag_exit ) then
           call finalize_mixing

@@ -61,8 +61,11 @@ CONTAINS
     complex(8),intent(INOUT) :: unk(n1:n2,MB)
 #endif
     integer :: ipc
+    type(time) :: tt
 
     call write_border( 1, " conjugate_gradient(start)" )
+
+    call start_timer( tt )
 
     call init_cg
 
@@ -88,6 +91,8 @@ CONTAINS
        end select
 
     end if
+
+    call result_timer( tt, "cg" )
 
     call write_border( 1, " conjugate_gradient(end)" )
 

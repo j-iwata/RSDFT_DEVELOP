@@ -68,7 +68,7 @@ CONTAINS
     logical :: flag_end, flag_end1, flag_end2
     character(40) :: chr_iter
     character(22) :: add_info
-    type(time) :: etime
+    type(time) :: etime, tt
     type(eigv) :: eval
     logical,external :: exit_program
 
@@ -139,6 +139,7 @@ CONTAINS
 
        write(chr_iter,'(" sweep_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
+       call start_timer( tt )
 
        call init_time_watch( etime )
 
@@ -190,6 +191,8 @@ CONTAINS
        end if
 
        call write_data( disp_switch, flag_exit )
+
+       call result_timer( tt, "sweep" )
 
        if ( flag_exit ) exit
 

@@ -10,6 +10,7 @@ MODULE watch_module
   PUBLIC :: time_cgpc_indx, time_hmlt_indx, time_kine_indx, time_nlpp_indx
   PUBLIC :: time
   PUBLIC :: init_time_watch, calc_time_watch
+  PUBLIC :: start_timer, result_timer
 
   include 'mpif.h'
 
@@ -235,6 +236,35 @@ CONTAINS
     call mpi_allreduce( t%t0, t%tmin, 1, MPI_REAL8, MPI_MIN, comm, i )
     call mpi_allreduce( t%t0, t%tmax, 1, MPI_REAL8, MPI_MAX, comm, i )
   END SUBROUTINE calc_time_watch
+
+
+  SUBROUTINE start_timer( t )
+    implicit none
+    type(time),intent(OUT) :: t
+    include 'mpif.h'
+    call cpu_time( t%t0 )
+    t%t1 = mpi_wtime()
+  END SUBROUTINE start_timer
+
+
+  SUBROUTINE result_timer( t, indx )
+    implicit none
+    type(time),intent(INOUT) :: t
+    character(*),optional,intent(IN) :: indx
+    type(time) :: tnow
+    character(64) :: mesg
+    include 'mpif.h'
+    call cpu_time( tnow%t0 )
+    tnow%t1 = mpi_wtime()
+    t%t0 = tnow%t0 - t%t0
+    t%t1 = tnow%t1 - t%t1
+    if ( present(indx) ) then
+       write(mesg,'(1x,"time(",a,")=",2f10.4)') indx, t%t0, t%t1
+    else
+       write(mesg,'(1x,"time=",2f10.4)') t%t0, t%t1
+    end if
+    call write_string_log( mesg )
+  END SUBROUTINE result_timer
 
 
 END MODULE watch_module

@@ -69,11 +69,25 @@ END SUBROUTINE check_disp_length
 SUBROUTINE write_string( string )
   implicit none
   character(*),intent(IN) :: string
-  integer,save :: u0=6, u1=60
+  integer,save :: u0=6
   logical :: disp
   call check_disp_switch( disp, 0 )
   if ( disp ) write(u0,'(a)') string
 END SUBROUTINE write_string
+
+
+SUBROUTINE write_string_log( string )
+  implicit none
+  character(*),intent(IN) :: string
+  integer,save :: u1=60
+  logical :: flag
+  call check_log_switch( flag, 0 )
+  if ( flag ) then
+     open(u1,file="RSDFT_LOG",position="append")
+     write(u1,'(a)') string
+     close(u1)
+  end if
+END SUBROUTINE write_string_log
 
 
 SUBROUTINE write_int_and_real( format_string, m, fi, n, fr )

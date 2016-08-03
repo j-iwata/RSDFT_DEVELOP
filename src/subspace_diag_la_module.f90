@@ -38,8 +38,10 @@ CONTAINS
     real(8) :: rtmp(1)
     integer :: itmp(1)
     integer,allocatable :: ir(:),id(:)
+    type(time) :: t
 
     call write_border( 1, " subspace_diag_la(start)" )
+    call start_timer( t )
 
     n1  = ML_0
     n2  = ML_1
@@ -213,6 +215,7 @@ CONTAINS
     LWORK=max(LWORK,WORK1)
     LIWORK=max(LIWORK,WORK2)
 
+    call result_timer( t, "sd" )
     call write_border( 1, " subspace_diag_la(end)" )
 
     return
