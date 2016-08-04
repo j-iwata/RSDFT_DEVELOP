@@ -6,6 +6,7 @@ MODULE force_module
   use force_sol_module
   use force_mol_module
   use io_tools_module, only: IOTools_findKeyword, IOTools_readIntegerKeyword
+  use hpc_module
 
   implicit none
 
@@ -94,6 +95,7 @@ CONTAINS
     call sym_force ( MI, ki_atom, aa_atom, force )
 
     if ( Ntim > 0 ) call constraint_force( MI, force )
+    call force_projection_hpc( MI, force )
 
     if ( present(fmax) ) call get_fmax_force( fmax, force )
 
