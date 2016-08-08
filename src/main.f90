@@ -421,7 +421,7 @@ PROGRAM Real_Space_DFT
 
      call test_force(SYStype)
 
-  case( 1,2,4 ) ! --- atomopt ---
+  case( 1,2, 4: ) ! --- atomopt ---
 
      call atomopt( iswitch_opt )
 

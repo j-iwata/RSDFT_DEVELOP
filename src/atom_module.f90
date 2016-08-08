@@ -14,6 +14,7 @@ MODULE atom_module
   PUBLIC :: convert_to_aa_coordinates_atom
   PUBLIC :: convert_to_xyz_coordinates_atom
   PUBLIC :: write_coordinates_atom
+  PUBLIC :: shift_aa_coordinates_atom
 
   integer,parameter :: DP=kind(0.0d0)
 

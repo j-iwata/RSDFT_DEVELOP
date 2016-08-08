@@ -23,6 +23,7 @@ MODULE atomopt_module
   use ps_prepNzqr_g_module, only: prepNzqr
   use vdw_grimme_module
   use efield_module
+  use atomopt_rf_module
   use atomopt_bfgs_module
   use atomopt_diis_module
 
@@ -56,7 +57,9 @@ CONTAINS
     case( 4 )
        call atomopt_diis( SYStype, feps, diter_opt )
     case( 5 )
-       call atomopt_bfgs( SYStype, feps )
+       call atomopt_bfgs( SYStype, feps, diter_opt )
+    case( 6 )
+       call atomopt_rf( SYStype, feps, diter_opt )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
        call stop_program("atomopt")

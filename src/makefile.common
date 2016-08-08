@@ -196,6 +196,7 @@ MODS1 = \
        scf_module.o\
        atomopt_diis_module.o\
        atomopt_bfgs_module.o\
+       atomopt_rf_module.o\
        atomopt_module.o\
        global_variables.o\
        parameters_module.o\
