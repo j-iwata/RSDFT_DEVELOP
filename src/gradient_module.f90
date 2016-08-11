@@ -11,6 +11,7 @@ MODULE gradient_module
   PRIVATE
   PUBLIC :: gradient, construct_gradient, destruct_gradient &
            ,gradient16, construct_gradient16, destruct_gradient16
+  PUBLIC :: calc_gradient
 
   integer,parameter :: DP=kind(0.0d0)
 #ifdef _NO_QPRECISION_
@@ -223,6 +224,81 @@ CONTAINS
     deallocate( grad%gy )
     deallocate( grad%gx )
   END SUBROUTINE destruct_gradient16
+
+
+  SUBROUTINE calc_gradient( ixyz, rgrid, func, grad )
+
+    implicit none
+    integer,intent(IN) :: ixyz
+    type( grid ),intent(IN) :: rgrid
+    real(DP),intent(IN)  :: func(:)
+    real(DP),intent(OUT) :: grad(:)
+    type(fd) :: nabla
+    type(lattice) :: aa,bb
+    integer :: i,i1,i2,i3,m,Md
+    real(DP) :: g1,g2,g3,pi2,b(3,3),c(3)
+
+! ---
+
+    call construct_nabla_fd( nabla )
+
+    Md = nabla%md
+
+! ---
+
+    call get_aa_lattice( aa )
+    call get_reciprocal_lattice( aa, bb )
+    pi2      = 2.0d0*acos(-1.0d0)
+    b(1:3,1) = aa%Length(1)*bb%LatticeVector(1:3,1)/( pi2*rgrid%spacing(1) )
+    b(1:3,2) = aa%Length(2)*bb%LatticeVector(1:3,2)/( pi2*rgrid%spacing(2) )
+    b(1:3,3) = aa%Length(3)*bb%LatticeVector(1:3,3)/( pi2*rgrid%spacing(3) )
+
+    select case( ixyz )
+    case( 1 )
+       c(:) = b(1,:)
+    case( 2 )
+       c(:) = b(2,:)
+    case( 3 )
+       c(:) = b(3,:)
+    end select
+
+! ---
+
+    www(:,:,:,:)=0.0d0
+
+    i=0
+    do i3=rgrid%g3%z%head,rgrid%g3%z%tail
+    do i2=rgrid%g3%y%head,rgrid%g3%y%tail
+    do i1=rgrid%g3%x%head,rgrid%g3%x%tail
+       i=i+1
+       www(i1,i2,i3,1) = www(i1,i2,i3,1) + func(i)
+    end do
+    end do
+    end do
+
+    call bcset(1,1,Md,0)
+
+    i=0
+    do i3=rgrid%g3%z%head,rgrid%g3%z%tail
+    do i2=rgrid%g3%y%head,rgrid%g3%y%tail
+    do i1=rgrid%g3%x%head,rgrid%g3%x%tail
+       g1=0.0d0
+       g2=0.0d0
+       g3=0.0d0
+       do m=1,Md
+          g1 = g1 - nabla%coef(m)*( www(i1-m,i2,i3,1) - www(i1+m,i2,i3,1) )
+          g2 = g2 - nabla%coef(m)*( www(i1,i2-m,i3,1) - www(i1,i2+m,i3,1) )
+          g3 = g3 - nabla%coef(m)*( www(i1,i2,i3-m,1) - www(i1,i2,i3+m,1) )
+       end do
+       i=i+1
+       grad(i) = c(1)*g1 + c(2)*g2 + c(3)*g3
+    end do
+    end do
+    end do
+
+    call destruct_nabla_fd( nabla )
+
+  END SUBROUTINE calc_gradient
 
 
 END MODULE gradient_module
