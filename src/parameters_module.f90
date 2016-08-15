@@ -56,7 +56,7 @@ CONTAINS
 
     call read_watch(myrank,unit)
 
-    iswitch_scf   = 1
+    iswitch_scf   = 0 
     iswitch_opt   = 0
     iswitch_band  = 0
     iswitch_test  = 0
