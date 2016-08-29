@@ -446,7 +446,11 @@ CONTAINS
 
     if ( IC == 2 ) return
 
-    call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+    if ( IO_ctrl == 3 ) call read_io2( SYStype, ierr )
+
+    if ( IO_ctrl == 0 .or. ierr < 0 ) then
+       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+    end if
 
     deallocate( LL_tmp )
     deallocate( LL2 )

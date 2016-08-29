@@ -270,8 +270,8 @@ CONTAINS
 
        if ( disp_switch ) then
           write(*,*)
-          write(*,'(1x,"Total Energy :",f16.8,2x,"(Hartree)")') Etot
-          write(*,'(1x,"Harris Energy:",f16.8,2x,"(Hartree)")') Ehwf
+          write(*,'(1x,"Total Energy :",f26.8,2x,"(Hartree)")') Etot
+          write(*,'(1x,"Harris Energy:",f26.8,2x,"(Hartree)")') Ehwf
           write(*,'(1x," ( diff/tol =",es13.5," /",es12.5," )",l5)') &
                diff_etot,etot_conv,flag_conv_e
        end if
