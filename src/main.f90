@@ -427,6 +427,15 @@ PROGRAM Real_Space_DFT
 
      call calc_total_energy( recalc_esp, Etot, 6 )
 
+  case( 3 ) ! --- cpmd ---
+
+     if ( SYStype == 0 ) then
+        call bomd
+     else
+        write(*,*) "MD for SYStype/=0 is not avaiable"
+        goto 900
+     end if
+
   end select
 
 !
