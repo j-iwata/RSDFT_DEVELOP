@@ -3,7 +3,7 @@
 !-----------------------------------------------------------------------
 SUBROUTINE bomd
 
-  use aa_module, only: aa
+  use lattice_module, only: lattice, get_aa_lattice
   use atom_module, only: Natom,ki_atom,zn_atom,aa_atom &
                         ,convert_to_xyz_coordinates_atom
   use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,dt &
@@ -39,6 +39,7 @@ SUBROUTINE bomd
   logical :: ltime,flag_etlimit
   integer,parameter :: unit_trjxyz = 90
   logical,external :: exit_program
+  type(lattice) :: aa_obj
 
   call write_border( 0, "" )
   call write_border( 0, " CPMD START -----------" )
@@ -90,7 +91,9 @@ SUBROUTINE bomd
   if ( inivel ) then
      if ( disp_switch ) write(*,*) "generate initial velocity"
      if ( myrank == 0 ) call setv( temp, Velocity )
-     call convert_to_xyz_coordinates_atom( aa, aa_atom, Rion )
+     call get_aa_lattice( aa_obj )
+     Rion(:,:)=aa_atom(:,:)
+     call convert_to_xyz_coordinates_atom( aa_obj, Rion )
   else
      if ( disp_switch ) write(*,*) "read initial coordinate and velocity"
      if ( myrank == 0 ) call mdio( 0, tote0 )
