@@ -14,6 +14,7 @@ MODULE atom_module
   PUBLIC :: convert_to_aa_coordinates_atom
   PUBLIC :: convert_to_xyz_coordinates_atom
   PUBLIC :: write_coordinates_atom
+  PUBLIC :: shift_aa_coordinates_atom
 
   integer,parameter :: DP=kind(0.0d0)
 
@@ -292,43 +293,33 @@ CONTAINS
   END SUBROUTINE write_info_atom
 
 
-  SUBROUTINE convert_to_aa_coordinates_atom( aa, xyz_atm, aa_atm )
+  SUBROUTINE convert_to_aa_coordinates_atom( aa, aa_atom )
     implicit none
-    real(8),intent(IN) :: aa(3,3)
-    real(8),intent(INOUT) :: xyz_atm(:,:)
-    real(8),optional,intent(OUT) :: aa_atm(:,:)
-    real(8) :: aa_inverse(3,3), tmp(3)
+    type(lattice),intent(IN) :: aa
+    real(8),intent(INOUT) :: aa_atom(:,:)
+    real(8) :: aa_inverse(3,3), xyz_atom(3)
     integer :: i
     if ( iformat == 1 ) return
     iformat = 1
-    call get_inverse_lattice( aa, aa_inverse )
-    do i=1,size( xyz_atm, 2 )
-       tmp(1:3) = matmul( aa_inverse(1:3,1:3), xyz_atm(1:3,i) )
-       if ( present(aa_atm) ) then
-          aa_atm(1:3,i) = tmp(1:3)
-       else
-          xyz_atm(1:3,i) = tmp(1:3)
-       end if
+    call get_inverse_lattice( aa%LatticeVector, aa_inverse )
+    do i=1,size( aa_atom, 2 )
+       xyz_atom(1:3) = aa_atom(1:3,i)
+       aa_atom(1:3,i) = matmul( aa_inverse(1:3,1:3), xyz_atom(1:3) )
     end do
   END SUBROUTINE convert_to_aa_coordinates_atom
 
 
-  SUBROUTINE convert_to_xyz_coordinates_atom( aa, aa_atm, xyz_atm )
+  SUBROUTINE convert_to_xyz_coordinates_atom( aa, aa_atom )
     implicit none
-    real(8),intent(IN) :: aa(3,3)
-    real(8),intent(INOUT) :: aa_atm(:,:)
-    real(8),optional,intent(OUT) :: xyz_atm(:,:)
-    real(8) :: tmp(3)
+    type(lattice),intent(IN) :: aa
+    real(8),intent(INOUT) :: aa_atom(:,:)
+    real(8) :: aa_inverse(3,3), xyz_atom(3)
     integer :: i
     if ( iformat == 2 .or. iformat == 3 ) return
     iformat = 2
-    do i=1,size( aa_atm, 2 )
-       tmp(1:3) = matmul( aa(1:3,1:3), aa_atm(1:3,i) )
-       if ( present(xyz_atm) ) then
-          xyz_atm(1:3,i) = tmp(1:3)
-       else
-          aa_atm(1:3,i) = tmp(1:3)
-       end if
+    do i=1,size( aa_atom, 2 )
+       xyz_atom(1:3) = matmul( aa%LatticeVector(1:3,1:3), aa_atom(1:3,i) )
+       aa_atom(1:3,i) = xyz_atom(1:3)
     end do
   END SUBROUTINE convert_to_xyz_coordinates_atom
 
