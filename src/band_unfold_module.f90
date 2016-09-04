@@ -419,6 +419,7 @@ CONTAINS
     integer,intent(IN) :: jktrj
     logical,intent(IN) :: disp_switch
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
+    complex(8),allocatable :: zwork2(:,:),zwork3(:,:)
     integer :: ML,ML1,ML2,ML3,MSP_0,MSP_1,MBZ_0,MBZ_1,MB_0,MB_1,ML_0,ML_1
     integer :: MB,MS,s,k,n,i,i1,i2,i3,j3,ierr,LG_sc(3),iktrj
     integer,allocatable :: iktrj_2_k(:)
@@ -463,6 +464,11 @@ CONTAINS
     allocate( zwork1(0:ML1-1,0:ML2-1,0:ML3-1) ) ; zwork1=(0.0d0,0.0d0)
     allocate( iktrj_2_k(nktrj_0)              ) ; iktrj_2_k=0
 
+    if ( iswitch_ufld_l ) then
+       allocate( zwork2(0:ML1-1,0:ML2-1) ) ; zwork2=(0.0d0,0.0d0)
+       allocate( zwork3(0:ML1-1,0:ML2-1) ) ; zwork3=(0.0d0,0.0d0)
+    end if
+
     weight_uf(:,:,:)=0.0d0
 
     do iktrj=1,nktrj_0
@@ -501,18 +507,8 @@ CONTAINS
 
           call rsdft_allreduce_sum( zwork0, comm_grid )
 
-          call forward_fft( zwork0, zwork1 )
-
-          sum0=0.0d0
-          do i=1,mg_pc
-             i1 = mod( LG_pc(1,i)-LG_sc(1)+ML1, ML1 )
-             i2 = mod( LG_pc(2,i)-LG_sc(2)+ML2, ML2 )
-             i3 = mod( LG_pc(3,i)-LG_sc(3)+ML3, ML3 )
-             sum0=sum0+abs( zwork0(i1,i2,i3) )**2
-          end do
-          weight_uf(iktrj,n,s)=sum0
-
           if ( iswitch_ufld_l ) then
+#ifdef TEST
              do i2=0,ML1-1
              do i1=0,ML1-1
                 do j3=0,ML3-1 !(R)
@@ -536,7 +532,29 @@ CONTAINS
                 end do
                 weight_uf_z(iktrj,n,s,j3) = sum0
              end do
-          end if
+#endif
+             do i3=0,ML3-1
+                zwork2(:,:) = zwork0(:,:,i3)
+                call forward_2d_fft( zwork2, zwork3 )
+                sum0=0.0d0
+                do i=1,mg_pc
+                   i1 = mod( LG_pc(1,i)-LG_sc(1)+ML1, ML1 )
+                   i2 = mod( LG_pc(2,i)-LG_sc(2)+ML2, ML2 )
+                   sum0=sum0+abs( zwork2(i1,i2) )**2
+                end do
+                weight_uf_z(iktrj,n,s,i3) = sum0
+             end do
+          end if ! iswitch_ufld_l
+
+          call forward_fft( zwork0, zwork1 )
+          sum0=0.0d0
+          do i=1,mg_pc
+             i1 = mod( LG_pc(1,i)-LG_sc(1)+ML1, ML1 )
+             i2 = mod( LG_pc(2,i)-LG_sc(2)+ML2, ML2 )
+             i3 = mod( LG_pc(3,i)-LG_sc(3)+ML3, ML3 )
+             sum0=sum0+abs( zwork0(i1,i2,i3) )**2
+          end do
+          weight_uf(iktrj,n,s)=sum0
 
        end do ! n
        end do ! k
@@ -596,6 +614,10 @@ CONTAINS
 
 ! ---
 
+    if ( iswitch_ufld_l ) then
+       deallocate( zwork3 )
+       deallocate( zwork2 )
+    end if
     deallocate( iktrj_2_k )
     deallocate( zwork1    )
     deallocate( zwork0    )

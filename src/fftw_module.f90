@@ -15,6 +15,7 @@ MODULE fftw_module
   PUBLIC :: z3_to_d1_fftw, z3_to_z1_fftw
   PUBLIC :: forward_fftw
   PUBLIC :: backward_fftw
+  PUBLIC :: forward_2d_fftw
 
   integer :: comm_fftw
   type(c_ptr) :: plan_forward,plan_backward
@@ -24,6 +25,9 @@ MODULE fftw_module
   complex(c_double_complex), pointer :: zwork3_ptr1(:,:,:)=>null()
 
   integer,allocatable :: ir(:),id(:)
+
+  integer(8) :: plan_2d_forward
+  integer :: size_2d(2)=(/0,0/)
 
 CONTAINS
 
@@ -198,6 +202,27 @@ CONTAINS
     !z3(:,:,:)=const*z3(:,:,:)
 #endif
   END SUBROUTINE backward_fftw
+
+
+  SUBROUTINE forward_2d_fftw( z2, zw )
+    implicit none
+    complex(8),intent(INOUT) :: z2(:,:), zw(:,:)
+    integer :: m1,m2
+    real(8) :: const
+#ifdef _FFTW_
+    include 'fftw3.f'
+    m1 = size( z2, 1 )
+    m2 = size( z2, 2 )
+    if ( size_2d(1) /= m1 .or. size_2d(2) /= m2 ) then
+       call dfftw_plan_dft_2d( plan_2d_forward, m1, m2, z2, z2 &
+            , FFTW_FORWARD, FFTW_ESTIMATE )
+       size_2d(:) = (/ m1, m2 /)
+    end if
+    call dfftw_execute_dft( plan_2d_forward, z2, zw )
+    const=1.0d0/size(z2)
+    z2(:,:)=const*zw(:,:)
+#endif
+  END SUBROUTINE forward_2d_fftw
 
 
 END MODULE fftw_module
