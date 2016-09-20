@@ -1,7 +1,9 @@
 MODULE libxc_module
 
+#ifdef _LIBXC_
   use xc_f90_types_m
   use xc_f90_lib_m
+#endif
   use io_tools_module
   use basic_type_factory
   use physical_type_methods
@@ -19,20 +21,22 @@ MODULE libxc_module
   character(len=256) :: func_string(2)
   integer :: func_id(2)
   integer :: num_func
+#ifdef _LIBXC_
   type(xc_f90_pointer_t) :: xc_func(2)
   type(xc_f90_pointer_t) :: xc_info(2)
+#endif
   logical :: flag_init = .false.
 
 CONTAINS
 
-
+#ifdef _LIBXC_
   SUBROUTINE read_libxc
     implicit none
     call IOTools_readStringKeyword( "LIBXC", func_string )
     func_id(1) = xc_f90_functional_get_number( func_string(1) )
     func_id(2) = xc_f90_functional_get_number( func_string(2) )
   END SUBROUTINE read_libxc
-
+#endif
 
   SUBROUTINE init_libxc( spin )
 
@@ -48,6 +52,10 @@ CONTAINS
 
     call write_border( 0, " init_libxc(start)" )
     call check_disp_switch( disp_sw, 0 )
+
+#ifndef _LIBXC_
+    call stop_program( "LIBXC is not linked to this code!" )
+#else
 
     call read_libxc
     num_func = count( func_id > 0 )
@@ -114,16 +122,18 @@ CONTAINS
     end do ! i
 
     call write_border( 0, " init_libxc(end)" )
-
+#endif
   END SUBROUTINE init_libxc
 
 
   SUBROUTINE finalize_libxc
     implicit none
     integer :: i
+#ifdef _LIBXC_
     do i=1,num_func
        call xc_f90_func_end( xc_func(i) )
     end do
+#endif
   END SUBROUTINE finalize_libxc
 
 
@@ -137,7 +147,7 @@ CONTAINS
     real(8),allocatable :: exc(:), vxc(:,:)
     real(8),allocatable :: vrho(:,:), sigma(:,:), vsigma(:,:)
     real(8) :: s1(2)
-
+#ifdef _LIBXC_
     call write_border( 1, " calc_libxc(start)" )
 
     m  = density%g_range%size
@@ -213,10 +223,10 @@ CONTAINS
     deallocate( exc    )
 
     call write_border( 1, " calc_libxc(end)" )
-
+#endif
   END SUBROUTINE calc_libxc
 
-
+#ifdef _LIBXC_
   SUBROUTINE calc_libxc_a( i, rho, exc, vxc, rgrid, density )
     implicit none
     integer,intent(IN)  :: i
@@ -338,6 +348,6 @@ CONTAINS
     deallocate( h, g, f )
 
   END SUBROUTINE calc_gga_pot
-
+#endif
 
 END MODULE libxc_module
