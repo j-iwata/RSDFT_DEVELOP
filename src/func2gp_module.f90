@@ -98,7 +98,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: unit,n1,n2
     real(8),intent(IN) :: f(n1:n2)
-    integer :: i,i1,i2,i3,a1,a2,a3,b1,b2,b3,ierr,m
+    integer :: i,j,i1,i2,i3,a1,a2,a3,b1,b2,b3,ierr,m
     real(8),allocatable :: w(:,:,:,:)
     real(8),parameter :: zero=0.0d0
 
@@ -138,8 +138,18 @@ CONTAINS
        write(unit,*)
        write(unit,*)
        do i=a3,b3
-          write(unit,'(1x,4g20.10)') i*Hgrid(3),w(0,0,i,2),sum(w(:,:,i,2))
+          write(unit,'(1x,4g20.10)') i*Hgrid(3),w(0,0,i,2),sum(abs(w(:,:,i,2)))
        end do
+
+       rewind unit+10
+       do j=a2,b2
+       do i=a1,b1
+          write(unit+10,'(1x,4g20.10)') &
+               i*Hgrid(1),j*Hgrid(2),w(i,j,0,2),w(i,j,Ngrid(3)/2,2)
+       end do
+       write(unit+10,*)
+       end do
+
     end if
 
     deallocate( w )

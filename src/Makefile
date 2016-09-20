@@ -36,7 +36,7 @@ all :
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
 	@$(MAKE) main.o
-	$(FC) $(LFLAGS) $(EXTOBJ0) $(EXTOBJ1) $(EXTOBJ2) $(MODS1) main.o $(FFTW_L) $(LAPACK_L) -o rsdft.x
+	$(FC) $(LFLAGS) $(EXTOBJ0) $(EXTOBJ1) $(EXTOBJ2) $(MODS1) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
 
 lda0 : $(MODS1)
 

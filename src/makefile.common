@@ -127,6 +127,7 @@ MODS1 = \
        ps_nloc2_mol_module.o\
        eion_module.o\
        hartree_mol_module.o\
+       libxc_module.o\
        xc_ggapbe96_module.o\
        fock_cg_module.o\
        gram_schmidt_g_module.o\

@@ -67,6 +67,7 @@ CONTAINS
     real(8) :: tmp(2)
     call write_border( 0, " read_xc_hybrid(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
+    call check_libxc( XCtype )
     tmp(1:2) = (/ omega, alpha_hf /)
     call IOTools_readReal8Keywords( "HF", tmp )
     omega    = tmp(1)
@@ -75,6 +76,16 @@ CONTAINS
     call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
     call write_border( 0, " read_xc_hybrid(end)" )
   END SUBROUTINE read_xc_hybrid
+
+
+  SUBROUTINE check_libxc( func_type )
+    implicit none
+    character(*),intent(INOUT) :: func_type
+    character(64) :: LIBXC
+    LIBXC=""
+    call IOTools_readStringKeyword( "LIBXC" , LIBXC )
+    if ( index(LIBXC,"HSE") > 0 ) func_type="HSE"
+  END SUBROUTINE check_libxc
 
 
   SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
@@ -94,11 +105,11 @@ CONTAINS
     real(8),allocatable :: qtmp(:,:)
     type(wfrange) :: b
 
-    call write_border( 0, " init_xc_hybrid(start)" )
-
     if ( XCtype /= "HF"    .and. XCtype /= "HSE"    .and. &
          XCtype /= "HSE06" .and. XCtype /= "HSE_"   .and. &
          XCtype /= "PBE0"  .and. XCtype /= "LCwPBE" ) return
+
+    call write_border( 0, " init_xc_hybrid(start)" )
 
     if ( flag_init ) return
 

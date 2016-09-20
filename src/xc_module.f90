@@ -23,6 +23,7 @@ MODULE xc_module
   use basic_type_factory
   use basic_type_methods
   use io_tools_module
+  use libxc_module
 
   implicit none
 
@@ -47,8 +48,11 @@ CONTAINS
 
   SUBROUTINE read_xc
     implicit none
+    character(len=8) :: chk_libxc=""
     call write_border( 0, " read_xc(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
+    call IOTools_readStringKeyword( "LIBXC" , chk_libxc )
+    if ( chk_libxc /= "" ) XCtype="LIBXC"
     flag_read = .false.
     call write_border( 0, " read_xc(end)" )
   END SUBROUTINE read_xc
@@ -322,6 +326,30 @@ CONTAINS
        Vxc(:,:) = pot%x%val(:,:) + pot%c%val(:,:)
 
        Exc = E_exchange + E_correlation
+
+    case( "LIBXC" )
+
+       call init_libxc( MSP )
+
+       call calc_libxc( rg, density, ene, pot )
+
+       E_exchange    = ene%Ex
+       E_correlation = ene%Ec
+       Exc           = ene%Exc
+       Vxc(:,:)      = pot%xc%val(:,:)
+
+       if ( iflag_hybrid /= 0 ) then
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+
+          call calc_xc_hf( E_exchange_exx )
+
+          E_exchange = E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
+
+       end if
 
     case default
 
