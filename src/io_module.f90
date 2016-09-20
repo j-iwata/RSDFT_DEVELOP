@@ -22,6 +22,8 @@ MODULE io_module
   use grid_module, only: construct_map_1d_to_3d_grid
   use fermi_module, only: efermi
 
+  use watch_module
+
   implicit none
 
   PRIVATE
@@ -77,6 +79,7 @@ CONTAINS
     real(8) :: c,fs,ct0,ct1,et0,et1,mem,memax
     real(8),allocatable :: rtmp(:)
     integer :: ML1,ML2,ML3
+    type(time) :: tt
 
     if ( OC2 < 1 .or. OC < 1 .or. OC > 15 ) return
 
@@ -84,6 +87,7 @@ CONTAINS
     if ( .not.(flag .or. icount==OC2) ) return
 
     call write_border( 0, " write_data(start)" )
+    call start_timer( tt )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -244,6 +248,7 @@ CONTAINS
 
     icount=0
 
+    call result_timer( tt, "write_data" )
     call write_border( 0, " write_data(end)" )
 
     return
@@ -253,6 +258,7 @@ CONTAINS
 !1:wf, 2:vrho, 3:wf&vrho, 4:wf(Real->Comp), 5:wf(Real->Comp)&vrho
 
   SUBROUTINE read_data(disp_switch)
+    implicit none
     logical,intent(IN) :: disp_switch
     integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
     integer :: ML1_tmp,ML2_tmp,ML3_tmp,ierr,i1,i2,i3,j1,j2,j3,s,i0
@@ -263,10 +269,12 @@ CONTAINS
     real(8),allocatable :: rtmp(:),rtmp3(:,:,:)
     character(len=64) :: cbuf
     logical :: flag_versioned
+    type(time) :: tt
 
     if ( IC <= 0 ) return
 
     call write_border( 0, " read_data(start)" )
+    call start_timer( tt )
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -455,6 +463,7 @@ CONTAINS
     deallocate( LL_tmp )
     deallocate( LL2 )
 
+    call result_timer( tt, "read_data" )
     call write_border( 0, " read_data(end)" )
 
     return

@@ -20,7 +20,7 @@ CONTAINS
 #ifdef _LAPACK_
     call subspace_diag_la(k,s)
 #else
-    call subspace_diag_sl(k,s,disp_switch_parallel)
+    call subspace_diag_sl(k,s)
 #endif
   END SUBROUTINE subspace_diag
 

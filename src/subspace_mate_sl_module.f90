@@ -5,8 +5,9 @@ MODULE subspace_mate_sl_module
   use hamiltonian_module
   use wf_module, only: unk,esp,hunk,iflag_hunk,gather_b_wf
   use scalapack_module
-  use subspace_diag_variables
+  use subspace_diag_variables, only: MB_diag,NBLK1,zero,TYPE_MAIN,Hsub,mat_block
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
+  use watch_module
 
   implicit none
 
@@ -33,6 +34,10 @@ CONTAINS
     integer :: IPROW,IPCOL,iroot1,iroot2,mrnk,nrecv_me,nsend_me
     integer,allocatable :: ir(:),id(:),irecv_me(:,:),isend_me(:,:)
     complex(8) :: ztmp
+    type(time) :: t
+
+    call write_border( 1, " subspace_mate_sl(start)" )
+    call start_timer( t )
 
     UPLO = 'L'
 
@@ -350,6 +355,9 @@ CONTAINS
     deallocate( wtmp2 )
     deallocate( vtmp2 )
     deallocate( irecv_me, isend_me )
+
+    call result_timer( t, "mate_sl" )
+    call write_border( 1, " subspace_mate_sl(end)" )
 
   END SUBROUTINE subspace_mate_sl
 
