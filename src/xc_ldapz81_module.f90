@@ -98,6 +98,8 @@ CONTAINS
 
        do i=ML_0,ML_1
 
+          if ( rho(i,s) <= 0.0d0 ) cycle
+
           exd = -cnst*thrfou*( thrPi*rho(i,s) )**onethr
           Ex = Ex + rho(i,s)*exd
           vex(i,s) = fouthr*exd
