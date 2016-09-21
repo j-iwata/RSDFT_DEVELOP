@@ -206,13 +206,13 @@ CONTAINS
 
     if ( flag_end1 ) then
        ierr_out = -1
-       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "Time limit exceeded"
        return
     end if
 
     if ( flag_end2 ) then
        ierr_out = -3
-       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "'EXIT' file was found"
        return
     end if
 

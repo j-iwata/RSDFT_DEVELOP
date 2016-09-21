@@ -674,11 +674,9 @@ CONTAINS
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
           call calc_scf( disp_switch_loc,ierr,diter_opt,feps,loop_info,Etot )
 
-          if ( ierr == -1 ) then
-             if ( myrank == 0 ) write(*,*) "time limit !!!"
+          if ( ierr == -1 .or. ierr == -3 ) then
              exit opt_ion
-          end if
-          if ( ierr == -2 ) then
+          else if ( ierr == -2 ) then
              if ( myrank == 0 ) write(*,*) "SCF is not converged"
           end if
           iter_final=ierr
