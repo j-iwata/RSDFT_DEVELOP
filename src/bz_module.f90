@@ -46,9 +46,9 @@ CONTAINS
 
   SUBROUTINE read_bz
     implicit none
-    nk=2
-    mmm(1:3,1)=(/ 2,2,2 /)
-    mmm(1:3,2)=(/ 2,2,2 /)
+    nk=0
+    mmm(1:3,1)=(/ 0,0,0 /)
+    mmm(1:3,2)=(/ 0,0,0 /)
     ndata_read_k=0
     kbb0(1:3)=0.0d0
     npbz=0
@@ -78,78 +78,95 @@ CONTAINS
        allocate( mm(3,MMBZ) ) ; mm=0
        allocate( map(MMBZ)  ) ; map=0
 
-    else if ( isymmetry > 0 ) then
+    else 
 
-       call generate_bz_sym( m, mm, map )
+       if ( nk <= 0 ) then
 
-    else
+          if ( all(mmm(:,1)==0) ) then
+             call write_string( "gamma point sampling is assumed" )
+             nk=2
+             mmm(:,1)=(/ 2,2,2 /)
+             mmm(:,2)=(/ 2,2,2 /)
+          else
+             call Monkhorst_Pack( nk, mmm )
+          end if
 
-       m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)
-       mm1=mmm(1,2) ; mm2=mmm(2,2) ; mm3=mmm(3,2)
-
-       k=(2*m1+1)*(2*m2+1)*(2*m3+1)*2
-       allocate( mm(3,k),m(3,k),w(k),map(k) )
-       mm=0 ; m=0 ; w=0 ; map=0
-       k=0 ; k1=0
-
-       iw1= 1
-       iw0=-1 ; if ( use_inversion < 1 ) iw0=1
-
-       do i1=-m1,m1,mm1
-       do i2=-m2,m2,mm2
-       loop_A : do i3=-m3,m3,mm3
-
-          do iw=iw1,iw0,-2
-
-             p1(1)=i1*iw ; p1(2)=i2*iw ; p1(3)=i3*iw ; p2(1:3)=p1(1:3)
-             do i=1,3
-                p1(i)=mod(p2(i),nk)
-                if ( p1(i)>  nk/2 ) p1(i)=p1(i)-nk
-                if ( p1(i)<=-nk/2 ) p1(i)=p1(i)+nk
-             end do
-             if ( k1 > 0 ) then
-                do i=1,k1
-                   if ( mm(1,i)==p1(1) .and. &
-                        mm(2,i)==p1(2) .and. &
-                        mm(3,i)==p1(3)         ) cycle loop_A
-                end do
-             end if
-
-             if ( iw == 1 ) then
-                k=k+1
-                m(1:3,k)=p1(1:3)
-                w(k)=1
-             else
-                w(k)=2
-             end if
-
-             k1=k1+1
-             mm(1:3,k1)=p1(1:3)
-             map(k1)=k
-
-          end do ! iw
-
-       end do loop_A
-       end do
-       end do
-
-       Nbzsm = k
-       if ( npbz > k ) Nbzsm=npbz
-
-       MMBZ  = k1
-
-       allocate( weight_bz(Nbzsm) ) ; weight_bz=0.d0
-       allocate( kbb(3,Nbzsm)     ) ; kbb=0.d0
-
-       kbb(1:3,1:k)=real(m(1:3,1:k),8)/nk
-       weight_bz(1:k)=real(w(1:k),8)/MMBZ
-
-       if ( Nbzsm == ndata_read_k ) then
-          kbb(1:3,1) = kbb0(1:3)
-          ndata_read_k = 0
        end if
 
-       deallocate( w )
+       if ( isymmetry > 0 ) then
+
+          call generate_bz_sym( m, mm, map )
+
+       else
+
+          m1 =mmm(1,1) ; m2 =mmm(2,1) ; m3 =mmm(3,1)
+          mm1=mmm(1,2) ; mm2=mmm(2,2) ; mm3=mmm(3,2)
+
+          k=(2*m1+1)*(2*m2+1)*(2*m3+1)*2
+          allocate( mm(3,k),m(3,k),w(k),map(k) )
+          mm=0 ; m=0 ; w=0 ; map=0
+          k=0 ; k1=0
+
+          iw1= 1
+          iw0=-1 ; if ( use_inversion < 1 ) iw0=1
+
+          do i1=-m1,m1,mm1
+          do i2=-m2,m2,mm2
+          loop_A : do i3=-m3,m3,mm3
+
+             do iw=iw1,iw0,-2
+
+                p1(1)=i1*iw ; p1(2)=i2*iw ; p1(3)=i3*iw ; p2(1:3)=p1(1:3)
+                do i=1,3
+                   p1(i)=mod(p2(i),nk)
+                   if ( p1(i)>  nk/2 ) p1(i)=p1(i)-nk
+                   if ( p1(i)<=-nk/2 ) p1(i)=p1(i)+nk
+                end do
+                if ( k1 > 0 ) then
+                   do i=1,k1
+                      if ( mm(1,i)==p1(1) .and. &
+                           mm(2,i)==p1(2) .and. &
+                           mm(3,i)==p1(3)         ) cycle loop_A
+                   end do
+                end if
+
+                if ( iw == 1 ) then
+                   k=k+1
+                   m(1:3,k)=p1(1:3)
+                   w(k)=1
+                else
+                   w(k)=2
+                end if
+
+                k1=k1+1
+                mm(1:3,k1)=p1(1:3)
+                map(k1)=k
+
+             end do ! iw
+
+          end do loop_A
+          end do
+          end do
+
+          Nbzsm = k
+          if ( npbz > k ) Nbzsm=npbz
+
+          MMBZ  = k1
+
+          allocate( weight_bz(Nbzsm) ) ; weight_bz=0.d0
+          allocate( kbb(3,Nbzsm)     ) ; kbb=0.d0
+
+          kbb(1:3,1:k)=real(m(1:3,1:k),8)/nk
+          weight_bz(1:k)=real(w(1:k),8)/MMBZ
+
+          if ( Nbzsm == ndata_read_k ) then
+             kbb(1:3,1) = kbb0(1:3)
+             ndata_read_k = 0
+          end if
+
+          deallocate( w )
+
+       end if
 
     end if
 
@@ -508,6 +525,52 @@ CONTAINS
     end do
     read(cbuf(i+1:),*) n
   END SUBROUTINE get_num_from_chr
+
+
+  SUBROUTINE Monkhorst_Pack( n, m )
+    implicit none
+    integer,intent(INOUT) :: n, m(3,2)
+    logical :: disp
+    integer :: lcm_12, lcm
+    call check_disp_switch( disp, 0 )
+    if ( disp ) write(*,'(1x,"nk=",i5,"   ( MP mesh is used )")') n
+! Least Common Multiplier
+    lcm_12 = m(1,1)*m(2,1)/gcd( m(1,1),m(2,1) )
+    n = lcm_12*m(3,1)/gcd( lcm_12,m(3,1) )
+    n = n*2
+    mmm(:,2) = n/mmm(:,1)
+    mmm(:,1) = n/mmm(:,2)-1
+    if ( disp ) then
+       write(*,'(1x,"nk=",i5)') nk
+       write(*,'(1x,"mmm1=",3i4)') mmm(:,1)
+       write(*,'(1x,"mmm2=",3i4)') mmm(:,2)
+    end if
+  END SUBROUTINE Monkhorst_Pack
+
+
+  FUNCTION gcd(m0,n0)
+    implicit none
+    integer :: gcd,m0,n0
+    integer :: m,n,mtmp,loop
+
+    if ( m0 >= n0 ) then
+       m=m0
+       n=n0
+    else
+       m=n0
+       n=m0
+    end if
+
+    do loop=1,10000
+       if ( n == 0 ) exit
+       mtmp = n
+       n = mod(m,n)
+       m = mtmp
+    end do
+
+    gcd = m
+
+  END FUNCTION gcd
 
 
 END MODULE bz_module
