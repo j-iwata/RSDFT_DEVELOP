@@ -32,7 +32,10 @@ CONTAINS
     flag_init = .false.
     call write_border( 0, " init_force(start)" )
     Ntim=maxval( md_atom )
-    if ( Ntim <= 0 ) Ntim=1
+    if ( Ntim <= 0 ) then
+       Ntim=1
+       md_atom(:)=1
+    end if
     if ( disp_switch_parallel ) write(*,*) "Ntim=",Ntim
     allocate( tim(3,3,Ntim) ) ; tim=0.0d0
     tim(1,1,1:Ntim) = 1.0d0
