@@ -43,8 +43,8 @@ CONTAINS
     do ii = 0,10
 
     time_hmlt(:,:)=0.0d0
-    time_kine(:,:)=0.0d0
-    time_nlpp(:,:)=0.0d0
+!    time_kine(:,:)=0.0d0
+!    time_nlpp(:,:)=0.0d0
 
     nrhs = 2**ii
     if ( nrhs > MB_d ) exit
@@ -70,6 +70,9 @@ CONTAINS
     end do
 
     t1 = mpi_wtime()
+
+    time_kine(:,:)=0.0d0
+    time_nlpp(:,:)=0.0d0
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
@@ -111,7 +114,8 @@ CONTAINS
 #endif
        end do
     end do
-    call rsdft_allreduce_sum( sums(n1:n2), comm_grid )
+
+    call rsdft_allreduce_sum( sums(1:nrhs), comm_grid )
 
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,*) 'nloop =',nloop

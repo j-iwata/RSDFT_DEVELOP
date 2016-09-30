@@ -148,6 +148,13 @@ CONTAINS
        end do
     end do
 
+    if ( disp_sw ) then
+       write(*,*) "flag_n12=",flag_n12
+       write(*,*) "flag_n23=",flag_n23
+       write(*,*) "flag_n31=",flag_n31
+       write(*,*) "flag_nab=",flag_nab
+    end if
+
     call write_border( 80, " init_kinetic(end)" )
 
   END SUBROUTINE init_kinetic
