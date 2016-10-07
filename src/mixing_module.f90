@@ -191,7 +191,16 @@ CONTAINS
     dif_min(1:MSP) = 1.d10
 
     max_loop = 1
-    if ( beta >= 1.0d0 ) max_loop = 11
+
+    if ( beta >= 1.0d0 ) then
+       if ( all(dif0==0.0d0) ) then
+          max_loop = 1
+          beta = 0.05d0
+       else
+          max_loop = 11
+          beta = 1.0d0
+       end if
+    end if
 
     do loop=1,max_loop
 
