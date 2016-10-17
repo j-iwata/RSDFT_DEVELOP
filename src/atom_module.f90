@@ -284,9 +284,9 @@ CONTAINS
        write(*,'(8x,3a8,4x,a)') "Zatom", "Zion", "Num", "FilePS"
        do i=1,Nelement
           num(i) = count( ki_atom == i )
-          write(*,'(4i8,4x,a)') i,zn_atom(i),nint(zps(i)),num(i),FilePS(i)
+          write(*,'(2i8,f8.2,i8,4x,a)') i,zn_atom(i),zps(i),num(i),FilePS(i)
        end do
-       write(*,'(3x,"total",3i8)') sum(zn_atom*num), sum(nint(zps)*num), Natom
+       write(*,'(3x,"total",i8,f8.2,i8)') sum(zn_atom*num),sum(zps*num),Natom
        deallocate( num )
     end if
     call write_border( 80, " write_info_atom(end)" )
