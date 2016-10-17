@@ -74,7 +74,7 @@ CONTAINS
     if ( .not.allocated(zatom) ) then
        allocate( zatom(Natom) )
        do i=1,Natom
-          zatom(i)=nint( Zps(ki_atom(i)) )
+          zatom(i)=Zps(ki_atom(i))
        end do
     end if
 
@@ -641,7 +641,7 @@ CONTAINS
     if ( .not.allocated(zatom) ) then
        allocate( zatom(Natom) )
        do i=1,Natom
-          zatom(i)=nint( Zps(ki_atom(i)) )
+          zatom(i)=Zps(ki_atom(i))
        end do
     end if
 
