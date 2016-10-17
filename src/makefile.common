@@ -83,6 +83,7 @@ MODS1 = \
        hartree_sol_module.o\
        ps_nloc2_op_module.o\
        minimal_box_module.o\
+       virtualH_module.o\
        pseudopot_module.o\
        func2gp_module.o\
        bcset_1_module.o\
