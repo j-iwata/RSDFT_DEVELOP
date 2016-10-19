@@ -185,6 +185,7 @@ MODS1 = \
        subspace_diag_module.o\
        rtddft_mol_module.o\
        ps_local_mol_module.o\
+       force_local_fftw_module.o\
        force_local_sol_module.o\
        force_sol_module.o\
        force_local_mol_module.o\
