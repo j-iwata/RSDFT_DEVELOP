@@ -338,8 +338,8 @@ CONTAINS
                    if ( err0 < tol ) exit
                 end if
              end do ! m
-             phiG(ig,j,k)=f0
-             if ( j /= k ) phiG(ig,k,j)=f0
+             phiGout(ig,j,k)=f0
+             if ( j /= k ) phiGout(ig,k,j)=f0
           end do ! j
           end do ! k
        end if
