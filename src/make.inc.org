@@ -69,6 +69,7 @@ OMPFLAG   =
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 #LAPACK_L = -lm /Users/lhan/.homebrew/opt/scalapack/lib/libscalapack.dylib -lblas
+#LAPACK_L = -mkl=sequential -lmkl_scalapack_lp64 -lmkl_blacs_sgimpt_lp64 -lmpi
 ########################################################################
 ##### INTEL(2)                                                     #####
 #FC = mpiifort
