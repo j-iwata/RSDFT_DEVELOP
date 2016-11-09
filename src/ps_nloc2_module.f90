@@ -920,7 +920,7 @@ CONTAINS
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
-    call sort_index_sub( MJJ, JJP, uVk )
+!    call sort_index_sub( MJJ, JJP, uVk )
 
     call watcha( timer_counter )
 
@@ -1130,7 +1130,7 @@ CONTAINS
     integer,intent(IN) :: k0,k1
     real(8),intent(IN) :: kbb(3,k0:k1)
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
-    integer :: i,j,k,j3,lma,i0,i1,i2,i3,m1,m2,m3
+    integer :: i,j,k,j3,lma,i1,i2,i3,m1,m2,m3
     integer,allocatable :: icheck_tmp4(:,:,:)
     real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr,u3
     complex(8) :: ztmp0
@@ -1197,7 +1197,7 @@ CONTAINS
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
     integer :: i,j,k,j3,lma,i1,i2,i3,m1,m2,m3
     integer,allocatable :: icheck_tmp4(:,:,:)
-    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr,x,y,z
+    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr,u3,x,y,z
     complex(8) :: ztmp0
     integer,save :: array_size(4)=0
 
@@ -1253,18 +1253,19 @@ CONTAINS
              m2=JJ_MAP(5,i,lma)
              m3=JJ_MAP(6,i,lma)
              j3=icheck_tmp4(i1,i2,i3)
+             u3=uV(i,lma)
              kr=d1*(c1*i1+m1)+d2*(c2*i2+m2)+d3*(c3*i3+m3)
-             ztmp0=dcmplx(cos(kr),-sin(kr))*uV(i,lma)
+             ztmp0=dcmplx(cos(kr),-sin(kr))*u3
              x=(c1*i1+m1)*aa(1,1)+(c2*i2+m2)*aa(1,2)+(c3*i3+m3)*aa(1,3)
              y=(c1*i1+m1)*aa(2,1)+(c2*i2+m2)*aa(2,2)+(c3*i3+m3)*aa(2,3)
              z=(c1*i1+m1)*aa(3,1)+(c2*i2+m2)*aa(3,2)+(c3*i3+m3)*aa(3,3)
-             if ( j3==0 ) then
+             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
                 j=j+1
                 icheck_tmp4(i1,i2,i3)=j
                 xVk(j,lma,k)=x*ztmp0
                 yVk(j,lma,k)=y*ztmp0
                 zVk(j,lma,k)=z*ztmp0
-             else
+             else if ( j3 /= 0 ) then
                 xVk(j3,lma,k)=xVk(j3,lma,k)+x*ztmp0
                 yVk(j3,lma,k)=yVk(j3,lma,k)+y*ztmp0
                 zVk(j3,lma,k)=zVk(j3,lma,k)+z*ztmp0

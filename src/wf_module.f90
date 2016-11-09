@@ -19,6 +19,7 @@ MODULE wf_module
   PUBLIC :: wfrange
   PUBLIC :: allocate_b_wf, allocate_b_occ
   PUBLIC :: referred_orbital
+  PUBLIC :: set_initial_wf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -167,6 +168,29 @@ CONTAINS
     end do
 
   END SUBROUTINE random_initial_wf
+
+
+  SUBROUTINE set_initial_wf( indx, wf )
+    implicit none
+    character(*),intent(IN) :: indx
+    complex(8),intent(OUT)  :: wf(:,:,:,:)
+    integer :: s,k,n,i
+    real(8) :: u(2)
+    select case( indx )
+    case default
+       do s=1,size(wf,4)
+       do k=1,size(wf,3)
+       do n=1,size(wf,2)
+          do i=1,size(wf,1)
+             call random_number(u)
+             u=u-0.5d0
+             wf(i,n,k,s)=dcmplx(u(1),u(2))
+          end do ! i
+       end do ! n
+       end do ! k
+       end do ! s
+    end select
+  END SUBROUTINE set_initial_wf
 
 
   SUBROUTINE test_on_wf(dV,disp_switch)

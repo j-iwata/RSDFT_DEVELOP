@@ -15,6 +15,7 @@ MODULE inner_product_module
   ! Sunk(nn1,n)
   use real_complex_module, only: RCProduct,zero
   use para_rgrid_comm, only: do3StepComm
+  use rsdft_mpi_module
 
   include 'mpif.h'
 
@@ -23,6 +24,11 @@ MODULE inner_product_module
   PUBLIC :: get_Sf
   PUBLIC :: get_gSf
   PUBLIC :: get_Sunk_Mat
+  PUBLIC :: calc_inner_product
+
+  INTERFACE calc_inner_product
+     MODULE PROCEDURE z_calc_inner_product, d_calc_inner_product
+  END INTERFACE
 
 CONTAINS
 
@@ -276,5 +282,26 @@ CONTAINS
 
     return
   END SUBROUTINE get_Sunk_Mat
+
+!--------1---------2---------3---------4---------5---------6---------7--
+
+  SUBROUTINE z_calc_inner_product( u, v, uv )
+    implicit none
+    complex(8),intent(IN)  :: u(:), v(:)
+    complex(8),intent(OUT) :: uv
+    uv = sum( conjg(u)*v )*dV
+    call rsdft_allreduce_sum( uv, comm_grid )
+  END SUBROUTINE z_calc_inner_product
+
+  SUBROUTINE d_calc_inner_product( u, v, uv )
+    implicit none
+    real(8),intent(IN)  :: u(:), v(:)
+    real(8),intent(OUT) :: uv
+    uv = sum( u*v )*dV
+    call rsdft_allreduce_sum( uv, comm_grid )
+  END SUBROUTINE d_calc_inner_product
+
+!--------1---------2---------3---------4---------5---------6---------7--
+
 
 END MODULE inner_product_module

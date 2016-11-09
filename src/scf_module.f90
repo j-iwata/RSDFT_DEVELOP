@@ -102,6 +102,8 @@ CONTAINS
     call init_time_watch( etime_lap(1) )
 
     flag_end    = .false.
+    flag_end1   = .false.
+    flag_end2   = .false.
     flag_exit   = .false.
     flag_conv   = .false.
     flag_conv_f = .false.

@@ -17,6 +17,7 @@ MODULE libxc_module
   PUBLIC :: init_libxc
   PUBLIC :: finalize_libxc
   PUBLIC :: calc_libxc
+  PUBLIC :: calc_fxc_libxc
 
   character(len=256) :: func_string(2)
   integer :: func_id(2)
@@ -193,7 +194,7 @@ CONTAINS
 
        if ( present(pot) ) then
 
-          if ( allocated(pot%x%val) ) pot%x%val(:,:) = vxc(:,1:nn)
+          if ( allocated(pot%c%val) ) pot%c%val(:,:) = vxc(:,1:nn)
 
           pot%xc%val(:,:) = pot%xc%val(:,:) + vxc(:,1:nn)
 
@@ -349,5 +350,57 @@ CONTAINS
 
   END SUBROUTINE calc_gga_pot
 #endif
+
+
+  SUBROUTINE calc_fxc_libxc( rho, fxc )
+    implicit none
+    real(8),intent(IN)  :: rho(:,:)
+    real(8),intent(OUT) :: fxc(:,:)
+    real(8),allocatable :: a(:,:), b(:,:)
+    integer :: np,ns,i,j,s
+
+    fxc=0.0d0
+
+#ifdef _LIBXC_
+
+    np = size( rho, 1 )
+    ns = size( rho, 2 )
+
+    allocate( a(ns,np) ) ; a=0.0d0
+
+    do j=1,np
+       a( 1,j) = rho(j, 1)
+       a(ns,j) = rho(j,ns)
+    end do
+
+    allocate( b(2*ns-1,np) ) ; b=0.0d0
+
+    do i=1,num_func
+
+       select case( xc_f90_info_family(xc_info(i)) )
+       case( XC_FAMILY_LDA )
+
+          call xc_f90_lda_fxc( xc_func(i), np, a(1,1), b(1,1) )
+
+          do s=1,2*ns-1
+             do j=1,np
+                fxc(j,s) = fxc(j,s) + b(s,j)
+             end do
+          end do
+
+       case default
+
+          call stop_program( "fxc of LDA_X & LDA_C_PZ is only available" )
+
+       end select
+
+    end do
+
+    deallocate( b )
+    deallocate( a )
+
+#endif
+  END SUBROUTINE calc_fxc_libxc
+
 
 END MODULE libxc_module
