@@ -17,6 +17,7 @@ PROGRAM Real_Space_DFT
   use fftw_module
   use vdw_grimme_module
   use efield_module
+  use linear_response_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -444,17 +445,21 @@ PROGRAM Real_Space_DFT
   select case( iswitch_tddft )
   case( 0 )
 
-  case( 1,2 )
+  case( 1 )
 
      select case( SYStype )
      case( 1 )
-        call init_rtddft_mol( 1, myrank )
-        call rtddft_mol( iswitch_tddft )
-        goto 900
+!        call init_rtddft_mol( 1, myrank )
+!        call rtddft_mol( iswitch_tddft )
+!        goto 900
      case default
-        write(*,*) "real-time tddft is available only for rsmol"
-        goto 900
+!        write(*,*) "real-time tddft is available only for rsmol"
+!        goto 900
      end select
+
+  case( 2 )
+
+     call calc_dielectric_constant
 
   case default
 
