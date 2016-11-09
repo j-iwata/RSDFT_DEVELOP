@@ -10,6 +10,7 @@ MODULE linear_response_module
   use libxc_module, only: calc_fxc_libxc
   use parallel_module, only: comm_grid, comm_band, comm_bzsm, comm_spin
   use rsdft_mpi_module, only: rsdft_allreduce_sum
+  use symmetry_module, only: sym_rho
 
   implicit none
 
@@ -27,12 +28,12 @@ CONTAINS
     complex(8),allocatable :: psi_bar(:,:,:,:)
     complex(8),allocatable :: dlt_psi(:,:,:,:)
     complex(8),allocatable :: work(:,:)
-    integer,parameter :: max_loop_scf=1000
+    integer,parameter :: max_loop_scf=100
     integer :: mg,mb,mk,ms,n,k,s,mg0,mb0,mk0,ms0
     integer :: mvb,n0,k0,s0,loop_scf
     real(8) :: rtmp(8)
     real(8) :: Eexternal, epsilon, epsilon0, polarization
-    real(8),allocatable :: dlt_rho(:),dlt_vhxc(:),fxc(:,:)
+    real(8),allocatable :: dlt_rho(:,:),dlt_vhxc(:),fxc(:,:),rwork(:,:)
 
     call write_border( 0, "calc_dielectric_constant(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -51,9 +52,10 @@ CONTAINS
     allocate( psi_bar(mg,mb,mk,ms) ) ; psi_bar=zero
     allocate( dlt_psi(mg,mb,mk,ms) ) ; psi_bar=zero
     allocate( work(mg,1)           ) ; work=zero
-    allocate( dlt_rho(mg)          ) ; dlt_rho=0.0d0
+    allocate( dlt_rho(mg,MS_WF)    ) ; dlt_rho=0.0d0
     allocate( dlt_vhxc(mg)         ) ; dlt_vhxc=0.0d0
     allocate( fxc(mg,MS_WF)        ) ; fxc=0.0d0
+    allocate( rwork(mg,MS_WF)      ) ; rwork=0.0d0
 
     call set_initial_wf( "random", psi_bar )
 
@@ -64,7 +66,6 @@ CONTAINS
        k0=mk0+k-1
        s0=ms0+s-1
        if ( n0 > mvb ) cycle
-write(*,*) n,k,s,sum(abs(unk(:,n0,k0,s0)))
        call op_momentum( "z", k0, unk(:,n0:n0,k0,s0), work )
        call ortho_valence( unk(:,1:mvb,k0,s0), work(:,1) )
        call ortho_valence( unk(:,1:mvb,k0,s0), psi_bar(:,n,k,s) )
@@ -86,7 +87,6 @@ write(*,*) n,k,s,sum(abs(unk(:,n0,k0,s0)))
        k0=mk0+k-1
        s0=ms0+s-1
        if ( n0 > mvb ) cycle
-write(*,*) n,k,s
        work(:,1) = -Eexternal*psi_bar(:,n,k,s)
        call ortho_valence( unk(:,1:mvb,k0,s0), dlt_psi(:,n,k,s) )
        call solve_sternheimer( n0,k0,s0, work(:,1), dlt_psi(:,n,k,s) )
@@ -97,7 +97,7 @@ write(*,*) n,k,s
 
 ! ---
 
-    dlt_rho(:)=0.0d0
+    dlt_rho(:,:)=0.0d0
     do s=1,ms
     do k=1,mk
     do n=1,mb
@@ -105,7 +105,7 @@ write(*,*) n,k,s
        k0=mk0+k-1
        s0=ms0+s-1
        if ( n0 > mvb ) cycle
-       dlt_rho(:) = dlt_rho(:) + occ(n0,k0,s0) &
+       dlt_rho(:,s0) = dlt_rho(:,s0) + occ(n0,k0,s0) &
             *2.0d0*real( conjg(unk(:,n0,k0,s0))*dlt_psi(:,n,k,s) )
     end do
     end do
@@ -113,6 +113,7 @@ write(*,*) n,k,s
     call rsdft_allreduce_sum( dlt_rho, comm_band )
     call rsdft_allreduce_sum( dlt_rho, comm_bzsm )
     call rsdft_allreduce_sum( dlt_rho, comm_spin )
+    call sym_rho( ML_0_WF,ML_1_WF,MS_WF,MS_0_WF,MS_1_WF,dlt_rho )
 
 ! ---
 
@@ -149,7 +150,7 @@ write(*,*) n,k,s
        end if
 
        call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, dlt_rho, dlt_vhxc )
-       dlt_vhxc(:) = dlt_vhxc(:) + fxc(:,1)*dlt_rho(:)
+       dlt_vhxc(:) = dlt_vhxc(:) + fxc(:,1)*dlt_rho(:,1)
 
        do s=1,ms
        do k=1,mk
@@ -158,7 +159,6 @@ write(*,*) n,k,s
           k0=mk0+k-1
           s0=ms0+s-1
           if ( n0 > mvb ) cycle
-!          write(*,*) n,k,s
           work(:,1) = -Eexternal*psi_bar(:,n,k,s) - dlt_vhxc(:)*unk(:,n0,k0,s0)
           call ortho_valence( unk(:,1:mvb,k0,s0), work(:,1) )
           call solve_sternheimer( n0,k0,s0, work(:,1), dlt_psi(:,n,k,s) )
@@ -167,7 +167,7 @@ write(*,*) n,k,s
        end do
        end do
 
-       work(:,1)=zero
+       rwork(:,:)=0.0d0
        do s=1,ms
        do k=1,mk
        do n=1,mb
@@ -175,21 +175,24 @@ write(*,*) n,k,s
           k0=mk0+k-1
           s0=ms0+s-1
           if ( n0 > mvb ) cycle
-          work(:,1) = work(:,1) + occ(n0,k0,s0) &
+          rwork(:,s0) = rwork(:,s0) + occ(n0,k0,s0) &
                *2.0d0*real( conjg(unk(:,n0,k0,s0))*dlt_psi(:,n,k,s) )
        end do
        end do
        end do
-       call rsdft_allreduce_sum( work(:,1), comm_band )
-       call rsdft_allreduce_sum( work(:,1), comm_bzsm )
-       call rsdft_allreduce_sum( work(:,1), comm_spin )
-
-       dlt_rho(:) = dlt_rho(:) + 0.3d0*( real(work(:,1))-dlt_rho(:) )
+       call rsdft_allreduce_sum( rwork, comm_band )
+       call rsdft_allreduce_sum( rwork, comm_bzsm )
+       call rsdft_allreduce_sum( rwork, comm_spin )
+       call sym_rho( ML_0_WF,ML_1_WF,MS_WF,MS_0_WF,MS_1_WF,rwork )
+       do s=1,MS_WF
+          dlt_rho(:,s) = dlt_rho(:,s) + 0.3d0*( rwork(:,s)-dlt_rho(:,s) )
+       end do
 
     end do ! max_loop_scf
 
 ! ---
 
+    deallocate( rwork    )
     deallocate( dlt_vhxc )
     deallocate( dlt_rho  )
     deallocate( work     )
