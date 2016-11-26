@@ -25,9 +25,15 @@ CONTAINS
   SUBROUTINE calc_dielectric_constant
     implicit none
     complex(8),parameter :: zero=(0.0d0,0.0d0)
+#ifdef _DRSDFT_
+    real(8),allocatable :: psi_bar(:,:,:,:)
+    real(8),allocatable :: dlt_psi(:,:,:,:)
+    real(8),allocatable :: work(:,:)
+#else
     complex(8),allocatable :: psi_bar(:,:,:,:)
     complex(8),allocatable :: dlt_psi(:,:,:,:)
     complex(8),allocatable :: work(:,:)
+#endif
     integer,parameter :: max_loop_scf=100
     integer :: mg,mb,mk,ms,n,k,s,mg0,mb0,mk0,ms0
     integer :: mvb,n0,k0,s0,loop_scf
@@ -105,8 +111,13 @@ CONTAINS
        k0=mk0+k-1
        s0=ms0+s-1
        if ( n0 > mvb ) cycle
+#ifdef _DRSDFT_
+       dlt_rho(:,s0) = dlt_rho(:,s0) + occ(n0,k0,s0) &
+            *unk(:,n0,k0,s0)*dlt_psi(:,n,k,s)
+#else
        dlt_rho(:,s0) = dlt_rho(:,s0) + occ(n0,k0,s0) &
             *2.0d0*real( conjg(unk(:,n0,k0,s0))*dlt_psi(:,n,k,s) )
+#endif
     end do
     end do
     end do
@@ -133,8 +144,13 @@ CONTAINS
           k0=mk0+k-1
           s0=ms0+s-1
           if ( n0 > mvb ) cycle
+#ifdef _DRSDFT_
+          polarization = polarization - occ(n0,k0,s0) &
+               *sum( psi_bar(:,n,k,s)*dlt_psi(:,n,k,s) )
+#else
           polarization = polarization - occ(n0,k0,s0) &
                *2.0d0*real( sum(conjg(psi_bar(:,n,k,s))*dlt_psi(:,n,k,s)) )
+#endif
        end do
        end do
        end do
@@ -175,8 +191,13 @@ CONTAINS
           k0=mk0+k-1
           s0=ms0+s-1
           if ( n0 > mvb ) cycle
+#ifdef _DRSDFT_
+          rwork(:,s0) = rwork(:,s0) + occ(n0,k0,s0) &
+               *unk(:,n0,k0,s0)*dlt_psi(:,n,k,s)
+#else
           rwork(:,s0) = rwork(:,s0) + occ(n0,k0,s0) &
                *2.0d0*real( conjg(unk(:,n0,k0,s0))*dlt_psi(:,n,k,s) )
+#endif
        end do
        end do
        end do
@@ -206,9 +227,15 @@ CONTAINS
 
   SUBROUTINE ortho_valence( u, v )
     implicit none
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: u(:,:)
+    real(8),intent(INOUT) :: v(:)
+    real(8) :: uv
+#else
     complex(8),intent(IN)    :: u(:,:)
     complex(8),intent(INOUT) :: v(:)
     complex(8) :: uv
+#endif
     integer :: n
     do n=1,size(u,2)
        call calc_inner_product( u(:,n), v(:), uv )
@@ -220,11 +247,18 @@ CONTAINS
   SUBROUTINE solve_sternheimer( n, k, s, rhs, psi )
     implicit none
     integer,intent(IN)       :: n, k, s
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: rhs(:)
+    real(8),intent(INOUT) :: psi(:)
+    real(8),allocatable :: p(:), r(:), Ap(:), xmin(:)
+    real(8) :: r0r0,rr,pAp,bb,ztmp,alpha,beta
+#else
     complex(8),intent(IN)    :: rhs(:)
     complex(8),intent(INOUT) :: psi(:)
     complex(8),allocatable :: p(:), r(:), Ap(:), xmin(:)
-    complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8) :: r0r0,rr,pAp,bb,ztmp,alpha,beta
+#endif
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
     integer,parameter :: maxcg=1000
     integer :: m, icg
     real(8),parameter :: tol=1.d-8
@@ -312,8 +346,13 @@ CONTAINS
   SUBROUTINE op_matrix( n, k, s, x, Ax )
     implicit none
     integer,intent(IN)     :: n,k,s
+#ifdef _DRSDFT_
+    real(8),intent(IN)  :: x(:)
+    real(8),intent(OUT) :: Ax(:)
+#else
     complex(8),intent(IN)  :: x(:)
     complex(8),intent(OUT) :: Ax(:)
+#endif
     integer :: n1,n2
     n1=Igrid(1,0)
     n2=Igrid(2,0)

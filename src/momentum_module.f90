@@ -288,8 +288,13 @@ CONTAINS
     implicit none
     character(1),intent(IN)  :: indx
     integer,intent(IN)       :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: tpsi(:,:)
+    real(8),intent(INOUT) :: ppsi(:,:)
+#else
     complex(8),intent(IN)    :: tpsi(:,:)
     complex(8),intent(INOUT) :: ppsi(:,:)
+#endif
     ppsi=(0.0d0,0.0d0)
     call op_momentum_kine( indx, k, tpsi, ppsi )
     call op_momentum_nloc( indx, k, tpsi, ppsi )
@@ -300,8 +305,13 @@ CONTAINS
     implicit none
     character(1),intent(IN)  :: indx
     integer,intent(IN)       :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: tpsi(:,:)
+    real(8),intent(INOUT) :: ppsi(:,:)
+#else
     complex(8),intent(IN)    :: tpsi(:,:)
     complex(8),intent(INOUT) :: ppsi(:,:)
+#endif
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     complex(8) :: zc
     integer :: n,nb,ib,i,i1,i2,i3,j,a1b,b1b,a2b,b2b,a3b,b3b
@@ -399,8 +409,13 @@ CONTAINS
     implicit none
     character(1),intent(IN)  :: indx
     integer,intent(IN)       :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: tpsi(:,:)
+    real(8),intent(INOUT) :: vpsi(:,:)
+#else
     complex(8),intent(IN)    :: tpsi(:,:)
     complex(8),intent(INOUT) :: vpsi(:,:)
+#endif
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     complex(8),allocatable :: uuu(:,:,:),uuu0(:,:,:)
     complex(8),allocatable :: rVk(:,:)
@@ -434,8 +449,13 @@ CONTAINS
        do lma=1,nzlma
           do j=1,MJJ(lma)
              i=JJP(j,lma)-n1+1
+#ifdef _DRSDFT_
+             uuu(0,lma,ib)=uuu(0,lma,ib)+uVk(j,lma,k)*tpsi(i,ib)
+             uuu(1,lma,ib)=uuu(1,lma,ib)+rVk(j,lma)*tpsi(i,ib)
+#else
              uuu(0,lma,ib)=uuu(0,lma,ib)+conjg( uVk(j,lma,k) )*tpsi(i,ib)
              uuu(1,lma,ib)=uuu(1,lma,ib)+conjg( rVk(j,lma) )*tpsi(i,ib)
+#endif
           end do ! j
           uuu(0,lma,ib)=iuV(lma)*uuu(0,lma,ib)*dV
           uuu(1,lma,ib)=iuV(lma)*uuu(1,lma,ib)*dV
