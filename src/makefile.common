@@ -177,6 +177,7 @@ MODS1 = \
        conjugate_gradient_g_module.o\
        total_energy_module.o\
        io_module.o\
+       io_simple_module.o\
        ps_nloc_initiate_module.o\
        subspace_diag_sl_module.o\
        ps_local_mol_gth_module.o\
