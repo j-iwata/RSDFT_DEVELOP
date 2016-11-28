@@ -173,7 +173,11 @@ CONTAINS
   SUBROUTINE set_initial_wf( indx, wf )
     implicit none
     character(*),intent(IN) :: indx
+#ifdef _DRSDFT_
+    real(8),intent(OUT)  :: wf(:,:,:,:)
+#else
     complex(8),intent(OUT)  :: wf(:,:,:,:)
+#endif
     integer :: s,k,n,i
     real(8) :: u(2)
     select case( indx )
