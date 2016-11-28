@@ -613,7 +613,7 @@ CONTAINS
     real(8),parameter :: factor=1.0d0
     real(8) :: const,const1,ewldr,ewldg
     real(8) :: r,rr,alpha,g,t,pi,max_bb,max_aa,tt0,ttt,gg
-    real(8) :: ewldr_tmp,gmax
+    real(8) :: ewldr_tmp,gmax,g_0_guess,r_0_guess
     real(8) :: ct0,et0,ct1,et1,timg(2),timg0(2),timr(2),timr0(2)
     integer,allocatable :: grd_chk(:,:,:),grd_chk0(:,:,:)
     logical :: disp_sw
@@ -682,7 +682,8 @@ CONTAINS
 !--- G
 
     const=1.d0/(4.d0*eta)
-    if ( g_0 == 0.d0 ) g_0=12.d0*sqrt(eta)
+    g_0_guess=12.d0*sqrt(eta)
+    if ( g_0 == 0.d0 .or. g_0 > g_0_guess*2 ) g_0=12.d0*sqrt(eta)
     g=g_0
 
     do loop_g=1,max_loop_g
@@ -730,7 +731,8 @@ CONTAINS
 !--- R
 
     alpha = sqrt(eta)
-    if ( r_0 == 0.d0 ) r_0=6.d0/sqrt(eta)
+    r_0_guess=6.d0/sqrt(eta)
+    if ( r_0 == 0.d0 .or. r_0 > r_0_guess*2 ) r_0=6.d0/sqrt(eta)
     r=r_0
 
     ewldr     = ewldg ; ewldg=0.d0
