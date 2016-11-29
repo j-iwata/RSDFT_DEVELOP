@@ -1,4 +1,5 @@
 MODS1 = \
+       enlarge_array_module.o\
        polint_module.o\
        spline_module.o\
        hsort_module.o\
@@ -106,6 +107,8 @@ MODS1 = \
        bc_module.o\
        subspace_rotv_sl_module.o\
        cgpc_gausseidel_module.o\
+       kinetic_sym_ini_module.o\
+       kinetic_sym_module.o\
        kinetic_sol_module.o\
        ps_prepNzqr_g_module.o\
        kinetic_mol_module.o\

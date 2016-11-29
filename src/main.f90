@@ -18,6 +18,7 @@ PROGRAM Real_Space_DFT
   use vdw_grimme_module
   use efield_module
   use linear_response_module
+  use kinetic_sym_ini_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -29,6 +30,7 @@ PROGRAM Real_Space_DFT
   logical,parameter :: recalc_esp=.true.
   real(8) :: Etot, Ehwf
   integer :: info_level=0
+  character(32) :: lattice_index
 
 ! --- start MPI ---
 
@@ -87,6 +89,9 @@ PROGRAM Real_Space_DFT
         call write_coordinates_atom( 1, 3, "atomic_coordinates_xyz_ini" )
      end if
   end if
+
+  call check_lattice( aa, lattice_index )
+  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
 
   call write_border( 0, " main( aa & bb )(end)" )
 
@@ -178,6 +183,8 @@ PROGRAM Real_Space_DFT
 ! --- kinetic energy oprator coefficients ---
 
   call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
+
+  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa )
 
 ! --- ??? ---
 
