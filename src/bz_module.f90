@@ -531,19 +531,28 @@ CONTAINS
     implicit none
     integer,intent(INOUT) :: n, m(3,2)
     logical :: disp
-    integer :: lcm_12, lcm
+    integer :: lcm_12, lcm, i
     call check_disp_switch( disp, 0 )
-    if ( disp ) write(*,'(1x,"nk=",i5,"   ( MP mesh is used )")') n
+    if ( disp ) then
+       write(*,'(1x,"nk=",i5,"   ( MP mesh is used )")') n
+       write(*,'(1x,"mmm1=",3i4)') m(:,1)
+    end if
 ! Least Common Multiplier
     lcm_12 = m(1,1)*m(2,1)/gcd( m(1,1),m(2,1) )
     n = lcm_12*m(3,1)/gcd( lcm_12,m(3,1) )
     n = n*2
-    mmm(:,2) = n/mmm(:,1)
-    mmm(:,1) = n/mmm(:,2)-1
+    m(:,2) = n/m(:,1)
+    do i=1,3
+       if ( mod(m(i,1),2) == 1 ) then
+          m(i,1) = m(i,2)*m(i,1)
+       else
+          m(i,1) = (n/2)/m(i,1) + m(i,2)*m(i,1)
+       end if
+    end do
     if ( disp ) then
-       write(*,'(1x,"nk=",i5)') nk
-       write(*,'(1x,"mmm1=",3i4)') mmm(:,1)
-       write(*,'(1x,"mmm2=",3i4)') mmm(:,2)
+       write(*,'(1x,"nk=",i5)') n
+       write(*,'(1x,"mmm1=",3i4)') m(:,1)
+       write(*,'(1x,"mmm2=",3i4)') m(:,2)
     end if
   END SUBROUTINE Monkhorst_Pack
 
