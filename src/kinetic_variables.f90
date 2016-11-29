@@ -11,6 +11,8 @@ MODULE kinetic_variables
   PUBLIC :: read_kinetic, read_oldformat_kinetic
   PUBLIC :: coef_kin
 
+  integer,PUBLIC :: kin_select
+
   integer :: SYStype=0
   integer :: Md
   logical :: flag_nab, flag_n12, flag_n23, flag_n31
@@ -31,7 +33,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     integer :: i
-    character(7) :: cbuf,ckey
+    character(9) :: cbuf,ckey
     Md = 6
     SYStype = 0
     if ( rank == 0 ) then
@@ -45,6 +47,9 @@ CONTAINS
           else if ( ckey(1:7) == "SYSTYPE" ) then
              backspace(unit)
              read(unit,*) cbuf,SYStype
+          else if ( ckey(1:9) == "KINSELECT" ) then
+             backspace(unit)
+             read(unit,*) cbuf, kin_select
           end if
        end do
 999    continue
@@ -72,6 +77,7 @@ CONTAINS
     include 'mpif.h'
     call mpi_bcast(Md,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(SYStype,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(kin_select,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_kinetic
 
 END MODULE kinetic_variables

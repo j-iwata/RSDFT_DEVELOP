@@ -1,12 +1,15 @@
 MODULE symmetry_module
 
   use parallel_module, np_2d => node_partition
+  use lattice_module, only: get_inverse_lattice
 
   implicit none
 
   PRIVATE
   PUBLIC :: init_symmetry, read_symmetry, prep_symmetry, sym_rho, sym_force &
            ,nsym,isymmetry,rgb,construct_matrix_symmetry
+  PUBLIC :: basis_conversion_symmetry
+  PUBLIC :: get_mat_symmetry
 
   integer :: isymmetry
   character(30) :: file_symdat
@@ -99,10 +102,10 @@ CONTAINS
     integer :: AAA(9,19683)
     real(8) :: RR0(3),RR1(3),RR2(3),RRR
     real(8) :: R1q,R2q,R3q,R1p,R2p,R3p,R1s,R2s,R3s
-    real(8) :: tmp2(3,3,2)
+    real(8) :: tmp2(3,3,2), aa0(3,3)
     real(8) :: c1
     real(8),allocatable :: XX(:,:), pga_tmp(:,:)
-    character(12) :: label_sym
+    character(12) :: label_sym, cbuf
 
     if ( .not.(abs(isymmetry)==1 .or. abs(isymmetry)==2 .or. &
                abs(isymmetry)==3) )  return
@@ -115,6 +118,7 @@ CONTAINS
 
     nnp  = 1
     nsym = 0
+    aa0  = 0.0d0
 
 !
 ! --- Read symmetry operation matrix ---
@@ -133,6 +137,17 @@ CONTAINS
           do n=1,nsym
              read(u,*) ( (rga(i,j,n),j=1,3),i=1,3 ),pga(:,n)
           end do
+          read(u,*,END=10) cbuf
+          backspace(u)
+          read(u,*) cbuf, aa0(:,1)
+          read(u,*) cbuf, aa0(:,2)
+          read(u,*) cbuf, aa0(:,3)
+          if ( disp_switch_parallel ) then
+             write(*,'(1x,"A1-Base",3f20.15)') aa0(:,1)
+             write(*,'(1x,"A2-Base",3f20.15)') aa0(:,2)
+             write(*,'(1x,"A3-Base",3f20.15)') aa0(:,3)
+          end if
+10        continue
 !(2)
        case( 2, -2 )
 
@@ -317,14 +332,38 @@ CONTAINS
 
     call mpi_bcast(rga,9*nsym,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(pga,3*nsym,mpi_integer,0,mpi_comm_world,ierr)
+    call mpi_bcast(aa0,9     ,mpi_real8  ,0,mpi_comm_world,ierr)
 
     if ( disp_switch_parallel ) then
        write(*,*) "nsym,nnp=",nsym,nnp
     end if
 
+    if ( any(aa0/=0.0d0) ) call basis_conversion_symmetry( aa0, aa, rga )
+
     call write_border( 0, " input_symdat(end)" )
 
   END SUBROUTINE input_symdat
+
+
+  SUBROUTINE basis_conversion_symmetry( aa0, aa1, mat )
+    implicit none
+    real(8),intent(INOUT) :: aa0(3,3)
+    real(8),intent(IN)    :: aa1(3,3)
+    integer,intent(INOUT) :: mat(:,:,:)
+    integer :: i
+    real(8) :: aa0inv(3,3), aa1inv(3,3), x(3,3), y(3,3)
+    call get_inverse_lattice( aa0, aa0inv )
+    call get_inverse_lattice( aa1, aa1inv )
+    do i=1,size(mat,3)
+       x(:,:) = mat(:,:,i)
+       y(:,:) = matmul( x, aa0inv )
+       x(:,:) = matmul( aa0, y )
+       y(:,:) = matmul( x, aa1 )
+       x(:,:) = matmul( aa1inv, y )
+       mat(:,:,i) = nint( x(:,:) )
+    end do
+    aa0=aa1
+  END SUBROUTINE basis_conversion_symmetry
 
 
   SUBROUTINE chk_grp( rga, aa, bb )
@@ -1264,6 +1303,15 @@ stop
     return
 
   END SUBROUTINE construct_matrix_symmetry
+
+
+  SUBROUTINE get_mat_symmetry( mat )
+    implicit none
+    integer,allocatable,intent(INOUT) :: mat(:,:,:)
+    if ( isymmetry == 0 ) return
+    allocate( mat(3,3,nsym) ) ; mat=0
+    mat=rga
+  END SUBROUTINE get_mat_symmetry
 
 
 END MODULE symmetry_module
