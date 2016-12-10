@@ -10,6 +10,7 @@ MODULE symmetry_module
            ,nsym,isymmetry,rgb,construct_matrix_symmetry
   PUBLIC :: basis_conversion_symmetry
   PUBLIC :: get_mat_symmetry
+  PUBLIC :: calc_mat_bb_symmetry
 
   integer :: isymmetry
   character(30) :: file_symdat
@@ -64,8 +65,6 @@ CONTAINS
     integer,intent(IN) :: MI,Kion(MI)
     real(8),intent(IN) :: asi(3,MI)
 
-    if ( isymmetry == 0 ) return
-
     call write_border( 0," init_symmetry(start)")
 
     ML  = Ngrid(0)
@@ -76,11 +75,12 @@ CONTAINS
     aa  = aa_in
     bb  = bb_in
 
-    call input_symdat( MI, Kion, asi )
-
-    call input_symdat_2( MI, Kion, asi )
-!    call input_symdat_3( MI, Kion, asi )
-!    call input_symdat_4( MI, Kion, asi )
+    if ( isymmetry /= 0 ) then
+       call input_symdat( MI, Kion, asi )
+       call input_symdat_2( MI, Kion, asi )
+       !call input_symdat_3( MI, Kion, asi )
+       !call input_symdat_4( MI, Kion, asi )
+    end if
 
     call write_border( 0," init_symmetry(end)")
 
@@ -409,15 +409,16 @@ CONTAINS
 
 ! --- make rgb (symmetry operation matrix in bb-representation) ---
 !
-    bb_inv(1:3,1:3) = transpose( aa(1:3,1:3) )/pi2
-    aa_inv(1:3,1:3) = transpose( bb(1:3,1:3) )/pi2
-    tmp2(1:3,1:3,1) = matmul( bb_inv(1:3,1:3), aa(1:3,1:3) )
-    tmp2(1:3,1:3,2) = matmul( aa_inv(1:3,1:3), bb(1:3,1:3) )
-    do n=1,nsym
-       tmp0(1:3,1:3)  = matmul( tmp2(1:3,1:3,1), rga(1:3,1:3,n) )
-       tmp1(1:3,1:3)  = matmul( tmp0(1:3,1:3), tmp2(1:3,1:3,2) )
-       rgb(1:3,1:3,n) = tmp1(1:3,1:3)
-    end do
+!    bb_inv(1:3,1:3) = transpose( aa(1:3,1:3) )/pi2
+!    aa_inv(1:3,1:3) = transpose( bb(1:3,1:3) )/pi2
+!    tmp2(1:3,1:3,1) = matmul( bb_inv(1:3,1:3), aa(1:3,1:3) )
+!    tmp2(1:3,1:3,2) = matmul( aa_inv(1:3,1:3), bb(1:3,1:3) )
+!    do n=1,nsym
+!       tmp0(1:3,1:3)  = matmul( tmp2(1:3,1:3,1), rga(1:3,1:3,n) )
+!       tmp1(1:3,1:3)  = matmul( tmp0(1:3,1:3), tmp2(1:3,1:3,2) )
+!       rgb(1:3,1:3,n) = tmp1(1:3,1:3)
+!    end do
+    call calc_mat_bb_symmetry( rga, rgb )
 
 !
 ! --- Check the symmetry operations ---
@@ -1305,13 +1306,42 @@ stop
   END SUBROUTINE construct_matrix_symmetry
 
 
-  SUBROUTINE get_mat_symmetry( mat )
+  SUBROUTINE get_mat_symmetry( mata, matb )
     implicit none
-    integer,allocatable,intent(INOUT) :: mat(:,:,:)
+    integer,optional,allocatable,intent(INOUT) :: mata(:,:,:)
+    real(8),optional,allocatable,intent(INOUT) :: matb(:,:,:)
     if ( isymmetry == 0 ) return
-    allocate( mat(3,3,nsym) ) ; mat=0
-    mat=rga
+    if ( present(mata) ) then
+       if ( .not.allocated(mata) ) allocate( mata(3,3,nsym) )
+       mata=0
+       mata=rga
+    end if
+    if ( present(matb) ) then
+       if ( .not.allocated(matb) ) allocate( matb(3,3,nsym) )
+       matb=0.0d0
+       matb=rgb
+    end if
   END SUBROUTINE get_mat_symmetry
+
+
+  SUBROUTINE calc_mat_bb_symmetry( mata, matb )
+    implicit none
+    integer,intent(IN)  :: mata(:,:,:)
+    real(8),intent(OUT) :: matb(:,:,:)
+    real(8) :: aa_inv(3,3), bb_inv(3,3), pi2
+    real(8) :: tmp0(3,3), tmp1(3,3), tmp2(3,3,2)
+    integer :: i
+    pi2=2.0d0*acos(-1.0d0)
+    bb_inv(1:3,1:3) = transpose( aa(1:3,1:3) )/pi2
+    aa_inv(1:3,1:3) = transpose( bb(1:3,1:3) )/pi2
+    tmp2(1:3,1:3,1) = matmul( bb_inv(1:3,1:3), aa(1:3,1:3) )
+    tmp2(1:3,1:3,2) = matmul( aa_inv(1:3,1:3), bb(1:3,1:3) )
+    do i=1,size(mata,3)
+       tmp0(1:3,1:3)   = matmul( tmp2(1:3,1:3,1), mata(1:3,1:3,i) )
+       tmp1(1:3,1:3)   = matmul( tmp0(1:3,1:3), tmp2(1:3,1:3,2) )
+       matb(1:3,1:3,i) = tmp1(1:3,1:3)
+    end do
+  END SUBROUTINE calc_mat_bb_symmetry
 
 
 END MODULE symmetry_module

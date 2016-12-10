@@ -183,14 +183,14 @@ CONTAINS
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
 
-    case('GGAPBE96')
+    case('GGAPBE96_')
 
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
-    case('PBE','PBE96')
+    case('PBE','PBE96','GGAPBE96')
 
        call calc_GGAPBE96_2( rg, density, ene, pot )
 

@@ -39,13 +39,11 @@ CONTAINS
   SUBROUTINE calc_GGAPBE96_2( rgrid, rho, ene, pot, mu_in, Kp_in )
 
     implicit none
-
     type( grid ),intent(IN) :: rgrid
     type( GSArray ),intent(IN) :: rho
     type( xcene ) :: ene
     type( xcpot ) :: pot
     real(8),optional,intent(IN) :: mu_in, Kp_in
-
     type(gradient16) :: grad16
     type(fd) :: nabla
     type(lattice) :: aa, bb
@@ -91,11 +89,11 @@ CONTAINS
 
     allocate( vx(m1:m2,n1:n2) ) ; vx=0.0_QP
 
-    call calc_PBE_x( rho, grad16 )
+    call calc_PBE_x( rgrid, rho, grad16 )
 
     allocate( vc(m1:m2,n1:n2) ) ; vc=0.0_QP
 
-    call calc_PBE_c( rho, grad16 )
+    call calc_PBE_c( rgrid, rho, grad16 )
 
 ! ---
 
@@ -121,8 +119,10 @@ CONTAINS
   END SUBROUTINE calc_GGAPBE96_2
 
 
-  SUBROUTINE calc_PBE_x( rho, grad16 )
+  SUBROUTINE calc_PBE_x( rgrid, rho, grad16 )
+
     implicit none
+    type( grid ) :: rgrid
     type( GSArray ) :: rho
     type( gradient16 ) :: grad16
 !   real(8),parameter :: mu=0.21951d0, Kp=0.804d0
@@ -133,6 +133,7 @@ CONTAINS
     real(QP) :: onethr,const1,const2
     integer :: i1,i2,i3,j,j1,j2,j3,k1,k2,k3
     integer :: mm,m1,m2
+    real(8),allocatable :: f(:), Gf(:)
 
     Pi = acos(-1.0_QP)
 
@@ -145,9 +146,7 @@ CONTAINS
 
     m1 = rho%g_range%head
     m2 = rho%g_range%tail
-    mm = rho%g_range%size_global
     allocate( rtmp(m1:m2) ) ; rtmp=0.0_QP
-    allocate( rrrr(mm,3)  ) ; rrrr=0.0_QP
 
     Ex = 0.0_QP
 
@@ -180,67 +179,22 @@ CONTAINS
 
        end do ! i
 
-       m1 = rho%g_range%head
-       m2 = rho%g_range%tail
+       allocate( rrrr(m1:m2,3)  ) ; rrrr=0.0_QP
        rrrr(m1:m2,1) = rtmp(m1:m2)*grad16%gx(m1:m2)
        rrrr(m1:m2,2) = rtmp(m1:m2)*grad16%gy(m1:m2)
        rrrr(m1:m2,3) = rtmp(m1:m2)*grad16%gz(m1:m2)
 
-       do i=1,3
-          rtmp(m1:m2)=rrrr(m1:m2,i)
-#ifdef _NO_QPRECISION_
-          call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,i),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-#else
-          call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real16 &
-               ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
-#endif
+       allocate( f(m1:m2)  ) ; f=0.0d0
+       allocate( Gf(m1:m2) ) ; Gf=0.0d0
+
+       do j=1,3
+          f(:) = rrrr(m1:m2,1)*b(1,j) + rrrr(m1:m2,2)*b(2,j) + rrrr(m1:m2,3)*b(3,j)
+          call calc_abc_gradient( j, rgrid, f, Gf )
+          vx(:,ispin) = vx(:,ispin) - Gf(:)
        end do
 
-       select case( SYStype )
-       case default
-
-          do i3=0,ML3-1
-          do i2=0,ML2-1
-          do i1=0,ML1-1
-             i=LLL(i1,i2,i3)
-             do m=-Md,Md
-                cm=nab(m)*sign(1,m)
-                j1=i1+m
-                k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
-                j1=j1-k1*ML1
-                j =LLL(j1,i2,i3)
-! The potential vx is calculated at j-th grid point rather than i-th.
-! This is because non-transposed nabla matrix Dij is used (See XC.doc).
-                if ( rho%g_range%head <= j .and. j <= rho%g_range%tail ) then
-                   vx(j,ispin) = vx(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
-                                                   +rrrr(i,2)*b(2,1) &
-                                                   +rrrr(i,3)*b(3,1) )
-                end if
-                j2=i2+m
-                k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
-                j2=j2-k2*ML2
-                j =LLL(i1,j2,i3)
-                if ( rho%g_range%head <= j .and. j <= rho%g_range%tail ) then
-                   vx(j,ispin) = vx(j,ispin) + cm*( rrrr(i,1)*b(1,2) &
-                                                   +rrrr(i,2)*b(2,2) &
-                                                   +rrrr(i,3)*b(3,2) )
-                end if
-                j3=i3+m
-                k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
-                j3=j3-k3*ML3
-                j =LLL(i1,i2,j3)
-                if ( rho%g_range%head <= j .and. j <= rho%g_range%tail ) then
-                   vx(j,ispin) = vx(j,ispin) + cm*( rrrr(i,1)*b(1,3) &
-                                                   +rrrr(i,2)*b(2,3) &
-                                                   +rrrr(i,3)*b(3,3) )
-                end if
-             end do ! m
-          end do ! i1
-          end do ! i2
-          end do ! i3
-
-       end select
+       deallocate( Gf )
+       deallocate( f  )
 
     end do ! ispin
 
@@ -252,9 +206,11 @@ CONTAINS
   END SUBROUTINE calc_PBE_x
 
 
-  SUBROUTINE calc_PBE_c( rho, grad16 )
+  SUBROUTINE calc_PBE_c( rgrid, rho, grad16 )
+
     implicit none
-    type( GSArray ) rho
+    type( grid ) :: rgrid
+    type( GSArray ) :: rho
     type( gradient16 ) :: grad16
     real(8),parameter :: A00  =0.031091d0,A01  =0.015545d0,A02  =0.016887d0
     real(8),parameter :: alp10=0.21370d0 ,alp11=0.20548d0 ,alp12=0.11125d0
@@ -266,7 +222,7 @@ CONTAINS
     real(QP) :: C1,C2
     real(QP) :: const1, const2, factor
     integer :: i,j,ispin,m,i1,i2,i3,j1,j2,j3,k1,k2,k3,ierr
-    integer :: m1,m2,mm,n1,n2
+    integer :: m1,m2
     real(QP) :: trho, rhoa, rhob
     real(QP) :: kf, rs, ec_U, ec_P, ec_lda, phi, g2
     real(QP) :: dac_dn, dfz_dz, deU_dn, deP_dn, H, A, T, alpc, fz
@@ -277,6 +233,7 @@ CONTAINS
     real(QP),allocatable :: rrrr(:,:), rtmp(:)
     real(QP) :: Pi, one, two, fouthr, onethr
     real(QP) :: sevthr, twothr, thrtwo, ThrFouPi
+    real(8),allocatable :: f(:),Gf(:)
 
     const1 = 2.0_QP**(4.0_QP/3.0_QP)-2.0_QP
     const2 = 9.0_QP*(2.0_QP**(1.0_QP/3.0_QP)-1.0_QP)/4.0_QP
@@ -299,10 +256,9 @@ CONTAINS
 
     Ec = 0.0_QP
 
-    mm = rho%g_range%size_global
-
-    allocate( rtmp(rho%g_range%head:rho%g_range%tail) ) ; rtmp=0.0_QP
-    allocate( rrrr(mm,3)  ) ; rrrr=0.0_QP
+    m1 = rho%g_range%head
+    m2 = rho%g_range%tail
+    allocate( rtmp(m1:m2) ) ; rtmp=0.0_QP
 
     do i=rho%g_range%head,rho%g_range%tail
 
@@ -414,76 +370,26 @@ CONTAINS
 
     end do ! i
 
-    m1 = rho%g_range%head
-    m2 = rho%g_range%tail
+    allocate( rrrr(m1:m2,3)  ) ; rrrr=0.0_QP
     rrrr(m1:m2,1) = rtmp(m1:m2)*grad16%gx(m1:m2)
     rrrr(m1:m2,2) = rtmp(m1:m2)*grad16%gy(m1:m2)
     rrrr(m1:m2,3) = rtmp(m1:m2)*grad16%gz(m1:m2)
 
-    do i=1,3
-       rtmp(m1:m2)=rrrr(m1:m2,i)
-#ifdef _NO_QPRECISION_
-       call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real8 &
-            ,rrrr(1,i),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-#else
-       call mpi_allgatherv(rtmp(m1),ir_grid(myrank_g),mpi_real16 &
-            ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
-#endif
+    allocate( f(m1:m2)  ) ; f=0.0d0
+    allocate( Gf(m1:m2) ) ; Gf=0.0d0
+
+    do j=1,3
+       f(:) = rrrr(m1:m2,1)*b(1,j) + rrrr(m1:m2,2)*b(2,j) + rrrr(m1:m2,3)*b(3,j)
+       call calc_abc_gradient( j, rgrid, f, Gf )
+       do ispin=rho%s_range%head,rho%s_range%tail
+          vc(:,ispin) = vc(:,ispin) - Gf(:)
+       end do
     end do
 
-    select case( SYStype )
-    case default
-
-       do i3=0,ML3-1
-       do i2=0,ML2-1
-       do i1=0,ML1-1
-          i=LLL(i1,i2,i3)
-          do m=-Md,Md
-             cm=nab(m)*sign(1,m)
-             j1=i1+m
-             k1=j1/ML1 ; if ( j1<0 ) k1=(j1+1)/ML1-1
-             j1=j1-k1*ML1
-             j =LLL(j1,i2,i3)
-! The potential vex is calculated at j-th grid point rather than i-th.
-! This is because non-transposed nabla matrix Dij is used (See XC.doc).
-             if ( rho%g_range%head <= j .and. j <= rho%g_range%tail ) then
-                do ispin=rho%s_range%head,rho%s_range%tail
-                   vc(j,ispin) = vc(j,ispin) + cm*( rrrr(i,1)*b(1,1) &
-                                                   +rrrr(i,2)*b(2,1) &
-                                                   +rrrr(i,3)*b(3,1) )
-                end do
-             end if
-             j2=i2+m
-             k2=j2/ML2 ; if ( j2<0 ) k2=(j2+1)/ML2-1
-             j2=j2-k2*ML2
-             j =LLL(i1,j2,i3)
-             if ( rho%g_range%head <= j .and. j <= rho%g_range%tail ) then
-                do ispin=rho%s_range%head,rho%s_range%tail
-                   vc(j,ispin) = vc(j,ispin) + cm*( rrrr(i,1)*b(1,2) &
-                                                   +rrrr(i,2)*b(2,2) &
-                                                   +rrrr(i,3)*b(3,2) )
-                end do
-             end if
-             j3=i3+m
-             k3=j3/ML3 ; if ( j3<0 ) k3=(j3+1)/ML3-1
-             j3=j3-k3*ML3
-             j =LLL(i1,i2,j3)
-             if ( rho%g_range%head <= j .and. j <= rho%g_range%tail ) then
-                do ispin=rho%s_range%head,rho%s_range%tail
-                   vc(j,ispin) = vc(j,ispin) + cm*( rrrr(i,1)*b(1,3) &
-                                                   +rrrr(i,2)*b(2,3) &
-                                                   +rrrr(i,3)*b(3,3) )
-                end do
-             end if
-          end do ! m
-       end do ! i1
-      end do ! i2
-      end do ! i3
-
-    end select
-
-    deallocate( rtmp )
+    deallocate( Gf )
+    deallocate( f  )
     deallocate( rrrr )
+    deallocate( rtmp )
 
     return
   END SUBROUTINE calc_PBE_c

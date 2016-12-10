@@ -1,6 +1,6 @@
 MODULE kinetic_sym_ini_module
 
-  use symmetry_module, only: basis_conversion_symmetry
+  use symmetry_module, only: basis_conversion_symmetry, calc_mat_bb_symmetry
   use kinetic_variables, only: Md,coef_lap0,coef_lap,ggg,coef_nab,zcoef_kin,const_k2
   use kinetic_sym_module, only: init2
   use bz_module, only: Nbzsm, kbb
@@ -11,6 +11,7 @@ MODULE kinetic_sym_ini_module
   PRIVATE
   PUBLIC :: init_kinetic_sym
   PUBLIC :: construct_kinetic_sym
+  PUBLIC :: get_mat_kinetic_sym_ini
 
   integer,allocatable :: sym_mat(:,:,:)
   real(8) :: basis(3,3)
@@ -33,17 +34,17 @@ CONTAINS
     select case( indx )
     case( "HEXAGONAL" )
        call set_hexagonal_sym( sym_mat, basis )
-   case( "FCC" )
+    case( "FCC" )
        call set_fcc_sym( sym_mat, basis )
 !   case( "BCC" )
+!   case( "CUBIC" )
     case default
        write(*,*) "indx= ",indx
-       call stop_program( "this lattice is undefined" )
+       call write_string( "this lattice is undefined(init_kinetic_sym)" )
+       return
     end select
 
     call basis_conversion_symmetry( basis, aa, sym_mat )
-
-!    call construct_kinetic_sym( sym_mat, 1 )
 
     call construct_kgroup
     do k=1,Nbzsm
@@ -467,6 +468,26 @@ CONTAINS
     deallocate( tmp )
 
   END SUBROUTINE construct_kinetic_sym
+
+
+  SUBROUTINE get_mat_kinetic_sym_ini( mata, matb )
+    implicit none
+    integer,optional,allocatable,intent(INOUT) :: mata(:,:,:)
+    real(8),optional,allocatable,intent(INOUT) :: matb(:,:,:)
+    integer :: nsym
+    if ( .not.allocated(sym_mat) ) return
+    nsym=size(sym_mat,3)
+    if ( present(mata) ) then
+       if ( .not.allocated(mata) ) allocate( mata(3,3,nsym) )
+       mata=0
+       mata=sym_mat
+    end if
+    if ( present(matb) ) then
+       if ( .not.allocated(matb) ) allocate( matb(3,3,nsym) )
+       matb=0.0d0
+       call calc_mat_bb_symmetry( mata, matb )
+    end if
+  END SUBROUTINE get_mat_kinetic_sym_ini
 
 
 END MODULE kinetic_sym_ini_module

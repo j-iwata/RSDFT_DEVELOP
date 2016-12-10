@@ -47,6 +47,7 @@ CONTAINS
     call write_border( 0, "init in kinetic_sym_module(start)" )
 
     call construct_map_3d_to_1d_grid( Ngrid, Igrid, comm_grid, LLL )
+
     allocate( work(Ngrid(0)) ) ; work=(0.0d0,0.0d0)
 
     if ( allocated(fd_coef) ) return
@@ -106,7 +107,7 @@ CONTAINS
     do i3=-n,n
     do i2=-n,n
     do i1=-n,n
-       if ( abs(tmp(i1,i2,i3)) > 1.d-10 ) then
+       if ( abs(tmp(i1,i2,i3)) > 1.d-8 ) then
           m=m+1
           fd_neighbor_pt(1,m,k) = i1
           fd_neighbor_pt(2,m,k) = i2

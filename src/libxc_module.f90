@@ -335,15 +335,15 @@ CONTAINS
     f(:) = vsigma(1,:)
 
     g(:) = f(:)*gx(:)
-    call calc_gradient( 1, rgrid, g, h )
+    call calc_xyz_gradient( 1, rgrid, g, h )
     vxc(:,1) = vxc(:,1) - 2.0d0*h(:)
 
     g(:) = f(:)*gy(:)
-    call calc_gradient( 2, rgrid, g, h )
+    call calc_xyz_gradient( 2, rgrid, g, h )
     vxc(:,1) = vxc(:,1) - 2.0d0*h(:)
 
     g(:) = f(:)*gz(:)
-    call calc_gradient( 3, rgrid, g, h )
+    call calc_xyz_gradient( 3, rgrid, g, h )
     vxc(:,1) = vxc(:,1) - 2.0d0*h(:)
 
     deallocate( h, g, f )
