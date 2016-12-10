@@ -681,27 +681,9 @@ CONTAINS
           end if
           iter_final=ierr
 
-          call calc_force( Natom, Force )
-          call get_fmax_force( Fmax, Force )
+          if ( disp_switch_loc ) write(*,'(1x,"# Force (total)")')
 
-          if ( disp_switch_loc ) then
-             write(*,'(1x,"# Force (total)")')
-             if ( Natom <= 11 ) then
-                do a=1,Natom
-                   write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
-                end do
-             else
-                do a=1,min(5,Natom)
-                   write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
-                end do
-                write(*,'(1x,10x,".")')
-                write(*,'(1x,10x,".")')
-                write(*,'(1x,10x,".")')
-                do a=Natom-5,Natom
-                   write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
-                end do
-             end if
-          end if
+          call calc_force( Natom, Force, Fmax, disp_switch_loc )
 
           grad=sum( Force(1:3,1:Natom)*hi(1:3,1:Natom) )
 

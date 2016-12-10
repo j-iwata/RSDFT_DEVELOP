@@ -79,11 +79,12 @@ CONTAINS
   END SUBROUTINE read_force
 
 
-  SUBROUTINE calc_force( MI, force, fmax )
+  SUBROUTINE calc_force( MI, force, fmax, disp )
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     real(8),optional,intent(OUT) :: fmax
+    logical,optional,intent(IN) :: disp
 
     if ( flag_init ) call init_force
 
@@ -98,7 +99,16 @@ CONTAINS
 
     call sym_force ( MI, ki_atom, aa_atom, force )
 
-    if ( Ntim > 0 ) call constraint_force( MI, force )
+    if ( present(disp) ) call write_info_force( force, ki_atom, disp )
+
+    if ( Ntim > 0 ) then
+       call constraint_force( MI, force )
+       if ( present(disp) ) then
+          if ( disp ) write(*,*) "(with constraint)"
+          call write_info_force( force, ki_atom, disp )
+       end if
+    end if
+
     call force_projection_hpc( MI, force )
 
     if ( present(fmax) ) call get_fmax_force( fmax, force )
@@ -148,6 +158,33 @@ CONTAINS
     end do
     fmax=sqrt(fmax)
   END SUBROUTINE get_fmax_force_sub
+
+
+  SUBROUTINE write_info_force( f, k, disp )
+    implicit none
+    real(8),intent(IN) :: f(:,:)
+    integer,intent(IN) :: k(:)
+    logical,intent(IN) :: disp
+    integer :: N,a
+    N=size( f, 2 )
+    if ( disp ) then
+       if (  N <= 11 ) then
+          do a=1,N
+             write(*,'(1x,i4,i3,3g21.12)') a,k(a),f(1:3,a)
+          end do
+       else
+          do a=1,min(5,N)
+             write(*,'(1x,i4,i3,3g21.12)') a,k(a),f(1:3,a)
+          end do
+          write(*,'(1x,10x,".")')
+          write(*,'(1x,10x,".")')
+          write(*,'(1x,10x,".")')
+          do a=N-5,N
+             write(*,'(1x,i4,i3,3g21.12)') a,k(a),f(1:3,a)
+          end do
+       end if
+    end if
+  END SUBROUTINE write_info_force
 
 
 END MODULE force_module
