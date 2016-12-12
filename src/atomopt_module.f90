@@ -176,8 +176,8 @@ CONTAINS
           if ( disp_switch_loc ) write(*,*) "Etot(har)=",Etot
        end if
 
-       call calc_force( Natom, Force )
-       call get_fmax_force( Fmax, Force )
+       if ( disp_switch_loc ) write(*,'(1x,"# Force (total)")')
+       call calc_force( Natom, Force, Fmax, disp_switch_loc )
 
        Etot_save = 0.0d0
        dif       = 0.0d0
@@ -682,7 +682,6 @@ CONTAINS
           iter_final=ierr
 
           if ( disp_switch_loc ) write(*,'(1x,"# Force (total)")')
-
           call calc_force( Natom, Force, Fmax, disp_switch_loc )
 
           grad=sum( Force(1:3,1:Natom)*hi(1:3,1:Natom) )
