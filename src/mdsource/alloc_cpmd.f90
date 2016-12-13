@@ -119,8 +119,9 @@ subroutine read_cpmd_variables
       read(2,*) linitnosee
       read(2,*) lblue
    end if
-   call IOTools_readIntegerKeyword( "TRJSTEP", trjstep, 2 )
-   call IOTools_readIntegerKeyword( "WRTSTEP", wrtstep, 2 )
+   call IOTools_readIntegerKeyword( "TRJSTEP", trjstep , 2 )
+   call IOTools_readIntegerKeyword( "WRTSTEP", wrtstep , 2 )
+   call IOTools_readIntegerKeyword( "ALLTRAJ", all_traj, 2 )
    if ( myrank == 0 ) then
       close(2)
       write(*,*) "nstep =",nstep
@@ -148,6 +149,7 @@ subroutine read_cpmd_variables
       if ( lblue ) write(*,*) "Constraint ON"
       write(*,*) "TRJSTEP=",trjstep
       write(*,*) "WRTSTEP=",wrtstep
+      write(*,*) "all_traj=",all_traj
    end if
    call send_cpmd_variables
    return

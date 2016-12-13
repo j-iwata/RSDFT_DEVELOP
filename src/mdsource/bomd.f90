@@ -13,7 +13,7 @@ SUBROUTINE bomd
                            ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime &
-                           ,wrtstep
+                           ,wrtstep, all_traj
   use parallel_module
   use total_energy_module
   use wf_module
@@ -71,15 +71,15 @@ SUBROUTINE bomd
   if ( myrank == 0 ) then
      open(unit_trjxyz,file='TRAJECTORY.xyz',status="replace")
      close(unit_trjxyz)
-     open(3,file='traj.dat',status='replace')
-     close(3)
-     open( 4,file='info.dat',status='unknown')
-     open(15,file='time.dat',status='unknown')
+     if ( all_traj > 0 ) open(3,file='traj.dat',status='replace')
+     !close(3)
+     open( 4,file='info.dat',status='replace')
+     open(15,file='time.dat',status='replace')
      if ( ltime ) then
-        open(16,file='time_cpmd_loop.dat',status='unknown')
+        open(16,file='time_cpmd_loop.dat',status='replace')
         write(16,'(6x,9(1x,a9))') "PSI_V","PSI_N","ROTORB","GETFORCE_CPMD" &
                    ,"WF_FORCE","PSI_V","ROTORB2","CALFKE","TOTAL_ENERGY"
-        open(17,file='time_force_once.dat',status='unknown')
+        open(17,file='time_force_once.dat',status='replace')
         write(17,'(9a10)') "EWALD","LOCAL&PCC","PS_NLOC","PSI_RHO" &
                    ,"HARTREE ","EXC","VLOC","FORCE","FORCE"
      end if
@@ -302,14 +302,18 @@ SUBROUTINE bomd
            close(unit_trjxyz)
         end if
 
-        if ( mod(itime-1,trjstep) == 0 ) then
-           open(3,file='traj.dat',position="append")
+        if ( all_traj > 0 ) then
+           !open(3,file='traj.dat',position="append")
            do i=1,Natom
               write(3,'(3f24.16)') Rion(1:3,i)
               write(3,'(3f24.16)') Velocity(1:3,i)
               write(3,'(3f24.16)') Force(1:3,i)
            end do
-           close(3)
+           !close(3)
+           if ( all_traj /= 1 .and. mod(itime,all_traj) == 0 ) then
+              close(3)
+              open(3,file='traj.dat',position="append")
+           end if
         end if
 
      end if
@@ -349,6 +353,7 @@ SUBROUTINE bomd
   call dealloc_md
 
   if ( myrank == 0 ) then
+     if ( all_traj > 0 ) close(3)
      close(4)  ! info.dat
      close(15) ! time.dat
      if ( ltime ) then
