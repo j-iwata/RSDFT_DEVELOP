@@ -175,7 +175,7 @@ CONTAINS
     integer :: i
 
     if ( myrank == 0 ) then
-       open(999,file="Bathdata_ele.dat1")
+       open(999,file="Bathdata_ele.dat1",status="replace")
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
        write(999,*)(Feta(i),i=1,nchain+1) 
        write(999,*)(Qeta(i),i=1,nchain) 
@@ -194,7 +194,7 @@ CONTAINS
     include 'mpif.h'
 
     if ( myrank == 0 ) then
-       open(999,file="Bathdata_ele.dat")
+       open(999,file="Bathdata_ele.dat",status="old")
        read(999,*)(eta(i),etadot(i),i=1,nchain) 
        read(999,*)(Feta(i),i=1,nchain+1)
        read(999,*)(Qeta(i),i=1,nchain) 

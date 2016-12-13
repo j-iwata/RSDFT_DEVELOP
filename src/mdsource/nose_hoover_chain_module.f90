@@ -206,7 +206,7 @@ CONTAINS
     implicit none
     integer :: i
     if ( myrank == 0 ) then
-       open(999,file="Bathdata.dat1")
+       open(999,file="Bathdata.dat1",status="replace")
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
        write(999,*) kT,gkT
        write(999,*)(Qeta(i),i=1,nchain) 
@@ -222,7 +222,7 @@ CONTAINS
     integer :: i,ierr
     include 'mpif.h'
     if ( myrank == 0 ) then
-       open(999,file="Bathdata.dat")
+       open(999,file="Bathdata.dat",status="old")
        read(999,*)(eta(i),etadot(i),i=1,nchain) 
        read(999,*) kT,gkT
        read(999,*)(Qeta(i),i=1,nchain)

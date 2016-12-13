@@ -784,16 +784,23 @@ CONTAINS
   END SUBROUTINE dealloc_blue
 
 
-  SUBROUTINE write_blue_data(nfi)
+  SUBROUTINE write_blue_data( nfi, flag_io )
     implicit none
-    integer :: nfi,j
-    real(8) :: fval
-    open(889,file='CONSTRAINT')
-    if ( mod(nfi,1) == 0 ) then
+    integer,intent(IN) :: nfi
+    logical,intent(IN) :: flag_io
+    integer :: j
+    logical,save :: init=.true.
+    if ( flag_io ) then
+       if ( init ) then
+          open(889,file='CONSTRAINT',status="replace")
+          init=.false.
+       else
+          open(889,file='CONSTRAINT',position="append")
+       end if
        do j=1,mcnstr
-          fval=fv(j)
-          write(889,'(i7,2x,i4,5x,2(1pe20.10))') nfi,j,xlagr(j),fval
-       enddo
+          write(889,'(i7,2x,i4,5x,2(1pe20.10))') nfi,j,xlagr(j),fv(j)
+       end do
+       close(889)
     end if
     return
   END SUBROUTINE write_blue_data

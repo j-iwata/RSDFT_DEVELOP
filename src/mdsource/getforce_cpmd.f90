@@ -33,8 +33,6 @@ SUBROUTINE getforce_cpmd( ltime )
   logical,intent(IN) :: ltime
   integer :: i,s,MB_0_BAK,MB_1_BAK
   real(8) :: ctime_force(0:9),etime_force(0:9),c
-  logical,save :: first_time=.true.
-  integer,save :: icount=0
 
   c=1.d0/(2.d0*acos(-1.d0))
   aa_atom = matmul(transpose(bb),Rion)*c
@@ -91,15 +89,6 @@ SUBROUTINE getforce_cpmd( ltime )
   call calc_force(Natom,Force)
 
   if ( ltime ) call watch(ctime_force(8),etime_force(8))
-
-  if ( myrank == 0 ) then
-     if ( first_time ) open(33,file="force.dat")
-     icount=icount+1
-     write(33,*) "step=",icount
-     do i=1,Natom
-        write(33,'(1x,i8,3f20.15)') i,Force(1:3,i)
-     end do
-  end if
 
   do i=1,Natom
      Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)

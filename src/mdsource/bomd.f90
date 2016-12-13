@@ -12,7 +12,8 @@ SUBROUTINE bomd
                            ,lscaleele,Rion,lscale,linitnosee,lblue &
                            ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
-                           ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime
+                           ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime &
+                           ,wrtstep
   use parallel_module
   use total_energy_module
   use wf_module
@@ -65,7 +66,24 @@ SUBROUTINE bomd
   MB_1_SCF    = MB_1
   flag_etlimit= .false.
 
-  if ( myrank == 0 ) open(unit_trjxyz,file='TRAJECTORY.xyz')
+  if ( wrtstep == 0 ) wrtstep=nstep+1 
+
+  if ( myrank == 0 ) then
+     open(unit_trjxyz,file='TRAJECTORY.xyz',status="replace")
+     close(unit_trjxyz)
+     open(3,file='traj.dat',status='replace')
+     close(3)
+     open( 4,file='info.dat',status='unknown')
+     open(15,file='time.dat',status='unknown')
+     if ( ltime ) then
+        open(16,file='time_cpmd_loop.dat',status='unknown')
+        write(16,'(6x,9(1x,a9))') "PSI_V","PSI_N","ROTORB","GETFORCE_CPMD" &
+                   ,"WF_FORCE","PSI_V","ROTORB2","CALFKE","TOTAL_ENERGY"
+        open(17,file='time_force_once.dat',status='unknown')
+        write(17,'(9a10)') "EWALD","LOCAL&PCC","PS_NLOC","PSI_RHO" &
+                   ,"HARTREE ","EXC","VLOC","FORCE","FORCE"
+     end if
+  end if
 
   if ( lbathnew ) then
      if ( disp_switch ) write(*,*) "start NVT with new Nose-Hoover"
@@ -153,17 +171,6 @@ SUBROUTINE bomd
      write(*,'(a)') "initial energy"
      write(*,'(5a15)') "Etotal","Etot_DFT","kine","fke","Ebath"
      write(*,'(5f15.8)') tote0,Etot,kine,fke,Ebath
-     open( 3,file='traj.dat',status='unknown')
-     open( 4,file='info.dat',status='unknown')
-     open(15,file='time.dat',status='unknown')
-     if ( ltime ) then
-        open(16,file='time_cpmd_loop.dat',status='unknown')
-        write(16,'(6x,9(1x,a9))') "PSI_V","PSI_N","ROTORB","GETFORCE_CPMD" &
-                   ,"WF_FORCE","PSI_V","ROTORB2","CALFKE","TOTAL_ENERGY"
-        open(17,file='time_force_once.dat',status='unknown')
-        write(17,'(9a10)') "EWALD","LOCAL&PCC","PS_NLOC","PSI_RHO" &
-                   ,"HARTREE ","EXC","VLOC","FORCE","FORCE"
-     end if
      dif  = 0.0d0
      tott = 0.0d0
      if ( inivel ) write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
@@ -248,7 +255,7 @@ SUBROUTINE bomd
 
      if ( lblue ) then ! Blue-Moon Method
         call rattle( Rion, Velocity )
-        call write_blue_data(itime)
+        if ( mod(itime-1,trjstep)==0 ) call write_blue_data(itime,myrank==0)
      end if
 
      call vcom( Velocity ) ! center of mass motion off
@@ -277,35 +284,44 @@ SUBROUTINE bomd
         tote  = kine+Etot+fke+Ebath
         dif   = abs(tote-tote0)
 
-! --- trajectry
-
-        if ( mod(itime-1,1) == 0 ) then
-           do i=1,Natom
-              write(3,'(6f18.9)') Rion(1:3,i),Velocity(1:3,i)
-           end do
+        write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
+        write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
+        write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
+        if ( ltime ) then
+           write(16,'(i6,9f10.5)') itime,(etime_cpmd(k+1)-etime_cpmd(k),k=0,8)
         end if
 
         if ( mod(itime-1,trjstep) == 0 ) then
+           open(unit_trjxyz,file="TRAJECTORY.xyz",position="append")
            write(unit_trjxyz,*) Natom
            write(unit_trjxyz,*) "CPMD on RSDFT STEP->",itime
            do i=1,Natom
               write(unit_trjxyz,'(a2,3f14.6)') &
                    batm(zn_atom(ki_atom(i))),Rion(1:3,i)*0.529177210d0
            end do
+           close(unit_trjxyz)
         end if
 
-! ---
-
-!        write(*,'(a,x,f8.2,x,a,x,f15.8,x,a,x,f6.1,x,a,x,f15.8)') &
-!             "t=",tott,"dif=",dif,"ltemp=",ltemp,"fke=",fke
-        write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
-!        write(*,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
-        write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
-        write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
-        if ( ltime ) then
-           write(16,'(i6,9f10.5)') itime,(etime_cpmd(k+1)-etime_cpmd(k),k=0,8)
+        if ( mod(itime-1,trjstep) == 0 ) then
+           open(3,file='traj.dat',position="append")
+           do i=1,Natom
+              write(3,'(3f24.16)') Rion(1:3,i)
+              write(3,'(3f24.16)') Velocity(1:3,i)
+              write(3,'(3f24.16)') Force(1:3,i)
+           end do
+           close(3)
         end if
-     endif
+
+     end if
+
+     if ( mod(itime,wrtstep) == 0 ) then
+        if ( myrank == 0 ) call mdio( 1, tote0 )
+        if ( lcpmd ) then
+           if ( lbathnew  ) call write_nose_data
+           if ( lbathnewe ) call write_nosee_data
+           call write_data_cpmd_k_para
+        end if
+     end if
 
      call global_watch(.false.,flag_etlimit)
      if ( flag_etlimit ) then
@@ -323,23 +339,22 @@ SUBROUTINE bomd
 !
 
   if ( myrank == 0 ) call mdio( 1,tote0 )
-
   if ( lcpmd ) then
      if ( lbathnew  ) call write_nose_data
      if ( lbathnewe ) call write_nosee_data
      call write_data_cpmd_k_para
-     call dealloc_cpmd
-  endif
+  end if
 
+  if ( lcpmd ) call dealloc_cpmd
   call dealloc_md
-  close(3)
-  close(4)
-  close(15)
-  close(unit_trjxyz)
-  if ( lblue ) close(889)
-  if ( ltime ) then
-     close(16)
-     close(17)
+
+  if ( myrank == 0 ) then
+     close(4)  ! info.dat
+     close(15) ! time.dat
+     if ( ltime ) then
+        close(16) ! time_cpmd_loop.dat
+        close(17) ! time_force_once.dat
+     end if
   end if
 
 98 continue

@@ -27,7 +27,7 @@ subroutine mdio(io,tote0)
       read(2,*) tote0
       close(2)
    elseif(io==1) then
-      open(2,file='final.dat',status='unknown')
+      open(2,file='final.dat',status='replace')
       write(2,'(a)') "final coordinate"
       do i=1,Mi
          write(2,'(3g24.16)') (Rion(k,i),k=1,3)

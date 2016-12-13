@@ -192,6 +192,7 @@ MODULE cpmd_variables
 
   integer :: itime
   integer :: trjstep=1
+  integer :: wrtstep=0
 
 END MODULE cpmd_variables
 
