@@ -623,7 +623,7 @@ CONTAINS
     complex(8),intent(INOUT) :: f(:), g(:)
     integer,intent(IN) :: ir(:),id(:),comm
     integer :: i
-    real(8),allocatable :: t(:)
+    complex(8),allocatable :: t(:)
 #ifdef _NO_MPI_
     g(:) = f(:)
     return
