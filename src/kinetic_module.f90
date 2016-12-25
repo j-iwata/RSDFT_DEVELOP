@@ -2,6 +2,7 @@ MODULE kinetic_module
 
   use kinetic_variables
   use kinetic_sol_module
+  use kinetic_sym_module
   use kinetic_mol_module
   use fd_module
 
@@ -11,8 +12,6 @@ MODULE kinetic_module
   PUBLIC :: init_kinetic, op_kinetic &
            ,read_kinetic, read_oldformat_kinetic &
            ,SYStype
-
-!  integer :: SYStype=0
 
 CONTAINS
 
@@ -202,7 +201,12 @@ CONTAINS
 #endif
     select case(SYStype)
     case default
-       call op_kinetic_sol(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       select case( kin_select )
+       case default
+          call op_kinetic_sol(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       case(2:)
+          call op_kinetic_sym( k, tpsi, htpsi )
+       end select
     case(1)
        call op_kinetic_mol(n1,n2,ib1,ib2,tpsi,htpsi)
     end select

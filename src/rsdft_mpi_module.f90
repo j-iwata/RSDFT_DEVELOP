@@ -38,6 +38,7 @@ MODULE rsdft_mpi_module
                       d_rsdft_allgatherv11, &
                       d_rsdft_allgatherv22, &
                       d_rsdft_allgatherv33, &
+                      z_rsdft_allgatherv11, &
                       z_rsdft_allgatherv22, &
                       z_rsdft_allgatherv33
   END INTERFACE
@@ -616,6 +617,27 @@ CONTAINS
 #endif
 #endif
   END SUBROUTINE d_rsdft_allgatherv33
+
+  SUBROUTINE z_rsdft_allgatherv11( f, g, ir, id, comm )
+    implicit none
+    complex(8),intent(INOUT) :: f(:), g(:)
+    integer,intent(IN) :: ir(:),id(:),comm
+    integer :: i
+    complex(8),allocatable :: t(:)
+#ifdef _NO_MPI_
+    g(:) = f(:)
+    return
+#else
+    include 'mpif.h'
+#ifdef _NO_MPI_INPLACE_
+    allocate( t(size(f,1)) ) ; t=f
+    call MPI_ALLGATHERV( t, size(f), MPI_COMPLEX16, g, ir, id, MPI_COMPLEX16, comm, i )
+    deallocate( t )
+#else
+    call MPI_ALLGATHERV( f, size(f), MPI_COMPLEX16, g, ir, id, MPI_COMPLEX16, comm, i )
+#endif
+#endif
+  END SUBROUTINE z_rsdft_allgatherv11
 
   SUBROUTINE z_rsdft_allgatherv22( f, g, ir, id, comm )
     implicit none
