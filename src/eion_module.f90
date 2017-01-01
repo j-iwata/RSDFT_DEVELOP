@@ -37,6 +37,7 @@ CONTAINS
     select case(SYStype)
     case default
 
+       call init_ewald
        call calc_ewald( Eewald )
 
     case( 1 )
