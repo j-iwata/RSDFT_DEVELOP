@@ -8,8 +8,8 @@ SUBROUTINE bomd
                         ,convert_to_xyz_coordinates_atom
   use cpmd_variables, only: disp_switch,Velocity,psi_v,psi_n,dt &
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
-                           ,inivel,linitnose,dtsuz,lbathnewe &
-                           ,lscaleele,Rion,lscale,linitnosee,lblue &
+                           ,inivel,dtsuz,lbathnewe &
+                           ,lscaleele,Rion,lscale,lblue &
                            ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime &
@@ -19,7 +19,7 @@ SUBROUTINE bomd
   use wf_module
   use watch_module
   use array_bound_module, only: MB_0,MB_1
-  use cpmdio2_module
+  use cpmdio_module
   use rotorb_module
   use blue_moon_module
   use calc_kine_temp_module
@@ -132,7 +132,7 @@ SUBROUTINE bomd
      ib1  = MB_0_CPMD
      ib2  = MB_1_CPMD
      call alloc_cpmd
-     if ( .not.inivel ) call read_data_cpmd_k_para
+     if ( .not.inivel ) call read_data_cpmdio
      if ( lquench ) then
         call getforce
         psi_v=0.0d0
@@ -323,7 +323,7 @@ SUBROUTINE bomd
         if ( lcpmd ) then
            if ( lbathnew  ) call write_nose_data
            if ( lbathnewe ) call write_nosee_data
-           call write_data_cpmd_k_para
+           call write_data_cpmdio
         end if
      end if
 
@@ -346,7 +346,7 @@ SUBROUTINE bomd
   if ( lcpmd ) then
      if ( lbathnew  ) call write_nose_data
      if ( lbathnewe ) call write_nosee_data
-     call write_data_cpmd_k_para
+     call write_data_cpmdio
   end if
 
   if ( lcpmd ) call dealloc_cpmd

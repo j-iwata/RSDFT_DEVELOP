@@ -172,7 +172,6 @@ MODULE cpmd_variables
 !  integer :: MB_d
   integer :: nspin
   integer :: SYStype
-  integer :: IO_ctrl
   character(30) :: FILE_WF2,FILE_WF
 !  include 'mpif.h'
 !--------------for blue-moon------------------------

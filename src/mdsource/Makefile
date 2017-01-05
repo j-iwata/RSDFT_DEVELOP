@@ -2,7 +2,7 @@ include ../make.inc
 
 MOBJ = cpmd_variables.o
 
-OBJ = cpmdio2_module.o\
+OBJ = cpmdio_module.o\
       calc_kine_temp_module.o\
       nose_hoover_chain_ele_module.o\
       nose_hoover_chain_module.o\

@@ -26,7 +26,7 @@ EXTOBJ2 = $(DIR2)/pzfft3dv.o \
           $(DIR2)/pzfft3d.o \
 
 DIR3 = mdsource
-MDOBJ = $(DIR3)/cpmdio2_module.o \
+MDOBJ = $(DIR3)/cpmdio_module.o \
         $(DIR3)/calc_kine_temp_module.o\
         $(DIR3)/nose_hoover_chain_ele_module.o\
         $(DIR3)/nose_hoover_chain_module.o\
