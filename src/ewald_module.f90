@@ -22,7 +22,7 @@ MODULE ewald_module
   real(8) :: ewldg_0=0.0d0, g_0=0.0d0, g_0_0=0.0d0
   real(8) :: ewldr_0=0.0d0, r_0=0.0d0, r_0_0=0.0d0, r_1=0.0d0
   real(8) :: xyz_min(3), xyz_max(3)
-  integer :: irange_bak(2,3)=(/0,0,0,0,0,0/)
+  integer :: irange_bak(2,3)=reshape( (/0,0,0,0,0,0/),(/2,3/) )
 
   real(8) :: factor_eta=10.0d0
   logical :: flag_init=.false.
