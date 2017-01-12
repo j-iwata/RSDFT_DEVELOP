@@ -127,15 +127,16 @@ CONTAINS
     psp%Mr   = 0
     psp%norb = norb
     call ps_allocate_ps1d( psp )
-
     psp%Zelement    = znuc
     psp%Zps         = Zps
     psp%parloc(:)   = parloc(:)
     psp%Rcloc       = Rcloc
+    if ( norb /= 0 ) then
     psp%Rps(:)      = Rps0(1:norb)
     psp%lo(:)       = lo(1:norb)
     psp%no(:)       = no(1:norb)
     psp%inorm(:)    = inorm(1:norb)
+    end if
     psp%hnl(:,:)    = hnl(:,:)
     psp%knl(:,:)    = knl(:,:)
     psp%hnml(:,:,:) = hnml(:,:,:)
