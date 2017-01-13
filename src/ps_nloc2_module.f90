@@ -920,7 +920,7 @@ CONTAINS
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
-!    call sort_index_sub( MJJ, JJP, uVk )
+    call sort_index_sub( MJJ, JJP, uVk )
 
     call watcha( timer_counter )
 

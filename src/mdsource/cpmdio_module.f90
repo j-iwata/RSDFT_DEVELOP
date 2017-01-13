@@ -52,7 +52,11 @@ CONTAINS
 
     implicit none
     integer :: nn,s,k,n
+#ifdef _DRSDFT_
     real(8),allocatable :: utmp(:)
+#else
+    complex(8),allocatable :: utmp(:)
+#endif
 
     nn=sum(ircnt)
 
@@ -72,7 +76,9 @@ CONTAINS
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
     do n=MB_0_CPMD,MB_1_CPMD
+#ifdef _DRSDFT_
        call rsdft_allgatherv( psi_v(:,n,k,s),utmp,ir_grid,id_grid,comm_grid )
+#endif
        if ( myrank == 0 ) write(1) utmp(:)
     end do
     end do
