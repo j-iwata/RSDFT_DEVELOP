@@ -31,6 +31,11 @@ CONTAINS
 
     iflag_hgh = .false.
 
+    hnml=0.0d0
+    knml=0.0d0
+    hnl =0.0d0
+    knl =0.0d0
+
     write(*,'(a60," read_ps_gth")') repeat("-",60)
 
     read(unit_pp,'(a)') cbuf
