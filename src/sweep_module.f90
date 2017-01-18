@@ -185,8 +185,8 @@ CONTAINS
        call calc_time_watch( etime )
        if ( disp_switch ) then
           write(*,*)
-          write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)" &
-               ,f10.3,"(max)")') etime%t0, etime%tmin, etime%tmax
+          write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
+          etime%t0, etime%tmin, etime%tmax
           write(*,*)
        end if
 

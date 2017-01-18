@@ -327,8 +327,7 @@ CONTAINS
        almax=okstep/ddmax*abs(alpha)
 !chstep
        if ( disp_switch_loc ) then
-          write(*,'(1x,"Maximum displacement size =" &
-               ,f16.7,3x,"( atom =",i5," )")') ddmax,amax
+          write(*,'(1x,"Maximum displacement size =",f16.7,3x,"( atom =",i5," )")') ddmax,amax
           write(*,'(1x,"okstep, alpha, almax =",3g16.6)') okstep,alpha,almax
        end if
        if ( ddmax > okstep ) then
@@ -480,15 +479,13 @@ CONTAINS
                 almax=okstep/ddmax*abs(alp)
 !chstep
                 if ( disp_switch_loc ) then
-                   write(*,'(1x,"Maximum displacement =",f16.7 &
-                        ,3x,"( atom =",i5," )")') ddmax,amax
+                   write(*,'(1x,"Maximum displacement =",f16.7,3x,"( atom =",i5," )")') ddmax,amax
                    write(*,'(1x,"okstep, alp, almax =",3g16.6)') &
                         okstep,alp,almax
                 end if
                 if ( ddmax > okstep ) then
                    if ( disp_switch_loc ) then
-                      write(*,*) "alpha1-alpha2 is " &
-                           ,"too large and replaced by almax."
+                      write(*,*) "alpha1-alpha2 is ","too large and replaced by almax."
                    end if
                    alpha1=alpha2+almax
                    ddmax=okstep
@@ -531,8 +528,7 @@ CONTAINS
                 almax=okstep/ddmax*abs(alp)
 !chstep
                 if ( disp_switch_loc ) then
-                   write(*,'(1x,"Maximum displacement =" &
-                        ,f16.7,3x,"( atom =",i5," )")') ddmax,amax
+                   write(*,'(1x,"Maximum displacement =",f16.7,3x,"( atom =",i5," )")') ddmax,amax
                    write(*,'(1x,"okstep, alp, almax =",3g16.6)') &
                         okstep,alp,almax
                 end if

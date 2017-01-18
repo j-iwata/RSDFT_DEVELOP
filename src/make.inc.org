@@ -96,6 +96,12 @@ OMPFLAG   =
 #OMPFLAG= -fopenmp
 #LAPACK_L = -llapack -lblas
 ########################################################################
+##### SX-ACE                                                       #####
+#FC = sxmpif03
+#FFLAGS0 = -Ep
+#OMPFLAG= -fopenmp
+#LAPACK_L = -L/SX/usr/lib/f03/ -lscalapack -lblacsF90init -lblacs -lblacsF90init -llapack -lblas -lmpi
+########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx
 #FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl,NOFLTLD \
