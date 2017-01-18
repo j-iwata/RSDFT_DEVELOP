@@ -10,6 +10,7 @@
       integer :: Kion(NI),mkd(NI),Kion0(MI0),mkd0(MI0),np_2d(1:4)
       real(8) :: asi0(3,MI0),asi(3,NI),RR(3),aa(3,3)
       real(8) :: ax,ax0,mem
+      integer :: zatom
 
 !
 ! input
@@ -33,8 +34,8 @@
 !
 ! Lattice constant
 !
-      ax0 = 10.261d0
-!      ax0 = 10.16d0
+      write(*,*) "input lattice constant (in bohr): ax0="
+      read(*,*) ax0
 !
 !( Grid spacings are defined as H1=H2=H3=ax0/ML0. )
 !===========================================================================
@@ -157,6 +158,10 @@
          asi(2,a)=asi(2,a)/nc2
          asi(3,a)=asi(3,a)/nc3
       end do
+! ---
+
+      write(*,*) "input atomic number: z="
+      read(*,*) zatom
 
 !
 ! input file
@@ -196,7 +201,7 @@
       write(u2,'("A2  ",3f10.5)') aa(:,2)
       write(u2,'("A3  ",3f10.5)') aa(:,3)
       write(u2,'("AA")')
-      write(u2,'(i4,i6,"  /")') MKI,MI
+      write(u2,'(i4,i6,i6,"  /")') MKI,MI,zatom
       do a=1,MI
          write(u2,'(i4,3f15.10,i4,"  /")') Kion(a),asi(:,a),1
       end do
