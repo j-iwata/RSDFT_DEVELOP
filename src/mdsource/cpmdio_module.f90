@@ -4,6 +4,7 @@ MODULE cpmdio_module
   use wf_module, only: unk
   use io_tools_module
   use rsdft_mpi_module
+  use io2_module
 
   implicit none
 
@@ -175,8 +176,15 @@ CONTAINS
 
   SUBROUTINE read_data_cpmd_k_para
     implicit none
-    integer :: n1,n2,ML0,n,k,i,ispin
+    integer :: n1,n2,ML0,n,k,i,ispin,ierr
     character(len=64) :: filename
+
+    call read_io2( SYStype, ierr )
+    if ( ierr == 0 ) then
+       call read_data2_io2 &
+            ( "restart_",".dat", unk, psi_v, MB_0_CPMD, MB_1_CPMD )
+       return
+    end if
 
     write(filename,"('restart_',i5.5,'.dat')") myrank
 

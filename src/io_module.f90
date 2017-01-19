@@ -454,7 +454,10 @@ CONTAINS
 
     if ( IC == 2 ) return
 
-    if ( IO_ctrl == 3 ) call read_io2( SYStype, ierr )
+    if ( IO_ctrl == 3 ) then
+       call read_io2( SYStype, ierr )
+       if ( ierr == 0 ) call read_data_io2
+    end if
 
     if ( IO_ctrl == 0 .or. ierr < 0 ) then
        call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
