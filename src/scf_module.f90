@@ -331,8 +331,8 @@ CONTAINS
           end if
           if ( disp_switch ) then
              write(*,*)
-             write(*,'(1x,"Fmax/fmax_tol:",es12.5," /",es12.5 &
-                  ,4x,"(Hartree/bohr)")') fmax, tol_force
+             write(*,'(1x,"Fmax/fmax_tol:",es12.5," /",es12.5,4x,"(Hartree/bohr)")') &
+                  fmax, tol_force
              write(*,'(1x," ( diff/tol =",es13.5," /",es12.5," )",l5)') &
                   fdiff,fmax_conv,flag_conv_f
           end if
@@ -388,8 +388,8 @@ CONTAINS
        call calc_time_watch( etime )
        if ( disp_switch ) then
           write(*,*)
-          write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)" &
-               ,f10.3,"(max)")') etime%t0, etime%tmin, etime%tmax
+          write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
+          etime%t0, etime%tmin, etime%tmax
           !do i=1,7
           !   write(*,'(1x,"time(",i3,")=",f10.3,"(rank0)",f10.3,"(min)" &
           !        ,f10.3,"(max)")') i,etime_lap(i)%t0, etime_lap(i)%tmin &
@@ -441,8 +441,8 @@ CONTAINS
        else if ( ierr_out == -3 ) then
           write(*,*) "'EXIT' file was found"
        end if
-       write(*,'(1x,"Total SCF time :",f10.3,"(rank0)",f10.3,"(min)" &
-               ,f10.3,"(max)")') etime_tot%t0, etime_tot%tmin, etime_tot%tmax
+       write(*,'(1x,"Total SCF time :",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
+       etime_tot%t0, etime_tot%tmin, etime_tot%tmax
     end if
     call write_border( 0, "" )
 
@@ -585,7 +585,7 @@ CONTAINS
        do i=1,MSP
           write(*,'(1x,"diff_vxc(",i1,"/",i1,")=",g12.5)') i,MSP,diff_vrho(2+i)
        end do
-       write(*,'(1x,"diff_vht     =",g12.5)'),diff_vrho(5)
+       write(*,'(1x,"diff_vht     =",g12.5)') diff_vrho(5)
     end if
 
     do i=MSP_0,MSP_1

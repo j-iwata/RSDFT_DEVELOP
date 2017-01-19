@@ -495,8 +495,8 @@ CONTAINS
 
        call watchb( t2 )
        if ( disp_switch_parallel ) then
-          write(*,'(1x,"iktrj/nktrj_0=",i4," /",i4 &
-                   ,4x,"time=",2f10.3)') iktrj,nktrj_0,t2-t1
+          write(*,'(1x,"iktrj/nktrj_0=",i4," /",i4,4x,"time=",2f10.3)') &
+          iktrj,nktrj_0,t2-t1
        end if
 
     end do ! iktrj

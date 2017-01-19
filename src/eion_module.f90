@@ -25,7 +25,7 @@ CONTAINS
     if ( SYStype == 0 .and. iswitch_test_ewald ) call test_ewald(Eewald)
     call calc_eion
     if ( disp_switch ) then
-       write(*,'(1x,"Eewald(SYSTYPE=",i1,")=",f25.15)'),SYStype,Eewald
+       write(*,'(1x,"Eewald(SYSTYPE=",i1,")=",f25.15)') SYStype,Eewald
     end if
     call write_border( 80, " init_eion(end)" )
   END SUBROUTINE init_eion

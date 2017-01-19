@@ -76,9 +76,7 @@ CONTAINS
        verpot=1
        ifchrg=0
        znuc=0
-       write(6,'("WARNING! THE POTENTIAL TYPE IS OLD."/ &
-                ,"XC-POTENTIAL TYPE: LDAPZ81 IS ASSUMED"/   &
-                ,"We recommend rewrite or remake this potential data."/)')
+       write(6,'("WARNING! THE POTENTIAL TYPE IS OLD."/,"XC-POTENTIAL TYPE: LDAPZ81 IS ASSUMED"/,"We recommend rewrite or remake this potential data."/)')
 
        xc_pot='LDAPZ81'
 
@@ -166,8 +164,8 @@ CONTAINS
     end do
     if ( (abs(r(2)-r2)>1.d-6).or.(abs(rr(ndata)-rend)>1.d-8) ) then
        write(6,*)'ERROR  NDATA=',ndata
-       write(6,'(" R(1),X1=",2e15.7," R(2),X2=",2e15.7/," R(NDATA),XEND=" &
-                 ,2e15.7)') rr(1),r1,rr(2),r2,rr(ndata),rend
+       write(6,'(" R(1),X1=",2e15.7," R(2),X2=",2e15.7/," R(NDATA),XEND=",2e15.7)') &
+       rr(1),r1,rr(2),r2,rr(ndata),rend
        stop
     end if
     temp=sqrt( sum( (rr(1:ndata)-r(1:ndata))**2 )/ndata )

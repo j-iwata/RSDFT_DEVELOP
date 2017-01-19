@@ -279,8 +279,7 @@ CONTAINS
        gamma_hf = 1
 
        if ( disp_switch ) then      
-          write(*,'(1x,"Hybrid DFT calculation on Gamma-point (gamma_hf=" &
-                   ,i1,")")') gamma_hf
+          write(*,'(1x,"Hybrid DFT calculation on Gamma-point (gamma_hf=",i1,")")') gamma_hf
        end if
 
     end if
