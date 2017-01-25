@@ -181,8 +181,10 @@ CONTAINS
 
     call read_io2( SYStype, ierr )
     if ( ierr == 0 ) then
+#ifdef _DRSDFT_
        call read_data2_io2 &
             ( "restart_",".dat", unk, psi_v, MB_0_CPMD, MB_1_CPMD )
+#endif
        return
     end if
 

@@ -254,8 +254,8 @@ CONTAINS
     real(8),allocatable :: w(:,:,:)
     real(8),parameter :: z0=0.0d0
 #else
-    complex(8),intent(INOUT),allocatable :: u(:,:,:)
-    complex(8),optional,intent(INOUT),allocatable :: v(:,:,:)
+    complex(8),intent(INOUT),allocatable :: u(:,:,:,:)
+    complex(8),optional,intent(INOUT),allocatable :: v(:,:,:,:)
     complex(8),allocatable :: w(:,:,:)
     complex(8),parameter :: z0=(0.0d0,0.0d0)
 #endif
