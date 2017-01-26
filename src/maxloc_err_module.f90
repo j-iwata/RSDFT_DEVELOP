@@ -7,7 +7,7 @@ MODULE maxloc_err_module
   PRIVATE
   PUBLIC :: show_maxloc_err
 
-  integer,PUBLIC :: flag_maxloc_err=.false.
+  logical,PUBLIC :: flag_maxloc_err=.false.
 
 CONTAINS
 
