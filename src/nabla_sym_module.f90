@@ -56,7 +56,7 @@ CONTAINS
        call get_mat_kinetic_sym_ini( rga, rgb )
     end if
     if ( allocated(rga) ) nsym=size(rga,3)
-    if ( disp ) write(*,*) "nsym=",nsym
+    !if ( disp ) write(*,*) "nsym=",nsym
     if ( nsym == 0 ) goto 900
 
     isymmetry_nabla = 1
@@ -138,9 +138,9 @@ CONTAINS
 
     allocate( work(Ngrid(0)) ) ; work=0.0d0
 
-    init_flag = .true.
+900 init_flag = .true.
 
-900 call write_border( 0, " init_nabla_sym(end)" )
+    call write_border( 0, " init_nabla_sym(end)" )
 
   END SUBROUTINE init_nabla_sym
 
