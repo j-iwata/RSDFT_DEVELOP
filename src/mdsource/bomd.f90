@@ -305,9 +305,9 @@ SUBROUTINE bomd
         if ( all_traj > 0 ) then
            !open(3,file='traj.dat',position="append")
            do i=1,Natom
-              write(3,'(3f24.16)') Rion(1:3,i)
-              write(3,'(3f24.16)') Velocity(1:3,i)
-              write(3,'(3f24.16)') Force(1:3,i)
+              write(3,'(3f24.16," R",i8,f10.3)') Rion(1:3,i),i,tott
+              write(3,'(3f24.16," V",i8,f10.3)') Velocity(1:3,i),i,tott
+              write(3,'(3f24.16," F",i8,f10.3)') Force(1:3,i),i,tott
            end do
            !close(3)
            if ( all_traj /= 1 .and. mod(itime,all_traj) == 0 ) then
