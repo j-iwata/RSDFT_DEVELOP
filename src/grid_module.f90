@@ -14,6 +14,7 @@ MODULE grid_module
   PUBLIC :: get_map_3d_to_1d_grid
   PUBLIC :: mpi_allgatherv_grid, zmpi_allgatherv_grid
   PUBLIC :: inner_product_grid
+  PUBLIC :: convert_1d_to_3d_grid
 
   type grid
      type( ArrayRange1D ) :: g1
@@ -176,6 +177,30 @@ CONTAINS
     fgc_tmp=sum(f*g)*c
     call MPI_ALLREDUCE( fgc_tmp, fgc, 1, MPI_REAL8, MPI_SUM, comm_grid, i )
   END SUBROUTINE inner_product_grid
+
+
+  SUBROUTINE convert_1d_to_3d_grid( i, iii )
+    implicit none
+    integer,intent(IN)  :: i
+    integer,intent(OUT) :: iii(3)
+    integer :: i1,i2,i3,j,jjj(3)
+    jjj=0
+    if ( Igrid(1,0) <= i .and. i <= Igrid(2,0) ) then
+       j=Igrid(1,0)-1
+       loop_i3 : do i3=Igrid(1,3),Igrid(2,3)
+       do i2=Igrid(1,2),Igrid(2,2)
+       do i1=Igrid(1,1),Igrid(2,1)
+          j=j+1
+          if ( j == i ) then
+             jjj(:)=(/ i1,i2,i3 /)
+             exit loop_i3
+          end if
+       end do
+       end do
+       end do loop_i3
+    end if
+    call MPI_ALLREDUCE( jjj, iii, 3, MPI_INTEGER, MPI_SUM, comm_grid, j ) 
+  END SUBROUTINE convert_1d_to_3d_grid
 
 
 END MODULE grid_module

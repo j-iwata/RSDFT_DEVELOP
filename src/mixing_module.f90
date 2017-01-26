@@ -5,6 +5,7 @@ MODULE mixing_module
   use io_tools_module
   use rsdft_mpi_module
   use parallel_module, only: RSDFT_MPI_COMPLEX16
+  use maxloc_err_module
 
   implicit none
 
@@ -322,11 +323,15 @@ CONTAINS
     real(8),intent(IN)  :: f(m,n),g(m,n)
     real(8),intent(OUT) :: sqerr_out(4)
     real(8) :: err0(2*n),err(2*n)
-    integer :: i,ierr
+    integer :: i,ierr,loc
+
+    !flag_maxloc_err = .true.
 
     do i=1,n
        err0(i  )=sum( ( f(:,i)-Xold(:,i  ,1) )**2 )/ML
        err0(i+n)=sum( ( g(:,i)-Xold(:,i+n,1) )**2 )/ML
+       call show_maxloc_err( f(:,i), Xold(:,i  ,1), 3 )
+       call show_maxloc_err( g(:,i), Xold(:,i+n,1), 3 )
     end do
     call mpi_allreduce(err0,err,2*n,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 

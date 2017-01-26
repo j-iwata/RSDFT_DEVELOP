@@ -49,6 +49,7 @@ MODS1 = \
        mixing_pulay_module.o\
        basic_type_methods.o\
        simc_module.o\
+       maxloc_err_module.o\
        mixing_module.o\
        var_ps_member_g.o\
        array_bound_module.o\
