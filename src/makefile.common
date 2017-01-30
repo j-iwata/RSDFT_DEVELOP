@@ -139,7 +139,6 @@ MODS1 = \
        xc_ggapbe96_2_module.o\
        density_module.o\
        xc_vdw_module.o\
-       nonlocal_module.o\
        kinetic_module.o\
        xc_hybrid_module.o\
        ps_initrho_mol_module.o\
@@ -158,6 +157,7 @@ MODS1 = \
        cgpc_seitsonen_module.o\
        fock_fft_module.o\
        ps_nloc2_module.o\
+       nonlocal_module.o\
        momentum_module.o\
        gram_schmidt_module.o\
        fock_module.o\

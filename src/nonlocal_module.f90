@@ -2,17 +2,17 @@ MODULE nonlocal_module
 
   use pseudopot_module, only: pselect, ps_type
   use ps_nloc2_op_module, only: op_ps_nloc2, op_ps_nloc2_hp
+  use ps_nloc2_module, only: calc_force_ps_nloc2
   use ps_nloc3_module
   use ps_nloc_mr_module
-
   use PSnonLocOpG2
-
   use parallel_module, only: myrank
 
   implicit none
 
   PRIVATE
   PUBLIC :: op_nonlocal
+  PUBLIC :: calc_force_nonlocal
 
 CONTAINS
 
@@ -48,5 +48,23 @@ CONTAINS
     end select
 
   END SUBROUTINE op_nonlocal
+
+
+  SUBROUTINE calc_force_nonlocal( MI, force )
+    implicit none
+    integer,intent(IN) :: MI
+    real(8),intent(OUT) :: force(3,MI)
+    select case( pselect )
+    case( 2 )
+       call calc_force_ps_nloc2( MI, force )
+    case( 3 )
+       call calc_force_ps_nloc3( MI, force )
+    case( 5 )
+       call stop_program("stop@force_nonlocal(1)")
+    case( 102 )
+       call stop_program("stop@force_nonlocal(2)")
+    end select
+  END SUBROUTINE calc_force_nonlocal
+
 
 END MODULE nonlocal_module

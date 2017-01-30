@@ -8,6 +8,7 @@ MODULE force_sol_module
   use watch_module
   use atom_module, only: aa_atom
   use vdw_grimme_module, only: calc_F_vdw_grimme
+  use nonlocal_module, only: calc_force_nonlocal
 
   implicit none
 
@@ -45,7 +46,7 @@ CONTAINS
 
 !    call watch(ctt(1),ett(1))
 
-    call calc_force_ps_nloc2(MI,work)
+    call calc_force_nonlocal( MI, work )
     force = force + work
 
 !    call watch(ctt(2),ett(2))
