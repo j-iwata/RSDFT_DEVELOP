@@ -600,7 +600,7 @@ CONTAINS
           i1=JJ_MAP(1,i,lma)
           i2=JJ_MAP(2,i,lma)
           i3=JJ_MAP(3,i,lma)
-          if ( icheck_tmp4(i1,i2,i3)==0 ) then
+          if ( icheck_tmp4(i1,i2,i3)==0 .and. uV(i,lma)/=0.0d0 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)=j
           end if
@@ -887,7 +887,7 @@ CONTAINS
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
     integer :: i,j,k,j3,lma,i0,i1,i2,i3,m1,m2,m3
     integer,allocatable :: icheck_tmp4(:,:,:)
-    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr
+    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr,u3
     complex(8) :: ztmp0
 
     a1b = Igrid(1,1)
@@ -925,14 +925,15 @@ CONTAINS
              m2=JJ_MAP(5,i,lma)
              m3=JJ_MAP(6,i,lma)
              j3=icheck_tmp4(i1,i2,i3)
+             u3=uV(i,lma)
              kr=d1*(c1*i1+m1)+d2*(c2*i2+m2)+d3*(c3*i3+m3)
-             ztmp0=dcmplx(cos(kr),-sin(kr))*uV(i,lma)
-             if ( j3==0 ) then
+             ztmp0=dcmplx(cos(kr),-sin(kr))*u3
+             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
                 j=j+1
                 icheck_tmp4(i1,i2,i3)=j
                 uVk(j,lma,k)=ztmp0
                 JJP(j,lma) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
-             else
+             else if ( j3 /= 0 ) then
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
              end if
           end do
