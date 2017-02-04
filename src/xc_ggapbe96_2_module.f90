@@ -231,7 +231,7 @@ CONTAINS
     real(QP) :: dz_dn(2), cm, rssq
     real(QP) :: dac_drs, deP_drs, deU_drs, drs_dn
     real(QP),allocatable :: rrrr(:,:), rtmp(:)
-    real(QP) :: Pi, one, two, fouthr, onethr
+    real(QP) :: Pi, one, two, fouthr, onethr, zero
     real(QP) :: sevthr, twothr, thrtwo, ThrFouPi
     real(8),allocatable :: f(:),Gf(:)
 
@@ -242,6 +242,7 @@ CONTAINS
     if ( rho%s_range%size_global == 1 ) factor = 0.5_QP
  
     Pi       = acos(-1.0_QP)
+    zero     = 0.0_QP
     one      = 1.0_QP
     two      = 2.0_QP
     fouthr   = 4.0_QP/3.0_QP
@@ -269,6 +270,7 @@ CONTAINS
        if ( trho <= zero_density ) cycle
 
        zeta = ( rhoa - rhob )/trho
+       if ( abs(zeta) > one ) zeta=sign(one,zeta)
 
        fz = ( (one+zeta)**fouthr + (one-zeta)**fouthr - two )*const1
 
@@ -334,11 +336,11 @@ CONTAINS
                + 4.0_QP*alpc*fz*const2*zeta**3 &
                +(ec_P-ec_U)*( dfz_dz*zeta**4 + fz*4.0_QP*zeta**3 )
 
-!       if ( zeta == 1.0_QP .or. zeta == -1.0_QP ) then
-!          dphi_dz = 0.0_QP
-!       else
+       if ( abs(zeta) == one ) then
+          dphi_dz = zero
+       else
           dphi_dz = ( (one+zeta)**(-onethr)-(one-zeta)**(-onethr) )/3.0_QP
-!       end if
+       end if
 
        tmp = one + A*T + (A*T)**2
 
