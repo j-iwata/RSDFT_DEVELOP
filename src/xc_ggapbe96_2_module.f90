@@ -105,9 +105,12 @@ CONTAINS
     ene%Ec  = rb(2)
     ene%Exc = rb(1)+rb(2)
 
-    pot%xc%val(:,:)  = vx(:,:) + vc(:,:)
-    if ( allocated(pot%x%val) ) pot%x%val(:,:) = vx(:,:)
-    if ( allocated(pot%c%val) ) pot%c%val(:,:) = vc(:,:)
+    n1 = pot%xc%s_range%head
+    n2 = pot%xc%s_range%tail
+
+    pot%xc%val(:,:)  = vx(:,n1:n2) + vc(:,n1:n2)
+    if ( allocated(pot%x%val) ) pot%x%val(:,:) = vx(:,n1:n2)
+    if ( allocated(pot%c%val) ) pot%c%val(:,:) = vc(:,n1:n2)
 
 ! ---
 
