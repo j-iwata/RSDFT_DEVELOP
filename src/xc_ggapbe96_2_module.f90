@@ -84,8 +84,8 @@ CONTAINS
 
     m1 = pot%xc%g_range%head
     m2 = pot%xc%g_range%tail
-    n1 = pot%xc%s_range%head
-    n2 = pot%xc%s_range%tail
+    n1 = rho%s_range%head
+    n2 = rho%s_range%tail
 
     allocate( vx(m1:m2,n1:n2) ) ; vx=0.0_QP
 
