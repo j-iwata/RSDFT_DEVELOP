@@ -195,12 +195,12 @@ CONTAINS
 
        deallocate( Gf )
        deallocate( f  )
+       deallocate( rrrr )
 
     end do ! ispin
 
     Ex = Ex/factor
 
-    deallocate( rrrr )
     deallocate( rtmp )
 
   END SUBROUTINE calc_PBE_x
