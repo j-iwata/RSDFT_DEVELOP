@@ -14,6 +14,7 @@ MODULE lattice_module
   PUBLIC :: backup_aa_lattice
   PUBLIC :: get_aa_lattice
   PUBLIC :: check_lattice
+  PUBLIC :: calc_volume_lattice
 
   type lattice
      real(8) :: LatticeConstant
@@ -63,7 +64,7 @@ CONTAINS
     type(lattice),intent(INOUT) :: aa
     aa%LatticeVector(:,:) = aa%LatticeConstant * aa%LatticeVector(:,:)
     call calc_VectorLength( aa%LatticeVector, aa%Length )
-    call calc_Volume( aa%LatticeVector, aa%Volume )
+    call calc_volume_lattice( aa%LatticeVector, aa%Volume )
   END SUBROUTINE construct_aa_lattice
 
 
@@ -77,14 +78,14 @@ CONTAINS
   END SUBROUTINE calc_VectorLength
 
 
-  SUBROUTINE calc_Volume( aa, Va )
+  SUBROUTINE calc_volume_lattice( aa, Va )
     implicit none
     real(8),intent(IN)  :: aa(3,3)
     real(8),intent(OUT) :: Va
     Va = aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
         +aa(1,3)*aa(2,1)*aa(3,2)-aa(1,3)*aa(2,2)*aa(3,1) &
         -aa(1,2)*aa(2,1)*aa(3,3)-aa(1,1)*aa(2,3)*aa(3,2)
-  END SUBROUTINE calc_Volume
+  END SUBROUTINE calc_volume_lattice
 
 
   SUBROUTINE get_reciprocal_lattice( aa, bb )
@@ -106,7 +107,7 @@ CONTAINS
     b(:,:) = b(:,:)*pi2/aa%Volume
     bb%LatticeVector(:,:) = b(:,:)
     call calc_VectorLength( bb%LatticeVector, bb%Length )
-    call calc_Volume( bb%LatticeVector, bb%Volume )
+    call calc_volume_lattice( bb%LatticeVector, bb%Volume )
     bb%LatticeConstant = pi2/aa%LatticeConstant
  END SUBROUTINE get_reciprocal_lattice
 
@@ -125,7 +126,7 @@ CONTAINS
     b(1,3) = a(2,1)*a(3,2) - a(3,1)*a(2,2)
     b(2,3) = a(3,1)*a(1,2) - a(1,1)*a(3,2)
     b(3,3) = a(1,1)*a(2,2) - a(2,1)*a(1,2)
-    call calc_Volume( a, v )
+    call calc_volume_lattice( a, v )
     ainv(:,:) = transpose( b(:,:) )/v
   END SUBROUTINE get_inverse_lattice
 
