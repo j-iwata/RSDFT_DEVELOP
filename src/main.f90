@@ -394,7 +394,7 @@ PROGRAM Real_Space_DFT
   select case( iswitch_scf )
   case( 1 )
      call calc_scf( disp_switch, ierr, tol_force_in=feps )
-     if ( ierr < 0 ) goto 900
+     !if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6 )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
