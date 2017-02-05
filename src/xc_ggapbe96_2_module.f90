@@ -14,11 +14,11 @@ MODULE xc_ggapbe96_2_module
   PUBLIC :: calc_GGAPBE96_2
 
   integer,parameter :: DP=kind(0.0d0)
-#ifdef _NO_QPRECISION_
+!#ifdef _NO_QPRECISION_
   integer,parameter :: QP=kind(0.0d0)
-#else
-  integer,parameter :: QP=kind(0.0q0)
-#endif
+!#else
+!  integer,parameter :: QP=kind(0.0q0)
+!#endif
 
   real(QP),parameter :: zero_density = 1.e-10_QP
   real(QP),allocatable :: nab(:)

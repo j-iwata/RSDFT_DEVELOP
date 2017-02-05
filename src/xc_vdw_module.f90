@@ -19,11 +19,11 @@ MODULE xc_vdw_module
   PUBLIC :: init_xc_vdw, calc_xc_vdw
 
   integer,parameter :: DP=kind(0.0d0)
-#ifdef _NO_QPRECISION_
+!#ifdef _NO_QPRECISION_
   integer,parameter :: QP=kind(0.0d0)
-#else
-  integer,parameter :: QP=kind(0.0q0)
-#endif
+!#else
+!  integer,parameter :: QP=kind(0.0q0)
+!#endif
 
   real(8) :: Qmax=5.0d0
   real(8) :: Qmin=0.0d0
@@ -1336,13 +1336,13 @@ CONTAINS
 
     do i=1,3
        rtmp0(m0:m1)=rtmp(m0:m1,i)
-#ifdef _NO_QPRECISION_
+!#ifdef _NO_QPRECISION_
        call MPI_ALLGATHERV( rtmp0(m0), m1-m0+1, MPI_REAL8, rtmp(1,i) &
             , ir_grid, id_grid, MPI_REAL8, comm_grid, info )
-#else
-       call MPI_ALLGATHERV( rtmp0(m0), m1-m0+1, MPI_REAL16, rtmp(1,i) &
-            , ir_grid, id_grid, MPI_REAL16, comm_grid, info )
-#endif
+!#else
+!       call MPI_ALLGATHERV( rtmp0(m0), m1-m0+1, MPI_REAL16, rtmp(1,i) &
+!            , ir_grid, id_grid, MPI_REAL16, comm_grid, info )
+!#endif
     end do
 
     deallocate( rtmp0 )
