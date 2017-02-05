@@ -129,10 +129,12 @@ PROGRAM Real_Space_DFT
 ! --- Test ( Egg-Box Effect ) ---
 
   if ( iswitch_test == 2 ) then
-     aa_atom(1,1) = aa_atom(1,1) + Hgrid(1)*0.5d0/ax
+     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/ax
      if ( disp_switch ) then
         write(*,*) "--- EGG BOX TEST !!! ---"
-        write(*,*) aa_atom(1,1),aa_atom(1,1)*ax,Hgrid(1)*0.5d0
+        do i=1,size(aa_atom,2)
+           write(*,*) aa_atom(1,i),aa_atom(1,i)*ax,Hgrid(1)*0.5d0
+        end do
      end if
   end if
 
