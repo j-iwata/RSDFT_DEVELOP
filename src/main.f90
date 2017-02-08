@@ -409,19 +409,6 @@ PROGRAM Real_Space_DFT
      goto 900
   end select
 
-! ---
-
-!
-! --- BAND ---
-!
-
-  if ( iswitch_band > 0 ) then
-     call control_xc_hybrid(1)
-     call Init_IO( "band" )
-     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
-     call Init_IO( "" )
-  end if
-
 !
 ! --- Force test, atomopt, CPMD ---
 !
@@ -447,6 +434,17 @@ PROGRAM Real_Space_DFT
      end if
 
   end select
+
+!
+! --- BAND ---
+!
+
+  if ( iswitch_band > 0 ) then
+     call control_xc_hybrid(1)
+     call Init_IO( "band" )
+     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
+     call Init_IO( "" )
+  end if
 
 !
 ! --- TDDFT ---
