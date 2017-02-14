@@ -41,7 +41,8 @@ MODULE atomopt_module
   integer :: diter_opt
 
   integer :: strlog = 0
-  integer,parameter :: unit_strlog = 297
+  integer,parameter :: unit_atmopt = 87
+  integer,parameter :: unit_strlog = 86
   integer,parameter :: unit197 = 197
   integer,parameter :: unit97 = 97
 
@@ -238,7 +239,7 @@ CONTAINS
 
     end if
 
-    call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
+    call write_atomic_coordinates_log(unit197,0,0,strlog,iswitch_opt)
     if ( strlog == 3 .and. iswitch_opt < 2 ) call write_etot_force_log( 0,0, Etot, Force )
 
     dif0 = dif
@@ -624,7 +625,7 @@ CONTAINS
              end if
           end if
 
-          call write_atomic_coordinates_log(97,icy,itlin,0,iswitch_opt)
+          call write_atomic_coordinates_log(unit97,icy,itlin,0,iswitch_opt)
 
 !
 ! --- SCF ---
@@ -722,7 +723,7 @@ CONTAINS
           end if
 
           if ( strlog >= 2 ) then
-             call write_atomic_coordinates_log(97,icy,itlin,strlog,iswitch_opt)
+             call write_atomic_coordinates_log(unit97,icy,itlin,strlog,iswitch_opt)
              if ( strlog == 3 ) call write_etot_force_log(icy,itlin,Etot,Force)
           end if
 !
@@ -793,7 +794,7 @@ CONTAINS
        if ( disp_switch_loc ) then
           write(*,*) 'Best structure on a line (see fort.197)'
        end if  
-       call write_atomic_coordinates_log(197,icy,itlin,1,iswitch_opt)
+       call write_atomic_coordinates_log(unit197,icy,itlin,1,iswitch_opt)
 
 !
 ! --- Convergence check 3 ---
@@ -893,7 +894,7 @@ CONTAINS
     if ( myrank == 0 ) then
        write(fname,'(i3)') unit
        fname="fort."//adjustl(fname)
-       call write_coordinates_atom( unit, 3, fname )
+       call write_coordinates_atom( unit_atmopt, 3, fname )
     end if
 
     if ( strlog /= 0 .and. flag == strlog ) then

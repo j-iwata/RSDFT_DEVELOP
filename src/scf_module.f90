@@ -113,7 +113,7 @@ CONTAINS
     fdiff       =-1.d10
     tol_force   = 0.0d0 ; if ( present(tol_force_in) ) tol_force=tol_force_in
     Diter       = Diter_scf ; if ( present(Diter_in) ) Diter=Diter_in
-
+    Etot        = 0.0d0
     time_scf(:) = 0.0d0
 
     add_info ="" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
