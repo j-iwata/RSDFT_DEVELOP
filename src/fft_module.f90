@@ -138,37 +138,57 @@ CONTAINS
   END SUBROUTINE z3_to_z1_fft
 
 
-  SUBROUTINE forward_fft( z3, w3 )
+  SUBROUTINE forward_fft( z3, w3, key )
     implicit none
     complex(8),intent(INOUT) :: z3(0:,0:,0:)
+    character(*),optional,intent(IN) :: key
     complex(8),allocatable   :: w3(:,:,:)
+    character(9) :: routine
+    routine="" ; if ( present(key) ) routine=key
+    select case( routine )
+    case default
 #ifdef _FFTW_
-    call forward_fftw( z3 )
-    return
+       call forward_fftw( z3 )
 #endif
-    if ( .not.allocated(w3) ) then
-       allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-    end if
-    call rsdft_fft3d( z3,  1 ) ; return
-!    call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    case( "fft_rsdft" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+       call rsdft_fft3d( z3,  1 )
+    case( "fft_tapp" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+!       call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    end select
   END SUBROUTINE forward_fft
 
 
-  SUBROUTINE backward_fft( z3, w3 )
+  SUBROUTINE backward_fft( z3, w3, key )
     implicit none
     complex(8),intent(INOUT) :: z3(:,:,:)
+    character(*),optional,intent(IN) :: key
     complex(8),allocatable   :: w3(:,:,:)
+    character(9) :: routine
+    routine="" ; if ( present(key) ) routine=key
+    select case( routine )
+    case default
 #ifdef _FFTW_
-    call backward_fftw( z3 )
-    return
+       call backward_fftw( z3 )
 #endif
-    if ( .not.allocated(w3) ) then
-       allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-    end if
-    call rsdft_fft3d( z3, -1 ) ; return
-!    call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    case( "fft_rsdft" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+       call rsdft_fft3d( z3, -1 )
+    case( "fft_tapp" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+!       call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    end select
   END SUBROUTINE backward_fft
 
 

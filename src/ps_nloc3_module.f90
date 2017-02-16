@@ -275,6 +275,8 @@ CONTAINS
     real(8) :: a1,a2,a3,c1,c2,c3,Gr,x,y,z,pi2
     integer :: k1,kk1,ig,ML1,ML2,ML3,ML,MG
 
+    call write_border( 0, "prep_ps_nloc3(start)" )
+
     nn1     = idisp(myrank)+1
     nn2     = idisp(myrank)+ircnt(myrank)
     ML0     = ircnt(myrank)
@@ -389,7 +391,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork0, zwork1 )
+             call backward_fft( zwork0, zwork1, "fft_rsdft" )
 
 !$OMP parallel private( irank_g,l1,l2,l3,m1,m2,m3,i )
              do i3=1,node_partition(3)
@@ -450,6 +452,8 @@ CONTAINS
     deallocate( utmp  )
     if ( allocated(zwork1) ) deallocate( zwork1 )
     if ( allocated(zwork0) ) deallocate( zwork0 )
+
+    call write_border( 0, "prep_ps_nloc3(end)" )
 
     return
 
@@ -649,7 +653,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1 )
+             call backward_fft( zwork, zwork1, "fft_rsdft" )
 
 !$OMP parallel private( i1,i2,i3,Gy )
 !$OMP do
@@ -672,7 +676,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1 )
+             call backward_fft( zwork, zwork1, "fft_rsdft" )
 
 !$OMP parallel private( Gz,i1,i2,i3 )
 !$OMP do
@@ -695,7 +699,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1 )
+             call backward_fft( zwork, zwork1, "fft_rsdft" )
 
 !$OMP parallel do private( i1,i2,i3 )
              do i=1,ML

@@ -6,7 +6,7 @@ MODULE test_force_module
 
   use force_local_sol_module, only: calc_force_local_sol
   use force_ewald_module
-  use ps_nloc2_module
+  use nonlocal_module
   use ps_pcc_force_module, only: calc_ps_pcc_force
   use ps_pcc_module, only: flag_pcc_0
 
@@ -89,7 +89,7 @@ CONTAINS
     end if
 
     call watcht(disp_switch,"fnlc",0)
-    call calc_force_ps_nloc2(Natom,force)
+    call calc_force_nonlocal(Natom,force)
     call watcht(disp_switch,"fnlc",1)
     forcet(:,:)=forcet(:,:)+force(:,:)
 
