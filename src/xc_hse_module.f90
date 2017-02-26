@@ -960,12 +960,10 @@ CONTAINS
     implicit none
     integer,intent(OUT) :: LLL(-Md:,-Md:,-Md:)
     integer,allocatable :: Igrid_tot(:,:,:)
-    integer :: ierr,i,i1,i2,i3,n,j1,j2,j3
-    allocate( Igrid_tot(2,3,0:np_grid-1) )
-    Igrid_tot=0
-    Igrid_tot(1:2,1:3,myrank_g)=Igrid(1:2,1:3)
-    call MPI_ALLGATHER(Igrid_tot(1,1,myrank_g),6,MPI_INTEGER &
-         ,Igrid_tot,6,MPI_INTEGER,comm_grid,ierr)
+    integer :: ierr,i,i1,i2,i3,n,j1,j2,j3,Igrid_tmp(2,3)
+    allocate( Igrid_tot(2,3,0:np_grid-1) ) ; Igrid_tot=0
+    Igrid_tmp(1:2,1:3)=Igrid(1:2,1:3)
+    call MPI_ALLGATHER(Igrid_tmp,6,MPI_INTEGER,Igrid_tot,6,MPI_INTEGER,comm_grid,ierr)
     i=0
     do n=0,np_grid-1
        do i3=Igrid_tot(1,3,n),Igrid_tot(2,3,n)
