@@ -29,11 +29,11 @@ MODULE ewald_module
   logical :: flag_first_time=.true.
   character(12) :: ctrl_ewald=""
 
-#ifdef _NO_QPRECISION_
+!#ifdef _NO_QPRECISION_
   integer,parameter :: QP=kind(0.0d0)
-#else
-  integer,parameter :: QP=kind(0.0q0)
-#endif
+!#else
+!  integer,parameter :: QP=kind(0.0q0)
+!#endif
   real(QP) :: ewldg16, ewldr16
 
 CONTAINS

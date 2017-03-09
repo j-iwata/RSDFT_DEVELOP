@@ -16,11 +16,11 @@ MODULE gradient_module
   PUBLIC :: calc_xyz_gradient
 
   integer,parameter :: DP=kind(0.0d0)
-#ifdef _NO_QPRECISION_
+!#ifdef _NO_QPRECISION_
   integer,parameter :: QP=kind(0.0d0)
-#else
-  integer,parameter :: QP=kind(0.0q0)
-#endif
+!#else
+!  integer,parameter :: QP=kind(0.0q0)
+!#endif
 
   type gradient
      real(DP),allocatable :: gx(:),gy(:),gz(:)

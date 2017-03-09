@@ -113,7 +113,7 @@ CONTAINS
     fdiff       =-1.d10
     tol_force   = 0.0d0 ; if ( present(tol_force_in) ) tol_force=tol_force_in
     Diter       = Diter_scf ; if ( present(Diter_in) ) Diter=Diter_in
-
+    Etot        = 0.0d0
     time_scf(:) = 0.0d0
 
     add_info ="" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
@@ -341,11 +341,22 @@ CONTAINS
        flag_conv = ( flag_conv .or. flag_conv_f .or. flag_conv_e )
 
        call calc_time_watch( etime_lap(6) )
+
+! ---
+
+       call global_watch( .false., flag_end1 )
+
+       flag_end2 = exit_program()
+
+       flag_end = ( flag_end1 .or. flag_end2 )
+
+       flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
+
        call init_time_watch( etime_lap(7) )
 
 ! --- mixing ---
 
-       if ( .not.flag_conv ) then
+       if ( .not.flag_exit ) then
 
           do s=MSP_0,MSP_1
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
@@ -377,13 +388,13 @@ CONTAINS
        call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
        if ( myrank == 0 ) call write_eigenvalues( eval )
 
-       call global_watch( .false., flag_end1 )
+!       call global_watch( .false., flag_end1 )
 
-       flag_end2 = exit_program()
+!       flag_end2 = exit_program()
 
-       flag_end = ( flag_end1 .or. flag_end2 )
+!       flag_end = ( flag_end1 .or. flag_end2 )
 
-       flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
+!       flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call calc_time_watch( etime )
        if ( disp_switch ) then

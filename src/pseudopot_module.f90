@@ -158,16 +158,7 @@ CONTAINS
                       < count( ps(ielm)%Dij /= 0.0d0 )  ) then !--> MultiRef
 
                 ps_type=1
-                do j=1,ps(ielm)%norb
-                   jo=ps(ielm)%no(j)
-                   lj=ps(ielm)%lo(j)
-                do i=1,ps(ielm)%norb
-                   io=ps(ielm)%no(i)
-                   li=ps(ielm)%lo(i)
-                   if ( li /= lj ) cycle
-                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
-                end do
-                end do
+                anorm(:,ielm)=1.0d0
 
              end if
 
@@ -239,19 +230,10 @@ CONTAINS
              rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
 
              if ( allocated(ps(ielm)%Dij) ) then
-             if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
-                ps_type = 1
-                do j=1,norb(ielm)
-                   jo=no(j,ielm)
-                   lj=lo(j,ielm)
-                do i=1,norb(ielm)
-                   io=no(i,ielm)
-                   li=lo(i,ielm)
-                   if ( li /= lj ) cycle
-                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
-                end do
-                end do
-             end if
+                if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
+                   ps_type=1
+                   anorm(:,ielm)=1.0d0
+                end if
              end if
 
           case default
@@ -265,6 +247,23 @@ CONTAINS
        end do ! ielm
 
        write(*,*) "ps_type = ",ps_type
+       if ( ps_type == 1 ) then
+          do ielm=1,Nelement
+             do j=1,ps(ielm)%norb
+                jo=ps(ielm)%no(j)
+                lj=ps(ielm)%lo(j)
+             do i=1,ps(ielm)%norb
+                io=ps(ielm)%no(i)
+                li=ps(ielm)%lo(i)
+                if ( li /= lj ) cycle
+                hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
+             end do
+             end do
+             do j=1,norb(ielm)
+                viod(:,j,ielm)=viod(:,j,ielm)/sqrt( anorm(j,ielm) )
+             end do
+          end do ! ielm
+       end if
 
     end if ! [ rank == 0 ]
 

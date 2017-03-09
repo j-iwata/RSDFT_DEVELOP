@@ -129,10 +129,12 @@ PROGRAM Real_Space_DFT
 ! --- Test ( Egg-Box Effect ) ---
 
   if ( iswitch_test == 2 ) then
-     aa_atom(1,1) = aa_atom(1,1) + Hgrid(1)*0.5d0/ax
+     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/ax
      if ( disp_switch ) then
         write(*,*) "--- EGG BOX TEST !!! ---"
-        write(*,*) aa_atom(1,1),aa_atom(1,1)*ax,Hgrid(1)*0.5d0
+        do i=1,size(aa_atom,2)
+           write(*,*) aa_atom(1,i),aa_atom(1,i)*ax,Hgrid(1)*0.5d0
+        end do
      end if
   end if
 
@@ -394,7 +396,7 @@ PROGRAM Real_Space_DFT
   select case( iswitch_scf )
   case( 1 )
      call calc_scf( disp_switch, ierr, tol_force_in=feps )
-     if ( ierr < 0 ) goto 900
+     !if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6 )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
@@ -406,19 +408,6 @@ PROGRAM Real_Space_DFT
      end if
      goto 900
   end select
-
-! ---
-
-!
-! --- BAND ---
-!
-
-  if ( iswitch_band > 0 ) then
-     call control_xc_hybrid(1)
-     call Init_IO( "band" )
-     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
-     call Init_IO( "" )
-  end if
 
 !
 ! --- Force test, atomopt, CPMD ---
@@ -445,6 +434,17 @@ PROGRAM Real_Space_DFT
      end if
 
   end select
+
+!
+! --- BAND ---
+!
+
+  if ( iswitch_band > 0 ) then
+     call control_xc_hybrid(1)
+     call Init_IO( "band" )
+     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
+     call Init_IO( "" )
+  end if
 
 !
 ! --- TDDFT ---

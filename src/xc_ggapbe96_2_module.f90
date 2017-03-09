@@ -14,11 +14,11 @@ MODULE xc_ggapbe96_2_module
   PUBLIC :: calc_GGAPBE96_2
 
   integer,parameter :: DP=kind(0.0d0)
-#ifdef _NO_QPRECISION_
+!#ifdef _NO_QPRECISION_
   integer,parameter :: QP=kind(0.0d0)
-#else
-  integer,parameter :: QP=kind(0.0q0)
-#endif
+!#else
+!  integer,parameter :: QP=kind(0.0q0)
+!#endif
 
   real(QP),parameter :: zero_density = 1.e-10_QP
   real(QP),allocatable :: nab(:)
@@ -84,8 +84,8 @@ CONTAINS
 
     m1 = pot%xc%g_range%head
     m2 = pot%xc%g_range%tail
-    n1 = pot%xc%s_range%head
-    n2 = pot%xc%s_range%tail
+    n1 = rho%s_range%head
+    n2 = rho%s_range%tail
 
     allocate( vx(m1:m2,n1:n2) ) ; vx=0.0_QP
 
@@ -105,9 +105,12 @@ CONTAINS
     ene%Ec  = rb(2)
     ene%Exc = rb(1)+rb(2)
 
-    pot%xc%val(:,:)  = vx(:,:) + vc(:,:)
-    if ( allocated(pot%x%val) ) pot%x%val(:,:) = vx(:,:)
-    if ( allocated(pot%c%val) ) pot%c%val(:,:) = vc(:,:)
+    n1 = pot%xc%s_range%head
+    n2 = pot%xc%s_range%tail
+
+    pot%xc%val(:,:)  = vx(:,n1:n2) + vc(:,n1:n2)
+    if ( allocated(pot%x%val) ) pot%x%val(:,:) = vx(:,n1:n2)
+    if ( allocated(pot%c%val) ) pot%c%val(:,:) = vc(:,n1:n2)
 
 ! ---
 
@@ -195,12 +198,12 @@ CONTAINS
 
        deallocate( Gf )
        deallocate( f  )
+       deallocate( rrrr )
 
     end do ! ispin
 
     Ex = Ex/factor
 
-    deallocate( rrrr )
     deallocate( rtmp )
 
   END SUBROUTINE calc_PBE_x
@@ -231,7 +234,7 @@ CONTAINS
     real(QP) :: dz_dn(2), cm, rssq
     real(QP) :: dac_drs, deP_drs, deU_drs, drs_dn
     real(QP),allocatable :: rrrr(:,:), rtmp(:)
-    real(QP) :: Pi, one, two, fouthr, onethr
+    real(QP) :: Pi, one, two, fouthr, onethr, zero
     real(QP) :: sevthr, twothr, thrtwo, ThrFouPi
     real(8),allocatable :: f(:),Gf(:)
 
@@ -242,6 +245,7 @@ CONTAINS
     if ( rho%s_range%size_global == 1 ) factor = 0.5_QP
  
     Pi       = acos(-1.0_QP)
+    zero     = 0.0_QP
     one      = 1.0_QP
     two      = 2.0_QP
     fouthr   = 4.0_QP/3.0_QP
@@ -269,6 +273,7 @@ CONTAINS
        if ( trho <= zero_density ) cycle
 
        zeta = ( rhoa - rhob )/trho
+       if ( abs(zeta) > one ) zeta=sign(one,zeta)
 
        fz = ( (one+zeta)**fouthr + (one-zeta)**fouthr - two )*const1
 
@@ -334,11 +339,11 @@ CONTAINS
                + 4.0_QP*alpc*fz*const2*zeta**3 &
                +(ec_P-ec_U)*( dfz_dz*zeta**4 + fz*4.0_QP*zeta**3 )
 
-!       if ( zeta == 1.0_QP .or. zeta == -1.0_QP ) then
-!          dphi_dz = 0.0_QP
-!       else
+       if ( abs(zeta) == one ) then
+          dphi_dz = zero
+       else
           dphi_dz = ( (one+zeta)**(-onethr)-(one-zeta)**(-onethr) )/3.0_QP
-!       end if
+       end if
 
        tmp = one + A*T + (A*T)**2
 

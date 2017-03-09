@@ -32,7 +32,7 @@ MODULE xc_module
            ,E_exchange_exx
   PUBLIC :: read_xc
 
-  character(8),PUBLIC :: XCtype = 'LDAPZ81'
+  character(9),PUBLIC :: XCtype = 'LDAPZ81'
 
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
