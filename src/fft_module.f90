@@ -15,6 +15,7 @@ MODULE fft_module
   PUBLIC :: z1_to_z3_fft, z3_to_z1_fft
   PUBLIC :: forward_fft, backward_fft
   PUBLIC :: grid_util_fft
+  PUBLIC :: forward_2d_fft
 
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3
@@ -203,6 +204,19 @@ CONTAINS
 !    end do
 !    stop
   END SUBROUTINE grid_util_fft
+
+
+  SUBROUTINE forward_2d_fft( z2, zw )
+    implicit none
+    complex(8),intent(INOUT) :: z2(0:,0:)
+    complex(8),allocatable   :: zw(:,:)
+#ifdef _FFTW_
+    call forward_2d_fftw( z2, zw )
+    return
+#else
+    call stop_program( "forward_fft_2d is only available with FFTW" )
+#endif
+  END SUBROUTINE forward_2d_fft
 
 
 END MODULE fft_module
