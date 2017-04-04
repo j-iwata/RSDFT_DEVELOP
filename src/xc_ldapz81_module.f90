@@ -195,6 +195,11 @@ CONTAINS
           mu(1) = ecd(1) - onethr*( A(1) + C(1)*rs*(1.0d0+rsln) + rs*D(1) )
           mu(2) = ecd(2) - onethr*( A(2) + C(2)*rs*(1.0d0+rsln) + rs*D(2) )
 
+       else
+
+          write(*,*) "rs=",rs,trho
+          call stop_program( "error@ldapz81_c" )
+
        end if
 
        dfdrhoa = c0*fouthr*2.0d0*rhob &

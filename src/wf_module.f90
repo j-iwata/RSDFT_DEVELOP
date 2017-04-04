@@ -369,6 +369,10 @@ CONTAINS
           n2=size(esp,1)
        end if
     end if
+    if ( i > 1 ) then
+       n1=1
+       n2=size(esp,1)
+    end if
     format_string='(i4,i6,2(f20.15,2g13.5,1x))'
     do k=1,size(esp,2)
     do n=n1,n2

@@ -34,6 +34,8 @@ CONTAINS
     real(8) :: c1,c2,c3,pi,gamma,Rx,Ry,Rz,v0,r2,r,x,y,z,d1,d2,d3
     real(8) :: Rps2,const1,const2
 
+    call write_border( 0, " prep_ps_nloc_hgh(start)" )
+
     pi                 = acos(-1.d0)
     ML1                = Ngrid(1)
     ML2                = Ngrid(2)
@@ -124,6 +126,8 @@ CONTAINS
        end do ! iorb
     end do ! a
 
+    call write_border( 0, " prep_ps_nloc_hgh(end)" )
+
   END SUBROUTINE prep_ps_nloc_hgh
 
 
@@ -135,6 +139,8 @@ CONTAINS
 
     if ( flag_init ) return
     flag_init = .true.
+
+    call write_border( 0, " init_ps_nloc_hgh(start)" )
 
     rmax = 30.d0
     MMr  = 3000
@@ -171,6 +177,8 @@ CONTAINS
     end do ! iorb
     end do ! ielm
 
+    call write_border( 0, " init_ps_nloc_hgh(end)" )
+
   END SUBROUTINE init_ps_nloc_hgh
 
 
@@ -188,6 +196,8 @@ CONTAINS
     integer :: a,L,m,iorb,ik,n,j,L1,L1z
     real(8) :: c1,c2,c3,pi,cnst,cnst1,cnst2,cnst3,tmp0,tmp1,r2,e,rp
     real(8) :: gamma,Rx,Ry,Rz,x,y,z,r,d1,d2,d3,v0,v1,yy1,yy2,yy3
+
+    call write_border( 0, " init_force_ps_nloc_hgh(start)" )
 
 !$OMP workshare
     duVdR=0.d0
@@ -286,6 +296,8 @@ CONTAINS
 
     end do ! lma
 !$OMP end do
+
+    call write_border( 0, " init_force_ps_nloc_hgh(end)" )
 
   END SUBROUTINE init_force_ps_nloc_hgh
 

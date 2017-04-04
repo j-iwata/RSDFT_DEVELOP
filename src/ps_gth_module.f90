@@ -66,7 +66,7 @@ CONTAINS
           iflag_hgh = .false.
           write(*,*) "GTH format",j
        else
-          iflag_hgh=.true.
+          iflag_hgh = .true.
           write(*,*) "HGH format",j
        end if
        do j=1,i
@@ -83,7 +83,7 @@ CONTAINS
           if ( iflag_hgh .and. i > 1 ) read(unit_pp,*,END=10) work2(1:3)
 
           do j=1,3
-             if ( work1(j) /= 0.0d0 ) then
+             if ( work1(j) /= 0.0d0 .or. work2(j) /= 0.0d0 ) then
                 norb       = norb + 1
                 Rps0(norb) = rcnl
                 lo(norb)   = i-1
