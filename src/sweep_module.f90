@@ -17,6 +17,10 @@ MODULE sweep_module
   use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use io_tools_module
   use eigenvalues_module
+  use cg_ncol_module
+  use gram_schmidt_ncol_module
+  use subspace_diag_ncol_module
+  use fermi_ncol_module
 
   implicit none
 
@@ -57,12 +61,14 @@ CONTAINS
   END SUBROUTINE init_sweep
 
 
-  SUBROUTINE calc_sweep( disp_switch, ierr_out, Diter_in, outer_loop_info )
+  SUBROUTINE calc_sweep( disp_switch, ierr_out, Diter_in, outer_loop_info &
+                         ,flag_ncol_in )
     implicit none
     logical,intent(IN)  :: disp_switch
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN)  :: Diter_in
     character(*),optional,intent(IN) :: outer_loop_info
+    logical,optional,intent(IN) :: flag_ncol_in
     integer :: iter,s,k,n,m,iflag_hybrid,ierr,Diter
     logical :: flag_exit, flag_conv
     logical :: flag_end, flag_end1, flag_end2
@@ -71,6 +77,7 @@ CONTAINS
     type(time) :: etime, tt
     type(eigv) :: eval
     logical,external :: exit_program
+    logical :: flag_noncollinear
 
     Diter = 0
     if ( present(Diter_in) ) then
@@ -90,6 +97,9 @@ CONTAINS
     Echk      = 0.0d0
     ierr_out  = 0
     add_info  = "" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
+
+    flag_noncollinear = .false.
+    if ( present(flag_ncol_in) ) flag_noncollinear=flag_ncol_in
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -148,14 +158,30 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          call conjugate_gradient( ML_0,ML_1, Nband, k,s &
-                                 ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
+          if ( flag_noncollinear ) then
 
-          call gram_schmidt(1,Nband,k,s)
+             call conjugate_gradient_ncol( ML_0,ML_1, Nband, k &
+                                          ,unk, esp(1,k,1), res(1,k,1) )
 
-          call subspace_diag(k,s)
+             call gram_schmidt_ncol( 1,Nband, k, unk )
+
+             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+
+          else
+
+             call conjugate_gradient( ML_0,ML_1, Nband, k,s &
+                                     ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
+
+             call gram_schmidt(1,Nband,k,s)
+
+             call subspace_diag(k,s)
+
+          end if
 
        end do
+
+       if ( flag_noncollinear ) exit
+
        end do
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
@@ -167,8 +193,13 @@ CONTAINS
 #endif
        call mpi_bcast( esp, size(esp), MPI_REAL8, 0, comm_fkmb, ierr )
 
-       call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                      ,esp,weight_bz,occ,disp_switch)
+       if ( flag_noncollinear ) then
+          call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
+                              ,esp,weight_bz,occ)
+       else
+          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
+                         ,esp,weight_bz,occ,disp_switch)
+       end if
 
        call calc_with_rhoIN_total_energy( Echk )
 

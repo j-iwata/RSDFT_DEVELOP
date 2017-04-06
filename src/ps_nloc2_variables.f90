@@ -26,6 +26,20 @@ MODULE ps_nloc2_variables
   integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
 #endif
 
+! spin-orbit
+  real(8),allocatable :: uVso(:,:)
+  complex(8),allocatable :: uVk_so00(:,:,:)
+  complex(8),allocatable :: uVk_so11(:,:,:)
+  complex(8),allocatable :: uVk_so12(:,:,:)
+  complex(8),allocatable :: uVk_so21(:,:,:)
+  complex(8),allocatable :: uVk_so22(:,:,:)
+
+! muti-reference & spin-orbit
+  integer :: N_nzqr
+  integer,allocatable :: nzqr_pair(:,:)
+  real(8),allocatable :: Dij00(:)
+  real(8),allocatable :: Kij00(:)
+
 CONTAINS
 
   SUBROUTINE allocate_ps_nloc2(MB_d)

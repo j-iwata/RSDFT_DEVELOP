@@ -34,9 +34,11 @@ MODS1 = \
        bcast_module.o\
        hartree_variables.o\
        fermi_mp_module.o\
+       fermi_ncol_module.o\
        band_variables.o\
        real_complex_module.o\
        init_occ_electron_module.o\
+       init_occ_electron_ncol_module.o\
        basic_type_factory.o\
        grid_module.o\
        rgrid_mol_module.o\
@@ -45,6 +47,8 @@ MODS1 = \
        fft_module.o\
        ffte_sub_module.o\
        var_para_ps_nloc_g.o\
+       sqerr_module.o\
+       mixing_dm_module.o\
        mixing_broyden_module.o\
        mixing_pulay_module.o\
        basic_type_methods.o\
@@ -117,10 +121,12 @@ MODS1 = \
        io_read_module.o\
        xc_ggapbe96_mol_module.o\
        gram_schmidt_m_module.o\
+       gram_schmidt_ncol_module.o\
        band_unfold_module.o\
        rhonks_g_module.o\
        ps_pcc_mol_module.o\
        ps_nloc_mr_module.o\
+       ps_spinorbit_module.o\
        subspace_solv_sl_module.o\
        io_write_module.o\
        ps_nloc3_module.o\
@@ -173,8 +179,13 @@ MODS1 = \
        ps_local_variables.o\
        ps_local_fftw_module.o\
        ps_local_module.o\
+       io_ctrl_parameters.o\
        xc_module.o\
+       noncollinear_module.o\
+       hamiltonian_ncol_module.o\
+       subspace_diag_ncol_module.o\
        esp_calc_module.o\
+       esp_calc_ncol_module.o\
        cggs_module.o\
        cg_lobpcg_module.o\
        subspace_mate_sl_module.o\
@@ -188,6 +199,7 @@ MODS1 = \
        ps_local_mol_gth_module.o\
        ps_pcc_force_module.o\
        cg_module.o\
+       cg_ncol_module.o\
        subspace_diag_module.o\
        rtddft_mol_module.o\
        ps_local_mol_module.o\

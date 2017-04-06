@@ -19,6 +19,9 @@ PROGRAM Real_Space_DFT
   use efield_module
   use linear_response_module
   use kinetic_sym_ini_module
+  use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
+                                ,init_noncollinear
+  use init_occ_electron_ncol_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -28,6 +31,7 @@ PROGRAM Real_Space_DFT
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
   type(lattice) :: aa_obj, bb_obj
   logical,parameter :: recalc_esp=.true.
+  logical :: flag_read_ncol=.false.
   real(8) :: Etot, Ehwf
   integer :: info_level=0
   character(32) :: lattice_index
@@ -248,6 +252,17 @@ PROGRAM Real_Space_DFT
 
   call sym_rho( ML_0, ML_1, Nspin, MSP_0, MSP_1, rho )
 
+! --- init noncollinear ---
+
+  flag_noncollinear = flag_so
+  if ( flag_noncollinear ) then
+     if ( Nspin /= 2 .or. np_spin == 2 ) then
+        write(*,*) "Nspin, np_spin=",Nspin,np_spin
+        write(*,*) "Nspin==2 and np_spin==1 is only available"
+        goto 900
+     end if
+  end if
+
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
@@ -277,7 +292,11 @@ PROGRAM Real_Space_DFT
 
 ! --- Initial occupation ---
 
-  call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+  if ( flag_noncollinear ) then
+     call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+  else
+     call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+  end if
 
   if ( DISP_SWITCH ) then
      write(*,'(a60," main")') repeat("-",60)
@@ -290,10 +309,10 @@ PROGRAM Real_Space_DFT
      write(*,*) "Next_electron =",Next_electron
      write(*,*) "Ndspin,Nfixed =",Ndspin,Nfixed
      write(*,*) "Zps   =",Zps(1:Nelement)
-     write(*,*) "sum(occ)=",sum(occ)
+     write(*,*) "sum(occ)=",sum(occ),count(occ(:,1,1)/=0.0d0)
      if ( Nspin == 2 ) then
-        write(*,*) "sum(occ(up))  =",sum(occ(:,:,1))
-        write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin))
+        write(*,*) "sum(occ(up))  =",sum(occ(:,:,1)),count(occ(:,1,1)/=0.0d0)
+        write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin)),count(occ(:,1,Nspin)/=0.0d0)
      endif
      !do n=max(1,nint(Nelectron/2)-10),min(nint(Nelectron/2)+10,Nband)
      !   do k=1,Nbzsm
@@ -315,6 +334,11 @@ PROGRAM Real_Space_DFT
 
   call calc_xc
 
+  if ( flag_noncollinear ) then
+     call init_noncollinear( rho, Vxc )
+     Vxc=0.0d0
+  end if
+
   call init_localpot
 
   do s=MSP_0,MSP_1
@@ -332,16 +356,23 @@ PROGRAM Real_Space_DFT
 
   call read_data(disp_switch)
 
+  call io_read_noncollinear( myrank, flag_read_ncol )
+
   call getDij
 
 ! the following GS should be performed when MB1_tmp is smaller than Nband,
 ! otherwise not necessary
+
+  if ( flag_read_ncol ) then
+  else
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
      call gram_schmidt(1,Nband,k,s)
   end do
   end do
+
+  end if
 
 ! ---
 
@@ -354,11 +385,16 @@ PROGRAM Real_Space_DFT
 ! The followings are just to get H and XC energies,
 ! but potentials are also recalculated with new rho.
 
+  if ( flag_read_ncol ) then
+  else
+
   call calc_hartree(ML_0,ML_1,MSP,rho)
   call calc_xc
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
+
+  end if
 
 ! ---
 
@@ -385,7 +421,7 @@ PROGRAM Real_Space_DFT
   else
 
      call Init_IO( "sweep" )
-     call calc_sweep( disp_switch, ierr )
+     call calc_sweep( disp_switch, ierr, flag_ncol_in=flag_noncollinear )
      call Init_IO( "" )
      if ( ierr == -1 ) goto 900
 
@@ -395,13 +431,13 @@ PROGRAM Real_Space_DFT
 
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( disp_switch, ierr, tol_force_in=feps )
+     call calc_scf( disp_switch, ierr, tol_force_in=feps, Etot_out=Etot )
      !if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp, Etot, 6 )
+     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp, Etot, 6 )
+     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( -1 )
      if ( nprocs == 1 ) then
         call construct_hamiltonian_matrix( Ngrid(0) )
@@ -422,7 +458,7 @@ PROGRAM Real_Space_DFT
 
      call atomopt( iswitch_opt )
 
-     call calc_total_energy( recalc_esp, Etot, 6 )
+     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
 
   case( 3 ) ! --- cpmd ---
 

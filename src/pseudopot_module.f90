@@ -20,6 +20,7 @@ MODULE pseudopot_module
   PUBLIC :: read_pseudopot
 
   integer,PUBLIC :: pselect = 2
+  logical,PUBLIC :: flag_so = .false.
 
   integer :: Nelement
   integer :: unit_ps,ielm
@@ -40,6 +41,7 @@ CONTAINS
   SUBROUTINE read_param_pseudopot
     implicit none
     call IOTools_readIntegerKeyword( "PSELECT", pselect )
+    call IOTools_findKeyword( "SPINORBIT", flag_so, flag_bcast=.true. )
   END SUBROUTINE read_param_pseudopot
 
 
@@ -248,21 +250,25 @@ CONTAINS
 
        write(*,*) "ps_type = ",ps_type
        if ( ps_type == 1 ) then
-          do ielm=1,Nelement
-             do j=1,ps(ielm)%norb
-                jo=ps(ielm)%no(j)
-                lj=ps(ielm)%lo(j)
-             do i=1,ps(ielm)%norb
-                io=ps(ielm)%no(i)
-                li=ps(ielm)%lo(i)
-                if ( li /= lj ) cycle
-                hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
-             end do
-             end do
-             do j=1,norb(ielm)
-                viod(:,j,ielm)=viod(:,j,ielm)/sqrt( anorm(j,ielm) )
-             end do
-          end do ! ielm
+          write(*,*) "(non-diagonal partrs are in nonlocal pseudopotential)"
+          if ( any(ippform==4) ) then
+          else
+             do ielm=1,Nelement
+                do j=1,ps(ielm)%norb
+                   jo=ps(ielm)%no(j)
+                   lj=ps(ielm)%lo(j)
+                do i=1,ps(ielm)%norb
+                   io=ps(ielm)%no(i)
+                   li=ps(ielm)%lo(i)
+                   if ( li /= lj ) cycle
+                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
+                end do
+                end do
+                do j=1,norb(ielm)
+                   viod(:,j,ielm)=viod(:,j,ielm)/sqrt( anorm(j,ielm) )
+                end do
+             end do ! ielm
+          end if
        end if
 
     end if ! [ rank == 0 ]

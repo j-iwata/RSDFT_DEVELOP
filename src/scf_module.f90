@@ -6,6 +6,7 @@ MODULE scf_module
   use localpot_module
   use mixing_module, only: init_mixing, perform_mixing, calc_sqerr_mixing &
                          , finalize_mixing, imix, beta
+  use sqerr_module
   use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use xc_module
   use hartree_variables, only: Vh
@@ -19,6 +20,7 @@ MODULE scf_module
   use io_module
   use total_energy_module, only: calc_total_energy,calc_with_rhoIn_total_energy
   use fermi_module
+  use fermi_ncol_module
   use subspace_diag_module
   use esp_gather_module
   use density_module
@@ -32,6 +34,12 @@ MODULE scf_module
   use io_tools_module
   use eigenvalues_module
   use rsdft_mpi_module
+
+  use noncollinear_module
+  use cg_ncol_module
+  use gram_schmidt_ncol_module
+  use subspace_diag_ncol_module
+  use esp_calc_ncol_module
 
   implicit none
 
@@ -79,11 +87,11 @@ CONTAINS
     real(8),optional,intent(IN) :: tol_force_in
     character(*),optional,intent(IN)  :: outer_loop_info
     real(8),optional,intent(OUT) :: Etot_out
-    integer :: iter,s,k,n,m,ierr,idiag,i,Diter
+    integer :: iter,s,k,n,m,ierr,idiag,i,j,Diter
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     logical :: flag_exit,flag_conv,flag_conv_f,flag_conv_e
     logical :: flag_end, flag_end1, flag_end2
-    real(8),allocatable :: v(:,:)
+    real(8),allocatable :: v(:,:,:)
     real(8) :: tol_force
     character(40) :: chr_iter
     character(22) :: add_info
@@ -122,6 +130,14 @@ CONTAINS
     MSP01       = MSP_1-MSP_0+1
     ib1         = max(1,nint(Nelectron/2)-10)
     ib2         = min(nint(Nelectron/2)+10,Nband)
+
+    if ( flag_noncollinear ) then
+       !call calc_xc_noncollinear( unk, occ(:,:,1), vxc_out=Vxc )
+       !occ(:,:,2) = occ(:,:,1)
+!       Vxc=0.0d0
+       E_exchange=0.0d0
+       E_correlation=0.0d0
+    end if
 
     do s=MSP_0,MSP_1
        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
@@ -200,7 +216,11 @@ CONTAINS
 
           end if
 
-          call subspace_diag(k,s)
+          if ( flag_noncollinear ) then
+             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+          else
+             call subspace_diag(k,s)
+          end if
 
 #ifdef _DRSDFT_
           call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
@@ -217,21 +237,41 @@ CONTAINS
                 write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
              end if
 
-             call conjugate_gradient(ML_0,ML_1,Nband,k,s &
-                                    ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+             if ( flag_noncollinear ) then
 
-             call gram_schmidt(1,Nband,k,s)
+                call conjugate_gradient_ncol( ML_0,ML_1,Nband,k &
+                     ,unk,esp(1,k,1),res(1,k,1) )
 
-             if ( second_diag == 1 .or. idiag < Ndiag ) then
-                call subspace_diag(k,s)
-             else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
-                             ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
-             end if
+                call gram_schmidt_ncol( 1,Nband, k, unk )
+
+                if ( second_diag == 1 .or. idiag < Ndiag ) then
+                   call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+                else if ( second_diag == 2 .and. idiag == Ndiag ) then
+                   call esp_calc_ncol( k, ML_0,ML_1, unk, esp )
+                end if
+
+             else ! flag_noncollinear
+
+                call conjugate_gradient(ML_0,ML_1,Nband,k,s &
+                     ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+
+                call gram_schmidt(1,Nband,k,s)
+
+                if ( second_diag == 1 .or. idiag < Ndiag ) then
+                   call subspace_diag(k,s)
+                else if ( second_diag == 2 .and. idiag == Ndiag ) then
+                   call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
+                        ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+                end if
+
+             end if ! flag_noncollinear
 
           end do ! idiag
 
        end do ! k
+
+       if ( flag_noncollinear ) exit
+
        end do ! s
 
        call calc_time_watch( etime_lap(2) )
@@ -246,20 +286,35 @@ CONTAINS
 #endif
        call mpi_bcast( esp,size(esp),MPI_REAL8, 0, comm_fkmb,ierr )
 
-       call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                      ,esp,weight_bz,occ,disp_switch)
+       if ( flag_noncollinear ) then
+          call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin &
+               ,Nelectron,Ndspin,esp,weight_bz,occ )
+       else
+          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron &
+               ,Ndspin,esp,weight_bz,occ,disp_switch)
+       end if
 
        call calc_time_watch( etime_lap(3) )
        call init_time_watch( etime_lap(4) )
 
 ! --- total energy ---
 
-       call calc_with_rhoIN_total_energy( Ehwf )
+       call calc_with_rhoIN_total_energy( Ehwf, flag_noncollinear )
 
-       call calc_density( Ntot )
-       call calc_hartree(ML_0,ML_1,MSP,rho)
-       call calc_xc
-       call calc_total_energy( flag_recalc_esp, Etot )
+       if ( flag_noncollinear ) then
+          call calc_xc_noncollinear( unk, occ(:,:,1), rho, Vxc )
+          occ(:,:,2)=occ(:,:,1)
+!          Vxc=0.0d0
+          E_exchange=0.0d0
+          E_correlation=0.0d0
+          call calc_hartree(ML_0,ML_1,MSP,rho)
+       else
+          call calc_density( Ntot )
+          call calc_hartree(ML_0,ML_1,MSP,rho)
+          call calc_xc
+       end if
+       call calc_total_energy( flag_recalc_esp, Etot, &
+                               flag_ncol=flag_noncollinear )
        if ( present(Etot_out) ) Etot_out = Etot
 
 ! --- convergence check by total energy ---
@@ -291,11 +346,12 @@ CONTAINS
 
 ! --- convergence check by density & potential ---
 
-       allocate( v(ML_0:ML_1,MSP_0:MSP_1) ) ; v=0.0d0
+       allocate( v(ML_0:ML_1,MSP_0:MSP_1,2) ) ; v=0.0d0
        do s=MSP_0,MSP_1
-          v(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+          v(:,s,1) = rho(:,s)
+          v(:,s,2) = Vion(:) + Vh(:) + Vxc(:,s)
        end do
-       call calc_sqerr_mixing( ML01,MSP_0,MSP_1,rho(ML_0,MSP_0),v,sqerr_out )
+       call calc_sqerr( size(v,1), size(v,2), MSP, 2, v, sqerr_out )
        deallocate( v )
 
        if ( maxval( sqerr_out(1:MSP) ) <= scf_conv(2) .or. &
@@ -362,15 +418,20 @@ CONTAINS
              Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
           end do
 
-          call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
-               ,Vloc(ML_0,MSP_0), disp_switch )
+          if ( .not.flag_noncollinear ) then
+             call perform_mixing( ML01, MSP_0, MSP_1, rho(ML_0,MSP_0) &
+                                 ,Vloc(ML_0,MSP_0), disp_switch )
+          end if
 
           if ( mod(imix,2) == 0 ) then
-             call normalize_density
-             m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
-             call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
-             call calc_hartree(ML_0,ML_1,MSP,rho)
-             call calc_xc
+             if ( flag_noncollinear ) then
+             else
+                call normalize_density
+                m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
+                call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
+                call calc_hartree(ML_0,ML_1,MSP,rho)
+                call calc_xc
+             end if
              do s=MSP_0,MSP_1
                 Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
              end do
@@ -410,6 +471,7 @@ CONTAINS
        end if
 
        call write_data(disp_switch,flag_exit)
+       if ( flag_noncollinear ) call io_write_noncollinear( myrank,flag_exit )
        call write_info_scf( (myrank==0) )
 
        call result_timer( tt, "scf" )

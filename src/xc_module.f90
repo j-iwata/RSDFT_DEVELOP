@@ -33,6 +33,7 @@ MODULE xc_module
   PUBLIC :: read_xc
 
   character(9),PUBLIC :: XCtype = 'LDAPZ81'
+  real(8),PUBLIC :: DCxc     ! double-count ( <u|Vxc|u> )
 
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
@@ -112,10 +113,12 @@ CONTAINS
   END SUBROUTINE chk_density
 
 
-  SUBROUTINE calc_xc
+  SUBROUTINE calc_xc( rho_in, Vxc_out, Exc_out )
 
     implicit none
-
+    real(8),optional,intent(IN)  :: rho_in(:,:)
+    real(8),optional,intent(OUT) :: Vxc_out(:,:)
+    real(8),optional,intent(OUT) :: Exc_out
     real(8),allocatable :: rho_tmp(:,:)
     real(8) :: c,mu,kappa
     integer :: s,ML_0,ML_1,MSP_0,MSP_1,MSP
@@ -146,13 +149,21 @@ CONTAINS
     MSP_1 = pot%xc%s_range%tail
     MSP  = pot%xc%s_range%size_global
 
-    if ( .not.allocated(Vxc) ) then
-       allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
-       Vxc=0.0d0
-    end if
+    allocate( rho_tmp(ML_0:ML_1,MSP) ) ; rho_tmp=0.0d0
 
-    allocate( rho_tmp(ML_0:ML_1,MSP) )
-    rho_tmp(:,:)=rho(:,:)
+    if ( present(rho_in) ) then
+       rho_tmp(:,:)=rho_in(:,:)
+       Vxc_out(:,:)=0.0d0
+       if ( .not.( XCtype == "LDAPZ81" ) ) then
+          call stop_program("LDAPZ81 is only available for noncollinear calc")
+       end if
+    else
+       rho_tmp(:,:)=rho(:,:)
+       if ( .not.allocated(Vxc) ) then
+          allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
+          Vxc=0.0d0
+       end if
+    end if
 
     if ( flag_pcc_0 ) then
        c=1.0d0
@@ -173,10 +184,15 @@ CONTAINS
 
        call calc_LDAPZ81( density_v2, ene, pot )
 
-       E_exchange    = ene%Ex
-       E_correlation = ene%Ec
-       Exc           = ene%Exc
-       Vxc(:,:)      = pot%xc%val(:,:)
+       if ( present(Vxc_out) ) then
+          Exc_out = ene%Exc
+          Vxc_out(:,:) = pot%xc%val(:,:)
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
+       end if
 
     case('LDAPW92')
 

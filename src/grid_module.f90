@@ -15,6 +15,9 @@ MODULE grid_module
   PUBLIC :: mpi_allgatherv_grid, zmpi_allgatherv_grid
   PUBLIC :: inner_product_grid
   PUBLIC :: convert_1d_to_3d_grid
+  PUBLIC :: get_info_rs_grid
+  PUBLIC :: z_convert_1d_to_3d_grid
+  PUBLIC :: z_convert_3d_to_1d_grid
 
   type grid
      type( ArrayRange1D ) :: g1
@@ -201,6 +204,43 @@ CONTAINS
     end if
     call MPI_ALLREDUCE( jjj, iii, 3, MPI_INTEGER, MPI_SUM, comm_grid, j ) 
   END SUBROUTINE convert_1d_to_3d_grid
+
+
+  SUBROUTINE get_info_rs_grid( Ngrid_rs, Igrid_rs, dV_rs, comm_rs )
+    implicit none
+    integer,optional,intent(OUT) :: Ngrid_rs(0:3), Igrid_rs(2,0:3)
+    real(8),optional,intent(OUT) :: dV_rs
+    integer,optional,intent(OUT) :: comm_rs
+    if ( present(Ngrid_rs) ) Ngrid_rs = Ngrid
+    if ( present(Igrid_rs) ) Igrid_rs = Igrid
+    if ( present(dV_rs)    ) dV_rs    = dV
+    if ( present(comm_rs)  ) comm_rs  = comm_grid
+  END SUBROUTINE get_info_rs_grid
+
+
+  SUBROUTINE z_convert_1d_to_3d_grid( lat, f1, f3 )
+    implicit none
+    integer,intent(IN) :: lat(:,:)
+    complex(8),intent(IN) :: f1(:)
+    complex(8),intent(OUT) :: f3(0:,0:,0:)
+    integer :: i
+    do i=1,size(f1)
+       f3( lat(1,i), lat(2,i), lat(3,i) ) = f1(i)
+    end do
+  END SUBROUTINE z_convert_1d_to_3d_grid
+
+
+  SUBROUTINE z_convert_3d_to_1d_grid( lat, f3, f1 )
+    implicit none
+    integer,intent(IN) :: lat(:,:)
+    complex(8),intent(IN) :: f3(0:,0:,0:)
+    complex(8),intent(OUT) :: f1(:)
+    integer :: i,j
+    do i=1,size(f1)
+       j=i-1+Igrid(1,0)
+       f1(i) = f3( lat(1,j), lat(2,j), lat(3,j) )
+    end do
+  END SUBROUTINE z_convert_3d_to_1d_grid
 
 
 END MODULE grid_module

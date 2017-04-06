@@ -20,9 +20,10 @@ MODULE band_module
        ,esp_conv_tol, mb_band, mb2_band, maxiter_band, read_band &
        ,unit_band_eigv,unit_band_dedk,unit_band_ufld
   use sweep_module, only: calc_sweep, init_sweep
-  use pseudopot_module, only: pselect
+  use pseudopot_module, only: pselect, ps_type, flag_so
   use ps_nloc2_module, only: prep_uvk_ps_nloc2, prep_rvk_ps_nloc2
   use ps_nloc3_module, only: prep_ps_nloc3, init_ps_nloc3
+  use ps_nloc_mr_module, only: prep_uvk_ps_nloc_mr, prep_uvkso_ps_nloc_mr
   use io_module, only: Init_IO
   use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
   use fock_fft_module, only: init_fock_fft
@@ -31,6 +32,7 @@ MODULE band_module
   use fermi_module, only: efermi
   use rsdft_mpi_module
   use eigenvalues_module, only: control_eigenvalues
+  use noncollinear_module, only: flag_noncollinear
   
   implicit none
 
@@ -239,7 +241,12 @@ CONTAINS
 
        select case( pselect )
        case( 2 )
-          call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+          if ( ps_type == 1 ) then
+             call prep_uvk_ps_nloc_mr(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+             if ( flag_so ) call prep_uvkso_ps_nloc_mr(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+          else
+             call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+          end if
        case( 3 )
           call init_ps_nloc3
           call prep_ps_nloc3
@@ -254,7 +261,7 @@ CONTAINS
 ! --- sweep ---
 
        write(loop_info,'("( iktrj=",i4," )")') iktrj
-       call calc_sweep( disp_switch, ierr, Diter_band, loop_info )
+       call calc_sweep(disp_switch,ierr,Diter_band,loop_info,flag_noncollinear)
 
 ! ---
 
