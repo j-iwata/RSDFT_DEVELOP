@@ -52,7 +52,7 @@ CONTAINS
              i=JJP(j,lma)
              uVunk(lma,is)=uVunk(lma,is)+conjg(uVk_so00(j,lma,k))*tpsi(i,is)
           end do
-          uVunk(lma,is)=uVunk(lma,is)*dV
+          uVunk(lma,is) = 0.5d0*uVunk(lma,is)*dV
        end do
 !$OMP end do
     end do

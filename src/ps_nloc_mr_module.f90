@@ -1127,7 +1127,7 @@ CONTAINS
              y = aa(2,1)*e1+aa(2,2)*e2+aa(2,3)*e3-Ry
              z = aa(3,1)*e1+aa(3,2)*e2+aa(3,3)*e3-Rz
              kr=d1*e1+d2*e2+d3*e3
-             ztmp0=dcmplx(cos(kr),-sin(kr))*uVso(i,lma)*0.5d0
+             ztmp0=dcmplx(cos(kr),-sin(kr))*uVso(i,lma)
 !             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
              if ( j3 == 0 ) then
                 j=j+1
