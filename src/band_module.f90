@@ -42,7 +42,7 @@ MODULE band_module
 
   integer :: unit = 1
 
-  character(64),parameter :: version="version2.0"
+  character(64),parameter :: version="version2.1"
 
 CONTAINS
 
@@ -189,7 +189,7 @@ CONTAINS
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
        open(unit_band_dedk,file="band_dedk")
-       write(unit_band_eigv,*) version
+       write(unit_band_eigv,*) version, flag_noncollinear
        write(unit_band_eigv,'(1x,"Fermi_energy(hartree):",f20.15)') efermi
        write(unit_band_eigv,'(1x,"Reciprocal_Lattice_Vectors:")')
        write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,1)

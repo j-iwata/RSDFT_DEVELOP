@@ -12,12 +12,16 @@ PROGRAM band_plot
   real(8) :: evb,ecb,efermi,dummy,rdummy(4),bb(3,3),esft
   real(8) :: kx,ky,kz,d1,d2,d3
   character(64) :: cbuf
-  logical :: flag_versioned
+  logical :: flag_versioned, flag_noncollinear=.false.
 
   open(u1,file="band_eigv",status='old')
   read(u1,*) cbuf ; write(*,*) cbuf
   if ( cbuf(1:7) == "version" ) then
      flag_versioned = .true.
+     if ( cbuf == "version2.1" ) then
+        rewind u1
+        read(u1,*) cbuf,flag_noncollinear
+     end if
      read(u1,*) cbuf, efermi
      read(u1,*)
   else
@@ -102,6 +106,8 @@ PROGRAM band_plot
   close(u1)
 
 !------------------------------
+
+  if ( flag_noncollinear ) mbv=mbv*2
 
   mbc = mbv + 1
   mb1 = 1 !max(1,mbv-200)
