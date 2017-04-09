@@ -48,7 +48,7 @@ CONTAINS
 
     else ! [ Original Format ]
 
-       backspace(unit_pp)
+       rewind unit_pp
 
        read(unit_pp,*) name,znuc,Zps
        read(unit_pp,*) Rcloc, parloc(1:4)
@@ -69,9 +69,10 @@ CONTAINS
           iflag_hgh = .true.
           write(*,*) "HGH format",j
        end if
-       do j=1,i
-          backspace(unit_pp)
-       end do
+
+       rewind unit_pp
+       read(unit_pp,*)
+       read(unit_pp,*)
 
        norb=0
        do i=1,lrefmax
@@ -111,6 +112,15 @@ CONTAINS
              hnml(j,i,L)=hnml(i,j,L)
              if ( L >= 1 ) knml(j,i,L)=knml(i,j,L)
           end do
+          end do
+       end do
+
+       do L=0,maxval(lo)
+          write(*,*) "L=",L
+          do i=1,size(hnml,1)
+             do j=1,size(hnml,2)
+                write(*,'(1x,2i4,2x,f14.8,4f14.8)') i,j,Rps0(norb),hnml(i,j,L)
+             end do
           end do
        end do
 
