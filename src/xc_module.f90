@@ -154,8 +154,8 @@ CONTAINS
     if ( present(rho_in) ) then
        rho_tmp(:,:)=rho_in(:,:)
        Vxc_out(:,:)=0.0d0
-       if ( .not.( XCtype == "LDAPZ81" ) ) then
-          call stop_program("LDAPZ81 is only available for noncollinear calc")
+       if ( .not.( XCtype == "LDAPZ81" .or. XCtype == "LDAPW92" ) ) then
+          call stop_program("LDA is only available for noncollinear calc")
        end if
     else
        rho_tmp(:,:)=rho(:,:)
@@ -198,6 +198,11 @@ CONTAINS
 
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
+
+       if ( present(Vxc_out) ) then
+          Exc_out = Exc
+          Vxc_out = Vxc
+       end if
 
     case('GGAPBE96_')
 
