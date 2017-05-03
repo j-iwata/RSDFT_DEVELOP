@@ -225,10 +225,11 @@ CONTAINS
 
        endif
 
-       esp(:,:,:)=esp(:,:,:)+esp1(:,:,:,1) &
-                            +esp1(:,:,:,2) &
-                            +esp1(:,:,:,3) &
-                            +esp1(:,:,:,4)
+       esp(:,:,:)=esp1(:,:,:,1) &
+                 +esp1(:,:,:,2) &
+                 +esp1(:,:,:,3) &
+                 +esp1(:,:,:,4)
+
        if ( present(flag_ncol) ) then
           if ( flag_ncol ) then
              esp(:,:,:)=0.0d0
