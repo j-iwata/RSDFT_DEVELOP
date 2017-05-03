@@ -6,10 +6,29 @@ MODULE sqerr_module
 
   PRIVATE
   PUBLIC :: calc_sqerr
+  PUBLIC :: init_sqerr
 
   real(8),allocatable :: fold(:,:,:)
 
 CONTAINS
+
+
+  SUBROUTINE init_sqerr( m, n, nmax, f1_in, f2_in )
+    implicit none
+    integer,intent(IN) :: m,n,nmax
+    real(8),intent(IN) :: f1_in(m,n),f2_in(m,n)
+    integer :: n0,nn,i,ierr
+    integer,parameter :: ndat=2
+    include 'mpif.h'
+    if ( allocated(fold) ) deallocate( fold )
+    allocate( fold(m,nmax,ndat) ) ; fold=0.0d0
+    n0=size( f1_in(:,:)  )
+    nn=size( fold(:,:,1) )
+    call mpi_allgather( f1_in(1,1) ,n0,MPI_REAL8 &
+                       ,fold(1,1,1),nn,MPI_REAL8,comm_spin,ierr )
+    call mpi_allgather( f2_in(1,1) ,n0,MPI_REAL8 &
+                       ,fold(1,1,2),nn,MPI_REAL8,comm_spin,ierr )
+  END SUBROUTINE init_sqerr
 
 
   SUBROUTINE calc_sqerr( m, n, nmax, ndat, f_in, sqerr_out )

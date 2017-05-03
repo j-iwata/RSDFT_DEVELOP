@@ -146,6 +146,7 @@ CONTAINS
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
                     ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0) &
                     ,ir_grid,id_grid,myrank)
+    call init_sqerr( ML01, MSP01, MSP, rho(ML_0,MSP_0), Vloc(ML_0,MSP_0) )
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
