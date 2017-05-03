@@ -261,7 +261,7 @@ CONTAINS
 ! --- sweep ---
 
        write(loop_info,'("( iktrj=",i4," )")') iktrj
-       call calc_sweep(disp_switch,ierr,Diter_band,loop_info,flag_noncollinear)
+       call calc_sweep( ierr,Diter_band,loop_info,flag_noncollinear,"band" )
 
 ! ---
 
@@ -273,6 +273,7 @@ CONTAINS
           write(*,*) "band is not converged"
           return
        end if
+       if ( ierr < 0 ) return
 
 ! --- band unfolding ---
 

@@ -1,7 +1,6 @@
 MODULE io_module
 
   use parallel_module
-!  use io_tools_module
   use rgrid_module, only: Ngrid,Igrid
   use array_bound_module, only: ML,ML_0,ML_1,MSP,MSP_0,MSP_1
   use rgrid_mol_module, only: LL
@@ -33,12 +32,6 @@ MODULE io_module
   PUBLIC :: GetParam_IO
   PUBLIC :: Init_IO
 
-!  integer :: IO_ctrl=0
-!  integer :: IC=0
-!  integer :: OC=3
-!  integer :: OC2=100
-!  integer :: MBwr1=0
-!  integer :: MBwr2=0
   character(30) :: file_wf0   ="wf.dat1"
   character(30) :: file_vrho0 ="vrho.dat1"
   character(30) :: file_wf1   ="wf.dat1"
@@ -49,29 +42,20 @@ MODULE io_module
   character(64),parameter :: version="version3.0, comment_length=64"
   character(64) :: comment
 
-!  integer,save :: icount=0
-
 CONTAINS
 
 
   SUBROUTINE read_io
     implicit none
     call read_io_ctrl_parameters
-!    integer :: itmp(2)
-!    itmp = (/ MBwr1, MBwr2 /)
-!    call IOTools_readIntegerKeyword( "IC"    , IC  )
-!    call IOTools_readIntegerKeyword( "OC"    , OC  )
-!    call IOTools_readIntegerKeyword( "OC2"   , OC2 )
-!    call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
-!    call IOTools_readIntegerKeyword( "MBWR"  , itmp )
-!    MBwr1=itmp(1)
-!    MBwr2=itmp(2)
   END SUBROUTINE read_io
 
 
-  SUBROUTINE write_data( disp_switch, flag )
+  SUBROUTINE write_data( disp_switch, flag, ctrl_wr, suffix )
     implicit none
     logical,intent(IN) :: flag, disp_switch
+    character(*),optional,intent(IN) :: ctrl_wr
+    character(*),optional,intent(IN) :: suffix
     integer :: i,j,k,n,n1,n2,ierr,i1,i2,i3,j1,j2,j3,isym,ir,ie,id,i0
     integer :: a1,a2,a3,b1,b2,b3,ML0,irank,s,lt(3),jd
     integer :: istatus(MPI_STATUS_SIZE,123)
@@ -81,6 +65,7 @@ CONTAINS
     real(8),allocatable :: rtmp(:)
     integer :: ML1,ML2,ML3
     type(time) :: tt
+    logical :: flag_wr_pot, flag_wr_wf
 
     if ( OC2 < 1 .or. OC < 1 .or. OC > 15 ) return
 
@@ -99,12 +84,27 @@ CONTAINS
 
     call construct_gridmap_sub( LL2 )
 
+! ---
+
+    flag_wr_pot = .true.
+    flag_wr_wf  = .true.
+    if ( present(ctrl_wr) ) then
+       flag_wr_pot = ( ctrl_wr=="pot" .or. ctrl_wr=="pot_and_wf" )
+       flag_wr_wf  = ( ctrl_wr=="wf"  .or. ctrl_wr=="pot_and_wf" )
+    end if
+
+! ---
+
+    if ( present(suffix) .and. flag_overwrite ) call Init_IO( suffix )
+
+! ---
+
 !
 ! --- density and potentials ---
 !
 
-    if ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
-         OC == 12 .or. OC == 13 ) then
+    if ( ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
+           OC == 12 .or. OC == 13 ) .and. flag_wr_pot ) then
 
        allocate( rtmp(ML) ) ; rtmp=0.0d0
 
@@ -237,8 +237,8 @@ CONTAINS
 !
     
 
-    if ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
-         OC == 11 .or. OC == 13 ) then
+    if ( ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
+           OC == 11 .or. OC == 13 ) .and. flag_wr_wf ) then
 
        call simple_wf_io_write &
             ( file_wf1, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
@@ -248,6 +248,8 @@ CONTAINS
     deallocate( LL2 )
 
     icount=0
+
+    call Init_IO( "" )  ! remove suffix from the I/O file names
 
     call result_timer( tt, "write_data" )
     call write_border( 0, " write_data(end)" )
@@ -465,9 +467,6 @@ CONTAINS
     if ( IO_ctrl == 0 .or. ierr < 0 ) then
        call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
     end if
-
-!    deallocate( LL_tmp )
-!    deallocate( LL2 )
 
     call result_timer( tt, "read_data" )
     call write_border( 0, " read_data(end)" )

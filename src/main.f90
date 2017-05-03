@@ -22,6 +22,7 @@ PROGRAM Real_Space_DFT
   use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
                                 ,init_noncollinear
   use init_occ_electron_ncol_module
+  use rtddft_sol_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -420,10 +421,8 @@ PROGRAM Real_Space_DFT
 
   else
 
-     call Init_IO( "sweep" )
-     call calc_sweep( disp_switch, ierr, flag_ncol_in=flag_noncollinear )
-     call Init_IO( "" )
-     if ( ierr == -1 ) goto 900
+     call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
+     if ( ierr < 0 ) goto 900
 
   end if
 
@@ -432,7 +431,7 @@ PROGRAM Real_Space_DFT
   select case( iswitch_scf )
   case( 1 )
      call calc_scf( disp_switch, ierr, tol_force_in=feps, Etot_out=Etot )
-     !if ( ierr < 0 ) goto 900
+     if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
@@ -477,9 +476,7 @@ PROGRAM Real_Space_DFT
 
   if ( iswitch_band > 0 ) then
      call control_xc_hybrid(1)
-     call Init_IO( "band" )
      call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
-     call Init_IO( "" )
   end if
 
 !
@@ -488,19 +485,18 @@ PROGRAM Real_Space_DFT
   select case( iswitch_tddft )
   case( 0 )
 
-  case( 1 )
+  case( 1,2 )
 
      select case( SYStype )
+     case default
+        call rtddft_sol( iswitch_tddft )
      case( 1 )
 !        call init_rtddft_mol( 1, myrank )
 !        call rtddft_mol( iswitch_tddft )
 !        goto 900
-     case default
-!        write(*,*) "real-time tddft is available only for rsmol"
-!        goto 900
      end select
 
-  case( 2 )
+  case( 3 )
 
      call calc_dielectric_constant
 

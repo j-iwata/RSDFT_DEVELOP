@@ -61,35 +61,32 @@ CONTAINS
   END SUBROUTINE init_sweep
 
 
-  SUBROUTINE calc_sweep( disp_switch, ierr_out, Diter_in, outer_loop_info &
-                         ,flag_ncol_in )
+  SUBROUTINE calc_sweep( ierr_out, Diter_in, outer_loop_info &
+                       , flag_ncol_in, suffix_in )
     implicit none
-    logical,intent(IN)  :: disp_switch
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN)  :: Diter_in
     character(*),optional,intent(IN) :: outer_loop_info
+    character(*),optional,intent(IN) :: suffix_in
     logical,optional,intent(IN) :: flag_ncol_in
     integer :: iter,s,k,n,m,iflag_hybrid,ierr,Diter
     logical :: flag_exit, flag_conv
     logical :: flag_end, flag_end1, flag_end2
     character(40) :: chr_iter
     character(22) :: add_info
+    character(10) :: suffix
     type(time) :: etime, tt
     type(eigv) :: eval
     logical,external :: exit_program
     logical :: flag_noncollinear
+    logical :: disp_switch
 
-    Diter = 0
-    if ( present(Diter_in) ) then
-       Diter = Diter_in
-    else
-       Diter = Nsweep
-    end if
-
+    Diter=Nsweep ; if ( present(Diter_in) ) Diter=Diter_in
     if ( Diter <= 0 ) return
 
     call write_border( 0, "" )
     call write_border( 0, " SWEEP START ----------" )
+    call check_disp_switch( disp_switch, 0 )
 
     flag_end  = .false.
     flag_exit = .false.
@@ -100,6 +97,9 @@ CONTAINS
 
     flag_noncollinear = .false.
     if ( present(flag_ncol_in) ) flag_noncollinear=flag_ncol_in
+
+    suffix = "sweep"
+    if ( present(suffix_in) ) suffix=suffix_in
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -221,7 +221,7 @@ CONTAINS
           write(*,*)
        end if
 
-       call write_data( disp_switch, flag_exit )
+       call write_data( disp_switch, flag_exit, "wf", suffix )
 
        call result_timer( tt, "sweep" )
 

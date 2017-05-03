@@ -15,6 +15,8 @@ MODULE io_ctrl_parameters
   integer,allocatable :: lat_new(:,:)
   integer,allocatable :: lat_old(:,:)
 
+  logical :: flag_overwrite=.true. 
+
 CONTAINS
 
   SUBROUTINE read_io_ctrl_parameters
@@ -28,6 +30,10 @@ CONTAINS
     call IOTools_readIntegerKeyword( "MBWR"  , itmp )
     MBwr1=itmp(1)
     MBwr2=itmp(2)
+    if ( IO_ctrl > 10 ) then
+       flag_overwrite = .false.
+       IO_ctrl = IO_ctrl - 10
+    end if
   END SUBROUTINE read_io_ctrl_parameters
 
   SUBROUTINE deallocate_io_ctrl_parameters

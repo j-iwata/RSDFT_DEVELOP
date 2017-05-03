@@ -74,7 +74,7 @@ CONTAINS
 
     call init_sweep( 3, max_ref_band, esp_conv_tol )
 
-    call calc_sweep( disp_sw, ierr, max_loop_dos, "(DOS)" )
+    call calc_sweep( ierr, max_loop_dos, "(DOS)", suffix_in="dos" )
 
     if ( myrank == 0 ) then
 
