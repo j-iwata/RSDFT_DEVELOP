@@ -76,7 +76,9 @@ CONTAINS
        verpot=1
        ifchrg=0
        znuc=0
-       write(6,'("WARNING! THE POTENTIAL TYPE IS OLD."/,"XC-POTENTIAL TYPE: LDAPZ81 IS ASSUMED"/,"We recommend rewrite or remake this potential data."/)')
+       write(6,'("WARNING! THE POTENTIAL TYPE IS OLD."/ &
+                ,"XC-POTENTIAL TYPE: LDAPZ81 IS ASSUMED"/ &
+                ,"We recommend rewrite or remake this potential data."/)')
 
        xc_pot='LDAPZ81'
 
