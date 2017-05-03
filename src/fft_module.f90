@@ -25,6 +25,7 @@ MODULE fft_module
 !  complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
   complex(8),parameter :: zero=(0.0d0,0.0d0)
   logical :: keep_LLL=.false.
+  character(9),parameter :: routine_def="fft_rsdft"
 
 CONTAINS
 
@@ -145,7 +146,7 @@ CONTAINS
     character(*),optional,intent(IN) :: key
     complex(8),allocatable   :: w3(:,:,:)
     character(9) :: routine
-    routine="" ; if ( present(key) ) routine=key
+    routine=routine_def ; if ( present(key) ) routine=key
     select case( routine )
     case default
 #ifdef _FFTW_
@@ -172,7 +173,7 @@ CONTAINS
     character(*),optional,intent(IN) :: key
     complex(8),allocatable   :: w3(:,:,:)
     character(9) :: routine
-    routine="" ; if ( present(key) ) routine=key
+    routine=routine_def ; if ( present(key) ) routine=key
     select case( routine )
     case default
 #ifdef _FFTW_
