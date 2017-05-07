@@ -95,7 +95,7 @@ CONTAINS
 
 ! ---
 
-    if ( present(suffix) .and. flag_overwrite ) call Init_IO( suffix )
+    if ( present(suffix) .and. .not.flag_overwrite ) call Init_IO( suffix )
 
 ! ---
 
