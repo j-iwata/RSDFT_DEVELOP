@@ -67,7 +67,7 @@ CONTAINS
 #ifdef _DRSDFT_
     real(8),parameter :: zero=0.d0
     real(8),allocatable :: work(:,:)
-    real(8),allocatable :: work00(:,:)
+    real(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
 #else
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8),allocatable :: work(:,:)
@@ -194,8 +194,10 @@ CONTAINS
              do n=MB_0 ,MB_1
                 zw1(:,:)=unk(:,n,k,:)
                 zw2=zero
+#ifndef _DRSDFT_
                 call hamiltonian_ncol( k, n1,n2, zw1, zw2 )
                 esp0(n,k,1,5) = sum( conjg(zw1)*zw2 )*dV
+#endif
              end do ! n
              end do ! k
              esp0(:,:,MSP,5)=esp0(:,:,1,5)

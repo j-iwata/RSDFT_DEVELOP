@@ -134,7 +134,9 @@ CONTAINS
        end do
 
        do s=1,MS
+#ifndef _DRSDFT_
           call hamiltonian(k,s,xk(:,s),hxk(:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
+#endif
        end do
        call hamiltonian_ncol( k, n1,n2, xk, hxk )
 
@@ -177,7 +179,9 @@ CONTAINS
 ! --- Preconditioning ---
           W(1)=E
           do s=1,MS
+#ifndef _DRSDFT_
              call preconditioning( W(1),k,s,1,ML0,xk(1,s),gk(1,s),Pgk(1,s) )
+#endif
           end do
 ! --- orthogonalization
 !          do n=ns,ne
@@ -211,7 +215,9 @@ CONTAINS
           gkgk = rb
 
           do s=1,MS
+#ifndef _DRSDFT_
              call hamiltonian(k,s,pk(:,s),hpk(:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
+#endif
           end do
           call hamiltonian_ncol( k, n1,n2, pk, hpk )
 

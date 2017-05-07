@@ -64,7 +64,9 @@ CONTAINS
 
     do s=1,MS
        do m=1,MB
+#ifndef _DRSDFT_
           call hamiltonian(k,s,psi(:,m,k0,s),psit(:,m,s),n1,n2,m,m)
+#endif
        end do
     end do
     do m=1,MB

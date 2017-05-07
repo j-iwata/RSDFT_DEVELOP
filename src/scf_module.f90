@@ -218,7 +218,9 @@ CONTAINS
           end if
 
           if ( flag_noncollinear ) then
+#ifndef _DRSDFT_
              call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+#endif
           else
              call subspace_diag(k,s)
           end if
@@ -239,7 +241,7 @@ CONTAINS
              end if
 
              if ( flag_noncollinear ) then
-
+#ifndef _DRSDFT_
                 call conjugate_gradient_ncol( ML_0,ML_1,Nband,k &
                      ,unk,esp(1,k,1),res(1,k,1) )
 
@@ -250,7 +252,7 @@ CONTAINS
                 else if ( second_diag == 2 .and. idiag == Ndiag ) then
                    call esp_calc_ncol( k, ML_0,ML_1, unk, esp )
                 end if
-
+#endif
              else ! flag_noncollinear
 
                 call conjugate_gradient(ML_0,ML_1,Nband,k,s &
@@ -303,7 +305,9 @@ CONTAINS
        call calc_with_rhoIN_total_energy( Ehwf, flag_noncollinear )
 
        if ( flag_noncollinear ) then
+#ifndef _DRSDFT_
           call calc_xc_noncollinear( unk, occ(:,:,1), rho, Vxc )
+#endif
           occ(:,:,2)=occ(:,:,1)
 !          Vxc=0.0d0
           E_exchange=0.0d0

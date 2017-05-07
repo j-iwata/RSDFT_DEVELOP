@@ -491,9 +491,8 @@ PROGRAM Real_Space_DFT
      case default
         call rtddft_sol( iswitch_tddft )
      case( 1 )
-!        call init_rtddft_mol( 1, myrank )
-!        call rtddft_mol( iswitch_tddft )
-!        goto 900
+        call init_rtddft_mol( 1, myrank )
+        call rtddft_mol( iswitch_tddft )
      end select
 
   case( 3 )

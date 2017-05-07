@@ -27,8 +27,10 @@ CONTAINS
     do n=MB_0_WF,MB_1_WF
        if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
        pxyz=0.0d0
+#ifndef _DRSDFT_
        call calc_expectval_momentum &
             (k,ML_0_WF,ML_1_WF,1,1,unk(ML_0_WF,n,k,s),pxyz)
+#endif
        jav(:)=jav(:)+occ(n,k,s)*pxyz(:)
     end do
     end do

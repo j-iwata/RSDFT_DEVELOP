@@ -22,6 +22,7 @@ MODULE io_module
   use fermi_module, only: efermi
   use io_ctrl_parameters
   use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -522,8 +523,7 @@ CONTAINS
 
        LL2(1:3,Igrid(1,0):Igrid(2,0)) = LL(1:3,Igrid(1,0):Igrid(2,0))
 
-       call MPI_ALLREDUCE( MPI_IN_PLACE, LL2, size(LL2), MPI_INTEGER &
-                          ,MPI_SUM, comm_grid, ierr )
+       call rsdft_allreduce_sum( LL2, comm_grid )
 
     end if
 

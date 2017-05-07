@@ -231,7 +231,9 @@ CONTAINS
        call init_kinetic( aa,bb,size(kbb,2),kbb,disp_switch=.false. )
        call update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )
 
+#ifndef _DRSDFT_
        call time_evolution( unk )
+#endif
 
        call calc_density( Nele(1:MS_WF) )
        call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
@@ -288,6 +290,7 @@ CONTAINS
     complex(8),intent(INOUT) :: psi(:,:,:,:)
     integer :: n,k,s,m,i
     complex(8),parameter :: z0=(0.0d0,0.0d0)
+#ifndef _DRSDFT_
     do s=MS_0_WF,MS_1_WF
     do k=MK_0_WF,MK_1_WF
     do n=MB_0_WF,MB_1_WF
@@ -301,6 +304,7 @@ CONTAINS
     end do ! n
     end do ! k
     end do ! s
+#endif
   END SUBROUTINE time_evolution
 
 END MODULE rtddft_sol_module

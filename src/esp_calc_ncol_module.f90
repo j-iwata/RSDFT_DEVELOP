@@ -37,6 +37,7 @@ CONTAINS
     allocate( zw1(n1:n2,MS) ) ; zw1=zero
     allocate( zw2(n1:n2,MS) ) ; zw2=zero
 
+#ifndef _DRSDFT_
     do n=1,MB
        do s=1,MS
           call hamiltonian( k,s,wf(:,n,k0,s),hwf(:,s),n1,n2,n,n)
@@ -49,6 +50,7 @@ CONTAINS
           e(n,k,1) = e(n,k,1) + sum( conjg(wf(:,n,k0,s))*hwf(:,s) )*dV
        end do
     end do
+#endif
 
     deallocate( zw2 )
     deallocate( zw1 )
