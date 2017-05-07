@@ -222,4 +222,6 @@ MODS1 = \
        linear_response_module.o\
        global_variables.o\
        parameters_module.o\
+       current_module.o\
+       rtddft_sol_module.o\
 
