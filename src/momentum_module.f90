@@ -11,6 +11,7 @@ MODULE momentum_module
   use pseudopot_module, only: pselect
   use ps_nloc2_variables
   use ps_nloc2_module, only: prep_rvk_ps_nloc2
+  use var_ps_member, only: ps_type
 
   implicit none
 
@@ -28,11 +29,11 @@ CONTAINS
     real(8),intent(OUT)   :: pxyz(3,b1:b2)
     integer :: ib,ierr
     real(8) :: kxyz(3),pxyz0(3,b1:b2)
-    pxyz0=0.d0
-    pxyz =0.d0
+    pxyz0=0.0d0
+    pxyz =0.0d0
     call momentum_kine(n1,n2,b1,b2,tpsi,pxyz)
     pxyz0=pxyz0+pxyz
-    pxyz=0.d0
+    pxyz =0.0d0
     select case( pselect )
     case( 2 )
        call momentum_nloc(k,n1,n2,b1,b2,tpsi,pxyz)
@@ -162,9 +163,11 @@ CONTAINS
     complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
     real(8),intent(INOUT) :: pxyz(3,b1:b2)
     integer :: lma,i,j,ib,i1,i2,i3,nb,a,k1,k2,k3,m,nreq,jrank,irank,ierr
+    integer :: lma1,lma2
     integer,allocatable :: istatus(:,:),ireq(:)
     complex(8),allocatable :: uuu(:,:,:),uuu0(:,:,:)
     logical,allocatable :: a_rank(:)
+    complex(8) :: ztmp(3)
 
     nb=b2-b1+1
 
@@ -260,18 +263,44 @@ CONTAINS
        end if
     end do
 
-    do ib=b1,b2
-    do lma=1,nzlma
-       a=amap(lma)
-       if ( a <= 0 ) cycle
-       if ( a_rank(a) ) then
-          pxyz(1,ib)=pxyz(1,ib)+2.d0*aimag( conjg(uuu(1,lma,ib))*uuu(0,lma,ib) )
-          pxyz(2,ib)=pxyz(2,ib)+2.d0*aimag( conjg(uuu(2,lma,ib))*uuu(0,lma,ib) )
-          pxyz(3,ib)=pxyz(3,ib)+2.d0*aimag( conjg(uuu(3,lma,ib))*uuu(0,lma,ib) )
-       end if
-    end do
-!    if ( myrank == 0 ) write(*,'(1x,5x,2x,3g22.12)') pxyz(:,ib)
-    end do
+    if ( ps_type == 1 ) then
+
+       do ib=b1,b2
+          do m=1,N_nzqr
+             lma1=nzqr_pair(1,m)
+             lma2=nzqr_pair(2,m)
+             a=amap(lma1)
+             if ( a <= 0 ) cycle
+             if ( a_rank(a) ) then
+                ztmp(1) = conjg(uuu(1,lma1,ib))*uuu(0,lma2,ib) &
+                         +conjg(uuu(0,lma1,ib))*uuu(1,lma2,ib)
+                ztmp(2) = conjg(uuu(2,lma1,ib))*uuu(0,lma2,ib) &
+                         +conjg(uuu(0,lma1,ib))*uuu(2,lma2,ib)
+                ztmp(3) = conjg(uuu(3,lma1,ib))*uuu(0,lma2,ib) &
+                         +conjg(uuu(0,lma1,ib))*uuu(3,lma2,ib)
+                pxyz(1,ib)=pxyz(1,ib)+ztmp(1)
+                pxyz(2,ib)=pxyz(2,ib)+ztmp(2)
+                pxyz(3,ib)=pxyz(3,ib)+ztmp(3)
+             end if
+          end do
+       end do
+
+    else
+
+       do ib=b1,b2
+          do lma=1,nzlma
+             a=amap(lma)
+             if ( a <= 0 ) cycle
+             if ( a_rank(a) ) then
+                pxyz(1,ib)=pxyz(1,ib)+2.d0*aimag( conjg(uuu(1,lma,ib))*uuu(0,lma,ib) )
+                pxyz(2,ib)=pxyz(2,ib)+2.d0*aimag( conjg(uuu(2,lma,ib))*uuu(0,lma,ib) )
+                pxyz(3,ib)=pxyz(3,ib)+2.d0*aimag( conjg(uuu(3,lma,ib))*uuu(0,lma,ib) )
+             end if
+          end do
+          !    if ( myrank == 0 ) write(*,'(1x,5x,2x,3g22.12)') pxyz(:,ib)
+       end do
+
+    end if
 
     deallocate( a_rank )
 

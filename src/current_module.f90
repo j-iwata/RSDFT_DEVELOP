@@ -4,6 +4,9 @@ MODULE current_module
   use aa_module, only: aa, Va
   use lattice_module, only: get_inverse_lattice
   use momentum_module
+  use parallel_module, only: comm_bzsm, comm_spin, comm_band
+  use rsdft_mpi_module
+  use symmetry_module
 
   implicit none
 
@@ -44,6 +47,12 @@ CONTAINS
           jav(:)=matmul( aa_inv, pxyz(:) )
        end if
     end if
+
+    call rsdft_allreduce_sum( jav, comm_band )
+    call rsdft_allreduce_sum( jav, comm_bzsm )
+    call rsdft_allreduce_sum( jav, comm_spin )
+
+    call sym_vector_xyz( jav )
 
   END SUBROUTINE calc_macro_current
 

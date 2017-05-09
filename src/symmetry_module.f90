@@ -11,6 +11,7 @@ MODULE symmetry_module
   PUBLIC :: basis_conversion_symmetry
   PUBLIC :: get_mat_symmetry
   PUBLIC :: calc_mat_bb_symmetry
+  PUBLIC :: sym_vector_xyz
 
   integer :: isymmetry
   character(30) :: file_symdat
@@ -1342,6 +1343,24 @@ stop
        matb(1:3,1:3,i) = tmp1(1:3,1:3)
     end do
   END SUBROUTINE calc_mat_bb_symmetry
+
+
+  SUBROUTINE sym_vector_xyz( vxyz )
+    implicit none
+    real(8),intent(INOUT) :: vxyz(3)
+    real(8) :: aa_inv(3,3), vtmp(3), Rvtmp(3)
+    integer :: isym
+    if ( isymmetry == 0 ) return
+    call get_inverse_lattice( aa, aa_inv )
+    vtmp = matmul( aa_inv, vxyz )
+    vxyz = 0.0d0
+    do isym=1,nsym
+       Rvtmp = matmul( rgb(:,:,isym), vtmp )
+       vxyz = vxyz + Rvtmp
+    end do
+    vtmp = vxyz/nsym
+    vxyz = matmul( aa, vtmp )
+  END SUBROUTINE sym_vector_xyz
 
 
 END MODULE symmetry_module

@@ -90,7 +90,11 @@ CONTAINS
     if ( present(flag_momentum) .and. flag_momentum ) then
        select case( pselect )
        case( 2 )
-          call prep_rvk_ps_nloc2( MBZ_0,MBZ_1,kbb(:,MBZ_0:MBZ_1) )
+          if ( ps_type == 1 ) then
+             call prep_rvk_ps_nloc_mr( MBZ_0,MBZ_1,kbb(:,MBZ_0:MBZ_1) )
+          else
+             call prep_rvk_ps_nloc2( MBZ_0,MBZ_1,kbb(:,MBZ_0:MBZ_1) )
+          end if
        case( 3 )
           !call prep_rvk_ps_nloc3(MBZ_0,MBZ_1,kbb(1,MBZ_0:MBZ_1) )
        end select

@@ -7,8 +7,9 @@ MODULE rtddft_mol_module
   use parallel_module, only: comm_grid
   use density_module
   use total_energy_module
-  use hartree_module
-  use xc_module
+  use hartree_module, only: calc_hartree
+  use xc_module, only: calc_xc
+  use localpot_module, only: update_localpot
   use watch_module
   use io_module
 
@@ -143,6 +144,8 @@ CONTAINS
 
        call calc_total_energy( .true., Etot )
 
+       t_0 = 1
+       t_1 = tddft%nt
        allocate( dipole(0:3,0:tddft%nt) ) ; dipole=0.0d0
 
        call calc_dipole( dipole(0,0), rgrid%VolumeElement )
@@ -154,8 +157,6 @@ CONTAINS
           write(unit,'(1x,i6,1x,6f22.16)') 0,0.0,dipole(1:3,0),Etot,dipole(0,0)
        end if
 
-       t_0 = 1
-
     else if ( job_ctrl == 2 ) then
 
        if ( myrank == 0 ) then
@@ -165,11 +166,11 @@ CONTAINS
        end if
        call MPI_BCAST( t_0, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr )
 
-       t_0=t_0+1
+       t_0 = t_0 + 1
+       t_1 = t_0 + tddft%nt - 1
+       allocate( dipole(0:3,t_0:t_1) ) ; dipole=0.0d0
 
     end if
-
-    t_1 = t_0 + tddft%nt - 1
 
     allocate( tpsi(ML_0_WF:ML_1_WF) ) ; tpsi=zero
     allocate( hpsi(ML_0_WF:ML_1_WF) ) ; hpsi=zero
@@ -182,22 +183,6 @@ CONTAINS
        end do
        zcoef(itaylor) = (-zi*tddft%dt)**itaylor/c
     end do
-
-    if ( .not.allocated(dipole) ) then
-       allocate( dipole(0:3,t_0:t_1) ) ; dipole=0.0d0
-    end if
-
-    if ( job_ctrl==2 ) then
-       call calc_total_energy( .true., Etot )
-
-       call calc_dipole( dipole(0,t_0), rgrid%VolumeElement )
-       if ( disp_sw ) then
-          write(*,'(1x,i6,1x,6f16.10,1x,2f10.5)') 0,0.0,dipole(1:3,t_0),Etot,dipole(0,t_0)
-       end if
-       if ( myrank == 0 ) then
-          write(unit,'(1x,i6,1x,6f22.16)') 0,0.0,dipole(1:3,t_0),Etot,dipole(0,t_0)
-       end if
-    end if
 
 ! ---
 
@@ -225,6 +210,8 @@ CONTAINS
        call calc_density
        call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
        call calc_xc
+       call update_localpot
+
        call calc_total_energy( .true., Etot )
 
        call calc_dipole( dipole(0,it), rgrid%VolumeElement )

@@ -151,36 +151,36 @@ MODS1 = \
        random_initrho_module.o\
        ps_initrho_module.o\
        gram_schmidt_t_module.o\
-       localpot_module.o\
        xc_hse_module.o\
        fock_fftw_module.o\
        fock_ffte_module.o\
        cgpc_2_module.o\
-       force_ps_nloc2.o\
-       cgpc_diag_module.o\
+       fock_fft_module.o\
+       fock_module.o\
+       xc_hf_module.o\
+       xc_module.o\
+       ps_local_variables.o\
+       ps_local_fftw_module.o\
+       ps_local_module.o\
+       localpot_module.o\
        hamiltonian_matrix_module.o\
        ps_getDij_module.o\
        cgpc_seitsonen_module.o\
-       fock_fft_module.o\
+       force_ps_nloc2.o\
        ps_nloc2_module.o\
        nonlocal_module.o\
        momentum_module.o\
        gram_schmidt_module.o\
-       fock_module.o\
-       cgpc_module.o\
        hamiltonian_module.o\
        hartree_ene_module.o\
        hartree_module.o\
-       xc_hf_module.o\
+       cgpc_diag_module.o\
+       cgpc_module.o\
        ps_qrij_prep.o\
        subspace_diag_la_module.o\
        test_hpsi2_module.o\
        test_rtsol_module.o\
-       ps_local_variables.o\
-       ps_local_fftw_module.o\
-       ps_local_module.o\
        io_ctrl_parameters.o\
-       xc_module.o\
        noncollinear_module.o\
        hamiltonian_ncol_module.o\
        subspace_diag_ncol_module.o\
