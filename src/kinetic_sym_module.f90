@@ -2,11 +2,12 @@ MODULE kinetic_sym_module
 
 !$  use omp_lib
   use rgrid_module
-  use parallel_module, only: ir_grid, id_grid, comm_grid
+  use parallel_module, only: ir_grid, id_grid, comm_grid,myrank
   use rsdft_mpi_module
   use grid_module, only: construct_map_3d_to_1d_grid
   use bz_module, only: kbb
   use enlarge_array_module
+  use watch_module, only: watchb_omp, time_kine, time_bcfd
 
   implicit none
 
@@ -26,10 +27,12 @@ MODULE kinetic_sym_module
 #endif
 
 #ifdef _DRSDFT_
-    real(8),allocatable :: work(:)
+    real(8),allocatable :: work(:),work3(:,:,:)
 #else
-    complex(8),allocatable :: work(:)
+    complex(8),allocatable :: work(:),work3(:,:,:)
 #endif
+
+    integer :: ba1,bb1,ba2,bb2,ba3,bb3
 
 CONTAINS
 
@@ -50,7 +53,18 @@ CONTAINS
 
     allocate( work(Ngrid(0)) ) ; work=(0.0d0,0.0d0)
 
-    if ( allocated(fd_coef) ) return
+    ba1=minval( fd_neighbor_pt(1,:,:) )+Igrid(1,1)
+    bb1=maxval( fd_neighbor_pt(1,:,:) )+Igrid(2,1)
+    ba2=minval( fd_neighbor_pt(2,:,:) )+Igrid(1,2)
+    bb2=maxval( fd_neighbor_pt(2,:,:) )+Igrid(2,2)
+    ba3=minval( fd_neighbor_pt(3,:,:) )+Igrid(1,3)
+    bb3=maxval( fd_neighbor_pt(3,:,:) )+Igrid(2,3)
+    allocate( work3(ba1:bb1,ba2:bb2,ba3:bb3) ) ; work3=(0.0d0,0.0d0)
+
+    if ( allocated(fd_coef) ) then
+       call write_border( 0, "init in kinetic_sym_module(return)" )
+       return
+    end if
 
     call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, i )
     if ( myrank == 0 ) then
@@ -91,7 +105,7 @@ CONTAINS
     complex(8),intent(IN) :: tmp(-n:n,-n:n,-n:n)
 #endif
     integer :: i1,i2,i3,m
-    call write_border( 0, " init2(start)" )
+    call write_border( 0, " init2 in kinetic_sym_module(start)" )
     m = count( abs(tmp) > 1.d-10 )
     if ( n_fd_points == 0 ) then
        n_fd_points=m
@@ -118,25 +132,27 @@ CONTAINS
     end do
     end do
     n_fd_pt(k)=m
+    call write_border( 0, " init2 in kinetic_sym_module(end)" )
   END SUBROUTINE init2
 
 
-  SUBROUTINE op_kinetic_sym( k, tpsi, htpsi )
+  SUBROUTINE op_kinetic_sym_a( k, tpsi, htpsi )
     implicit none
     integer,intent(IN) :: k
 #ifdef _DRSDFT_
     real(8),intent(IN)    ::  tpsi(:,:)
     real(8),intent(INOUT) :: htpsi(:,:)
-    real(8),parameter :: zero=0.d0
+    real(8),parameter :: zero=0.0d0
 #else
     complex(8),intent(IN)    ::  tpsi(:,:)
     complex(8),intent(INOUT) :: htpsi(:,:)
-    complex(8),parameter :: zero=(0.d0,0.d0)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8) :: bp
     real(8) :: kr,r(3)
     real(8),parameter :: pi2=6.283185307179586d0
 #endif
     integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2
+    real(8) :: ttmp(2)
 
     if ( init_flag ) call init
 
@@ -145,8 +161,12 @@ CONTAINS
 
     do n=1,size(tpsi,2)
 
+       !call watchb_omp( ttmp )
+
        work(n1:n2)=tpsi(:,n)
        call rsdft_allgatherv( work(n1:n2), work, ir_grid, id_grid, comm_grid )
+
+       !call watchb_omp( ttmp, time_kine(1,3) )
 
 !#ifndef _DRSDFT_
 !       do k3=0,Ngrid(3)-1
@@ -186,13 +206,13 @@ CONTAINS
 !             htpsi(i,n) = htpsi(i,n) + bp*fd_coef(j,k)*work( LLL(k1,k2,k3) )
 !#endif
 
-
-
           end do ! j
 
        end do ! i1
        end do ! i2
        end do ! i3
+
+       !call watchb_omp( ttmp, time_kine(1,1) )
 
 !#ifndef _DRSDFT_
 !       i=0
@@ -213,7 +233,7 @@ CONTAINS
 
     end do ! n
 
-  END SUBROUTINE op_kinetic_sym
+  END SUBROUTINE op_kinetic_sym_a
 
 
   SUBROUTINE calc_bloch_phase( i1,i2,i3, k, bp )
@@ -242,5 +262,75 @@ CONTAINS
     kR=pi2*( k(1)*n(1) + k(2)*n(2) + k(3)*n(3) )
     bp=dcmplx( cos(kR), sin(kR) )
   END SUBROUTINE calc_bloch_phase
+
+
+  SUBROUTINE op_kinetic_sym( k, tpsi, htpsi )
+    implicit none
+    integer,intent(IN) :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    ::  tpsi(:,:)
+    real(8),intent(INOUT) :: htpsi(:,:)
+    real(8),parameter :: zero=0.0d0
+    real(8) :: tmp
+#else
+    complex(8),intent(IN)    ::  tpsi(:,:)
+    complex(8),intent(INOUT) :: htpsi(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
+    complex(8) :: tmp
+#endif
+    integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2
+    real(8) :: ttmp(2)
+
+    if ( init_flag ) call init
+
+    n1 = Igrid(1,0)
+    n2 = Igrid(2,0)
+
+    do n=1,size(tpsi,2)
+
+       !call watchb_omp( ttmp )
+
+       work(n1:n2)=tpsi(:,n)
+       call rsdft_allgatherv( work(n1:n2), work, ir_grid, id_grid, comm_grid )
+
+       do i3=ba3,bb3
+       do i2=ba2,bb2
+       do i1=ba1,bb1
+          k1 = mod( i1+Ngrid(1),Ngrid(1) )
+          k2 = mod( i2+Ngrid(2),Ngrid(2) )
+          k3 = mod( i3+Ngrid(3),Ngrid(3) )
+          work3(i1,i2,i3)=work( LLL(k1,k2,k3) )
+       end do
+       end do
+       end do
+
+       !call watchb_omp( ttmp, time_kine(1,3) )
+
+       i=0
+       do i3=Igrid(1,3),Igrid(2,3)
+       do i2=Igrid(1,2),Igrid(2,2)
+       do i1=Igrid(1,1),Igrid(2,1)
+          i=i+1
+
+          tmp=zero
+          do j=1,n_fd_pt(k)
+             j1 = i1 + fd_neighbor_pt(1,j,k)
+             j2 = i2 + fd_neighbor_pt(2,j,k)
+             j3 = i3 + fd_neighbor_pt(3,j,k)
+             tmp = tmp + fd_coef(j,k)*work3(j1,j2,j3)
+          end do ! j
+
+          htpsi(i,n) = tmp
+
+       end do ! i1
+       end do ! i2
+       end do ! i3
+
+       !call watchb_omp( ttmp, time_kine(1,1) )
+
+    end do ! n
+
+  END SUBROUTINE op_kinetic_sym
+
 
 END MODULE kinetic_sym_module

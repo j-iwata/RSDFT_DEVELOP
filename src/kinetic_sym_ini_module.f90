@@ -458,7 +458,7 @@ CONTAINS
 
     end if ![ ggg(6) /= 0.0d0 ]
 
-    write(*,*) count(tmp/=0.0d0),count(abs(tmp)>1.d-8),nsym
+!    write(*,*) count(tmp/=0.0d0),count(abs(tmp)>1.d-8),nsym
 
     tmp=tmp/dble(nsym)
 
