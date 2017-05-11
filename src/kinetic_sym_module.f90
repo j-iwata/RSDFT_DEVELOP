@@ -8,6 +8,7 @@ MODULE kinetic_sym_module
   use bz_module, only: kbb
   use enlarge_array_module
   use watch_module, only: watchb_omp, time_kine, time_bcfd
+  use omp_variables
 
   implicit none
 
@@ -132,6 +133,7 @@ CONTAINS
     end do
     end do
     n_fd_pt(k)=m
+    if ( init_flag ) call init
     call write_border( 0, " init2 in kinetic_sym_module(end)" )
   END SUBROUTINE init2
 
@@ -154,7 +156,7 @@ CONTAINS
     integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2
     real(8) :: ttmp(2)
 
-    if ( init_flag ) call init
+!    if ( init_flag ) call init
 
     n1 = Igrid(1,0)
     n2 = Igrid(2,0)
@@ -279,6 +281,9 @@ CONTAINS
     complex(8) :: tmp
 #endif
     integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2
+    integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp,n1_omp,n2_omp
+    integer :: ib1_omp,ib2_omp,nb_omp
+    integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     real(8) :: ttmp(2)
 
     if ( init_flag ) call init
@@ -286,13 +291,44 @@ CONTAINS
     n1 = Igrid(1,0)
     n2 = Igrid(2,0)
 
+! ---
+
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+    ab1 = (b1b-a1b+1)
+    ab12= (b1b-a1b+1)*(b2b-a2b+1)
+
+    n=0
+!$  n=omp_get_thread_num()
+
+    n1_omp = Igrid_omp(1,0,n)
+    n2_omp = Igrid_omp(2,0,n)
+
+    a1b_omp = Igrid_omp(1,1,n)
+    b1b_omp = Igrid_omp(2,1,n)
+    a2b_omp = Igrid_omp(1,2,n)
+    b2b_omp = Igrid_omp(2,2,n)
+    a3b_omp = Igrid_omp(1,3,n)
+    b3b_omp = Igrid_omp(2,3,n)
+
+! ---
+
     do n=1,size(tpsi,2)
 
        !call watchb_omp( ttmp )
 
+!$OMP workshare
        work(n1:n2)=tpsi(:,n)
+!$OMP end workshare
+!$OMP single
        call rsdft_allgatherv( work(n1:n2), work, ir_grid, id_grid, comm_grid )
+!$OMP end single
 
+!$OMP do private( i1,i2,i3,k1,k2,k3 )
        do i3=ba3,bb3
        do i2=ba2,bb2
        do i1=ba1,bb1
@@ -303,14 +339,14 @@ CONTAINS
        end do
        end do
        end do
+!$OMP end do
 
        !call watchb_omp( ttmp, time_kine(1,3) )
 
-       i=0
-       do i3=Igrid(1,3),Igrid(2,3)
-       do i2=Igrid(1,2),Igrid(2,2)
-       do i1=Igrid(1,1),Igrid(2,1)
-          i=i+1
+       do i3=a3b_omp,b3b_omp
+       do i2=a2b_omp,b2b_omp
+       do i1=a1b_omp,b1b_omp
+          i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
 
           tmp=zero
           do j=1,n_fd_pt(k)
@@ -320,7 +356,7 @@ CONTAINS
              tmp = tmp + fd_coef(j,k)*work3(j1,j2,j3)
           end do ! j
 
-          htpsi(i,n) = tmp
+          htpsi(i,n) = htpsi(i,n) + tmp
 
        end do ! i1
        end do ! i2
