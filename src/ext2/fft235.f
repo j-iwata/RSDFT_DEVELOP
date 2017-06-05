@@ -1,7 +1,7 @@
 C
 C     FFTE: A FAST FOURIER TRANSFORM PACKAGE
 C
-C     (C) COPYRIGHT SOFTWARE, 2000-2004, 2008-2015, ALL RIGHTS RESERVED
+C     (C) COPYRIGHT SOFTWARE, 2000-2004, 2008-2014, ALL RIGHTS RESERVED
 C                BY
 C         DAISUKE TAKAHASHI
 C         FACULTY OF ENGINEERING, INFORMATION AND SYSTEMS
@@ -124,8 +124,6 @@ C
 C
       IF (M .EQ. 1) THEN
         CALL FFT3A(A,B,W,L)
-      ELSE IF (L .EQ. 1) THEN
-        CALL FFT3C(A,B,M)
       ELSE
         CALL FFT3B(A,B,W,M,L)
       END IF
@@ -137,8 +135,6 @@ C
 C
       IF (M .EQ. 1) THEN
         CALL FFT4A(A,B,W,L)
-      ELSE IF (L .EQ. 1) THEN
-        CALL FFT4C(A,B,M)
       ELSE
         CALL FFT4B(A,B,W,M,L)
       END IF
@@ -150,8 +146,6 @@ C
 C
       IF (M .EQ. 1) THEN
         CALL FFT5A(A,B,W,L)
-      ELSE IF (L .EQ. 1) THEN
-        CALL FFT5C(A,B,M)
       ELSE
         CALL FFT5B(A,B,W,M,L)
       END IF
@@ -163,8 +157,6 @@ C
 C
       IF (M .EQ. 1) THEN
         CALL FFT8A(A,B,W,L)
-      ELSE IF (L .EQ. 1) THEN
-        CALL FFT8C(A,B,M)
       ELSE
         CALL FFT8B(A,B,W,M,L)
       END IF
@@ -216,8 +208,25 @@ C
       PI2=8.0D0*DATAN(1.0D0)
       PX=-PI2/(DBLE(M)*DBLE(L))
       DO 20 J=1,L
+!DIR$ VECTOR ALIGNED
         DO 10 I=1,M-1
           TEMP=PX*DBLE(I)*DBLE(J-1)
+          W(I,J)=DCMPLX(DCOS(TEMP),DSIN(TEMP))
+   10   CONTINUE
+   20 CONTINUE
+      RETURN
+      END
+      SUBROUTINE SETTBL2(W,NX,NY)
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMPLEX*16 W(NX,*)
+C
+      PI2=8.0D0*DATAN(1.0D0)
+      PX=-PI2/(DBLE(NX)*DBLE(NY))
+!$OMP PARALLEL DO PRIVATE(TEMP)
+      DO 20 J=1,NY
+!DIR$ VECTOR ALIGNED
+        DO 10 I=1,NX
+          TEMP=PX*DBLE(I-1)*DBLE(J-1)
           W(I,J)=DCMPLX(DCOS(TEMP),DSIN(TEMP))
    10   CONTINUE
    20 CONTINUE

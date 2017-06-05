@@ -37,7 +37,6 @@ C
       COMPLEX*16 A(*)
       COMPLEX*16 B((NDA3+NP)*NBLK),C(NDA3)
       COMPLEX*16 WX(NDA3),WY(NDA3),WZ(NDA3)
-!DIR$ ATTRIBUTES ALIGN : 64 :: B,C,WX,WY,WZ
       DIMENSION LNX(3),LNY(3),LNZ(3)
       SAVE WX,WY,WZ
 C
@@ -54,6 +53,7 @@ C
 C
       IF (IOPT .EQ. 1) THEN
 !$OMP PARALLEL DO
+!DIR$ VECTOR ALIGNED
         DO 10 I=1,NX*NY*NZ
           A(I)=DCONJG(A(I))
    10   CONTINUE
@@ -66,6 +66,7 @@ C
       IF (IOPT .EQ. 1) THEN
         DN=1.0D0/(DBLE(NX)*DBLE(NY)*DBLE(NZ))
 !$OMP PARALLEL DO
+!DIR$ VECTOR ALIGNED
         DO 20 I=1,NX*NY*NZ
           A(I)=DCONJG(A(I))*DN
    20   CONTINUE
@@ -80,12 +81,12 @@ C
       COMPLEX*16 WX(*),WY(*),WZ(*)
       DIMENSION LNX(*),LNY(*),LNZ(*)
 C
-!$OMP DO COLLAPSE(2) PRIVATE(I,II,K,KK)
+!$OMP DO
       DO 80 J=1,NY
         DO 70 II=1,NX,NBLK
           DO 30 KK=1,NZ,NBLK
             DO 20 I=II,MIN0(II+NBLK-1,NX)
-!DIR$ LOOP COUNT MAX(NBLK)
+!DIR$ VECTOR ALIGNED
               DO 10 K=KK,MIN0(KK+NBLK-1,NZ)
                 BZ(K,I-II+1)=A(I,J,K)
    10         CONTINUE
@@ -95,19 +96,19 @@ C
             CALL FFT235(BZ(1,I-II+1),C,WZ,NZ,LNZ)
    40     CONTINUE
           DO 60 K=1,NZ
-!DIR$ LOOP COUNT MAX(NBLK)
+!DIR$ VECTOR ALIGNED
             DO 50 I=II,MIN0(II+NBLK-1,NX)
               A(I,J,K)=BZ(K,I-II+1)
    50       CONTINUE
    60     CONTINUE
    70   CONTINUE
    80 CONTINUE
-!$OMP DO COLLAPSE(2) PRIVATE(I,II,J,JJ)
-      DO 160 K=1,NZ
+!$OMP DO
+      DO 170 K=1,NZ
         DO 150 II=1,NX,NBLK
           DO 110 JJ=1,NY,NBLK
             DO 100 I=II,MIN0(II+NBLK-1,NX)
-!DIR$ LOOP COUNT MAX(NBLK)
+!DIR$ VECTOR ALIGNED
               DO 90 J=JJ,MIN0(JJ+NBLK-1,NY)
                 BY(J,I-II+1)=A(I,J,K)
    90         CONTINUE
@@ -117,18 +118,15 @@ C
             CALL FFT235(BY(1,I-II+1),C,WY,NY,LNY)
   120     CONTINUE
           DO 140 J=1,NY
-!DIR$ LOOP COUNT MAX(NBLK)
+!DIR$ VECTOR ALIGNED
             DO 130 I=II,MIN0(II+NBLK-1,NX)
               A(I,J,K)=BY(J,I-II+1)
   130       CONTINUE
   140     CONTINUE
   150   CONTINUE
-  160 CONTINUE
-!$OMP DO COLLAPSE(2) PRIVATE(J)
-      DO 180 K=1,NZ
-        DO 170 J=1,NY
+        DO 160 J=1,NY
           CALL FFT235(A(1,J,K),C,WX,NX,LNX)
-  170   CONTINUE
-  180 CONTINUE
+  160   CONTINUE
+  170 CONTINUE
       RETURN
       END

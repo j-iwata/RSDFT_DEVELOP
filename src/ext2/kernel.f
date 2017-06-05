@@ -1,7 +1,7 @@
 C
 C     FFTE: A FAST FOURIER TRANSFORM PACKAGE
 C
-C     (C) COPYRIGHT SOFTWARE, 2000-2004, 2008-2015, ALL RIGHTS RESERVED
+C     (C) COPYRIGHT SOFTWARE, 2000-2004, 2008-2011, ALL RIGHTS RESERVED
 C                BY
 C         DAISUKE TAKAHASHI
 C         FACULTY OF ENGINEERING, INFORMATION AND SYSTEMS
@@ -21,6 +21,7 @@ C
       COMPLEX*16 A(M,*),B(M,*)
       COMPLEX*16 C0,C1
 C
+!DIR$ VECTOR ALIGNED
       DO 10 I=1,M
         C0=A(I,1)
         C1=A(I,2)
@@ -35,6 +36,7 @@ C
       COMPLEX*16 C0,C1,C2,D0,D1,D2,W1,W2
       DATA C31/0.86602540378443865D0/C32/0.5D0/
 C
+!DIR$ VECTOR ALIGNED
       DO 10 J=1,L
         W1=W(1,J)
         W2=W(2,J)
@@ -56,6 +58,7 @@ C
       COMPLEX*16 C0,C1,C2,D0,D1,D2,W1,W2
       DATA C31/0.86602540378443865D0/C32/0.5D0/
 C
+!DIR$ VECTOR ALIGNED
       DO 10 I=1,M
         C0=A(I,1,1)
         C1=A(I,1,2)
@@ -70,6 +73,7 @@ C
       DO 30 J=2,L
         W1=W(1,J)
         W2=W(2,J)
+!DIR$ VECTOR ALIGNED
         DO 20 I=1,M
           C0=A(I,J,1)
           C1=A(I,J,2)
@@ -84,30 +88,12 @@ C
    30 CONTINUE
       RETURN
       END
-      SUBROUTINE FFT3C(A,B,M)
-      IMPLICIT REAL*8 (A-H,O-Z)
-      COMPLEX*16 A(M,*),B(M,*)
-      COMPLEX*16 C0,C1,C2,D0,D1,D2
-      DATA C31/0.86602540378443865D0/C32/0.5D0/
-C
-      DO 10 I=1,M
-        C0=A(I,1)
-        C1=A(I,2)
-        C2=A(I,3)
-        D0=C1+C2
-        D1=C0-C32*D0
-        D2=(0.0D0,-1.0D0)*C31*(C1-C2)
-        B(I,1)=C0+D0
-        B(I,2)=D1+D2
-        B(I,3)=D1-D2
-   10 CONTINUE
-      RETURN
-      END
       SUBROUTINE FFT4A(A,B,W,L)
       IMPLICIT REAL*8 (A-H,O-Z)
       COMPLEX*16 A(L,*),B(4,*),W(3,*)
       COMPLEX*16 C0,C1,C2,C3,D0,D1,D2,D3,W1,W2,W3
 C
+!DIR$ VECTOR ALIGNED
       DO 10 J=1,L
         W1=W(1,J)
         W2=W(2,J)
@@ -132,6 +118,7 @@ C
       COMPLEX*16 A(M,L,*),B(M,4,*),W(3,*)
       COMPLEX*16 C0,C1,C2,C3,D0,D1,D2,D3,W1,W2,W3
 C
+!DIR$ VECTOR ALIGNED
       DO 10 I=1,M
         C0=A(I,1,1)
         C1=A(I,1,2)
@@ -150,6 +137,7 @@ C
         W1=W(1,J)
         W2=W(2,J)
         W3=W(3,J)
+!DIR$ VECTOR ALIGNED
         DO 20 I=1,M
           C0=A(I,J,1)
           C1=A(I,J,2)
@@ -167,27 +155,6 @@ C
    30 CONTINUE
       RETURN
       END
-      SUBROUTINE FFT4C(A,B,M)
-      IMPLICIT REAL*8 (A-H,O-Z)
-      COMPLEX*16 A(M,*),B(M,*)
-      COMPLEX*16 C0,C1,C2,C3,D0,D1,D2,D3
-C
-      DO 10 I=1,M
-        C0=A(I,1)
-        C1=A(I,2)
-        C2=A(I,3)
-        C3=A(I,4)
-        D0=C0+C2
-        D1=C0-C2
-        D2=C1+C3
-        D3=(0.0D0,-1.0D0)*(C1-C3)
-        B(I,1)=D0+D2
-        B(I,2)=D1+D3
-        B(I,3)=D0-D2
-        B(I,4)=D1-D3
-   10 CONTINUE
-      RETURN
-      END
       SUBROUTINE FFT5A(A,B,W,L)
       IMPLICIT REAL*8 (A-H,O-Z)
       COMPLEX*16 A(L,*),B(5,*),W(4,*)
@@ -196,6 +163,7 @@ C
       DATA C51/0.95105651629515357D0/C52/0.61803398874989485D0/
      1     C53/0.55901699437494742D0/C54/0.25D0/
 C
+!DIR$ VECTOR ALIGNED
       DO 10 J=1,L
         W1=W(1,J)
         W2=W(2,J)
@@ -233,6 +201,7 @@ C
       DATA C51/0.95105651629515357D0/C52/0.61803398874989485D0/
      1     C53/0.55901699437494742D0/C54/0.25D0/
 C
+!DIR$ VECTOR ALIGNED
       DO 10 I=1,M
         C0=A(I,1,1)
         C1=A(I,1,2)
@@ -261,6 +230,7 @@ C
         W2=W(2,J)
         W3=W(3,J)
         W4=W(4,J)
+!DIR$ VECTOR ALIGNED
         DO 20 I=1,M
           C0=A(I,J,1)
           C1=A(I,J,2)
@@ -287,38 +257,6 @@ C
    30 CONTINUE
       RETURN
       END
-      SUBROUTINE FFT5C(A,B,M)
-      IMPLICIT REAL*8 (A-H,O-Z)
-      COMPLEX*16 A(M,*),B(M,*)
-      COMPLEX*16 C0,C1,C2,C3,C4,D0,D1,D2,D3,D4,D5,D6,D7,D8,D9,D10
-      DATA C51/0.95105651629515357D0/C52/0.61803398874989485D0/
-     1     C53/0.55901699437494742D0/C54/0.25D0/
-C
-      DO 10 I=1,M
-        C0=A(I,1)
-        C1=A(I,2)
-        C2=A(I,3)
-        C3=A(I,4)
-        C4=A(I,5)
-        D0=C1+C4
-        D1=C2+C3
-        D2=C51*(C1-C4)
-        D3=C51*(C2-C3)
-        D4=D0+D1
-        D5=C53*(D0-D1)
-        D6=C0-C54*D4
-        D7=D6+D5
-        D8=D6-D5
-        D9=(0.0D0,-1.0D0)*(D2+C52*D3)
-        D10=(0.0D0,-1.0D0)*(C52*D2-D3)
-        B(I,1)=C0+D4
-        B(I,2)=D7+D9
-        B(I,3)=D8+D10
-        B(I,4)=D8-D10
-        B(I,5)=D7-D9
-   10 CONTINUE
-      RETURN
-      END
       SUBROUTINE FFT8A(A,B,W,L)
       IMPLICIT REAL*8 (A-H,O-Z)
       COMPLEX*16 A(L,*),B(8,*),W(7,*)
@@ -326,6 +264,7 @@ C
       COMPLEX*16 E0,E1,E2,E3,E4,E5,E6,E7,E8,E9,W1,W2,W3,W4,W5,W6,W7
       DATA C81/0.70710678118654752D0/
 C
+!DIR$ VECTOR ALIGNED
       DO 10 J=1,L
         W1=W(1,J)
         W2=W(2,J)
@@ -378,6 +317,7 @@ C
       COMPLEX*16 E0,E1,E2,E3,E4,E5,E6,E7,E8,E9,W1,W2,W3,W4,W5,W6,W7
       DATA C81/0.70710678118654752D0/
 C
+!DIR$ VECTOR ALIGNED
       DO 10 I=1,M
         C0=A(I,1,1)
         C1=A(I,1,2)
@@ -422,6 +362,7 @@ C
         W5=W(5,J)
         W6=W(6,J)
         W7=W(7,J)
+!DIR$ VECTOR ALIGNED
         DO 20 I=1,M
           C0=A(I,J,1)
           C1=A(I,J,2)
@@ -459,50 +400,5 @@ C
           B(I,8,J)=W7*(E6-E8)
    20   CONTINUE
    30 CONTINUE
-      RETURN
-      END
-      SUBROUTINE FFT8C(A,B,M)
-      IMPLICIT REAL*8 (A-H,O-Z)
-      COMPLEX*16 A(M,*),B(M,*)
-      COMPLEX*16 C0,C1,C2,C3,C4,C5,C6,C7,D0,D1,D2,D3,D4,D5,D6,D7
-      COMPLEX*16 E0,E1,E2,E3,E4,E5,E6,E7,E8,E9
-      DATA C81/0.70710678118654752D0/
-C
-      DO 10 I=1,M
-        C0=A(I,1)
-        C1=A(I,2)
-        C2=A(I,3)
-        C3=A(I,4)
-        C4=A(I,5)
-        C5=A(I,6)
-        C6=A(I,7)
-        C7=A(I,8)
-        D0=C0+C4
-        D1=C0-C4
-        D2=C2+C6
-        D3=(0.0D0,-1.0D0)*(C2-C6)
-        D4=C1+C5
-        D5=C1-C5
-        D6=C3+C7
-        D7=C3-C7
-        E0=D0+D2
-        E1=D0-D2
-        E2=D4+D6
-        E3=(0.0D0,-1.0D0)*(D4-D6)
-        E4=C81*(D5-D7)
-        E5=(0.0D0,-1.0D0)*C81*(D5+D7)
-        E6=D1+E4
-        E7=D1-E4
-        E8=D3+E5
-        E9=D3-E5
-        B(I,1)=E0+E2
-        B(I,2)=E6+E8
-        B(I,3)=E1+E3
-        B(I,4)=E7-E9
-        B(I,5)=E0-E2
-        B(I,6)=E7+E9
-        B(I,7)=E1-E3
-        B(I,8)=E6-E8
-   10 CONTINUE
       RETURN
       END
