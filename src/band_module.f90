@@ -105,6 +105,17 @@ CONTAINS
 
     allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
 
+! ---
+
+    if ( iflag_hunk == 0 ) call deallocate_work_wf
+
+    if ( MB < mb_band ) then
+       call modify_mb
+       call modify_arraysize
+    end if
+
+! ---
+
     if ( iswitch_banduf ) then
 
        call init_band_unfold( nktrj,ktrj,unit_band_ufld,disp_switch,job_ctrl )
@@ -158,15 +169,6 @@ CONTAINS
           write(*,'(1x,3i6)') i,id_k(i),ir_k(i)
        end do
        write(*,*) "sum(ir_k),nktrj=",sum(ir_k),nktrj
-    end if
-
-! ---
-
-    if ( iflag_hunk == 0 ) call deallocate_work_wf
-
-    if ( MB < mb_band ) then
-       call modify_mb
-       call modify_arraysize
     end if
 
 ! ---
