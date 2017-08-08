@@ -21,10 +21,11 @@ MODULE band_unfold_module
   logical :: iswitch_ufld_l=.false.
 
   integer :: unit_uf
+  integer :: unit_uf_k
   integer :: unit_uf_z
   integer :: nktrj,nktrj_0
   integer :: nbk_pc
-  integer :: mg_pc, mg_sc
+  integer :: mg_pc, mg_sc, mg_pc_0, mg_pc_1
   integer,allocatable :: LG_pc(:,:)
   integer,allocatable :: map_ktrj(:,:)
 
@@ -32,6 +33,7 @@ MODULE band_unfold_module
   real(8),allocatable :: kbb_pc(:,:),kxyz_pc(:,:)
   real(8),allocatable :: kbb_0(:,:),kxyz_0(:,:),kbb_1(:,:)
   real(8),allocatable :: weight_uf(:,:,:)
+  real(8),allocatable :: weight_uf_k(:,:,:)
   real(8),allocatable :: weight_uf_z(:,:,:,:)
 
 #ifdef _DRSDFT_
@@ -94,10 +96,14 @@ CONTAINS
 
     call write_border( 0, " init_band_unfold(start)" )
 
-    unit_uf = unit_in
-    unit_uf_z = unit_uf_z + 1
-    if ( myrank == 0 ) open(unit_uf,file="band_ufld")
-    if ( iswitch_ufld_l .and. myrank == 0 ) open(unit_uf_z,file="band_ufld_z")
+    unit_uf   = unit_in
+    unit_uf_k = unit_in + 1
+    unit_uf_z = unit_in + 2
+    if ( myrank == 0 ) then
+       open(unit_uf  ,file="band_ufld")
+       open(unit_uf_k,file="band_ufld_k")
+       if ( iswitch_ufld_l ) open(unit_uf_z,file="band_ufld_z")
+    end if
 
     if ( present(job_ctrl_in) ) job_ctrl=job_ctrl_in
 
@@ -122,6 +128,7 @@ CONTAINS
     MS=sum(ir_spin)
     MZ=Ngrid(3)
     allocate( weight_uf(nktrj_0,MB,MS) ) ; weight_uf=0.0d0
+    allocate( weight_uf_k(nktrj_0,MB,MS) ) ; weight_uf_k=0.0d0
 
     if ( iswitch_ufld_l ) then
        allocate( weight_uf_z(nktrj_0,MB,MS,0:MZ-1) ) ; weight_uf_z=0.0d0
@@ -365,6 +372,7 @@ CONTAINS
     integer,allocatable :: LG_tmp(:,:)
     real(8) :: pi2
     real(8) :: matab(3,3),vtmp(3),utmp(3)
+    integer,allocatable :: ir(:),id(:)
 
     pi2 = 2.0d0*acos(-1.0d0)
 
@@ -410,6 +418,21 @@ CONTAINS
 
     deallocate( LG_tmp )
 
+! ---
+
+    allocate( ir(0:np_grid-1) ) ; ir=0
+    allocate( id(0:np_grid-1) ) ; id=0
+    do i=1,mg_pc
+       j=mod(i-1,np_grid)
+       ir(j)=ir(j)+1
+    end do
+    do i=0,np_grid-1
+       id(i)=sum(ir(0:i))-ir(i)
+    end do
+    mg_pc_0 = id(myrank_g) + 1
+    mg_pc_1 = id(myrank_g) + ir(myrank_g)
+    deallocate( id, ir )
+
   END SUBROUTINE init1_band_unfold
 
 
@@ -424,7 +447,7 @@ CONTAINS
     integer :: MB,MS,s,k,n,i,i1,i2,i3,j3,ierr,LG_sc(3),iktrj
     integer,allocatable :: iktrj_2_k(:)
     real(8) :: vtmp(3),utmp(3),pi2,sum0
-    real(8) :: t1(2),t2(2)
+    real(8) :: t1(2),t2(2),tt(2),ttt(2,5)
     real(8) :: dz,dG,z,G
     complex(8) :: ztmp, phase
 
@@ -470,6 +493,9 @@ CONTAINS
     end if
 
     weight_uf(:,:,:)=0.0d0
+    weight_uf_k(:,:,:)=0.0d0
+
+    tt=0.0d0
 
     do iktrj=1,nktrj_0
 
@@ -493,6 +519,8 @@ CONTAINS
        do k=MBZ_0,MBZ_0
        do n=MB_0 ,MB_1
 
+          call watchb( tt )
+
           zwork0(:,:,:)=zero
           i=ML_0-1
           do i3=Igrid(1,3),Igrid(2,3)
@@ -505,7 +533,11 @@ CONTAINS
           end do
           if ( map_ktrj(iktrj,2) == 1 ) zwork0=conjg(zwork0)
 
+          call watchb( tt, ttt(:,1) )
+
           call rsdft_allreduce_sum( zwork0, comm_grid )
+
+          call watchb( tt, ttt(:,2) )
 
           if ( iswitch_ufld_l ) then
 #ifdef TEST
@@ -546,15 +578,30 @@ CONTAINS
              end do
           end if ! iswitch_ufld_l
 
+          call watchb( tt )
+
           call forward_fft( zwork0, zwork1 )
+
+          call watchb( tt, ttt(:,3) )
+
           sum0=0.0d0
-          do i=1,mg_pc
+          do i=mg_pc_0,mg_pc_1
              i1 = mod( LG_pc(1,i)-LG_sc(1)+ML1, ML1 )
              i2 = mod( LG_pc(2,i)-LG_sc(2)+ML2, ML2 )
              i3 = mod( LG_pc(3,i)-LG_sc(3)+ML3, ML3 )
              sum0=sum0+abs( zwork0(i1,i2,i3) )**2
           end do
+          call rsdft_allreduce_sum( sum0, comm_grid )
           weight_uf(iktrj,n,s)=sum0
+
+          call watchb( tt, ttt(:,4) )
+
+          i1 = mod( -LG_sc(1)+ML1, ML1 )
+          i2 = mod( -LG_sc(2)+ML2, ML2 )
+          i3 = mod( -LG_sc(3)+ML3, ML3 )
+          weight_uf_k(iktrj,n,s) = abs( zwork0(i1,i2,i3) )**2
+
+          call watchb( tt, ttt(:,5) )
 
        end do ! n
        end do ! k
@@ -564,6 +611,9 @@ CONTAINS
        if ( disp_switch_parallel ) then
           write(*,'(1x,"iktrj/nktrj_0=",i4," /",i4,4x,"time=",2f10.3)') &
           iktrj,nktrj_0,t2-t1
+          do i=1,5
+             write(*,'(1x,"(time",i1,")=",2f10.5)') i,ttt(1,i),ttt(2,i)
+          end do
        end if
 
     end do ! iktrj
@@ -574,6 +624,10 @@ CONTAINS
     call rsdft_allreduce_sum( weight_uf, comm_bzsm )
     call rsdft_allreduce_sum( weight_uf, comm_band )
     call rsdft_allreduce_sum( iktrj_2_k, comm_bzsm )
+
+    call rsdft_allreduce_sum( weight_uf_k, comm_spin )
+    call rsdft_allreduce_sum( weight_uf_k, comm_bzsm )
+    call rsdft_allreduce_sum( weight_uf_k, comm_band )
 
     if ( iswitch_ufld_l ) then
        do j3=0,ML3-1
@@ -596,6 +650,12 @@ CONTAINS
           do n=1,MB
              write(unit_uf,'(1x,2i6,2(f20.15,2x,g20.10,2x))') &
                   k,n,( esp(n,k,s),weight_uf(iktrj,n,s),s=1,MS )
+          end do
+          write(unit_uf_k,'(1x,"iktrj=",i6,2x,2(3f10.6,2x))') &
+               iktrj,kxyz_pc(1:3,iktrj),kxyz_0(1:3,iktrj)
+          do n=1,MB
+             write(unit_uf_k,'(1x,2i6,2(f20.15,2x,g20.10,2x))') &
+                  k,n,( esp(n,k,s),weight_uf_k(iktrj,n,s),s=1,MS )
           end do
        end if
 
@@ -631,6 +691,7 @@ CONTAINS
 
   SUBROUTINE finalize_band_unfold
     if ( iswitch_banduf .and. myrank == 0 ) close(unit_uf)
+    if ( iswitch_banduf .and. myrank == 0 ) close(unit_uf_k)
     if ( iswitch_ufld_l .and. myrank == 0 ) close(unit_uf_z)
   END SUBROUTINE finalize_band_unfold
 
