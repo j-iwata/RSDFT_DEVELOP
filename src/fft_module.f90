@@ -25,7 +25,11 @@ MODULE fft_module
 !  complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
   complex(8),parameter :: zero=(0.0d0,0.0d0)
   logical :: keep_LLL=.false.
+#ifdef _FFTW_
+  character(9),parameter :: routine_def="fft_fftw"
+#else
   character(9),parameter :: routine_def="fft_rsdft"
+#endif
 
 CONTAINS
 
@@ -149,9 +153,7 @@ CONTAINS
     routine=routine_def ; if ( present(key) ) routine=key
     select case( routine )
     case default
-#ifdef _FFTW_
        call forward_fftw( z3 )
-#endif
     case( "fft_rsdft" )
        if ( .not.allocated(w3) ) then
           allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
@@ -176,9 +178,7 @@ CONTAINS
     routine=routine_def ; if ( present(key) ) routine=key
     select case( routine )
     case default
-#ifdef _FFTW_
        call backward_fftw( z3 )
-#endif
     case( "fft_rsdft" )
        if ( .not.allocated(w3) ) then
           allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
