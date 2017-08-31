@@ -4,14 +4,14 @@ PROGRAM ufld2gp
   integer,parameter :: u1=1, u2=10, u3=11
   integer,parameter :: maxloop=1000000
   integer :: loop,ik,k,n,i,j,s,nk,nk0,nb,ns,ne,kmax,nmax,nmin
-  integer :: unit_conv=1
+  integer :: unit_conv=1,ispin
   character(5) :: cbuf
   character(128) :: cbuf_long
   real(8),parameter :: aB_=0.529177d0, HT_=27.2116d0
   real(8) :: aB, HT
   real(8),allocatable :: kxyz_pc(:,:),kxyz_sc(:,:)
   real(8),allocatable :: esp(:,:,:), weight(:,:,:)
-  real(8) :: emax,emin,e_mergin,eta,de,pi,f(2),e,x,dummy(4)
+  real(8) :: emax,emin,e_mergin,eta,de,pi,f(3),e,x,dummy(4)
 
 ! ---
 
@@ -149,8 +149,10 @@ PROGRAM ufld2gp
            f(s)=f(s)/pi
         end do
 
-        write(u2,'(1x,4f20.15)') x,e*HT,(f(s),s=1,ns)
-        write(u3,'(1x,4f20.15)') x,e*HT,(log(f(s)),s=1,ns)
+        f(3)=(f(1)+f(ns))*0.5d0*ns
+
+        write(u2,'(1x,5f20.15)') x,e*HT,(f(s),s=1,ns),f(3)
+        write(u3,'(1x,5f20.15)') x,e*HT,(log(f(s)),s=1,ns),log(f(3))
 
      end do ! i
 
