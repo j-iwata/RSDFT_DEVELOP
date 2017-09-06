@@ -115,7 +115,7 @@ CONTAINS
     real(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     real(8),allocatable :: pk(:,:),pko(:,:)
     real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
-    real(8),allocatable :: utmp2(:,:),btmp2(:,:)
+    real(8),allocatable :: utmp2(:,:),btmp2(:,:),utmp3(:,:)
     real(8) :: timecg(2,16), ttmp(2), ttmp_cg(2)
     real(8) :: timecg_min(2,16),timecg_max(2,16)
     real(8) :: time_cgpc_min(2,16),time_cgpc_max(2,16)
@@ -152,6 +152,7 @@ CONTAINS
     allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
     allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) )
     allocate( utmp2(2,2),btmp2(2,2) )
+    allocate( utmp3(2,MB_d) )
 
 !$OMP parallel workshare
     res(:) = 0.0d0
@@ -160,7 +161,7 @@ CONTAINS
 
     call watchb( ttmp, timecg(:,5) )
 
-    do ns=MB_0,MB_1
+    do ns=MB_0,MB_1,MB_d
        ne=ns
        nn=ne-ns+1
 
@@ -334,6 +335,8 @@ CONTAINS
                 end if
              end if
 
+             utmp3(1:2,n) = utmp2(1:2,1)
+
              E1(n)=E(n)
              E(n) =W(1)
 
@@ -369,7 +372,7 @@ CONTAINS
              end if
 !$OMP parallel do
              do i=n1,n2
-                unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
+                unk(i,m)=utmp3(1,n)*unk(i,m)+utmp3(2,n)*pk(i,n)
              end do
 !$OMP end parallel do
              if ( iflag_hunk >= 1 ) then
@@ -391,6 +394,7 @@ CONTAINS
 
     call watchb( ttmp )
 
+    deallocate( utmp3 )
     deallocate( btmp2,utmp2  )
     deallocate( wtmp2,vtmp2  )
     deallocate( bk,gkgk,E1,E )
@@ -453,7 +457,7 @@ CONTAINS
     complex(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     complex(8),allocatable :: pk(:,:),pko(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
-    complex(8),allocatable :: utmp2(:,:),btmp2(:,:)
+    complex(8),allocatable :: utmp2(:,:),btmp2(:,:),utmp3(:,:)
 
     TYPE_MAIN = RSDFT_MPI_COMPLEX16
 
@@ -479,6 +483,7 @@ CONTAINS
     allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
     allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) )
     allocate( utmp2(2,2),btmp2(2,2) )
+    allocate( utmp3(2,MB_d) )
 
 !$OMP parallel workshare
     res(:)  = 0.d0
@@ -657,6 +662,8 @@ CONTAINS
                 end if
              end if
 
+             utmp3(1:2,n) = utmp2(1:2,1)
+
              E1(n)=E(n)
              E(n) =W(1)
 
@@ -692,7 +699,7 @@ CONTAINS
              end if
 !$OMP parallel do
              do i=n1,n2
-                unk(i,m)=utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)
+                unk(i,m)=utmp3(1,n)*unk(i,m)+utmp3(2,n)*pk(i,n)
              end do
 !$OMP end parallel do
              if ( iflag_hunk >= 1 ) then
@@ -712,6 +719,7 @@ CONTAINS
 
     end do  ! band-loop
 
+    deallocate( utmp3 )
     deallocate( btmp2,utmp2  )
     deallocate( wtmp2,vtmp2  )
     deallocate( bk,gkgk,E1,E )
