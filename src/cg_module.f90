@@ -134,6 +134,7 @@ CONTAINS
     time_cgpc(:,:)=0.0d0
 
     timecg_indx(1:7) = (/"hamil","dotp ","allr ","prec ","init ","deall","tot  "/)
+    time_cgpc_indx(1:13) = (/" "," "," "," "," "," "," "," "," "," "," "," "," "/)
 
     ML0 = ML_1-ML_0+1
 
@@ -419,18 +420,19 @@ CONTAINS
 !       write(*,*) "time(hmlt_nlc)",( time_hmlt(i,3), i=1,2 )
 !       write(*,*) "time(hmlt_exx)",( time_hmlt(i,4), i=1,2 )
 !       write(*,'(a20," kine")') repeat("-",20)
-!       call write_watchb( time_kine(1,6),6, time_kine_indx(6) ) 
+!       call write_watchb( time_kine(1,1),11, time_kine_indx(1) ) 
 !       write(*,*) "(min)"
-!       call write_watchb( time_kine_min(1,6),6, time_kine_indx(6) ) 
+!       call write_watchb( time_kine_min(1,1),11, time_kine_indx(1) ) 
 !       write(*,*) "(max)"
-!       call write_watchb( time_kine_max(1,6),6, time_kine_indx(6) ) 
+!       call write_watchb( time_kine_max(1,1),11, time_kine_indx(1) ) 
+!       write(*,'(a20," nlpp")') repeat("-",20)
 !       call write_watchb( time_nlpp(1,1), 7, time_nlpp_indx ) 
 !       write(*,'(a20," cgpc")') repeat("-",20)
-!       call write_watchb( time_cgpc(1,8),6, time_cgpc_indx(8) ) 
+!       call write_watchb( time_cgpc(1,1),13, time_cgpc_indx(1) ) 
 !       write(*,*) "(min)"
-!       call write_watchb( time_cgpc_min(1,8),6, time_cgpc_indx(8) ) 
+!       call write_watchb( time_cgpc_min(1,1),13, time_cgpc_indx(1) ) 
 !       write(*,*) "(max)"
-!       call write_watchb( time_cgpc_max(1,8),6, time_cgpc_indx(8) ) 
+!       call write_watchb( time_cgpc_max(1,1),13, time_cgpc_indx(1) ) 
 !       write(*,'(a20," cg_1")') repeat("-",20)
 !       call write_watchb( timecg(1,1), 7, timecg_indx ) 
 !       write(*,*) "iswitch_gs=",iswitch_gs
