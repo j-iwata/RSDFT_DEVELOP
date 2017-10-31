@@ -11,7 +11,7 @@ MODULE kinetic_variables
   PUBLIC :: read_kinetic, read_oldformat_kinetic
   PUBLIC :: coef_kin
 
-  integer,PUBLIC :: kin_select
+  integer,PUBLIC :: kin_select=0
 
   integer :: SYStype=0
   integer :: Md

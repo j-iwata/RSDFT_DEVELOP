@@ -25,9 +25,9 @@ CONTAINS
     n0=size( f1_in(:,:)  )
     nn=size( fold(:,:,1) )
     call mpi_allgather( f1_in(1,1) ,n0,MPI_REAL8 &
-                       ,fold(1,1,1),nn,MPI_REAL8,comm_spin,ierr )
+                       ,fold(1,1,1),n0,MPI_REAL8,comm_spin,ierr )
     call mpi_allgather( f2_in(1,1) ,n0,MPI_REAL8 &
-                       ,fold(1,1,2),nn,MPI_REAL8,comm_spin,ierr )
+                       ,fold(1,1,2),n0,MPI_REAL8,comm_spin,ierr )
   END SUBROUTINE init_sqerr
 
 
@@ -48,7 +48,7 @@ CONTAINS
     nn=size( f(:,:,1) )
     do i=1,ndat
        call mpi_allgather( f_in(1,1,i),n0,MPI_REAL8 &
-                          ,f(1,1,i),nn,MPI_REAL8,comm_spin,ierr )
+                          ,f(1,1,i),n0,MPI_REAL8,comm_spin,ierr )
     end do
 
     if ( .not.allocated(fold) ) then
