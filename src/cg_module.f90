@@ -51,6 +51,7 @@ CONTAINS
     flag_init_cg=.false.
   END SUBROUTINE init_cg
 
+
   SUBROUTINE conjugate_gradient( n1,n2, MB, k,s, unk, esp, res )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s
@@ -99,6 +100,7 @@ CONTAINS
   END SUBROUTINE conjugate_gradient
 
 #ifdef _DRSDFT_
+
   SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg
@@ -138,9 +140,9 @@ CONTAINS
 
     ML0 = ML_1-ML_0+1
 
-    mm  = ML0  ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) mm=2*ML0
-    c1  = 2.d0 ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) c1=1.d0
-    icmp= 1    ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) icmp=2
+    mm  = ML0
+    c1  = 2.0d0
+    icmp= 1
 
     Ncgtot = 0
     Nhpsi  = 0
@@ -193,7 +195,7 @@ CONTAINS
        do n=1,nn
 !$OMP parallel do
           do i=n1,n2
-             gk(i,n)=-c1*(hxk(i,n)-E(n)*unk(i,n+ns-1))
+             gk(i,n) = -2.0d0*( hxk(i,n) - E(n)*unk(i,n+ns-1) )
           end do
 !$OMP end parallel do
           call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
@@ -277,11 +279,11 @@ CONTAINS
              vtmp2(1:6,n)=zero
              m=n+ns-1
              call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
-             call dot_product(pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
-             call dot_product(pk(n1,n),pk(n1,n),vtmp2(3,n),dV,mm,1)
+             call dot_product( pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
+             call dot_product( pk(n1,n), pk(n1,n),vtmp2(3,n),dV,mm,1)
              call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
-             call dot_product(pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
-             call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+             call dot_product( pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
+             call dot_product( pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
           end do
 
           call watchb( ttmp, timecg(:,2) )
@@ -300,40 +302,17 @@ CONTAINS
              utmp2(2,1)=wtmp2(5,n)
              utmp2(1,2)=wtmp2(5,n)
              utmp2(2,2)=wtmp2(6,n)
-             if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) then
-                ztmp=btmp2(1,2)
-                ztmp=conjg(ztmp)
-                btmp2(1,2)=ztmp
-                ztmp=utmp2(1,2)
-                ztmp=conjg(ztmp)
-                utmp2(1,2)=ztmp
-                call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
-                if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                   utmp2(1,1)=utmp2(1,2)
-                   utmp2(2,1)=utmp2(2,2)
-                   W(1)=W(2)
-                end if
+             call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
+             if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
+                utmp2(1,1)=utmp2(1,2)
+                utmp2(2,1)=utmp2(2,2)
+                W(1)=W(2)
+             end if
 !- Fix the phase -
-                ztmp=utmp2(1,1)
-                r=abs(ztmp)
-                c=real(ztmp)/r
-                d=aimag(ztmp)/r
-                zphase=dcmplx(c,-d)
-                utmp2(1,1)=utmp2(1,1)*zphase
-                utmp2(2,1)=utmp2(2,1)*zphase
-             else
-                call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
-                if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                   utmp2(1,1)=utmp2(1,2)
-                   utmp2(2,1)=utmp2(2,2)
-                   W(1)=W(2)
-                end if
-!- Fix the phase -
-                c=utmp2(1,1)
-                if( c<0.d0 ) then
-                   utmp2(1,1)=-utmp2(1,1)
-                   utmp2(2,1)=-utmp2(2,1)
-                end if
+             c=utmp2(1,1)
+             if( c<0.d0 ) then
+                utmp2(1,1)=-utmp2(1,1)
+                utmp2(2,1)=-utmp2(2,1)
              end if
 
              utmp3(1:2,n) = utmp2(1:2,1)
@@ -349,7 +328,7 @@ CONTAINS
 !$OMP end do
 !$OMP do
              do i=n1,n2
-                gk(i,n) = -c1*( hxk(i,n) &
+                gk(i,n) = -2.0d0*( hxk(i,n) &
                      -W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)) )
              end do
 !$OMP end do
@@ -454,12 +433,16 @@ CONTAINS
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
     real(8),allocatable :: sb(:),rb(:),E(:),E1(:),gkgk(:),bk(:)
     complex(8) :: work(9),zphase,ztmp
-
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     complex(8),allocatable :: pk(:,:),pko(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:),utmp3(:,:)
+    real(8) :: ttmp(2),timecg(2,9),ttmp_cg(2)
+    character(5) :: timecg_indx(7)
+    logical :: disp
+
+    call watchb( ttmp ) ; ttmp_cg=ttmp
 
     TYPE_MAIN = RSDFT_MPI_COMPLEX16
 
@@ -467,12 +450,17 @@ CONTAINS
     ett(:)=0.d0
     ctt_hamil(:)=0.d0
     ett_hamil(:)=0.d0
+    timecg(:,:)=0.0d0
+    time_hmlt(:,:)=0.0d0
+    time_kine(:,:)=0.0d0
+    time_nlpp(:,:)=0.0d0
+    time_cgpc(:,:)=0.0d0
+    timecg_indx(1:7) = (/"hamil","oprat","allrd","precn","ortho","other","total"/)
 
     ML0 = ML_1-ML_0+1
 
-    mm  = ML0  ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) mm=2*ML0
-    c1  = 2.d0 ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) c1=1.d0
-    icmp= 1    ; if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) icmp=2
+    mm  = 2*ML0
+    icmp= 2
 
     Ncgtot = 0
     Nhpsi  = 0
@@ -492,13 +480,15 @@ CONTAINS
     esp(:)  = 0.d0
 !$OMP end parallel workshare
 
+    call watchb( ttmp, timecg(:,6) )
+
     do ns=MB_0,MB_1
        ne=ns
        nn=ne-ns+1
 
-       E1(:)=1.d10
+       E1(1:nn)=1.d10
 
-       call watch(ct0,et0)
+       call watchb( ttmp )
 
        if ( iflag_hunk >= 1 ) then
 !$OMP parallel workshare
@@ -508,34 +498,36 @@ CONTAINS
           call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
-       call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
+       call watchb( ttmp, timecg(:,1) )
 
        do n=1,nn
           call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
        end do
 
-       call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
+       call watchb( ttmp, timecg(:,2) )
 
        call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
+       call watchb( ttmp, timecg(:,3) )
 
        do n=1,nn
 !$OMP parallel do
           do i=n1,n2
-             gk(i,n)=-c1*(hxk(i,n)-E(n)*unk(i,n+ns-1))
+             gk(i,n) = -hxk(i,n) + E(n)*unk(i,n+ns-1)
           end do
 !$OMP end parallel do
           call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
        end do
 
-       call watch(ct0,et0) ; ctt(2)=ctt(2)+ct0-ct1 ; ett(2)=ett(2)+et0-et1
+       call watchb( ttmp, timecg(:,2) )
 
        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watch(ct1,et1) ; ctt(3)=ctt(3)+ct1-ct0 ; ett(3)=ett(3)+et1-et0
+       call watchb( ttmp, timecg(:,3) )
 
        do icg=1,Mcg+1
+
+          call watchb( ttmp )
 
           Ncgtot=Ncgtot+1
 
@@ -547,19 +539,21 @@ CONTAINS
 
           res(ns:ne)=rb(1:nn)/c1**2
 
+          call watchb( ttmp, timecg(:,2) )
+
 ! --- Convergence check ---
 
           if ( all(rb(1:nn)<ep0) ) exit
           if ( all(abs(E(1:nn)-E1(1:nn))<ep1) ) exit
           if ( icg==Mcg+1 ) exit
 
-          call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
-
 ! --- Preconditioning ---
+
+          call watchb( ttmp, timecg(:,6) )
 
           call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
 
-          call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
+          call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
@@ -567,17 +561,19 @@ CONTAINS
              call cggs( iswitch_gs, ML0, MB, n, dV, unk(n1,1), Pgk(n1,n-ns+1) )
           end do
 
+          call watchb( ttmp, timecg(:,5) )
+
 ! ---
 
           do n=1,nn
              call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
           end do
 
-          call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
+          call watchb( ttmp, timecg(:,3) )
 
           if ( icg==1 ) then
 !$OMP parallel workshare
@@ -595,11 +591,11 @@ CONTAINS
           end if
           gkgk(1:nn)=rb(1:nn)
 
-          call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+          call watchb( ttmp, timecg(:,2) )
 
           call hamiltonian(k,s,pk,hpk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
-          call watch(ct0,et0) ; ctt(1)=ctt(1)+ct0-ct1 ; ett(1)=ett(1)+et0-et1
+          call watchb( ttmp, timecg(:,1) )
 
           do n=1,nn
              vtmp2(1:6,n)=zero
@@ -612,11 +608,11 @@ CONTAINS
              call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
           end do
 
-          call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
 
-          call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
+          call watchb( ttmp, timecg(:,3) )
 
           do n=1,nn
              m=n+ns-1
@@ -628,41 +624,26 @@ CONTAINS
              utmp2(2,1)=wtmp2(5,n)
              utmp2(1,2)=wtmp2(5,n)
              utmp2(2,2)=wtmp2(6,n)
-             if (TYPE_MAIN==RSDFT_MPI_COMPLEX16) then
-                ztmp=btmp2(1,2)
-                ztmp=conjg(ztmp)
-                btmp2(1,2)=ztmp
-                ztmp=utmp2(1,2)
-                ztmp=conjg(ztmp)
-                utmp2(1,2)=ztmp
-                call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
-                if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                   utmp2(1,1)=utmp2(1,2)
-                   utmp2(2,1)=utmp2(2,2)
-                   W(1)=W(2)
-                end if
-!- Fix the phase -
-                ztmp=utmp2(1,1)
-                r=abs(ztmp)
-                c=real(ztmp)/r
-                d=aimag(ztmp)/r
-                zphase=dcmplx(c,-d)
-                utmp2(1,1)=utmp2(1,1)*zphase
-                utmp2(2,1)=utmp2(2,1)*zphase
-             else
-                call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
-                if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                   utmp2(1,1)=utmp2(1,2)
-                   utmp2(2,1)=utmp2(2,2)
-                   W(1)=W(2)
-                end if
-!- Fix the phase -
-                c=utmp2(1,1)
-                if( c<0.d0 ) then
-                   utmp2(1,1)=-utmp2(1,1)
-                   utmp2(2,1)=-utmp2(2,1)
-                end if
+             ztmp=btmp2(1,2)
+             ztmp=conjg(ztmp)
+             btmp2(1,2)=ztmp
+             ztmp=utmp2(1,2)
+             ztmp=conjg(ztmp)
+             utmp2(1,2)=ztmp
+             call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
+             if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
+                utmp2(1,1)=utmp2(1,2)
+                utmp2(2,1)=utmp2(2,2)
+                W(1)=W(2)
              end if
+!- Fix the phase -
+             ztmp=utmp2(1,1)
+             r=abs(ztmp)
+             c=real(ztmp)/r
+             d=aimag(ztmp)/r
+             zphase=dcmplx(c,-d)
+             utmp2(1,1)=utmp2(1,1)*zphase
+             utmp2(2,1)=utmp2(2,1)*zphase
 
              utmp3(1:2,n) = utmp2(1:2,1)
 
@@ -672,26 +653,26 @@ CONTAINS
 !$OMP parallel
 !$OMP do
              do i=n1,n2
-                hxk(i,n)=utmp2(1,1)*hxk(i,n)+utmp2(2,1)*hpk(i,n)
+                hxk(i,n) = utmp2(1,1)*hxk(i,n) + utmp2(2,1)*hpk(i,n)
              end do
 !$OMP end do
 !$OMP do
              do i=n1,n2
-                gk(i,n) = -c1*( hxk(i,n) &
-                     -W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)) )
+                gk(i,n) = -hxk(i,n) &
+                     +W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n))
              end do
 !$OMP end do
 !$OMP end parallel
 
              call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
 
-          end do
+          end do ! n
 
-          call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watch(ct0,et0) ; ctt(3)=ctt(3)+ct0-ct1 ; ett(3)=ett(3)+et0-et1
+          call watchb( ttmp, timecg(:,3) )
 
           do n=1,nn
              m=n+ns-1
@@ -713,13 +694,15 @@ CONTAINS
              end if
           end do
 
-          call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
+          call watchb( ttmp, timecg(:,2) )
 
        end do ! icg
 
        esp(ns:ne)=E(1:nn)
 
     end do  ! band-loop
+
+    call watchb( ttmp )
 
     deallocate( utmp3 )
     deallocate( btmp2,utmp2  )
@@ -730,7 +713,11 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
-!    if ( disp_switch_parallel ) then
+!    call watchb( ttmp, timecg(:,6) )
+!    call watchb( ttmp_cg, timecg(:,7) )
+
+!    call check_disp_switch( disp, 0 )
+!    if ( disp ) then
 !       write(*,*) "time(hamil_kin)",ctt_hamil(1),ett_hamil(1)
 !       write(*,*) "time(hamil_loc)",ctt_hamil(2),ett_hamil(2)
 !       write(*,*) "time(hamil_nlc)",ctt_hamil(3),ett_hamil(3)
@@ -740,9 +727,11 @@ CONTAINS
 !       write(*,*) "time(com_cg  )",ctt(3),ett(3)
 !       write(*,*) "time(pc_cg   )",ctt(4),ett(4)
 !       write(*,*) "iswitch_gs=",iswitch_gs
+!       call write_watchb( timecg, 7, timecg_indx )
 !    end if
 
   END SUBROUTINE conjugate_gradient_1
+
 #endif
 
   SUBROUTINE get_time_min( n, t_in, t_min )

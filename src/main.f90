@@ -36,6 +36,7 @@ PROGRAM Real_Space_DFT
   real(8) :: Etot, Ehwf
   integer :: info_level=0
   character(32) :: lattice_index
+  integer :: nloop
 
 ! --- start MPI ---
 
@@ -267,7 +268,9 @@ PROGRAM Real_Space_DFT
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
-     call test_hpsi2( 10 )
+     nloop=10
+     call IOTools_readIntegerKeyword( "NLOOP", nloop )
+     call test_hpsi2( nloop )
      goto 900
   end if
 
