@@ -206,6 +206,7 @@ CONTAINS
        allocate( knml(3,3,1:2,Nelement_PP) ) ; knml=0.0d0
     end if
     if ( max_psgrd==0 .or. max_psorb==0 ) then
+       if( .not. allocated(Mr) ) then ! MIZUHO-IR for cellopt
        allocate( Mr(Nelement_PP)   ) ; Mr(:)=0
        allocate( norb(Nelement_PP) ) ; norb(:)=0
        allocate( nlf(Nelement_PP)   ) ; nlf(:)=0
@@ -227,6 +228,7 @@ CONTAINS
        allocate( viod(n_grd,n_orb,Nelement_PP) ) ; viod(:,:,:)=0.d0
        allocate( Rcloc(Nelement_PP) ) ; Rcloc(:)=0.0d0
        allocate( rabr2(n_grd,Nelement_PP) ) ; rabr2(:,:)=0.d0
+       end if ! MIZUHO-IR for cellopt
        max_psgrd=n_grd
        max_psorb=n_orb
        return

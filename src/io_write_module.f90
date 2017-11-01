@@ -104,8 +104,11 @@ CONTAINS
     irc(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     ids(0:np_grid-1)=3*id_grid(0:np_grid-1)
 
-    call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer, &
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
          LL2,irc,ids,mpi_integer,comm_grid,ierr)
+!!$    call mpi_allgatherv(LL2(1,n1),irc(myrank_g),mpi_integer, &
+!!$         LL2,irc,ids,mpi_integer,comm_grid,ierr)
 
     deallocate( ids, irc )
 

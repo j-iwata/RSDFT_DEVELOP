@@ -101,11 +101,17 @@ CONTAINS
     NBAND_BLK = NBLK
     ncycle    = (MB-1)/NBAND_BLK+1
 
-    call mpi_allgatherv(unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN &
-          ,unk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         unk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+!!$    call mpi_allgatherv(unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN, &
+!!$         unk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
     if ( iflag_hunk >= 1 ) then
-       call mpi_allgatherv(hunk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN &
-            ,hunk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+       ! modified by MIZUHO-IR, inplace
+       call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            hunk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+!!$       call mpi_allgatherv(hunk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN, &
+!!$            hunk(ML_0,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
     end if
 
     do k1=1,ncycle

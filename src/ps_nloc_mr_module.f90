@@ -60,6 +60,7 @@ CONTAINS
     integer :: ab1,ab2,ab3,a1,a2,l1,l2
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
+    include 'mpif.h'
 
     Mlma=0
     do i=1,Natom
@@ -325,8 +326,11 @@ CONTAINS
           end do
        end do
     end do
-    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical &
-                      ,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+!!$    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical, &
+!!$         lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
 
     call watch(ctt(1),ett(1))
 

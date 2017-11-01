@@ -214,8 +214,11 @@ CONTAINS
        if ( mod(imix,2) == 0 ) then
           call normalize_density
           m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
-          call mpi_allgather &
-               (rho(ML_0,MSP_0),m,mpi_real8,rho,m,mpi_real8,comm_spin,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               rho,m,mpi_real8,comm_spin,ierr)
+!!$          call mpi_allgather(rho(ML_0,MSP_0),m,mpi_real8,&
+!!$               rho,m,mpi_real8,comm_spin,ierr)
           call calc_hartree(ML_0,ML_1,MSP,rho)
           call calc_xc
           do s=MSP_0,MSP_1

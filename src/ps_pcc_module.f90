@@ -28,6 +28,7 @@ CONTAINS
 
     call write_border( 80, " init_ps_pcc(start)" )
 
+    if( allocated(flag_pcc) ) deallocate(flag_pcc) ! MIZUHO-IR for cellopt
     allocate( flag_pcc(Nelement) )
     flag_pcc(:) = .false.
     flag_pcc_0  = .false.

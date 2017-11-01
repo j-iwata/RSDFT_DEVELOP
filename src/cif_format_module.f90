@@ -8,12 +8,19 @@ MODULE cif_format_module
   PUBLIC :: check_cif_format
   PUBLIC :: read_atom_cif
 
+  ! modified by MIZUHO-IR, string array
   character(30),parameter :: keyword(11)=(/ &
-       "_cell_length_a"   , "_cell_length_b"  , "_cell_length_c", &
-       "_cell_angle_alpha", "_cell_angle_beta", "_cell_angle_gamma", &
+       "_cell_length_a            ", &
+       "_cell_length_b            ", &
+       "_cell_length_c            ", &
+       "_cell_angle_alpha         ", &
+       "_cell_angle_beta          ", &
+       "_cell_angle_gamma         ", &
        "_symmetry_equiv_pos_as_xyz", &
-       "_atom_site_label", &
-       "_atom_site_fract_x","_atom_site_fract_y","_atom_site_fract_z" /)
+       "_atom_site_label          ", &
+       "_atom_site_fract_x        ", &
+       "_atom_site_fract_y        ", &
+       "_atom_site_fract_z        " /)
 
 CONTAINS
 

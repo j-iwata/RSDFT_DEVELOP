@@ -55,7 +55,11 @@ CONTAINS
     NBAND_BLK=NBLK
     ncycle=(MB-1)/NBAND_BLK+1
 
-    call MPI_ALLGATHERV( unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN,unk(ML_0,1,k,s),ir,id,TYPE_MAIN,COMM_BAND,ierr )
+    ! modified by MIZUHO-IR, inplace
+    call MPI_ALLGATHERV( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         unk(ML_0,1,k,s),ir,id,TYPE_MAIN,COMM_BAND,ierr )
+!!$    call MPI_ALLGATHERV( unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN,&
+!!$         unk(ML_0,1,k,s),ir,id,TYPE_MAIN,COMM_BAND,ierr )
     do k1=1,ncycle
       irank_b = mod(k1-1,np_band)
 

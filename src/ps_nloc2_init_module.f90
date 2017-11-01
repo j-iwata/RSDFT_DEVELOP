@@ -239,7 +239,9 @@ CONTAINS
     end do
 
     NRc=size( viod, 1 )
+    if( allocated(dviod) ) deallocate(dviod) ! MIZUHO-IR for cellopt
     allocate( dviod(NRc,lm,Nelement_) ) ; dviod=0.d0
+    if( allocated(dvrad) ) deallocate(dvrad) ! MIZUHO-IR for cellopt
     allocate( dvrad(NRc,lm,Nelement_) ) ; dvrad=0.d0
 
     do ik=1,Nelement_

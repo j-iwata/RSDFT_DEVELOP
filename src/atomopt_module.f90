@@ -23,6 +23,21 @@ MODULE atomopt_module
   use ps_prepNzqr_g_module, only: prepNzqr
   use vdw_grimme_module
   use efield_module
+  !--- begin MIZUHO-IR for cellopt
+  use aa_module, only: ax, aa, Va
+  use stress_module, only: calc_stress
+  use rgrid_module, only: Ngrid,Hgrid,Igrid,dV,Init_Rgrid,InitParallel_Rgrid
+  use ggrid_module, only: Init_Ggrid,InitParallel_Ggrid,Gcut
+  use kinetic_variables, only: Md, ggg
+  use bz_module, only: kbb,Nbzsm,generate_bz
+  use kinetic_module, only: init_kinetic
+  use ps_local_module, only: init_ps_local
+  use ps_pcc_module, only: init_ps_pcc
+  use ps_nloc_initiate_module, only: ps_nloc_initiate
+  use pseudopot_module, only: read_pseudopot
+  use lattice_module, only: lattice, backup_aa_lattice
+  use aa_module, only: init_aa
+  !--- end MIZUHO-IR for cellopt
 
   implicit none
 
@@ -40,6 +55,8 @@ MODULE atomopt_module
   integer,parameter :: unit_strlog = 297
   integer,parameter :: unit197 = 197
   integer,parameter :: unit97 = 97
+  real(8), parameter :: M_PI       = 3.14159265358979323846d0
+  real(8), parameter :: M_2PI      = M_PI*2.0d0
 
 CONTAINS
 
@@ -126,11 +143,15 @@ CONTAINS
   END SUBROUTINE send_atomopt
 
 
-  SUBROUTINE atomopt(iswitch_opt,disp_switch)
+  SUBROUTINE atomopt(iswitch_opt,iswitch_latopt,disp_switch)
+
     implicit none
     integer,intent(IN) :: iswitch_opt
+    integer,intent(IN) :: iswitch_latopt ! MIZUHO-IR for cellopt
     logical,intent(INOUT) :: disp_switch
-    integer,parameter :: max_nhist=100000
+
+    integer,parameter :: max_nhist=10000 ! modified by MIZUHO-IR, stack
+!!$    integer,parameter :: max_nhist=100000
     integer :: SCF_hist(max_nhist),ICY_hist(max_nhist)
     integer :: LIN_hist(max_nhist)
     integer :: a,nhist,most0,ncycl0,ifar,ierr,icy,nhist0
@@ -147,6 +168,11 @@ CONTAINS
     real(8),allocatable :: Force(:,:),aa_atom_0(:,:)
     real(8),allocatable :: gi(:,:),hi(:,:)
     character(22) :: loop_info
+    !--- begin MIZUHO-IR for cellopt
+    real(8) :: stress(3,3)
+    integer :: dim_opt
+    type(lattice) :: aa_obj
+    !--- end MIZUHO-IR for cellopt
 
     if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
 
@@ -158,11 +184,18 @@ CONTAINS
     safety = 0.01d0
     pi     = acos(-1.d0)
 
+    ! MIZUHO-IR for cellopt
+    if( iswitch_latopt >= 1 ) then
+       dim_opt = Natom + 3
+    else
+       dim_opt = Natom
+    end if
+
 !- allocate ---------------------------------------
-    allocate( Force(3,Natom)    ) ; Force=0.d0
-    allocate( aa_atom_0(3,Natom) ) ; aa_atom_0=0.d0
-    allocate( gi(3,Natom)       ) ; gi=0.d0
-    allocate( hi(3,Natom)       ) ; hi=0.d0
+    allocate( Force(3,dim_opt)    ) ; Force=0.d0
+    allocate( aa_atom_0(3,dim_opt) ) ; aa_atom_0=0.d0
+    allocate( gi(3,dim_opt)       ) ; gi=0.d0
+    allocate( hi(3,dim_opt)       ) ; hi=0.d0
 !--------------------------------------------------
 
     if ( iswitch_opt < 2  ) then
@@ -171,12 +204,24 @@ CONTAINS
           call calc_total_energy( .false., Etot )
           if ( disp_switch_loc ) write(*,*) "Etot(har)=",Etot
        end if
-
        call calc_force( Natom, Force )
+       ! MIZUHO-IR for cellopt
+       if( .not. iswitch_opt >= 1 ) then
+          Force(:,1:Natom) = 0.0d0
+       end if
+       ! MIZUHO-IR for cellopt
+       if( iswitch_latopt >= 1 ) then
+          call calc_total_energy( .false., Etot )
+          call calc_stress( stress )
+
+          Force(:,Natom+1) = Va/M_2PI*matmul( stress(:,:), bb(:,1) )
+          Force(:,Natom+2) = Va/M_2PI*matmul( stress(:,:), bb(:,2) )
+          Force(:,Natom+3) = Va/M_2PI*matmul( stress(:,:), bb(:,3) )
+       end if
 
        Fmax=0.d0
-       do a=1,Natom
-          ss=Force(1,a)**2+Force(2,a)**2+Force(3,a)**2
+       do a=1,dim_opt
+          ss = sum(Force(:,a)**2)
           Fmax=max(Fmax,ss)
        end do
        Fmax=sqrt(Fmax)
@@ -214,9 +259,9 @@ CONTAINS
           read(1) ncycl0,most0,ifar
           read(1) Etot,dif,alpha1_0,okstep0
           read(1) al(1:3),all(1:3),ar(1:3),arr(1:3)
-          read(1) Force(1:3,1:Natom)
-          read(1) hi(1:3,1:Natom)
-          read(1) aa_atom(1:3,1:Natom)
+          read(1) Force(:,:)
+          read(1) hi(:,:)
+          read(1) aa_atom(:,:)
           close(1)
        end if
        call mpi_bcast(ncycl0,1,mpi_integer,0,mpi_comm_world,ierr)
@@ -230,13 +275,13 @@ CONTAINS
        call mpi_bcast(all,3,mpi_real8,0,mpi_comm_world,ierr)
        call mpi_bcast(ar,3,mpi_real8,0,mpi_comm_world,ierr)
        call mpi_bcast(arr,3,mpi_real8,0,mpi_comm_world,ierr)
-       call mpi_bcast(Force,3*Natom,mpi_real8,0,mpi_comm_world,ierr)
-       call mpi_bcast(hi,3*Natom,mpi_real8,0,mpi_comm_world,ierr)
+       call mpi_bcast(Force,3*dim_opt,mpi_real8,0,mpi_comm_world,ierr)
+       call mpi_bcast(hi,3*dim_opt,mpi_real8,0,mpi_comm_world,ierr)
        call mpi_bcast(aa_atom,3*Natom,mpi_real8,0,mpi_comm_world,ierr)
 
        Fmax=0.d0
-       do a=1,Natom
-          ss=Force(1,a)**2+Force(2,a)**2+Force(3,a)**2
+       do a=1,dim_opt
+          ss = sum(Force(:,a)**2)
           Fmax=max(Fmax,ss)
        end do
        Fmax=sqrt(Fmax)
@@ -275,7 +320,10 @@ CONTAINS
 !
 
        aa_atom_0(1:3,1:Natom) = aa_atom(1:3,1:Natom)
-
+       ! MIZUHO-IR for cellopt
+       if( iswitch_latopt >= 1 ) then
+          aa_atom_0(1:3,Natom+1:Natom+3) = aa(1:3,1:3)
+       end if
 !
 ! gi ---> gradient ( =-grad(Etot)=Force )
 ! hi ---> search direction
@@ -298,11 +346,11 @@ CONTAINS
 
        end if
 
-       gi(1:3,1:Natom)=Force(1:3,1:Natom)
+       gi(:,:)=Force(:,:)
 
        if ( iswitch_opt >= 2 .and. icy == ncycl0 ) then
        else
-          hi(1:3,1:Natom)=gi(1:3,1:Natom)+gamma*hi(1:3,1:Natom)
+          hi(:,:)=gi(:,:)+gamma*hi(:,:)
        end if
 
        Etot_save = Etot
@@ -319,8 +367,8 @@ CONTAINS
 !chstep
        tmp    = 0.d0
        amax   = 1
-       do a=1,Natom
-          ss=hi(1,a)*hi(1,a)+hi(2,a)*hi(2,a)+hi(3,a)*hi(3,a)
+       do a=1,dim_opt
+          ss = sum(hi(:,a)*hi(:,a))
           if ( ss > tmp ) then
              tmp =ss
              amax=a
@@ -359,7 +407,7 @@ CONTAINS
        else
           if ( disp_switch_loc ) write(*,*) 'sign of hi is changed.'
           signh=-1.d0
-          hi(1:3,1:Natom)=-hi(1:3,1:Natom)
+          hi(:,:)=-hi(:,:)
           grad0=-grad0
        end if
 
@@ -406,6 +454,12 @@ CONTAINS
              do a=Natom-5,Natom
                 write(*,'(1x,i4,3f15.5)') a,aa_atom(:,a)
              end do
+          end if
+          ! MIZUHO-IR for cellopt
+          if( iswitch_latopt >= 1 ) then
+             write(*,'(1x,a4,3f15.5)') "A",aa(:,1)
+             write(*,'(1x,a4,3f15.5)') "B",aa(:,2)
+             write(*,'(1x,a4,3f15.5)') "C",aa(:,3)
           end if
           write(*,*) "Etot =",Etot
           write(*,*) "grad =",grad0
@@ -476,8 +530,8 @@ CONTAINS
 !chstep
                 tmp=0.d0
                 amax=1
-                do a=1,Natom
-                   ss=hi(1,a)*hi(1,a)+hi(2,a)*hi(2,a)+hi(3,a)*hi(3,a)
+                do a=1,dim_opt
+                   ss = sum(hi(:,a)*hi(:,a))
                    if ( ss > tmp ) then
                       tmp=ss
                       amax=a
@@ -527,8 +581,8 @@ CONTAINS
 !chstep
                 tmp=0.d0
                 amax=1
-                do a=1,Natom
-                   ss=hi(1,a)*hi(1,a)+hi(2,a)*hi(2,a)+hi(3,a)*hi(3,a)
+                do a=1,dim_opt
+                   ss = sum(hi(:,a)*hi(:,a))
                    if ( ss>tmp ) then
                       tmp=ss
                       amax=a
@@ -587,9 +641,9 @@ CONTAINS
              write(1) icy,itlin,ifar
              write(1) Etot_save,dif0,alpha1_0,okstep0
              write(1) al,all,ar,arr
-             write(1) gi(1:3,1:Natom)
-             write(1) hi(1:3,1:Natom)
-             write(1) aa_atom_0(1:3,1:Natom)
+             write(1) gi(:,:)
+             write(1) hi(:,:)
+             write(1) aa_atom_0(:,:)
              close(1)
           end if
 
@@ -600,14 +654,16 @@ CONTAINS
 
              c0=alpha1/(2.d0*pi)
              do a=1,Natom
-                c1=c0*hi(1,a)
-                c2=c0*hi(2,a)
-                c3=c0*hi(3,a)
-                aa_atom(1,a)=aa_atom_0(1,a)+bb(1,1)*c1+bb(2,1)*c2+bb(3,1)*c3
-                aa_atom(2,a)=aa_atom_0(2,a)+bb(1,2)*c1+bb(2,2)*c2+bb(3,2)*c3
-                aa_atom(3,a)=aa_atom_0(3,a)+bb(1,3)*c1+bb(2,3)*c2+bb(3,3)*c3
+                aa_atom(:,a) = aa_atom_0(:,a) &
+                     + alpha1/M_2PI*matmul( hi(:,a),bb(:,:) )
              end do
-
+             ! MIZUHO-IR for cellopt
+             if( iswitch_latopt >= 1 ) then
+                aa(:,1) = aa_atom_0(:,Natom+1) + alpha1*hi(:,Natom+1)
+                aa(:,2) = aa_atom_0(:,Natom+2) + alpha1*hi(:,Natom+2)
+                aa(:,3) = aa_atom_0(:,Natom+3) + alpha1*hi(:,Natom+3)
+             end if
+             
           else if ( SYStype == 1 ) then
 
              do a=1,Natom
@@ -638,6 +694,12 @@ CONTAINS
                         ki_atom(a),aa_atom(:,a),md_atom(a)
                 end do
              end if
+             ! MIZUHO-IR for cellopt
+             if( iswitch_latopt >= 1 ) then
+                write(*,'(1x,a4,3f15.5)') "A",aa(:,1)
+                write(*,'(1x,a4,3f15.5)') "B",aa(:,2)
+                write(*,'(1x,a4,3f15.5)') "C",aa(:,3)
+             end if
           end if
 
           call write_atomic_coordinates_log(97,icy,itlin,0,iswitch_opt)
@@ -648,6 +710,37 @@ CONTAINS
 
           select case(SYStype)
           case default
+             !--- begin MIZUHO-IR for cellopt
+             if( iswitch_latopt >= 1 ) then
+                ! update Va, volume of the cell
+                ax = 1.0d0
+                call init_aa( aa_obj )
+                ! update aa_backup trough aa_obj
+                call backup_aa_lattice( aa_obj )
+
+                ! update Hgrid, grid spacing Hgrid.
+                ! update dV, volume of a grid element.
+                call Init_Rgrid( SYStype, Md, 2 )
+
+                ! update bb, reciprocal vectors.
+                call construct_bb(aa)
+                ! update MGL and GG, reciprocal grid.
+                call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
+
+                ! update kbb, sampling K points
+                call generate_bz
+
+                ! update MG_0 and MG_1, index of G grid.
+                call InitParallel_Ggrid( nprocs, myrank )
+                ! update ggg, zcoef_kin, etc, FDM coefficients.
+                call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
+
+                ! update vqlg using updated Va.
+                call init_ps_local
+                ! update cdcg using updated Va.
+                call init_ps_pcc
+             end if
+             !--- end begin MIZUHO-IR for cellopt.
 
              call calc_eion
 
@@ -655,6 +748,14 @@ CONTAINS
              call construct_ps_local
              call construct_ps_pcc
              call destruct_strfac
+
+             !--- begin MIZUHO-IR for cellopt
+             if( iswitch_latopt >= 1 ) then
+                ! re-read viod and re-construct them using updated Va
+                call read_pseudopot( Nelement, myrank )
+                call ps_nloc_initiate( Gcut )
+             end if
+             !--- end begin MIZUHO-IR for cellopt
 
              select case(pselect)
              case(2)
@@ -696,6 +797,17 @@ CONTAINS
           iter_final=ierr
 
           call calc_force( Natom, Force )
+          ! MIZUHO-IR for cellopt
+          if( .not. iswitch_opt >= 1 ) then
+             Force(:,1:Natom) = 0.0d0
+          end if
+          ! MIZUHO-IR for cellopt
+          if( iswitch_latopt >= 1 ) then
+             call calc_stress( stress )
+             Force(:,Natom+1) = Va/M_2PI*matmul( stress(:,:), bb(:,1) )
+             Force(:,Natom+2) = Va/M_2PI*matmul( stress(:,:), bb(:,2) )
+             Force(:,Natom+3) = Va/M_2PI*matmul( stress(:,:), bb(:,3) )
+          end if
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')
@@ -714,13 +826,19 @@ CONTAINS
                    write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
                 end do
              end if
+             ! MIZUHO-IR for cellopt
+             if( iswitch_latopt >= 1 ) then
+                write(*,'(1x,a4,3f15.5)') "A",force(:,Natom+1)
+                write(*,'(1x,a4,3f15.5)') "B",force(:,Natom+2)
+                write(*,'(1x,a4,3f15.5)') "C",force(:,Natom+3)
+             end if
           end if
 
-          grad=sum( Force(1:3,1:Natom)*hi(1:3,1:Natom) )
+          grad=sum( Force(:,:)*hi(:,:) )
 
           Fmax=0.d0
-          do a=1,Natom
-             ss=Force(1,a)**2+Force(2,a)**2+Force(3,a)**2
+          do a=1,dim_opt
+             ss = sum(Force(:,a)**2)
              Fmax=max(Fmax,ss)
           end do
           Fmax=sqrt( Fmax )
@@ -825,7 +943,7 @@ CONTAINS
 
        end do linmin
 
-       hi(1:3,1:Natom) = signh*hi(1:3,1:Natom)
+       hi(:,:) = signh*hi(:,:)
 
        most0=1
 

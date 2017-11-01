@@ -216,13 +216,17 @@ CONTAINS
     id_band(:)=id_band(:)*mm
     do s=MS_0_WF,MS_1_WF
     do k=MK_0_WF,MK_1_WF
-       call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
-            ,TYPE_MAIN,unk(ML_0_WF,1,k,s),ir_band,id_band &
-            ,TYPE_MAIN,comm_band,ierr )
+       ! modified by MIZUHO-IR, inplace
+       call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
+!!$       call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b),TYPE_MAIN,&
+!!$            unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
        if ( allocated(hunk) ) then
-          call mpi_allgatherv( hunk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
-               ,TYPE_MAIN,hunk(ML_0_WF,1,k,s),ir_band,id_band &
-               ,TYPE_MAIN,comm_band,ierr )
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               hunk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
+!!$          call mpi_allgatherv( hunk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b),TYPE_MAIN, &
+!!$               hunk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
        end if
     end do
     end do
@@ -266,9 +270,11 @@ CONTAINS
     mm=ML_1_WF-ML_0_WF+1
     ir_band(:)=ir_band(:)*mm
     id_band(:)=id_band(:)*mm
-    call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b) &
-            ,TYPE_MAIN,unk(ML_0_WF,1,k,s),ir_band,id_band &
-            ,TYPE_MAIN,comm_band,ierr )
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
+!!$    call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b),TYPE_MAIN, &
+!!$         unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
   END SUBROUTINE gather_b_wf

@@ -64,11 +64,18 @@ CONTAINS
     id(0:np_band-1) = id_band(0:np_band-1)*ML0
     ir(0:np_band-1) = ir_band(0:np_band-1)*ML0
 
-    call mpi_allgatherv(unk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN &
-                       ,unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+!!$    call mpi_allgatherv(unk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN, &
+!!$         unk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+
     if ( iflag_hunk >= 1 ) then
-       call mpi_allgatherv(hunk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN &
-                          ,hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+       ! modified by MIZUHO-IR, inplace
+       call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
+!!$       call mpi_allgatherv(hunk(n1,MB_0_WF,k,s),ir(myrank_b),TYPE_MAIN, &
+!!$            hunk(n1,1,k,s),ir,id,TYPE_MAIN,comm_band,ierr)
     end if
 
     deallocate( ir,id )

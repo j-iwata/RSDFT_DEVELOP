@@ -17,6 +17,7 @@ PROGRAM Real_Space_DFT
   use fftw_module
   use vdw_grimme_module
   use efield_module
+  use stress_module, only: test_stress ! MIZUHO-IR for cellopt
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -408,19 +409,32 @@ PROGRAM Real_Space_DFT
 !
 ! --- Force test, atomopt, CPMD ---
 !
-
-  select case( iswitch_opt )
-  case( -1 )
-
+  ! begin MIZUHO-IR for cellopt
+  if( iswitch_opt == -1 ) then
      call test_force(SYStype)
+  end if
 
-  case( 1,2 ) ! --- atomopt ---
+  if( iswitch_latopt == -1 ) then
+     call test_stress(SYStype)
+  end if
 
-     call atomopt(iswitch_opt,disp_switch)
-
+  if( iswitch_opt >= 1 .or. iswitch_latopt >= 1 ) then
+     call atomopt(iswitch_opt,iswitch_latopt,disp_switch)
      call calc_total_energy( recalc_esp, Etot, 6 )
-
-  end select
+  end if
+!!$  select case( iswitch_opt )
+!!$  case( -1 )
+!!$
+!!$     call test_force(SYStype)
+!!$
+!!$  case( 1,2 ) ! --- atomopt ---
+!!$
+!!$     call atomopt(iswitch_opt,disp_switch)
+!!$
+!!$     call calc_total_energy( recalc_esp, Etot, 6 )
+!!$
+!!$  end select
+  ! end MIZUHO-IR for cellopt
 
 !
 ! --- TDDFT ---

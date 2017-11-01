@@ -101,6 +101,7 @@ CONTAINS
     integer,allocatable :: indx(:)
     real(8) :: s1,s2
     real(8),allocatable :: g2(:)
+    if( allocated(MGL) ) deallocate(MGL) ! MIZUHO-IR for cellopt
     allocate( MGL(NGgrid(0))  ) ; MGL=0
     allocate( indx(NGgrid(0)) ) ; indx=0
     allocate( g2(NGgrid(0))   ) ; g2=0.d0
@@ -118,6 +119,7 @@ CONTAINS
     end do
     end do
     end do
+
     call indexx(NGgrid(0),g2,indx)
     s1=0.d0
     n=1
@@ -131,6 +133,7 @@ CONTAINS
        MGL(i2)=n
     end do
     NMGL=n
+    if( allocated(GG) ) deallocate(GG) ! MIZUHO-IR for cellopt
     allocate( GG(NMGL) ) ; GG=0.d0
     s1=0.d0
     n=1
@@ -299,6 +302,8 @@ CONTAINS
     integer :: i,n
     integer,allocatable :: np(:)
     call write_border( 80, " InitParallel_Ggrid(start)" )
+    if( allocated( ircntg ) ) deallocate( ircntg ) ! MIZUHO-IR for cellopt
+    if( allocated( idispg ) ) deallocate( idispg ) ! MIZUHO-IR for cellopt
     allocate( ircntg(0:nprocs-1) ) ; ircntg=0
     allocate( idispg(0:nprocs-1) ) ; idispg=0
     allocate( np(0:nprocs-1)     ) ; np=0
@@ -322,8 +327,11 @@ CONTAINS
     complex(8),intent(INOUT) :: f(*)
     include 'mpif.h'
     integer :: ierr
-    call mpi_allgatherv(f(MG_0),MG_1-MG_0+1,MPI_COMPLEX16 &
-         ,f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
+!!$    call mpi_allgatherv(f(MG_0),MG_1-MG_0+1,MPI_COMPLEX16, &
+!!$         f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
   END SUBROUTINE allgatherv_Ggrid
 
 

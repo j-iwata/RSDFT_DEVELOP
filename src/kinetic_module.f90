@@ -30,7 +30,7 @@ CONTAINS
     real(8) :: a1,a2,a3,H1,H2,H3
     complex(8),parameter :: zi=(0.d0,1.d0)
     real(8),allocatable :: nab(:),lap(:)
-    logical :: first_time = .true.
+    logical, save :: first_time = .true.
     logical :: disp_sw
 
     call write_border( 80, " init_kinetic(start)" )
@@ -43,10 +43,13 @@ CONTAINS
     disp_sw=.false.
     if ( present(disp_switch) ) disp_sw=disp_switch
 
-    if ( first_time ) then
 
+    first_time = .true.    ! MIZUHO-IR for cellopt
+    if ( first_time ) then
        first_time = .false.
 
+       if ( allocated(coef_lap)  ) deallocate(coef_lap) ! MIZUHO-IR for cellopt
+       if ( allocated(coef_nab)  ) deallocate(coef_nab) ! MIZUHO-IR for cellopt
        allocate( coef_lap(3,Md) ) ; coef_lap=0.0d0
        allocate( coef_nab(3,Md) ) ; coef_nab=0.0d0
 
@@ -110,6 +113,7 @@ CONTAINS
 
        call allocate_wk( Igrid, MBD )
 
+       if ( allocated(coef_kin)  ) deallocate(coef_kin) ! MIZUHO-IR for cellopt
        allocate( coef_kin(Md) ) ; coef_kin=0.0d0
        coef_kin(1:Md) = coef_lap(1,1:Md)
 
@@ -160,6 +164,7 @@ CONTAINS
     a1=Igrid(1,1)-Md ; b1=Igrid(2,1)+Md
     a2=Igrid(1,2)-Md ; b2=Igrid(2,2)+Md
     a3=Igrid(1,3)-Md ; b3=Igrid(2,3)+Md
+    if( allocated(wk) ) deallocate(wk) ! MIZUHO-IR for cellopt
     allocate( wk(a1:b1,a2:b2,a3:b3,MBD) )
     wk=(0.0d0,0.0d0)
   END SUBROUTINE allocate_wk

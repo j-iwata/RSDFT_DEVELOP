@@ -262,18 +262,28 @@ CONTAINS
 #endif
 
        do s=MSP_0,MSP_1
-          call mpi_allgather(pxyz(1,1,myrank_k,s),3*MB,MPI_REAL8 &
-               ,pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
+!!$          call mpi_allgather(pxyz(1,1,myrank_k,s),3*MB,MPI_REAL8, &
+!!$               pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
        end do ! s
-       call mpi_allgather(pxyz(1,1,0,MSP_0),3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8 &
-            ,pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
+       ! modified by MIZUHO-IR, inplace
+       call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
+!!$       call mpi_allgather(pxyz(1,1,0,MSP_0),3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8, &
+!!$            pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
 
        do s=1,MSP
           call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
        do s=1,MSP
           esp0_tmp(:,myrank_k,s)=esp(:,MBZ_0,s)
-          call mpi_allgather(esp0_tmp(1,myrank_k,s),MB,mpi_real8,esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+!!$          call mpi_allgather(esp0_tmp(1,myrank_k,s),MB,mpi_real8, &
+!!$          esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
 
        do ibz=0,np_bzsm-1

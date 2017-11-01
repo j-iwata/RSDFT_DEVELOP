@@ -58,7 +58,9 @@ CONTAINS
     Nelement_PP = Nelement
     Nelement_   = Nelement
 
+    if( allocated(ippform) ) deallocate(ippform)  ! MIZUHO-IR for cellopt
     allocate( ippform(Nelement) ) ; ippform=0
+    if( allocated(file_ps) ) deallocate(file_ps)  ! MIZUHO-IR for cellopt
     allocate( file_ps(Nelement) ) ; file_ps=""
 
     call read_ppname_pseudopot
@@ -71,6 +73,7 @@ CONTAINS
        stop "invalid pselect(stop@read_param_pseudopot)"
     end if
 
+    if( allocated(ps) ) deallocate(ps)  ! MIZUHO-IR for cellopt
     allocate( ps(Nelement) )
 
     if ( rank == 0 ) then

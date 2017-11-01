@@ -183,8 +183,11 @@ CONTAINS
        rrrr(m1:m2,3) = rtmp(m1:m2)*grad16%gz(m1:m2)
 
        do i=1,3
-          call mpi_allgatherv(rrrr(m1,i),ir_grid(myrank_g),mpi_real16 &
-               ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
+!!$          call mpi_allgatherv(rrrr(m1,i),ir_grid(myrank_g),mpi_real16, &
+!!$               rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
        end do
 
        select case( SYStype )
@@ -411,8 +414,11 @@ CONTAINS
     rrrr(m1:m2,3) = rtmp(m1:m2)*grad16%gz(m1:m2)
 
     do i=1,3
-       call mpi_allgatherv(rrrr(m1,i),ir_grid(myrank_g),mpi_real16 &
-            ,rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
+       ! modified by MIZUHO-IR, inplace
+       call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
+!!$       call mpi_allgatherv(rrrr(m1,i),ir_grid(myrank_g),mpi_real16, &
+!!$            rrrr(1,i),ir_grid,id_grid,mpi_real16,comm_grid,ierr)
     end do
 
     select case( SYStype )

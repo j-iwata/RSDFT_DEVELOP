@@ -31,7 +31,8 @@ CONTAINS
   SUBROUTINE allocate_ps_nloc2(MB_d)
     integer,intent(IN) :: MB_d
     integer :: n
-    n=maxval( lma_nsend )*4*MB_d
+    n=maxval( lma_nsend )*10*MB_d ! MIZUHO-IR for stress
+!!$    n=maxval( lma_nsend )*4*MB_d
     if ( allocated(rbufnl) ) deallocate(rbufnl)
     if ( allocated(sbufnl) ) deallocate(sbufnl)
     if ( allocated(uVunk)  ) deallocate(uVunk)

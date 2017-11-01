@@ -828,8 +828,10 @@ CONTAINS
   SUBROUTINE timer_reset_hartree_mol
     implicit none
     time_ht(:,:)=0.0d0
-    indx_ht(1:11) = (/ "init","bc1","bc2","bc2-2" &
-                      ,"cg1" ,"cg-bc","cg2","cg3","cg4","cg5","tot" /)
+    ! modified by MIZUHO-IR, string array
+    indx_ht(1:11) = (/ "init ","bc1  ","bc2  ","bc2-2", &
+                       "cg1  ","cg-bc","cg2  ","cg3  ", &
+                       "cg4  ","cg5  ","tot  " /)
     iter_count_ht=0
     iter_count_ht(1)=1000000
 !    err_chk_ht=0.0d0

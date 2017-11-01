@@ -303,6 +303,7 @@ CONTAINS
        psp%cdd(:)=0.0d0
        do l=1,ngauss
           do i=1,ndlc
+             if( c0(l)*rr(i)**2 > 700.0d0 ) cycle ! modified by MIZUHO-IR, underflow
              psp%cdd(i+1)=psp%cdd(i+1) &
                   +rr(i)**2*temp*(a0(l)+b0(l)*rr(i)**2)*exp(-c0(l)*rr(i)**2)
           end do

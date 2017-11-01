@@ -24,6 +24,7 @@ MODULE ps_local_module
   PRIVATE
   PUBLIC :: Vion
   PUBLIC :: init_ps_local
+  PUBLIC :: simp ! MIZUHO-IR for stress
   PUBLIC :: construct_ps_local
   PUBLIC :: construct_ps_local_ffte
   real(8),PUBLIC :: const_ps_local
@@ -182,6 +183,7 @@ CONTAINS
     Pi    = acos(-1.d0)
     const = 4.d0*Pi/Vcell
 
+    if( allocated(vqlg) ) deallocate(vqlg) ! MIZUHO-IR for cellopt
     allocate( vqlg(NMGL,MKI)  ) ; vqlg=0.0d0
 
     MMr=maxval(Mr)

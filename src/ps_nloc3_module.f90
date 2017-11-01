@@ -273,6 +273,7 @@ CONTAINS
     integer :: ik,i,j,k,a,L,m,iorb,lma,lma0,lma1
     real(8) :: a1,a2,a3,c1,c2,c3,Gr,x,y,z,pi2
     integer :: k1,kk1,ig,ML1,ML2,ML3,ML,MG
+    include 'mpif.h'
 
     nn1     = idisp(myrank)+1
     nn2     = idisp(myrank)+ircnt(myrank)
@@ -423,8 +424,11 @@ CONTAINS
           call mpi_alltoallv(utmp,ir_grid,id_grid,TYPE_MAIN &
                ,utmp3(nn1,0,myrank_b),icnt,idis,TYPE_MAIN,comm_grid,ierr)
 
-          call mpi_allgather(utmp3(nn1,0,myrank_b),ML0*nprocs_g,TYPE_MAIN &
-               ,utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
+!!$          call mpi_allgather(utmp3(nn1,0,myrank_b),ML0*nprocs_g,TYPE_MAIN, &
+!!$               utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
 
           lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
           do j=0,nprocs_b-1
@@ -536,6 +540,7 @@ CONTAINS
     complex(8),allocatable :: vtmp3(:,:,:)
     complex(8),allocatable :: utmp2(:,:)
 #endif
+    include 'mpif.h'
 
     force2(:,:) = 0.0d0
 
@@ -709,9 +714,11 @@ CONTAINS
           do ir=1,3
              call mpi_alltoallv(utmp2(1,ir),ir_grid,id_grid,TYPE_MAIN &
                   ,wtmp4(nn1,0,myrank_b,ir),icnt,idis,TYPE_MAIN,comm_grid,ierr)
-             call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g, &
-                  TYPE_MAIN,wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN, &
-                  comm_band,ierr)
+             ! modified by MIZUHO-IR, inplace
+             call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+                  wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
+!!$             call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g,TYPE_MAIN, &
+!!$                  wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
              lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
              do j=0,nprocs_b-1
              do i=0,nprocs_g-1

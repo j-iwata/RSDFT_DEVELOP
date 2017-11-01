@@ -1336,8 +1336,11 @@ CONTAINS
     deallocate( rtmp0 )
 
     do i=1,3
-       call MPI_ALLGATHERV( rtmp(m0,i), m1-m0+1, MPI_REAL16, rtmp(1,i) &
-            , ir_grid, id_grid, MPI_REAL16, comm_grid, info )
+       ! modified by MIZUHO-IR, inplace
+       call MPI_ALLGATHERV( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            rtmp(1,i), ir_grid, id_grid, MPI_REAL16, comm_grid, info )
+!!$       call MPI_ALLGATHERV( rtmp(m0,i), m1-m0+1, MPI_REAL16, &
+!!$            rtmp(1,i), ir_grid, id_grid, MPI_REAL16, comm_grid, info )
     end do
 
     allocate( LLL(0:ML1-1,0:ML2-1,0:ML3-1) ) ; LLL=0

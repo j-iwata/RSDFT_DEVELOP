@@ -691,6 +691,7 @@ CONTAINS
        call search_grid(bb,ecut,m1,m2,m3,mg_tot)
        call prep_parallel(mg_tot,nprocs,ir,id)
        mg=ir(myrank)
+
        if ( allocated(LG) ) deallocate( LG )
        allocate( LG(3,mg) )
        call construct_grid(bb,ecut,mg_tot,m1,m2,m3,mg,LG)

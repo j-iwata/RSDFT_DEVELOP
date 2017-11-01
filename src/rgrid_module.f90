@@ -116,8 +116,16 @@ CONTAINS
 
     idisp(myrank) = id_grid(myrank_g)
     ircnt(myrank) = ir_grid(myrank_g)
-    call mpi_allgather(idisp(myrank),1,mpi_integer,idisp,1,mpi_integer,mpi_comm_world,ierr)
-    call mpi_allgather(ircnt(myrank),1,mpi_integer,ircnt,1,mpi_integer,mpi_comm_world,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         idisp,1,mpi_integer,mpi_comm_world,ierr)
+!!$    call mpi_allgather(idisp(myrank),1,mpi_integer,&
+!!$         idisp,1,mpi_integer,mpi_comm_world,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         ircnt,1,mpi_integer,mpi_comm_world,ierr)
+!!$    call mpi_allgather(ircnt(myrank),1,mpi_integer,&
+!!$         ircnt,1,mpi_integer,mpi_comm_world,ierr)
 
     call write_border( 80, " InitParallel_Rgrid(end)" )
 

@@ -22,10 +22,12 @@ MODULE total_energy_module
   PRIVATE
   PUBLIC :: calc_total_energy
   PUBLIC :: calc_with_rhoIN_total_energy
+  PUBLIC :: Ekin,Eion,Enlc,cnst ! MIZUHO-IR for stress
 
   integer :: scf_iter_
 
   real(8) :: Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
+  real(8) :: cnst ! MIZUHO-IR for stress
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
   real(8) :: Eloc_0=0.d0
@@ -59,7 +61,7 @@ CONTAINS
     real(8),intent(INOUT) :: Etot
     integer,optional,intent(IN) :: unit_in
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,unit
-    real(8) :: s0(4),s1(4),uu,cnst
+    real(8) :: s0(4),s1(4),uu
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
     real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_

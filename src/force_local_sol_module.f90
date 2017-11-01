@@ -339,8 +339,11 @@ CONTAINS
 !    call destruct_Ggrid
 
     if ( nprocs <= MI ) then
-       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+       ! modified by MIZUHO-IR, inplace
+       call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+            force,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+!!$       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+!!$                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
     else
        call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
                          ,mpi_sum,mpi_comm_world,ierr)

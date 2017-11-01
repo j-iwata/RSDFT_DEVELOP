@@ -637,14 +637,23 @@ CONTAINS
           if ( present(Vxc) ) then
 
              rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)+rtmp_sr(n1:n2)*gx(n1:n2)
-             call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8 &
-                  ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+             ! modified by MIZUHO-IR, inplace
+             call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+                  rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!!$             call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8, &
+!!$                  rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
              rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)+rtmp_sr(n1:n2)*gy(n1:n2)
-             call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8 &
-                  ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+             ! modified by MIZUHO-IR, inplace
+             call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+                  rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!!$             call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8, &
+!!$                  rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
              rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)+rtmp_sr(n1:n2)*gz(n1:n2)
-             call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8 &
-                  ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+             ! modified by MIZUHO-IR, inplace
+             call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+                  rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!!$             call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8, &
+!!$                  rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
              select case(SYStype)
              case default
@@ -814,14 +823,23 @@ CONTAINS
        if ( present(Vxc) ) then
 
           rrrr(n1:n2,1)=rtmp(n1:n2)*gx(n1:n2)
-          call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!!$          call mpi_allgatherv(rrrr(n1,1),ir_grid(myrank_g),mpi_real8, &
+!!$               rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
           rrrr(n1:n2,2)=rtmp(n1:n2)*gy(n1:n2)
-          call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!!$          call mpi_allgatherv(rrrr(n1,2),ir_grid(myrank_g),mpi_real8, &
+!!$               rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
           rrrr(n1:n2,3)=rtmp(n1:n2)*gz(n1:n2)
-          call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8 &
-               ,rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+          ! modified by MIZUHO-IR, inplace
+          call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+               rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+!!$          call mpi_allgatherv(rrrr(n1,3),ir_grid(myrank_g),mpi_real8, &
+!!$               rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
 
           select case(SYStype)
           case default
@@ -951,8 +969,11 @@ CONTAINS
     allocate( Igrid_tot(2,3,0:np_grid-1) )
     Igrid_tot=0
     Igrid_tot(1:2,1:3,myrank_g)=Igrid(1:2,1:3)
-    call MPI_ALLGATHER(Igrid_tot(1,1,myrank_g),6,MPI_INTEGER &
-         ,Igrid_tot,6,MPI_INTEGER,comm_grid,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call MPI_ALLGATHER( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         Igrid_tot,6,MPI_INTEGER,comm_grid,ierr)
+!!$    call MPI_ALLGATHER(Igrid_tot(1,1,myrank_g),6,MPI_INTEGER, &
+!!$         Igrid_tot,6,MPI_INTEGER,comm_grid,ierr)
     i=0
     do n=0,np_grid-1
        do i3=Igrid_tot(1,3,n),Igrid_tot(2,3,n)

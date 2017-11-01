@@ -9,6 +9,7 @@ MODULE density_module
   use var_sys_parameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
+  use rgrid_module, only: dV ! MIZUHO-IR for cellopt
 
   implicit none
 
@@ -25,7 +26,7 @@ MODULE density_module
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
   integer :: MS_RHO,MS_0_RHO,MS_1_RHO
 
-  real(8) :: Nelectron_RHO,dV_RHO
+  real(8) :: Nelectron_RHO !,dV_RHO ! MIZUHO-IR for cellopt
 
   include 'mpif.h'
 
@@ -76,7 +77,7 @@ CONTAINS
     call write_border( 1, " init_density(start)" )
 
     Nelectron_RHO = Nelectron
-    dV_RHO        = dV
+!!$    dV_RHO        = dV ! MIZUHO-IR for cellopt
 
     ML_RHO   = sum( ir_grid )
     ML_0_RHO = id_grid(myrank_g) + 1
@@ -103,7 +104,8 @@ CONTAINS
     integer :: ierr
     include 'mpif.h'
     call write_border( 1, " normalize_density(start)" )
-    c=sum(rho)*dV_RHO
+    c=sum(rho)*dV ! MIZUHO-IR for cellopt
+!!$    c=sum(rho)*dV_RHO
     call mpi_allreduce(c,d,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
     c=Nelectron_RHO/d
     rho=c*rho
@@ -181,8 +183,11 @@ CONTAINS
     end do
     ! The following assumes all 'MS_1-MS_0+1' are the same
     m=m*(MS_1_RHO-MS_0_RHO+1)
-    call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m,mpi_real8,rho,m,mpi_real8 &
-         ,comm_spin,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         rho,m,mpi_real8,comm_spin,ierr)
+!!$    call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m,mpi_real8, &
+!!$         rho,m,mpi_real8,comm_spin,ierr)
   END SUBROUTINE reduce_and_gather
 
 
@@ -192,11 +197,15 @@ CONTAINS
     integer :: ierr
     real(8) :: tmp(4)
     tmp(:) = 0.0d0
-    tmp(1) = sum( rho(:,1) )*dV_RHO
+    tmp(1) = sum( rho(:,1) )*dV ! MIZUHO-IR for cellopt
+!!$    tmp(1) = sum( rho(:,1) )*dV_RHO
     if ( MS_RHO == 2 ) then
-       tmp(2) = sum( rho(:,MS_RHO) )*dV_RHO
-       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
-       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
+       tmp(2) = sum( rho(:,MS_RHO) )*dV ! MIZUHO-IR for cellopt
+!!$       tmp(2) = sum( rho(:,MS_RHO) )*dV_RHO
+       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV ! MIZUHO-IR for cellopt
+!!$       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
+       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV ! MIZUHO-IR for cellopt
+!!$       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
     end if
     call mpi_allreduce( tmp,Ntot,4,mpi_real8,mpi_sum,comm_grid,ierr)
   END SUBROUTINE calc_spin_density

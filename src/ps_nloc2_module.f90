@@ -78,6 +78,7 @@ CONTAINS
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
     logical :: disp_sw
+    include 'mpif.h'
 
     call write_border( 0, " prep_ps_nloc2(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -100,6 +101,7 @@ CONTAINS
     if ( .not.allocated(y2a) .and. all(ippform /= 4) ) then
        NRc=maxval(NRps)
        n=maxval(norb)
+       if( allocated(y2a) ) deallocate(y2a) ! MIZUHO-IR for cellopt
        allocate( y2a(NRc,n,Nelement) )
        y2a=0.d0
        do ik=1,Nelement
@@ -174,12 +176,16 @@ CONTAINS
 
     L=maxval(lo)
     n=maxval(norb)
-    if ( .not.allocated(icheck_tmp3) ) then
+!!$    if ( .not.allocated(icheck_tmp3) ) then ! MIZUHO-IR for cellopt
+    if( allocated(icheck_tmp3) ) deallocate(icheck_tmp3) ! MIZUHO-IR for cellopt
+    if( allocated(JJ_tmp) ) deallocate(JJ_tmp) ! MIZUHO-IR for cellopt
+    if( allocated(MJJ_tmp) ) deallocate(MJJ_tmp) ! MIZUHO-IR for cellopt
+    if( allocated(uV_tmp) ) deallocate(uV_tmp) ! MIZUHO-IR for cellopt
        allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
        allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
        allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
        allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
-    end if
+!!$    end if ! MIZUHO-IR for cellopt
 
     call watcha( timer_counter )
 
@@ -414,8 +420,11 @@ CONTAINS
           end do
        end do
     end do
-    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical &
-                      ,lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+    ! modified by MIZUHO-IR, inplace
+    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
+         lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+!!$    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical, &
+!!$         lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
 
     call watcha( timer_counter )
 
@@ -1311,10 +1320,11 @@ CONTAINS
     integer :: ML1,ML2,ML3,i0,iorb0
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
     logical :: disp_sw
-    logical :: flag_init_force = .true.
+    logical, save :: flag_init_force = .true.
 
     call check_disp_switch( disp_sw, 0 )
 
+    flag_init_force = .true. ! MIZUHO-IR for cellopt
     if ( flag_init_force ) then
        call ps_nloc2_init_derivative
        flag_init_force = .false.
