@@ -6,6 +6,8 @@ MODULE gram_schmidt_module
   use gram_schmidt_g_module
   use var_sys_parameter
   use io_tools_module
+  use wf_module, only: gather_b_wf
+  use watch_module
 
   implicit none
 
@@ -29,10 +31,15 @@ CONTAINS
 
     implicit none
     integer,intent(IN) :: n0,n1,k,s
+    type(time) :: t
 
     call write_border( 1, " gram_schmidt(start)" )
 
+    call start_timer( t )
+
     if ( flag_init_read ) call read_gram_schmidt
+
+    call gather_b_wf( k, s )
 
     if ( pp_kind == "USPP" ) then
 
@@ -50,6 +57,8 @@ CONTAINS
       end select
 
     end if
+
+    call result_timer( t, "gs" )
 
     call write_border( 1, " gram_schmidt(end)" )
 

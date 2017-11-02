@@ -24,7 +24,7 @@ MODULE fock_fft_module
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
 #else
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
 #endif
 
   real(8) :: ct_fock_fft(10),et_fock_fft(10)
@@ -293,8 +293,8 @@ CONTAINS
 
     allocate( work(ML) ) ; work=z0
 
-    call mpi_allgatherv(trho(n1),ir_grid(myrank_g),MPI_COMPLEX16 &
-         ,work,ir_grid,id_grid,MPI_COMPLEX16,comm_grid,ierr)
+    call mpi_allgatherv(trho(n1),ir_grid(myrank_g),RSDFT_MPI_COMPLEX16 &
+         ,work,ir_grid,id_grid,RSDFT_MPI_COMPLEX16,comm_grid,ierr)
 
     i=0
     irank=-1

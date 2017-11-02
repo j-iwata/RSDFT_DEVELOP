@@ -47,14 +47,20 @@ CONTAINS
   END SUBROUTINE init_hartree
 
 
-  SUBROUTINE calc_hartree(n1,n2,n3,rho)
+  SUBROUTINE calc_hartree(n1,n2,n3,rho,vout)
     implicit none
     integer,intent(IN) :: n1,n2,n3
     real(8),intent(IN) :: rho(n1:n2,n3)
-    real(8),allocatable :: trho(:)
+    real(8),optional,intent(INOUT) :: vout(n1:n2)
+    real(8),allocatable :: trho(:),tvh(:)
     integer :: i,s
 
     call write_border( 1, " calc_hartree(start)" )
+
+    if ( present(vout) ) then
+       allocate( tvh(n1:n2) )
+       tvh=Vh
+    end if
 
     select case(SYStype)
     case default
@@ -85,6 +91,12 @@ CONTAINS
 !       call calc_esm_hartree(n1,n2,n3,rho,Vh,E_hartree)
 
     end select
+
+    if ( present(vout) ) then
+       vout=Vh
+       Vh=tvh
+       deallocate( tvh )
+    end if
 
     call write_border( 1, " calc_hartree(end)" )
 

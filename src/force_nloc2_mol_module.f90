@@ -12,6 +12,7 @@ MODULE force_nloc2_mol_module
   use ps_nloc2_init_module
   use ylm_module
   use polint_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -276,8 +277,7 @@ CONTAINS
 
     deallocate( w )
 
-    call mpi_allreduce &
-         (MPI_IN_PLACE,ftmp,3*Natom,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call rsdft_allreduce_sum( ftmp, MPI_COMM_WORLD )
 
     force(:,:) = ftmp(:,:)
 

@@ -2,6 +2,7 @@ MODULE wf_module
 
   use parallel_module
   use wf_sub_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -17,6 +18,8 @@ MODULE wf_module
   PUBLIC :: write_info_esp_wf
   PUBLIC :: wfrange
   PUBLIC :: allocate_b_wf, allocate_b_occ
+  PUBLIC :: referred_orbital
+  PUBLIC :: set_initial_wf
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -29,7 +32,7 @@ MODULE wf_module
   complex(8),allocatable :: unk(:,:,:,:)
   complex(8),allocatable :: hunk(:,:,:,:)
   complex(8),allocatable :: workwf(:,:)
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
 #endif
 
 #ifdef _DRSDFT_
@@ -41,6 +44,7 @@ MODULE wf_module
   real(8),allocatable :: esp(:,:,:), esp0(:,:,:)
   real(8),allocatable :: occ(:,:,:)
   real(8),allocatable :: res(:,:,:)
+  logical,allocatable :: referred_orbital(:,:,:)
 
   integer :: ML_WF, ML_0_WF, ML_1_WF
   integer :: MB_WF, MB_0_WF, MB_1_WF
@@ -114,6 +118,7 @@ CONTAINS
     if ( allocated(res) ) deallocate(res)
     if ( allocated(esp) ) deallocate(esp)
     if ( allocated(unk) ) deallocate(unk)
+    if ( allocated(referred_orbital) ) deallocate(referred_orbital)
 
     allocate( unk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
     unk=zero
@@ -123,6 +128,8 @@ CONTAINS
     res=0.0d0
     allocate( occ(MB_WF,MK_WF,MS_WF) )
     occ=0.0d0
+    allocate( referred_orbital(MB_WF,MK_WF,MS_WF) )
+    referred_orbital=.true.
 
     call random_initial_wf
 !    call fft_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
@@ -163,11 +170,38 @@ CONTAINS
   END SUBROUTINE random_initial_wf
 
 
+  SUBROUTINE set_initial_wf( indx, wf )
+    implicit none
+    character(*),intent(IN) :: indx
+#ifdef _DRSDFT_
+    real(8),intent(OUT)  :: wf(:,:,:,:)
+#else
+    complex(8),intent(OUT)  :: wf(:,:,:,:)
+#endif
+    integer :: s,k,n,i
+    real(8) :: u(2)
+    select case( indx )
+    case default
+       do s=1,size(wf,4)
+       do k=1,size(wf,3)
+       do n=1,size(wf,2)
+          do i=1,size(wf,1)
+             call random_number(u)
+             u=u-0.5d0
+             wf(i,n,k,s)=dcmplx(u(1),u(2))
+          end do ! i
+       end do ! n
+       end do ! k
+       end do ! s
+    end select
+  END SUBROUTINE set_initial_wf
+
+
   SUBROUTINE test_on_wf(dV,disp_switch)
     implicit none
     real(8),intent(IN) :: dV          ! volume element
     logical,intent(IN) :: disp_switch ! diplay switch
-    integer :: ierr,s,k,m,n,mm
+    integer :: s,k,m,n,mm
 #ifdef _DRSDFT_
     real(8),allocatable :: uu(:,:)
 #else
@@ -190,8 +224,7 @@ CONTAINS
 #endif
        end do ! m
        end do ! n
-       call mpi_allreduce(MPI_IN_PLACE,uu,mm,TYPE_MAIN &
-            ,MPI_SUM,comm_grid,ierr)
+       call rsdft_allreduce_sum( uu, comm_grid )
        do n=1,MB_WF
        do m=1,n
           if ( disp_switch ) then
@@ -206,34 +239,6 @@ CONTAINS
 
   END SUBROUTINE test_on_wf
 
-
-  SUBROUTINE gather_wf
-    implicit none
-    integer :: k,s,mm,ierr
-    call write_border( 1, " gather_wf(start)" )
-    mm=ML_1_WF-ML_0_WF+1
-    ir_band(:)=ir_band(:)*mm
-    id_band(:)=id_band(:)*mm
-    do s=MS_0_WF,MS_1_WF
-    do k=MK_0_WF,MK_1_WF
-       ! modified by MIZUHO-IR, inplace
-       call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-            unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
-!!$       call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b),TYPE_MAIN,&
-!!$            unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
-       if ( allocated(hunk) ) then
-          ! modified by MIZUHO-IR, inplace
-          call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-               hunk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
-!!$          call mpi_allgatherv( hunk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b),TYPE_MAIN, &
-!!$               hunk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
-       end if
-    end do
-    end do
-    ir_band(:)=ir_band(:)/mm
-    id_band(:)=id_band(:)/mm
-    call write_border( 1, " gather_wf(end)" )
-  END SUBROUTINE gather_wf
 
   SUBROUTINE write_wf(rankIN)
     implicit none
@@ -263,20 +268,36 @@ CONTAINS
 
   END SUBROUTINE write_wf
 
+
+  SUBROUTINE gather_wf
+    implicit none
+    integer :: k,s
+    call write_border( 1, " gather_wf(start)" )
+    do s=MS_0_WF,MS_1_WF
+    do k=MK_0_WF,MK_1_WF
+       call gather_b_wf( k, s )
+    end do
+    end do
+    call write_border( 1, " gather_wf(end)" )
+  END SUBROUTINE gather_wf
+
   SUBROUTINE gather_b_wf( k, s )
     implicit none
     integer,intent(IN) :: k,s
     integer :: mm,ierr
+    call write_border( 1, " gather_b_wf(start)" )
     mm=ML_1_WF-ML_0_WF+1
     ir_band(:)=ir_band(:)*mm
     id_band(:)=id_band(:)*mm
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
-!!$    call mpi_allgatherv( unk(ML_0_WF,MB_0_WF,k,s),ir_band(myrank_b),TYPE_MAIN, &
-!!$         unk(ML_0_WF,1,k,s),ir_band,id_band,TYPE_MAIN,comm_band,ierr )
+    call rsdft_allgatherv( unk(:,MB_0_WF:MB_1_WF,k,s) &
+         , unk(:,:,k,s), ir_band, id_band, comm_band )
+    if ( iflag_hunk >= 1 ) then
+       call rsdft_allgatherv( hunk(:,MB_0_WF:MB_1_WF,k,s) &
+            , hunk(:,:,k,s), ir_band, id_band, comm_band )
+    end if
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
+    call write_border( 1, " gather_b_wf(end)" )
   END SUBROUTINE gather_b_wf
 
 
@@ -310,7 +331,7 @@ CONTAINS
     hunk(:,:,:,:)=zero
 
     if ( myrank == 0 ) then
-       if ( TYPE_MAIN == MPI_COMPLEX16 ) then
+       if ( TYPE_MAIN == RSDFT_MPI_COMPLEX16 ) then
           write(*,*) "size(hunk)(MB)=",size(hunk)*16.d0/1024.d0**2
        else if ( TYPE_MAIN == MPI_REAL8 ) then
           write(*,*) "size(hunk)(MB)=",size(hunk)*8.d0/1024.d0**2
@@ -348,9 +369,14 @@ CONTAINS
           n2=size(esp,1)
        end if
     end if
+    if ( i > 1 ) then
+       n1=1
+       n2=size(esp,1)
+    end if
     format_string='(i4,i6,2(f20.15,2g13.5,1x))'
     do k=1,size(esp,2)
     do n=n1,n2
+       if ( all(.not.referred_orbital(n,k,:)) ) cycle
        i=0
        do s=1,size(esp,3)
           i=i+1 ; f(i)=esp(n,k,s)

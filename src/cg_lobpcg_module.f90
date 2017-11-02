@@ -2,6 +2,7 @@ MODULE cg_lobpcg_module
 
   use hamiltonian_module
   use cgpc_module
+  use parallel_module, only: RSDFT_MPI_COMPLEX16
 
   implicit none
 
@@ -330,7 +331,7 @@ CONTAINS
           call zherk( 'U','C',mm,ML0,zdV,vt,ML0,zero,vv0(1,1,1),ld)
           call zher2k('U','C',mm,ML0,ztmp,vt,ML0,ut,ML0,zero,vv0(1,1,2),ld)
           call mpi_allreduce &
-               (vv0,vv1,ld*ld*2,MPI_COMPLEX16,mpi_sum,comm_grid,ierr)
+               (vv0,vv1,ld*ld*2,RSDFT_MPI_COMPLEX16,mpi_sum,comm_grid,ierr)
 
           call zhegv &
           (1,'V','U',mm,vv1(1,1,2),ld,vv1(1,1,1),ld,W,work,999,rwork,ierr)

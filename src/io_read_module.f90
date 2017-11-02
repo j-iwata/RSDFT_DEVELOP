@@ -4,6 +4,7 @@ MODULE io_read_module
   use wf_module
   use rgrid_module
   use rgrid_mol_module, only: LL
+  use rsdft_mpi_module
 
   implicit none
 
@@ -47,7 +48,7 @@ CONTAINS
     real(8),allocatable :: utmp(:), utmp3(:,:,:)
     real(4),allocatable :: utmpSP(:)
 #else
-    integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+    integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: utmp(:), utmp3(:,:,:)
     complex(4),allocatable :: utmpSP(:)
@@ -107,11 +108,7 @@ CONTAINS
 
     ir(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     id(0:np_grid-1)=3*id_grid(0:np_grid-1)
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         LL2,ir,id,mpi_integer,comm_grid,ierr)
-!!$    call mpi_allgatherv(LL2(1,n1),ir(myrank_g),mpi_integer, &
-!!$         LL2,ir,id,mpi_integer,comm_grid,ierr)
+    call rsdft_allgatherv( LL2(:,n1:n2), LL2, ir, id, comm_grid )
 
     deallocate( id,ir )
 
@@ -510,7 +507,7 @@ CONTAINS
 #ifdef _DRSDFT_
     call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
 #else
-    call mpi_bcast( unk,size(unk),MPI_COMPLEX16,0,comm_fkmb,ierr )
+    call mpi_bcast( unk,size(unk),RSDFT_MPI_COMPLEX16,0,comm_fkmb,ierr )
 #endif
 
     if ( DISP_SWITCH ) then

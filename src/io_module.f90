@@ -1,7 +1,6 @@
 MODULE io_module
 
   use parallel_module
-  use io_tools_module
   use rgrid_module, only: Ngrid,Igrid
   use array_bound_module, only: ML,ML_0,ML_1,MSP,MSP_0,MSP_1
   use rgrid_mol_module, only: LL
@@ -10,6 +9,7 @@ MODULE io_module
   use io2_module
   use io_read_module
   use io_write_module
+  use rsdft_mpi_module
 
   use density_module, only: rho
   use xc_module, only: Vxc
@@ -20,6 +20,9 @@ MODULE io_module
   use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
   use grid_module, only: construct_map_1d_to_3d_grid
   use fermi_module, only: efermi
+  use io_ctrl_parameters
+  use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -30,12 +33,6 @@ MODULE io_module
   PUBLIC :: GetParam_IO
   PUBLIC :: Init_IO
 
-  integer :: IO_ctrl=0
-  integer :: IC=0
-  integer :: OC=3
-  integer :: OC2=100
-  integer :: MBwr1=0
-  integer :: MBwr2=0
   character(30) :: file_wf0   ="wf.dat1"
   character(30) :: file_vrho0 ="vrho.dat1"
   character(30) :: file_wf1   ="wf.dat1"
@@ -46,28 +43,20 @@ MODULE io_module
   character(64),parameter :: version="version3.0, comment_length=64"
   character(64) :: comment
 
-  integer,save :: icount=0
-
 CONTAINS
 
 
   SUBROUTINE read_io
     implicit none
-    integer :: itmp(2)
-    itmp = (/ MBwr1, MBwr2 /)
-    call IOTools_readIntegerKeyword( "IC"    , IC  )
-    call IOTools_readIntegerKeyword( "OC"    , OC  )
-    call IOTools_readIntegerKeyword( "OC2"   , OC2 )
-    call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
-    call IOTools_readIntegerKeyword( "MBWR"  , itmp )
-    MBwr1=itmp(1)
-    MBwr2=itmp(2)
+    call read_io_ctrl_parameters
   END SUBROUTINE read_io
 
 
-  SUBROUTINE write_data( disp_switch, flag )
+  SUBROUTINE write_data( disp_switch, flag, ctrl_wr, suffix )
     implicit none
     logical,intent(IN) :: flag, disp_switch
+    character(*),optional,intent(IN) :: ctrl_wr
+    character(*),optional,intent(IN) :: suffix
     integer :: i,j,k,n,n1,n2,ierr,i1,i2,i3,j1,j2,j3,isym,ir,ie,id,i0
     integer :: a1,a2,a3,b1,b2,b3,ML0,irank,s,lt(3),jd
     integer :: istatus(MPI_STATUS_SIZE,123)
@@ -76,6 +65,8 @@ CONTAINS
     real(8) :: c,fs,ct0,ct1,et0,et1,mem,memax
     real(8),allocatable :: rtmp(:)
     integer :: ML1,ML2,ML3
+    type(time) :: tt
+    logical :: flag_wr_pot, flag_wr_wf
 
     if ( OC2 < 1 .or. OC < 1 .or. OC > 15 ) return
 
@@ -83,6 +74,7 @@ CONTAINS
     if ( .not.(flag .or. icount==OC2) ) return
 
     call write_border( 0, " write_data(start)" )
+    call start_timer( tt )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -93,12 +85,27 @@ CONTAINS
 
     call construct_gridmap_sub( LL2 )
 
+! ---
+
+    flag_wr_pot = .true.
+    flag_wr_wf  = .true.
+    if ( present(ctrl_wr) ) then
+       flag_wr_pot = ( ctrl_wr=="pot" .or. ctrl_wr=="pot_and_wf" )
+       flag_wr_wf  = ( ctrl_wr=="wf"  .or. ctrl_wr=="pot_and_wf" )
+    end if
+
+! ---
+
+    if ( present(suffix) .and. .not.flag_overwrite ) call Init_IO( suffix )
+
+! ---
+
 !
 ! --- density and potentials ---
 !
 
-    if ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
-         OC == 12 .or. OC == 13 ) then
+    if ( ( OC ==  2 .or. OC ==  3 .or. OC ==  5 .or. &
+           OC == 12 .or. OC == 13 ) .and. flag_wr_pot ) then
 
        allocate( rtmp(ML) ) ; rtmp=0.0d0
 
@@ -231,8 +238,8 @@ CONTAINS
 !
     
 
-    if ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
-         OC == 11 .or. OC == 13 ) then
+    if ( ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
+           OC == 11 .or. OC == 13 ) .and. flag_wr_wf ) then
 
        call simple_wf_io_write &
             ( file_wf1, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
@@ -243,6 +250,9 @@ CONTAINS
 
     icount=0
 
+    call Init_IO( "" )  ! remove suffix from the I/O file names
+
+    call result_timer( tt, "write_data" )
     call write_border( 0, " write_data(end)" )
 
     return
@@ -252,20 +262,23 @@ CONTAINS
 !1:wf, 2:vrho, 3:wf&vrho, 4:wf(Real->Comp), 5:wf(Real->Comp)&vrho
 
   SUBROUTINE read_data(disp_switch)
+    implicit none
     logical,intent(IN) :: disp_switch
     integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
     integer :: ML1_tmp,ML2_tmp,ML3_tmp,ierr,i1,i2,i3,j1,j2,j3,s,i0
     integer :: ML1,ML2,ML3,mx,my,mz,itmp(7)
-    integer,allocatable :: LL_tmp(:,:)
-    integer,allocatable :: LL2(:,:)
+!    integer,allocatable :: LL_tmp(:,:)
+!    integer,allocatable :: LL2(:,:)
     real(8) :: fs,mem,memax,ct0,et0,ct1,et1
     real(8),allocatable :: rtmp(:),rtmp3(:,:,:)
     character(len=64) :: cbuf
     logical :: flag_versioned
+    type(time) :: tt
 
     if ( IC <= 0 ) return
 
     call write_border( 0, " read_data(start)" )
+    call start_timer( tt )
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -275,9 +288,11 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    allocate( LL_tmp(3,ML) ) ; LL_tmp=0
+!    allocate( LL_tmp(3,ML) ) ; LL_tmp=0
+    allocate( lat_old(3,ML) ) ; lat_old=0
 
-    call construct_gridmap_sub( LL2 )
+!    call construct_gridmap_sub( LL2 )
+    call construct_gridmap_sub( lat_new )
 
 !
 ! --- Read VRHO ---
@@ -286,15 +301,17 @@ CONTAINS
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
-          read(80) cbuf
+          read(80) cbuf(1:7)
+          rewind(80)
           if ( cbuf(1:7) == "version" ) then
+             read(80) cbuf
              write(*,*) "file format version: "//cbuf
              flag_versioned=.true.
           else
              flag_versioned=.false.
-             rewind(80)
           end if
           read(80) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
+          itmp=0
           itmp(1)=ML_tmp
           itmp(2)=ML1_tmp
           itmp(3)=ML2_tmp
@@ -320,26 +337,26 @@ CONTAINS
        end if
 
        if ( myrank==0 ) then
-          read(80) LL_tmp(:,:)
+          read(80) lat_old(:,:)
           if ( flag_versioned ) then
+             read(80) cbuf
+             read(80)
+             read(80) cbuf
              read(80)
              read(80)
              read(80)
              read(80)
-             read(80)
-             read(80)
-             read(80)
-             read(80)
+             read(80) cbuf
              read(80) efermi
           end if
        end if
-       call mpi_bcast(LL_tmp,3*ML,mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(lat_old,3*ML,mpi_integer,0,mpi_comm_world,ierr)
        call mpi_bcast(efermi,1,mpi_real8,0,mpi_comm_world,ierr)
 
-       i=sum(abs(LL_tmp(:,:)-LL2(:,:)))
+       i=sum(abs(lat_old(:,:)-lat_new(:,:)))
        if ( i/=0 ) then
           if (DISP_SWITCH) then
-             write(*,*) "LL and LL_tmp is different"
+             write(*,*) "LL and lat_old is different"
           end if
 !          if ( IO_ctrl /= 0 ) stop
        end if
@@ -369,12 +386,12 @@ CONTAINS
           end if
           call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
           do i=1,ML
-             i1=LL_tmp(1,i) ; i2=LL_tmp(2,i) ; i3=LL_tmp(3,i)
+             i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
              rtmp3(i1,i2,i3)=rtmp(i)
           end do
 
           do i=n1,n2
-             i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+             i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
              rho(i,s)=rtmp3(i1,i2,i3)
           end do
 
@@ -383,12 +400,12 @@ CONTAINS
           end if
           call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
           do i=1,ML
-             i1=LL_tmp(1,i) ; i2=LL_tmp(2,i) ; i3=LL_tmp(3,i)
+             i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
              rtmp3(i1,i2,i3)=rtmp(i)
           end do
           if ( MSP_0<=s .and. s<=MSP_1 ) then
              do i=n1,n2
-                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+                i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
                 Vloc(i,s)=rtmp3(i1,i2,i3)
              end do
           end if
@@ -399,11 +416,11 @@ CONTAINS
              end if
              call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
              do i=1,ML
-                i1=LL_tmp(1,i) ; i2=LL_tmp(2,i) ; i3=LL_tmp(3,i)
+                i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
                 rtmp3(i1,i2,i3)=rtmp(i)
              end do
              do i=n1,n2
-                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+                i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
                 Vh(i)=rtmp3(i1,i2,i3)
              end do
           end if
@@ -413,12 +430,12 @@ CONTAINS
           end if
           call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
           do i=1,ML
-             i1=LL_tmp(1,i) ; i2=LL_tmp(2,i) ; i3=LL_tmp(3,i)
+             i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
              rtmp3(i1,i2,i3)=rtmp(i)
           end do
           if ( MSP_0<=s .and. s<=MSP_1 ) then
              do i=n1,n2
-                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
+                i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
                 Vxc(i,s)=rtmp3(i1,i2,i3)
              end do
           end if
@@ -443,11 +460,16 @@ CONTAINS
 
     if ( IC == 2 ) return
 
-    call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+    if ( IO_ctrl == 3 ) then
+       call read_io2( SYStype, ierr )
+       if ( ierr == 0 ) call read_data_io2
+    end if
 
-    deallocate( LL_tmp )
-    deallocate( LL2 )
+    if ( IO_ctrl == 0 .or. ierr < 0 ) then
+       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+    end if
 
+    call result_timer( tt, "read_data" )
     call write_border( 0, " read_data(end)" )
 
     return
@@ -501,8 +523,7 @@ CONTAINS
 
        LL2(1:3,Igrid(1,0):Igrid(2,0)) = LL(1:3,Igrid(1,0):Igrid(2,0))
 
-       call MPI_ALLREDUCE( MPI_IN_PLACE, LL2, size(LL2), MPI_INTEGER &
-                          ,MPI_SUM, comm_grid, ierr )
+       call rsdft_allreduce_sum( LL2, comm_grid )
 
     end if
 

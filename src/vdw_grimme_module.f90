@@ -258,8 +258,8 @@ CONTAINS
     allocate( Fdisp0(3,MI) ) ; Fdisp0=1.0d10
     allocate( Fdisp1(3,MI) ) ; Fdisp1=0.0d0
 
-    c0 = s6*6.d0
-    c1 = s6*d
+    c0 = -s6*6.d0
+    c1 = -s6*d
 
     do l=lmax,lmax
 

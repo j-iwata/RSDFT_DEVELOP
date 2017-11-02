@@ -7,14 +7,17 @@ MODULE momentum_module
   use bb_module
   use kinetic_variables, only: Md, coef_nab
   use bc_module
-  use ps_nloc2_variables
   use atom_module
   use pseudopot_module, only: pselect
+  use ps_nloc2_variables
+  use ps_nloc2_module, only: prep_rvk_ps_nloc2
+  use var_ps_member, only: ps_type
 
   implicit none
 
   PRIVATE
   PUBLIC :: calc_expectval_momentum
+  PUBLIC :: op_momentum
 
 CONTAINS
 
@@ -26,11 +29,11 @@ CONTAINS
     real(8),intent(OUT)   :: pxyz(3,b1:b2)
     integer :: ib,ierr
     real(8) :: kxyz(3),pxyz0(3,b1:b2)
-    pxyz0=0.d0
-    pxyz =0.d0
+    pxyz0=0.0d0
+    pxyz =0.0d0
     call momentum_kine(n1,n2,b1,b2,tpsi,pxyz)
     pxyz0=pxyz0+pxyz
-    pxyz=0.d0
+    pxyz =0.0d0
     select case( pselect )
     case( 2 )
        call momentum_nloc(k,n1,n2,b1,b2,tpsi,pxyz)
@@ -160,9 +163,11 @@ CONTAINS
     complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
     real(8),intent(INOUT) :: pxyz(3,b1:b2)
     integer :: lma,i,j,ib,i1,i2,i3,nb,a,k1,k2,k3,m,nreq,jrank,irank,ierr
+    integer :: lma1,lma2
     integer,allocatable :: istatus(:,:),ireq(:)
     complex(8),allocatable :: uuu(:,:,:),uuu0(:,:,:)
     logical,allocatable :: a_rank(:)
+    complex(8) :: ztmp(3)
 
     nb=b2-b1+1
 
@@ -258,18 +263,44 @@ CONTAINS
        end if
     end do
 
-    do ib=b1,b2
-    do lma=1,nzlma
-       a=amap(lma)
-       if ( a <= 0 ) cycle
-       if ( a_rank(a) ) then
-          pxyz(1,ib)=pxyz(1,ib)+2.d0*aimag( conjg(uuu(1,lma,ib))*uuu(0,lma,ib) )
-          pxyz(2,ib)=pxyz(2,ib)+2.d0*aimag( conjg(uuu(2,lma,ib))*uuu(0,lma,ib) )
-          pxyz(3,ib)=pxyz(3,ib)+2.d0*aimag( conjg(uuu(3,lma,ib))*uuu(0,lma,ib) )
-       end if
-    end do
-!    if ( myrank == 0 ) write(*,'(1x,5x,2x,3g22.12)') pxyz(:,ib)
-    end do
+    if ( ps_type == 1 ) then
+
+       do ib=b1,b2
+          do m=1,N_nzqr
+             lma1=nzqr_pair(1,m)
+             lma2=nzqr_pair(2,m)
+             a=amap(lma1)
+             if ( a <= 0 ) cycle
+             if ( a_rank(a) ) then
+                ztmp(1) = conjg(uuu(1,lma1,ib))*uuu(0,lma2,ib) &
+                         +conjg(uuu(0,lma1,ib))*uuu(1,lma2,ib)
+                ztmp(2) = conjg(uuu(2,lma1,ib))*uuu(0,lma2,ib) &
+                         +conjg(uuu(0,lma1,ib))*uuu(2,lma2,ib)
+                ztmp(3) = conjg(uuu(3,lma1,ib))*uuu(0,lma2,ib) &
+                         +conjg(uuu(0,lma1,ib))*uuu(3,lma2,ib)
+                pxyz(1,ib)=pxyz(1,ib)+ztmp(1)
+                pxyz(2,ib)=pxyz(2,ib)+ztmp(2)
+                pxyz(3,ib)=pxyz(3,ib)+ztmp(3)
+             end if
+          end do
+       end do
+
+    else
+
+       do ib=b1,b2
+          do lma=1,nzlma
+             a=amap(lma)
+             if ( a <= 0 ) cycle
+             if ( a_rank(a) ) then
+                pxyz(1,ib)=pxyz(1,ib)+2.d0*aimag( conjg(uuu(1,lma,ib))*uuu(0,lma,ib) )
+                pxyz(2,ib)=pxyz(2,ib)+2.d0*aimag( conjg(uuu(2,lma,ib))*uuu(0,lma,ib) )
+                pxyz(3,ib)=pxyz(3,ib)+2.d0*aimag( conjg(uuu(3,lma,ib))*uuu(0,lma,ib) )
+             end if
+          end do
+          !    if ( myrank == 0 ) write(*,'(1x,5x,2x,3g22.12)') pxyz(:,ib)
+       end do
+
+    end if
 
     deallocate( a_rank )
 
@@ -277,6 +308,259 @@ CONTAINS
     deallocate( uuu  )
 
   END SUBROUTINE momentum_nloc
+
+
+!--------1---------2---------3---------4---------5---------6---------7--
+
+
+  SUBROUTINE op_momentum( indx, k, tpsi, ppsi )
+    implicit none
+    character(1),intent(IN)  :: indx
+    integer,intent(IN)       :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: tpsi(:,:)
+    real(8),intent(INOUT) :: ppsi(:,:)
+#else
+    complex(8),intent(IN)    :: tpsi(:,:)
+    complex(8),intent(INOUT) :: ppsi(:,:)
+#endif
+    ppsi=(0.0d0,0.0d0)
+    call op_momentum_kine( indx, k, tpsi, ppsi )
+    call op_momentum_nloc( indx, k, tpsi, ppsi )
+  END SUBROUTINE op_momentum
+
+
+  SUBROUTINE op_momentum_kine( indx, k, tpsi, ppsi )
+    implicit none
+    character(1),intent(IN)  :: indx
+    integer,intent(IN)       :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: tpsi(:,:)
+    real(8),intent(INOUT) :: ppsi(:,:)
+#else
+    complex(8),intent(IN)    :: tpsi(:,:)
+    complex(8),intent(INOUT) :: ppsi(:,:)
+#endif
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
+    complex(8) :: zc
+    integer :: n,nb,ib,i,i1,i2,i3,j,a1b,b1b,a2b,b2b,a3b,b3b
+    real(8) :: a1,a2,a3,a2r_nab(3),pi2,kvec
+
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+
+    pi2 = 2.0d0*acos(-1.0d0)
+    a1  = sqrt(sum(aa(1:3,1)**2))/pi2
+    a2  = sqrt(sum(aa(1:3,2)**2))/pi2
+    a3  = sqrt(sum(aa(1:3,3)**2))/pi2
+
+    select case( indx )
+    case( "x","X" )
+       a2r_nab(1) = bb(1,1)*a1
+       a2r_nab(2) = bb(1,2)*a2
+       a2r_nab(3) = bb(1,3)*a3
+       kvec = sum( bb(1,:)*kbb(:,k) )
+    case( "y","Y" )
+       a2r_nab(1) = bb(2,1)*a1
+       a2r_nab(2) = bb(2,2)*a2
+       a2r_nab(3) = bb(2,3)*a3
+       kvec = sum( bb(2,:)*kbb(:,k) )
+    case( "z","Z" )
+       a2r_nab(1) = bb(3,1)*a1
+       a2r_nab(2) = bb(3,2)*a2
+       a2r_nab(3) = bb(3,3)*a3
+       kvec = sum( bb(3,:)*kbb(:,k) )
+    end select
+
+    nb = size( tpsi, 2 )
+
+    www=z0
+    do n=1,nb
+       i=0
+       do i3=a3b,b3b
+       do i2=a2b,b2b
+       do i1=a1b,b1b
+          i=i+1
+          www(i1,i2,i3,n) = tpsi(i,n)
+       end do
+       end do
+       end do
+    end do
+
+    call bcset(1,1,Md,0)
+
+    do n=1,nb
+       do j=1,Md
+          zc=coef_nab(1,j)*a2r_nab(1)
+          i=0
+          do i3=a3b,b3b
+          do i2=a2b,b2b
+          do i1=a1b,b1b
+             i=i+1
+             ppsi(i,n)=ppsi(i,n)+zc*( www(i1-j,i2,i3,n)-www(i1+j,i2,i3,n) )
+          end do
+          end do
+          end do
+          zc=coef_nab(2,j)*a2r_nab(2)
+          i=0
+          do i3=a3b,b3b
+          do i2=a2b,b2b
+          do i1=a1b,b1b
+             i=i+1
+             ppsi(i,n)=ppsi(i,n)+zc*( www(i1,i2-j,i3,n)-www(i1,i2+j,i3,n) )
+          end do
+          end do
+          end do
+          zc=coef_nab(3,j)*a2r_nab(3)
+          i=0
+          do i3=a3b,b3b
+          do i2=a2b,b2b
+          do i1=a1b,b1b
+             i=i+1
+             ppsi(i,n)=ppsi(i,n)+zc*( www(i1,i2,i3-j,n)-www(i1,i2,i3+j,n) )
+          end do
+          end do
+          end do
+       end do ! j
+
+       ppsi(:,n) = ppsi(:,n) + kvec*tpsi(:,n)
+
+    end do ! n
+
+  END SUBROUTINE op_momentum_kine
+
+
+  SUBROUTINE op_momentum_nloc( indx, k, tpsi, vpsi )
+    implicit none
+    character(1),intent(IN)  :: indx
+    integer,intent(IN)       :: k
+#ifdef _DRSDFT_
+    real(8),intent(IN)    :: tpsi(:,:)
+    real(8),intent(INOUT) :: vpsi(:,:)
+#else
+    complex(8),intent(IN)    :: tpsi(:,:)
+    complex(8),intent(INOUT) :: vpsi(:,:)
+#endif
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
+    complex(8),allocatable :: uuu(:,:,:),uuu0(:,:,:)
+    complex(8),allocatable :: rVk(:,:)
+    integer :: lma,i,j,ib,i1,i2,i3,nb,n1,m,nreq,jrank,irank,ierr
+    integer,allocatable :: istatus(:,:),ireq(:)
+    include 'mpif.h'
+
+    if ( .not.allocated(xVk) ) then
+       i1=id_bzsm(myrank_k)+1
+       i2=id_bzsm(myrank_k)+ir_bzsm(myrank_k)
+       call prep_rvk_ps_nloc2( i1,i2,kbb(:,i1:i2) )
+    end if
+
+    n1 = Igrid(1,0)
+    nb = size( tpsi, 2 )
+
+    allocate( rVk(size(xVk,1),size(xVk,2)) ) ; rVk=z0
+    allocate( uuu(0:1,nzlma,nb)  ) ; uuu=z0
+    allocate( uuu0(0:1,nzlma,nb) ) ; uuu0=z0
+
+    select case( indx )
+    case( "x","X" )
+       rVk(:,:) = xVk(:,:,k)
+    case( "y","Y" )
+       rVk(:,:) = yVk(:,:,k)
+    case( "z","Z" )
+       rVk(:,:) = zVk(:,:,k)
+    end select
+
+    do ib=1,nb
+       do lma=1,nzlma
+          do j=1,MJJ(lma)
+             i=JJP(j,lma)-n1+1
+#ifdef _DRSDFT_
+             uuu(0,lma,ib)=uuu(0,lma,ib)+uVk(j,lma,k)*tpsi(i,ib)
+             uuu(1,lma,ib)=uuu(1,lma,ib)+rVk(j,lma)*tpsi(i,ib)
+#else
+             uuu(0,lma,ib)=uuu(0,lma,ib)+conjg( uVk(j,lma,k) )*tpsi(i,ib)
+             uuu(1,lma,ib)=uuu(1,lma,ib)+conjg( rVk(j,lma) )*tpsi(i,ib)
+#endif
+          end do ! j
+          uuu(0,lma,ib)=iuV(lma)*uuu(0,lma,ib)*dV
+          uuu(1,lma,ib)=iuV(lma)*uuu(1,lma,ib)*dV
+       end do ! lma
+    end do ! ib
+
+    nreq = 2*maxval( nrlma_xyz )
+    allocate( ireq(nreq)                    ) ; ireq=0
+    allocate( istatus(MPI_STATUS_SIZE,nreq) ) ; istatus=0
+
+    nreq=0
+    do i=1,6
+       select case(i)
+       case(1,3,5)
+          j=i+1
+          uuu0(:,:,:)=uuu(:,:,:)
+       case(2,4,6)
+          j=i-1
+       end select
+       do m=1,nrlma_xyz(i)
+          nreq=0
+          irank=num_2_rank(m,i)
+          jrank=num_2_rank(m,j)
+          if( irank>=0 )then
+             i2=0
+             do ib=1,nb
+                do i1=1,lma_nsend(irank)
+                   do i3=0,1
+                      i2=i2+1
+                      sbufnl(i2,irank)=uuu0(i3,sendmap(i1,irank),ib)
+                   end do
+                end do
+             end do
+             nreq=nreq+1
+             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb*4 &
+                  ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+          end if
+          if ( jrank >= 0 ) then
+             nreq=nreq+1
+             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb*4 &
+                  ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+          end if
+          call mpi_waitall(nreq,ireq,istatus,ierr)
+          if ( jrank >= 0 ) then
+             i2=0
+             do ib=1,nb
+                do i1=1,lma_nsend(jrank)
+                   do i3=0,1
+                      i2=i2+1
+                      uuu(i3,recvmap(i1,jrank),ib) &
+                         = uuu(i3,recvmap(i1,jrank),ib) + rbufnl(i2,jrank)
+                   end do ! i3
+                end do ! i1
+             end do ! ib
+          end if
+       end do ! m
+    end do ! i
+
+    deallocate( istatus )
+    deallocate( ireq    )
+
+    do ib=1,nb
+    do lma=1,nzlma
+       do j=1,MJJ(lma)
+          i=JJP(j,lma)-n1+1
+          vpsi(i,ib)=vpsi(i,ib)+uVk(j,lma,k)*uuu(1,lma,ib) &
+                               -rVk(j,lma)*uuu(0,lma,ib)
+       end do
+    end do
+    end do
+
+    deallocate( uuu0 )
+    deallocate( uuu  )
+    deallocate( rVk  )
+
+  END SUBROUTINE op_momentum_nloc
 
 
 END MODULE momentum_module

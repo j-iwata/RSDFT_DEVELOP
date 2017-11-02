@@ -30,6 +30,8 @@ OMPFLAG   =
 ########################################################################
 ####################### Generate REAL8 code ( RSMOL is supported ) #####
 #CPP_FLAGS := -D_DRSDFT_ $(CPP_FLAGS)
+####################### Spline interpolation is use for nonlocal pp ####
+#CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ######################### LAPACK is used ( ScaLAPACK is not used ) #####
 #CPP_FLAGS := -D_LAPACK_ $(CPP_FLAGS)
 ##################################################### FFTE is used #####
@@ -39,7 +41,16 @@ OMPFLAG   =
 #INCLUDE_DIR := -I/home/iwata/fftw-3.3.4/include/ $(INCLUDE_DIR)
 #FFTW_L = -L/home/iwata/fftw-3.3.4/lib/ -lfftw3_mpi -lfftw3 -lm
 ########################################################### Others #####
+#CPP_FLAGS := -D_LIBXC_ $(CPP_FLAGS)
+#INCLUDE_DIR := -I/home/iwata/libxc-3.0.0/include/ $(INCLUDE_DIR)
+#LIBXC_L = /home/iwata/libxc-3.0.0/lib/libxcf90.a \
+#          /home/iwata/libxc-3.0.0/lib/libxc.a
+########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_NO_MPI_COMPLEX16_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_DIV_ALLREDUCE_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_NO_QPRECISION_ $(CPP_FLAGS)
 ########################################################################
 ################################################# compiler & options ###
 ########################################################################
@@ -58,6 +69,7 @@ OMPFLAG   =
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 #LAPACK_L = -lm /Users/lhan/.homebrew/opt/scalapack/lib/libscalapack.dylib -lblas
+#LAPACK_L = -mkl=sequential -lmkl_scalapack_lp64 -lmkl_blacs_sgimpt_lp64 -lmpi
 ########################################################################
 ##### INTEL(2)                                                     #####
 #FC = mpiifort
@@ -74,6 +86,21 @@ OMPFLAG   =
 #FFLAGS0 = -fastsse -O3 -tp amd64e -mp -Mpreprocess
 #FFLAGS0 = -fastsse -O3 -tp barcelona-64 -mp -Mpreprocess
 #FFLAGS0 = -fastsse -O3 -tp shanghai-64 -mp -Mpreprocess
+#FFLAGS0 = -Mcuda
+#LFLAGS0 = -Mcuda=cc20
+########################################################################
+##### OPENMPI                                                      #####
+#FC = openmpif90
+#FFLAGS0 = -cpp
+#FFLAGS0 = -cpp -fcheck=all -fbacktrace
+#OMPFLAG= -fopenmp
+#LAPACK_L = -llapack -lblas
+########################################################################
+##### SX-ACE                                                       #####
+#FC = sxmpif03
+#FFLAGS0 = -Ep
+#OMPFLAG= -fopenmp
+#LAPACK_L = -L/SX/usr/lib/f03/ -lscalapack -lblacsF90init -lblacs -lblacsF90init -llapack -lblas -lmpi
 ########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx

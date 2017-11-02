@@ -56,16 +56,16 @@ CONTAINS
 
     call read_watch(myrank,unit)
 
-    iswitch_scf   = 1
+    iswitch_scf   = 0 
     iswitch_opt   = 0
-    iswitch_latopt= 0 ! MIZUHO-IR for cellopt
+    iswitch_latopt= 0
     iswitch_band  = 0
     iswitch_test  = 0
     iswitch_tddft = 0
     iswitch_dos   = 0
     call IOTools_readIntegerKeyword( "SWSCF"  ,iswitch_scf   )
     call IOTools_readIntegerKeyword( "SWOPT"  ,iswitch_opt   )
-    call IOTools_readIntegerKeyword( "LATOPT" ,iswitch_latopt) ! MIZUHO-IR for cellopt
+    call IOTools_readIntegerKeyword( "LATOPT" ,iswitch_latopt)
     call IOTools_readIntegerKeyword( "SWBAND" ,iswitch_band  )
     call IOTools_readIntegerKeyword( "SWTEST" ,iswitch_test  )
     call IOTools_readIntegerKeyword( "SWTDDFT",iswitch_tddft )

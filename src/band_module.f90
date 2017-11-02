@@ -20,15 +20,19 @@ MODULE band_module
        ,esp_conv_tol, mb_band, mb2_band, maxiter_band, read_band &
        ,unit_band_eigv,unit_band_dedk,unit_band_ufld
   use sweep_module, only: calc_sweep, init_sweep
-  use pseudopot_module, only: pselect
+  use pseudopot_module, only: pselect, ps_type, flag_so
   use ps_nloc2_module, only: prep_uvk_ps_nloc2, prep_rvk_ps_nloc2
   use ps_nloc3_module, only: prep_ps_nloc3, init_ps_nloc3
+  use ps_nloc_mr_module, only: prep_uvk_ps_nloc_mr, prep_uvkso_ps_nloc_mr
   use io_module, only: Init_IO
   use xc_hybrid_module, only: iflag_hybrid, prep_kq_xc_hybrid
   use fock_fft_module, only: init_fock_fft
   use band_unfold_module
   use hsort_module
   use fermi_module, only: efermi
+  use rsdft_mpi_module
+  use eigenvalues_module, only: control_eigenvalues
+  use noncollinear_module, only: flag_noncollinear
   
   implicit none
 
@@ -38,18 +42,21 @@ MODULE band_module
 
   integer :: unit = 1
 
-  character(64),parameter :: version="version2.0"
+  character(64),parameter :: version="version2.1"
 
 CONTAINS
 
 
-  SUBROUTINE band( MBV_in, disp_switch )
+  SUBROUTINE band( MBV_in, disp_switch, job_ctrl_in )
 
     implicit none
     integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
+    integer,optional,intent(IN) :: job_ctrl_in
+    integer :: job_ctrl
     integer :: MBV,nktrj,i,j,k,s,n,ibz,ierr,iktrj,iter,Diter_band
     integer :: iktrj_0,iktrj_1,iktrj_2,iktrj_00,iktrj_tmp,ireq
+    integer :: nk,nksm,nkto
     integer,allocatable :: ir_k(:),id_k(:)
     real(8) :: dak(3),sum0,sum1,max_err,max_err0
     real(8),allocatable :: ktrj(:,:),pxyz(:,:,:,:)
@@ -79,31 +86,58 @@ CONTAINS
     if ( MBV < 1 .or. mb_band < MBV ) MBV=1
     if ( disp_switch_parallel ) write(*,*) "MBV=",MBV
 
+    job_ctrl = 0
+    if ( present(job_ctrl_in) ) job_ctrl=job_ctrl_in
+
 ! ---
 
-    nktrj = sum( nfki(1:nbk) )
-    if ( nktrj > 1 ) nktrj=nktrj+1
+    if ( job_ctrl == 3 ) then
+       call read_from_file_bz( "bz_info.band",kbb,weight_bz,nk,nksm,nkto )
+       job_ctrl = 2
+    end if
+
+    if ( job_ctrl == 2 ) then
+       nktrj = size(kbb,2)
+    else
+       nktrj = sum( nfki(1:nbk) )
+       if ( nktrj > 1 ) nktrj=nktrj+1
+    end if
 
     allocate( ktrj(6,nktrj) ) ; ktrj=0.0d0
 
+! ---
+
+    if ( iflag_hunk == 0 ) call deallocate_work_wf
+
+    if ( MB < mb_band ) then
+       call modify_mb
+       call modify_arraysize
+    end if
+
+! ---
+
     if ( iswitch_banduf ) then
 
-       call init_band_unfold( nktrj, ktrj, unit_band_ufld, disp_switch )
+       call init_band_unfold( nktrj,ktrj,unit_band_ufld,disp_switch,job_ctrl )
 
     else
 
-       k=0
-       do i=1,nbk
-          dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
-          do j=1,nfki(i)
-             k=k+1
-             ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
-             ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+       if ( job_ctrl == 2 ) then
+          ktrj(1:3,1:nktrj) = kbb(:,:)
+       else
+          k=0
+          do i=1,nbk
+             dak(1:3) = ( ak(1:3,i+1) - ak(1:3,i) )/dble( nfki(i) )
+             do j=1,nfki(i)
+                k=k+1
+                ktrj(1:3,k) = ak(1:3,i) + (j-1)*dak(1:3)
+                ktrj(4:6,k) = matmul( bb(1:3,1:3),dak(1:3) )
+             end do
           end do
-       end do
-       if ( nktrj > 1 ) then
-          ktrj(1:3,k+1) = ak(1:3,nbk+1)
-          ktrj(4:6,k+1) = 0.d0
+          if ( nktrj > 1 ) then
+             ktrj(1:3,k+1) = ak(1:3,nbk+1)
+             ktrj(4:6,k+1) = 0.0d0
+          end if
        end if
 
     end if
@@ -139,15 +173,6 @@ CONTAINS
 
 ! ---
 
-    if ( iflag_hunk == 0 ) call deallocate_work_wf
-
-    if ( MB < mb_band ) then
-       call modify_mb
-       call modify_arraysize
-    end if
-
-! ---
-
     allocate( esp0_tmp(MB,0:np_bzsm-1,MSP)   ) ; esp0_tmp=0.d0
     allocate( esp_tmp(MB,0:np_bzsm-1,MSP)    ) ; esp_tmp=0.d0
     allocate( kbb_tmp(3,0:np_bzsm-1)         ) ; kbb_tmp=0.d0
@@ -155,10 +180,18 @@ CONTAINS
 
 ! ---
 
+    do k=np_bzsm+1,Nbzsm
+       referred_orbital(:,k,:)=.false.
+    end do
+
+    call control_eigenvalues( .true. ) ! all eigenvalues routines are skipped
+
+! ---
+
     if ( myrank == 0 ) then
        open(unit_band_eigv,file="band_eigv")
        open(unit_band_dedk,file="band_dedk")
-       write(unit_band_eigv,*) version
+       write(unit_band_eigv,*) version, flag_noncollinear
        write(unit_band_eigv,'(1x,"Fermi_energy(hartree):",f20.15)') efermi
        write(unit_band_eigv,'(1x,"Reciprocal_Lattice_Vectors:")')
        write(unit_band_eigv,'(1x,3f20.15)') bb(1:3,1)
@@ -210,7 +243,12 @@ CONTAINS
 
        select case( pselect )
        case( 2 )
-          call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+          if ( ps_type == 1 ) then
+             call prep_uvk_ps_nloc_mr(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+             if ( flag_so ) call prep_uvkso_ps_nloc_mr(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+          else
+             call prep_uvk_ps_nloc2(MBZ_0,MBZ_0,kbb(1,MBZ_0))
+          end if
        case( 3 )
           call init_ps_nloc3
           call prep_ps_nloc3
@@ -225,7 +263,7 @@ CONTAINS
 ! --- sweep ---
 
        write(loop_info,'("( iktrj=",i4," )")') iktrj
-       call calc_sweep( disp_switch, ierr, Diter_band, loop_info )
+       call calc_sweep( ierr,Diter_band,loop_info,flag_noncollinear,"band" )
 
 ! ---
 
@@ -237,6 +275,7 @@ CONTAINS
           write(*,*) "band is not converged"
           return
        end if
+       if ( ierr < 0 ) return
 
 ! --- band unfolding ---
 
@@ -262,28 +301,17 @@ CONTAINS
 #endif
 
        do s=MSP_0,MSP_1
-          ! modified by MIZUHO-IR, inplace
-          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-               pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
-!!$          call mpi_allgather(pxyz(1,1,myrank_k,s),3*MB,MPI_REAL8, &
-!!$               pxyz(1,1,0,s),3*MB,MPI_REAL8,comm_bzsm,ierr)
+          call rsdft_allgather( pxyz(:,:,myrank_k,s),pxyz(:,:,:,s),comm_bzsm )
        end do ! s
-       ! modified by MIZUHO-IR, inplace
-       call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-            pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
-!!$       call mpi_allgather(pxyz(1,1,0,MSP_0),3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8, &
-!!$            pxyz,3*MB*np_bzsm*(MSP_1-MSP_0+1),MPI_REAL8,comm_spin,ierr)
+       call rsdft_allgather( pxyz(:,:,:,MSP_0),pxyz,comm_spin )
 
        do s=1,MSP
-          call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+          call mpi_allgather(esp(1,MBZ_0,s),MB,mpi_real8 &
+               ,esp_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
        end do
        do s=1,MSP
           esp0_tmp(:,myrank_k,s)=esp(:,MBZ_0,s)
-          ! modified by MIZUHO-IR, inplace
-          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-               esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
-!!$          call mpi_allgather(esp0_tmp(1,myrank_k,s),MB,mpi_real8, &
-!!$          esp0_tmp(1,0,s),MB,mpi_real8,comm_bzsm,ierr)
+          call rsdft_allgather(esp0_tmp(:,myrank_k,s),esp0_tmp(:,:,s),comm_bzsm)
        end do
 
        do ibz=0,np_bzsm-1
@@ -297,7 +325,7 @@ CONTAINS
           end if
           do n=1,mb2_band
              if ( disp_switch ) then
-                write(*,'(1x,i5,2x,2(1x,g22.12,1x,g15.5))') n &
+                write(*,'(1x,i5,2x,2(1x,g22.15,1x,g15.5))') n &
            ,( esp_tmp(n,ibz,s),abs(esp_tmp(n,ibz,s)-esp0_tmp(n,ibz,s)),s=1,MSP )
              end if
              if ( myrank == 0 ) then
@@ -339,7 +367,7 @@ CONTAINS
     complex(8),intent(IN) :: f(mm,nn)
     integer :: ierr,ireq,istatus(MPI_STATUS_SIZE)
     if ( myrank_k > 0 ) then
-       call MPI_ISEND(f,mm*nn,MPI_COMPLEX16,myrank_k-1,1,comm_bzsm,ireq,ierr)
+       call MPI_ISEND(f,mm*nn,RSDFT_MPI_COMPLEX16,myrank_k-1,1,comm_bzsm,ireq,ierr)
        call MPI_WAIT(ireq,istatus,ierr)
     end if
   END SUBROUTINE send_wf_band
@@ -349,7 +377,7 @@ CONTAINS
     complex(8),intent(OUT) :: f(mm,nn)
     integer :: ierr,ireq,istatus(MPI_STATUS_SIZE)
     if ( myrank_k < np_bzsm-1 ) then
-       call MPI_IRECV(f,mm*nn,MPI_COMPLEX16,myrank_k+1,1,comm_bzsm,ireq,ierr)
+       call MPI_IRECV(f,mm*nn,RSDFT_MPI_COMPLEX16,myrank_k+1,1,comm_bzsm,ireq,ierr)
        call MPI_WAIT(ireq,istatus,ierr)
     end if
   END SUBROUTINE recv_wf_band

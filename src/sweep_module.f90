@@ -17,6 +17,10 @@ MODULE sweep_module
   use xc_hybrid_module, only: control_xc_hybrid, get_flag_xc_hybrid
   use io_tools_module
   use eigenvalues_module
+  use cg_ncol_module
+  use gram_schmidt_ncol_module
+  use subspace_diag_ncol_module
+  use fermi_ncol_module
 
   implicit none
 
@@ -57,32 +61,32 @@ CONTAINS
   END SUBROUTINE init_sweep
 
 
-  SUBROUTINE calc_sweep( disp_switch, ierr_out, Diter_in, outer_loop_info )
+  SUBROUTINE calc_sweep( ierr_out, Diter_in, outer_loop_info &
+                       , flag_ncol_in, suffix_in )
     implicit none
-    logical,intent(IN)  :: disp_switch
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN)  :: Diter_in
     character(*),optional,intent(IN) :: outer_loop_info
+    character(*),optional,intent(IN) :: suffix_in
+    logical,optional,intent(IN) :: flag_ncol_in
     integer :: iter,s,k,n,m,iflag_hybrid,ierr,Diter
     logical :: flag_exit, flag_conv
     logical :: flag_end, flag_end1, flag_end2
     character(40) :: chr_iter
     character(22) :: add_info
-    type(time) :: etime
+    character(10) :: suffix
+    type(time) :: etime, tt
     type(eigv) :: eval
     logical,external :: exit_program
+    logical :: flag_noncollinear
+    logical :: disp_switch
 
-    Diter = 0
-    if ( present(Diter_in) ) then
-       Diter = Diter_in
-    else
-       Diter = Nsweep
-    end if
-
+    Diter=Nsweep ; if ( present(Diter_in) ) Diter=Diter_in
     if ( Diter <= 0 ) return
 
     call write_border( 0, "" )
     call write_border( 0, " SWEEP START ----------" )
+    call check_disp_switch( disp_switch, 0 )
 
     flag_end  = .false.
     flag_exit = .false.
@@ -90,6 +94,12 @@ CONTAINS
     Echk      = 0.0d0
     ierr_out  = 0
     add_info  = "" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
+
+    flag_noncollinear = .false.
+    if ( present(flag_ncol_in) ) flag_noncollinear=flag_ncol_in
+
+    suffix = "sweep"
+    if ( present(suffix_in) ) suffix=suffix_in
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -139,6 +149,7 @@ CONTAINS
 
        write(chr_iter,'(" sweep_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
+       call start_timer( tt )
 
        call init_time_watch( etime )
 
@@ -147,14 +158,30 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          call conjugate_gradient( ML_0,ML_1, Nband, k,s &
-                                 ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
+          if ( flag_noncollinear ) then
+#ifndef _DRSDFT_
+             call conjugate_gradient_ncol( ML_0,ML_1, Nband, k &
+                                          ,unk, esp(1,k,1), res(1,k,1) )
 
-          call gram_schmidt(1,Nband,k,s)
+             call gram_schmidt_ncol( 1,Nband, k, unk )
 
-          call subspace_diag(k,s)
+             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+#endif
+          else
+
+             call conjugate_gradient( ML_0,ML_1, Nband, k,s &
+                                     ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
+
+             call gram_schmidt(1,Nband,k,s)
+
+             call subspace_diag(k,s)
+
+          end if
 
        end do
+
+       if ( flag_noncollinear ) exit
+
        end do
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
@@ -162,12 +189,17 @@ CONTAINS
 #ifdef _DRSDFT_
        call mpi_bcast( unk, size(unk), MPI_REAL8, 0, comm_fkmb, ierr )
 #else
-       call mpi_bcast( unk, size(unk), MPI_COMPLEX16, 0, comm_fkmb, ierr )
+       call mpi_bcast( unk, size(unk), RSDFT_MPI_COMPLEX16, 0, comm_fkmb, ierr )
 #endif
        call mpi_bcast( esp, size(esp), MPI_REAL8, 0, comm_fkmb, ierr )
 
-       call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                      ,esp,weight_bz,occ,disp_switch)
+       if ( flag_noncollinear ) then
+          call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
+                              ,esp,weight_bz,occ)
+       else
+          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
+                         ,esp,weight_bz,occ,disp_switch)
+       end if
 
        call calc_with_rhoIN_total_energy( Echk )
 
@@ -184,12 +216,14 @@ CONTAINS
        call calc_time_watch( etime )
        if ( disp_switch ) then
           write(*,*)
-          write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)" &
-               ,f10.3,"(max)")') etime%t0, etime%tmin, etime%tmax
+          write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
+          etime%t0, etime%tmin, etime%tmax
           write(*,*)
        end if
 
-       call write_data( disp_switch, flag_exit )
+       call write_data( disp_switch, flag_exit, "wf", suffix )
+
+       call result_timer( tt, "sweep" )
 
        if ( flag_exit ) exit
 
@@ -203,13 +237,13 @@ CONTAINS
 
     if ( flag_end1 ) then
        ierr_out = -1
-       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "Time limit exceeded"
        return
     end if
 
     if ( flag_end2 ) then
        ierr_out = -3
-       if ( myrank == 0 ) write(*,*) "flag_end=",flag_end
+       if ( myrank == 0 ) write(*,*) "'EXIT' file was found"
        return
     end if
 

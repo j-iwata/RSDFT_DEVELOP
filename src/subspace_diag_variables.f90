@@ -15,7 +15,11 @@ MODULE subspace_diag_variables
   real(8),allocatable :: Hsub(:,:), Vsub(:,:)
   real(8),parameter :: zero=0.d0,one=1.d0
 #else
+#ifdef _NO_MPI_COMPLEX16_
+  integer,parameter :: TYPE_MAIN = MPI_DOUBLE_COMPLEX
+#else
   integer,parameter :: TYPE_MAIN = MPI_COMPLEX16
+#endif
   complex(8),allocatable :: Hsub(:,:), Vsub(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0),one=(1.d0,0.d0)
 #endif

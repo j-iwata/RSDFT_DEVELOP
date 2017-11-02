@@ -14,8 +14,13 @@ CONTAINS
     real(8),intent(OUT) :: occ(:,:,:)
     integer :: n,k,s,Nspin,Nband
     real(8) :: sum0,d,Nel
+    logical :: disp
 
-    call write_border( 80, " init_occ_electron(start)" )
+    if ( all(weight_bz==0.0d0) ) return
+
+    call write_border( 0, " init_occ_electron(start)" )
+
+    call check_disp_switch( disp, 0 )
 
     occ=0.0d0
 
@@ -25,7 +30,7 @@ CONTAINS
     d=2.0d0/Nspin
     do s=1,Nspin
        Nel = 0.5d0*d*Nelectron + (3-2*s)*0.5d0*Ndspin
-       if ( Nel < 0.d0 ) stop "Ndspin is too large !!!"
+       if ( Nel < 0.0d0 ) stop "Ndspin is too large !!!"
        sum0=0.0d0
        do n=1,Nband
           if ( sum0+d > Nel ) exit
@@ -34,10 +39,13 @@ CONTAINS
        end do
        if ( sum0 < Nel ) then
           if ( n > Nband ) then
-             stop "Nband is small (init_occupation)"
+             call stop_program( "Nband is small (init_occupation_electron)" )
           else
              occ(n,1,s) = Nel-sum0
-             write(*,*) Nel,sum0
+             if ( disp ) then
+                write(*,*) "Nel, sum0 =",Nel,sum0
+                write(*,*) "occ,ib_vbm,s=",occ(n,1,s),n,s
+             end if
           end if
        end if
        do k=2,Nbzsm
@@ -55,7 +63,7 @@ CONTAINS
        stop "sum(occ) /= Nelectron !!!"
     end if
 
-    call write_border( 80, " init_occ_electron(end)" )
+    call write_border( 0, " init_occ_electron(end)" )
 
   END SUBROUTINE init_occ_electron
 

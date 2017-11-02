@@ -33,7 +33,7 @@ CONTAINS
     do iatm=1,Natom
 
        ielm    = ki_atom(iatm)
-       rc2     = maxval( Rps(:,ki_atom(ielm)) )
+       rc2     = max( 1.0d0, maxval( Rps(:,ki_atom(ielm)) ) )
        Zcharge = Zcharge + Zps(ielm)
 
        do j3=-1,1

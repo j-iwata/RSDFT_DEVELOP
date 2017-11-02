@@ -23,6 +23,7 @@ MODULE xc_module
   use basic_type_factory
   use basic_type_methods
   use io_tools_module
+  use libxc_module
 
   implicit none
 
@@ -31,7 +32,8 @@ MODULE xc_module
            ,E_exchange_exx
   PUBLIC :: read_xc
 
-  character(8),PUBLIC :: XCtype = 'LDAPZ81'
+  character(9),PUBLIC :: XCtype = 'LDAPZ81'
+  real(8),PUBLIC :: DCxc     ! double-count ( <u|Vxc|u> )
 
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
@@ -47,8 +49,11 @@ CONTAINS
 
   SUBROUTINE read_xc
     implicit none
+    character(len=8) :: chk_libxc=""
     call write_border( 0, " read_xc(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
+    call IOTools_readStringKeyword( "LIBXC" , chk_libxc )
+    if ( chk_libxc /= "" ) XCtype="LIBXC"
     flag_read = .false.
     call write_border( 0, " read_xc(end)" )
   END SUBROUTINE read_xc
@@ -108,10 +113,12 @@ CONTAINS
   END SUBROUTINE chk_density
 
 
-  SUBROUTINE calc_xc
+  SUBROUTINE calc_xc( rho_in, Vxc_out, Exc_out )
 
     implicit none
-
+    real(8),optional,intent(IN)  :: rho_in(:,:)
+    real(8),optional,intent(OUT) :: Vxc_out(:,:)
+    real(8),optional,intent(OUT) :: Exc_out
     real(8),allocatable :: rho_tmp(:,:)
     real(8) :: c,mu,kappa
     integer :: s,ML_0,ML_1,MSP_0,MSP_1,MSP
@@ -142,13 +149,21 @@ CONTAINS
     MSP_1 = pot%xc%s_range%tail
     MSP  = pot%xc%s_range%size_global
 
-    if ( .not.allocated(Vxc) ) then
-       allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
-       Vxc=0.0d0
-    end if
+    allocate( rho_tmp(ML_0:ML_1,MSP) ) ; rho_tmp=0.0d0
 
-    allocate( rho_tmp(ML_0:ML_1,MSP) )
-    rho_tmp(:,:)=rho(:,:)
+    if ( present(rho_in) ) then
+       rho_tmp(:,:)=rho_in(:,:)
+       Vxc_out(:,:)=0.0d0
+       if ( .not.( XCtype == "LDAPZ81" .or. XCtype == "LDAPW92" ) ) then
+          call stop_program("LDA is only available for noncollinear calc")
+       end if
+    else
+       rho_tmp(:,:)=rho(:,:)
+       if ( .not.allocated(Vxc) ) then
+          allocate( Vxc(ML_0:ML_1,MSP_0:MSP_1) )
+          Vxc=0.0d0
+       end if
+    end if
 
     if ( flag_pcc_0 ) then
        c=1.0d0
@@ -169,24 +184,34 @@ CONTAINS
 
        call calc_LDAPZ81( density_v2, ene, pot )
 
-       E_exchange    = ene%Ex
-       E_correlation = ene%Ec
-       Exc           = ene%Exc
-       Vxc(:,:)      = pot%xc%val(:,:)
+       if ( present(Vxc_out) ) then
+          Exc_out = ene%Exc
+          Vxc_out(:,:) = pot%xc%val(:,:)
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
+       end if
 
     case('LDAPW92')
 
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
        call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
 
-    case('GGAPBE96')
+       if ( present(Vxc_out) ) then
+          Exc_out = Exc
+          Vxc_out = Vxc
+       end if
+
+    case('GGAPBE96_')
 
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
 
        call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
 
-    case('PBE','PBE96')
+    case('PBE','PBE96','GGAPBE96')
 
        call calc_GGAPBE96_2( rg, density, ene, pot )
 
@@ -322,6 +347,30 @@ CONTAINS
        Vxc(:,:) = pot%x%val(:,:) + pot%c%val(:,:)
 
        Exc = E_exchange + E_correlation
+
+    case( "LIBXC" )
+
+       call init_libxc( MSP )
+
+       call calc_libxc( rg, density, ene, pot )
+
+       E_exchange    = ene%Ex
+       E_correlation = ene%Ec
+       Exc           = ene%Exc
+       Vxc(:,:)      = pot%xc%val(:,:)
+
+       if ( iflag_hybrid /= 0 ) then
+
+          call init_xc_hf( ML_0,ML_1, MSP_0,MSP_1, MBZ_0,MBZ_1 &
+                          ,MB_0,MB_1, SYStype, dV )
+
+          call calc_xc_hf( E_exchange_exx )
+
+          E_exchange = E_exchange + E_exchange_exx
+
+          Exc = E_exchange + E_correlation
+
+       end if
 
     case default
 

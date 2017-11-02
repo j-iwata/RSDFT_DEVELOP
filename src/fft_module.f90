@@ -3,6 +3,8 @@ MODULE fft_module
   use grid_module
   use rsdft_fft_module
   use fftw_module
+  use bb_module
+  use hsort_module
 
   implicit none
 
@@ -12,6 +14,8 @@ MODULE fft_module
   PUBLIC :: d1_to_z3_fft, z3_to_d1_fft
   PUBLIC :: z1_to_z3_fft, z3_to_z1_fft
   PUBLIC :: forward_fft, backward_fft
+  PUBLIC :: grid_util_fft
+  PUBLIC :: forward_2d_fft
 
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3
@@ -21,6 +25,11 @@ MODULE fft_module
 !  complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
   complex(8),parameter :: zero=(0.0d0,0.0d0)
   logical :: keep_LLL=.false.
+#ifdef _FFTW_
+  character(9),parameter :: routine_def="fft_fftw"
+#else
+  character(9),parameter :: routine_def="fft_rsdft"
+#endif
 
 CONTAINS
 
@@ -135,38 +144,100 @@ CONTAINS
   END SUBROUTINE z3_to_z1_fft
 
 
-  SUBROUTINE forward_fft( z3, w3 )
+  SUBROUTINE forward_fft( z3, w3, key )
     implicit none
     complex(8),intent(INOUT) :: z3(0:,0:,0:)
+    character(*),optional,intent(IN) :: key
     complex(8),allocatable   :: w3(:,:,:)
-#ifdef _FFTW_
-    call forward_fftw( z3 )
-    return
-#endif
-    if ( .not.allocated(w3) ) then
-       allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-    end if
-    call rsdft_fft3d( z3,  1 ) ; return
-!    call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    character(9) :: routine
+    routine=routine_def ; if ( present(key) ) routine=key
+    select case( routine )
+    case default
+       call forward_fftw( z3 )
+    case( "fft_rsdft" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+       call rsdft_fft3d( z3,  1 )
+    case( "fft_tapp" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+!       call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    end select
   END SUBROUTINE forward_fft
 
 
-  SUBROUTINE backward_fft( z3, w3 )
+  SUBROUTINE backward_fft( z3, w3, key )
     implicit none
     complex(8),intent(INOUT) :: z3(:,:,:)
+    character(*),optional,intent(IN) :: key
     complex(8),allocatable   :: w3(:,:,:)
-#ifdef _FFTW_
-    call backward_fftw( z3 )
-    return
-#endif
-    if ( .not.allocated(w3) ) then
-       allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-    end if
-    call rsdft_fft3d( z3, -1 ) ; return
-!    call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-!               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    character(9) :: routine
+    routine=routine_def ; if ( present(key) ) routine=key
+    select case( routine )
+    case default
+       call backward_fftw( z3 )
+    case( "fft_rsdft" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+       call rsdft_fft3d( z3, -1 )
+    case( "fft_tapp" )
+       if ( .not.allocated(w3) ) then
+          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+       end if
+!       call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+    end select
   END SUBROUTINE backward_fft
+
+
+  SUBROUTINE grid_util_fft( gg, indx )
+    implicit none
+    real(8),allocatable,intent(INOUT) :: gg(:)
+    integer,allocatable,intent(INOUT) :: indx(:)
+    integer :: i1,i2,i3,j1,j2,j3,jj
+    real(8) :: gx,gy,gz
+    if ( .not.allocated(gg) ) allocate( gg(ML) )
+    if ( .not.allocated(indx) ) allocate( indx(ML) )
+    gg=0.0d0
+    do i3=-(ML3-1)/2,ML3/2
+    do i2=-(ML2-1)/2,ML2/2
+    do i1=-(ML1-1)/2,ML1/2
+       j1=mod(i1+ML1,ML1)
+       j2=mod(i2+ML2,ML2)
+       j3=mod(i3+ML3,ML3)
+       jj=1+j1+ML1*j2+ML1*ML2*j3
+       gx=bb(1,1)*i1+bb(1,2)*i2+bb(1,3)*i3
+       gy=bb(2,1)*i1+bb(2,2)*i2+bb(2,3)*i3
+       gz=bb(3,1)*i1+bb(3,2)*i2+bb(3,3)*i3
+       gg(jj)=gx*gx+gy*gy+gz*gz
+    end do
+    end do
+    end do
+    call indexx( ML, gg, indx )
+!    write(*,*) minval(gg),maxval(gg)
+!    write(*,*) count(gg/=0.0d0),size(gg)
+!    do jj=1,ML
+!       write(*,*) jj,gg(jj),gg(indx(jj))
+!    end do
+!    stop
+  END SUBROUTINE grid_util_fft
+
+
+  SUBROUTINE forward_2d_fft( z2, zw )
+    implicit none
+    complex(8),intent(INOUT) :: z2(0:,0:)
+    complex(8),allocatable   :: zw(:,:)
+#ifdef _FFTW_
+    call forward_2d_fftw( z2, zw )
+    return
+#else
+    call stop_program( "forward_fft_2d is only available with FFTW" )
+#endif
+  END SUBROUTINE forward_2d_fft
 
 
 END MODULE fft_module

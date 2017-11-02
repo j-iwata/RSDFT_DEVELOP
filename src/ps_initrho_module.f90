@@ -261,6 +261,13 @@ CONTAINS
 
        end if
 
+       c0=sum( rho_tmp(:,ik) )*dV
+       call mpi_allreduce(c0,c,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+       if ( disp_switch_parallel ) write(*,*) c,nelectron_ik(ik)
+
+       c=nelectron_ik(ik)/c
+       rho_tmp(:,ik)= c*rho_tmp(:,ik)
+
        c=1.0d0/Nspin
        do s=1,m_spin
           rho(:,s) = rho(:,s) + c*rho_tmp(:,ik)

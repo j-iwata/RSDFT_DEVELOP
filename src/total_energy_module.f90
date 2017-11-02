@@ -3,7 +3,7 @@ MODULE total_energy_module
   use rgrid_module, only: dV
   use hamiltonian_module
   use hartree_variables, only: Vh, E_hartree
-  use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx
+  use xc_module, only: Vxc,E_exchange,E_correlation,Exc,E_exchange_exx,DCxc
   use eion_module, only: Eewald
   use wf_module, only: unk,esp,occ
   use localpot_module, only: Vloc
@@ -16,6 +16,7 @@ MODULE total_energy_module
   use fock_module
   use var_sys_parameter, only: pp_kind
   use vdw_grimme_module
+  use hamiltonian_ncol_module
 
   implicit none
 
@@ -55,25 +56,27 @@ MODULE total_energy_module
 CONTAINS
 
 
-  SUBROUTINE calc_total_energy( flag_recalc_esp, Etot, unit_in )
+  SUBROUTINE calc_total_energy( flag_recalc_esp, Etot, unit_in, flag_ncol )
     implicit none
     logical,intent(IN) :: flag_recalc_esp
     real(8),intent(INOUT) :: Etot
     integer,optional,intent(IN) :: unit_in
+    logical,optional,intent(IN) :: flag_ncol
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,unit
-    real(8) :: s0(4),s1(4),uu
+    real(8) :: s0(4),s1(4),uu,cnst
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
     real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_
     real(8),parameter :: zero=0.d0
     real(8),allocatable :: work(:,:)
-    real(8),allocatable :: work00(:,:)
+    real(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
 #else
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8),allocatable :: work(:,:)
-    complex(8),allocatable :: work00(:,:)
+    complex(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
 #endif
     include 'mpif.h'
+    complex(8) :: ztmp,ztmp1
 
     call write_border( 1, " calc_total_energy(start)" )
 
@@ -93,10 +96,12 @@ CONTAINS
 
     if ( flag_recalc_esp ) then
 
-       allocate( esp0(MB,MBZ,MSP,4) ) ; esp0=0.d0
-       allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.d0
+       allocate( esp0(MB,MBZ,MSP,5) ) ; esp0=0.0d0
+       allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.0d0
        allocate( work(n1:n2,MB_d)   ) ; work=zero
        allocate( work00(n1:n2,MB_d) ) ; work00=zero
+       allocate( zw1(n1:n2,MSP) ) ; zw1=zero
+       allocate( zw2(n1:n2,MSP) ) ; zw2=zero
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
@@ -185,10 +190,26 @@ CONTAINS
        deallocate( work   )
        deallocate( work00 )
 
-       allocate( esp1(MB,MBZ,MSP,4) )
+       if ( present(flag_ncol) ) then
+          if ( flag_ncol ) then
+             do k=MBZ_0,MBZ_1
+             do n=MB_0 ,MB_1
+                zw1(:,:)=unk(:,n,k,:)
+                zw2=zero
+#ifndef _DRSDFT_
+                call hamiltonian_ncol( k, n1,n2, zw1, zw2 )
+                esp0(n,k,1,5) = sum( conjg(zw1)*zw2 )*dV
+#endif
+             end do ! n
+             end do ! k
+             esp0(:,:,MSP,5)=esp0(:,:,1,5)
+          end if
+       end if
+
+       allocate( esp1(MB,MBZ,MSP,5) )
        allocate( esp1_Q(MB,MBZ,MSP) )
 
-       n=MB*MBZ*MSP*4
+       n=MB*MBZ*MSP*5
        call mpi_allreduce(esp0,esp1,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
        esp1=esp1/np_fkmb
        n=MB*MBZ*MSP
@@ -208,8 +229,27 @@ CONTAINS
 
        endif
 
-       esp(:,:,:)=esp1(:,:,:,1)+esp1(:,:,:,2)+esp1(:,:,:,3)+esp1(:,:,:,4)
+       esp(:,:,:)=esp1(:,:,:,1) &
+                 +esp1(:,:,:,2) &
+                 +esp1(:,:,:,3) &
+                 +esp1(:,:,:,4)
 
+       if ( present(flag_ncol) ) then
+          if ( flag_ncol ) then
+             esp(:,:,:)=0.0d0
+             do s=1,MSP
+                esp(:,:,1)=esp(:,:,1)+esp1(:,:,s,1) &
+                                     +esp1(:,:,s,2) &
+                                     +esp1(:,:,s,3) &
+                                     +esp1(:,:,s,4)
+             end do
+             esp(:,:,1)=esp(:,:,1)+esp1(:,:,1,5)
+             esp(:,:,MSP)=esp(:,:,1)
+          end if
+       end if
+
+       deallocate( zw2 )
+       deallocate( zw1 )
        deallocate( esp1 )
        deallocate( esp0 )
        deallocate( esp1_Q )
@@ -218,6 +258,10 @@ CONTAINS
     end if ! flag_recalc_esp
 
     Eeig = sum( occ(:,:,:)*esp(:,:,:) )
+    if ( present(flag_ncol) ) then
+       if ( flag_ncol ) Eeig = sum( occ(:,:,1)*esp(:,:,1) )
+    end if
+
     cnst = sum( occ(:,:,:) )*const_ps_local
 
     select case( pp_kind )
@@ -270,10 +314,10 @@ CONTAINS
     call get_E_vdw_grimme( Evdw )
 
     Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
-         - 2*E_exchange_exx + Evdw + cnst
+         - 2*E_exchange_exx + Evdw + cnst - DCxc
 
     Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
-         - 2*E_exchange_exx + Evdw + cnst
+         - 2*E_exchange_exx + Evdw + cnst -DCxc
 
     Fene = Etot - Eentropy
 
@@ -282,6 +326,9 @@ CONTAINS
 
     unit=99 ; if ( present(unit_in) ) unit=unit_in
     call write_info_total_energy( Etot, (myrank==0), unit )
+
+    call check_disp_length( i, 0 )
+    if ( i > 1 ) call write_info_total_energy( Etot, (myrank==0), 6 )
 
 !    if ( present(flag_rewind) ) then
 !       call write_info_total_energy( disp_switch, flag_rewind )
@@ -316,9 +363,10 @@ CONTAINS
   END SUBROUTINE calc_total_energy
 
 
-  SUBROUTINE calc_with_rhoIN_total_energy( Etot )
+  SUBROUTINE calc_with_rhoIN_total_energy( Etot, flag_ncol )
     implicit none
     real(8),optional,intent(OUT) :: Etot
+    logical,optional,intent(IN)  :: flag_ncol
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
     call write_border( 1, " calc_with_rhoIN_total_energy(start)" )
@@ -334,9 +382,14 @@ CONTAINS
     Ehat_in = E_hartree
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
+    if ( present(flag_ncol) ) then
+       if ( flag_ncol ) then
+          Eeig_tmp=sum( occ(:,:,1)*esp(:,:,1) )
+       end if
+    end if
     call get_E_vdw_grimme( Evdw )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
-         - 2*E_exchange_exx + const_ps_local*sum(occ) + Evdw
+         - 2*E_exchange_exx + const_ps_local*sum(occ) + Evdw - DCxc
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
@@ -352,7 +405,7 @@ CONTAINS
        else
           rewind u
        end if
-       write(u,*) "Total Energy ",Etot
+       write(u,*) "Total Energy ",Etot,diff_etot
        write(u,*) "Harris Energy",Ehwf
        write(u,*) "Ion-Ion                    ",Eewald
        write(u,*) "Local Potential            ",Eloc

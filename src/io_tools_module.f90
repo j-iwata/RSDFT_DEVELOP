@@ -27,6 +27,11 @@ MODULE io_tools_module
                      ,IOTools_readIntegerKeyword_vec
   END INTERFACE
 
+  INTERFACE IOTools_readStringKeyword
+     MODULE PROCEDURE IOTools_readStringKeyword_sca &
+                     ,IOTools_readStringKeyword_vec
+  END INTERFACE
+
 CONTAINS
 
 
@@ -55,7 +60,7 @@ CONTAINS
   END SUBROUTINE check_init
 
 
-  SUBROUTINE IOTools_readStringKeyword( keyword, variable, unit_in )
+  SUBROUTINE IOTools_readStringKeyword_sca( keyword, variable, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     character(*),intent(INOUT) :: variable
@@ -81,7 +86,40 @@ CONTAINS
 #ifndef _NOMPI_
     call MPI_BCAST( variable,len(variable),MPI_CHARACTER,0,MPI_COMM_WORLD,i )
 #endif
-  END SUBROUTINE IOTools_readStringKeyword
+  END SUBROUTINE IOTools_readStringKeyword_sca
+
+
+  SUBROUTINE IOTools_readStringKeyword_vec( keyword, variables, unit_in )
+    implicit none
+    character(*),intent(IN) :: keyword
+    character(*),intent(INOUT) :: variables(:)
+    integer,optional,intent(IN) :: unit_in
+    character(10) :: cbuf,ckey
+    integer :: i,j,unit
+    call check_init
+    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
+    if ( myrank == 0 ) then
+       rewind unit
+       do i=1,max_trial_read
+          read(unit,*,END=999) cbuf
+          call convertToCapital(cbuf,ckey)
+          if ( ckey == keyword ) then
+             backspace(unit)
+             read(unit,*) cbuf, variables(:)
+             write(*,'(1x,A10," : ",A10)') keyword, variables(1)
+             do j=2,size(variables)
+                write(*,'(1x,10x,"   ",A10)') variables(j)
+             end do
+             exit
+          end if
+       end do ! i
+999    continue
+    end if
+#ifndef _NOMPI_
+    call MPI_BCAST( variables, len(variables)*size(variables), &
+                    MPI_CHARACTER, 0, MPI_COMM_WORLD, i )
+#endif
+  END SUBROUTINE IOTools_readStringKeyword_vec
 
 
   SUBROUTINE IOTools_readIntegerKeyword_sca( keyword, variable, unit_in )

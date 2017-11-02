@@ -6,6 +6,7 @@ MODULE xc_ggapbe96_module
   use parallel_module
   use fd_module
   use xc_ggapbe96_mol_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -270,7 +271,6 @@ CONTAINS
     real(8),allocatable :: rrrr(:,:),rtmp(:)
     real(8) :: kf, vx_lda, ex_lda, Fx, Pi, g2, factor
     integer :: i1,i2,i3,j,j1,j2,j3,k1,k2,k3,m,m1,m2,m3
-    include 'mpif.h'
 
     Pi = acos(-1.0d0)
 
@@ -313,25 +313,16 @@ CONTAINS
        end do ! i
 
        rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
-       ! modified by MIZUHO-IR, inplace
-       call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-            rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$       call mpi_allgatherv(rrrr(ML_0,1),ir_grid(myrank_g),mpi_real8, &
-!!$            rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       call rsdft_allgatherv &
+            ( rrrr(ML_0:ML_1,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
 
        rrrr(ML_0:ML_1,2) = rtmp(ML_0:ML_1)*gy(ML_0:ML_1)
-       ! modified by MIZUHO-IR, inplace
-       call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-            rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$       call mpi_allgatherv(rrrr(ML_0,2),ir_grid(myrank_g),mpi_real8, &
-!!$            rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       call rsdft_allgatherv &
+            ( rrrr(ML_0:ML_1,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
 
        rrrr(ML_0:ML_1,3)=rtmp(ML_0:ML_1)*gz(ML_0:ML_1)
-       ! modified by MIZUHO-IR, inplace
-       call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-            rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$       call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8, &
-!!$            rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+       call rsdft_allgatherv &
+            ( rrrr(ML_0:ML_1,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
        select case( SYStype )
        case default
@@ -420,7 +411,6 @@ CONTAINS
     real(8),allocatable :: rrrr(:,:), rtmp(:), vtmp(:)
     real(8) :: Pi, one, two, fouthr, onethr
     real(8) :: sevthr, twothr, thrtwo, ThrFouPi
-    include 'mpif.h'
 
     const1=2.d0**(4.d0/3.d0)-2.d0
     const2=9.d0*(2.d0**(1.d0/3.d0)-1.d0)/4.d0
@@ -557,25 +547,16 @@ CONTAINS
     end do ! i
 
     rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$    call mpi_allgatherv(rrrr(ML_0,1),ir_grid(myrank_g),mpi_real8, &
-!!$         rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,2) = rtmp(ML_0:ML_1)*gy(ML_0:ML_1)
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$    call mpi_allgatherv(rrrr(ML_0,2),ir_grid(myrank_g),mpi_real8, &
-!!$         rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,3) = rtmp(ML_0:ML_1)*gz(ML_0:ML_1)
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$    call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8, &
-!!$         rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
     select case( SYStype )
     case default
@@ -674,7 +655,6 @@ CONTAINS
     real(8),allocatable :: rrrr(:,:), rtmp(:),vtmp(:)
     real(8) :: Pi, one, two, fouthr, onethr
     real(8) :: sevthr, twothr, thrtwo, ThrFouPi
-    include 'mpif.h'
 
     const1 = 2.0d0**(4.0d0/3.0d0)-2.0d0
     const2 = 9.0d0*(2.0d0**(1.0d0/3.0d0)-1.0d0)/4.0d0
@@ -811,23 +791,16 @@ CONTAINS
     end do ! i
 
     rrrr(ML_0:ML_1,1) = rtmp(ML_0:ML_1)*gx(ML_0:ML_1)
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$    call mpi_allgatherv(rrrr(ML_0,1),ir_grid(myrank_g),mpi_real8, &
-!!$         rrrr(1,1),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,1), rrrr(:,1), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,2) = rtmp(ML_0:ML_1)*gy(ML_0:ML_1)
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$    call mpi_allgatherv(rrrr(ML_0,2),ir_grid(myrank_g),mpi_real8, &
-!!$         rrrr(1,2),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,2), rrrr(:,2), ir_grid, id_grid, comm_grid )
 
     rrrr(ML_0:ML_1,3) = rtmp(ML_0:ML_1)*gz(ML_0:ML_1)
-    call mpi_allgatherv( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
-!!$    call mpi_allgatherv(rrrr(ML_0,3),ir_grid(myrank_g),mpi_real8, &
-!!$         rrrr(1,3),ir_grid,id_grid,mpi_real8,comm_grid,ierr)
+    call rsdft_allgatherv &
+         ( rrrr(ML_0:ML_1,3), rrrr(:,3), ir_grid, id_grid, comm_grid )
 
     select case( SYStype )
     case default

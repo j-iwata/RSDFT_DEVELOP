@@ -83,10 +83,10 @@ PROGRAM dos2gp
   allocate( itmp(k,3) ) ; itmp=0 
 
   loop_3 : do k3=indx_range(1,3),indx_range(2,3)
-  do k2=indx_range(1,2),indx_range(2,2)
-     if ( .not.( all(ktmp(:,k2,k3)/=0) ) ) exit loop_3
-  end do
-  end do loop_3
+           do k2=indx_range(1,2),indx_range(2,2)
+              if ( any(ktmp(:,k2,k3)/=0) ) exit loop_3
+           end do
+           end do loop_3
   nge(1) = count( ktmp(:,k2,k3) /= 0 )
   i=0
   do k1=indx_range(1,1),indx_range(2,1)
@@ -97,10 +97,10 @@ PROGRAM dos2gp
   end do
 
   loop_1 : do k1=indx_range(1,1),indx_range(2,1)
-  do k3=indx_range(1,3),indx_range(2,3)
-     if ( .not.( all(ktmp(k1,:,k3)/=0) ) ) exit loop_1
-  end do
-  end do loop_1
+           do k3=indx_range(1,3),indx_range(2,3)
+              if ( any(ktmp(k1,:,k3)/=0) ) exit loop_1
+           end do
+           end do loop_1
   nge(2) = count( ktmp(k1,:,k3) /= 0 )
   i=0
   do k2=indx_range(1,2),indx_range(2,2)
@@ -111,10 +111,10 @@ PROGRAM dos2gp
   end do
 
   loop_2 : do k2=indx_range(1,2),indx_range(2,2)
-  do k1=indx_range(1,1),indx_range(2,1)
-     if ( .not.( all(ktmp(k1,k2,:)/=0) ) ) exit loop_2
-  end do
-  end do loop_2
+           do k1=indx_range(1,1),indx_range(2,1)
+              if ( any(ktmp(k1,k2,:)/=0) ) exit loop_2
+           end do
+           end do loop_2
   nge(3) = count( ktmp(k1,k2,:) /= 0 )
   i=0
   do k3=indx_range(1,3),indx_range(2,3)

@@ -8,6 +8,7 @@ MODULE force_sol_module
   use watch_module
   use atom_module, only: aa_atom
   use vdw_grimme_module, only: calc_F_vdw_grimme
+  use nonlocal_module, only: calc_force_nonlocal
 
   implicit none
 
@@ -23,6 +24,8 @@ CONTAINS
     real(8),allocatable :: work(:,:)
 !    real(8) :: ctt(0:4),ett(0:4)
 !    logical :: disp_sw
+
+    call write_border( 1, " calc_force_sol(start)" )
 
     force(:,:) = 0.d0
 
@@ -43,7 +46,7 @@ CONTAINS
 
 !    call watch(ctt(1),ett(1))
 
-    call calc_force_ps_nloc2(MI,work)
+    call calc_force_nonlocal( MI, work )
     force = force + work
 
 !    call watch(ctt(2),ett(2))
@@ -63,6 +66,7 @@ CONTAINS
 !       write(*,*) "time(force2)",ctt(2)-ctt(1),ett(2)-ett(1)
 !       write(*,*) "time(force3)",ctt(3)-ctt(2),ett(3)-ett(2)
 !    end if
+    call write_border( 1, " calc_force_sol(end)" )
 
   END SUBROUTINE calc_force_sol
 

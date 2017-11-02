@@ -1,0 +1,15 @@
+*.o
+*.mod
+*.swp
+*.out
+fort.*
+make.inc
+RSDFT_INFO*
+*.lst
+*~
+*.x
+*.log
+*.optlog
+maketimer
+*.i90
+*.i

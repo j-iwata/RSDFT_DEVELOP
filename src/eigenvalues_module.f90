@@ -8,6 +8,7 @@ MODULE eigenvalues_module
   PUBLIC :: eigv
   PUBLIC :: construct_eigenvalues
   PUBLIC :: write_eigenvalues
+  PUBLIC :: control_eigenvalues
 
   TYPE eigv
      integer :: nband, nkpnt, nspin
@@ -18,7 +19,16 @@ MODULE eigenvalues_module
   integer :: unit=20
   character(16) :: file_name="eigenvalues"
 
+  logical :: skip_flag=.false.
+
 CONTAINS
+
+
+  SUBROUTINE control_eigenvalues( skip_flag_in )
+    implicit none
+    logical,intent(IN) :: skip_flag_in
+    skip_flag=skip_flag_in
+  END SUBROUTINE control_eigenvalues
 
 
   SUBROUTINE construct_eigenvalues( nb, nk, ns, esp_in, esp )
@@ -26,6 +36,8 @@ CONTAINS
     integer,intent(IN) :: nb,nk,ns
     real(8),intent(IN) :: esp_in(:,:,:)
     type(eigv),intent(INOUT) :: esp
+
+    if ( skip_flag ) return
 
     esp%nband = nb
     esp%nkpnt = nk
@@ -49,6 +61,8 @@ CONTAINS
     type(eigv),intent(IN) :: esp
     integer :: n,k,s
 
+    if ( skip_flag ) return
+
     open( unit, file=file_name )
 
     do k=1,esp%nkpnt
@@ -67,5 +81,6 @@ CONTAINS
     close( unit )
 
   END SUBROUTINE write_eigenvalues
+
 
 END MODULE eigenvalues_module

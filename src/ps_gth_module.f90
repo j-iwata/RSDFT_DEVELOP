@@ -31,6 +31,11 @@ CONTAINS
 
     iflag_hgh = .false.
 
+    hnml=0.0d0
+    knml=0.0d0
+    hnl =0.0d0
+    knl =0.0d0
+
     write(*,'(a60," read_ps_gth")') repeat("-",60)
 
     read(unit_pp,'(a)') cbuf
@@ -43,7 +48,7 @@ CONTAINS
 
     else ! [ Original Format ]
 
-       backspace(unit_pp)
+       rewind unit_pp
 
        read(unit_pp,*) name,znuc,Zps
        read(unit_pp,*) Rcloc, parloc(1:4)
@@ -61,12 +66,13 @@ CONTAINS
           iflag_hgh = .false.
           write(*,*) "GTH format",j
        else
-          iflag_hgh=.true.
+          iflag_hgh = .true.
           write(*,*) "HGH format",j
        end if
-       do j=1,i
-          backspace(unit_pp)
-       end do
+
+       rewind unit_pp
+       read(unit_pp,*)
+       read(unit_pp,*)
 
        norb=0
        do i=1,lrefmax
@@ -78,7 +84,7 @@ CONTAINS
           if ( iflag_hgh .and. i > 1 ) read(unit_pp,*,END=10) work2(1:3)
 
           do j=1,3
-             if ( work1(j) /= 0.0d0 ) then
+             if ( work1(j) /= 0.0d0 .or. work2(j) /= 0.0d0 ) then
                 norb       = norb + 1
                 Rps0(norb) = rcnl
                 lo(norb)   = i-1
@@ -109,6 +115,15 @@ CONTAINS
           end do
        end do
 
+       do L=0,maxval(lo)
+          write(*,*) "L=",L
+          do i=1,size(hnml,1)
+             do j=1,size(hnml,2)
+                write(*,'(1x,2i4,2x,f14.8,4f14.8)') i,j,Rps0(norb),hnml(i,j,L)
+             end do
+          end do
+       end do
+
     else
 
        do iorb=1,norb
@@ -127,15 +142,16 @@ CONTAINS
     psp%Mr   = 0
     psp%norb = norb
     call ps_allocate_ps1d( psp )
-
     psp%Zelement    = znuc
     psp%Zps         = Zps
     psp%parloc(:)   = parloc(:)
     psp%Rcloc       = Rcloc
+    if ( norb /= 0 ) then
     psp%Rps(:)      = Rps0(1:norb)
     psp%lo(:)       = lo(1:norb)
     psp%no(:)       = no(1:norb)
     psp%inorm(:)    = inorm(1:norb)
+    end if
     psp%hnl(:,:)    = hnl(:,:)
     psp%knl(:,:)    = knl(:,:)
     psp%hnml(:,:,:) = hnml(:,:,:)

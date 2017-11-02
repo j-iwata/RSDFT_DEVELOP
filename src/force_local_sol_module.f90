@@ -11,6 +11,8 @@ MODULE force_local_sol_module
   use ffte_sub_module
   use watch_module
   use fft_module
+  use rsdft_mpi_module
+  use force_local_fftw_module
 
   implicit none
 
@@ -34,6 +36,8 @@ CONTAINS
     real(8),intent(OUT) :: force(3,Natom)
 #ifdef _FFTE_
     call calc_force_ps_local_ffte( Natom, force )
+#elif _FFTW_
+    call calc_force_local_fftw( Natom, force )
 #else
     call calc_force_ps_local( Natom, force )
 #endif
@@ -269,7 +273,7 @@ CONTAINS
     call watch(ctt(2),ett(2))
 
     call mpi_allreduce(zwork1_ffte,zwork2_ffte,ML1*(b2b-a2b+1)*(b3b-a3b+1) &
-         ,mpi_complex16,mpi_sum,comm_fftx,ierr)
+         ,RSDFT_MPI_COMPLEX16,mpi_sum,comm_fftx,ierr)
 
     call watch(ctt(3),ett(3))
 
@@ -287,8 +291,7 @@ CONTAINS
 
     call watch(ctt(5),ett(5))
 
-    call mpi_allreduce(MPI_IN_PLACE,fg,MG,MPI_COMPLEX16 &
-         ,MPI_SUM,comm_grid,ierr)
+    call rsdft_allreduce_sum( fg, comm_grid )
 
     call watch(ctt(6),ett(6))
 
@@ -339,14 +342,12 @@ CONTAINS
 !    call destruct_Ggrid
 
     if ( nprocs <= MI ) then
-       ! modified by MIZUHO-IR, inplace
-       call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-            force,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
-!!$       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
-!!$                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+!       call mpi_allgatherv(force(1,MI_0),icnta(myrank),MPI_REAL8,force &
+!                          ,icnta,idisa,MPI_REAL8,MPI_COMM_WORLD,ierr)
+       call rsdft_allgatherv &
+            ( force(:,MI_0:MI_1), force, icnta, idisa, MPI_COMM_WORLD )
     else
-       call mpi_allreduce(MPI_IN_PLACE,force,size(force),mpi_real8 &
-                         ,mpi_sum,mpi_comm_world,ierr)
+       call rsdft_allreduce_sum( force, MPI_COMM_WORLD )
     end if
 
     call watch(ctt(9),ett(9))

@@ -3,9 +3,10 @@ MODULE subspace_rotv_sl_module
   use wf_module, only: unk,hunk,iflag_hunk
   use scalapack_module
   use parallel_module
-  use subspace_diag_variables
+  use subspace_diag_variables, only: MB_diag,NBLK2,zero,one,Vsub,TYPE_MAIN
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use bcast_module
+  use watch_module
 
   implicit none
 
@@ -26,6 +27,10 @@ CONTAINS
     integer,intent(IN) :: k,s
     integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,loop
     integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,n_loop
+    type(time) :: t
+
+    call write_border( 1, " subspace_rotv(start)" )
+    call start_timer( t )
 
     n1  = ML_0
     n2  = ML_1
@@ -131,6 +136,9 @@ CONTAINS
     end do ! loop
 
     deallocate( utmp )
+
+    call result_timer( t, "rotv_sl" )
+    call write_border( 1, " subspace_rotv(end)" )
 
   END SUBROUTINE subspace_rotv_sl
 

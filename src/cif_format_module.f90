@@ -8,7 +8,6 @@ MODULE cif_format_module
   PUBLIC :: check_cif_format
   PUBLIC :: read_atom_cif
 
-  ! modified by MIZUHO-IR, string array
   character(30),parameter :: keyword(11)=(/ &
        "_cell_length_a            ", &
        "_cell_length_b            ", &
@@ -221,7 +220,7 @@ CONTAINS
           call shift_aa_coordinates_atom( asi )
           do j=1,n
              rr=sum( (asi-atm(:,j))**2 )
-             if ( rr < 1.d-8 ) cycle loop_i
+             if ( rr < 1.d-3 ) cycle loop_i
           end do
           if ( iatm(z) == 0 ) iatm(z)=maxval(iatm)+1
           n=n+1

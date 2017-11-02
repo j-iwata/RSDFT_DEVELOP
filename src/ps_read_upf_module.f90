@@ -25,6 +25,7 @@ CONTAINS
     do loop=1,max_loop
 
        read(g,'(a)',END=10) cbuf
+       cbuf = adjustl( cbuf )
        write(*,*) cbuf
 
        if ( cbuf(1:21) == '<UPF version="2.0.1">' ) then
@@ -54,19 +55,23 @@ CONTAINS
     real(8) :: tmp,Zps
     real(8),allocatable :: rr(:),rx(:),vql(:),cdc(:),cdd(:)
     real(8),allocatable :: viod(:,:),anorm(:)
-    character(30) :: cbuf
+    character(30) :: cbuf,ckey
 
     write(*,'(a40," ps_read_upf_verorg")') repeat("-",40)
 
 ! Read
 
     nrr=0
+    norb=0
 
     do loop=1,max_loop
 
        read(g,*,END=10) cbuf
+       ckey = adjustl( cbuf )
 
-       if ( cbuf(1:11) == "<PP_HEADER>" ) then
+       if ( ckey(1:11) == "<PP_HEADER>" ) then
+
+          write(*,*) ckey(1:11)
 
           do i=1,5
              read(g,*)
@@ -78,7 +83,7 @@ CONTAINS
           end do
           read(g,*) nrr
 
-       else if ( cbuf(1:11) == "<PP_HEADER " ) then
+       else if ( ckey(1:11) == "<PP_HEADER " ) then
 
           do i=1,max_loop
              read(g,*) cbuf
@@ -99,31 +104,39 @@ CONTAINS
           end if
        end if
 
-       if ( cbuf(1:9) == "<PP_MESH>" ) then
+       if ( ckey(1:9) == "<PP_MESH>" ) then
+
+          write(*,*) ckey(1:9)
 
           do i=1,max_loop
              read(g,*) cbuf
-             if ( cbuf(1:6) == "<PP_R>" ) exit
+             ckey=adjustl(cbuf)
+             if ( ckey(1:6) == "<PP_R>" ) exit
           end do
 
           read(g,*) rr(1:nrr)
 
           do i=1,max_loop
              read(g,*) cbuf
-             if ( cbuf(1:8) == "<PP_RAB>" ) exit
+             ckey=adjustl(cbuf)
+             if ( ckey(1:8) == "<PP_RAB>" ) exit
           end do ! i
 
           read(g,*) rx(1:nrr)
 
        end if ! </PP_MESH>
 
-       if ( cbuf(1:9) == "<PP_NLCC>" ) then
+       if ( ckey(1:9) == "<PP_NLCC>" ) then
+
+          write(*,*) ckey(1:9)
 
           read(g,*) cdc(1:nrr)
 
        end if
 
-       if ( cbuf(1:10) == "<PP_LOCAL>" ) then
+       if ( ckey(1:10) == "<PP_LOCAL>" ) then
+
+          write(*,*) ckey(1:10)
 
           read(g,*) vql(1:nrr)
 
@@ -139,19 +152,24 @@ CONTAINS
           end if
        end if
 
-       if ( cbuf(1:13) == "<PP_NONLOCAL>" ) then
+       if ( ckey(1:13) == "<PP_NONLOCAL>" ) then
+
+          write(*,*) ckey(1:13)
 
           norb=0
           do i=1,max_loop
+
              read(g,*) cbuf
-             if ( cbuf(1:9) == "<PP_BETA>" ) then
+             ckey=adjustl(cbuf)
+
+             if ( ckey(1:9) == "<PP_BETA>" ) then
                 read(g,*) j, lo(j)
                 read(g,*) nrc ; if ( nrc > nrr) stop"stop@ps_read_upf(1)"
                 read(g,*) viod(1:nrc,j)
                 read(g,*) cbuf
                 NRps(j)=nrc
                 norb=max( j, norb )
-             else if ( cbuf(1:8) == "<PP_DIJ>" ) then
+             else if ( ckey(1:8) == "<PP_DIJ>" ) then
                 read(g,*) n
                 do j=1,n
                    read(g,*) i0,i1,anorm(j)
@@ -161,18 +179,24 @@ CONTAINS
                    anorm(j)=abs( anorm(j) )
                 end do
                 read(g,*) cbuf
-             else if ( cbuf(1:8) == "<" ) then
-                write(*,*) cbuf,"exit"
+             else if ( ckey(1:8) == "<" ) then
+                write(*,*) ckey,"exit"
                 exit
              end if
-          end do
+
+          end do ! i
 
        end if
 
-       if ( cbuf(1:10) == "<PP_PSWFC>" ) then
+       if ( ckey(1:10) == "<PP_PSWFC>" ) then
+
+          write(*,*) ckey(1:10)
+
        end if
 
-       if ( cbuf(1:12) == "<PP_RHOATOM>" ) then
+       if ( ckey(1:12) == "<PP_RHOATOM>" ) then
+
+          write(*,*) ckey(1:12)
 
           read(g,*) cdd(1:nrr)
 
@@ -237,11 +261,13 @@ CONTAINS
     write(*,*) "Znuc=",psp%Zps
     write(*,*) "# of radial mesh points =",psp%Mr
     write(*,*) "# of orbitals =",psp%norb
+    if ( psp%norb > 0 ) then
     write(*,*) "angular momentum =",psp%lo(1:psp%norb)
     write(*,*) "cut off radius =",psp%Rps(1:psp%norb)
     write(*,*) "# of grid points within cut off radius",psp%NRps(1:psp%norb)
     write(*,*) "uVu integral (anorm) ="
     write(*,'(1x,8f10.5)') ( psp%inorm(i)*psp%anorm(i),i=1,psp%norb )
+    end if
     write(*,*) "sum(rhov)=",sum(psp%cdd*psp%rab)
     write(*,*) "sum(rhoc)=",sum(psp%cdc*psp%rab*(psp%rad)**2)*4*acos(-1.d0)
 
@@ -405,6 +431,10 @@ CONTAINS
 
                 if ( j == norb ) exit
 
+             else if ( ckey(1:8) == "<PP_DIJ " ) then
+                backspace(g)
+                write(*,*) ckey,"exit"
+                exit
              end if
 
           end do ! i
@@ -426,6 +456,7 @@ CONTAINS
                 call get_num_from_string( cbuf, "size=", nsize )
                 call get_num_from_string( cbuf, "columns=", columns )
                 write(*,*) "nsize,columns=",nsize,columns
+                if ( nsize > 0 ) then
 ! ---
                 allocate( work(nsize) ) ; work=0.0d0
                 nr=nsize/columns
@@ -451,6 +482,11 @@ CONTAINS
                    end do
                    Dij(:,:)=0.0d0
                 end if !------> check single or multi reference (end)
+! ---
+                end if
+
+             else if ( ckey(1:9) == "</PP_DIJ>" ) then
+                write(*,*) ckey,"exit"
                 exit
              end if
 
@@ -515,6 +551,8 @@ CONTAINS
        end do
     end do
 
+    if ( allocated(anorm) ) then
+
     if ( any( anorm /= 0.0d0 ) ) then !------> single reference
        do j=1,norb
           psp%anorm(j)=anorm(j)
@@ -530,7 +568,10 @@ CONTAINS
        end do
     end if
 
-    deallocate( Dij, anorm )
+    end if
+
+    if ( allocated(Dij)   ) deallocate( Dij )
+    if ( allocated(anorm) ) deallocate( anorm )
     deallocate( viod, no, lo )
     deallocate( cdd, vql, cdc, rx, rr )
 
@@ -538,6 +579,7 @@ CONTAINS
     write(*,*) "Znuc=",psp%Zps
     write(*,*) "# of radial mesh points =",psp%Mr
     write(*,*) "# of orbitals =",psp%norb
+    if ( psp%norb > 0 ) then
     write(*,*) "angular momentum =",psp%lo(1:psp%norb)
     write(*,*) "cut off radius =",psp%Rps(1:psp%norb)
     write(*,*) "# of grid points within cut off radius",psp%NRps(1:psp%norb)
@@ -545,6 +587,7 @@ CONTAINS
     write(*,'(1x,8f10.5)') ( psp%inorm(i)*psp%anorm(i),i=1,psp%norb )
     write(*,*) "Dij ="
     write(*,'(1x,9f10.5)') (( psp%Dij(i,j),i=1,psp%norb ),j=1,psp%norb)
+    end if
     write(*,*) "sum(rhov)=",sum(psp%cdd*psp%rab)
     write(*,*) "sum(rhoc)=",sum(psp%cdc*psp%rab*(psp%rad)**2)*4*acos(-1.d0)
 

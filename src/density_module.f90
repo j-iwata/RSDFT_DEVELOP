@@ -10,6 +10,7 @@ MODULE density_module
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
   use rgrid_module, only: dV ! MIZUHO-IR for cellopt
+  use rsdft_mpi_module
 
   implicit none
 
@@ -178,16 +179,12 @@ CONTAINS
     include 'mpif.h'
     m=ML_1_RHO-ML_0_RHO+1
     do s=MS_0_RHO,MS_1_RHO
-       call mpi_allreduce(MPI_IN_PLACE,rho(ML_0_RHO,s),m,mpi_real8,mpi_sum,comm_band,ierr)
-       call mpi_allreduce(MPI_IN_PLACE,rho(ML_0_RHO,s),m,mpi_real8,mpi_sum,comm_bzsm,ierr)
+       call rsdft_allreduce_sum( rho(:,s), comm_band )
+       call rsdft_allreduce_sum( rho(:,s), comm_bzsm )
     end do
     ! The following assumes all 'MS_1-MS_0+1' are the same
     m=m*(MS_1_RHO-MS_0_RHO+1)
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         rho,m,mpi_real8,comm_spin,ierr)
-!!$    call mpi_allgather(rho(ML_0_RHO,MS_0_RHO),m,mpi_real8, &
-!!$         rho,m,mpi_real8,comm_spin,ierr)
+    call rsdft_allgather( rho(:,MS_0_RHO:MS_1_RHO), rho, comm_spin )
   END SUBROUTINE reduce_and_gather
 
 

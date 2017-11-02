@@ -13,6 +13,8 @@ MODULE lattice_module
   PUBLIC :: get_inverse_lattice
   PUBLIC :: backup_aa_lattice
   PUBLIC :: get_aa_lattice
+  PUBLIC :: check_lattice
+  PUBLIC :: calc_volume_lattice
 
   type lattice
      real(8) :: LatticeConstant
@@ -62,7 +64,7 @@ CONTAINS
     type(lattice),intent(INOUT) :: aa
     aa%LatticeVector(:,:) = aa%LatticeConstant * aa%LatticeVector(:,:)
     call calc_VectorLength( aa%LatticeVector, aa%Length )
-    call calc_Volume( aa%LatticeVector, aa%Volume )
+    call calc_volume_lattice( aa%LatticeVector, aa%Volume )
   END SUBROUTINE construct_aa_lattice
 
 
@@ -76,14 +78,14 @@ CONTAINS
   END SUBROUTINE calc_VectorLength
 
 
-  SUBROUTINE calc_Volume( aa, Va )
+  SUBROUTINE calc_volume_lattice( aa, Va )
     implicit none
     real(8),intent(IN)  :: aa(3,3)
     real(8),intent(OUT) :: Va
     Va = aa(1,1)*aa(2,2)*aa(3,3)+aa(1,2)*aa(2,3)*aa(3,1) &
         +aa(1,3)*aa(2,1)*aa(3,2)-aa(1,3)*aa(2,2)*aa(3,1) &
         -aa(1,2)*aa(2,1)*aa(3,3)-aa(1,1)*aa(2,3)*aa(3,2)
-  END SUBROUTINE calc_Volume
+  END SUBROUTINE calc_volume_lattice
 
 
   SUBROUTINE get_reciprocal_lattice( aa, bb )
@@ -105,7 +107,7 @@ CONTAINS
     b(:,:) = b(:,:)*pi2/aa%Volume
     bb%LatticeVector(:,:) = b(:,:)
     call calc_VectorLength( bb%LatticeVector, bb%Length )
-    call calc_Volume( bb%LatticeVector, bb%Volume )
+    call calc_volume_lattice( bb%LatticeVector, bb%Volume )
     bb%LatticeConstant = pi2/aa%LatticeConstant
  END SUBROUTINE get_reciprocal_lattice
 
@@ -124,7 +126,7 @@ CONTAINS
     b(1,3) = a(2,1)*a(3,2) - a(3,1)*a(2,2)
     b(2,3) = a(3,1)*a(1,2) - a(1,1)*a(3,2)
     b(3,3) = a(1,1)*a(2,2) - a(2,1)*a(1,2)
-    call calc_Volume( a, v )
+    call calc_volume_lattice( a, v )
     ainv(:,:) = transpose( b(:,:) )/v
   END SUBROUTINE get_inverse_lattice
 
@@ -141,5 +143,80 @@ CONTAINS
     aa = aa_backup
   END SUBROUTINE get_aa_lattice
 
+
+  SUBROUTINE check_lattice( a, indx )
+    implicit none
+    real(8),intent(IN) :: a(3,3)
+    character(*),optional,intent(OUT) :: indx
+    real(8) :: al(3), theta23, theta31, theta12, cos23, cos31, cos12
+    logical :: disp
+    al(1) = sqrt( sum(a(:,1)**2) )
+    al(2) = sqrt( sum(a(:,2)**2) )
+    al(3) = sqrt( sum(a(:,3)**2) )
+    cos23 = sum( a(:,2)*a(:,3) )/(al(2)*al(3))
+    cos31 = sum( a(:,3)*a(:,1) )/(al(3)*al(1))
+    cos12 = sum( a(:,1)*a(:,2) )/(al(1)*al(2))
+    theta23 = acos( cos23 )*180.0d0/acos(-1.0d0)
+    theta31 = acos( cos31 )*180.0d0/acos(-1.0d0)
+    theta12 = acos( cos12 )*180.0d0/acos(-1.0d0)
+    call check_disp_switch( disp, 0 )
+    if ( disp ) then
+       write(*,'(1x,"V1",3f12.5,2x,f12.5)') a(:,1), al(1)
+       write(*,'(1x,"V2",3f12.5,2x,f12.5)') a(:,2), al(2)
+       write(*,'(1x,"V3",3f12.5,2x,f12.5)') a(:,3), al(3)
+       write(*,'(1x,"cos23  ,cos31  ,cos12  :",3f10.5)') cos23,cos31,cos12
+       write(*,'(1x,"theta23,theta31,theta12:",3f10.5)') theta23,theta31,theta12
+    end if
+    if ( present(indx) ) then
+       indx=""
+       call check_cubic( al, (/cos23,cos31,cos12/), indx )
+       call check_hexagonal( al, (/cos23,cos31,cos12/), indx )
+       call check_fcc( al, (/cos23,cos31,cos12/), indx )
+    end if
+  END SUBROUTINE check_lattice
+
+  SUBROUTINE check_cubic( al, cosines, indx )
+    implicit none
+    real(8),intent(IN) :: al(3), cosines(3)
+    character(*),intent(INOUT) :: indx
+    real(8),parameter :: eps=1.d-3
+    if ( abs(al(1)-al(2)) < eps ) then
+       if ( abs(al(2)-al(3)) < eps ) then
+          if ( all( abs(cosines) < eps ) ) indx = "CUBIC"
+       end if
+    end if
+  END SUBROUTINE check_cubic
+
+  SUBROUTINE check_hexagonal( al, cosines, indx )
+    implicit none
+    real(8),intent(IN) :: al(3), cosines(3)
+    character(*),intent(INOUT) :: indx
+    real(8),parameter :: eps=1.d-3
+    if ( abs(al(1)-al(2)) < eps ) then
+       if ( abs(cosines(3)-0.5d0)<eps .or. abs(cosines(3)+0.5d0)<eps ) then
+          if ( abs(cosines(1))<eps .and. abs(cosines(2))<eps ) indx="HEXAGONAL"
+       end if
+    else if ( abs(al(2)-al(3)) < eps ) then
+       if ( abs(cosines(1)-0.5d0)<eps .or. abs(cosines(1)+0.5d0)<eps ) then
+          if ( abs(cosines(2))<eps .and. abs(cosines(3))<eps ) indx="HEXAGONAL"
+       end if
+    else if ( abs(al(3)-al(1)) < eps ) then
+       if ( abs(cosines(2)-0.5d0)<eps .or. abs(cosines(2)+0.5d0)<eps ) then
+          if ( abs(cosines(3))<eps .and. abs(cosines(1))<eps ) indx="HEXAGONAL"
+       end if
+    end if
+  END SUBROUTINE check_hexagonal
+
+  SUBROUTINE check_fcc( al, cosines, indx )
+    implicit none
+    real(8),intent(IN) :: al(3), cosines(3)
+    character(*),intent(INOUT) :: indx
+    real(8),parameter :: eps=1.d-3
+    if ( abs(al(1)-al(2)) < eps ) then
+       if ( abs(al(2)-al(3)) < eps ) then
+          if ( all( abs(cosines-0.5d0) < eps ) ) indx = "FCC"
+       end if
+    end if
+  END SUBROUTINE check_fcc
 
 END MODULE lattice_module

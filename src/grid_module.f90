@@ -3,6 +3,7 @@ MODULE grid_module
   use rgrid_variables
   use parallel_module
   use basic_type_factory
+  use rsdft_mpi_module
 
   implicit none
 
@@ -13,6 +14,10 @@ MODULE grid_module
   PUBLIC :: get_map_3d_to_1d_grid
   PUBLIC :: mpi_allgatherv_grid, zmpi_allgatherv_grid
   PUBLIC :: inner_product_grid
+  PUBLIC :: convert_1d_to_3d_grid
+  PUBLIC :: get_info_rs_grid
+  PUBLIC :: z_convert_1d_to_3d_grid
+  PUBLIC :: z_convert_3d_to_1d_grid
 
   type grid
      type( ArrayRange1D ) :: g1
@@ -75,7 +80,7 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE(MPI_IN_PLACE,LLL,size(LLL),MPI_INTEGER,MPI_SUM,comm,i)
+    call rsdft_allreduce_sum( LLL, comm )
   END SUBROUTINE construct_map_3d_to_1d_grid
 
 
@@ -103,7 +108,7 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE(MPI_IN_PLACE,LLL,size(LLL),MPI_INTEGER,MPI_SUM,rgrid%comm,i)
+    call rsdft_allreduce_sum( LLL, rgrid%comm )
   END SUBROUTINE get_map_3d_to_1d_grid
 
 
@@ -127,9 +132,25 @@ CONTAINS
     end do
     end do
     end do
-    call MPI_ALLREDUCE(MPI_IN_PLACE,LL,size(LL),MPI_INTEGER,MPI_SUM,comm,i)
+    call rsdft_allreduce_sum( LL, comm )
   END SUBROUTINE construct_map_1d_to_3d_grid
 
+  SUBROUTINE get_map_3d_to_1d( LLL )
+     implicit none
+     integer,allocatable,intent(OUT) :: LLL(:,:,:)
+     integer :: i,i1,i2,i3,ierr
+     allocate( LLL(0:Ngrid(1)-1,0:Ngrid(2)-1,0:Ngrid(3)-1) ) ; LLL=0
+     i=Igrid(1,0)-1
+     do i3=Igrid(1,3),Igrid(2,3)
+     do i2=Igrid(1,2),Igrid(2,2)
+     do i1=Igrid(1,1),Igrid(2,1)
+        i=i+1
+        LLL(i1,i2,i3)=i
+     end do
+     end do
+     end do
+     call rsdft_allreduce_sum( LLL, comm_grid )
+  END SUBROUTINE get_map_3d_to_1d
 
   SUBROUTINE mpi_allgatherv_grid( f, g )
     implicit none
@@ -145,8 +166,8 @@ CONTAINS
     complex(8),intent(IN)  :: zf(:)
     complex(8),intent(OUT) :: zg(:)
     integer :: ierr
-    call MPI_ALLGATHERV( zf, size(zf), MPI_COMPLEX16, zg, ir_grid, &
-                         id_grid, MPI_COMPLEX16, comm_grid, ierr )
+    call MPI_ALLGATHERV( zf, size(zf), RSDFT_MPI_COMPLEX16, zg, ir_grid, &
+                         id_grid, RSDFT_MPI_COMPLEX16, comm_grid, ierr )
   END SUBROUTINE zmpi_allgatherv_grid
 
 
@@ -159,6 +180,67 @@ CONTAINS
     fgc_tmp=sum(f*g)*c
     call MPI_ALLREDUCE( fgc_tmp, fgc, 1, MPI_REAL8, MPI_SUM, comm_grid, i )
   END SUBROUTINE inner_product_grid
+
+
+  SUBROUTINE convert_1d_to_3d_grid( i, iii )
+    implicit none
+    integer,intent(IN)  :: i
+    integer,intent(OUT) :: iii(3)
+    integer :: i1,i2,i3,j,jjj(3)
+    jjj=0
+    if ( Igrid(1,0) <= i .and. i <= Igrid(2,0) ) then
+       j=Igrid(1,0)-1
+       loop_i3 : do i3=Igrid(1,3),Igrid(2,3)
+       do i2=Igrid(1,2),Igrid(2,2)
+       do i1=Igrid(1,1),Igrid(2,1)
+          j=j+1
+          if ( j == i ) then
+             jjj(:)=(/ i1,i2,i3 /)
+             exit loop_i3
+          end if
+       end do
+       end do
+       end do loop_i3
+    end if
+    call MPI_ALLREDUCE( jjj, iii, 3, MPI_INTEGER, MPI_SUM, comm_grid, j ) 
+  END SUBROUTINE convert_1d_to_3d_grid
+
+
+  SUBROUTINE get_info_rs_grid( Ngrid_rs, Igrid_rs, dV_rs, comm_rs )
+    implicit none
+    integer,optional,intent(OUT) :: Ngrid_rs(0:3), Igrid_rs(2,0:3)
+    real(8),optional,intent(OUT) :: dV_rs
+    integer,optional,intent(OUT) :: comm_rs
+    if ( present(Ngrid_rs) ) Ngrid_rs = Ngrid
+    if ( present(Igrid_rs) ) Igrid_rs = Igrid
+    if ( present(dV_rs)    ) dV_rs    = dV
+    if ( present(comm_rs)  ) comm_rs  = comm_grid
+  END SUBROUTINE get_info_rs_grid
+
+
+  SUBROUTINE z_convert_1d_to_3d_grid( lat, f1, f3 )
+    implicit none
+    integer,intent(IN) :: lat(:,:)
+    complex(8),intent(IN) :: f1(:)
+    complex(8),intent(OUT) :: f3(0:,0:,0:)
+    integer :: i
+    do i=1,size(f1)
+       f3( lat(1,i), lat(2,i), lat(3,i) ) = f1(i)
+    end do
+  END SUBROUTINE z_convert_1d_to_3d_grid
+
+
+  SUBROUTINE z_convert_3d_to_1d_grid( lat, f3, f1 )
+    implicit none
+    integer,intent(IN) :: lat(:,:)
+    complex(8),intent(IN) :: f3(0:,0:,0:)
+    complex(8),intent(OUT) :: f1(:)
+    integer :: i,j
+    do i=1,size(f1)
+       j=i-1+Igrid(1,0)
+       f1(i) = f3( lat(1,j), lat(2,j), lat(3,j) )
+    end do
+  END SUBROUTINE z_convert_3d_to_1d_grid
 
 
 END MODULE grid_module

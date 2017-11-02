@@ -5,6 +5,7 @@ MODULE test_hpsi2_module
   use hamiltonian_module
   use parallel_module
   use watch_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -28,7 +29,7 @@ CONTAINS
     integer :: i, j, n1, n2, nrhs, niter, ierr
     integer :: loop,ii
     real(8), allocatable :: sums(:)
-    real(8) :: t0, t1, t2, t3, t4
+    real(8) :: t0, t1, t2, t3, t4, t5
     logical,save :: flag_allocate=.false.
 
     n1  = idisp(myrank)+1
@@ -42,8 +43,8 @@ CONTAINS
     do ii = 0,10
 
     time_hmlt(:,:)=0.0d0
-    time_kine(:,:)=0.0d0
-    time_nlpp(:,:)=0.0d0
+!    time_kine(:,:)=0.0d0
+!    time_nlpp(:,:)=0.0d0
 
     nrhs = 2**ii
     if ( nrhs > MB_d ) exit
@@ -70,20 +71,15 @@ CONTAINS
 
     t1 = mpi_wtime()
 
-!$OMP parallel private( loop, i )
-    do loop=1,nloop
-       do i=1,niter
-          call op_kinetic(1,tpsi,htpsi,n1,n2,1,nrhs)
-       end do
-    end do
-!$OMP end parallel
+    time_kine(:,:)=0.0d0
+    time_nlpp(:,:)=0.0d0
 
     t2 = mpi_wtime()
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
-          call op_localpot(1,n2-n1+1,nrhs,tpsi,htpsi)
+          call op_kinetic(1,tpsi,htpsi,n1,n2,1,nrhs)
        end do
     end do
 !$OMP end parallel
@@ -93,12 +89,22 @@ CONTAINS
 !$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
-          call op_nonlocal(1,1,tpsi,htpsi,n1,n2,1,nrhs)
+          call op_localpot(1,n2-n1+1,nrhs,tpsi,htpsi)
        end do
     end do
 !$OMP end parallel
 
     t4 = mpi_wtime()
+
+!$OMP parallel private( loop, i )
+    do loop=1,nloop
+       do i=1,niter
+          call op_nonlocal(1,1,tpsi,htpsi,n1,n2,1,nrhs)
+       end do
+    end do
+!$OMP end parallel
+
+    t5 = mpi_wtime()
 
     sums(:) = 0d0
     do i = 1, nrhs
@@ -110,18 +116,20 @@ CONTAINS
 #endif
        end do
     end do
-    call mpi_allreduce(MPI_IN_PLACE, sums, nrhs, &
-         MPI_DOUBLE_PRECISION, MPI_SUM, comm_grid, ierr)
-  
+
+    call rsdft_allreduce_sum( sums(1:nrhs), comm_grid )
+
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,*) 'nloop =',nloop
        write(*,*) 'nrhs = ', nrhs
        write(*,*) 'niter = ', niter
        write(*,*) 'time(tot) = ', t1 - t0
-       write(*,*) 'time(kin) = ', t2 - t1
+       call write_watchb( time_hmlt, 4, time_hmlt_indx )
+       write(*,*) 'time(kin) = ', t3 - t2
        call write_watchb( time_kine, 11, time_kine_indx )
-       write(*,*) 'time(loc) = ', t3 - t2
-       write(*,*) 'time(nlc) = ', t4 - t3
+       write(*,*) 'time(loc) = ', t4 - t3
+       write(*,*) 'time(nlc) = ', t5 - t4
+       write(*,*) 'time(tot) = ', t5 - t2
        call write_watchb( time_nlpp, 3, time_nlpp_indx )
        write(*,*) 'check sum'
        do i = 1, nrhs

@@ -4,6 +4,7 @@ SUBROUTINE get_atomic_number( element_name, z )
   character(*),intent(IN) :: element_name
   integer,intent(OUT) :: z
   character(2),save :: name(112)
+  character(2) :: a
   integer :: i
 
   data name/ "H" ,"He", &
@@ -24,9 +25,12 @@ SUBROUTINE get_atomic_number( element_name, z )
   z=0
 
   do i=1,size(name)
-     if ( element_name == name(i) ) then
+     if ( element_name(1:2) == name(i) ) then
         z=i
         exit
+     else
+        a=name(i)
+        if ( element_name(1:1) == a(1:len_trim(a)) ) z=i
      end if
   end do
 

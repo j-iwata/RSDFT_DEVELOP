@@ -26,6 +26,7 @@ MODULE force_ps_nloc2
   use wf_module
   use watch_module
   use force_sub_sub_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -350,8 +351,7 @@ CONTAINS
     end do ! k
     end do ! s
 
-    call mpi_allreduce &
-         (MPI_IN_PLACE,force2,3*MI,mpi_real8,mpi_sum,mpi_comm_world,ierr)
+    call rsdft_allreduce_sum( force2, MPI_COMM_WORLD )
 
     allocate( uVunk_tmp(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
     uVunk_tmp=zero
@@ -613,8 +613,7 @@ CONTAINS
 !$OMP end single
 
 !$OMP single
-    call mpi_allreduce( MPI_IN_PLACE, forceQ, size(forceQ) &
-                      , mpi_real8,mpi_sum,mpi_comm_world,ierr )
+    call rsdft_allreduce_sum( forceQ, MPI_COMM_WORLD )
 !$OMP end single
 
 !$OMP single
@@ -673,8 +672,7 @@ CONTAINS
 
     end do ! iqr
 
-    call MPI_ALLREDUCE( MPI_IN_PLACE, ftmp, size(ftmp), MPI_REAL8 &
-                       ,MPI_SUM, comm_grid, ierr )
+    call d_rsdft_allreduce_sum_6( ftmp, comm_grid )
 
     do iqr=1,N_nzqr
 

@@ -1,17 +1,20 @@
 MODULE atom_module
 
   use lattice_module, only: lattice, read_lattice, get_inverse_lattice &
-                           ,get_aa_lattice
+                           ,get_aa_lattice, calc_volume_lattice
   use cif_format_module
 
   implicit none
 
   PRIVATE
+  PUBLIC :: atom
+  PUBLIC :: construct_atom
   PUBLIC :: write_info_atom
   PUBLIC :: read_atom
   PUBLIC :: convert_to_aa_coordinates_atom
   PUBLIC :: convert_to_xyz_coordinates_atom
   PUBLIC :: write_coordinates_atom
+  PUBLIC :: shift_aa_coordinates_atom
 
   integer,parameter :: DP=kind(0.0d0)
 
@@ -21,6 +24,16 @@ MODULE atom_module
   integer,allocatable,PUBLIC :: zn_atom(:)
   integer,allocatable,PUBLIC :: md_atom(:)
   real(DP),allocatable,PUBLIC :: aa_atom(:,:)
+
+  type atom
+     integer :: natom, nelement
+     integer,allocatable :: k(:)
+     integer,allocatable :: z(:)
+     real(DP),allocatable :: aaa(:,:)
+     real(DP),allocatable :: xyz(:,:)
+     real(DP),allocatable :: force(:,:)
+  end type atom
+
   integer :: iformat=0
   integer :: iformat_org=0
   real(DP),parameter :: bohr=0.529177d0
@@ -99,6 +112,7 @@ CONTAINS
        iformat=1
        Natom=size(ki_atom)
        Nelement=maxval(ki_atom)
+       call calc_volume_lattice( aa_obj%LatticeVector, aa_obj%Volume )
     end select
 
     iformat_org = iformat
@@ -153,6 +167,19 @@ CONTAINS
     call mpi_bcast(zn_atom,Nelement,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(md_atom,Natom,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atom_2
+
+
+  SUBROUTINE construct_atom( x )
+    implicit none
+    type(atom) :: x
+    x%natom = Natom
+    x%nelement = Nelement
+    allocate( x%k(x%natom)       ) ; x%k(:) = ki_atom(:)
+    allocate( x%z(x%nelement)    ) ; x%z(:) = zn_atom(:)
+    allocate( x%aaa(3,x%natom)   ) ; x%aaa(:,:) = aa_atom(:,:)
+    allocate( x%xyz(3,x%natom)   ) ; x%xyz(:,:) = 0.0d0
+    allocate( x%force(3,x%natom) ) ; x%force(:,:) = 0.0d0
+  END SUBROUTINE construct_atom
 
 
   SUBROUTINE read_atom_xyz( rank, unit )
@@ -258,9 +285,9 @@ CONTAINS
        write(*,'(8x,3a8,4x,a)') "Zatom", "Zion", "Num", "FilePS"
        do i=1,Nelement
           num(i) = count( ki_atom == i )
-          write(*,'(4i8,4x,a)') i,zn_atom(i),nint(zps(i)),num(i),FilePS(i)
+          write(*,'(2i8,f8.2,i8,4x,a)') i,zn_atom(i),zps(i),num(i),FilePS(i)
        end do
-       write(*,'(3x,"total",3i8)') sum(zn_atom*num), sum(nint(zps)*num), Natom
+       write(*,'(3x,"total",i8,f8.2,i8)') sum(zn_atom*num),sum(zps*num),Natom
        deallocate( num )
     end if
     call write_border( 80, " write_info_atom(end)" )
@@ -330,11 +357,14 @@ CONTAINS
   END SUBROUTINE shift_aa_coordinates_atom
 
 
-  SUBROUTINE write_coordinates_atom( unit, write_ctrl )
+  SUBROUTINE write_coordinates_atom( unit, write_ctrl, file_name )
     implicit none
     integer,intent(IN) :: unit, write_ctrl
+    character(*),optional,intent(IN) :: file_name
     integer :: a
     type(lattice) :: aa
+
+    if ( present(file_name) ) open(unit,file=file_name)
 
     if ( write_ctrl == 1 .or. write_ctrl == 3 ) then
        call get_aa_lattice( aa )
@@ -358,6 +388,8 @@ CONTAINS
                ki_atom(a),aa_atom(:,a),md_atom(a)
        end do
     end if
+
+    if ( present(file_name) ) close(unit)
 
   END SUBROUTINE write_coordinates_atom
 

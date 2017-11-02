@@ -38,12 +38,16 @@ MODULE atomopt_module
   use lattice_module, only: lattice, backup_aa_lattice
   use aa_module, only: init_aa
   !--- end MIZUHO-IR for cellopt
+  use atomopt_rf_module
+  use atomopt_bfgs_module
+  use atomopt_diis_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: ncycl,most,nrfr,okatom,eeps,feps,decr &
-           ,read_atomopt,atomopt,read_oldformat_atomopt
+  PUBLIC :: ncycl,most,nrfr,okatom,eeps,feps,decr
+  PUBLIC :: read_atomopt
+  PUBLIC :: atomopt
 
   integer :: ncycl,most,nrfr
   real(8) :: okatom,eeps,feps,decr
@@ -52,13 +56,33 @@ MODULE atomopt_module
   integer :: diter_opt
 
   integer :: strlog = 0
-  integer,parameter :: unit_strlog = 297
+  integer,parameter :: unit_atmopt = 87
+  integer,parameter :: unit_strlog = 86
   integer,parameter :: unit197 = 197
   integer,parameter :: unit97 = 97
   real(8), parameter :: M_PI       = 3.14159265358979323846d0
   real(8), parameter :: M_2PI      = M_PI*2.0d0
 
 CONTAINS
+
+
+  SUBROUTINE atomopt( iswitch_opt )
+    implicit none
+    integer,intent(IN) :: iswitch_opt
+    select case( iswitch_opt )
+    case( 1, 2 )
+       call atomopt_cg( iswitch_opt )
+    case( 4 )
+       call atomopt_diis( SYStype, feps, diter_opt )
+    case( 5 )
+       call atomopt_bfgs( SYStype, feps, diter_opt )
+    case( 6 )
+       call atomopt_rf( SYStype, feps, diter_opt )
+    case default
+       write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
+       call stop_program("atomopt")
+    end select
+  END SUBROUTINE atomopt
 
 
   SUBROUTINE read_atomopt(rank,unit)
@@ -109,25 +133,6 @@ CONTAINS
   END SUBROUTINE read_atomopt
 
 
-  SUBROUTINE read_oldformat_atomopt(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) ncycl,most,nrfr,diter_opt
-       read(unit,*) okatom,eeps,feps,decr
-       write(*,*) "ncycl, most, nrfr =",ncycl,most,nrfr
-       write(*,*) "diter_opt         =",diter_opt
-       write(*,*) "okatom, eeps      =",okatom,eeps
-       write(*,*) "feps, decr        =",feps,decr
-       if ( diter_opt <= 0 ) then
-          diter_opt=50
-          write(*,*) "diter_opt         =",diter_opt
-       end if
-    end if
-    call send_atomopt
-  END SUBROUTINE read_oldformat_atomopt
-
-
   SUBROUTINE send_atomopt
     implicit none
     integer :: ierr
@@ -143,18 +148,16 @@ CONTAINS
   END SUBROUTINE send_atomopt
 
 
-  SUBROUTINE atomopt(iswitch_opt,iswitch_latopt,disp_switch)
+!-------------------------------------------------- atomopt_cg
 
+  SUBROUTINE atomopt_cg( iswitch_opt, iswitch_latopt )
     implicit none
     integer,intent(IN) :: iswitch_opt
     integer,intent(IN) :: iswitch_latopt ! MIZUHO-IR for cellopt
-    logical,intent(INOUT) :: disp_switch
-
-    integer,parameter :: max_nhist=10000 ! modified by MIZUHO-IR, stack
-!!$    integer,parameter :: max_nhist=100000
+    integer,parameter :: max_nhist=1000
     integer :: SCF_hist(max_nhist),ICY_hist(max_nhist)
     integer :: LIN_hist(max_nhist)
-    integer :: a,nhist,most0,ncycl0,ifar,ierr,icy,nhist0
+    integer :: a,nhist,most0,ncycl0,ncycl1,ifar,ierr,icy,nhist0
     integer :: i,itlin,amax,isafe,icflag,iter_final
     real(8) :: Fmax_hist(max_nhist),Etot_hist(max_nhist)
     real(8) :: dmax_hist(max_nhist)
@@ -174,10 +177,9 @@ CONTAINS
     type(lattice) :: aa_obj
     !--- end MIZUHO-IR for cellopt
 
-    if ( disp_switch ) write(*,'(a60," atomopt")') repeat("-",60)
+    call write_border( 0, " atomopt_cg(start)" )
 
     call check_disp_switch( disp_switch_loc, 0 )
-!    call check_disp_switch( .false., 1 )
 
     ddmin  = 1.d-8
     safe   = 0.01d0
@@ -204,6 +206,7 @@ CONTAINS
           call calc_total_energy( .false., Etot )
           if ( disp_switch_loc ) write(*,*) "Etot(har)=",Etot
        end if
+       if ( disp_switch_loc ) write(*,'(1x,"# Force (total)")')
        call calc_force( Natom, Force )
        ! MIZUHO-IR for cellopt
        if( .not. iswitch_opt >= 1 ) then
@@ -231,7 +234,7 @@ CONTAINS
 
        nhist                = 1
        Etot_hist(nhist)     = Etot
-       alpha_hist(nhist)    = 0.d0
+       alpha_hist(nhist)    = 0.0d0
        Fmax_hist(nhist)     = Fmax
        SCF_hist(nhist)      = 0
        ICY_hist(nhist)      = 0
@@ -290,10 +293,8 @@ CONTAINS
 
     end if
 
-    call write_atomic_coordinates_log(197,0,0,strlog,iswitch_opt)
-
-!    disp_switch = .false.
-!    disp_switch_parallel = .false.
+    call write_atomic_coordinates_log(unit197,0,0,strlog,iswitch_opt)
+    if ( strlog == 3 .and. iswitch_opt < 2 ) call write_etot_force_log( 0,0, Etot, Force )
 
     dif0 = dif
 
@@ -307,11 +308,10 @@ CONTAINS
 ! -------------------- CG-loop start --------------------
 !
 
-    opt_ion : do icy=ncycl0,ncycl0+ncycl-1
+    ncycl1 = ncycl0 + ncycl - 1
 
-!       if ( disp_switch_loc ) then
-!          write(*,'(a57," ICY (",i5,")")') repeat("-",57),icy
-!       end if
+    opt_ion : do icy=ncycl0,ncycl1+1
+
        write(loop_info,'(" ICY    (",i5,")")') icy
        call write_border( 0, loop_info(1:len_trim(loop_info)) )
 
@@ -330,8 +330,8 @@ CONTAINS
 !
        if ( mod(icy-1,nrfr) == 0 ) then
 
-          gamma=0.d0
-          if ( icy>1 .and. disp_switch_loc ) then
+          gamma=0.0d0
+          if ( icy > 1 .and. disp_switch_loc ) then
              write(*,*) 'CG-direction is refreshed !!!'
           else
              if ( disp_switch_loc ) write(*,*) 'The first CG step !'
@@ -340,7 +340,7 @@ CONTAINS
        else
 
           gigi=sum(gi(:,:)*gi(:,:))
-          if ( gigi>0.d0 ) then
+          if ( gigi > 0.0d0 ) then
              gamma=sum((Force(:,:)-gi(:,:))*Force(:,:))/gigi
           end if
 
@@ -356,7 +356,7 @@ CONTAINS
        Etot_save = Etot
        hh        = sqrt( sum(hi(:,:)*hi(:,:)) )
        gh        = sum( gi(:,:)*hi(:,:) )
-       alpha     = 2.d0*abs(dif/gh)
+       alpha     = 2.0d0*abs(dif/gh)
        if ( dif == 0.0d0 ) alpha = 0.5d0
 
 !
@@ -385,8 +385,7 @@ CONTAINS
        almax=okstep/ddmax*abs(alpha)
 !chstep
        if ( disp_switch_loc ) then
-          write(*,'(1x,"Maximum displacement size =" &
-               ,f16.7,3x,"( atom =",i5," )")') ddmax,amax
+          write(*,'(1x,"Maximum displacement size =",f16.7,3x,"( atom =",i5," )")') ddmax,amax
           write(*,'(1x,"okstep, alpha, almax =",3g16.6)') okstep,alpha,almax
        end if
        if ( ddmax > okstep ) then
@@ -493,10 +492,6 @@ CONTAINS
 
        linmin : do itlin=most0,most
 
-!          if ( disp_switch_loc ) then
-!             write(*,'(a57," ICY    (",i5,")")') repeat("-",57),icy
-!             write(*,'(a57," LINMIN (",i5,")")') repeat("-",57),itlin
-!          end if
           write(loop_info,'(" ICY    (",i5,")")') icy
           call write_border( 0, loop_info(1:len_trim(loop_info)) )
           write(loop_info,'(" LINMIN (",i5,")")') itlin
@@ -548,15 +543,13 @@ CONTAINS
                 almax=okstep/ddmax*abs(alp)
 !chstep
                 if ( disp_switch_loc ) then
-                   write(*,'(1x,"Maximum displacement =",f16.7 &
-                        ,3x,"( atom =",i5," )")') ddmax,amax
+                   write(*,'(1x,"Maximum displacement =",f16.7,3x,"( atom =",i5," )")') ddmax,amax
                    write(*,'(1x,"okstep, alp, almax =",3g16.6)') &
                         okstep,alp,almax
                 end if
                 if ( ddmax > okstep ) then
                    if ( disp_switch_loc ) then
-                      write(*,*) "alpha1-alpha2 is " &
-                           ,"too large and replaced by almax."
+                      write(*,*) "alpha1-alpha2 is ","too large and replaced by almax."
                    end if
                    alpha1=alpha2+almax
                    ddmax=okstep
@@ -599,8 +592,7 @@ CONTAINS
                 almax=okstep/ddmax*abs(alp)
 !chstep
                 if ( disp_switch_loc ) then
-                   write(*,'(1x,"Maximum displacement =" &
-                        ,f16.7,3x,"( atom =",i5," )")') ddmax,amax
+                   write(*,'(1x,"Maximum displacement =",f16.7,3x,"( atom =",i5," )")') ddmax,amax
                    write(*,'(1x,"okstep, alp, almax =",3g16.6)') &
                         okstep,alp,almax
                 end if
@@ -646,6 +638,8 @@ CONTAINS
              write(1) aa_atom_0(:,:)
              close(1)
           end if
+
+          if ( icy == ncycl1 + 1 ) exit opt_ion
 
 !
 ! --- Trial Configuration ---
@@ -785,13 +779,11 @@ CONTAINS
           call calc_E_vdw_grimme( aa_atom )
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
-          call calc_scf( disp_switch, ierr, diter_opt, feps, loop_info, Etot )
+          call calc_scf( disp_switch_loc,ierr,diter_opt,feps,loop_info,Etot )
 
-          if ( ierr == -1 ) then
-             if ( myrank == 0 ) write(*,*) "time limit !!!"
+          if ( ierr == -1 .or. ierr == -3 ) then
              exit opt_ion
-          end if
-          if ( ierr == -2 ) then
+          else if ( ierr == -2 ) then
              if ( myrank == 0 ) write(*,*) "SCF is not converged"
           end if
           iter_final=ierr
@@ -882,8 +874,10 @@ CONTAINS
              end do
           end if
 
-          call write_atomic_coordinates_log(97,icy,itlin,2,iswitch_opt)
-
+          if ( strlog >= 2 ) then
+             call write_atomic_coordinates_log(unit97,icy,itlin,strlog,iswitch_opt)
+             if ( strlog == 3 ) call write_etot_force_log(icy,itlin,Etot,Force)
+          end if
 !
 ! --- Convergence check 2 ---
 !
@@ -952,7 +946,7 @@ CONTAINS
        if ( disp_switch_loc ) then
           write(*,*) 'Best structure on a line (see fort.197)'
        end if  
-       call write_atomic_coordinates_log(197,icy,itlin,1,iswitch_opt)
+       call write_atomic_coordinates_log(unit197,icy,itlin,1,iswitch_opt)
 
 !
 ! --- Convergence check 3 ---
@@ -988,15 +982,15 @@ CONTAINS
        end do
     end if
 
-    call check_disp_switch( disp_switch_loc, 1 )
-    call check_disp_switch( disp_switch, 0 )
 
     deallocate( Force )
     deallocate( aa_atom_0, gi, hi )
 
+    call write_border( 1, " atomopt_cg(end)" )
+
     return
 
-  END SUBROUTINE atomopt
+  END SUBROUTINE atomopt_cg
 
 
   SUBROUTINE get_min_parabola(g1,g2,xmin,emin)
@@ -1047,7 +1041,13 @@ CONTAINS
     implicit none
     integer, intent(IN) :: unit,icy,itlin,flag,iswitch_opt
 
-    if ( myrank == 0 ) call write_coordinates_atom( unit, 3 )
+    character(8) :: fname
+
+    if ( myrank == 0 ) then
+       write(fname,'(i3)') unit
+       fname="fort."//adjustl(fname)
+       call write_coordinates_atom( unit_atmopt, 3, fname )
+    end if
 
     if ( strlog /= 0 .and. flag == strlog ) then
        if ( icy == 0 ) then
@@ -1063,6 +1063,23 @@ CONTAINS
     end if
 
   END SUBROUTINE write_atomic_coordinates_log  
+
+
+  SUBROUTINE write_etot_force_log( icy, itlin, Etot, Force )
+    implicit none
+    integer,intent(IN) :: icy, itlin
+    real(8),intent(IN) :: etot, force(:,:)
+    integer :: i
+    if ( myrank == 0 ) then
+       write(unit_strlog,'("#_Etot_and_Force_",a63," icy, itlin =",2(X,I3))') &
+            repeat("-",63),icy,itlin
+       write(unit_strlog,'("Etot(hartree)        :",f24.16)') Etot
+       write(unit_strlog,'("Force(Cartesian,hartree/bohr):")')
+       do i=1,size(Force,2)
+          write(unit_strlog,'(1x,3es22.10)') Force(:,i)
+       end do
+    end if
+  END SUBROUTINE write_etot_force_log
 
    
 END MODULE atomopt_module

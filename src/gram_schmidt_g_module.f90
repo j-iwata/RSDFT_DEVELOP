@@ -1,13 +1,14 @@
 MODULE gram_schmidt_g_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF
+  use wf_module, only: unk,Sunk,ML_0_WF,ML_1_WF,gather_b_wf
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module, only: comm_grid,comm_band,ir_band,id_band &
                             ,id_class,myrank,np_band,myrank_b
   use real_complex_module, only: zero,one,TYPE_MAIN,TRANSA,TRANSB
   use inner_product_module
   use var_sys_parameter, only: pp_kind
+  use rsdft_mpi_module
 
   implicit none
 
@@ -55,11 +56,6 @@ CONTAINS
     NBAND_BLK=NBLK
     ncycle=(MB-1)/NBAND_BLK+1
 
-    ! modified by MIZUHO-IR, inplace
-    call MPI_ALLGATHERV( MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         unk(ML_0,1,k,s),ir,id,TYPE_MAIN,COMM_BAND,ierr )
-!!$    call MPI_ALLGATHERV( unk(ML_0,MB_0,k,s),ir(mrnk),TYPE_MAIN,&
-!!$         unk(ML_0,1,k,s),ir,id,TYPE_MAIN,COMM_BAND,ierr )
     do k1=1,ncycle
       irank_b = mod(k1-1,np_band)
 
@@ -136,7 +132,7 @@ CONTAINS
           call zgemm(TRANSA,TRANSB,nn,mm,ML0,-zdV,unk(ML_0,ns,k,s),ML0,Sunk(ML_0,ms),ML0,zero,utmp2,nn)
 #endif
 
-          call MPI_ALLREDUCE( MPI_IN_PLACE,utmp2,nn*mm,TYPE_MAIN,MPI_SUM,COMM_GRID,ierr )
+          call rsdft_allreduce_sum( utmp2, comm_grid )
 
 #ifdef _DRSDFT_
           call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s),ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
@@ -149,7 +145,7 @@ CONTAINS
           if ( ms==ne+1 ) then
             call get_gSf(unk(ML_0,ms,k,s),unk(ML_0,ms,k,s),ML_0,ML_1,k,d,0)
             c=real(d,kind=8)
-            call MPI_ALLREDUCE( MPI_IN_PLACE,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
+            call rsdft_allreduce_sum( c, comm_grid )
             c=1.d0/sqrt(c)
             unk(ML_0:ML_1,ms,k,s) = c*unk(ML_0:ML_1,ms,k,s)
           end if
@@ -166,7 +162,7 @@ CONTAINS
               call zgemv(TRANSA,ML0,n-ns+1,-zdV,unk(ML_0,ns,k,s),ML0,Sunk(ML_0,m),1,zero,utmp,1)
 #endif
 
-              call mpi_allreduce(MPI_IN_PLACE,utmp,n-ns+1,TYPE_MAIN,mpi_sum,comm_grid,ierr)
+              call rsdft_allreduce_sum( utmp(1:n-ns+1), comm_grid )
 
 #ifdef _DRSDFT_
               call dgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s),ML0,utmp,1,one,unk(ML_0,m,k,s),1)
@@ -178,7 +174,7 @@ CONTAINS
             if ( m==1 .or. (n==m-1 .and. m/=ns) ) then
               call get_gSf(unk(ML_0,m,k,s),unk(ML_0,m,k,s),ML_0,ML_1,k,d,0)
               c=real(d,kind=8)
-              call MPI_ALLREDUCE( MPI_IN_PLACE,c,1,mpi_real8,MPI_SUM,COMM_GRID,ierr )
+              call rsdft_allreduce_sum( c, comm_grid )
               c=1.d0/sqrt(c)
               unk(ML_0:ML_1,m,k,s)=c*unk(ML_0:ML_1,m,k,s)
             end if
@@ -222,8 +218,7 @@ CONTAINS
              uu(m) = sum( conjg(unk(:,m,k,s))*Sunk(:,n) )*dV
 #endif
           end do
-          call MPI_ALLREDUCE( MPI_IN_PLACE, uu, n-1, TYPE_MAIN &
-                             ,MPI_SUM, comm_grid, ierr )
+          call rsdft_allreduce_sum( uu(1:n-1), comm_grid )
           do m=1,n-1
              unk(:,n,k,s) = unk(:,n,k,s) - unk(:,m,k,s)*uu(m)
           end do

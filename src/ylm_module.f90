@@ -4,6 +4,7 @@ MODULE ylm_module ! Spherical Harmonic Function
 
   PRIVATE
   PUBLIC :: Ylm
+  PUBLIC :: ZYlm
 
 CONTAINS
 
@@ -70,6 +71,62 @@ CONTAINS
 
     return
   END FUNCTION Ylm
+
+
+  FUNCTION ZYlm( x,y,z, L, M_in )
+
+    implicit none
+    complex(8) :: ZYlm
+    real(8),intent(IN) :: x,y,z
+    integer,intent(IN) :: L,M_in
+    integer :: k1,k2,k,M
+    real(8) :: r,r2,Clm,ct,phi,c,pi4
+    real(8),parameter :: ep=1.d-10
+    real(8),parameter :: half=0.5d0, one=1.0d0, two=2.0d0
+    real(8),parameter :: pi=3.141592653589793238d0
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
+
+    ZYlm = zero
+    M    = abs(M_in)
+    pi4  = 4.0d0*pi
+
+    if ( L < 0 .or. M > L ) then
+!       write(*,*) "L,M_in=",L,M_in
+!       stop "Bad arguments (stop at ZYlm)"
+       return
+    end if
+
+    if ( L == 0 ) then
+       ZYlm=one/sqrt(pi4)
+       return
+    end if
+
+    if ( x == 0.0d0 .and. y == 0.0d0 .and. z == 0.0d0 ) return
+
+    c=one
+    do k=L-M+1,L+M
+       c=c*dble(k)
+    end do
+    Clm=sqrt((two*L+one)/(c*pi4))
+
+    r  = sqrt(x*x+y*y+z*z)
+    ct = z/r
+    if ( abs(x) < ep ) then
+       phi = half*pi*sign(one,y)
+    else
+       phi = atan(y/x)
+       if ( x < 0 ) phi = phi + pi
+    end if
+
+    ZYlm = Clm*Plm(L,M,ct)*dcmplx( cos(phi*M), sin(phi*M) )
+
+    if ( M_in < 0 ) then
+       ZYlm = conjg( ZYlm )
+       if ( mod(M,2) /= 0 ) ZYlm=-ZYlm
+    end if
+
+    return
+  END FUNCTION ZYlm
 
 !----------------------------------- Associated Legendre Polynomial Plm(x)
 

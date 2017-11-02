@@ -325,13 +325,26 @@ CONTAINS
   SUBROUTINE allgatherv_Ggrid(f)
     implicit none
     complex(8),intent(INOUT) :: f(*)
-    include 'mpif.h'
+    complex(8),allocatable :: t(:)
     integer :: ierr
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgatherv(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
-!!$    call mpi_allgatherv(f(MG_0),MG_1-MG_0+1,MPI_COMPLEX16, &
-!!$         f,ircntg,idispg,MPI_COMPLEX16,MPI_COMM_WORLD,ierr)
+#ifdef _NO_MPI_
+    return
+#else
+    include 'mpif.h'
+#ifdef _NO_MPI_COMPLEX16_
+    integer,parameter :: COMPLEX16=MPI_DOUBLE_COMPLEX
+#else
+    integer,parameter :: COMPLEX16=MPI_COMPLEX16
+#endif
+#ifdef _NO_MPI_INPLACE_
+    allocate( t(MG_0:MG_1) ) ; t(:)=f(MG_0:MG_1)
+    call mpi_allgatherv(t,MG_1-MG_0+1,COMPLEX16 &
+         ,f,ircntg,idispg,COMPLEX16,MPI_COMM_WORLD,ierr)
+#else
+    call mpi_allgatherv(f(MG_0),MG_1-MG_0+1,COMPLEX16 &
+         ,f,ircntg,idispg,COMPLEX16,MPI_COMM_WORLD,ierr)
+#endif
+#endif
   END SUBROUTINE allgatherv_Ggrid
 
 

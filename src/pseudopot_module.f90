@@ -8,6 +8,7 @@ MODULE pseudopot_module
   use ps_read_UPF_module
   use ps_gth_module
   use io_tools_module
+  use virtualH_module
 
   implicit none
 
@@ -19,6 +20,7 @@ MODULE pseudopot_module
   PUBLIC :: read_pseudopot
 
   integer,PUBLIC :: pselect = 2
+  logical,PUBLIC :: flag_so = .false.
 
   integer :: Nelement
   integer :: unit_ps,ielm
@@ -39,6 +41,7 @@ CONTAINS
   SUBROUTINE read_param_pseudopot
     implicit none
     call IOTools_readIntegerKeyword( "PSELECT", pselect )
+    call IOTools_findKeyword( "SPINORBIT", flag_so, flag_bcast=.true. )
   END SUBROUTINE read_param_pseudopot
 
 
@@ -160,16 +163,7 @@ CONTAINS
                       < count( ps(ielm)%Dij /= 0.0d0 )  ) then !--> MultiRef
 
                 ps_type=1
-                do j=1,ps(ielm)%norb
-                   jo=ps(ielm)%no(j)
-                   lj=ps(ielm)%lo(j)
-                do i=1,ps(ielm)%norb
-                   io=ps(ielm)%no(i)
-                   li=ps(ielm)%lo(i)
-                   if ( li /= lj ) cycle
-                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
-                end do
-                end do
+                anorm(:,ielm)=1.0d0
 
              end if
 
@@ -201,16 +195,18 @@ CONTAINS
              call ps_allocate( 1, ps(ielm)%norb )
              norb(ielm)               = ps(ielm)%norb
              Zps(ielm)                = ps(ielm)%Zps
+             if ( norb(ielm) /= 0 ) then
              Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
              lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
              no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+             end if
              parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
              Rcloc(ielm)              = ps(ielm)%Rcloc
              hnl(:,:,ielm)            = ps(ielm)%hnl(:,:)
              knl(:,:,ielm)            = ps(ielm)%knl(:,:)
              hnml(:,:,:,ielm)         = ps(ielm)%hnml(:,:,:)
              knml(:,:,:,ielm)         = ps(ielm)%knml(:,:,:)
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
 
              if ( any( hnml /= 0.0d0 ) ) ps_type=1
 
@@ -222,32 +218,27 @@ CONTAINS
              Mr(ielm)                 = ps(ielm)%Mr
              norb(ielm)               = ps(ielm)%norb
              Zps(ielm)                = ps(ielm)%Zps
+             if ( ps(ielm)%norb > 0 ) then
              anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
              inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
              Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
              NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
              lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
              no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+             viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                      = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+             end if
              vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
              cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
              cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
              rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
              rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                                      = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
 
-             if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
-                ps_type = 1
-                do j=1,norb(ielm)
-                   jo=no(j,ielm)
-                   lj=lo(j,ielm)
-                do i=1,norb(ielm)
-                   io=no(i,ielm)
-                   li=lo(i,ielm)
-                   if ( li /= lj ) cycle
-                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
-                end do
-                end do
+             if ( allocated(ps(ielm)%Dij) ) then
+                if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
+                   ps_type=1
+                   anorm(:,ielm)=1.0d0
+                end if
              end if
 
           case default
@@ -261,6 +252,27 @@ CONTAINS
        end do ! ielm
 
        write(*,*) "ps_type = ",ps_type
+       if ( ps_type == 1 ) then
+          write(*,*) "(non-diagonal partrs are in nonlocal pseudopotential)"
+          if ( any(ippform==4) ) then
+          else
+             do ielm=1,Nelement
+                do j=1,ps(ielm)%norb
+                   jo=ps(ielm)%no(j)
+                   lj=ps(ielm)%lo(j)
+                do i=1,ps(ielm)%norb
+                   io=ps(ielm)%no(i)
+                   li=ps(ielm)%lo(i)
+                   if ( li /= lj ) cycle
+                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
+                end do
+                end do
+                do j=1,norb(ielm)
+                   viod(:,j,ielm)=viod(:,j,ielm)/sqrt( anorm(j,ielm) )
+                end do
+             end do ! ielm
+          end if
+       end if
 
     end if ! [ rank == 0 ]
 
@@ -277,6 +289,8 @@ CONTAINS
 ! ---
 
 !    call chk_pot(1,rank)
+
+    call virtualH( Zps, vql )
 
     call write_border( 0, " read_pseudopot(end)" )
 

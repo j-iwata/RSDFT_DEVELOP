@@ -4,12 +4,16 @@ MODULE localpot_module
   use array_bound_module
  !use localpot2_module
   use parallel_module
+  use xc_module, only: Vxc
+  use hartree_variables, only: Vh
+  use ps_local_module, only: Vion
 
   implicit none
 
   PRIVATE
   PUBLIC :: Vloc,init_localpot,op_localpot,read_localpot &
            ,construct_matrix_localpot
+  PUBLIC :: update_localpot
 
   real(8),allocatable :: Vloc(:,:)
 
@@ -38,7 +42,7 @@ CONTAINS
     complex(8),intent(INOUT) :: vf(mm,nn)
     complex(8),allocatable :: ft(:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    integer,parameter :: TYP=MPI_COMPLEX16
+    integer,parameter :: TYP=RSDFT_MPI_COMPLEX16
 #endif
     integer :: n,i,j,ierr
 
@@ -148,6 +152,15 @@ CONTAINS
     end do
 
   END SUBROUTINE construct_matrix_localpot
+
+
+  SUBROUTINE update_localpot
+    implicit none
+    integer :: s
+    do s=MSP_0,MSP_1
+       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+    end do
+  END SUBROUTINE update_localpot
 
 
 END MODULE localpot_module

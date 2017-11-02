@@ -31,6 +31,7 @@ CONTAINS
     Nband=0
     Nspin=1
     Nfixed=0
+    Ndspin=0
     Next_electron=0.d0
     if ( rank == 0 ) then
        rewind unit

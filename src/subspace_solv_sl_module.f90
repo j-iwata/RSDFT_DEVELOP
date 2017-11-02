@@ -2,7 +2,8 @@ MODULE subspace_solv_sl_module
 
   use wf_module
   use scalapack_module
-  use subspace_diag_variables
+  use subspace_diag_variables, only: MB_diag,Hsub,Vsub
+  use watch_module
 
   implicit none
 
@@ -23,8 +24,12 @@ CONTAINS
     complex(8) :: ctmp(1)
     complex(8),allocatable :: zwork(:)
     character(8) :: idiag
+    type(time) :: t
 
 #ifndef _LAPACK_
+
+    call write_border( 1, " subspace_solv_sl(start)" )
+    call start_timer( t )
 
     MB = MB_diag
 
@@ -126,6 +131,9 @@ CONTAINS
        write(*,*) "ierr,idiag=",ierr,idiag
        stop
     end if
+
+    call result_timer( t, "solv_sl" )
+    call write_border( 1, " subspace_solv_sl(end)" )
 
     return
 

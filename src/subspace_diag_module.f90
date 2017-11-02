@@ -20,7 +20,7 @@ CONTAINS
 #ifdef _LAPACK_
     call subspace_diag_la(k,s)
 #else
-    call subspace_diag_sl(k,s,disp_switch_parallel)
+    call subspace_diag_sl(k,s)
 #endif
   END SUBROUTINE subspace_diag
 
@@ -28,9 +28,9 @@ CONTAINS
   SUBROUTINE init_subspace_diag( MB_in )
     implicit none
     integer,intent(IN) :: MB_in
-    integer :: i,j,mm,ms,me,nme,ne,nn,je,MB
+    integer :: i,j,mm,ms,me,nme,ne,nn,MB,num_sq_blocks_per_bp
 
-    call write_border( 80, " init_subspace_diag(start)" )
+    call write_border( 0, " init_subspace_diag(start)" )
 
     MB_diag = MB_in
 
@@ -58,13 +58,14 @@ CONTAINS
        stop "stop@init_subspace_diag(1)"
     end if
 
-    if ( np_band>1 ) then
+    if ( np_band > 1 ) then
 
-       je = int( (np_band+1)*0.5 )-1
-       do j=0,je
+       num_sq_blocks_per_bp = ((np_band-1)*np_band)/2 / np_band
+
+       do j=0,np_band/2-1
           do i=np_band-1,j+1,-1
              mm=ir_band(i)
-             if( ((np_band-1)*np_band*0.5/np_band+1)*mm < mat_block(j,1) )then
+             if( num_sq_blocks_per_bp*mm < mat_block(j,1) )then
                 mat_block(j,1)=mat_block(j,1)-mm
                 mat_block(i,1)=mat_block(i,1)+mm
              end if
@@ -90,7 +91,7 @@ CONTAINS
        end do
     end if
 
-    call write_border( 80, " init_subspace_diag(end)" )
+    call write_border( 0, " init_subspace_diag(end)" )
 
   END SUBROUTINE init_subspace_diag
 

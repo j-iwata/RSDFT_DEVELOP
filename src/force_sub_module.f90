@@ -265,7 +265,7 @@ CONTAINS
     if ( r < rad1(2,ikind) ) then
       tmp0=dqrL(2,ll3,ik2,ikind,cJ)/(rad1(2,ikind)**3)
     else
-      call splint(rad1(1,ikind),dqrL(1,ll3,ik2,ikind,cJ),y2b,NRc,r,tmp0)
+      call splint(rad1(1,ikind),dqrL(1,ll3,ik2,ikind,cJ),y2b(1,ll3,ikind),NRc,r,tmp0)
       tmp0=tmp0/(r*r)
     end if
 #else

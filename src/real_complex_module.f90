@@ -11,7 +11,11 @@ MODULE real_complex_module
     real(8),parameter :: zero=0.d0
     real(8),parameter :: one=1.d0
 #else
+#ifdef _NO_MPI_COMPLEX16_
+    integer,parameter :: TYPE_MAIN=MPI_DOUBLE_COMPLEX
+#else
     integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+#endif
     character(1),parameter :: TRANSA='C'
     character(1),parameter :: TRANSB='N'
     complex(8),parameter :: zero=(0.d0,0.d0)

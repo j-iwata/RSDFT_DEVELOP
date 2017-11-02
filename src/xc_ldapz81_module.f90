@@ -98,6 +98,8 @@ CONTAINS
 
        do i=ML_0,ML_1
 
+          if ( rho(i,s) <= 0.0d0 ) cycle
+
           exd = -cnst*thrfou*( thrPi*rho(i,s) )**onethr
           Ex = Ex + rho(i,s)*exd
           vex(i,s) = fouthr*exd
@@ -192,6 +194,11 @@ CONTAINS
 
           mu(1) = ecd(1) - onethr*( A(1) + C(1)*rs*(1.0d0+rsln) + rs*D(1) )
           mu(2) = ecd(2) - onethr*( A(2) + C(2)*rs*(1.0d0+rsln) + rs*D(2) )
+
+       else
+
+          write(*,*) "rs=",rs,trho
+          call stop_program( "error@ldapz81_c" )
 
        end if
 

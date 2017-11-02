@@ -4,11 +4,12 @@ MODULE rtddft_mol_module
   use rgrid_mol_module, only: Hsize, LL
   use grid_module, only: grid, get_range_rgrid
   use hamiltonian_module
-  use parallel_module
+  use parallel_module, only: comm_grid
   use density_module
   use total_energy_module
-  use hartree_module
-  use xc_module
+  use hartree_module, only: calc_hartree
+  use xc_module, only: calc_xc
+  use localpot_module, only: update_localpot
   use watch_module
   use io_module
 
@@ -30,9 +31,11 @@ MODULE rtddft_mol_module
   type(td) :: tddft
   real(8),allocatable :: dipole(:,:)
   integer,parameter :: unit=91
-  character(10),parameter :: file_tddft = 'tddft_data'
+  character(14),parameter :: file_tddft = 'rtddft_dat_mol'
 
   real(8),parameter :: Tau2fs = 2.418884326505d-2
+
+  integer :: nt_wr=1000
 
 CONTAINS
 
@@ -43,7 +46,8 @@ CONTAINS
      integer :: i
      real(8) :: sbuf(7)
      character(5) :: cbuf,ckey
-     call write_border(40," init_rtddft_mol")
+     include 'mpif.h'
+     call write_border( 0, " init_rtddft_mol(start)" )
      tddft%dt  =0.0d0
      tddft%nt  =0
      tddft%ialg=1
@@ -89,41 +93,88 @@ CONTAINS
         write(*,'("field=",3f15.8)') tddft%field(1:3)
         write(*,'("strength=",3f15.8)') tddft%strength
      end if
+
+     call write_border( 0, "init_rtddft_mol(end)" )
+
   END SUBROUTINE init_rtddft_mol
 
 
-  SUBROUTINE rtddft_mol( iswitch_tddft )
+  SUBROUTINE rtddft_mol( job_ctrl )
     implicit none
-    integer,intent(IN) :: iswitch_tddft
+    integer,intent(IN) :: job_ctrl
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),parameter :: zi=(0.0d0,1.0d0)
     complex(8),allocatable :: tpsi(:),hpsi(:),zcoef(:)
-    integer :: itaylor,i,n,k,s,it,ierr
+    integer :: itaylor,i,n,k,s,it,ierr,t_1,t_0,myrank
     real(8) :: c,t,ct(0:9),et(0:9)
     type(grid) :: rgrid
-    logical :: disp_sw,flag_end
+    logical :: disp_sw,flag_end,flag_wr
     real(8) :: Etot
+    include 'mpif.h'
 
 #ifdef _DRSDFT_
 
     write(*,*) "rtddft_mol is available only for COMPLEX16 calculations"
     return
 
-#elif defined _DRSDFT_
+#else
 
-    call write_border(40," rtddft_mol(start)")
+    call write_border( 0, " rtddft_mol(start)" )
     call check_disp_switch( disp_sw, 0 )
-    call check_disp_switch( .false., 1 )
+!    call check_disp_switch( .false., 1 )
+
+    call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
 
     ct(:)=0.0d0
     et(:)=0.0d0
 
     call get_range_rgrid( rgrid )
 
-    allocate( dipole(0:3,0:tddft%nt) ) ; dipole=0.0d0
+! ---
+
+    call Init_IO( "tddft" )
+
+! ---
+
+    if ( job_ctrl == 1 ) then
+
+       if ( myrank == 0 ) open(unit,file=file_tddft,status="replace",position="rewind")
+
+       call initial_condition
+
+       call calc_total_energy( .true., Etot )
+
+       t_0 = 1
+       t_1 = tddft%nt
+       allocate( dipole(0:3,0:tddft%nt) ) ; dipole=0.0d0
+
+       call calc_dipole( dipole(0,0), rgrid%VolumeElement )
+
+       if ( disp_sw ) then
+          write(*,'(1x,i6,1x,6f16.10,1x,2f10.5)') 0,0.0,dipole(1:3,0),Etot,dipole(0,0)
+       end if
+       if ( myrank == 0 ) then
+          write(unit,'(1x,i6,1x,6f22.16)') 0,0.0,dipole(1:3,0),Etot,dipole(0,0)
+       end if
+
+    else if ( job_ctrl == 2 ) then
+
+       if ( myrank == 0 ) then
+          open(unit,file=file_tddft,status="old",position="append")
+          backspace(unit)
+          read(unit,*) t_0
+       end if
+       call MPI_BCAST( t_0, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr )
+
+       t_0 = t_0 + 1
+       t_1 = t_0 + tddft%nt - 1
+       allocate( dipole(0:3,t_0:t_1) ) ; dipole=0.0d0
+
+    end if
+
     allocate( tpsi(ML_0_WF:ML_1_WF) ) ; tpsi=zero
     allocate( hpsi(ML_0_WF:ML_1_WF) ) ; hpsi=zero
-    allocate( zcoef(tddft%nalg) ) ; zcoef=zero
+    allocate( zcoef(tddft%nalg)     ) ; zcoef=zero
 
     do itaylor=1,tddft%nalg
        c=1.0d0
@@ -135,34 +186,7 @@ CONTAINS
 
 ! ---
 
-    call Init_IO( "tddft" )
-
-! ---
-
-    if ( myrank == 0 ) open(unit,file=file_tddft,position="append")
-
-! ---
-
-    if ( iswitch_tddft == 1 ) then
-
-       call calc_dipole( dipole(0,0), rgrid%VolumeElement )
-
-       if ( disp_sw ) then
-          write(*,'(6f16.10,1x,2f10.5)') &
-               0.0,dipole(1:3,0),dipole(0,0),Etot
-       end if
-       if ( myrank == 0 ) then
-          write(unit,'(f10.5,1x,3f20.15,1x,2f20.15)') &
-               0.0,dipole(1:3,0),dipole(0,0),Etot
-       end if
-
-       call initial_condition
-
-    end if
-
-! ---
-
-    do it=1,tddft%nt
+    do it=t_0,t_1
 
        call watch(ct(0),et(0))
 
@@ -186,6 +210,8 @@ CONTAINS
        call calc_density
        call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
        call calc_xc
+       call update_localpot
+
        call calc_total_energy( .true., Etot )
 
        call calc_dipole( dipole(0,it), rgrid%VolumeElement )
@@ -194,21 +220,23 @@ CONTAINS
        call global_watch( .false., flag_end )
 
        if ( disp_sw ) then
-          write(*,'(6f16.10,1x,2f10.5)') &
-               t,dipole(1:3,it),dipole(0,it),Etot,ct(1)-ct(0),et(1)-et(0)
+          write(*,'(1x,i6,1x,6f16.10,1x,2f10.5)') &
+               it,t,dipole(1:3,it),Etot,dipole(0,it),ct(1)-ct(0),et(1)-et(0)
        end if
        if ( myrank == 0 ) then
-          write(unit,'(f10.5,1x,3f20.15,1x,2f20.15)') &
-               t,dipole(1:3,it),dipole(0,it),Etot
+          write(unit,'(1x,i6,1x,6f22.16)') it,t,dipole(1:3,it),Etot,dipole(0,it)
        end if
+
+       flag_wr = ( mod(it-t_0+1,nt_wr)==0 .or. it==t_1 .or. flag_end )
+       call write_data( disp_sw, flag_wr, suffix="tddft" )
 
        if ( flag_end ) exit
 
     end do ! it
 
-    deallocate( zcoef )
-    deallocate( hpsi )
-    deallocate( tpsi )
+    deallocate( zcoef  )
+    deallocate( hpsi   )
+    deallocate( tpsi   )
     deallocate( dipole )
 
 ! ---
@@ -217,9 +245,7 @@ CONTAINS
 
 ! ---
 
-    call write_data( disp_sw, .true. )
-
-! ---
+    call write_border( 0, " rtddft_mol(end)" )
 
 #endif
 
@@ -260,6 +286,7 @@ CONTAINS
     real(8),intent(IN) :: dV
     integer :: i
     real(8) :: x,y,z,c,d0(0:3),trho
+    include 'mpif.h'
 
     c=0.5d0 ; if ( MS_WF == 2 ) c=1.0d0
 

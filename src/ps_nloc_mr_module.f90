@@ -17,6 +17,7 @@ MODULE ps_nloc_mr_module
   use hsort_module
   use polint_module
   use spline_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -24,13 +25,15 @@ MODULE ps_nloc_mr_module
   PUBLIC :: prep_ps_nloc_mr &
            ,op_ps_nloc_mr,calc_force_ps_nloc_mr &
            ,prep_uvk_ps_nloc_mr,prep_rvk_ps_nloc_mr
+  PUBLIC :: prep_uvkso_ps_nloc_mr
 
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)
 
-  integer :: N_nzqr
-  integer,allocatable :: nzqr_pair(:,:)
-  real(8),allocatable :: Dij00(:)
+!  integer :: N_nzqr
+!  integer,allocatable :: nzqr_pair(:,:)
+!  real(8),allocatable :: Dij00(:)
+!  real(8),allocatable :: Kij00(:)
 
 CONTAINS
 
@@ -60,7 +63,8 @@ CONTAINS
     integer :: ab1,ab2,ab3,a1,a2,l1,l2
     integer :: np1,np2,np3,nrlma
     logical,allocatable :: lcheck_tmp1(:,:)
-    include 'mpif.h'
+
+    call write_border( 0, " prep_ps_nloc_mr(start)" )
 
     Mlma=0
     do i=1,Natom
@@ -326,11 +330,7 @@ CONTAINS
           end do
        end do
     end do
-    ! modified by MIZUHO-IR, inplace
-    call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-         lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
-!!$    call mpi_allgather(lcheck_tmp1(1,myrank_g),Mlma,mpi_logical, &
-!!$         lcheck_tmp1,Mlma,mpi_logical,comm_grid,ierr)
+    call rsdft_allgather( lcheck_tmp1(:,myrank_g), lcheck_tmp1, comm_grid )
 
     call watch(ctt(1),ett(1))
 
@@ -538,6 +538,10 @@ CONTAINS
     allocate( mmap(nzlma)          ) ; mmap=0
     allocate( iorbmap(nzlma)       ) ; iorbmap=0
     allocate( nl_rank_map(nrlma)   ) ; nl_rank_map=-1
+    if ( flag_so ) then
+       if ( allocated(uVso) ) deallocate(uVso)
+       allocate( uVso(MMJJ,nzlma) ) ; uVso=0.0d0
+    end if
 
     do i=1,nrlma
        nl_rank_map(i)=nl_rank_map_tmp(i)
@@ -545,14 +549,17 @@ CONTAINS
 
     deallocate( nl_rank_map_tmp )
 
+    lma0=0
     do lma=1,nzlma
+       lma0=lma0+1
        if ( maps_tmp(lma,1) == 0 ) cycle
-       iuV(lma)     = maps_tmp(lma,2)
-       amap(lma)    = maps_tmp(lma,3)
-       lmap(lma)    = maps_tmp(lma,4)
-       mmap(lma)    = maps_tmp(lma,5)
-       iorbmap(lma) = maps_tmp(lma,6)
+       iuV(lma0)     = maps_tmp(lma,2)
+       amap(lma0)    = maps_tmp(lma,3)
+       lmap(lma0)    = maps_tmp(lma,4)
+       mmap(lma0)    = maps_tmp(lma,5)
+       iorbmap(lma0) = maps_tmp(lma,6)
     end do
+    nzlma=lma0
 
     c1=1.d0/ML1
     c2=1.d0/ML2
@@ -583,6 +590,7 @@ CONTAINS
           y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
           z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
           uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
+          if ( flag_so ) uVso(j,lma)=uV_tmp(j,iorb,a)
           JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
        end do
     end do
@@ -604,6 +612,7 @@ CONTAINS
           i1=JJ_MAP(1,i,lma)
           i2=JJ_MAP(2,i,lma)
           i3=JJ_MAP(3,i,lma)
+!          if ( icheck_tmp4(i1,i2,i3)==0 .and. uV(i,lma)/=0.0d0 ) then
           if ( icheck_tmp4(i1,i2,i3)==0 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)=j
@@ -824,6 +833,15 @@ CONTAINS
 
     call prep_uvk_ps_nloc_mr(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
+    if ( flag_so ) then
+       allocate( uVk_so00(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk_so00=(0.d0,0.d0)
+       allocate( uVk_so11(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk_so11=(0.d0,0.d0)
+       allocate( uVk_so12(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk_so12=(0.d0,0.d0)
+       allocate( uVk_so21(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk_so21=(0.d0,0.d0)
+       allocate( uVk_so22(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk_so22=(0.d0,0.d0)
+       call prep_uvkso_ps_nloc_mr(MBZ_0,MBZ_1,kbb(1,MBZ_0))
+    end if
+
     call watch(ctt(5),ett(5))
 
 !--- multi-reference cofficients
@@ -851,6 +869,10 @@ CONTAINS
     if ( allocated(nzqr_pair) ) deallocate(nzqr_pair)
     allocate( Dij00(N_nzqr)       ) ; Dij00=0.0d0
     allocate( nzqr_pair(2,N_nzqr) ) ; nzqr_pair=0
+    if ( flag_so ) then
+       if ( allocated(Kij00) ) deallocate(Kij00)
+       allocate( Kij00(N_nzqr) ) ; Kij00=0.0d0
+    end if
 
     n=0
     do lma1=1,nzlma
@@ -868,10 +890,10 @@ CONTAINS
           nzqr_pair(1,n)=lma1
           nzqr_pair(2,n)=lma2
           Dij00(n)=hnml(i1,i2,l1,ki_atom(a1))
+          if ( flag_so .and. l1 >= 1 ) Kij00(n)=knml(i1,i2,l1,ki_atom(a1))
        end if
     end do ! lma2
     end do ! lma1
-
 
     if ( disp_switch_parallel ) then
        write(*,*) "time(ps_nloc_mr_1)",ctt(1)-ctt(0),ett(1)-ett(0)
@@ -880,6 +902,8 @@ CONTAINS
        write(*,*) "time(ps_nloc_mr_4)",ctt(4)-ctt(3),ett(4)-ett(3)
        write(*,*) "time(ps_nloc_mr_5)",ctt(5)-ctt(4),ett(5)-ett(4)
     end if
+
+    call write_border( 0, " prep_ps_nloc_mr(end)" )
 
   END SUBROUTINE prep_ps_nloc_mr
 
@@ -891,7 +915,7 @@ CONTAINS
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
     integer :: i,j,k,j3,lma,i0,i1,i2,i3,m1,m2,m3
     integer,allocatable :: icheck_tmp4(:,:,:)
-    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr
+    real(8) :: c1,c2,c3,d1,d2,d3,pi2,kr,u3
     complex(8) :: ztmp0
 
     a1b = Igrid(1,1)
@@ -929,14 +953,16 @@ CONTAINS
              m2=JJ_MAP(5,i,lma)
              m3=JJ_MAP(6,i,lma)
              j3=icheck_tmp4(i1,i2,i3)
+             u3=uV(i,lma)
              kr=d1*(c1*i1+m1)+d2*(c2*i2+m2)+d3*(c3*i3+m3)
-             ztmp0=dcmplx(cos(kr),-sin(kr))*uV(i,lma)
-             if ( j3==0 ) then
+             ztmp0=dcmplx(cos(kr),-sin(kr))*u3
+!             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
+             if ( j3 == 0 ) then
                 j=j+1
                 icheck_tmp4(i1,i2,i3)=j
                 uVk(j,lma,k)=ztmp0
                 JJP(j,lma) = i1-a1b + (i2-a2b)*ab1 + (i3-a3b)*ab1*ab2 + ML_0
-             else
+             else if ( j3 /= 0 ) then
                 uVk(j3,lma,k)=uVk(j3,lma,k)+ztmp0
              end if
           end do
@@ -1034,6 +1060,97 @@ CONTAINS
     deallocate( icheck_tmp4 )
 
   END SUBROUTINE prep_rvk_ps_nloc_mr
+
+
+  SUBROUTINE prep_uvkso_ps_nloc_mr(k0,k1,kbb)
+    implicit none
+    integer,intent(IN) :: k0,k1
+    real(8),intent(IN) :: kbb(3,k0:k1)
+    integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab2,ab3
+    integer :: i,j,k,j3,lma,i0,i1,i2,i3,m1,m2,m3,L,M,a
+    integer,allocatable :: icheck_tmp4(:,:,:)
+    real(8) :: c1,c2,c3,d1,d2,d3,e1,e2,e3,pi2,kr,u3
+    real(8) :: Rx,Ry,Rz,const1,const2,x,y,z
+    complex(8) :: ztmp0
+
+    a1b = Igrid(1,1)
+    b1b = Igrid(2,1)
+    a2b = Igrid(1,2)
+    b2b = Igrid(2,2)
+    a3b = Igrid(1,3)
+    b3b = Igrid(2,3)
+
+    c1=1.d0/Ngrid(1)
+    c2=1.d0/Ngrid(2)
+    c3=1.d0/Ngrid(3)
+
+    ab1=b1b-a1b+1
+    ab2=b2b-a2b+1
+    ab3=b3b-a3b+1
+
+    allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
+    icheck_tmp4=0
+
+    pi2 = 2.d0*acos(-1.d0)
+
+    do k=k0,k1
+       d1=pi2*kbb(1,k)
+       d2=pi2*kbb(2,k)
+       d3=pi2*kbb(3,k)
+       do lma=1,nzlma
+          j=0
+          icheck_tmp4=0
+          a=amap(lma)
+          if ( a == 0 ) cycle
+          Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
+          Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
+          Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+          L=lmap(lma)
+          M=mmap(lma)
+          const1=0.0d0
+          const2=0.0d0
+          if ( M > -L ) const1=sqrt( dble(L*(L+1)-M*(M-1)) )
+          if ( M <  L ) const2=sqrt( dble(L*(L+1)-M*(M+1)) )
+          do i=1,MJJ_MAP(lma)
+             i1=JJ_MAP(1,i,lma)
+             i2=JJ_MAP(2,i,lma)
+             i3=JJ_MAP(3,i,lma)
+             m1=JJ_MAP(4,i,lma)
+             m2=JJ_MAP(5,i,lma)
+             m3=JJ_MAP(6,i,lma)
+             j3=icheck_tmp4(i1,i2,i3)
+             u3=uV(i,lma)
+             e1=c1*i1+m1
+             e2=c2*i2+m2
+             e3=c3*i3+m3
+             x = aa(1,1)*e1+aa(1,2)*e2+aa(1,3)*e3-Rx
+             y = aa(2,1)*e1+aa(2,2)*e2+aa(2,3)*e3-Ry
+             z = aa(3,1)*e1+aa(3,2)*e2+aa(3,3)*e3-Rz
+             kr=d1*e1+d2*e2+d3*e3
+             ztmp0=dcmplx(cos(kr),-sin(kr))*uVso(i,lma)
+!             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
+             if ( j3 == 0 ) then
+                j=j+1
+                icheck_tmp4(i1,i2,i3)=j
+                uVk_so00(j,lma,k)= ztmp0*ZYlm(x,y,z,L,M)
+                uVk_so11(j,lma,k)= M*ztmp0*ZYlm(x,y,z,L,M)
+                uVk_so22(j,lma,k)=-M*ztmp0*ZYlm(x,y,z,L,M)
+                uVk_so12(j,lma,k)= const1*ztmp0*ZYlm(x,y,z,L,M-1)
+                uVk_so21(j,lma,k)= const2*ztmp0*ZYlm(x,y,z,L,M+1)
+             else if ( j3 /= 0 ) then
+                uVk_so00(j3,lma,k)= uVk_so00(j3,lma,k)+ztmp0*ZYlm(x,y,z,L,M)
+                uVk_so11(j3,lma,k)= uVk_so11(j3,lma,k)+M*ztmp0*ZYlm(x,y,z,L,M)
+                uVk_so22(j3,lma,k)= uVk_so22(j3,lma,k)-M*ztmp0*ZYlm(x,y,z,L,M)
+                uVk_so12(j3,lma,k)= uVk_so12(j3,lma,k)+const1*ztmp0*ZYlm(x,y,z,L,M-1)
+                uVk_so21(j3,lma,k)= uVk_so21(j3,lma,k)+const2*ztmp0*ZYlm(x,y,z,L,M+1)
+             end if
+          end do
+       end do ! lma
+    end do ! k
+
+    deallocate( icheck_tmp4 )
+
+  END SUBROUTINE prep_uvkso_ps_nloc_mr
 
 
   SUBROUTINE op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)

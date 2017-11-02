@@ -16,6 +16,7 @@ MODULE ps_nloc3_module
   use ylm_module
   use hsort_module
   use fft_module
+  use rsdft_mpi_module
 
   implicit none
 
@@ -273,7 +274,8 @@ CONTAINS
     integer :: ik,i,j,k,a,L,m,iorb,lma,lma0,lma1
     real(8) :: a1,a2,a3,c1,c2,c3,Gr,x,y,z,pi2
     integer :: k1,kk1,ig,ML1,ML2,ML3,ML,MG
-    include 'mpif.h'
+
+    call write_border( 0, "prep_ps_nloc3(start)" )
 
     nn1     = idisp(myrank)+1
     nn2     = idisp(myrank)+ircnt(myrank)
@@ -389,7 +391,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork0, zwork1 )
+             call backward_fft( zwork0, zwork1, "fft_rsdft" )
 
 !$OMP parallel private( irank_g,l1,l2,l3,m1,m2,m3,i )
              do i3=1,node_partition(3)
@@ -424,11 +426,7 @@ CONTAINS
           call mpi_alltoallv(utmp,ir_grid,id_grid,TYPE_MAIN &
                ,utmp3(nn1,0,myrank_b),icnt,idis,TYPE_MAIN,comm_grid,ierr)
 
-          ! modified by MIZUHO-IR, inplace
-          call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-               utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
-!!$          call mpi_allgather(utmp3(nn1,0,myrank_b),ML0*nprocs_g,TYPE_MAIN, &
-!!$               utmp3(nn1,0,0),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
+          call rsdft_allgather( utmp3(:,:,myrank_b), utmp3, comm_band )
 
           lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
           do j=0,nprocs_b-1
@@ -454,6 +452,8 @@ CONTAINS
     deallocate( utmp  )
     if ( allocated(zwork1) ) deallocate( zwork1 )
     if ( allocated(zwork0) ) deallocate( zwork0 )
+
+    call write_border( 0, "prep_ps_nloc3(end)" )
 
     return
 
@@ -540,7 +540,6 @@ CONTAINS
     complex(8),allocatable :: vtmp3(:,:,:)
     complex(8),allocatable :: utmp2(:,:)
 #endif
-    include 'mpif.h'
 
     force2(:,:) = 0.0d0
 
@@ -654,7 +653,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1 )
+             call backward_fft( zwork, zwork1, "fft_rsdft" )
 
 !$OMP parallel private( i1,i2,i3,Gy )
 !$OMP do
@@ -677,7 +676,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1 )
+             call backward_fft( zwork, zwork1, "fft_rsdft" )
 
 !$OMP parallel private( Gz,i1,i2,i3 )
 !$OMP do
@@ -700,7 +699,7 @@ CONTAINS
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1 )
+             call backward_fft( zwork, zwork1, "fft_rsdft" )
 
 !$OMP parallel do private( i1,i2,i3 )
              do i=1,ML
@@ -714,11 +713,9 @@ CONTAINS
           do ir=1,3
              call mpi_alltoallv(utmp2(1,ir),ir_grid,id_grid,TYPE_MAIN &
                   ,wtmp4(nn1,0,myrank_b,ir),icnt,idis,TYPE_MAIN,comm_grid,ierr)
-             ! modified by MIZUHO-IR, inplace
-             call mpi_allgather(MPI_IN_PLACE,0,MPI_DATATYPE_NULL, &
-                  wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
-!!$             call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g,TYPE_MAIN, &
-!!$                  wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN,comm_band,ierr)
+             call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g, &
+                  TYPE_MAIN,wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN, &
+                  comm_band,ierr)
              lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
              do j=0,nprocs_b-1
              do i=0,nprocs_g-1

@@ -1,6 +1,6 @@
 MODULE ps_nloc2_variables
 
-  use parallel_module, only: MPI_REAL8,MPI_COMPLEX16,nprocs_g
+  use parallel_module, only: MPI_REAL8,RSDFT_MPI_COMPLEX16,nprocs_g
 
   integer :: Mlma,nzlma
   integer,allocatable :: JJ_MAP(:,:,:),MJJ_MAP(:),MJJ(:)
@@ -23,8 +23,22 @@ MODULE ps_nloc2_variables
   complex(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
-  integer,parameter :: TYPE_MAIN=MPI_COMPLEX16
+  integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
 #endif
+
+! spin-orbit
+  real(8),allocatable :: uVso(:,:)
+  complex(8),allocatable :: uVk_so00(:,:,:)
+  complex(8),allocatable :: uVk_so11(:,:,:)
+  complex(8),allocatable :: uVk_so12(:,:,:)
+  complex(8),allocatable :: uVk_so21(:,:,:)
+  complex(8),allocatable :: uVk_so22(:,:,:)
+
+! muti-reference & spin-orbit
+  integer :: N_nzqr
+  integer,allocatable :: nzqr_pair(:,:)
+  real(8),allocatable :: Dij00(:)
+  real(8),allocatable :: Kij00(:)
 
 CONTAINS
 

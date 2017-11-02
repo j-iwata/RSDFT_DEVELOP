@@ -1,5 +1,4 @@
-! assuming the unit of POSCAR is in angstrome,
-! and atomic coordinates are given as Cartesian (xyz) coordinates
+! assuming the unit of POSCAR is in angstrome
 
 PROGRAM poscar2aa
 
@@ -11,6 +10,8 @@ PROGRAM poscar2aa
   real(8) :: ax,aa(3,3),bb(3,3)
   character(30) :: cbuf, cbuf2, format_type
   integer :: i,j,k,l2,ne,ichk,natm_tot,natm(10)
+  integer :: iconstr
+  character(2) :: name_elem(10)
 
   read(u1,*)
   read(u1,*) ax
@@ -41,8 +42,19 @@ PROGRAM poscar2aa
   write(*,*) "ne =",ne
 
   backspace(u1)
+  backspace(u1)
 
+  read(u1,*) name_elem(1:ne)
   read(u1,*) natm(1:ne)
+
+  read(u1,*) cbuf
+  if ( cbuf(1:1) == "S" .or. cbuf(1:1) == "s" ) then
+     iconstr=1
+  else
+     iconstr=0
+     backspace(u1)
+  end if
+
   read(u1,*) format_type
 
   natm_tot = sum( natm(1:ne) )

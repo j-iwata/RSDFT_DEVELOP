@@ -18,6 +18,12 @@ PROGRAM Real_Space_DFT
   use vdw_grimme_module
   use efield_module
   use stress_module, only: test_stress ! MIZUHO-IR for cellopt
+  use linear_response_module
+  use kinetic_sym_ini_module
+  use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
+                                ,init_noncollinear
+  use init_occ_electron_ncol_module
+  use rtddft_sol_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -27,8 +33,11 @@ PROGRAM Real_Space_DFT
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
   type(lattice) :: aa_obj, bb_obj
   logical,parameter :: recalc_esp=.true.
+  logical :: flag_read_ncol=.false.
   real(8) :: Etot, Ehwf
   integer :: info_level=0
+  character(32) :: lattice_index
+  integer :: nloop
 
 ! --- start MPI ---
 
@@ -46,12 +55,13 @@ PROGRAM Real_Space_DFT
 
   call init_io_tools( myrank, unit_input_parameters )
 
-! --- DISP_SWITCH ---
+! --- STDOUT and LOG control (ext0/write_info.f90) ---
 
   DISP_SWITCH = (myrank==0)
   disp_switch_parallel = (myrank==0)
 
   call check_disp_switch( DISP_SWITCH, 1 )
+  call check_log_switch( DISP_SWITCH, 1 )
 
   call IOTools_readIntegerKeyword( "INFOLEVEL", info_level )
 
@@ -73,13 +83,22 @@ PROGRAM Real_Space_DFT
 
   call init_aa( aa_obj )
 
+  call backup_aa_lattice( aa_obj )
+
   if ( SYStype == 0 ) then
      call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
+     if ( myrank == 0 ) then
+        call write_coordinates_atom( 1, 3, "atomic_coordinates_aa_ini" )
+     end if
   else if ( SYStype == 1 ) then
      call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
+     if ( myrank == 0 ) then
+        call write_coordinates_atom( 1, 3, "atomic_coordinates_xyz_ini" )
+     end if
   end if
 
-  call backup_aa_lattice( aa_obj )
+  call check_lattice( aa, lattice_index )
+  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
 
   call write_border( 0, " main( aa & bb )(end)" )
 
@@ -117,10 +136,12 @@ PROGRAM Real_Space_DFT
 ! --- Test ( Egg-Box Effect ) ---
 
   if ( iswitch_test == 2 ) then
-     aa_atom(1,1) = aa_atom(1,1) + Hgrid(1)*0.5d0/ax
+     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/ax
      if ( disp_switch ) then
         write(*,*) "--- EGG BOX TEST !!! ---"
-        write(*,*) aa_atom(1,1),aa_atom(1,1)*ax,Hgrid(1)*0.5d0
+        do i=1,size(aa_atom,2)
+           write(*,*) aa_atom(1,i),aa_atom(1,i)*ax,Hgrid(1)*0.5d0
+        end do
      end if
   end if
 
@@ -171,6 +192,8 @@ PROGRAM Real_Space_DFT
 ! --- kinetic energy oprator coefficients ---
 
   call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
+
+  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa )
 
 ! --- ??? ---
 
@@ -232,10 +255,23 @@ PROGRAM Real_Space_DFT
 
   call sym_rho( ML_0, ML_1, Nspin, MSP_0, MSP_1, rho )
 
+! --- init noncollinear ---
+
+  flag_noncollinear = flag_so
+  if ( flag_noncollinear ) then
+     if ( Nspin /= 2 .or. np_spin == 2 ) then
+        write(*,*) "Nspin, np_spin=",Nspin,np_spin
+        write(*,*) "Nspin==2 and np_spin==1 is only available"
+        goto 900
+     end if
+  end if
+
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
-     call test_hpsi2( 10 )
+     nloop=10
+     call IOTools_readIntegerKeyword( "NLOOP", nloop )
+     call test_hpsi2( nloop )
      goto 900
   end if
 
@@ -261,7 +297,11 @@ PROGRAM Real_Space_DFT
 
 ! --- Initial occupation ---
 
-  call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+  if ( flag_noncollinear ) then
+     call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+  else
+     call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+  end if
 
   if ( DISP_SWITCH ) then
      write(*,'(a60," main")') repeat("-",60)
@@ -274,16 +314,16 @@ PROGRAM Real_Space_DFT
      write(*,*) "Next_electron =",Next_electron
      write(*,*) "Ndspin,Nfixed =",Ndspin,Nfixed
      write(*,*) "Zps   =",Zps(1:Nelement)
-     write(*,*) "sum(occ)=",sum(occ)
+     write(*,*) "sum(occ)=",sum(occ),count(occ(:,1,1)/=0.0d0)
      if ( Nspin == 2 ) then
-        write(*,*) "sum(occ(up))  =",sum(occ(:,:,1))
-        write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin))
+        write(*,*) "sum(occ(up))  =",sum(occ(:,:,1)),count(occ(:,1,1)/=0.0d0)
+        write(*,*) "sum(occ(down))=",sum(occ(:,:,Nspin)),count(occ(:,1,Nspin)/=0.0d0)
      endif
-     do n=max(1,nint(Nelectron/2)-10),min(nint(Nelectron/2)+10,Nband)
-        do k=1,Nbzsm
-           write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
-        end do
-     end do
+     !do n=max(1,nint(Nelectron/2)-10),min(nint(Nelectron/2)+10,Nband)
+     !   do k=1,Nbzsm
+     !      write(*,*) n,k,(occ(n,k,s),s=1,Nspin)
+     !   end do
+     !end do
   end if
 
 ! --- Initial setup for Hybrid XC functional ---
@@ -298,6 +338,11 @@ PROGRAM Real_Space_DFT
   call calc_hartree( ML_0, ML_1, MSP, rho )
 
   call calc_xc
+
+  if ( flag_noncollinear ) then
+     call init_noncollinear( rho, Vxc )
+     Vxc=0.0d0
+  end if
 
   call init_localpot
 
@@ -316,16 +361,23 @@ PROGRAM Real_Space_DFT
 
   call read_data(disp_switch)
 
+  call io_read_noncollinear( myrank, flag_read_ncol )
+
   call getDij
 
 ! the following GS should be performed when MB1_tmp is smaller than Nband,
 ! otherwise not necessary
+
+  if ( flag_read_ncol ) then
+  else
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
      call gram_schmidt(1,Nband,k,s)
   end do
   end do
+
+  end if
 
 ! ---
 
@@ -338,11 +390,16 @@ PROGRAM Real_Space_DFT
 ! The followings are just to get H and XC energies,
 ! but potentials are also recalculated with new rho.
 
+  if ( flag_read_ncol ) then
+  else
+
   call calc_hartree(ML_0,ML_1,MSP,rho)
   call calc_xc
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
+
+  end if
 
 ! ---
 
@@ -368,10 +425,8 @@ PROGRAM Real_Space_DFT
 
   else
 
-     call Init_IO( "sweep" )
-     call calc_sweep( disp_switch, ierr )
-     call Init_IO( "" )
-     if ( ierr == -1 ) goto 900
+     call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
+     if ( ierr < 0 ) goto 900
 
   end if
 
@@ -379,32 +434,19 @@ PROGRAM Real_Space_DFT
 
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( disp_switch, ierr, tol_force_in=feps )
+     call calc_scf( disp_switch, ierr, tol_force_in=feps, Etot_out=Etot )
      if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp, Etot, 6 )
+     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp, Etot, 6 )
+     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( -1 )
      if ( nprocs == 1 ) then
         call construct_hamiltonian_matrix( Ngrid(0) )
      end if
      goto 900
   end select
-
-! ---
-
-!
-! --- BAND ---
-!
-
-  if ( iswitch_band == 1 ) then
-     call control_xc_hybrid(1)
-     call Init_IO( "band" )
-     call band(nint(Nelectron*0.5d0),disp_switch)
-     call Init_IO( "" )
-  end if
 
 !
 ! --- Force test, atomopt, CPMD ---
@@ -419,22 +461,29 @@ PROGRAM Real_Space_DFT
   end if
 
   if( iswitch_opt >= 1 .or. iswitch_latopt >= 1 ) then
-     call atomopt(iswitch_opt,iswitch_latopt,disp_switch)
-     call calc_total_energy( recalc_esp, Etot, 6 )
+
+     if ( iswitch_opt /= 3 ) then
+        call atomopt(iswitch_opt,iswitch_latopt)
+        call calc_total_energy( recalc_esp, Etot, 6 )
+     else
+        if ( SYStype == 0 ) then
+           call bomd
+        else
+           write(*,*) "MD for SYStype/=0 is not avaiable"
+           goto 900
+        end if
+     end if
+
   end if
-!!$  select case( iswitch_opt )
-!!$  case( -1 )
-!!$
-!!$     call test_force(SYStype)
-!!$
-!!$  case( 1,2 ) ! --- atomopt ---
-!!$
-!!$     call atomopt(iswitch_opt,disp_switch)
-!!$
-!!$     call calc_total_energy( recalc_esp, Etot, 6 )
-!!$
-!!$  end select
-  ! end MIZUHO-IR for cellopt
+
+!
+! --- BAND ---
+!
+
+  if ( iswitch_band > 0 ) then
+     call control_xc_hybrid(1)
+     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
+  end if
 
 !
 ! --- TDDFT ---
@@ -445,14 +494,16 @@ PROGRAM Real_Space_DFT
   case( 1,2 )
 
      select case( SYStype )
+     case default
+        call rtddft_sol( iswitch_tddft )
      case( 1 )
         call init_rtddft_mol( 1, myrank )
         call rtddft_mol( iswitch_tddft )
-        goto 900
-     case default
-        write(*,*) "real-time tddft is available only for rsmol"
-        goto 900
      end select
+
+  case( 3 )
+
+     call calc_dielectric_constant
 
   case default
 

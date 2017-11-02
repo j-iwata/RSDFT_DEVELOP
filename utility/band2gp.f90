@@ -5,18 +5,23 @@ PROGRAM band_plot
   integer,parameter :: u1=100,max_loop=100000
   integer,allocatable :: mbi(:)
   integer :: idummy,idummy2,mb_min,mb_max,i,j,k,s,loop
-  integer :: nbk,mb,mbv,mbc,mb1,mb2,msp
+  integer :: nbk,mb,mbv,mbc,mb1,mb2,msp,unit_conv
   real(8),parameter :: HT=27.2116d0
+  real(8),parameter :: ab=0.529177d0
   real(8),allocatable :: eval(:,:,:),dk_bz(:,:)
   real(8) :: evb,ecb,efermi,dummy,rdummy(4),bb(3,3),esft
   real(8) :: kx,ky,kz,d1,d2,d3
   character(64) :: cbuf
-  logical :: flag_versioned
+  logical :: flag_versioned, flag_noncollinear=.false.
 
   open(u1,file="band_eigv",status='old')
   read(u1,*) cbuf ; write(*,*) cbuf
   if ( cbuf(1:7) == "version" ) then
      flag_versioned = .true.
+     if ( cbuf == "version2.1" ) then
+        rewind u1
+        read(u1,*) cbuf,flag_noncollinear
+     end if
      read(u1,*) cbuf, efermi
      read(u1,*)
   else
@@ -102,9 +107,11 @@ PROGRAM band_plot
 
 !------------------------------
 
+  if ( flag_noncollinear ) mbv=mbv*2
+
   mbc = mbv + 1
-  mb1 = max(1,mbv-200)
-  mb2 = min(mbv+1000,mb)
+  mb1 = 1 !max(1,mbv-200)
+  mb2 = mb_max !min(mbv+1000,mb)
   evb = maxval( eval(1:mbv,1:nbk,:) )
   ecb = minval( eval(mbc:mb,1:nbk,:) )
 
@@ -138,17 +145,26 @@ PROGRAM band_plot
 
 !------------------------------
 
-  call plot_eval(mb1,mb2,esft,HT)
+  write(*,*) "Chose the unit [ 0: Hartree a.u.,  1: eV & angstrome^-1 ]"
+  read(*,*) unit_conv
+
+!------------------------------
+
+  if ( unit_conv == 0 ) then
+     call plot_eval(mb1,mb2,esft,1.0d0,1.0d0)
+  else
+     call plot_eval(mb1,mb2,esft,HT,ab)
+  end if
 
 !------------------------------
 
 CONTAINS
 
-  SUBROUTINE plot_eval(mb1,mb2,e0,ht)
+  SUBROUTINE plot_eval(mb1,mb2,e0,ht,ab)
 
     implicit none
     integer,intent(IN) :: mb1,mb2
-    real(8),intent(IN) :: e0,ht
+    real(8),intent(IN) :: e0,ht,ab
     integer :: i,i0,i1,k,unit0,unit
 
     unit0=2000
@@ -159,7 +175,7 @@ CONTAINS
        unit=unit+1
        rewind unit
        do k=1,nbk
-          write(unit,'(1x,f10.5,1x,50f15.8)') dk_bz(4,k),( (eval(i,k,s)-e0)*ht,i=i0,i1 )
+          write(unit,'(1x,f10.5,1x,50f15.8)') dk_bz(4,k)/ab,( (eval(i,k,s)-e0)*ht,i=i0,i1 )
        end do
     end do
     end do
@@ -168,7 +184,7 @@ CONTAINS
     unit=unit0
     write(unit0,'(1x,"set nokey")')
 
-    write(unit0,*) "set xrange[0:",dk_bz(4,nbk),"]"
+    write(unit0,*) "set xrange[0:",dk_bz(4,nbk)/ab,"]"
 
     do s=1,msp
     write(unit0,*) "set title ","'spin",s,"'"
