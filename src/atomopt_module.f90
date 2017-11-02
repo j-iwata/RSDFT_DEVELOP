@@ -7,9 +7,9 @@ MODULE atomopt_module
   use scf_module
   use eion_module, only: calc_eion
   use strfac_module
-  use ps_local_module
-  use ps_pcc_module
-  use pseudopot_module
+!  use ps_local_module
+!  use ps_pcc_module
+!  use pseudopot_module
   use ps_nloc2_module
   use ps_nloc3_module
   use ps_nloc_mr_module
@@ -29,12 +29,13 @@ MODULE atomopt_module
   use rgrid_module, only: Ngrid,Hgrid,Igrid,dV,Init_Rgrid,InitParallel_Rgrid
   use ggrid_module, only: Init_Ggrid,InitParallel_Ggrid,Gcut
   use kinetic_variables, only: Md, ggg
-  use bz_module, only: kbb,Nbzsm,generate_bz
+  !use bz_module, only: kbb,Nbzsm,generate_bz
+  use bz_module, only: kbb
   use kinetic_module, only: init_kinetic
-  use ps_local_module, only: init_ps_local
-  use ps_pcc_module, only: init_ps_pcc
+  use ps_local_module, only: init_ps_local, Vion, construct_ps_local
+  use ps_pcc_module, only: init_ps_pcc, construct_ps_pcc
   use ps_nloc_initiate_module, only: ps_nloc_initiate
-  use pseudopot_module, only: read_pseudopot
+  use pseudopot_module, only: read_pseudopot, pselect
   use lattice_module, only: lattice, backup_aa_lattice
   use aa_module, only: init_aa
   !--- end MIZUHO-IR for cellopt
@@ -66,12 +67,13 @@ MODULE atomopt_module
 CONTAINS
 
 
-  SUBROUTINE atomopt( iswitch_opt )
+  SUBROUTINE atomopt( iswitch_opt, iswitch_latopt )
     implicit none
     integer,intent(IN) :: iswitch_opt
+    integer,intent(IN) :: iswitch_latopt
     select case( iswitch_opt )
     case( 1, 2 )
-       call atomopt_cg( iswitch_opt )
+       call atomopt_cg( iswitch_opt, iswitch_latopt )
     case( 4 )
        call atomopt_diis( SYStype, feps, diter_opt )
     case( 5 )
@@ -719,15 +721,15 @@ CONTAINS
                 ! update bb, reciprocal vectors.
                 call construct_bb(aa)
                 ! update MGL and GG, reciprocal grid.
-                call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
+                call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch_loc )
 
                 ! update kbb, sampling K points
-                call generate_bz
+                !call generate_bz
 
                 ! update MG_0 and MG_1, index of G grid.
                 call InitParallel_Ggrid( nprocs, myrank )
                 ! update ggg, zcoef_kin, etc, FDM coefficients.
-                call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
+                call init_kinetic( aa, bb, size(kbb,2), kbb, Hgrid, Igrid, MB_d, disp_switch_loc )
 
                 ! update vqlg using updated Va.
                 call init_ps_local

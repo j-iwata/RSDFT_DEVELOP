@@ -430,7 +430,7 @@ CONTAINS
     integer :: mm,icmp,i,TYPE_MAIN
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
-    real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
+    real(8) :: rwork(9),W(2),c,d,r,ct0,ct1,et0,et1,ctt(4),ett(4)
     real(8),allocatable :: sb(:),rb(:),E(:),E1(:),gkgk(:),bk(:)
     complex(8) :: work(9),zphase,ztmp
     complex(8),parameter :: zero=(0.d0,0.d0)
@@ -537,7 +537,7 @@ CONTAINS
 !$OMP end parallel workshare
           end do
 
-          res(ns:ne)=rb(1:nn)/c1**2
+          res(ns:ne)=rb(1:nn)
 
           call watchb( ttmp, timecg(:,2) )
 

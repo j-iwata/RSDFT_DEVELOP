@@ -341,16 +341,13 @@ CONTAINS
        bz%indx_range(1,i) = minval( mm(i,1:n_wh) )
        bz%indx_range(2,i) = maxval( mm(i,1:n_wh) )
     end do
-    if( allocated(bz%kgrid) ) deallocate(bz%kgrid) ! MIZUHO-IR for cellopt
     allocate( bz%kgrid(bz%indx_range(1,1):bz%indx_range(2,1) &
                       ,bz%indx_range(1,2):bz%indx_range(2,2) &
                       ,bz%indx_range(1,3):bz%indx_range(2,3)) ) ; bz%kgrid=0
     do i=1,n_wh
        bz%kgrid( mm(1,i),mm(2,i),mm(3,i) ) = map(i)
     end do
-    if( allocated(bz%kpt) ) deallocate(bz%kpt) ! MIZUHO-IR for cellopt
     allocate( bz%kpt(3,n_ir)  ) ; bz%kpt(:,:) = m(:,:)
-    if( allocated(bz%weight) ) deallocate(bz%weight) ! MIZUHO-IR for cellopt
     allocate( bz%weight(n_ir) ) ; bz%weight(:) = w(:)
   END SUBROUTINE construct_bzinfo_master
 
