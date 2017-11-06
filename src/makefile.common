@@ -1,3 +1,45 @@
+MODS0 = scf_module.o\
+        scf_chefsi_module.o\
+        sweep_module.o\
+        dos_module.o\
+        band_module.o\
+        atomopt_diis_module.o\
+        atomopt_rf_module.o\
+        atomopt_bfgs_module.o\
+        atomopt_module.o\
+        global_variables.o\
+        parameters_module.o\
+
+MODS2 = localpot_module.o\
+        hamiltonian_matrix_module.o\
+        ps_getDij_module.o\
+        force_ps_nloc2.o\
+        ps_nloc2_module.o\
+        nonlocal_module.o\
+        momentum_module.o\
+        hamiltonian_module.o\
+        ps_qrij_prep.o\
+        test_hpsi2_module.o\
+        test_rtsol_module.o\
+        noncollinear_module.o\
+        hamiltonian_ncol_module.o\
+        esp_calc_module.o\
+        esp_calc_ncol_module.o\
+        total_energy_module.o\
+        io_module.o\
+        ps_nloc_initiate_module.o\
+        ps_pcc_mol_module.o\
+        ps_pcc_force_module.o\
+        rtddft_mol_module.o\
+        force_sol_module.o\
+        force_mol_module.o\
+        test_force_module.o\
+        force_module.o\
+        stress_module.o\
+        linear_response_module.o\
+        current_module.o\
+        rtddft_sol_module.o\
+
 MODS1 = \
        enlarge_array_module.o\
        polint_module.o\
@@ -13,7 +55,6 @@ MODS1 = \
        rsdft_mpi_module.o\
        omp_variables.o\
        io_tools_module.o\
-       xc_pw92_gth_module.o\
        lattice_module.o\
        cif_format_module.o\
        atom_module.o\
@@ -21,7 +62,6 @@ MODS1 = \
        rgrid_variables.o\
        parallel_module.o\
        info_module.o\
-       subspace_diag_variables.o\
        filtering.o\
        expint_module.o\
        watch_module.o\
@@ -32,7 +72,6 @@ MODS1 = \
        eigenvalues_module.o\
        ewald_variables.o\
        bcast_module.o\
-       hartree_variables.o\
        fermi_mp_module.o\
        fermi_ncol_module.o\
        band_variables.o\
@@ -60,7 +99,6 @@ MODS1 = \
        esp_gather_module.o\
        ps_nloc2_variables.o\
        vdw_grimme_module.o\
-       xc_variables.o\
        strfac_module.o\
        rgrid_sol_module.o\
        scalapack_module.o\
@@ -79,14 +117,10 @@ MODS1 = \
        force_sub_sub_module.o\
        force_sub_module.o\
        ps_q_init_module.o\
-       xc_ldapz81_module.o\
        ps_nloc2_op_g.o\
        bcset_3_module.o\
        construct_matrix_ps_nloc2_module.o\
        wf_sub_module.o\
-       hartree_sol_fftw_module.o\
-       hartree_sol_ffte_module.o\
-       hartree_sol_module.o\
        ps_nloc2_op_module.o\
        minimal_box_module.o\
        virtualH_module.o\
@@ -102,7 +136,6 @@ MODS1 = \
        ps_nloc_mol_gth_module.o\
        ps_nloc_gth_module.o\
        force_local_mol_gth_module.o\
-       ps_pcc_module.o\
        force_ewald_module.o\
        wf_module.o\
        electron_module.o\
@@ -110,8 +143,6 @@ MODS1 = \
        ps_nloc_hgh_module.o\
        ewald_module.o\
        bc_module.o\
-       subspace_rotv_sl_module.o\
-       cgpc_gausseidel_module.o\
        kinetic_sol_module.o\
        kinetic_sym_module.o\
        kinetic_sym_ini_module.o\
@@ -119,110 +150,32 @@ MODS1 = \
        kinetic_mol_module.o\
        nabla_sym_module.o\
        io_read_module.o\
-       xc_ggapbe96_mol_module.o\
-       gram_schmidt_m_module.o\
-       gram_schmidt_ncol_module.o\
        band_unfold_module.o\
        rhonks_g_module.o\
-       ps_pcc_mol_module.o\
        ps_nloc_mr_module.o\
        ps_spinorbit_module.o\
-       subspace_solv_sl_module.o\
        io_write_module.o\
        ps_nloc3_module.o\
        inner_product_module.o\
-       cgpc_hprsdft_module.o\
        io2_module.o\
        force_nloc2_mol_module.o\
        gradient_module.o\
        ps_nloc2_mol_module.o\
        eion_module.o\
-       hartree_mol_module.o\
-       libxc_module.o\
-       xc_ggapbe96_module.o\
-       fock_cg_module.o\
-       gram_schmidt_g_module.o\
-       xc_ggapbe96_2_module.o\
        density_module.o\
-       xc_vdw_module.o\
        kinetic_module.o\
-       xc_hybrid_module.o\
        ps_initrho_mol_module.o\
        random_initrho_module.o\
        ps_initrho_module.o\
-       gram_schmidt_t_module.o\
-       xc_hse_module.o\
-       fock_fftw_module.o\
-       fock_ffte_module.o\
-       cgpc_2_module.o\
-       fock_fft_module.o\
-       fock_module.o\
-       xc_hf_module.o\
-       xc_module.o\
        ps_local_variables.o\
        ps_local_fftw_module.o\
        ps_local_module.o\
-       localpot_module.o\
-       hamiltonian_matrix_module.o\
-       ps_getDij_module.o\
-       cgpc_seitsonen_module.o\
-       force_ps_nloc2.o\
-       ps_nloc2_module.o\
-       nonlocal_module.o\
-       momentum_module.o\
-       gram_schmidt_module.o\
-       hamiltonian_module.o\
-       hartree_ene_module.o\
-       hartree_module.o\
-       cgpc_diag_module.o\
-       cgpc_module.o\
-       ps_qrij_prep.o\
-       subspace_diag_la_module.o\
-       test_hpsi2_module.o\
-       test_rtsol_module.o\
        io_ctrl_parameters.o\
-       noncollinear_module.o\
-       hamiltonian_ncol_module.o\
-       subspace_diag_ncol_module.o\
-       esp_calc_module.o\
-       esp_calc_ncol_module.o\
-       cggs_module.o\
-       cg_lobpcg_module.o\
-       subspace_mate_sl_module.o\
-       chebyshev_filter_module.o\
-       conjugate_gradient_g_module.o\
-       total_energy_module.o\
-       io_module.o\
        io_simple_module.o\
-       ps_nloc_initiate_module.o\
-       subspace_diag_sl_module.o\
        ps_local_mol_gth_module.o\
-       ps_pcc_force_module.o\
-       cg_module.o\
-       cg_ncol_module.o\
-       subspace_diag_module.o\
-       rtddft_mol_module.o\
        ps_local_mol_module.o\
        force_local_fftw_module.o\
        force_local_sol_module.o\
-       force_sol_module.o\
        force_local_mol_module.o\
-       sweep_module.o\
-       scf_chefsi_module.o\
-       test_force_module.o\
-       dos_module.o\
-       band_module.o\
-       force_mol_module.o\
-       force_module.o\
-       scf_module.o\
-       stress_module.o\
-       atomopt_diis_module.o\
-       atomopt_bfgs_module.o\
-       atomopt_rf_module.o\
-       atomopt_module.o\
-       linear_response_module.o\
-       global_variables.o\
-       parameters_module.o\
-       current_module.o\
-       rtddft_sol_module.o\
+       ps_pcc_module.o\
 

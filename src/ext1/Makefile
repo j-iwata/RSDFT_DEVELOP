@@ -1,8 +1,8 @@
 include ../make.inc
 
-OBJ = ext_sub_minpac.o
+include makefile.common
 
-all : $(OBJ)
+all : $(OBJS)
 
 clean :
 	rm -r -f *.o mpif.h *.lst

@@ -1,5 +1,7 @@
 include ../make.inc
 
+FFLAGS := -I../hartree -I../xc $(FFLAGS)
+
 MOBJ = cpmd_variables.o
 
 OBJ = cpmdio_module.o\

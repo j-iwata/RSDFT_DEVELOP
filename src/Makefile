@@ -6,24 +6,41 @@ include make.inc
 include makefile.common
 
 DIR0 = ext0
-EXTOBJ0 = $(DIR0)/dotp.o \
-          $(DIR0)/convert_capital.o \
-          $(DIR0)/write_info.o \
-          $(DIR0)/stop_program.o \
-          $(DIR0)/get_atomic_number.o \
-          $(DIR0)/exit_program.o \
-          $(DIR0)/mpi_sub.o \
+include $(DIR0)/makefile.common
+OBJ0 := $(addprefix $(DIR0)/,$(OBJS))
 
 DIR1 = ext1
-EXTOBJ1 = $(DIR1)/ext_sub_minpac.o
+include $(DIR1)/makefile.common
+OBJ1 := $(addprefix $(DIR1)/,$(OBJS))
 
 DIR2 = ext2
-EXTOBJ2 = $(DIR2)/pzfft3dv.o \
-          $(DIR2)/factor.o \
-          $(DIR2)/fft235.o \
-          $(DIR2)/kernel.o \
-          $(DIR2)/zfft3d.o \
-          $(DIR2)/pzfft3d.o \
+include $(DIR2)/makefile.common
+OBJ2 := $(addprefix $(DIR2)/,$(OBJS))
+
+DIR_GS = gram_schmidt
+include $(DIR_GS)/makefile.common
+OBJ_GS := $(addprefix $(DIR_GS)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_GS) $(INCLUDE_DIR)
+
+DIR_SD = subspace_diag
+include $(DIR_SD)/makefile.common
+OBJ_SD := $(addprefix $(DIR_SD)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_SD) $(INCLUDE_DIR)
+
+DIR_CG = conjugate_gradient
+include $(DIR_CG)/makefile.common
+OBJ_CG := $(addprefix $(DIR_CG)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_CG) $(INCLUDE_DIR)
+
+DIR_HT = hartree
+include $(DIR_HT)/makefile.common
+OBJ_HT := $(addprefix $(DIR_HT)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_HT) $(INCLUDE_DIR)
+
+DIR_XC = xc
+include $(DIR_XC)/makefile.common
+OBJ_XC := $(addprefix $(DIR_XC)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_XC) $(INCLUDE_DIR)
 
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio_module.o \
@@ -53,18 +70,30 @@ MDOBJ = $(DIR3)/cpmdio_module.o \
 ########################################################################
 ########################################################################
 
-.PHONY: all clean re test runtest cleartest
+.PHONY: all clean
 
 all :
 	@$(MAKE) lda0
 	cd $(DIR0) ; $(MAKE)
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
+	cd $(DIR_HT) ; $(MAKE)
+	cd $(DIR_XC) ; $(MAKE)
+	@$(MAKE) lda2
+	cd $(DIR_GS) ; $(MAKE)
+	cd $(DIR_SD) ; $(MAKE)
+	cd $(DIR_CG) ; $(MAKE)
+	@$(MAKE) lda1
 	cd $(DIR3) ; $(MAKE)
 	@$(MAKE) main.o
-	$(FC) $(LFLAGS) $(EXTOBJ0) $(EXTOBJ1) $(EXTOBJ2) $(MDOBJ) $(MODS1) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
+	$(FC) $(LFLAGS) $(OBJ0) $(OBJ1) $(OBJ2)\
+                        $(MODS1) $(OBJ_XC) $(OBJ_HT) $(MODS2)\
+                        $(OBJ_GS) $(OBJ_SD) $(OBJ_CG)\
+                        $(MODS0) $(MDOBJ) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
 
 lda0 : $(MODS1)
+lda1 : $(MODS0)
+lda2 : $(MODS2)
 
 clean :
 	rm -f *.o *.mod mpif.h *.lst *.optlog *.i90
@@ -72,3 +101,8 @@ clean :
 	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean
 	cd $(DIR3) ; $(MAKE) clean
+	cd $(DIR_GS) ; $(MAKE) clean
+	cd $(DIR_SD) ; $(MAKE) clean
+	cd $(DIR_CG) ; $(MAKE) clean
+	cd $(DIR_HT) ; $(MAKE) clean
+	cd $(DIR_XC) ; $(MAKE) clean

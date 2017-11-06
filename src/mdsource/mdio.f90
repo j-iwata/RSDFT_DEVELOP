@@ -2,7 +2,7 @@
 !     IO routine for molecular dynamics
 !-----------------------------------------------------------------------
 subroutine mdio(io,tote0)
-   use global_variables
+!   use global_variables
    use cpmd_variables
    implicit none
    integer :: io
