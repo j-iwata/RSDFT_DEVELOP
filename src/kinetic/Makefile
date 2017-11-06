@@ -2,8 +2,6 @@ include ../make.inc
 
 include makefile.common
 
-FFLAGS := -I../hartree -I../kinetic $(FFLAGS)
-
 all : $(OBJS)
 
 clean :

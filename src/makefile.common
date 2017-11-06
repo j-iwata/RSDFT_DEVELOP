@@ -58,7 +58,6 @@ MODS1 = \
        lattice_module.o\
        cif_format_module.o\
        atom_module.o\
-       kinetic_variables.o\
        rgrid_variables.o\
        parallel_module.o\
        info_module.o\
@@ -101,7 +100,6 @@ MODS1 = \
        vdw_grimme_module.o\
        strfac_module.o\
        rgrid_sol_module.o\
-       scalapack_module.o\
        var_ps_member.o\
        ps_gth_module.o\
        ps_read_upf_module.o\
@@ -143,12 +141,7 @@ MODS1 = \
        ps_nloc_hgh_module.o\
        ewald_module.o\
        bc_module.o\
-       kinetic_sol_module.o\
-       kinetic_sym_module.o\
-       kinetic_sym_ini_module.o\
        ps_prepNzqr_g_module.o\
-       kinetic_mol_module.o\
-       nabla_sym_module.o\
        io_read_module.o\
        band_unfold_module.o\
        rhonks_g_module.o\
@@ -159,11 +152,9 @@ MODS1 = \
        inner_product_module.o\
        io2_module.o\
        force_nloc2_mol_module.o\
-       gradient_module.o\
        ps_nloc2_mol_module.o\
        eion_module.o\
        density_module.o\
-       kinetic_module.o\
        ps_initrho_mol_module.o\
        random_initrho_module.o\
        ps_initrho_module.o\

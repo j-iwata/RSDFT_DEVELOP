@@ -42,6 +42,11 @@ include $(DIR_XC)/makefile.common
 OBJ_XC := $(addprefix $(DIR_XC)/,$(OBJS))
 INCLUDE_DIR := -I$(DIR_XC) $(INCLUDE_DIR)
 
+DIR_KI = kinetic
+include $(DIR_KI)/makefile.common
+OBJ_KI := $(addprefix $(DIR_KI)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_KI) $(INCLUDE_DIR)
+
 DIR3 = mdsource
 MDOBJ = $(DIR3)/cpmdio_module.o \
         $(DIR3)/calc_kine_temp_module.o\
@@ -77,6 +82,7 @@ all :
 	cd $(DIR0) ; $(MAKE)
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
+	cd $(DIR_KI) ; $(MAKE)
 	cd $(DIR_HT) ; $(MAKE)
 	cd $(DIR_XC) ; $(MAKE)
 	@$(MAKE) lda2
@@ -87,7 +93,9 @@ all :
 	cd $(DIR3) ; $(MAKE)
 	@$(MAKE) main.o
 	$(FC) $(LFLAGS) $(OBJ0) $(OBJ1) $(OBJ2)\
-                        $(MODS1) $(OBJ_XC) $(OBJ_HT) $(MODS2)\
+                        $(MODS1) $(OBJ_XC) $(OBJ_HT)\
+                        $(OBJ_KI)\
+                        $(MODS2)\
                         $(OBJ_GS) $(OBJ_SD) $(OBJ_CG)\
                         $(MODS0) $(MDOBJ) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
 
@@ -106,3 +114,4 @@ clean :
 	cd $(DIR_CG) ; $(MAKE) clean
 	cd $(DIR_HT) ; $(MAKE) clean
 	cd $(DIR_XC) ; $(MAKE) clean
+	cd $(DIR_KI) ; $(MAKE) clean

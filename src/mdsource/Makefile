@@ -1,6 +1,6 @@
 include ../make.inc
 
-FFLAGS := -I../hartree -I../xc $(FFLAGS)
+FFLAGS := -I../hartree -I../xc -I../kinetic $(FFLAGS)
 
 MOBJ = cpmd_variables.o
 
