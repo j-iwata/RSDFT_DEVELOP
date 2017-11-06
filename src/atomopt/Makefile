@@ -2,7 +2,7 @@ include ../make.inc
 
 include makefile.common
 
-FFLAGS := -I../bc $(FFLAGS)
+FFLAGS := -I../kinetic $(FFLAGS)
 
 all : $(OBJS)
 

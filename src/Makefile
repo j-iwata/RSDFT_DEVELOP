@@ -42,35 +42,30 @@ include $(DIR_XC)/makefile.common
 OBJ_XC := $(addprefix $(DIR_XC)/,$(OBJS))
 INCLUDE_DIR := -I$(DIR_XC) $(INCLUDE_DIR)
 
+DIR_BC = bc
+include $(DIR_BC)/makefile.common
+OBJ_BC := $(addprefix $(DIR_BC)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_BC) $(INCLUDE_DIR)
+
 DIR_KI = kinetic
 include $(DIR_KI)/makefile.common
 OBJ_KI := $(addprefix $(DIR_KI)/,$(OBJS))
 INCLUDE_DIR := -I$(DIR_KI) $(INCLUDE_DIR)
 
-DIR3 = mdsource
-MDOBJ = $(DIR3)/cpmdio_module.o \
-        $(DIR3)/calc_kine_temp_module.o\
-        $(DIR3)/nose_hoover_chain_ele_module.o\
-        $(DIR3)/nose_hoover_chain_module.o\
-        $(DIR3)/berendsen_module.o\
-        $(DIR3)/velocity_scaling_module.o\
-        $(DIR3)/velocity_scaling_ele_module.o\
-        $(DIR3)/active_band.o \
-        $(DIR3)/alloc_cpmd.o \
-        $(DIR3)/blue_moon_module.o \
-        $(DIR3)/bomd.o \
-        $(DIR3)/getforce.o \
-        $(DIR3)/getforce_cpmd.o \
-        $(DIR3)/wf_force.o \
-        $(DIR3)/calfke.o \
-        $(DIR3)/calc_overlap_module.o \
-        $(DIR3)/overlap_cpmd_module.o \
-        $(DIR3)/rotorb_module.o \
-        $(DIR3)/rotorb2.o \
-        $(DIR3)/setv.o \
-        $(DIR3)/vcom.o \
-        $(DIR3)/mdio.o \
-        $(DIR3)/cpmd_variables.o \
+DIR_MIX = mixing
+include $(DIR_MIX)/makefile.common
+OBJ_MIX := $(addprefix $(DIR_MIX)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_MIX) $(INCLUDE_DIR)
+
+DIR_AO = atomopt
+include $(DIR_AO)/makefile.common
+OBJ_AO := $(addprefix $(DIR_AO)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_AO) $(INCLUDE_DIR)
+
+DIR_MD = mdsource
+include $(DIR_MD)/makefile.common
+OBJ_MD := $(addprefix $(DIR_MD)/,$(OBJS))
+INCLUDE_DIR := -I$(DIR_MD) $(INCLUDE_DIR)
 
 ########################################################################
 ########################################################################
@@ -82,36 +77,47 @@ all :
 	cd $(DIR0) ; $(MAKE)
 	cd $(DIR1) ; $(MAKE)
 	cd $(DIR2) ; $(MAKE)
+	cd $(DIR_BC) ; $(MAKE)
 	cd $(DIR_KI) ; $(MAKE)
 	cd $(DIR_HT) ; $(MAKE)
 	cd $(DIR_XC) ; $(MAKE)
+	cd $(DIR_MIX) ; $(MAKE)
 	@$(MAKE) lda2
 	cd $(DIR_GS) ; $(MAKE)
 	cd $(DIR_SD) ; $(MAKE)
 	cd $(DIR_CG) ; $(MAKE)
 	@$(MAKE) lda1
-	cd $(DIR3) ; $(MAKE)
+	cd $(DIR_AO) ; $(MAKE)
+	@$(MAKE) lda3
+	cd $(DIR_MD) ; $(MAKE)
 	@$(MAKE) main.o
 	$(FC) $(LFLAGS) $(OBJ0) $(OBJ1) $(OBJ2)\
-                        $(MODS1) $(OBJ_XC) $(OBJ_HT)\
-                        $(OBJ_KI)\
+                        $(MODS1) $(OBJ_XC) $(OBJ_HT) $(OBJ_BC)\
+                        $(OBJ_KI) $(OBJ_MIX) $(OBJ_IO)\
                         $(MODS2)\
                         $(OBJ_GS) $(OBJ_SD) $(OBJ_CG)\
-                        $(MODS0) $(MDOBJ) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
+                        $(MODS0)\
+                        $(OBJ_AO)\
+                        $(MODS3)\
+                        $(OBJ_MD) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
 
 lda0 : $(MODS1)
 lda1 : $(MODS0)
 lda2 : $(MODS2)
+lda3 : $(MODS3)
 
 clean :
 	rm -f *.o *.mod mpif.h *.lst *.optlog *.i90
 	cd $(DIR0) ; $(MAKE) clean
 	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean
-	cd $(DIR3) ; $(MAKE) clean
+	cd $(DIR_MD) ; $(MAKE) clean
 	cd $(DIR_GS) ; $(MAKE) clean
 	cd $(DIR_SD) ; $(MAKE) clean
 	cd $(DIR_CG) ; $(MAKE) clean
 	cd $(DIR_HT) ; $(MAKE) clean
 	cd $(DIR_XC) ; $(MAKE) clean
 	cd $(DIR_KI) ; $(MAKE) clean
+	cd $(DIR_AO) ; $(MAKE) clean
+	cd $(DIR_MIX) ; $(MAKE) clean
+	cd $(DIR_BC) ; $(MAKE) clean

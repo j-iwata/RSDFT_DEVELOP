@@ -3,11 +3,8 @@ MODS0 = scf_module.o\
         sweep_module.o\
         dos_module.o\
         band_module.o\
-        atomopt_diis_module.o\
-        atomopt_rf_module.o\
-        atomopt_bfgs_module.o\
-        atomopt_module.o\
-        global_variables.o\
+
+MODS3 = global_variables.o\
         parameters_module.o\
 
 MODS2 = localpot_module.o\
@@ -49,7 +46,6 @@ MODS1 = \
        ylm_module.o\
        var_sys_parameter.o\
        bb_module.o\
-       bc_variables.o\
        ggrid_module.o\
        maskf_module.o\
        rsdft_mpi_module.o\
@@ -86,13 +82,9 @@ MODS1 = \
        ffte_sub_module.o\
        var_para_ps_nloc_g.o\
        sqerr_module.o\
-       mixing_dm_module.o\
-       mixing_broyden_module.o\
-       mixing_pulay_module.o\
        basic_type_methods.o\
        simc_module.o\
        maxloc_err_module.o\
-       mixing_module.o\
        var_ps_member_g.o\
        array_bound_module.o\
        esp_gather_module.o\
@@ -107,7 +99,6 @@ MODS1 = \
        ps_read_tm_module.o\
        ps_read_psv_g.o\
        ps_read_psv.o\
-       bc_mol_module.o\
        physical_type_methods.o\
        para_rgrid_comm.o\
        rgrid_module.o\
@@ -116,7 +107,6 @@ MODS1 = \
        force_sub_module.o\
        ps_q_init_module.o\
        ps_nloc2_op_g.o\
-       bcset_3_module.o\
        construct_matrix_ps_nloc2_module.o\
        wf_sub_module.o\
        ps_nloc2_op_module.o\
@@ -124,8 +114,6 @@ MODS1 = \
        virtualH_module.o\
        pseudopot_module.o\
        func2gp_module.o\
-       bcset_1_module.o\
-       bcset_0_module.o\
        ps_nloc2_init_module.o\
        eion_mol_module.o\
        efield_module.o\
@@ -140,7 +128,6 @@ MODS1 = \
        force_ion_mol_module.o\
        ps_nloc_hgh_module.o\
        ewald_module.o\
-       bc_module.o\
        ps_prepNzqr_g_module.o\
        io_read_module.o\
        band_unfold_module.o\

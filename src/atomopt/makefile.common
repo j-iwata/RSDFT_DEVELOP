@@ -1,0 +1,4 @@
+OBJS = atomopt_bfgs_module.o\
+       atomopt_diis_module.o\
+       atomopt_rf_module.o\
+       atomopt_module.o\

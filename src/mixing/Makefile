@@ -2,8 +2,6 @@ include ../make.inc
 
 include makefile.common
 
-FFLAGS := -I../bc $(FFLAGS)
-
 all : $(OBJS)
 
 clean :

@@ -1,0 +1,4 @@
+OBJS = mixing_broyden_module.o\
+       mixing_pulay_module.o\
+       mixing_dm_module.o\
+       mixing_module.o\
