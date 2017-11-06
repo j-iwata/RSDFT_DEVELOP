@@ -1,0 +1,9 @@
+OBJS = kinetic_variables.o\
+       kinetic_mol_module.o\
+       kinetic_sol_module.o\
+       kinetic_sym_module.o\
+       kinetic_sym_ini_module.o\
+       kinetic_module.o\
+       nabla_sym_module.o\
+       gradient_module.o\
+
