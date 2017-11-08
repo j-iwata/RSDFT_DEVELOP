@@ -11,6 +11,7 @@ MODULE sqerr_g_module
   PUBLIC :: init_sqerr_g
 
   real(8),allocatable :: fold(:,:,:)
+  integer :: icount
 
 CONTAINS
 
@@ -54,13 +55,11 @@ CONTAINS
 
     allocate( ftmp(m) ) ; ftmp=0.0d0
 
+    icount=0
+
     do i=1,ndat
        do j=1,nmax
-!          call d1_to_z3_fft( fold(:,j,i), zw0 )
-!          call forward_fft( zw0, zw )
-!          call d1_to_z3_fft( f(:,j,i), zw1 )!
-!          call forward_fft( zw1, zw )
-!          zw1=zw1-zw0
+          icount=icount+1
           ftmp(:)=f(:,j,i)-fold(:,j,i)
           call d1_to_z3_fft( ftmp, zw1 )
           call forward_fft( zw1, zw )
@@ -145,11 +144,11 @@ CONTAINS
     call check_disp_switch( disp, 0 )
     if ( disp ) then
        write(*,*)
-       write(*,'(1x,"   max_diff=",es14.5," at gg=",f10.5)') dif_max, gmax
-       write(*,'(1x,"diff@gg_min=",es14.5," at gg=",f10.5)') dif_gg_min,gg_min
-       write(*,'(1x,"   min_diff=",es14.5," at gg=",f10.5)') dif_min, gmin
-       write(*,'(1x,"diff@gg_max=",es14.5," at gg=",f10.5)') dif_gg_max,gg_max
-       write(*,'(1x," diff_total=",es14.5)') dif_tot
+       write(*,'(1x,"   max_diff",i1,"=",es14.5," at gg=",f10.5)') icount,dif_max, gmax
+       write(*,'(1x,"diff@gg_min",i1,"=",es14.5," at gg=",f10.5)') icount,dif_gg_min,gg_min
+       write(*,'(1x,"   min_diff",i1,"=",es14.5," at gg=",f10.5)') icount,dif_min, gmin
+       write(*,'(1x,"diff@gg_max",i1,"=",es14.5," at gg=",f10.5)') icount,dif_gg_max,gg_max
+       write(*,'(1x," diff_total",i1,"=",es14.5)') dif_tot
     end if
   END SUBROUTINE analyze_residue
 
