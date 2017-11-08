@@ -353,27 +353,27 @@ CONTAINS
 
        allocate( v(ML_0:ML_1,MSP_0:MSP_1,2) ) ; v=0.0d0
        do s=MSP_0,MSP_1
-          v(:,s,1) = rho(:,s)
-          v(:,s,2) = Vion(:) + Vh(:) + Vxc(:,s)
+          v(:,s,1) = Vion(:) + Vh(:) + Vxc(:,s)
+          v(:,s,2) = rho(:,s)
        end do
        call calc_sqerr( size(v,1), size(v,2), MSP, 2, v, sqerr_out )
        deallocate( v )
 
-       if ( maxval( sqerr_out(1:MSP) ) <= scf_conv(2) .or. &
-            maxval( sqerr_out(MSP+1:2*MSP) ) <= scf_conv(1) ) flag_conv=.true.
+       if ( maxval( sqerr_out(1:MSP) ) <= scf_conv(1) .or. &
+            maxval( sqerr_out(MSP+1:2*MSP) ) <= scf_conv(2) ) flag_conv=.true.
 
        if ( disp_switch ) then
           write(*,*)
           if ( Nspin == 1 ) then
              write(*,'(1x,"|Vloc-Vloc0|^2/tol =",es14.5,2x," /",es12.5,l5)') &
-                  (sqerr_out(i),i=MSP+1,2*MSP),scf_conv(1),flag_conv
+                  (sqerr_out(i),i=1,MSP),scf_conv(1),flag_conv
              write(*,'(1x,"|rho -rho0 |^2/tol =",es14.5,2x," /",es12.5)') &
-                  (sqerr_out(i),i=1,MSP),scf_conv(2)
+                  (sqerr_out(i),i=MSP+1,2*MSP),scf_conv(2)
           else if ( Nspin == 2 ) then
              write(*,'(1x,"|Vloc-Vloc0|^2/tol =",2es14.5,2x," /",es12.5,l5)') &
-                  (sqerr_out(i),i=MSP+1,2*MSP),scf_conv(1),flag_conv
+                  (sqerr_out(i),i=1,MSP),scf_conv(1),flag_conv
              write(*,'(1x,"|rho -rho0 |^2/tol =",2es14.5,2x," /",es12.5)') &
-                  (sqerr_out(i),i=1,MSP),scf_conv(2)
+                  (sqerr_out(i),i=MSP+1,2*MSP),scf_conv(2)
           end if
        end if
 
@@ -453,14 +453,6 @@ CONTAINS
        call write_esp_wf
        call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
        if ( myrank == 0 ) call write_eigenvalues( eval )
-
-!       call global_watch( .false., flag_end1 )
-
-!       flag_end2 = exit_program()
-
-!       flag_end = ( flag_end1 .or. flag_end2 )
-
-!       flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call calc_time_watch( etime )
        if ( disp_switch ) then
@@ -544,46 +536,6 @@ CONTAINS
        end do
        end do
     end if
-!       if ( u(i) == 6 .and. flag == 0 ) then
-!          if ( NSPIN == 1 ) then
-!             write(u(i), '(A,I4,2(A,E12.5,2X),A,2(E12.5,2X),A,E12.5)') &
-!                  " iter= ",iter,"  rsqerr= ",sqerr_out(1),&
-!                  " vsqerr= ",sqerr_out(2), " fm,fm-fm0= ",fmax,fdiff, &
-!                  " time=",time_scf(2)
-!          else
-!             write(u(i), '(A,I4,4(A,2(E12.5,2x)))') &
-!                  " iter= ",iter,"  rsqerr= ",sqerr_out(1:2), &
-!                  " vsqerr= ",sqerr_out(3:4)," sum_dspin,|dspin|= ", &
-!                  sum_dspin(1:2)," fm,fm-fm0= ",fmax,fdiff, &
-!                  " time=",time_scf(2)
-!          end if
-!       else
-!          if ( NSPIN == 1 ) then
-!             write(u(i), '(1X,2(A,E12.5,2X),A,2(E14.5,2X))') &
-!                  "RSQERR= ",sqerr_out(1),  " VSQERR= ",sqerr_out(2), &
-!                  " FM,FM-FM0= ",fmax,fdiff
-!          else
-!             write(u(i), '(1X,4(A,2(E12.5,2x)))') &
-!                  "RSQERR= ",sqerr_out(1:2)," VSQERR= ",sqerr_out(3:4), &
-!                  " sum_DSPIN,|DSPIN|= ",sum_dspin(1:2), &
-!                  " FM,FM-FM0= ",fmax,fdiff
-!          end if
-!       end if
-!       if ( u(i) == 6 .and. .not.disp_switch ) cycle
-!       if ( u(i) == 99 ) then
-!          write(u(i),'("AX", f20.15)') ax
-!          write(u(i),'("A1",3f20.15)') aa(1:3,1)/ax
-!          write(u(i),'("A2",3f20.15)') aa(1:3,2)/ax
-!          write(u(i),'("A3",3f20.15)') aa(1:3,3)/ax
-!          write(u(i),'("VA", f30.15)') Va
-!          write(u(i),'("NGRID",3i5,i10)') Ngrid(1:3),Ngrid(0)
-!       end if
-!       if ( u(i) == 99 .or. flag == 1 ) then
-!          write(u(i),'(1X,A,f10.5,2x,A,A,2x,A,i4,2x,2(A,f11.5,2X))') &
-!               "ECUT=",Ecut,"XC=",XCtype,"ITER=",iter, &
-!               "CTIME=",time_scf(3),"ETIME=",time_scf(4)
-!       end if
-!    end do
     call write_border( 1, " write_info_scf(end)" )
   END SUBROUTINE write_info_scf
 

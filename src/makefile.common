@@ -82,6 +82,7 @@ MODS1 = \
        ffte_sub_module.o\
        var_para_ps_nloc_g.o\
        sqerr_module.o\
+       sqerr_g_module.o\
        basic_type_methods.o\
        simc_module.o\
        maxloc_err_module.o\
