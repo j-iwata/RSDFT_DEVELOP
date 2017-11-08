@@ -148,7 +148,7 @@ CONTAINS
        write(*,'(1x,"diff@gg_min",i1,"=",es14.5," at gg=",f10.5)') icount,dif_gg_min,gg_min
        write(*,'(1x,"   min_diff",i1,"=",es14.5," at gg=",f10.5)') icount,dif_min, gmin
        write(*,'(1x,"diff@gg_max",i1,"=",es14.5," at gg=",f10.5)') icount,dif_gg_max,gg_max
-       write(*,'(1x," diff_total",i1,"=",es14.5)') dif_tot
+       write(*,'(1x," diff_total",i1,"=",es14.5)') icount,dif_tot
     end if
   END SUBROUTINE analyze_residue
 
