@@ -137,7 +137,11 @@ CONTAINS
     real(8), intent(out) :: stress_kin(3,3)
 
     integer :: i,n,k,s,nb1,nb2,info,la,mu
+#ifdef _DRSDFT_
+    real(8),allocatable :: work(:,:)
+#else
     complex(8),allocatable :: work(:,:)
+#endif
 
     allocate( work(ML_0:ML_1,MB_d) )
     work = 0.0d0
@@ -153,13 +157,19 @@ CONTAINS
                 do mu=1, 3
                    work = 0.0d0
 !$OMP parallel
-                   call op_kinetic_sol_eps(k,unk(ML_0,n,k,s),work, &
+                   call op_kinetic_sol_eps(k,unk(ML_0:ML_1,nb1:nb2,k,s),work, &
                         ML_0,ML_1,nb1,nb2,la,mu)
 !$OMP end parallel
                    do i=nb1,nb2
+#ifdef _DRSDFT_
+                      stress_kin(la,mu) = stress_kin(la,mu) &
+                           + occ(i,k,s) &
+                           * sum( real(unk(:,i,k,s)*work(:,i-nb1+1)) )*dV
+#else
                       stress_kin(la,mu) = stress_kin(la,mu) &
                            + occ(i,k,s) &
                            * sum( real(conjg(unk(:,i,k,s))*work(:,i-nb1+1)) )*dV
+#endif
                    end do
                 end do ! mu
              end do ! la
@@ -182,9 +192,13 @@ CONTAINS
       use omp_variables, only: Igrid_omp
 
       integer,intent(IN)       :: k,n1,n2,ib1,ib2,la,mu
+#ifdef _DRSDFT_
+      real(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
+      real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+#else
       complex(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
       complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-
+#endif
       logical :: flag_nab, flag_n12, flag_n23, flag_n31
       real(8) :: coef_lap0, ggg(6), const_k2
       real(8),allocatable :: coef_lap(:,:), coef_nab(:,:)
@@ -972,8 +986,13 @@ CONTAINS
              do lma=1,nzlma
                 do j=1,MJJ(lma)
                    i=JJP(j,lma)
+#ifdef _DRSDFT_
+                   wtmp5(0,lma,n,k,s)=wtmp5(0,lma,n,k,s) &
+                        +uVk(j,lma,k)*unk(i,n,k,s)
+#else
                    wtmp5(0,lma,n,k,s)=wtmp5(0,lma,n,k,s) &
                         +uVk(j,lma,k)*conjg(unk(i,n,k,s))
+#endif
                 end do
                 wtmp5(0,lma,n,k,s)=iuV(lma)*c*wtmp5(0,lma,n,k,s)
                 do j=1,MJJ_MAP(lma)
