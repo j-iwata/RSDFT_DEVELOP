@@ -43,7 +43,7 @@ CONTAINS
     if ( present(disp_switch) ) disp_sw=disp_switch
 
 
-    first_time = .true.    ! MIZUHO-IR for cellopt
+    if (present(Hgrid).and.present(Igrid).and.present(MBD)) first_time=.true.
     if ( first_time ) then
        first_time = .false.
 
