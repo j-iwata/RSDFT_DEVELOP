@@ -81,6 +81,7 @@ MODS1 = \
        fft_module.o\
        ffte_sub_module.o\
        var_para_ps_nloc_g.o\
+       sqerr_g_module.o\
        sqerr_module.o\
        basic_type_methods.o\
        simc_module.o\
