@@ -119,15 +119,15 @@ CONTAINS
        call mpi_allgather( g(1,nf1),m,MPI_REAL8 &
             ,Xold(1,MSP+1,1),m,MPI_REAL8,comm_spin,ierr )
 
-       if ( imix < 40 ) then
+       if ( imix <= 29 ) then
           if ( mod(imix,2) == 0 ) then
              Xin(:,:,mmix) = Xold(:,1:MSP,1)
           else if ( mod(imix,2) == 1 ) then
              Xin(:,:,mmix) = Xold(:,MSP+1:2*MSP,1)
           end if
-       else
+       else if ( imix >= 30 .and. imix <= 39 ) then
           if ( mod(imix,2) == 0 ) then
-             call set_init_pulay( Xold(:,:,1), Xin(:,:,mmix) )
+             call set_init_pulay( Xold(:,1:MSP,1), Xin(:,:,mmix) )
           else if ( mod(imix,2) == 1 ) then
              call set_init_pulay( Xold(:,MSP+1:2*MSP,1), Xin(:,:,mmix) )
           end if
