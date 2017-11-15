@@ -4,6 +4,7 @@ MODULE mixing_pulay_module
   use grid_module
   use bb_module
   use parallel_module, only: comm_grid, RSDFT_MPI_COMPLEX16
+  use io_tools_module
 
   implicit none
 
@@ -131,31 +132,32 @@ CONTAINS
     complex(8),intent(INOUT) :: Xou(m,n,mmix)
     integer :: s,mmix0,ierr,i,i0,j0,mm,j
     integer,allocatable :: ipiv(:)
-    real(8),allocatable :: rwork(:,:), wq(:)
+    real(8),allocatable :: rwork(:,:), wq(:), wq2(:)
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8) :: zc
     complex(8),allocatable :: A0(:,:),A1(:,:),b1(:),X(:),Y(:)
 
     call write_border( 1, " pulay_g_mixing(start)" )
 
-!    Xou(:,:,mmix) = f(:,:)
     call pulay_sub1_fft( f, Xou(:,:,mmix) )
 
-    allocate( wq(m) ) ; wq=0.0d0
-    call get_Kerker_weight( wq )
+    allocate( wq(m)  ) ; wq =0.0d0
+    allocate( wq2(m) ) ; wq2=0.0d0
+    call get_Kerker_weights( wq, wq2 )
 
     mmix_count = mmix_count + 1
 
     mmix0 = min( mmix_count, mmix )
 
     if ( mmix == 1 .or. mmix0 < mmix ) then
+       call write_string( "simple mixing is applied (in perform_g_mixing)" )
        do i=2,mmix
           Xin(:,:,i-1)=Xin(:,:,i)
           Xou(:,:,i-1)=Xou(:,:,i)
        end do
-       Xin(:,:,mmix) = Xin(:,:,mmix) + beta*( Xou(:,:,mmix)-Xin(:,:,mmix) )
-!       Xin(:,:,mmix) = Xou(:,:,mmix)
-!       f(:,:) = Xin(:,:,mmix)
+       do s=1,n
+          Xin(:,s,mmix) = Xin(:,s,mmix) + beta*wq2(:)*( Xou(:,s,mmix)-Xin(:,s,mmix) )
+       end do
        call pulay_sub2_fft( Xin(:,:,mmix), f )
        return
     end if
@@ -175,11 +177,9 @@ CONTAINS
     do i0=j0,mmix0
        i=mmix-mmix0+i0
        j=mmix-mmix0+j0
-!       A0(i0,j0)=sum( conjg(Xou(:,:,i)-Xin(:,:,i)) &
-!                          *(Xou(:,:,j)-Xin(:,:,j)) )
        do s=1,n
           A0(i0,j0)=A0(i0,j0)+sum( conjg(Xou(:,s,i)-Xin(:,s,i)) &
-                                       *(Xou(:,s,j)-Xin(:,s,j))/wq(:) )
+                                       *(Xou(:,s,j)-Xin(:,s,j))*wq(:) )
        end do
        A0(j0,i0)=conjg( A0(i0,j0) )
     end do
@@ -211,15 +211,14 @@ CONTAINS
           Xou(:,s,i)=Xou(:,s,i+1)
        end do
 
-       Xin(:,s,mmix) = X(:) + beta*( Y(:)-X(:) )
+       Xin(:,s,mmix) = X(:) + beta*wq2(:)*( Y(:)-X(:) )
 
     end do ! s
 
-    !f(:,:) = real( Xin(:,:,mmix) )
     call pulay_sub2_fft( Xin(:,:,mmix), f )
 
     deallocate( A0,A1,b1,Y,X,ipiv )
-    deallocate( wq )
+    deallocate( wq2, wq )
 
     call write_border( 1, " pulay_g_mixing(end)" )
 
@@ -273,18 +272,19 @@ CONTAINS
   END SUBROUTINE pulay_sub2_fft
        
 
-  SUBROUTINE get_Kerker_weight( wq )
+  SUBROUTINE get_Kerker_weights( wq, wq2 )
     implicit none
-    real(8),intent(OUT) :: wq(:)
+    real(8),intent(OUT) :: wq(:), wq2(:)
     integer :: i1,i2,i3,i,j1,j2,j3,k1,k2,k3,ML1,ML2,ML3
-    real(8) :: gx,gy,gz,gg,gg_min
+    real(8) :: gx,gy,gz,gg,gg_min,gg_max,b1mix2,b2mix2
     type(grid) :: rgrid
     call get_range_rgrid( rgrid )
     ML1=rgrid%g3%x%size_global
     ML2=rgrid%g3%y%size_global
     ML3=rgrid%g3%z%size_global
-    wq=0.0d0
-    gg_min=1.d100
+    wq(:)=0.0d0
+    gg_min= 1.d100
+    gg_max=-1.d100
     i=0
     do i3=rgrid%g3%z%head,rgrid%g3%z%tail
     do i2=rgrid%g3%y%head,rgrid%g3%y%tail
@@ -300,20 +300,41 @@ CONTAINS
           write(*,*) k1,k2,k3,i1,i2,i3
           call stop_program_f( "stop@get_wq_fft" )
        end if
+       if ( j1==0 .and. j2==0 .and. j3==0 ) cycle
        gx=j1*bb(1,1)+j2*bb(1,2)+j3*bb(1,3)
        gy=j1*bb(2,1)+j2*bb(2,2)+j3*bb(2,3)
        gz=j1*bb(3,1)+j2*bb(3,2)+j3*bb(3,3)
        gg=gx*gx+gy*gy+gz*gz
-       if ( gg > 1.d-10 ) gg_min=min(gg,gg_min)
+       gg_min = min( gg, gg_min )
+       gg_max = max( gg, gg_max )
        wq(i)=gg
     end do
     end do
     end do
     call mpi_allreduce(gg_min,gg,1,MPI_REAL8,MPI_MIN,comm_grid,i)
+    gg_min=gg
+    call mpi_allreduce(gg_max,gg,1,MPI_REAL8,MPI_MAX,comm_grid,i)
+    gg_max=gg
+
+! ---
+
+    b1mix2 = 19.0d0*gg_min*gg_max/(gg_max-20.0d0*gg_min)
+    b2mix2 = (1.5d0*0.529177d0)**2
+    call IOTools_readReal8Keyword( "BMIX", b2mix2 )
+    b2mix2=b2mix2**2
+
     do i=1,size(wq)
-       wq(i) = max( 0.5d0, wq(i)/(wq(i)+gg) )
+       gg=wq(i)
+       if ( gg == 0.0d0 ) then
+          wq(i) = 1.0d0
+          wq2(i) = 1.0d0
+       else
+          wq(i) = (gg+b1mix2)/gg
+          wq2(i) = gg/(gg+b2mix2)
+       end if
     end do
-  END SUBROUTINE get_Kerker_weight
+
+  END SUBROUTINE get_Kerker_weights
 
 
 END MODULE mixing_pulay_module

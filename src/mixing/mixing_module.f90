@@ -208,11 +208,10 @@ CONTAINS
        select case(imix)
        case default
           call simple_mixing( ML0, MSP, h_old, h )
-!       case(10:19)
-!          call pulay_mixing &
-!               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
        case(10:19)
-          call pulay_r2_mixing( ML0, MSP, h )
+          call pulay_mixing &
+               ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
+!          call pulay_r2_mixing( ML0, MSP, h )
        case(20:29)
           call broyden_mixing &
                ( ML0, MSP, comm_grid, mmix_count, mmix, beta, h, Xin, Xou )
