@@ -110,7 +110,7 @@ CONTAINS
 
   SUBROUTINE wf_gather_sub( u )
     implicit none
-#ifdef _DRSFDT_
+#ifdef _DRSDFT_
     real(8),intent(INOUT) :: u(:,:,:,:)
 #else
     complex(8),intent(INOUT) :: u(:,:,:,:)
