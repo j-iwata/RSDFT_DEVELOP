@@ -26,7 +26,7 @@ MODULE ps_initrho_module
 
   complex(8),parameter :: z0=(0.0d0,0.0d0)
 
-  integer :: iswitch_initrho=0
+  integer :: iswitch_initrho=1
   logical :: analytic=.false.
 
 CONTAINS
@@ -46,7 +46,7 @@ CONTAINS
     real(8),intent(OUT) :: rho(:,:)
     integer :: s
 
-    call write_border( 80, " construct_ps_initrho(start)" )
+    call write_border( 0, " construct_ps_initrho(start)" )
 
 ! ---
 
@@ -83,12 +83,12 @@ CONTAINS
           call normalize_initrho( Nelectron_spin(s), rho(:,s) )
        end do
     else
-       stop "stop@construct_ps_initrho"
+       call stop_program( "stop@construct_ps_initrho" )
     end if
 
     call check_initrho( rho )
 
-    call write_border( 80, " construct_ps_initrho(end)" )
+    call write_border( 0, " construct_ps_initrho(end)" )
 
   END SUBROUTINE construct_ps_initrho
 
