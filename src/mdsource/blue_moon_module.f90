@@ -114,7 +114,7 @@ CONTAINS
        end do
 
        call DGESV(mcnstr,1,asl,mcnstr,ipvt,fc,mcnstr,info)
-       if ( info /= 0 ) stop "stop@shake(1)"
+       if ( info /= 0 ) call stop_program( "stop@shake(1)" )
 
        errx = sum( abs(fc) )
 
@@ -599,6 +599,9 @@ CONTAINS
     z0  = tscr(3,ia_dum)
     fvi = 0.0d0
     dd  = 0.0d0
+    df  = 0.0d0
+    ff  = 0.0d0
+    an  = 0.0d0
 
     loop_iat: do iat=1,Natom
 
@@ -607,6 +610,7 @@ CONTAINS
        end do
 
        call pbc_distance( tscr(:,iat),x0,y0,z0, dx,dy,dz, dd )
+       dd = sqrt(dd)
 
        if ( dd > 1.d-2 ) then
 
@@ -755,7 +759,7 @@ CONTAINS
 
        call mpi_bcast(ia,mcnstr,mpi_integer,0,mpi_comm_world,ierr)
        call mpi_bcast(index,size(index),mpi_integer,0,mpi_comm_world,ierr)
-       call mpi_bcast(cnpar,size(cnpar),mpi_integer,0,mpi_comm_world,ierr)
+       call mpi_bcast(cnpar,size(cnpar),mpi_real8,0,mpi_comm_world,ierr)
        call mpi_bcast(cval,mcnstr,mpi_real8,0,mpi_comm_world,ierr)
 
     end select

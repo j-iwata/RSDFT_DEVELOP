@@ -26,7 +26,7 @@ MODULE ps_initrho_module
 
   complex(8),parameter :: z0=(0.0d0,0.0d0)
 
-  integer :: iswitch_initrho=1
+  integer :: iswitch_initrho=0
   logical :: analytic=.false.
 
 CONTAINS
