@@ -13,6 +13,7 @@ MODULE ps_initrho_module
   use random_initrho_module
   use psv_initrho_module
   use io_tools_module
+  use watch_module
 
   implicit none
 
@@ -26,7 +27,7 @@ MODULE ps_initrho_module
 
   complex(8),parameter :: z0=(0.0d0,0.0d0)
 
-  integer :: iswitch_initrho=0
+  integer :: iswitch_initrho=1
   logical :: analytic=.false.
 
 CONTAINS
@@ -45,8 +46,10 @@ CONTAINS
     implicit none
     real(8),intent(OUT) :: rho(:,:)
     integer :: s
+    real(8) :: tt(2),to(2)
 
     call write_border( 0, " construct_ps_initrho(start)" )
+    call watchb( tt )
 
 ! ---
 
@@ -88,6 +91,10 @@ CONTAINS
 
     call check_initrho( rho )
 
+    call watchb( tt, to )
+    if ( disp_switch_parallel ) then
+       write(*,'(1x,"time(construct_ps_initrho)=",2f10.3)') to(1),to(2)
+    end if
     call write_border( 0, " construct_ps_initrho(end)" )
 
   END SUBROUTINE construct_ps_initrho

@@ -298,7 +298,9 @@ CONTAINS
           end do
        else
           write(*,*) "Gaussian fit is applied"
-          allocate( cdd_coef(3,4,Nelement) ) ; cdd_coef=0.0d0
+          max_nterms=3
+          max_ngauss=4
+          allocate( cdd_coef(max_nterms,max_ngauss,Nelement) ) ; cdd_coef=0.0d0
           do ielm=1,Nelement
              call fit_initrho_simc(rad(:,ielm),cdd(:,ielm),cdd_coef(:,:,ielm))
           end do
