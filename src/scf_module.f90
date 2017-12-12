@@ -148,6 +148,8 @@ CONTAINS
                     ,ir_grid,id_grid,myrank)
     call init_sqerr( ML01, MSP01, MSP, rho(ML_0,MSP_0), Vloc(ML_0,MSP_0) )
 
+    rho_in = rho
+
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
     if ( iflag_hunk == 1 ) then
@@ -396,6 +398,7 @@ CONTAINS
                   fmax, tol_force
              write(*,'(1x," ( diff/tol =",es13.5," /",es12.5," )",l5)') &
                   fdiff,fmax_conv,flag_conv_f
+             write(11,*) iter,fmax
           end if
        end if
 
@@ -443,6 +446,8 @@ CONTAINS
           end if
 
           call getDij
+
+          rho_in = rho
 
        end if
 

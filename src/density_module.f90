@@ -22,6 +22,7 @@ MODULE density_module
   PUBLIC :: writeDensity
 
   real(8),allocatable,PUBLIC :: rho(:,:)
+  real(8),allocatable,PUBLIC :: rho_in(:,:)
   real(8),PUBLIC :: sum_dspin(2)
 
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
@@ -88,9 +89,11 @@ CONTAINS
     MS_1_RHO = id_spin(myrank_s) + ir_spin(myrank_s)
 
     if ( .not. allocated(rho) ) then
-       allocate( rho(ML_0_RHO:ML_1_RHO,MS_RHO) )
+       allocate( rho(ML_0_RHO:ML_1_RHO,MS_RHO) ) ; rho=0.0d0
        call random_number(rho)
        call normalize_density
+       allocate( rho_in(ML_0_RHO:ML_1_RHO,MS_RHO) ) ; rho_in=0.0d0
+       rho_in=rho
     end if
 
     call write_border( 1, " init_density(end)" )

@@ -7,6 +7,7 @@ MODULE force_module
   use force_mol_module
   use io_tools_module, only: IOTools_findKeyword, IOTools_readIntegerKeyword
   use hpc_module
+!  use force_correction_module
 
   implicit none
 
@@ -94,6 +95,10 @@ CONTAINS
     case( 1 )
        call calc_force_mol( MI, force )
     end select
+
+! --- correction term ---
+
+    !call force_correction( force )
 
 ! --- constraint & symmetry ---
 
