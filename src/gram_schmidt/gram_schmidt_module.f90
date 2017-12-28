@@ -58,7 +58,7 @@ CONTAINS
 
     end if
 
-    call result_timer( t, "gs" )
+    call result_timer( "gs", t )
 
     call write_border( 1, " gram_schmidt(end)" )
 

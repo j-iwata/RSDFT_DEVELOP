@@ -40,7 +40,7 @@ CONTAINS
 
     deallocate( Vsub )
 
-    call result_timer( t, "sd" )
+    call result_timer( "sd", t )
     call write_border( 1, " subspace_diag_sl(end)" )
 
   END SUBROUTINE subspace_diag_sl

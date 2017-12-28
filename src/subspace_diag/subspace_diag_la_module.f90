@@ -215,7 +215,7 @@ CONTAINS
     LWORK=max(LWORK,WORK1)
     LIWORK=max(LIWORK,WORK2)
 
-    call result_timer( t, "sd" )
+    call result_timer( "sd", t )
     call write_border( 1, " subspace_diag_la(end)" )
 
     return

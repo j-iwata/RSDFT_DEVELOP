@@ -46,6 +46,8 @@ MODULE watch_module
      real(8) :: tmin, tmax
   end type time
 
+  type(time) :: t_save
+
 CONTAINS
 
   SUBROUTINE read_watch(rank,unit)
@@ -238,24 +240,28 @@ CONTAINS
   END SUBROUTINE calc_time_watch
 
 
-  SUBROUTINE start_timer( t )
+  SUBROUTINE start_timer( t_out )
     implicit none
-    type(time),intent(OUT) :: t
+    type(time),optional,intent(OUT) :: t_out
+    type(time) :: t
     include 'mpif.h'
     call cpu_time( t%t0 )
     t%t1 = mpi_wtime()
+    if ( present(t_out) ) t_out=t
+    t_save=t
   END SUBROUTINE start_timer
 
 
-  SUBROUTINE result_timer( t, indx )
+  SUBROUTINE result_timer( indx, t_inout )
     implicit none
-    type(time),intent(INOUT) :: t
     character(*),optional,intent(IN) :: indx
-    type(time) :: tnow
+    type(time),optional,intent(INOUT) :: t_inout
+    type(time) :: tnow,t
     character(64) :: mesg
     include 'mpif.h'
     call cpu_time( tnow%t0 )
     tnow%t1 = mpi_wtime()
+    t=t_save ; if ( present(t_inout) ) t=t_inout
     t%t0 = tnow%t0 - t%t0
     t%t1 = tnow%t1 - t%t1
     if ( present(indx) ) then

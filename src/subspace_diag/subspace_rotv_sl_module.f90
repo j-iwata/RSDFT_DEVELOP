@@ -137,7 +137,7 @@ CONTAINS
 
     deallocate( utmp )
 
-    call result_timer( t, "rotv_sl" )
+    call result_timer( "rotv_sl", t )
     call write_border( 1, " subspace_rotv(end)" )
 
   END SUBROUTINE subspace_rotv_sl

@@ -93,7 +93,7 @@ CONTAINS
 
     end if
 
-    call result_timer( tt, "cg" )
+    call result_timer( "cg", tt )
 
     call write_border( 1, " conjugate_gradient(end)" )
 

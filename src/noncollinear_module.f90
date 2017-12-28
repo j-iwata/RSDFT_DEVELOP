@@ -260,7 +260,7 @@ CONTAINS
 
     if ( rank == 0 ) close(unit)
 
-    call result_timer( tt, "io_write_noncollinear" )
+    call result_timer( "io_write_noncollinear", tt )
 
     call write_border( 0, " io_write_noncollinear(end)" )
 
