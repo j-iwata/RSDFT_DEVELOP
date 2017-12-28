@@ -234,6 +234,8 @@ PROGRAM ufld2gp
   if ( ig1 < 0 .or. ig2 < 0 ) exit
   ig1=ig1+1
   ig2=ig2+1
+  z1=0.0d0
+  z2=0.0d0
 
 
 !  ig1 = nint( z1*ng ) ; if ( ig1 == 0 ) ig1=1

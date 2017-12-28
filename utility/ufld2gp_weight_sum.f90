@@ -236,8 +236,8 @@ PROGRAM ufld2gp_weight_sum
            f(s)=f(s)/pi
         end do
 
-        write(u2,'(1x,4f20.15)') x,e*HT,(f(s),s=1,ns)
-        write(u3,'(1x,4f20.15)') x,e*HT,(log(f(s)),s=1,ns)
+        write(u2,'(1x,4f25.15)') x,e*HT,(f(s),s=1,ns)
+        write(u3,'(1x,4f25.15)') x,e*HT,(log(f(s)),s=1,ns)
 
      end do ! i
 
