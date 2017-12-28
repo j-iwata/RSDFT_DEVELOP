@@ -1,4 +1,4 @@
-PROGRAM ufld2gp
+PROGRAM ufld2gp_weight_sum
 
   implicit none
   integer,parameter :: u1=1, u2=10, u3=11
@@ -17,7 +17,7 @@ PROGRAM ufld2gp
   real(8),allocatable :: kxyz_pc(:,:),kxyz_sc(:,:)
   real(8),allocatable :: esp(:,:,:), weight(:,:,:)
   real(8) :: emax,emin,e_mergin,eta,de,pi,f(2),e,x,dummy(4),d
-  real(8) :: fmin(2),fmax(2)
+  real(8) :: weight_tmp(2)
   logical :: flag
 
 ! ---
@@ -56,12 +56,13 @@ PROGRAM ufld2gp
      inquire( FILE=file_name, EXIST=flag )
      if ( .not.flag ) exit
 
+     write(*,*) loop_read,file_name
+
      open(u1,file=file_name,status="old")
 
      do loop=1,maxloop
         read(u1,*,END=1) cbuf,k
         if ( cbuf == "iktrj" ) then
-
            kminp(loop_read)=min(k,kminp(loop_read))
            kmaxp(loop_read)=max(k,kmaxp(loop_read))
            nkp(loop_read)=nkp(loop_read)+1
@@ -84,10 +85,10 @@ PROGRAM ufld2gp
 2    continue
      if ( nsp(loop_read) == 0 ) nsp(loop_read)=1
 
-     if ( loop_read > 0 .and. kminp(loop_read) == 1 ) then
-        kminp(loop_read)=kminp(loop_read)+kmaxp(loop_read-1)
-        kmaxp(loop_read)=kmaxp(loop_read)+kmaxp(loop_read-1)
-     end if
+!     if ( loop_read > 0 .and. kminp(loop_read) == 1 ) then
+!        kminp(loop_read)=kminp(loop_read)+kmaxp(loop_read-1)
+!        kmaxp(loop_read)=kmaxp(loop_read)+kmaxp(loop_read-1)
+!     end if
 
      write(*,'(a50,"loop_read=",i1)') repeat("-",50),loop_read
      write(*,*) file_name, loop_read
@@ -101,7 +102,8 @@ PROGRAM ufld2gp
 
   n_loop_read=loop_read-1
 
-  nk=sum(nkp)
+!  nk=sum(nkp)
+  nk=maxval(nkp) ; if ( any(nkp(1:n_loop_read)/=nk) ) stop "stop(1)"
   ns=maxval(nsp)
   nmin=minval(nmaxp(0:n_loop_read))
   nmax=maxval(nmaxp)
@@ -144,7 +146,10 @@ PROGRAM ufld2gp
         end if
 
         do n=1,nmaxp(loop_read)
-           read(u1,*) i,j,(esp(n,k,s),weight(n,k,s),s=1,nsp(loop_read))
+           read(u1,*) i,j,(esp(n,k,s),weight_tmp(s),s=1,nsp(loop_read))
+           do s=1,nsp(loop_read)
+              weight(n,k,s)=weight(n,k,s)+weight_tmp(s)
+           end do
            read(u1,*,END=9) cbuf
            backspace(u1)
            if ( cbuf == "iktrj" ) exit
@@ -153,26 +158,26 @@ PROGRAM ufld2gp
      end do
 9    continue
 
-     if ( loop_read > 0 ) then
-        d=sum((kxyz_pc(:,kminp(loop_read))-kxyz_pc(:,kmaxp(loop_read-1)))**2)
-        if ( d < 1.d-8 ) then
-           write(*,*) "omit the first k points"
-           do k=kminp(loop_read),kmaxp(loop_read)-1
-              kxyz_pc(:,k)=kxyz_pc(:,k+1)
-              esp(:,k,:)=esp(:,k+1,:)
-              weight(:,k,:)=weight(:,k+1,:)
-           end do
-           kminp(loop_read)=kminp(loop_read)+1
-           nkp(loop_read)=nkp(loop_read)-1
-        end if
-     end if
+!     if ( loop_read > 0 ) then
+!        d=sum((kxyz_pc(:,kminp(loop_read))-kxyz_pc(:,kmaxp(loop_read-1)))**2)
+!        if ( d < 1.d-8 ) then
+!           write(*,*) "omit the first k points"
+!           do k=kminp(loop_read),kmaxp(loop_read)-1
+!              kxyz_pc(:,k)=kxyz_pc(:,k+1)
+!              esp(:,k,:)=esp(:,k+1,:)
+!              weight(:,k,:)=weight(:,k+1,:)
+!           end do
+!           kminp(loop_read)=kminp(loop_read)+1
+!           nkp(loop_read)=nkp(loop_read)-1
+!        end if
+!     end if
 
      close(u1)
 
   end do ! loop_read
 
-  nk=sum(nkp)
-  write(*,*) "nk(new)=",nk
+!  nk=sum(nkp)
+!  write(*,*) "nk(new)=",nk
 
 ! ---
 
@@ -215,9 +220,6 @@ PROGRAM ufld2gp
   kxyz_pc(:,0) = kxyz_pc(:,1)
   x=0.0d0
 
-  fmin(:)= 1.d100
-  fmax(:)=-1.d100
-
   do k=1,nk
 
      x = x + sqrt( sum( (kxyz_pc(:,k)-kxyz_pc(:,k-1))**2 ) )/aB
@@ -232,12 +234,10 @@ PROGRAM ufld2gp
               f(s) = f(s) + eta/( (e-esp(n,k,s))**2 + eta**2 )*weight(n,k,s)
            end do
            f(s)=f(s)/pi
-           fmin(s)=min(fmin(s),f(s))
-           fmax(s)=max(fmax(s),f(s))
         end do
 
-        write(u2,'(1x,4f25.15)') x,e*HT,(f(s),s=1,ns)
-        write(u3,'(1x,4f25.15)') x,e*HT,(log(f(s)),s=1,ns)
+        write(u2,'(1x,4f20.15)') x,e*HT,(f(s),s=1,ns)
+        write(u3,'(1x,4f20.15)') x,e*HT,(log(f(s)),s=1,ns)
 
      end do ! i
 
@@ -246,10 +246,6 @@ PROGRAM ufld2gp
 
   end do ! k
 
-  write(*,*) "fmin=",(fmin(s),s=1,ns)
-  write(*,*) "fmax=",(fmax(s),s=1,ns)
-  write(*,*) "log(fmax)=",(log(fmax(s)),s=1,ns)
-
 ! ---
 
   deallocate( weight  )
@@ -257,4 +253,4 @@ PROGRAM ufld2gp
   deallocate( kxyz_sc )
   deallocate( kxyz_pc )
 
-END PROGRAM ufld2gp
+END PROGRAM ufld2gp_weight_sum
