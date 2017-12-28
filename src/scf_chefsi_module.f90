@@ -184,8 +184,7 @@ CONTAINS
 
        call watcht(disp_switch,"esp_gather",1)
 
-       call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                      ,esp,weight_bz,occ,disp_switch)
+       call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
 
        call watcht(disp_switch,"fermi",1)
 

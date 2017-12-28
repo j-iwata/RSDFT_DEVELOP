@@ -68,7 +68,7 @@ MODS1 = \
        eigenvalues_module.o\
        ewald_variables.o\
        bcast_module.o\
-       fermi_mp_module.o\
+       fermi_module.o\
        fermi_ncol_module.o\
        band_variables.o\
        real_complex_module.o\

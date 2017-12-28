@@ -50,8 +50,6 @@ CONTAINS
 
     call read_mixing
 
-    call read_fermi(myrank,unit)
-
     call read_io
 
     call read_watch(myrank,unit)

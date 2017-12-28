@@ -295,8 +295,7 @@ CONTAINS
           call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin &
                ,Nelectron,Ndspin,esp,weight_bz,occ )
        else
-          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron &
-               ,Ndspin,esp,weight_bz,occ,disp_switch)
+          call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
        call calc_time_watch( etime_lap(3) )
@@ -476,7 +475,7 @@ CONTAINS
        if ( flag_noncollinear ) call io_write_noncollinear( myrank,flag_exit )
        call write_info_scf( (myrank==0) )
 
-       call result_timer( tt, "scf" )
+       call result_timer( "scf", tt )
 
        if ( flag_exit ) then
           call finalize_mixing

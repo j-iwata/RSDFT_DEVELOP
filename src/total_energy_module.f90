@@ -407,6 +407,7 @@ CONTAINS
        end if
        write(u,*) "Total Energy ",Etot,diff_etot
        write(u,*) "Harris Energy",Ehwf
+       write(u,*) "Free Energy  ",Fene
        write(u,*) "Ion-Ion                    ",Eewald
        write(u,*) "Local Potential            ",Eloc
        write(u,*) "Ion Local Potential        ",Eion
@@ -418,6 +419,7 @@ CONTAINS
        write(u,*) "Correlation Energy         ",E_correlation
        write(u,*) "Sum of eigenvalues         ",Eeig
        write(u,*) "Fermi energy               ",efermi
+       write(u,*) "Entropy                    ",Eentropy
        if ( u == 6 ) call write_border( 0, "" )
     end if
 !    u(:) = (/ 6, 99 /)

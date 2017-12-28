@@ -197,8 +197,7 @@ CONTAINS
           call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                               ,esp,weight_bz,occ)
        else
-          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                         ,esp,weight_bz,occ,disp_switch)
+          call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
        call calc_with_rhoIN_total_energy( Echk )
@@ -223,7 +222,7 @@ CONTAINS
 
        call write_data( disp_switch, flag_exit, "wf", suffix )
 
-       call result_timer( tt, "sweep" )
+       call result_timer( "sweep", tt )
 
        if ( flag_exit ) exit
 
