@@ -131,7 +131,7 @@ CONTAINS
           call convert_capital(cbuf,ckey)
           if ( ckey(1:5) == "PROCS" ) then
              backspace(unit)
-             read(unit,*) cbuf,node_partition(1:max_parallel)
+             read(unit,*) cbuf,node_partition(1:max_parallel-1)
           else if ( ckey(1:3) == "MBD" ) then
              backspace(unit)
              read(unit,*) cbuf,MB_d

@@ -150,11 +150,11 @@ CONTAINS
     integer,allocatable :: ir(:)
     real(8) :: u(2)
 
-    call random_seed( size=n )
-    allocate( ir(n) )
-    ir(:)=MB_0_WF+ML_0_WF
-    call random_seed( put=ir )
-    deallocate( ir )
+!    call random_seed( size=n )
+!    allocate( ir(n) )
+!    ir(:)=MB_0_WF+ML_0_WF
+!    call random_seed( put=ir )
+!    deallocate( ir )
  
     do s=MS_0_WF,MS_1_WF
        do k=MK_0_WF,MK_1_WF

@@ -83,13 +83,13 @@ CONTAINS
   END SUBROUTINE send_cgpc
 
 
-  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, SYStype_in, ipc_out )
+  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, SYStype_in, ipc_in )
     implicit none
     integer,intent(IN) :: n1,n2,k,s,systype_in
     real(8),intent(IN) :: dV_in
-    integer,optional,intent(OUT) :: ipc_out
+    integer,optional,intent(IN) :: ipc_in
 
-    if ( present(ipc_out) ) ipc_out=iswitch_cgpc
+    if ( present(ipc_in) ) iswitch_cgpc=ipc_in
 
     SYStype = SYStype_in
     if ( mloop == 0 ) then

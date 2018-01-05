@@ -52,6 +52,9 @@ MODULE scf_module
   real(8) :: scf_conv(2) = 0.0d0
   real(8) :: fmax_conv   = 0.0d0
   real(8) :: etot_conv   = 0.0d0
+  logical :: errlog_scf  = .false.
+  logical :: nodiag_scf  = .false.
+  integer,parameter :: unit_err=40
 
   real(8),allocatable :: Vloc0(:,:)
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
@@ -65,12 +68,12 @@ CONTAINS
   SUBROUTINE read_scf
     implicit none
     integer :: itmp(2)
-    scf_conv(1) = 1.d-20
-    scf_conv(2) = 0.0d0
     call IOTools_readReal8Keywords( "SCFCONV" , scf_conv )
     call IOTools_readReal8Keyword( "FMAXCONV", fmax_conv )
     call IOTools_readReal8Keyword( "ETOTCONV", etot_conv )
     call IOTools_readIntegerKeyword( "DITER", Diter_scf )
+    call IOTools_findKeyword( "ERRLOG", errlog_scf )
+    call IOTools_findKeyword( "NODIAG", nodiag_scf )
     itmp=-1
     call IOTools_readIntegerKeyword( "NDIAG", itmp )
     if ( itmp(1) > 0 ) Ndiag=itmp(1)
@@ -98,7 +101,7 @@ CONTAINS
     type(time) :: etime, etime_tot, etime_lap(10)
     logical :: flag_recalc_esp = .false.
     real(8) :: Etot, Ehwf, diff_etot
-    real(8) :: Ntot(4), sqerr_out(4)
+    real(8) :: Ntot(4), sqerr_out(4), ct(0:6)
     logical,external :: exit_program
     type(eigv) :: eval
     type(time) :: tt
@@ -173,6 +176,8 @@ CONTAINS
 
     do iter=1,Diter
 
+       call cpu_time( ct(0) )
+
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
@@ -217,6 +222,9 @@ CONTAINS
 
           end if
 
+          call cpu_time( ct(1) )
+
+          if ( .not.nodiag_scf ) then
           if ( flag_noncollinear ) then
 #ifndef _DRSDFT_
              call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
@@ -224,6 +232,9 @@ CONTAINS
           else
              call subspace_diag(k,s)
           end if
+          end if
+
+          call cpu_time( ct(2) )
 
 #ifdef _DRSDFT_
           call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
@@ -255,10 +266,16 @@ CONTAINS
 #endif
              else ! flag_noncollinear
 
+                call cpu_time( ct(3) )
+
                 call conjugate_gradient(ML_0,ML_1,Nband,k,s &
                      ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
 
+                call cpu_time( ct(4) )
+
                 call gram_schmidt(1,Nband,k,s)
+
+                call cpu_time( ct(5) )
 
                 if ( second_diag == 1 .or. idiag < Ndiag ) then
                    call subspace_diag(k,s)
@@ -456,9 +473,9 @@ CONTAINS
 
        call calc_time_watch( etime )
        if ( disp_switch ) then
-          write(*,*)
-          write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
-          etime%t0, etime%tmin, etime%tmax
+!          write(*,*)
+!          write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
+!          etime%t0, etime%tmin, etime%tmax
           !do i=1,7
           !   write(*,'(1x,"time(",i3,")=",f10.3,"(rank0)",f10.3,"(min)" &
           !        ,f10.3,"(max)")') i,etime_lap(i)%t0, etime_lap(i)%tmin &
@@ -470,8 +487,19 @@ CONTAINS
        call write_data(disp_switch,flag_exit)
        if ( flag_noncollinear ) call io_write_noncollinear( myrank,flag_exit )
        call write_info_scf( (myrank==0) )
+       call write_err_info(iter,sqerr_out(1:2*Nspin),diff_etot,flag_exit,(myrank==0) )
 
        call result_timer( tt, "scf" )
+
+       call cpu_time( ct(6) )
+
+       if ( disp_switch ) then
+       write(*,'(1x,"cpu_time ",f8.3,"(scf)" &
+                               ,f8.3,"(sd) " &
+                               ,f8.3,"(cg) " &
+                               ,f8.3,"(gs) ")') &
+                               ct(6)-ct(0),ct(2)-ct(1),(ct(i)-ct(i-1),i=4,5)
+       end if
 
        if ( flag_exit ) then
           call finalize_mixing
@@ -538,6 +566,25 @@ CONTAINS
     end if
     call write_border( 1, " write_info_scf(end)" )
   END SUBROUTINE write_info_scf
+
+
+  SUBROUTINE write_err_info( iter, sqerr, dEtot, flag_finalize, flag )
+    implicit none
+    integer,intent(IN) :: iter
+    real(8),intent(IN) :: sqerr(:), dEtot
+    logical,intent(IN) :: flag_finalize, flag
+    logical :: flag_new=.true.
+    if ( .not.errlog_scf .or. .not.flag ) return
+    if ( flag_new ) then
+       open(unit_err,file="errlog_scf")
+       flag_new=.false.
+    else
+       open(unit_err,file="errlog_scf",position="append")
+    end if
+    write(unit_err,'(1x,i6,5f18.10)') iter,log10(sqerr(:)),dEtot
+    if ( flag_finalize ) write(unit_err,'(/)')
+    close(unit_err)
+  END SUBROUTINE write_err_info
 
 
 !  SUBROUTINE sub_localpot2_scf( disp_switch )

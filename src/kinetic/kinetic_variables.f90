@@ -44,9 +44,9 @@ CONTAINS
           if ( ckey(1:2) == "MD" ) then
              backspace(unit)
              read(unit,*) cbuf,Md
-          else if ( ckey(1:7) == "SYSTYPE" ) then
-             backspace(unit)
-             read(unit,*) cbuf,SYStype
+!          else if ( ckey(1:7) == "SYSTYPE" ) then
+!             backspace(unit)
+!             read(unit,*) cbuf,SYStype
           else if ( ckey(1:9) == "KINSELECT" ) then
              backspace(unit)
              read(unit,*) cbuf, kin_select

@@ -25,6 +25,7 @@ MODULE cg_module
   integer :: iswitch_cg = 1
   logical :: flag_init_read = .true.
   logical :: flag_init_cg = .true.
+  integer :: ictrl_cg(3) = (/ 3, 1, 0 /)
 
 CONTAINS
 
@@ -34,6 +35,7 @@ CONTAINS
     call IOTools_readIntegerKeyword( "NCG" , Ncg )
     call IOTools_readIntegerKeyword( "ICG" , iswitch_cg )
     call IOTools_readIntegerKeyword( "SWGS", iswitch_gs )
+    call IOTools_readIntegerKeyword( "CTRLCG", ictrl_cg )
     flag_init_read = .false.
   END SUBROUTINE read_cg
 
@@ -67,6 +69,10 @@ CONTAINS
     call write_border( 1, " conjugate_gradient(start)" )
 
     call start_timer( tt )
+
+    Ncg        = ictrl_cg(1)
+    ipc        = ictrl_cg(2)
+    iswitch_gs = ictrl_cg(3)
 
     call init_cg
 

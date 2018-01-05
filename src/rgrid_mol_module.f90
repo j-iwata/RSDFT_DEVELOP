@@ -1,5 +1,7 @@
 MODULE rgrid_mol_module
 
+  use io_tools_module
+
   implicit none
 
   PRIVATE
@@ -26,28 +28,32 @@ CONTAINS
   SUBROUTINE Read_RgridMol(rank,unit)
     implicit none
     integer,intent(IN)  :: rank,unit
-    Box_Shape=0
+    real(8) :: grid(3)
+    Box_Shape=1
     Hsize=0.0d0
     Rsize=0.0d0
     Zsize=0.0d0
     iswitch_eqdiv=0
+    call IOTools_readReal8Keywords( "MOLGRID", grid(1:2) )
+    Hsize=grid(1)
+    Rsize=grid(2)
     if ( rank == 0 ) then
-       write(*,'(a60," read_rgrid_mol")') repeat("-",60)
-       read(unit,*) Box_Shape
-       select case(Box_Shape)
-       case(1)
-          read(unit,*) Hsize,Rsize
-       case(2)
-          read(unit,*) Hsize,Rsize,Zsize
-       end select
-       read(unit,*) iswitch_eqdiv
+       !write(*,'(a60," read_rgrid_mol")') repeat("-",60)
+       !read(unit,*) Box_Shape
+       !select case(Box_Shape)
+       !case(1)
+       !   read(unit,*) Hsize,Rsize
+       !case(2)
+       !   read(unit,*) Hsize,Rsize,Zsize
+       !end select
+       !read(unit,*) iswitch_eqdiv
        write(*,*) "Box_Shape=",Box_Shape
        write(*,*) "Hsize=",Hsize
        write(*,*) "Rsize=",Rsize
        write(*,*) "Zsize=",Zsize
        write(*,*) "iswitch_eqdiv=",iswitch_eqdiv
     end if
-    call Send_RgridMol(rank)
+    !call Send_RgridMol(rank)
   END SUBROUTINE Read_RgridMol
 
   SUBROUTINE Send_RgridMol(rank)

@@ -42,7 +42,7 @@ CONTAINS
 
        call GetGridSize_RgridMol(Hgrid)
 
-       ax  = aa(1,1)
+       ax  = 1.0d0
        Va  = aa(1,1)*aa(2,2)*aa(3,3)
        dV  = Hgrid(1)*Hgrid(2)*Hgrid(3)
        zdV = dV

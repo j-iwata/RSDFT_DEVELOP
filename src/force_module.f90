@@ -26,8 +26,9 @@ MODULE force_module
 CONTAINS
 
 
-  SUBROUTINE init_force
+  SUBROUTINE init_force( SYStype_in )
     implicit none
+    integer,intent(IN) :: SYStype_in
     if ( .not.flag_init ) return
     flag_init = .false.
     call write_border( 0, " init_force(start)" )
@@ -42,6 +43,7 @@ CONTAINS
     tim(2,2,1:Ntim) = 1.0d0
     tim(3,3,1:Ntim) = 1.0d0
     call read_force
+    SYStype = SYStype_in
     call write_border( 0, " init_force(end)" )
   END SUBROUTINE init_force
 
@@ -53,7 +55,7 @@ CONTAINS
     real(8) :: dummy(2)
     character(8) :: cbuf
     call write_border( 0, " read_force(start)" )
-    call IOTools_readIntegerKeyword( "SYSTYPE", SYStype )
+!    call IOTools_readIntegerKeyword( "SYSTYPE", SYStype )
     call IOTools_findKeyword( "TIM", exist_keyword, unit_out=unit )
     if ( exist_keyword ) then
        mchk=0
@@ -86,7 +88,7 @@ CONTAINS
     real(8),optional,intent(OUT) :: fmax
     logical,optional,intent(IN) :: disp
 
-    if ( flag_init ) call init_force
+!    if ( flag_init ) call init_force
 
     select case( SYStype )
     case( 0 )

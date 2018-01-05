@@ -17,9 +17,9 @@ MODULE mixing_module
 
   include 'mpif.h'
 
-  integer :: imix = 10
+  integer :: imix = 0
   integer :: mmix = 4
-  real(8) :: beta = 1.0d0
+  real(8) :: beta = 0.999d0
   integer :: iomix = 0
   integer :: iochk(2) = 0
 

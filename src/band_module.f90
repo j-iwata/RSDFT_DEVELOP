@@ -40,8 +40,6 @@ MODULE band_module
   PUBLIC :: band
   PUBLIC :: read_band
 
-  integer :: unit = 1
-
   character(64),parameter :: version="version2.1"
 
 CONTAINS

@@ -11,7 +11,7 @@ PROGRAM Real_Space_DFT
   use test_rtsol_module
   use ps_nloc_initiate_module
   use ps_getDij_module
-  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
+  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword
   use lattice_module
   use ffte_sub_module, only: init_ffte_sub
   use fftw_module
@@ -35,8 +35,9 @@ PROGRAM Real_Space_DFT
   logical,parameter :: recalc_esp=.true.
   logical :: flag_read_ncol=.false.
   real(8) :: Etot, Ehwf
-  integer :: info_level=0
+  integer :: info_level=1
   character(32) :: lattice_index
+  character(20) :: systype_in="SOL"
   integer :: nloop
 
 ! --- start MPI ---
@@ -52,6 +53,11 @@ PROGRAM Real_Space_DFT
   call open_info(myrank)
 
 ! --- init_io_tools ---
+
+  if ( myrank == 0 ) then
+     open(unit_input_parameters  ,file="incar" ,status="old")
+     open(unit_atomic_coordinates,file="poscar",status="old")
+  end if
 
   call init_io_tools( myrank, unit_input_parameters )
 
@@ -75,7 +81,19 @@ PROGRAM Real_Space_DFT
 
 ! ---  Type of System ( RS-SOL or RS-MOL ) ---
 
-  call IOTools_readIntegerKeyword( "SYSTYPE", Systype )
+  call IOTools_readStringKeyword( "SYSTYPE", systype_in )
+  call convert_to_capital( systype_in )
+  SYStype=0
+  select case( systype_in(1:3) )
+  case( "SOL" )
+     SYStype=0
+  case( "MOL" )
+     SYStype=1
+  end select
+
+! --- R-space Grid ---
+
+  if ( SYStype /= 0 ) call Init_Rgrid(SYStype,Md,unit=unit_input_parameters)
 
 ! --- Lattice ---
 
@@ -88,12 +106,12 @@ PROGRAM Real_Space_DFT
   if ( SYStype == 0 ) then
      call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
      if ( myrank == 0 ) then
-        call write_coordinates_atom( 1, 3, "atomic_coordinates_aa_ini" )
+        call write_coordinates_atom( 96, 3, "atomic_coordinates_aa_ini" )
      end if
   else if ( SYStype == 1 ) then
      call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
      if ( myrank == 0 ) then
-        call write_coordinates_atom( 1, 3, "atomic_coordinates_xyz_ini" )
+        call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
      end if
   end if
 
@@ -101,6 +119,10 @@ PROGRAM Real_Space_DFT
   if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
 
   call write_border( 0, " main( aa & bb )(end)" )
+
+! --- R-space Grid ---
+
+  if ( SYStype == 0 ) call Init_Rgrid(SYStype,Md,unit=unit_input_parameters)
 
 ! --- Pseudopotential ---
 
@@ -118,11 +140,11 @@ PROGRAM Real_Space_DFT
 
 ! --- init_force ---
 
-  call init_force
+  call init_force( SYStype )
 
 ! --- R-space Grid ---
 
-  call Init_Rgrid( SYStype, Md, unit=2 )
+  !call Init_Rgrid( SYStype, Md, unit=unit_input_parameters )
 
 ! --- Reciprocal Lattice ---
 
