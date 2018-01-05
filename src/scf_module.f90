@@ -151,6 +151,8 @@ CONTAINS
                     ,ir_grid,id_grid,myrank)
     call init_sqerr( ML01, MSP01, MSP, rho(ML_0,MSP_0), Vloc(ML_0,MSP_0) )
 
+    rho_in = rho
+
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
     if ( iflag_hunk == 1 ) then
@@ -310,8 +312,7 @@ CONTAINS
           call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin &
                ,Nelectron,Ndspin,esp,weight_bz,occ )
        else
-          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron &
-               ,Ndspin,esp,weight_bz,occ,disp_switch)
+          call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
        call calc_time_watch( etime_lap(3) )
@@ -413,6 +414,7 @@ CONTAINS
                   fmax, tol_force
              write(*,'(1x," ( diff/tol =",es13.5," /",es12.5," )",l5)') &
                   fdiff,fmax_conv,flag_conv_f
+             !write(11,*) iter,fmax
           end if
        end if
 
@@ -461,6 +463,8 @@ CONTAINS
 
           call getDij
 
+          rho_in = rho
+
        end if
 
        call calc_time_watch( etime_lap(7) )
@@ -489,7 +493,7 @@ CONTAINS
        call write_info_scf( (myrank==0) )
        call write_err_info(iter,sqerr_out(1:2*Nspin),diff_etot,flag_exit,(myrank==0) )
 
-       call result_timer( tt, "scf" )
+       call result_timer( "scf", tt )
 
        call cpu_time( ct(6) )
 

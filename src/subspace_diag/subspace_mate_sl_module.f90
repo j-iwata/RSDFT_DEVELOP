@@ -356,7 +356,7 @@ CONTAINS
     deallocate( vtmp2 )
     deallocate( irecv_me, isend_me )
 
-    call result_timer( t, "mate_sl" )
+    call result_timer( "mate_sl", t )
     call write_border( 1, " subspace_mate_sl(end)" )
 
   END SUBROUTINE subspace_mate_sl

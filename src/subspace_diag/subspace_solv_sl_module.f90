@@ -132,7 +132,7 @@ CONTAINS
        stop
     end if
 
-    call result_timer( t, "solv_sl" )
+    call result_timer( "solv_sl", t )
     call write_border( 1, " subspace_solv_sl(end)" )
 
     return

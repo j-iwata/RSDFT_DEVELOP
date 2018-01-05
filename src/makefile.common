@@ -30,6 +30,7 @@ MODS2 = localpot_module.o\
         rtddft_mol_module.o\
         force_sol_module.o\
         force_mol_module.o\
+        force_correction_module.o\
         test_force_module.o\
         force_module.o\
         stress_module.o\
@@ -67,7 +68,7 @@ MODS1 = \
        eigenvalues_module.o\
        ewald_variables.o\
        bcast_module.o\
-       fermi_mp_module.o\
+       fermi_module.o\
        fermi_ncol_module.o\
        band_variables.o\
        real_complex_module.o\
@@ -157,4 +158,3 @@ MODS1 = \
        force_local_sol_module.o\
        force_local_mol_module.o\
        ps_pcc_module.o\
-

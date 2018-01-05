@@ -252,7 +252,7 @@ CONTAINS
 
     call Init_IO( "" )  ! remove suffix from the I/O file names
 
-    call result_timer( tt, "write_data" )
+    call result_timer( "write_data", tt )
     call write_border( 0, " write_data(end)" )
 
     return
@@ -469,7 +469,7 @@ CONTAINS
        call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
     end if
 
-    call result_timer( tt, "read_data" )
+    call result_timer( "read_data", tt )
     call write_border( 0, " read_data(end)" )
 
     return
