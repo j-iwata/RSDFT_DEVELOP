@@ -97,7 +97,7 @@ CONTAINS
              if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
           case( XC_FAMILY_HYB_GGA )
              write(s2,'(a)') "Hybrid GGA"
-             call xc_f90_hyb_gga_xc_hse_set_par( xc_func(i), 0.25d0, 0.11d0 )
+             !call xc_f90_hyb_gga_xc_hse_set_par( xc_func(i), 0.25d0, 0.11d0 )
              call xc_f90_hyb_exx_coef( xc_func(i), coef )
              write(*,*) "Ratio of EXX =",coef
              if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
@@ -293,7 +293,7 @@ CONTAINS
 
        call construct_gradient( rgrid, density, grad )
 
-       call xc_f90_gga_exc_vxc( xc_func(i), np, rho(1,1), sigma(1,1), &
+       call xc_f90_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
                                 exc(1), vrho(1,1), vsigma(1,1) )
 
        call calc_gga_pot( rgrid, vrho, vsigma, grad%gx, grad%gy, grad%gz, vxc )
