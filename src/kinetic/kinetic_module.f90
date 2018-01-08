@@ -10,20 +10,19 @@ MODULE kinetic_module
 
   PRIVATE
   PUBLIC :: init_kinetic, op_kinetic &
-           ,read_kinetic, read_oldformat_kinetic &
+           ,read_kinetic &
            ,SYStype
 
 CONTAINS
 
 
-  SUBROUTINE init_kinetic( aa, bb, MBZ, kbb, Hgrid, Igrid, MBD, disp_switch )
+  SUBROUTINE init_kinetic( aa, bb, MBZ, kbb, Hgrid, Igrid, MBD )
     implicit none
     real(8),intent(IN) :: aa(3,3),bb(3,3)
     integer,intent(IN) :: MBZ
     real(8),intent(IN) :: kbb(3,MBZ)
     real(8),optional,intent(IN) :: Hgrid(3)
     integer,optional,intent(IN) :: Igrid(2,0:3),MBD
-    logical,optional,intent(IN) :: disp_switch
     integer :: m,n,k,is,i
     real(8) :: c1,c2,c3,kx,ky,kz,pi2
     real(8) :: a1,a2,a3,H1,H2,H3
@@ -32,16 +31,13 @@ CONTAINS
     logical, save :: first_time = .true.
     logical :: disp_sw
 
-    call write_border( 80, " init_kinetic(start)" )
+    call write_border( 0, " init_kinetic(start)" )
+    call check_disp_switch( disp_sw, 0 )
 
     pi2 = 2.d0*acos(-1.d0)
     a1  = sqrt(sum(aa(1:3,1)**2))/pi2
     a2  = sqrt(sum(aa(1:3,2)**2))/pi2
     a3  = sqrt(sum(aa(1:3,3)**2))/pi2
-
-    disp_sw=.false.
-    if ( present(disp_switch) ) disp_sw=disp_switch
-
 
     if (present(Hgrid).and.present(Igrid).and.present(MBD)) first_time=.true.
     if ( first_time ) then
@@ -58,7 +54,7 @@ CONTAINS
        call get_coef_lapla_fd(Md,lap)
        call get_coef_nabla_fd(Md,nab)
 
-       if ( disp_switch ) then
+       if ( disp_sw ) then
           do i=0,Md
              write(*,'(1x,2f12.8,2x,2f12.8)') lap(i),lap(-i),nab(i),nab(-i)
           end do
@@ -158,7 +154,7 @@ CONTAINS
        write(*,*) "flag_nab=",flag_nab
     end if
 
-    call write_border( 80, " init_kinetic(end)" )
+    call write_border( 0, " init_kinetic(end)" )
 
   END SUBROUTINE init_kinetic
 

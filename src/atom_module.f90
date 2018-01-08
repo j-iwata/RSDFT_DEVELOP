@@ -1,7 +1,7 @@
 MODULE atom_module
 
   use lattice_module, only: lattice, read_lattice, get_inverse_lattice &
-                           ,get_aa_lattice, calc_volume_lattice
+                           ,get_aa_lattice
   use cif_format_module
 
   implicit none
@@ -112,7 +112,6 @@ CONTAINS
        iformat=1
        Natom=size(ki_atom)
        Nelement=maxval(ki_atom)
-       call calc_volume_lattice( aa_obj%LatticeVector, aa_obj%Volume )
     end select
 
     iformat_org = iformat

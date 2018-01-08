@@ -450,7 +450,7 @@ CONTAINS
           if ( mod(imix,2) == 0 ) then
              if ( flag_noncollinear ) then
              else
-                call normalize_density
+                call normalize_density( rho )
                 m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
                 call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
                 call calc_hartree(ML_0,ML_1,MSP,rho)

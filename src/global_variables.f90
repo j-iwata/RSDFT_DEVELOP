@@ -1,6 +1,5 @@
 MODULE global_variables
 
-  use aa_module
   use bb_module
   use atom_module
   use rgrid_sol_module

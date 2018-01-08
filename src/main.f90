@@ -1,7 +1,47 @@
 PROGRAM Real_Space_DFT
 
-  use global_variables
-  use parameters_module
+  use parallel_module
+  use global_variables, only: iswitch_test,iswitch_scf,iswitch_tddft,iswitch_band,iswitch_opt,iswitch_dos,iswitch_latopt
+  use kinetic_variables, only: SYStype, Md, kin_select
+  use rgrid_module
+  use atom_module
+  use pseudopot_module
+  use bb_module
+  use electron_module
+  use bz_module
+  use density_module
+  use ggrid_module
+  use ps_local_module, only: Vion
+  use array_bound_module, only: ML_0,ML_1,MSP_0,MSP_1,MBZ_0,MBZ_1,MBZ,MSP,MB_0,MB_1,set_array_bound
+  use wf_module, only: occ, init_wf
+  use xc_module
+  use localpot_module
+  use hartree_variables
+  use xc_hybrid_module
+  use io_module
+  use atomopt_module
+  use scf_chefsi_module
+  use scf_module
+  use total_energy_module
+  use sweep_module
+
+  use watch_module
+  use info_module
+  use force_module
+  use symmetry_module
+  use scalapack_module
+  use bc_module
+  use kinetic_module
+  use rgrid_mol_module
+  use test_hpsi2_module
+  use eion_module
+  use subspace_diag_module
+  use gram_schmidt_module
+  use init_occ_electron_module
+  use hartree_module
+  use test_force_module
+
+  use parameters_module, only: read_parameters
   use func2gp_module
   use band_module
   use dos_module, only: calc_dos
@@ -9,8 +49,8 @@ PROGRAM Real_Space_DFT
   use rtddft_mol_module
   use omp_variables, only: init_omp
   use test_rtsol_module
-  use ps_nloc_initiate_module
-  use ps_getDij_module
+  use ps_getDij_module, only: getDij
+  use ps_init_module, only: ps_init
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword
   use lattice_module
   use ffte_sub_module, only: init_ffte_sub
@@ -24,6 +64,7 @@ PROGRAM Real_Space_DFT
                                 ,init_noncollinear
   use init_occ_electron_ncol_module
   use rtddft_sol_module
+  use aa_module
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -33,7 +74,7 @@ PROGRAM Real_Space_DFT
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
   type(lattice) :: aa_obj, bb_obj
   logical,parameter :: recalc_esp=.true.
-  logical :: flag_read_ncol=.false.
+  logical :: flag_read_ncol=.false., DISP_SWITCH
   real(8) :: Etot, Ehwf
   integer :: info_level=1
   character(32) :: lattice_index
@@ -73,12 +114,6 @@ PROGRAM Real_Space_DFT
 
   call check_disp_length( info_level, 1 )
      
-! --- input parameters ---
-
-  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
-
-  call read_parameters
-
 ! ---  Type of System ( RS-SOL or RS-MOL ) ---
 
   call IOTools_readStringKeyword( "SYSTYPE", systype_in )
@@ -91,17 +126,41 @@ PROGRAM Real_Space_DFT
      SYStype=1
   end select
 
-! --- R-space Grid ---
+! --- input parameters ---
 
-  if ( SYStype /= 0 ) call Init_Rgrid(SYStype,Md,unit=unit_input_parameters)
+  call read_parameters
+
+  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
+
+  call read_lattice( aa_obj )
+
+! --- R-space Grid(MOL) ( lattice is defiend by MOLGRID ) ---
+
+  if ( SYStype /= 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
 
 ! --- Lattice ---
 
-  call write_border( 0, " main( aa & bb )(start)" )
+  call construct_lattice( aa_obj )
+  call backup_aa_lattice( aa_obj )
 
   call init_aa( aa_obj )
 
-  call backup_aa_lattice( aa_obj )
+  call check_lattice( aa_obj%LatticeVector, lattice_index )
+  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
+
+! --- R-space Grid(SOL) ( lattice is used to define the grid ) ---
+
+  if ( SYStype == 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
+
+! --- Reciprocal Lattice ---
+
+  call construct_bb( aa_obj%LatticeVector )
+
+! --- G-space Grid ---
+
+  call Init_Ggrid( Ngrid, bb )
+
+! --- coordinate transformation of atomic positions ---
 
   if ( SYStype == 0 ) then
      call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
@@ -114,15 +173,6 @@ PROGRAM Real_Space_DFT
         call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
      end if
   end if
-
-  call check_lattice( aa, lattice_index )
-  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
-
-  call write_border( 0, " main( aa & bb )(end)" )
-
-! --- R-space Grid ---
-
-  if ( SYStype == 0 ) call Init_Rgrid(SYStype,Md,unit=unit_input_parameters)
 
 ! --- Pseudopotential ---
 
@@ -141,19 +191,6 @@ PROGRAM Real_Space_DFT
 ! --- init_force ---
 
   call init_force( SYStype )
-
-! --- R-space Grid ---
-
-  !call Init_Rgrid( SYStype, Md, unit=unit_input_parameters )
-
-! --- Reciprocal Lattice ---
-
-  call construct_bb(aa)
-  call get_reciprocal_lattice( aa_obj, bb_obj )
-
-! --- G-space Grid ---
-
-  call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
 
 ! --- Test ( Egg-Box Effect ) ---
 
@@ -213,7 +250,9 @@ PROGRAM Real_Space_DFT
 
 ! --- kinetic energy oprator coefficients ---
 
-  call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
+  call read_kinetic ! Md & kin_select
+
+  call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d )
 
   if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa )
 
@@ -221,53 +260,18 @@ PROGRAM Real_Space_DFT
 
   call set_array_bound
 
-! --- Pseudopotential, initial density, and partial core correction ---
-
-!  call read_pseudopot( Nelement, myrank )
-
-
-!-------- init density 
-
-  call init_density(Nelectron,dV)
-
-!----------------------- SOL sol -----
-
-  if ( SYStype == 0 ) then
-
-     call init_ps_local
-     call init_ps_pcc
-
-     call construct_strfac  !----- structure factor
-
-     call construct_ps_local
-     call construct_ps_pcc
-     call construct_ps_initrho( rho )
-
-     call destruct_strfac   !----- structure factor
-
-     call ps_nloc_initiate( Gcut )
-
-!----------------------- MOL mol -----
-
-  else if ( SYStype == 1 ) then
-
-     call init_ps_local_mol(Gcut)
-     call init_ps_pcc_mol
-     call init_ps_initrho_mol
-
+  if ( SYStype == 1 ) then ! MOL mol
      call Construct_RgridMol(Igrid)
-
-     call construct_ps_local_mol
-     call construct_ps_pcc_mol
-     call construct_ps_initrho_mol
-     call normalize_density
-
-     call ps_nloc2_init(Gcut)
-     call prep_ps_nloc2_mol
-
      call ConstructBoundary_RgridMol(Md,Igrid)
-
   end if
+
+! --- init density & potentials ---
+
+  call init_density( Nelectron, dV )
+
+  call ps_init( SYStype, Gcut, rho )
+
+  call normalize_density( rho )
 
 ! --- External electric field (included in the local ionic potential) ---
 

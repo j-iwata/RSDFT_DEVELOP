@@ -37,6 +37,9 @@ MODS2 = localpot_module.o\
         linear_response_module.o\
         current_module.o\
         rtddft_sol_module.o\
+        ps_init_sol_module.o\
+        ps_init_mol_module.o\
+        ps_init_module.o\
 
 MODS1 = \
        enlarge_array_module.o\

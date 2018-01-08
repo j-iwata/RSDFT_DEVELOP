@@ -1,11 +1,11 @@
 MODULE rgrid_module
 
-  use aa_module
   use rgrid_variables
   use rgrid_sol_module
   use rgrid_mol_module
  !use esm_rgrid_module
   use parallel_module
+  use lattice_module, only: lattice
 
   implicit none
 
@@ -18,9 +18,11 @@ MODULE rgrid_module
 CONTAINS
 
 
-  SUBROUTINE Init_Rgrid( SYStype_in, Md, unit )
+  SUBROUTINE Init_Rgrid( SYStype_in, Md, aa )
     implicit none
-    integer,intent(IN) :: SYStype_in, Md, unit
+    integer,intent(IN) :: SYStype_in, Md
+    type(lattice),intent(INOUT) :: aa
+    logical :: disp
 
     call write_border( 0," init_rgrid(start)")
 
@@ -30,20 +32,22 @@ CONTAINS
 
     case(0) ! ----- SOL Sol sol
 
-       call Init_RgridSol(aa)
+       call Read_RgridSol
+
+       call Init_RgridSol( aa%LatticeVector )
 
     case(1) ! ----- MOL Mol mol
 
-       call Read_RgridMol(myrank,unit)
+       call Read_RgridMol
 
        call GetNumGrids_RgridMol(Ngrid)
 
-       call GetSimBox_RgridMol(aa)
+       call GetSimBox_RgridMol( aa%LatticeVector )
+
+       aa%LatticeConstant = 1.0d0
 
        call GetGridSize_RgridMol(Hgrid)
 
-       ax  = 1.0d0
-       Va  = aa(1,1)*aa(2,2)*aa(3,3)
        dV  = Hgrid(1)*Hgrid(2)*Hgrid(3)
        zdV = dV
 
@@ -57,11 +61,9 @@ CONTAINS
 
     end select
 
-    if ( disp_switch_parallel ) then
+    call check_disp_switch( disp, 0 )
+    if ( disp ) then
        write(*,*) "SYStype=",SYStype
-       write(*,'(1x,"aa",2x,3f15.10)') aa(1:3,1)
-       write(*,'(1x,"  ",2x,3f15.10)') aa(1:3,2)
-       write(*,'(1x,"  ",2x,3f15.10)') aa(1:3,3)
        write(*,'(1x,"Ngrid(1:3)=",3i5)') Ngrid(1:3)
        write(*,'(1x,"Ngrid(0)  =",i8 )') Ngrid(0)
        write(*,'(1x,"Hgrid(1:3)=",3f15.8)') Hgrid(1:3)

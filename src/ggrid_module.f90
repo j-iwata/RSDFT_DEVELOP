@@ -22,22 +22,21 @@ MODULE ggrid_module
 
   integer :: Ngrid(0:3)
   real(8) :: bb(3,3)
-  real(8) :: Hgrid(3)
 
 CONTAINS
 
 
-  SUBROUTINE Init_Ggrid( Ngrid_in, bb_in, Hgrid_in, disp_switch )
+  SUBROUTINE Init_Ggrid( Ngrid_in, bb_in )
     implicit none
     integer,intent(IN) :: Ngrid_in(0:3)
-    real(8),intent(IN) :: bb_in(3,3), Hgrid_in(3)
-    logical,intent(IN) :: disp_switch
+    real(8),intent(IN) :: bb_in(3,3)
+    logical :: disp_switch
 
-    call write_border( 80, " Init_Ggrid(start)" )
+    call write_border( 0, " Init_Ggrid(start)" )
+    call check_disp_switch( disp_switch, 0 )
 
     Ngrid(:) = Ngrid_in(:)
     bb(:,:)  = bb_in(:,:)
-    Hgrid(:) = Hgrid_in(:)
 
     call CalcCutoff_Ggrid
     call construct_NMGL_Ggrid
@@ -48,7 +47,7 @@ CONTAINS
        write(*,*) "NMGL=",NMGL
     end if
 
-    call write_border( 80, " Init_Ggrid(end)" )
+    call write_border( 0, " Init_Ggrid(end)" )
 
   END SUBROUTINE Init_Ggrid
 

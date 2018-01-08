@@ -2,13 +2,13 @@ MODULE ps_initrho_mol_module
 
   use pseudopot_module
   use atom_module
-  use array_bound_module
-  use density_module
   use rgrid_mol_module
+  use rgrid_variables, only: Igrid
   use polint_module
 
   PRIVATE
-  PUBLIC :: init_ps_initrho_mol,construct_ps_initrho_mol
+  PUBLIC :: init_ps_initrho_mol
+  PUBLIC :: construct_ps_initrho_mol
 
   logical :: flag_initrho_0
   logical,allocatable :: flag_initrho(:)
@@ -50,18 +50,20 @@ CONTAINS
   END SUBROUTINE init_ps_initrho_mol
 
 
-  SUBROUTINE construct_ps_initrho_mol
+  SUBROUTINE construct_ps_initrho_mol( rho )
     implicit none
+    real(8),intent(INOUT) :: rho(:,:)
     integer :: i,ir,ir0,ik,MKI,Mr0,Mr1,nr,a,M_irad,m,mm,m1,m2
     integer,allocatable ::NRc(:),irad(:,:)
     real(8) :: c,x,y,z,r,v,v0,err,err0,maxerr
+    integer :: ML_0,ML_1
 
     if ( .not.flag_initrho_0 ) return
 
-    if ( .not. allocated(rho) ) then
-       allocate( rho(ML_0:ML_1,MSP) )
-       rho=0.d0
-    end if
+    rho=0.0d0
+
+    ML_0 = Igrid(1,0)
+    ML_1 = Igrid(2,0)
 
     MKI=Nelement
 
@@ -138,12 +140,10 @@ CONTAINS
     deallocate( irad )
     deallocate( NRc )
 
-    if ( MSP > 1 ) then
-       c=1.d0/MSP
+    if ( size(rho,2) == 2 ) then
+       c=0.5d0
        rho(:,1)=c*rho(:,1)
-       do i=2,MSP
-          rho(:,i)=rho(:,1)
-       end do
+       rho(:,2)=rho(:,1)
     end if
 
   END SUBROUTINE construct_ps_initrho_mol

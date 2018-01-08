@@ -1,12 +1,31 @@
 MODULE parameters_module
 
-  use global_variables
+  use global_variables, only: iswitch_tddft, iswitch_scf, iswitch_opt, iswitch_band, iswitch_dos, iswitch_latopt, iswitch_test
   use io_tools_module
   use ps_initrho_module, only: read_ps_initrho
   use band_module, only: read_band
   use band_unfold_module, only: read_band_unfold
   use xc_hybrid_module, only: read_xc_hybrid
   use vdw_grimme_module, only: read_vdw_grimme
+
+  use parallel_module, only: myrank, read_parallel
+  use bz_module
+  use scalapack_module
+  use electron_module
+  use ps_nloc2_init_module
+  use wf_module
+  use gram_schmidt_t_module
+  use cg_module
+  use cgpc_module
+  use mixing_module
+  use io_module
+  use watch_module
+  use atomopt_module
+  use symmetry_module
+  use xc_module
+  use sweep_module
+  use scf_module
+  use scf_chefsi_module
 
   implicit none
 
@@ -22,17 +41,11 @@ CONTAINS
 
     call write_border( 0, " read_parameters(start)" )
 
-    call read_aa
-
     call read_bz
 
     call read_scalapack
 
     call read_electron(myrank,unit)
-
-    call Read_RgridSol(myrank,unit)
-
-    call read_kinetic(myrank,unit)
 
     call read_ps_initrho
 

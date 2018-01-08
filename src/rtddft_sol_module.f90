@@ -205,7 +205,7 @@ CONTAINS
           kbb(:,k) = kbb_bak(:,k) + dkbb(:)
        end do
 
-       call init_kinetic( aa,bb,size(kbb,2),kbb,disp_switch=.false. )
+       call init_kinetic( aa,bb,size(kbb,2),kbb )
        call update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )
 
        call calc_macro_current( jav )
@@ -232,7 +232,7 @@ CONTAINS
           kbb(:,k) = kbb_bak(:,k) + dkbb(:)
        end do
 
-       call init_kinetic( aa,bb,size(kbb,2),kbb,disp_switch=.false. )
+       call init_kinetic( aa,bb,size(kbb,2),kbb )
        call update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )
 
 #ifndef _DRSDFT_

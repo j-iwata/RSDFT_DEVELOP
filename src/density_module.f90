@@ -9,7 +9,7 @@ MODULE density_module
   use var_sys_parameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
-  use rgrid_module, only: dV ! MIZUHO-IR for cellopt
+  use rgrid_module, only: dV
   use rsdft_mpi_module
 
   implicit none
@@ -91,7 +91,7 @@ CONTAINS
     if ( .not. allocated(rho) ) then
        allocate( rho(ML_0_RHO:ML_1_RHO,MS_RHO) ) ; rho=0.0d0
        call random_number(rho)
-       call normalize_density
+       call normalize_density( rho )
        allocate( rho_in(ML_0_RHO:ML_1_RHO,MS_RHO) ) ; rho_in=0.0d0
        rho_in=rho
     end if
@@ -102,17 +102,17 @@ CONTAINS
 
 !-----------------------------------------------------------------------
 
-  SUBROUTINE normalize_density
+  SUBROUTINE normalize_density( rho_io )
     implicit none
+    real(8),intent(INOUT) :: rho_io(:,:)
     real(8) :: c,d
     integer :: ierr
     include 'mpif.h'
     call write_border( 1, " normalize_density(start)" )
-    c=sum(rho)*dV ! MIZUHO-IR for cellopt
-!!$    c=sum(rho)*dV_RHO
+    c=sum(rho_io)*dV
     call mpi_allreduce(c,d,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
     c=Nelectron_RHO/d
-    rho=c*rho
+    rho_io=c*rho_io
     call write_border( 1, " normalize_density(end)" )
   END SUBROUTINE normalize_density
 

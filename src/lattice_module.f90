@@ -8,7 +8,7 @@ MODULE lattice_module
   PUBLIC :: lattice
   PUBLIC :: init_lattice
   PUBLIC :: get_reciprocal_lattice
-  PUBLIC :: construct_aa_lattice
+  PUBLIC :: construct_lattice
   PUBLIC :: read_lattice
   PUBLIC :: get_inverse_lattice
   PUBLIC :: backup_aa_lattice
@@ -47,7 +47,6 @@ CONTAINS
        call IOTools_readReal8Keywords( "A2", aa%LatticeVector(:,2) )
        call IOTools_readReal8Keywords( "A3", aa%LatticeVector(:,3) )
     end if
-    call construct_aa_lattice( aa )
   END SUBROUTINE read_lattice
 
 
@@ -59,13 +58,13 @@ CONTAINS
   END SUBROUTINE init_lattice
 
 
-  SUBROUTINE construct_aa_lattice( aa )
+  SUBROUTINE construct_lattice( aa )
     implicit none
     type(lattice),intent(INOUT) :: aa
     aa%LatticeVector(:,:) = aa%LatticeConstant * aa%LatticeVector(:,:)
     call calc_VectorLength( aa%LatticeVector, aa%Length )
     call calc_volume_lattice( aa%LatticeVector, aa%Volume )
-  END SUBROUTINE construct_aa_lattice
+  END SUBROUTINE construct_lattice
 
 
   SUBROUTINE calc_VectorLength( aa, aal )
