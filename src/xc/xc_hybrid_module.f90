@@ -15,6 +15,7 @@ MODULE xc_hybrid_module
            ,VFunk, unk_hf, occ_hf, occ_factor, npart &
            ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
   PUBLIC :: read_xc_hybrid
+  PUBLIC :: set_param_xc_hybrid
 
   integer :: npart
   real(8) :: R_hf
@@ -101,7 +102,7 @@ CONTAINS
     real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
     real(8) :: ctime_hf0,ctime_hf1,etime_hf0,etime_hf1
     real(8),parameter :: eps=1.d-5
-    real(8) :: mem(9),qtry(3),c,Pi,k_fock(3)
+    real(8) :: mem(9),qtry(3),c,k_fock(3)
     real(8),allocatable :: qtmp(:,:)
     type(wfrange) :: b
 
@@ -288,25 +289,9 @@ CONTAINS
        call stop_program( " np_fkmb>1 is not available with gamma_hf==0" )
     end if
 
-!
 ! --- Truncation cutoff of 1/r for HF, PBE0, and LCwPBE functionals ---
-!
 
-    Pi = acos(-1.0d0)
-
-    if ( SYStype == 0 ) then
-
-       if ( iflag_hf /= 0 .or. iflag_pbe0 /= 0 .or. iflag_lcwpbe /= 0 ) then
-
-          R_hf = ( 0.75d0*abs(Vcell)*FKMMBZ/Pi )**(1.0d0/3.0d0)
-
-          if ( disp_switch ) then
-             write(*,*) "Truncation cutoff of 1/r (Ang.) =",R_hf*0.529177d0
-          end if
-
-       end if
-
-    end if
+    if ( SYStype == 0 ) call set_R_hf( Vcell )
 
 !
 ! Preparation of Fock potential in HSE and LCwPBE hybrid functionals for RSMOL
@@ -491,6 +476,35 @@ CONTAINS
     deallocate( qtmp )
 
   END SUBROUTINE prep_kq_xc_hybrid
+
+
+  SUBROUTINE set_param_xc_hybrid( FKBZ_0_in, FKBZ_1_in, FKMMBZ_in, Vcell )
+    implicit none
+    integer,intent(IN) :: FKBZ_0_in, FKBZ_1_in, FKMMBZ_in
+    real(8),intent(IN) :: Vcell
+    FKBZ_0 = FKBZ_0_in
+    FKBZ_1 = FKBZ_1_in
+    FKMMBZ = FKMMBZ_in
+    call set_R_hf( Vcell )
+  END SUBROUTINE set_param_xc_hybrid
+
+
+  SUBROUTINE set_R_hf( Vcell )
+    implicit none
+    real(8),intent(IN) :: Vcell
+    real(8) :: Pi
+    logical :: disp_switch
+    if ( iflag_hf /= 0 .or. iflag_pbe0 /= 0 .or. iflag_lcwpbe /= 0 ) then
+       Pi = acos(-1.0d0)
+       R_hf = ( 0.75d0*abs(Vcell)*FKMMBZ/Pi )**(1.0d0/3.0d0)
+       call check_disp_switch( disp_switch, 0 )
+       if ( disp_switch ) then
+          write(*,*) "Truncation cutoff of 1/r (Ang.) =",R_hf*0.529177d0
+       end if
+    else
+       R_hf = 0.0d0
+    end if
+  END SUBROUTINE set_R_hf
 
 
 END MODULE xc_hybrid_module
