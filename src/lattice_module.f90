@@ -32,10 +32,8 @@ CONTAINS
 
   SUBROUTINE read_lattice( aa, unit )
     implicit none
-    type(lattice),intent(OUT) :: aa
+    type(lattice),intent(INOUT) :: aa
     integer,optional,intent(IN) :: unit
-    aa%LatticeConstant=0.0d0
-    aa%LatticeVector(:,:)=0.0d0
     if ( present(unit) ) then
        call IOTools_readReal8Keyword( "AX", aa%LatticeConstant, unit )
        call IOTools_readReal8Keywords( "A1", aa%LatticeVector(:,1), unit )
