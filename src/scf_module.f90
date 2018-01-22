@@ -91,8 +91,7 @@ CONTAINS
     real(8),allocatable :: v(:,:,:)
     real(8) :: tol_force
     real(8) :: Etot, Ehwf, diff_etot
-    real(8) :: Ntot(4), sqerr_out(4), t_out(2,14), t_ini(2), ct(0:6),et(0:6)
-    real(8) :: t_tmp(2)
+    real(8) :: Ntot(4), sqerr_out(4), t_out(2,14), t_ini(2), t_tmp(2)
     integer :: iter,s,k,n,m,ierr,idiag,i,j,Diter
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     logical :: flag_exit,flag_conv,flag_conv_f,flag_conv_e
@@ -181,15 +180,13 @@ CONTAINS
 
     do iter=1,Diter
 
-       call watchb( t_ini(1) ) ; t_out=0.0d0
-
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
        call start_timer( tt )
-
        call init_time_watch( etime )
        call init_time_watch( etime_lap(2) )
+       call watchb( t_ini(1) ) ; t_out=0.0d0
 
        esp0=esp
 
