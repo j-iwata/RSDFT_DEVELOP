@@ -88,7 +88,7 @@ CONTAINS
     tddft%nt=nint(sbuf(2))
     tddft%ialg=nint(sbuf(3))
     tddft%nalg=nint(sbuf(4))
-    call IOTools_readReal8Keywords( "FIELD", tddft%field )
+    call IOTools_readReal8Keyword( "FIELD", tddft%field )
     call IOTools_readIntegerKeyword( "OC2TD", nt_wr )
 
     tddft%tmax = tddft%dt * tddft%nt

@@ -36,14 +36,14 @@ CONTAINS
     integer,optional,intent(IN) :: unit
     if ( present(unit) ) then
        call IOTools_readReal8Keyword( "AX", aa%LatticeConstant, unit )
-       call IOTools_readReal8Keywords( "A1", aa%LatticeVector(:,1), unit )
-       call IOTools_readReal8Keywords( "A2", aa%LatticeVector(:,2), unit )
-       call IOTools_readReal8Keywords( "A3", aa%LatticeVector(:,3), unit )
+       call IOTools_readReal8Keyword( "A1", aa%LatticeVector(:,1), unit )
+       call IOTools_readReal8Keyword( "A2", aa%LatticeVector(:,2), unit )
+       call IOTools_readReal8Keyword( "A3", aa%LatticeVector(:,3), unit )
     else
        call IOTools_readReal8Keyword( "AX", aa%LatticeConstant )
-       call IOTools_readReal8Keywords( "A1", aa%LatticeVector(:,1) )
-       call IOTools_readReal8Keywords( "A2", aa%LatticeVector(:,2) )
-       call IOTools_readReal8Keywords( "A3", aa%LatticeVector(:,3) )
+       call IOTools_readReal8Keyword( "A1", aa%LatticeVector(:,1) )
+       call IOTools_readReal8Keyword( "A2", aa%LatticeVector(:,2) )
+       call IOTools_readReal8Keyword( "A3", aa%LatticeVector(:,3) )
     end if
   END SUBROUTINE read_lattice
 

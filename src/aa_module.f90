@@ -38,9 +38,9 @@ CONTAINS
     aa(2,2)=1.0d0
     aa(3,3)=1.0d0
     call IOTools_readReal8Keyword( "AX", ax )
-    call IOTools_readReal8Keywords( "A1", aa(:,1) )
-    call IOTools_readReal8Keywords( "A2", aa(:,2) )
-    call IOTools_readReal8Keywords( "A3", aa(:,3) )
+    call IOTools_readReal8Keyword( "A1", aa(:,1) )
+    call IOTools_readReal8Keyword( "A2", aa(:,2) )
+    call IOTools_readReal8Keyword( "A3", aa(:,3) )
   END SUBROUTINE read_aa
 
 

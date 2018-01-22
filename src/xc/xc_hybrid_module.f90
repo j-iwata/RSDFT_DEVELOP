@@ -70,7 +70,7 @@ CONTAINS
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
     call check_libxc( XCtype )
     tmp(1:2) = (/ omega, alpha_hf /)
-    call IOTools_readReal8Keywords( "HF", tmp )
+    call IOTools_readReal8Keyword( "HF", tmp )
     omega    = tmp(1)
     alpha_hf = tmp(2)
     call IOTools_readIntegerKeyword( "IC", IC )

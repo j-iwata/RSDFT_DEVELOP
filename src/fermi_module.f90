@@ -37,7 +37,7 @@ CONTAINS
     call IOTools_readReal8Keyword( "EKBT", ekbt )
     call IOTools_readIntegerKeyword( "KINTEG", kinteg )
     call IOTools_readIntegerKeyword( "MPVER", mp_version )
-    call IOTools_readReal8Keywords( "SETOCC", rtmp )
+    call IOTools_readReal8Keyword( "SETOCC", rtmp )
     isetocc(1) = nint( rtmp(1) )
     isetocc(2) = nint( rtmp(2) )
     if ( isetocc(1)>0 .and. isetocc(2)>0 .and. isetocc(1)<=isetocc(2) ) then

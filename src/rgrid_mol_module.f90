@@ -34,7 +34,7 @@ CONTAINS
     Zsize=0.0d0
     grid(:)=0.0d0
     iswitch_eqdiv=0
-    call IOTools_readReal8Keywords( "MOLGRID" , grid(1:3) )
+    call IOTools_readReal8Keyword( "MOLGRID" , grid(1:3) )
     call IOTools_readIntegerKeyword( "MOLEQDIV", iswitch_eqdiv )
     Hsize=grid(1)
     Rsize=grid(2)
