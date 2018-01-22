@@ -68,7 +68,7 @@ CONTAINS
   SUBROUTINE read_scf
     implicit none
     integer :: itmp(2)
-    call IOTools_readReal8Keywords( "SCFCONV" , scf_conv )
+    call IOTools_readReal8Keyword( "SCFCONV" , scf_conv )
     call IOTools_readReal8Keyword( "FMAXCONV", fmax_conv )
     call IOTools_readReal8Keyword( "ETOTCONV", etot_conv )
     call IOTools_readIntegerKeyword( "DITER", Diter_scf )
@@ -81,33 +81,35 @@ CONTAINS
   END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf( disp_switch, ierr_out, Diter_in, tol_force_in &
-                      ,outer_loop_info, Etot_out )
+  SUBROUTINE calc_scf(ierr_out,Diter_in,tol_force_in,outer_loop_info,Etot_out)
     implicit none
-    logical,intent(IN) :: disp_switch
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN) :: Diter_in
     real(8),optional,intent(IN) :: tol_force_in
     character(*),optional,intent(IN)  :: outer_loop_info
     real(8),optional,intent(OUT) :: Etot_out
+    real(8),allocatable :: v(:,:,:)
+    real(8) :: tol_force
+    real(8) :: Etot, Ehwf, diff_etot
+    real(8) :: Ntot(4), sqerr_out(4), t_out(2,14), t_ini(2), ct(0:6),et(0:6)
+    real(8) :: t_tmp(2)
     integer :: iter,s,k,n,m,ierr,idiag,i,j,Diter
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     logical :: flag_exit,flag_conv,flag_conv_f,flag_conv_e
     logical :: flag_end, flag_end1, flag_end2
-    real(8),allocatable :: v(:,:,:)
-    real(8) :: tol_force
+    logical :: flag_recalc_esp = .false.
+    logical :: disp_switch
+    logical,external :: exit_program
     character(40) :: chr_iter
     character(22) :: add_info
-    type(time) :: etime, etime_tot, etime_lap(10)
-    logical :: flag_recalc_esp = .false.
-    real(8) :: Etot, Ehwf, diff_etot
-    real(8) :: Ntot(4), sqerr_out(4), ct(0:6)
-    logical,external :: exit_program
     type(eigv) :: eval
+    type(time) :: etime, etime_tot, etime_lap(10)
     type(time) :: tt
 
     call write_border( 0, "" )
     call write_border( 0, " SCF START -----------" )
+
+    call check_disp_switch( disp_switch, 0 )
 
     call init_time_watch( etime_tot )
     call init_time_watch( etime_lap(1) )
@@ -126,6 +128,7 @@ CONTAINS
     Diter       = Diter_scf ; if ( present(Diter_in) ) Diter=Diter_in
     Etot        = 0.0d0
     time_scf(:) = 0.0d0
+    t_out       = 0.0d0
 
     add_info ="" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
 
@@ -178,7 +181,7 @@ CONTAINS
 
     do iter=1,Diter
 
-       call cpu_time( ct(0) )
+       call watchb( t_ini(1) ) ; t_out=0.0d0
 
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
@@ -194,6 +197,8 @@ CONTAINS
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
+
+          call watchb( t_tmp )
 
           call control_xc_hybrid( iflag_hybrid_0 )
 
@@ -224,7 +229,7 @@ CONTAINS
 
           end if
 
-          call cpu_time( ct(1) )
+          call watchb( t_tmp, t_out(:,1) )
 
           if ( .not.nodiag_scf ) then
           if ( flag_noncollinear ) then
@@ -236,7 +241,7 @@ CONTAINS
           end if
           end if
 
-          call cpu_time( ct(2) )
+          call watchb( t_tmp, t_out(:,2) )
 
 #ifdef _DRSDFT_
           call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
@@ -247,6 +252,8 @@ CONTAINS
 
           call control_xc_hybrid(1)
 
+          call watchb( t_tmp, t_out(:,3) )
+
           do idiag=1,Ndiag
 
              if ( Ndiag > 1 .and. disp_switch ) then
@@ -255,36 +262,49 @@ CONTAINS
 
              if ( flag_noncollinear ) then
 #ifndef _DRSDFT_
+
+                call watchb( t_tmp )
+
                 call conjugate_gradient_ncol( ML_0,ML_1,Nband,k &
                      ,unk,esp(1,k,1),res(1,k,1) )
 
+                call watchb( t_tmp, t_out(:,4) )
+
                 call gram_schmidt_ncol( 1,Nband, k, unk )
+
+                call watchb( t_tmp, t_out(:,5) )
 
                 if ( second_diag == 1 .or. idiag < Ndiag ) then
                    call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+                   call watchb( t_tmp, t_out(:,2) )
                 else if ( second_diag == 2 .and. idiag == Ndiag ) then
                    call esp_calc_ncol( k, ML_0,ML_1, unk, esp )
+                   call watchb( t_tmp, t_out(:,6) )
                 end if
+
 #endif
              else ! flag_noncollinear
 
-                call cpu_time( ct(3) )
+                call watchb( t_tmp )
 
                 call conjugate_gradient(ML_0,ML_1,Nband,k,s &
                      ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
 
-                call cpu_time( ct(4) )
+                call watchb( t_tmp, t_out(:,4) )
 
                 call gram_schmidt(1,Nband,k,s)
 
-                call cpu_time( ct(5) )
+                call watchb( t_tmp, t_out(:,5) )
 
                 if ( second_diag == 1 .or. idiag < Ndiag ) then
                    call subspace_diag(k,s)
+                   call watchb( t_tmp, t_out(:,2) )
                 else if ( second_diag == 2 .and. idiag == Ndiag ) then
                    call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
                         ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+                   call watchb( t_tmp, t_out(:,6) )
                 end if
+
 
              end if ! flag_noncollinear
 
@@ -298,6 +318,7 @@ CONTAINS
 
        call calc_time_watch( etime_lap(2) )
        call init_time_watch( etime_lap(3) )
+       call watchb( t_tmp )
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
@@ -317,6 +338,7 @@ CONTAINS
 
        call calc_time_watch( etime_lap(3) )
        call init_time_watch( etime_lap(4) )
+       call watchb( t_tmp, t_out(:,7) )
 
 ! --- total energy ---
 
@@ -366,6 +388,7 @@ CONTAINS
 
        call calc_time_watch( etime_lap(4) )
        call init_time_watch( etime_lap(5) )
+       call watchb( t_tmp, t_out(:,8) )
 
 ! --- convergence check by density & potential ---
 
@@ -397,6 +420,7 @@ CONTAINS
 
        call calc_time_watch( etime_lap(5) )
        call init_time_watch( etime_lap(6) )
+       call watchb( t_tmp, t_out(:,9) )
 
 ! --- convergence check by Fmax ---
 
@@ -421,6 +445,7 @@ CONTAINS
        flag_conv = ( flag_conv .or. flag_conv_f .or. flag_conv_e )
 
        call calc_time_watch( etime_lap(6) )
+       call watchb( t_tmp, t_out(:,10) )
 
 ! ---
 
@@ -433,6 +458,7 @@ CONTAINS
        flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call init_time_watch( etime_lap(7) )
+       call watchb( t_tmp, t_out(:,11) )
 
 ! --- mixing ---
 
@@ -468,6 +494,7 @@ CONTAINS
        end if
 
        call calc_time_watch( etime_lap(7) )
+       call watchb( t_tmp, t_out(:,12) )
 
 ! ---
 
@@ -476,17 +503,7 @@ CONTAINS
        if ( myrank == 0 ) call write_eigenvalues( eval )
 
        call calc_time_watch( etime )
-       if ( disp_switch ) then
-!          write(*,*)
-!          write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
-!          etime%t0, etime%tmin, etime%tmax
-          !do i=1,7
-          !   write(*,'(1x,"time(",i3,")=",f10.3,"(rank0)",f10.3,"(min)" &
-          !        ,f10.3,"(max)")') i,etime_lap(i)%t0, etime_lap(i)%tmin &
-          !                           ,etime_lap(i)%tmax
-          !end do
-          !write(*,*)
-       end if
+       call watchb( t_tmp, t_out(:,13) )
 
        call write_data(disp_switch,flag_exit)
        if ( flag_noncollinear ) call io_write_noncollinear( myrank,flag_exit )
@@ -495,14 +512,22 @@ CONTAINS
 
        call result_timer( "scf", tt )
 
-       call cpu_time( ct(6) )
+       call watchb( t_ini, t_out(:,14) )
 
        if ( disp_switch ) then
-       write(*,'(1x,"cpu_time ",f8.3,"(scf)" &
-                               ,f8.3,"(sd) " &
-                               ,f8.3,"(cg) " &
-                               ,f8.3,"(gs) ")') &
-                               ct(6)-ct(0),ct(2)-ct(1),(ct(i)-ct(i-1),i=4,5)
+       write(*,'(1x,"elapsed_time ",f8.3,"(scf)" &
+                                   ,f8.3,"(sd) " &
+                                   ,f8.3,"(esp)" &
+                                   ,f8.3,"(cg) " &
+                                   ,f8.3,"(gs) " &
+                                   ,f8.3,"(for)" &
+                                   ,f8.3,"(oth)")') &
+                                   t_out(2,14) &
+                                   ,t_out(2,2) &
+                                   ,t_out(2,6) &
+                                   ,t_out(2,4),t_out(2,5) &
+                                   ,t_out(2,10) &
+                                   ,t_out(2,1)+t_out(2,3)+sum( t_out(2,6:9) )+sum( t_out(2,11:13) )
        end if
 
        if ( flag_exit ) then

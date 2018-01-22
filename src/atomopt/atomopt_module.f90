@@ -7,9 +7,6 @@ MODULE atomopt_module
   use scf_module
   use eion_module, only: calc_eion
   use strfac_module
-!  use ps_local_module
-!  use ps_pcc_module
-!  use pseudopot_module
   use ps_nloc2_module
   use ps_nloc3_module
   use ps_nloc_mr_module
@@ -770,7 +767,7 @@ CONTAINS
           call calc_E_vdw_grimme( aa_atom )
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
-          call calc_scf( disp_switch_loc,ierr,diter_opt,feps,loop_info,Etot )
+          call calc_scf( ierr,diter_opt,feps,loop_info,Etot )
 
           if ( ierr == -1 .or. ierr == -3 ) then
              exit opt_ion

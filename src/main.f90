@@ -96,8 +96,8 @@ PROGRAM Real_Space_DFT
 ! --- init_io_tools ---
 
   if ( myrank == 0 ) then
-     open(unit_input_parameters  ,file="incar" ,status="old")
-     open(unit_atomic_coordinates,file="poscar",status="old")
+     open(unit_input_parameters  ,file="fort.1" ,status="old")
+     open(unit_atomic_coordinates,file="fort.970",status="old")
   end if
 
   call init_io_tools( myrank, unit_input_parameters )
@@ -460,7 +460,7 @@ PROGRAM Real_Space_DFT
 
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( disp_switch, ierr, tol_force_in=feps, Etot_out=Etot )
+     call calc_scf( ierr, tol_force_in=feps, Etot_out=Etot )
      if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( 2 )

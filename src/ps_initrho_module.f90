@@ -54,6 +54,7 @@ CONTAINS
 
     call write_border( 0, " construct_ps_initrho(start)" )
     call watchb( tt )
+    to=0.0d0
 
 ! ---
 

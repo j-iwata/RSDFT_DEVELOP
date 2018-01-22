@@ -65,7 +65,7 @@ CONTAINS
 
     call read_io
 
-    call read_watch(myrank,unit)
+    call read_watch
 
     iswitch_scf   = 0 
     iswitch_opt   = 0

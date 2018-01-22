@@ -1,9 +1,13 @@
 MODULE watch_module
 
+  use io_tools_module
+
   implicit none
 
   PRIVATE
-  PUBLIC :: watch,watchs,watcht,read_watch,global_watch,read_oldformat_watch
+  PUBLIC :: read_watch
+  PUBLIC :: global_watch
+  PUBLIC :: watch,watcht
   PUBLIC :: watcha, write_watcha
   PUBLIC :: watchb, write_watchb, watchb_omp
   PUBLIC :: time_cgpc, time_hmlt, time_kine, time_nlpp, time_bcfd
@@ -13,6 +17,8 @@ MODULE watch_module
   PUBLIC :: start_timer, result_timer
 
   include 'mpif.h'
+
+  integer,parameter :: DP=kind(0.0d0)
 
   real(8) :: ct0=0.d0, ctt=0.d0
   real(8) :: ett=0.d0
@@ -50,65 +56,43 @@ MODULE watch_module
 
 CONTAINS
 
-  SUBROUTINE read_watch(rank,unit)
+
+  SUBROUTINE read_watch
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(7) :: cbuf,ckey
-    etime_limit = 1.d100
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:7) == "ETLIMIT" ) then
-             backspace(unit)
-             read(unit,*) cbuf,etime_limit
-          end if
-       end do
-999    continue
-       write(*,*) "etime_limit=",etime_limit
-    end if
-    call send_watch(0)
+    call IOTools_readReal8Keyword( "ETLIMIT", etime_limit )
   END SUBROUTINE read_watch
 
-  SUBROUTINE read_oldformat_watch(rank,unit)
-    implicit none
-    integer,intent(IN) :: rank,unit
-    if ( rank == 0 ) then
-       read(unit,*) etime_limit
-       write(*,*) "etime_limit=",etime_limit
-    end if
-    call send_watch(0)
-  END SUBROUTINE read_oldformat_watch
 
-  SUBROUTINE send_watch(rank)
+  SUBROUTINE watch( cpu_time, elapsed_time )
     implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    call mpi_bcast(etime_limit,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_watch
-
-  SUBROUTINE watch(ctime,etime)
-    real(8),intent(OUT) :: ctime,etime
-    call cpu_time(ctime)
-    etime=mpi_wtime()
+    real(DP),optional,intent(OUT) :: cpu_time
+    real(DP),optional,intent(OUT) :: elapsed_time
+    if ( present(cpu_time)     ) call get_cpu_time( cpu_time )
+    if ( present(elapsed_time) ) call get_elapsed_time( elapsed_time )
   END SUBROUTINE watch
 
-  SUBROUTINE watchs(ctime,etime,icnt)
-    real(8),intent(INOUT) :: ctime,etime
-    integer,intent(IN) :: icnt
-    integer :: count,count_rate
-    real(8) :: ct
-    call cpu_time(ct)
-    call system_clock(count,count_rate)
-    if ( icnt == 1 ) then
-       ctime=ctime+ct-ct0
-       etime=etime+real(count-count0)/real(count_rate)
-    end if
-    ct0=ct
-    count0=count
-  END SUBROUTINE watchs
+  SUBROUTINE get_cpu_time( ct )
+    implicit none
+    real(DP),intent(OUT) :: ct
+    call cpu_time( ct )
+  END SUBROUTINE get_cpu_time
+
+  SUBROUTINE get_elapsed_time( et )
+    implicit none
+    real(DP),intent(OUT) :: et
+    integer :: count, count_rate
+    real(DP) :: cn,cd
+#ifdef _NOMPI_
+    call system_clock( count, count_rate )
+    cn = count
+    cd = count_rate
+    et = cn/cd
+#else
+    include 'mpif.h'
+    et = mpi_wtime()
+#endif
+  END SUBROUTINE get_elapsed_time
+
 
   SUBROUTINE watcht(disp_switch,indx,icnt)
     logical,intent(IN) :: disp_switch
@@ -136,8 +120,7 @@ CONTAINS
     logical,optional,intent(OUT) :: flag_timelimit
     integer :: ierr
     real(8) :: ct,et,s(2),r(2)
-    call cpu_time(ct)
-    et=mpi_wtime()
+    call watch( ct, et )
     if ( flag_count_start ) then
        global_ctime0=ct
        global_etime0=et
@@ -184,12 +167,12 @@ CONTAINS
     implicit none
     real(8),intent(INOUT) :: t_tmp(2)
     real(8),optional,intent(INOUT) :: t_out(2)
-    real(8) :: tnow(2)
-    call cpu_time( tnow(1) )
-    tnow(2) = mpi_wtime()
-    if ( present(t_out) ) t_out(:) = t_out(:) + tnow(:) - t_tmp(:)
-    t_tmp(:) = tnow(:)
+    real(8) :: t_now(2)
+    call watch( t_now(1), t_now(2) )
+    if ( present(t_out) ) t_out(:) = t_out(:) + t_now(:) - t_tmp(:)
+    t_tmp(:) = t_now(:)
   END SUBROUTINE watchb
+
 
   SUBROUTINE write_watchb( t_results, n, indx, unit )
     implicit none

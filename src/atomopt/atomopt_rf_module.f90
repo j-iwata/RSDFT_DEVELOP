@@ -290,7 +290,7 @@ CONTAINS
 
     end select
 
-    call calc_scf( disp_scf, ierr_out, NiterSCF, Etot_out=etot )
+    call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 
   END SUBROUTINE scf
 
