@@ -69,11 +69,11 @@ CONTAINS
 #ifdef _DRSDFT_
     real(8),parameter :: zero=0.d0
     real(8),allocatable :: work(:,:)
-    real(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
+    real(8),allocatable :: work00(:,:),zw1(:,:,:),zw2(:,:,:)
 #else
     complex(8),parameter :: zero=(0.d0,0.d0)
     complex(8),allocatable :: work(:,:)
-    complex(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
+    complex(8),allocatable :: work00(:,:),zw1(:,:,:),zw2(:,:,:)
 #endif
     include 'mpif.h'
     complex(8) :: ztmp,ztmp1
@@ -100,8 +100,8 @@ CONTAINS
        allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.0d0
        allocate( work(n1:n2,MB_d)   ) ; work=zero
        allocate( work00(n1:n2,MB_d) ) ; work00=zero
-       allocate( zw1(n1:n2,MSP) ) ; zw1=zero
-       allocate( zw2(n1:n2,MSP) ) ; zw2=zero
+       allocate( zw1(n1:n2,1,MSP) ) ; zw1=zero
+       allocate( zw2(n1:n2,1,MSP) ) ; zw2=zero
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
@@ -194,7 +194,7 @@ CONTAINS
           if ( flag_ncol ) then
              do k=MBZ_0,MBZ_1
              do n=MB_0 ,MB_1
-                zw1(:,:)=unk(:,n,k,:)
+                zw1(:,1,:)=unk(:,n,k,:)
                 zw2=zero
 #ifndef _DRSDFT_
                 call hamiltonian_ncol( k, n1,n2, zw1, zw2 )

@@ -31,7 +31,7 @@ CONTAINS
     integer :: i,it,itaylor,n,k,s
     real(8) :: c,ct(2),et(2)
     complex(8),allocatable :: zcoef(:)
-    complex(8),allocatable :: tpsi(:),hpsi(:)
+    complex(8),allocatable :: tpsi(:,:),hpsi(:,:)
 
     call write_border(60," test_rtsol(start)")
     call check_disp_switch( disp_sw, 0 )
@@ -47,8 +47,8 @@ CONTAINS
     end if
 
     allocate( zcoef(nalg) ) ; zcoef=z0
-    allocate( tpsi(ML_0_WF:ML_1_WF) ) ; tpsi=z0
-    allocate( hpsi(ML_0_WF:ML_1_WF) ) ; hpsi=z0
+    allocate( tpsi(ML_0_WF:ML_1_WF,1) ) ; tpsi=z0
+    allocate( hpsi(ML_0_WF:ML_1_WF,1) ) ; hpsi=z0
 
     do itaylor=1,nalg
        c=1.0d0
@@ -70,8 +70,8 @@ CONTAINS
              call hamiltonian(k,s,tpsi,hpsi,ML_0_WF,ML_1_WF,1,1)
 !$OMP parallel do
              do i=ML_0_WF,ML_1_WF
-                unk(i,n,k,s) = unk(i,n,k,s) + zcoef(itaylor)*hpsi(i)
-                tpsi(i) = hpsi(i)
+                unk(i,n,k,s) = unk(i,n,k,s) + zcoef(itaylor)*hpsi(i,1)
+                tpsi(i,1) = hpsi(i,1)
              end do
 !$OMP end parallel do
           end do

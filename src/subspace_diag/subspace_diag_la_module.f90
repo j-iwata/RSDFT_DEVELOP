@@ -76,7 +76,7 @@ CONTAINS
        psit(:,:)=hunk(:,:,k,s)
     else
        do m=1,MB
-          call hamiltonian(k,s,unk(n1,m,k,s),psit(1,m),n1,n2,m,m)
+          call hamiltonian(k,s,unk(:,m:m,k,s),psit(:,m:m),n1,n2,m,m)
        end do
     end if
 

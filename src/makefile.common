@@ -20,8 +20,8 @@ MODS2 = localpot_module.o\
         test_rtsol_module.o\
         noncollinear_module.o\
         hamiltonian_ncol_module.o\
-        esp_calc_module.o\
         esp_calc_ncol_module.o\
+        esp_calc_module.o\
         total_energy_module.o\
         io_module.o\
         ps_nloc_initiate_module.o\

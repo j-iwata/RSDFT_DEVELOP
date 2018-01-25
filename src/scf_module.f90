@@ -34,12 +34,7 @@ MODULE scf_module
   use io_tools_module
   use eigenvalues_module
   use rsdft_mpi_module
-
   use noncollinear_module
-  use cg_ncol_module
-  use gram_schmidt_ncol_module
-  use subspace_diag_ncol_module
-  use esp_calc_ncol_module
 
   implicit none
 
@@ -166,7 +161,7 @@ CONTAINS
           do m=MB_0,MB_1,MB_d
              n=min(m+MB_d-1,MB_1)
              call hamiltonian &
-                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                  (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
           end do
        end do
        end do
@@ -218,7 +213,7 @@ CONTAINS
                    n=min(m+MB_d-1,MB_1)
                    workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
                    call hamiltonian &
-                        (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                        (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
                    hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
                 end do
                 deallocate( workwf )
@@ -228,15 +223,7 @@ CONTAINS
 
           call watchb( t_tmp, t_out(:,1) )
 
-          if ( .not.nodiag_scf ) then
-          if ( flag_noncollinear ) then
-#ifndef _DRSDFT_
-             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
-#endif
-          else
-             call subspace_diag(k,s)
-          end if
-          end if
+          if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,unk,esp )
 
           call watchb( t_tmp, t_out(:,2) )
 
@@ -257,53 +244,23 @@ CONTAINS
                 write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
              end if
 
-             if ( flag_noncollinear ) then
-#ifndef _DRSDFT_
+             call watchb( t_tmp )
 
-                call watchb( t_tmp )
+             call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
 
-                call conjugate_gradient_ncol( ML_0,ML_1,Nband,k &
-                     ,unk,esp(1,k,1),res(1,k,1) )
+             call watchb( t_tmp, t_out(:,4) )
 
-                call watchb( t_tmp, t_out(:,4) )
+             call gram_schmidt(1,Nband,k,s)
 
-                call gram_schmidt_ncol( 1,Nband, k, unk )
+             call watchb( t_tmp, t_out(:,5) )
 
-                call watchb( t_tmp, t_out(:,5) )
-
-                if ( second_diag == 1 .or. idiag < Ndiag ) then
-                   call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
-                   call watchb( t_tmp, t_out(:,2) )
-                else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                   call esp_calc_ncol( k, ML_0,ML_1, unk, esp )
-                   call watchb( t_tmp, t_out(:,6) )
-                end if
-
-#endif
-             else ! flag_noncollinear
-
-                call watchb( t_tmp )
-
-                call conjugate_gradient(ML_0,ML_1,Nband,k,s &
-                     ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
-
-                call watchb( t_tmp, t_out(:,4) )
-
-                call gram_schmidt(1,Nband,k,s)
-
-                call watchb( t_tmp, t_out(:,5) )
-
-                if ( second_diag == 1 .or. idiag < Ndiag ) then
-                   call subspace_diag(k,s)
-                   call watchb( t_tmp, t_out(:,2) )
-                else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                   call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
-                        ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
-                   call watchb( t_tmp, t_out(:,6) )
-                end if
-
-
-             end if ! flag_noncollinear
+             if ( second_diag == 1 .or. idiag < Ndiag ) then
+                call subspace_diag( k,s,ML_0,ML_1,unk,esp )
+                call watchb( t_tmp, t_out(:,2) )
+             else if ( second_diag == 2 .and. idiag == Ndiag ) then
+                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
+                call watchb( t_tmp, t_out(:,6) )
+             end if
 
           end do ! idiag
 

@@ -114,7 +114,7 @@ CONTAINS
              do m=MB_0,MB_1,MB_d
                 n=min(m+MB_d-1,MB_1)
                 call hamiltonian &
-                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                     (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
              end do
           end do
           end do
@@ -131,7 +131,7 @@ CONTAINS
                 n=min(m+MB_d-1,MB_1)
                 workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
                 call hamiltonian &
-                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                     (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
                 hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
              end do ! m
           end do ! k
@@ -165,18 +165,17 @@ CONTAINS
 
              call gram_schmidt_ncol( 1,Nband, k, unk )
 
-             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+!             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
 #endif
           else
 
-             call conjugate_gradient( ML_0,ML_1, Nband, k,s &
-                                     ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
+             call conjugate_gradient( ML_0,ML_1, Nband, k,s, unk, esp, res )
 
              call gram_schmidt(1,Nband,k,s)
 
-             call subspace_diag(k,s)
 
           end if
+          call subspace_diag(k,s,ML_0,ML_1,unk,esp)
 
        end do
 

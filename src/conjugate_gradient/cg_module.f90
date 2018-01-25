@@ -13,6 +13,7 @@ MODULE cg_module
   use watch_module
   use conjugate_gradient_g_module, only: conjugate_gradient_g, pp_kind
   use io_tools_module
+  use cg_ncol_module, only: conjugate_gradient_ncol, flag_noncollinear
 
   implicit none
 
@@ -57,14 +58,19 @@ CONTAINS
   SUBROUTINE conjugate_gradient( n1,n2, MB, k,s, unk, esp, res )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s
-    real(8),intent(INOUT) :: esp(MB),res(MB)
+    real(8),intent(INOUT) :: esp(:,:,:),res(:,:,:)
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
+    real(8),intent(INOUT) :: unk(:,:,:,:)
 #else
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+    complex(8),intent(INOUT) :: unk(:,:,:,:)
 #endif
     integer :: ipc
     type(time) :: tt
+
+    if ( flag_noncollinear ) then
+       call conjugate_gradient_ncol( n1,n2,MB,k,unk,esp(:,k,s),res(:,k,s) )
+       return
+    end if
 
     call write_border( 1, " conjugate_gradient(start)" )
 
@@ -80,7 +86,8 @@ CONTAINS
 
     if ( pp_kind == "USPP" ) then
 
-       call conjugate_gradient_g( n1,n2,MB,k,s,Ncg,unk,esp,res,iswitch_gs )
+       call conjugate_gradient_g &
+            ( n1,n2,MB,k,s,Ncg,unk(:,:,k,s),esp(:,k,s),res(:,k,s),iswitch_gs )
 
     else
 
@@ -88,12 +95,13 @@ CONTAINS
        case default
        case( 1 )
 
-          call conjugate_gradient_1(n1,n2,MB,k,s,Ncg,unk,esp,res)
+          call conjugate_gradient_1 &
+               (n1,n2,MB,k,s,Ncg,unk(:,:,k,s),esp(:,k,s),res(:,k,s))
 
        case( 2 )
 
           call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-          call lobpcg( k,s,Ncg,iswitch_gs,unk,esp,res )
+          call lobpcg( k,s,Ncg,iswitch_gs,unk(:,:,k,s),esp(:,k,s),res(:,k,s) )
 
        end select
 
@@ -110,8 +118,8 @@ CONTAINS
   SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
-    real(8),intent(INOUT) :: esp(MB),res(MB)
+    real(8),intent(INOUT) :: unk(n1:,:)
+    real(8),intent(INOUT) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i,TYPE_MAIN,timer_counter
     real(8),parameter :: ep0=0.d0
@@ -183,7 +191,7 @@ CONTAINS
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
        else
-          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
        call watchb( ttmp, timecg(:,1) )
@@ -237,14 +245,14 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
 
           call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
           do n=ns,ne
-             call cggs( iswitch_gs, ML0, MB, n, dV, unk(n1,1), Pgk(n1,n-ns+1) )
+             call cggs( iswitch_gs, ML0, MB, n, dV, unk, Pgk(n1,n-ns+1) )
           end do
 
 ! ---
@@ -430,8 +438,8 @@ CONTAINS
   SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
-    real(8),intent(INOUT) :: esp(MB),res(MB)
+    complex(8),intent(INOUT) :: unk(n1:,:)
+    real(8),intent(INOUT) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i,TYPE_MAIN
     real(8),parameter :: ep0=0.d0
@@ -501,7 +509,7 @@ CONTAINS
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
        else
-          call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
        call watchb( ttmp, timecg(:,1) )
@@ -557,14 +565,14 @@ CONTAINS
 
           call watchb( ttmp, timecg(:,6) )
 
-          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
 
           call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
           do n=ns,ne
-             call cggs( iswitch_gs, ML0, MB, n, dV, unk(n1,1), Pgk(n1,n-ns+1) )
+             call cggs( iswitch_gs, ML0, MB, n, dV, unk, Pgk(n1,n-ns+1) )
           end do
 
           call watchb( ttmp, timecg(:,5) )

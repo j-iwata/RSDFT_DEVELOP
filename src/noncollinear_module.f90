@@ -190,13 +190,13 @@ CONTAINS
 
   SUBROUTINE op_xc_noncollinear( tpsi, hpsi )
     implicit none
-    complex(8),intent(IN) :: tpsi(:,:)
-    complex(8),intent(INOUT) :: hpsi(:,:)
+    complex(8),intent(IN) :: tpsi(:,:,:)
+    complex(8),intent(INOUT) :: hpsi(:,:,:)
     if ( .not.flag_noncollinear ) return
     if ( .not.allocated(vxc_mat) ) return
     !call write_border( 1, "op_xc_noncollinear(start)" )
-    hpsi(:,1) = hpsi(:,1) + vxc_mat(:,1,1)*tpsi(:,1) + vxc_mat(:,1,2)*tpsi(:,2)
-    hpsi(:,2) = hpsi(:,2) + vxc_mat(:,2,1)*tpsi(:,1) + vxc_mat(:,2,2)*tpsi(:,2)
+    hpsi(:,1,1) = hpsi(:,1,1) + vxc_mat(:,1,1)*tpsi(:,1,1) + vxc_mat(:,1,2)*tpsi(:,1,2)
+    hpsi(:,1,2) = hpsi(:,1,2) + vxc_mat(:,2,1)*tpsi(:,1,1) + vxc_mat(:,2,2)*tpsi(:,1,2)
     !call write_border( 1, "op_xc_noncollinear(end)" )
   END SUBROUTINE op_xc_noncollinear
 

@@ -7,12 +7,13 @@ MODULE cg_ncol_module
   use parallel_module, only: RSDFT_MPI_COMPLEX16,comm_grid,id_bzsm,myrank_k
   use watch_module
   use io_tools_module
+  use noncollinear_module, only: flag_noncollinear
 
   implicit none
 
   PRIVATE
   PUBLIC :: conjugate_gradient_ncol
-!  PUBLIC :: read_cg
+  PUBLIC :: flag_noncollinear
 
   integer :: Ncg = 3
   integer :: iswitch_gs = 0
@@ -21,15 +22,6 @@ MODULE cg_ncol_module
   logical :: flag_init_cg = .true.
 
 CONTAINS
-
-
-!  SUBROUTINE read_cg
-!    implicit none
-!    call IOTools_readIntegerKeyword( "NCG" , Ncg )
-!    call IOTools_readIntegerKeyword( "ICG" , iswitch_cg )
-!    call IOTools_readIntegerKeyword( "SWGS", iswitch_gs )
-!    flag_init_read = .false.
-!  END SUBROUTINE read_cg
 
 
   SUBROUTINE init_cg
@@ -50,7 +42,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,MB,k
     real(8),intent(INOUT) :: esp(MB),res(MB)
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(:,:,:,:)
+#else
     complex(8),intent(INOUT) :: unk(:,:,:,:)
+#endif
     type(time) :: tt
 
     call write_border( 1, " conjugate_gradient_ncol(start)" )
@@ -86,7 +82,11 @@ CONTAINS
 
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,Mcg
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(:,:,:,:)
+#else
     complex(8),intent(INOUT) :: unk(:,:,:,:)
+#endif
     real(8),intent(INOUT) :: esp(MB),res(MB)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,i,s,MS,k0
@@ -96,8 +96,8 @@ CONTAINS
     complex(8) :: sb,rb,E,E1,gkgk,bk
     complex(8) :: work(9),zphase,ztmp
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    complex(8),allocatable :: xk(:,:),hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
-    complex(8),allocatable :: pk(:,:),pko(:,:)
+    complex(8),allocatable :: xk(:,:,:),hxk(:,:,:),hpk(:,:,:),gk(:,:,:),Pgk(:,:,:)
+    complex(8),allocatable :: pk(:,:,:),pko(:,:)
     complex(8) :: vtmp2(2,2),wtmp2(2,2)
     complex(8) :: utmp2(2,2),btmp2(2,2)
     include 'mpif.h'
@@ -113,12 +113,12 @@ CONTAINS
     Nhpsi  = 0
     Npc    = 0
 
-    allocate(  xk(ML0,MS) ) ;  xk=zero
-    allocate( hxk(ML0,MS) ) ; hxk=zero
-    allocate( hpk(ML0,MS) ) ; hpk=zero
-    allocate(  gk(ML0,MS) ) ;  gk=zero
-    allocate( Pgk(ML0,MS) ) ; Pgk=zero
-    allocate(  pk(ML0,MS) ) ;  pk=zero
+    allocate(  xk(ML0,1,MS) ) ;  xk=zero
+    allocate( hxk(ML0,1,MS) ) ; hxk=zero
+    allocate( hpk(ML0,1,MS) ) ; hpk=zero
+    allocate(  gk(ML0,1,MS) ) ;  gk=zero
+    allocate( Pgk(ML0,1,MS) ) ; Pgk=zero
+    allocate(  pk(ML0,1,MS) ) ;  pk=zero
 
 !$OMP parallel workshare
     res(:)  = 0.d0
@@ -130,12 +130,12 @@ CONTAINS
        E1=1.d10
 
        do s=1,MS
-          xk(:,s) = unk(:,n,k0,s)
+          xk(:,1,s) = unk(:,n,k0,s)
        end do
 
        do s=1,MS
 #ifndef _DRSDFT_
-          call hamiltonian(k,s,xk(:,s),hxk(:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,xk(:,:,s),hxk(:,:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
 #endif
        end do
        call hamiltonian_ncol( k, n1,n2, xk, hxk )
@@ -149,7 +149,7 @@ CONTAINS
        do s=1,MS
 !$OMP parallel do
           do i=1,ML0
-             gk(i,s) = -c1*( hxk(i,s) - E*xk(i,s) )
+             gk(i,1,s) = -c1*( hxk(i,1,s) - E*xk(i,1,s) )
           end do
 !$OMP end parallel do
        end do
@@ -164,7 +164,7 @@ CONTAINS
 
           do s=1,MS
 !$OMP parallel workshare
-             Pgk(:,s)=gk(:,s)
+             Pgk(:,1,s)=gk(:,1,s)
 !$OMP end parallel workshare
           end do
 
@@ -180,7 +180,7 @@ CONTAINS
           W(1)=E
           do s=1,MS
 #ifndef _DRSDFT_
-             call preconditioning( W(1),k,s,1,ML0,xk(1,s),gk(1,s),Pgk(1,s) )
+             call preconditioning( W(1),k,s,1,ML0,xk(:,:,s),gk(:,:,s),Pgk(:,:,s) )
 #endif
           end do
 ! --- orthogonalization
@@ -196,7 +196,7 @@ CONTAINS
           if ( icg == 1 ) then
 
 !$OMP parallel workshare
-             pk(1:ML0,1:MS) = Pgk(1:ML0,1:MS)
+             pk(1:ML0,:,1:MS) = Pgk(1:ML0,:,1:MS)
 !$OMP end parallel workshare
 
           else
@@ -206,7 +206,7 @@ CONTAINS
              do s=1,MS
 !$OMP parallel do
                 do i=1,ML0
-                   pk(i,s) = Pgk(i,s) + bk*pk(i,s)
+                   pk(i,1,s) = Pgk(i,1,s) + bk*pk(i,1,s)
                 end do
 !$OMP end parallel do
              end do
@@ -216,7 +216,7 @@ CONTAINS
 
           do s=1,MS
 #ifndef _DRSDFT_
-             call hamiltonian(k,s,pk(:,s),hpk(:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
+             call hamiltonian(k,s,pk(:,:,s),hpk(:,:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
 #endif
           end do
           call hamiltonian_ncol( k, n1,n2, pk, hpk )
@@ -258,13 +258,13 @@ CONTAINS
 !$OMP parallel
 !$OMP do
              do i=1,ML0
-                hxk(i,s)=utmp2(1,1)*hxk(i,s)+utmp2(2,1)*hpk(i,s)
+                hxk(i,1,s)=utmp2(1,1)*hxk(i,1,s)+utmp2(2,1)*hpk(i,1,s)
              end do
 !$OMP end do
 !$OMP do
              do i=1,ML0
-                gk(i,s) = -c1*( hxk(i,s) &
-                               -W(1)*(utmp2(1,1)*xk(i,s)+utmp2(2,1)*pk(i,s)) )
+                gk(i,1,s) = -c1*( hxk(i,1,s) &
+                               -W(1)*(utmp2(1,1)*xk(i,1,s)+utmp2(2,1)*pk(i,1,s)) )
              end do
 !$OMP end do
 !$OMP end parallel
@@ -282,7 +282,7 @@ CONTAINS
           do s=1,MS
 !$OMP parallel do
              do i=1,ML0
-                xk(i,s)=utmp2(1,1)*xk(i,s)+utmp2(2,1)*pk(i,s)
+                xk(i,1,s)=utmp2(1,1)*xk(i,1,s)+utmp2(2,1)*pk(i,1,s)
              end do
 !$OMP end parallel do
           end do
@@ -291,7 +291,7 @@ CONTAINS
 
        esp(n)=E
        do s=1,MS
-          unk(:,n,k0,s) = xk(:,s)
+          unk(:,n,k0,s) = xk(:,1,s)
        end do
 
     end do ! n (band)

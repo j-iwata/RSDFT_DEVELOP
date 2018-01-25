@@ -104,7 +104,7 @@ CONTAINS
     integer,intent(IN) :: job_ctrl
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),parameter :: zi=(0.0d0,1.0d0)
-    complex(8),allocatable :: tpsi(:),hpsi(:),zcoef(:)
+    complex(8),allocatable :: tpsi(:,:),hpsi(:,:),zcoef(:)
     integer :: itaylor,i,n,k,s,it,ierr,t_1,t_0,myrank
     real(8) :: c,t,ct(0:9),et(0:9)
     type(grid) :: rgrid
@@ -172,9 +172,9 @@ CONTAINS
 
     end if
 
-    allocate( tpsi(ML_0_WF:ML_1_WF) ) ; tpsi=zero
-    allocate( hpsi(ML_0_WF:ML_1_WF) ) ; hpsi=zero
-    allocate( zcoef(tddft%nalg)     ) ; zcoef=zero
+    allocate( tpsi(ML_0_WF:ML_1_WF,1) ) ; tpsi=zero
+    allocate( hpsi(ML_0_WF:ML_1_WF,1) ) ; hpsi=zero
+    allocate( zcoef(tddft%nalg)       ) ; zcoef=zero
 
     do itaylor=1,tddft%nalg
        c=1.0d0
@@ -196,11 +196,11 @@ CONTAINS
        do k=MK_0_WF,MK_1_WF
        do n=MB_0_WF,MB_1_WF
 
-          tpsi(:) = unk(:,n,k,s)
+          tpsi(:,1) = unk(:,n,k,s)
           do itaylor=1,tddft%nalg
              call hamiltonian(k,s,tpsi,hpsi,ML_0_WF,ML_1_WF,1,1)
-             unk(:,n,k,s) = unk(:,n,k,s) + zcoef(itaylor)*hpsi(:)
-             tpsi(:) = hpsi(:)
+             unk(:,n,k,s) = unk(:,n,k,s) + zcoef(itaylor)*hpsi(:,1)
+             tpsi(:,:) = hpsi(:,:)
           end do
 
        end do ! n

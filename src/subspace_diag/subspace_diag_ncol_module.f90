@@ -5,11 +5,13 @@ MODULE subspace_diag_ncol_module
   use hamiltonian_ncol_module
   use parallel_module, only: comm_grid, id_bzsm, myrank_k
   use watch_module
+  use noncollinear_module, only: flag_noncollinear
 
   implicit none
 
   PRIVATE
   PUBLIC :: subspace_diag_ncol
+  PUBLIC :: flag_noncollinear
 
 CONTAINS
 
@@ -18,7 +20,11 @@ CONTAINS
 
     implicit none
     integer,intent(IN) :: k,n1,n2
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: psi(:,:,:,:)
+#else
     complex(8),intent(INOUT) :: psi(:,:,:,:)
+#endif
     real(8),intent(INOUT) :: esp(:,:,:)
     integer :: ML0,m,n,s,ierr,MB,MS,k0
     complex(8),allocatable :: work(:)
@@ -29,7 +35,7 @@ CONTAINS
     real(8),allocatable :: rwork(:)
     complex(8),allocatable :: Hsub(:,:),Htmp(:,:)
     complex(8),allocatable :: psit(:,:,:)
-    complex(8),allocatable :: zw1(:,:),zw2(:,:)
+    complex(8),allocatable :: zw1(:,:,:),zw2(:,:,:)
     complex(8),parameter :: zero=(0.0d0,0.0d0), one=(1.0d0,0.0d0)
     real(8) :: rtmp(1)
     integer :: itmp(1)
@@ -59,22 +65,22 @@ CONTAINS
 
     call watch(ct(2),et(2))
 
-    allocate( zw1(ML0,MS) ) ; zw1=zero
-    allocate( zw2(ML0,MS) ) ; zw2=zero
+    allocate( zw1(ML0,1,MS) ) ; zw1=zero
+    allocate( zw2(ML0,1,MS) ) ; zw2=zero
 
     do s=1,MS
        do m=1,MB
 #ifndef _DRSDFT_
-          call hamiltonian(k,s,psi(:,m,k0,s),psit(:,m,s),n1,n2,m,m)
+          call hamiltonian(k,s,psi(:,m:m,k0,s),psit(:,m:m,s),n1,n2,m,m)
 #endif
        end do
     end do
     do m=1,MB
-       zw1(:,:) = psi(:,m,k0,:)
-       zw2(:,:) = psit(:,m,:)
+       zw1(:,1,:) = psi(:,m,k0,:)
+       zw2(:,1,:) = psit(:,m,:)
 !       call hamiltonian_ncol( k, n1,n2, psi(:,m,k,:), psit(:,m,:) )
        call hamiltonian_ncol( k, n1,n2, zw1, zw2 )
-       psit(:,m,:) = zw2(:,:)
+       psit(:,m,:) = zw2(:,1,:)
     end do
 
     deallocate( zw2 )
@@ -86,7 +92,11 @@ CONTAINS
     do s=1,MS
        do n=1,MB
        do m=1,n
+#ifdef _DRSDFT_
+          Hsub(m,n) = Hsub(m,n) + sum( psi(:,m,k0,s)*psit(:,n,s) )*dV
+#else
           Hsub(m,n) = Hsub(m,n) + sum( conjg(psi(:,m,k0,s))*psit(:,n,s) )*dV
+#endif
        end do
        end do
     end do

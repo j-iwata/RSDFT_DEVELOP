@@ -144,7 +144,7 @@ CONTAINS
 
           if ( iter == 1 ) then
              call watcht(disp_switch,"",0)
-             call subspace_diag(k,s)
+             call subspace_diag(k,s,ML_0,ML_1,unk,esp)
              call watcht(disp_switch,"diag",1)
           end if
 
@@ -165,11 +165,10 @@ CONTAINS
              call watcht(disp_switch,"gs  ",1)
 
              if ( second_diag .or. idiag < Ndiag ) then
-                call subspace_diag(k,s)
+                call subspace_diag(k,s,ML_0,ML_1,unk,esp)
                 call watcht(disp_switch,"diag",1)
              else if ( idiag == Ndiag ) then
-                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
-                             ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
                 call watcht(disp_switch,"esp_calc",1)
              end if
 

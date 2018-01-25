@@ -107,7 +107,7 @@ CONTAINS
        ne=min( ns+MB_d-1, MB_1 )
        nn=ne-ns+1
 
-       call hamiltonian(k,s,unk(ML_0,ns,k,s),Y,ML_0,ML_1,ns,ne)
+       call hamiltonian(k,s,unk(:,ns:ne,k,s),Y,ML_0,ML_1,ns,ne)
        Y(ML_0:ML_1,1:nn)=c1*( Y(ML_0:ML_1,1:nn)-c*unk(ML_0:ML_1,ns:ne,k,s) )
 
        do m=2,m_poly
@@ -159,31 +159,31 @@ CONTAINS
     integer :: m, nsplit, info, il, iu
 #ifdef _DRSDFT_
     real(8),parameter :: zero=0.0d0
-    real(8),allocatable :: v(:),v0(:),f(:)
+    real(8),allocatable :: v(:,:),v0(:,:),f(:,:)
 #else
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    complex(8),allocatable :: v(:),v0(:),f(:)
+    complex(8),allocatable :: v(:,:),v0(:,:),f(:,:)
 #endif
 
     ML_0 = Igrid(1,0)
     ML_1 = Igrid(2,0)
 
     allocate( T(kmax,kmax)  ) ; T=0.0d0
-    allocate( v(ML_0:ML_1)  ) ; v=zero
-    allocate( v0(ML_0:ML_1) ) ; v0=zero
-    allocate( f(ML_0:ML_1)  ) ; f=zero
+    allocate( v(ML_0:ML_1,1)  ) ; v=zero
+    allocate( v0(ML_0:ML_1,1) ) ; v0=zero
+    allocate( f(ML_0:ML_1,1)  ) ; f=zero
 
     do i=1,ML_0-1
        call random_number(c)
     end do
     do i=ML_0,ML_1
        call random_number(c)
-       v(i) = dcmplx( c(1), c(2) )
+       v(i,1) = dcmplx( c(1), c(2) )
     end do
     c(1) = sum( abs(v)**2 )*dV
     call MPI_ALLREDUCE(c(1),c(2),1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
     c(2) = 1.0d0/sqrt(c(2))
-    v(:) = c(2)*v(:)
+    v = c(2)*v
 
     call hamiltonian( k, s, v, f, ML_0, ML_1, 1, 1 )
 
@@ -194,7 +194,7 @@ CONTAINS
 #endif
     call MPI_ALLREDUCE(c,alpha,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
-    f(:) = f(:) - alpha*v(:)
+    f = f - alpha*v
 
     T(1,1) = alpha
 
@@ -204,12 +204,12 @@ CONTAINS
        call MPI_ALLREDUCE(c,beta,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
        beta = sqrt(beta)
 
-       v0(:) = v(:)
+       v0 = v
        c(1)  = 1.0d0/beta
-       v(:)  = c(1)*f(:)
+       v  = c(1)*f
 
        call hamiltonian( k, s, v, f, ML_0, ML_1, 1, 1 )
-       f(:) = f(:) - beta*v0(:)
+       f = f - beta*v0
 
 #ifdef _DRSDFT_
        c(1) = sum( f*v )*dV
@@ -218,7 +218,7 @@ CONTAINS
 #endif
        call MPI_ALLREDUCE(c,alpha,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
 
-       f(:) = f(:) - alpha*v(:)
+       f = f - alpha*v
 
        T(j,j-1) = beta
        T(j-1,j) = beta

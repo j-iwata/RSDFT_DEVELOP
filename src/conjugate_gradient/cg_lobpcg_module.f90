@@ -88,7 +88,7 @@ CONTAINS
 
        vv(:,1:nn,1) = unk(:,ns:ne) ! xk
 
-       call hamiltonian( k, s, vv, hv, n1, n2, ns, ne )
+       call hamiltonian( k, s, vv(:,1:nn,1), hv(:,1:nn,1), n1, n2, ns, ne )
 
        do n=1,nn
           sb(n)=sum( vv(:,n,1)*hv(:,n,1) )*dV
@@ -128,11 +128,11 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E1,k,s,nn,ML0,vv(n1,1,1),vv(n1,1,4),vv(n1,1,3))
+          call preconditioning(E1,k,s,nn,ML0,vv(n1:n2,1:nn,1),vv(n1:n2,1:nn,4),vv(n1:n2,1:nn,3))
 
 ! ---
 
-          call hamiltonian(k,s,vv(n1,1,3),hv(n1,1,3),n1,n2,ns,ne)
+          call hamiltonian(k,s,vv(n1:n2,1:nn,3),hv(n1:n2,1:nn,3),n1,n2,ns,ne)
 
           if ( icg == 1 ) then
              mm = 2*nn
@@ -263,7 +263,7 @@ CONTAINS
 
        vv(:,1:nn,1) = unk(:,ns:ne) ! xk
 
-       call hamiltonian( k, s, vv, hv, n1, n2, ns, ne )
+       call hamiltonian( k, s, vv(:,1:nn,1), hv(:,1:nn,1), n1, n2, ns, ne )
 
        do n=1,nn
           sb(n)=sum( conjg(vv(:,n,1))*hv(:,n,1) )*dV
@@ -303,11 +303,11 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E1,k,s,nn,ML0,vv(n1,1,1),vv(n1,1,4),vv(n1,1,3))
+          call preconditioning(E1,k,s,nn,ML0,vv(:,1:nn,1),vv(:,1:nn,4),vv(:,1:nn,3))
 
 ! ---
 
-          call hamiltonian(k,s,vv(n1,1,3),hv(n1,1,3),n1,n2,ns,ne)
+          call hamiltonian(k,s,vv(n1:n2,1:nn,3),hv(n1:n2,1:nn,3),n1,n2,ns,ne)
 
           if ( icg == 1 ) then
              mm = 2*nn

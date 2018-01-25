@@ -128,11 +128,11 @@ CONTAINS
     integer,intent(IN) :: k,s,nn,ML0
     real(8),intent(IN) :: E(nn)
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
-    real(8),intent(IN) :: xk(ML0,nn)
+    real(8),intent(INOUT) :: gk(ML0:,:),Pgk(ML0:,:)
+    real(8),intent(IN) :: xk(ML0:,:)
 #else
-    complex(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
-    complex(8),intent(IN) :: xk(ML0,nn)
+    complex(8),intent(INOUT) :: gk(ML0:,:),Pgk(ML0:,:)
+    complex(8),intent(IN) :: xk(ML0:,:)
 #endif
 
     select case( iswitch_cgpc )

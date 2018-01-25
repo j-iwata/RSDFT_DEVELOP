@@ -21,11 +21,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(n1:,ib1:)
+    real(8),intent(OUT) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(n1:,ib1:)
+    complex(8),intent(OUT) :: htpsi(n1:,ib1:)
 #endif
     real(8) :: ttmp(2)
 
