@@ -13,7 +13,6 @@ MODULE parameters_module
   use scalapack_module
   use electron_module
   use ps_nloc2_init_module
-  use wf_module
   use gram_schmidt_t_module
   use cg_module
   use cgpc_module
@@ -52,8 +51,6 @@ CONTAINS
     call read_ps_nloc2_init(myrank,unit)
 
     call read_parallel(myrank,unit)
-
-    call read_wf( myrank, unit )
 
     call read_gram_schmidt_t(myrank,unit)
 
