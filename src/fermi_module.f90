@@ -124,19 +124,23 @@ CONTAINS
     if ( MSP == 1 .or. iter > Nfixed ) then
 
        call get_ef( znel, esp, MSP, ef )
+
        do loop=1,max_loop
           ef1 = ef - loop*e_mergin
           ef2 = ef + loop*e_mergin
           call calc_num_electron( ef1, esp, MSP, wbz, Nele1 )
           call calc_num_electron( ef2, esp, MSP, wbz, Nele2 )
+          if ( disp_switch ) then
+             write(*,'(1x,5f20.10)') ef,ef1,ef2,Nele1,Nele2
+          end if
           d = ( znel - Nele1 )*( znel - Nele2 )
           if ( d <= 0.0d0 ) exit
        end do ! loop
        if ( loop > max_loop ) then
           if ( disp_switch ) then
              write(*,'(1x,5f20.10)') ef,ef1,ef2,Nele1,Nele2
-             call stop_program( "stop@calc_fermi(1)" )
           end if
+          call stop_program( "stop@calc_fermi(1)" )
        end if
 
        ef0 = 1.0d10
@@ -296,7 +300,7 @@ CONTAINS
     real(8),intent(IN) :: esp(:,:,:)
     integer,intent(IN) :: msp
     real(8),intent(OUT) :: ef
-    integer :: n,k,s,i
+    integer :: n,k,s,i,p(3)
     real(8) :: Ncount,e1,e2
     msk=.true.
     Ncount=0.0d0
@@ -304,7 +308,8 @@ CONTAINS
     loop: do s=1,size(esp,3)
     do k=1,size(esp,2)
     do n=1,size(esp,1)
-       e2=minval(esp,mask=msk)
+       p=minloc(esp,mask=msk)
+       e2=esp(p(1),p(2),p(3))
        do i=1,2/msp
           Ncount=Ncount+1.0d0
           if ( abs(Ncount-Nelectron)<1.d-10 ) then
@@ -315,7 +320,7 @@ CONTAINS
              exit loop
           end if
        end do
-       msk(n,k,s)=.false.
+       msk(p(1),p(2),p(3))=.false.
        e1=e2
     end do
     end do
