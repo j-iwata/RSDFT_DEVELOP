@@ -130,9 +130,6 @@ CONTAINS
           ef2 = ef + loop*e_mergin
           call calc_num_electron( ef1, esp, MSP, wbz, Nele1 )
           call calc_num_electron( ef2, esp, MSP, wbz, Nele2 )
-          if ( disp_switch ) then
-             write(*,'(1x,5f20.10)') ef,ef1,ef2,Nele1,Nele2
-          end if
           d = ( znel - Nele1 )*( znel - Nele2 )
           if ( d <= 0.0d0 ) exit
        end do ! loop
