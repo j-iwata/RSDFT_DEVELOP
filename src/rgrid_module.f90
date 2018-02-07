@@ -4,14 +4,17 @@ MODULE rgrid_module
   use rgrid_sol_module
   use rgrid_mol_module
  !use esm_rgrid_module
-  use parallel_module
+  use parallel_module, only: node_partition, np_grid, pinfo_grid, myrank, myrank_g &
+       , id_grid, comm_grid, ircnt, idisp, ir_grid
   use lattice_module, only: lattice
+  use grid_module, only: grid_info
 
   implicit none
 
   PRIVATE
-  PUBLIC :: Init_Rgrid, InitParallel_Rgrid &
-       ,Igrid,Ngrid,Hgrid,dV,zdV
+  PUBLIC :: Igrid, Ngrid, Hgrid, dV, zdV
+  PUBLIC :: Init_Rgrid, InitParallel_Rgrid
+  PUBLIC :: set_grid_info_rgrid
 
   integer :: SYStype=0
 
@@ -77,6 +80,7 @@ CONTAINS
   SUBROUTINE InitParallel_Rgrid
     implicit none
     integer :: ierr, Nshift(3)
+    include 'mpif.h'
 
     call write_border( 0, " InitParallel_Rgrid(start)" )
 
@@ -126,6 +130,23 @@ CONTAINS
     call write_border( 0, " InitParallel_Rgrid(end)" )
 
   END SUBROUTINE InitParallel_Rgrid
+
+
+  SUBROUTINE set_grid_info_rgrid( rgrid, lattice_vector, Md )
+    implicit none
+    type(grid_info),intent(INOUT) :: rgrid
+    real(8),intent(IN) :: lattice_vector(:,:)
+    integer,intent(IN) :: Md
+    rgrid%head(0:3) = Igrid(1,0:3)
+    rgrid%tail(0:3) = Igrid(2,0:3)
+    rgrid%size(0:3) = Igrid(2,0:3)-Igrid(1,0:3)+1
+    rgrid%spacing(1:3) = Hgrid(1:3)
+    rgrid%dV = dV
+    rgrid%lattice(1:3,1:3) = lattice_vector(1:3,1:3)
+    call GetGridSize_RgridMol( Rsize_out=rgrid%Rsize, Zsize_out=rgrid%Zsize )
+    rgrid%comm = comm_grid
+    rgrid%Norder_FD = Md
+  END SUBROUTINE set_grid_info_rgrid
 
 
 END MODULE rgrid_module

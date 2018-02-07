@@ -3,14 +3,15 @@ PROGRAM Real_Space_DFT
   use parallel_module
   use global_variables, only: iswitch_test,iswitch_scf,iswitch_tddft,iswitch_band,iswitch_opt,iswitch_dos,iswitch_latopt
   use kinetic_variables, only: SYStype, Md, kin_select
+  use grid_module, only: grid_info
   use rgrid_module
+  use ggrid_module
   use atom_module
   use pseudopot_module
   use bb_module
   use electron_module
   use bz_module
   use density_module
-  use ggrid_module
   use ps_local_module, only: Vion
   use array_bound_module, only: ML_0,ML_1,MSP_0,MSP_1,MBZ_0,MBZ_1,MBZ,MSP,MB_0,MB_1,set_array_bound
   use wf_module, only: occ, init_wf
@@ -64,7 +65,7 @@ PROGRAM Real_Space_DFT
                                 ,init_noncollinear
   use init_occ_electron_ncol_module
   use rtddft_sol_module
-  use aa_module
+  use aa_module, only: init_aa
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -73,6 +74,7 @@ PROGRAM Real_Space_DFT
   integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3,info
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
   type(lattice) :: aa_obj, bb_obj
+  type(grid_info) :: rgrid
   logical,parameter :: recalc_esp=.true.
   logical :: flag_read_ncol=.false., DISP_SWITCH
   real(8) :: Etot, Ehwf
@@ -134,7 +136,7 @@ PROGRAM Real_Space_DFT
 
   call read_lattice( aa_obj )
 
-! --- R-space Grid(MOL) ( lattice is defiend by MOLGRID ) ---
+! --- Real-Space Grid (MOL) ( lattice is defiend by MOLGRID ) ---
 
   if ( SYStype /= 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
 
@@ -148,7 +150,7 @@ PROGRAM Real_Space_DFT
   call check_lattice( aa_obj%LatticeVector, lattice_index )
   if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
 
-! --- R-space Grid(SOL) ( lattice is used to define the grid ) ---
+! --- Real-Space Grid (SOL) ( lattice is used to define the grid ) ---
 
   if ( SYStype == 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
 
@@ -195,18 +197,18 @@ PROGRAM Real_Space_DFT
 ! --- Test ( Egg-Box Effect ) ---
 
   if ( iswitch_test == 2 ) then
-     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/ax
+     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/aa_obj%LatticeConstant
      if ( disp_switch ) then
         write(*,*) "--- EGG BOX TEST !!! ---"
         do i=1,size(aa_atom,2)
-           write(*,*) aa_atom(1,i),aa_atom(1,i)*ax,Hgrid(1)*0.5d0
+           write(*,*) aa_atom(1,i),aa_atom(1,i)*aa_obj%LatticeConstant,Hgrid(1)*0.5d0
         end do
      end if
   end if
 
 ! --- Symmetry ---
 
-  call init_symmetry( Ngrid,dV,aa,bb, Natom,ki_atom,aa_atom )
+  call init_symmetry( Ngrid,dV,aa_obj%LatticeVector,bb, Natom,ki_atom,aa_atom )
 
 ! --- Brillouin Zone sampling ---
 
@@ -234,6 +236,10 @@ PROGRAM Real_Space_DFT
                 ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
                 ,SYStype, disp_switch )
 
+! --- grid info ( real space ) ---
+
+  call set_grid_info_rgrid( rgrid, aa_obj%LatticeVector, Md )
+
 ! --- Initialization for FFT ---
 
   if ( SYStype == 0 ) then
@@ -252,9 +258,9 @@ PROGRAM Real_Space_DFT
 
   call read_kinetic ! Md & kin_select
 
-  call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d )
+  call init_kinetic( aa_obj%LatticeVector, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d )
 
-  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa )
+  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa_obj%LatticeVector )
 
 ! --- ??? ---
 
@@ -356,7 +362,7 @@ PROGRAM Real_Space_DFT
 
   call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
        , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP, MSP_0, MSP_1, MB_0, MB_1 &
-       , kbb, bb, Va, SYStype, np_fkmb, disp_switch )
+       , kbb, bb, aa_obj%Volume, SYStype, np_fkmb, disp_switch )
 
 ! --- Initial Potential ---
 
@@ -370,7 +376,7 @@ PROGRAM Real_Space_DFT
      Vxc=0.0d0
   end if
 
-  call init_localpot
+  call init_localpot( ML_0,ML_1, MSP_0,MSP_1 )
 
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
@@ -433,7 +439,7 @@ PROGRAM Real_Space_DFT
 
 ! --- init_vdW_Grimme ---
 
-  call init_vdw_grimme( aa, ki_atom, zn_atom )
+  call init_vdw_grimme( aa_obj%LatticeVector, ki_atom, zn_atom )
   call calc_E_vdw_grimme( aa_atom )
 
 ! --- total energy ---
