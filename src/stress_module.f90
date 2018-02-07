@@ -193,11 +193,11 @@ CONTAINS
 
       integer,intent(IN)       :: k,n1,n2,ib1,ib2,la,mu
 #ifdef _DRSDFT_
-      real(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
-      real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+      real(8),intent(IN)    ::  tpsi(n1:,ib1:)
+      real(8),intent(INOUT) :: htpsi(n1:,ib1:)
 #else
-      complex(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
-      complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+      complex(8),intent(IN)    ::  tpsi(n1:,ib1:)
+      complex(8),intent(INOUT) :: htpsi(n1:,ib1:)
 #endif
       logical :: flag_nab, flag_n12, flag_n23, flag_n31
       real(8) :: coef_lap0, ggg(6), const_k2

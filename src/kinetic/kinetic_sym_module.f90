@@ -138,9 +138,8 @@ CONTAINS
   END SUBROUTINE init2
 
 
-  SUBROUTINE op_kinetic_sym_a( k, tpsi, htpsi )
+  SUBROUTINE op_kinetic_sym_a( tpsi, htpsi, k_in )
     implicit none
-    integer,intent(IN) :: k
 #ifdef _DRSDFT_
     real(8),intent(IN)    ::  tpsi(:,:)
     real(8),intent(INOUT) :: htpsi(:,:)
@@ -153,11 +152,13 @@ CONTAINS
     real(8) :: kr,r(3)
     real(8),parameter :: pi2=6.283185307179586d0
 #endif
-    integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2
+    integer,optional,intent(IN) :: k_in
+    integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2,k
     real(8) :: ttmp(2)
 
 !    if ( init_flag ) call init
 
+    k  = 1 ; if ( present(k_in) ) k=k_in
     n1 = Igrid(1,0)
     n2 = Igrid(2,0)
 
@@ -266,9 +267,8 @@ CONTAINS
   END SUBROUTINE calc_bloch_phase
 
 
-  SUBROUTINE op_kinetic_sym( k, tpsi, htpsi )
+  SUBROUTINE op_kinetic_sym( tpsi, htpsi, k_in )
     implicit none
-    integer,intent(IN) :: k
 #ifdef _DRSDFT_
     real(8),intent(IN)    ::  tpsi(:,:)
     real(8),intent(INOUT) :: htpsi(:,:)
@@ -280,7 +280,8 @@ CONTAINS
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8) :: tmp
 #endif
-    integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2
+    integer,optional,intent(IN) :: k_in
+    integer :: n,i,j,i1,i2,i3,j1,j2,j3,k1,k2,k3,n1,n2,k
     integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp,n1_omp,n2_omp
     integer :: ib1_omp,ib2_omp,nb_omp
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
@@ -288,6 +289,7 @@ CONTAINS
 
     if ( init_flag ) call init
 
+    k  = 1 ; if ( present(k_in) ) k=k_in
     n1 = Igrid(1,0)
     n2 = Igrid(2,0)
 

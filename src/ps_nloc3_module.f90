@@ -461,42 +461,43 @@ CONTAINS
 
 
 
-  SUBROUTINE op_ps_nloc3(k,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_ps_nloc3( tpsi, htpsi, k_in )
     implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(:,:)
+    real(8),intent(INOUT) :: htpsi(:,:)
     real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
     character(1),parameter :: TRANSA='T'
     character(1),parameter :: TRANSB='N'
 #else
     character(1),parameter :: TRANSA='C'
     character(1),parameter :: TRANSB='N'
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(:,:)
+    complex(8),intent(INOUT) :: htpsi(:,:)
     complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
 #endif
-    integer :: ML0,nb,lma,ib,ierr
+    integer,optional,intent(IN) :: k_in
+    integer :: ML0,nb,lma,ib,ierr,k
 
     if ( Mlma <= 0 ) return
 
-    ML0 = n2-n1+1
-    nb  = ib2-ib1+1
+    ML0 = size( tpsi, 1 )
+    nb  = size( tpsi, 2 )
+    k   = 1 ; if ( present(k_in) ) k=k_in
 
-    allocate( uVunk(Mlma,ib1:ib2),uVunk0(Mlma,ib1:ib2) )
+    allocate( uVunk(Mlma,nb),uVunk0(Mlma,nb) )
 
 #ifdef _DRSDFT_
-    call dgemm(TRANSA,TRANSB,Mlma,nb,ML0,zdV,uVk(n1,1,k),ML0 &
-         ,tpsi(n1,ib1),ML0,zero,uVunk0(1,ib1),Mlma)
+    call dgemm(TRANSA,TRANSB,Mlma,nb,ML0,zdV,uVk(:,:,k),ML0 &
+         ,tpsi,ML0,zero,uVunk0,Mlma)
 #else
-    call zgemm(TRANSA,TRANSB,Mlma,nb,ML0,zdV,uVk(n1,1,k),ML0 &
-         ,tpsi(n1,ib1),ML0,zero,uVunk0(1,ib1),Mlma)
+    call zgemm(TRANSA,TRANSB,Mlma,nb,ML0,zdV,uVk(:,:,k),ML0 &
+         ,tpsi,ML0,zero,uVunk0,Mlma)
 #endif
 
     call mpi_allreduce(uVunk0,uVunk,Mlma*nb,TYPE_MAIN,mpi_sum,comm_grid,ierr)
 
-    do ib=ib1,ib2
+    do ib=1,nb
 !$OMP PARALLEL DO
        do lma=1,Mlma
           uVunk(lma,ib)=iuV(lma)*uVunk(lma,ib)
@@ -505,11 +506,11 @@ CONTAINS
     end do
 
 #ifdef _DRSDFT_
-    call dgemm(TRANSB,TRANSB,ML0,nb,Mlma,one,uVk(n1,1,k),ML0 &
-         ,uVunk(1,ib1),Mlma,one,htpsi(n1,ib1),ML0)
+    call dgemm(TRANSB,TRANSB,ML0,nb,Mlma,one,uVk(:,:,k),ML0 &
+         ,uVunk,Mlma,one,htpsi,ML0)
 #else
-    call zgemm(TRANSB,TRANSB,ML0,nb,Mlma,one,uVk(n1,1,k),ML0 &
-         ,uVunk(1,ib1),Mlma,one,htpsi(n1,ib1),ML0)
+    call zgemm(TRANSB,TRANSB,ML0,nb,Mlma,one,uVk(:,:,k),ML0 &
+         ,uVunk,Mlma,one,htpsi,ML0)
 #endif
 
     deallocate( uVunk0,uVunk )

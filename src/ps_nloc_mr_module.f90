@@ -1153,36 +1153,38 @@ CONTAINS
   END SUBROUTINE prep_uvkso_ps_nloc_mr
 
 
-  SUBROUTINE op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_ps_nloc_mr( tpsi, htpsi, k_in )
     implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(:,:)
+    real(8),intent(INOUT) :: htpsi(:,:)
     real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(:,:)
+    complex(8),intent(INOUT) :: htpsi(:,:)
     complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
 #endif
-    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq,lma1,lma2
+    integer,optional,intent(IN) :: k_in
+    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq,lma1,lma2,i0,k
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
     complex(8) :: zc
 
-    nb = ib2-ib1+1
+    nb = size( tpsi, 2 )
+    i0 = Igrid(1,0)
+    k  = 1 ; if ( present(k_in) ) k=k_in
 
     if ( Mlma <= 0 ) return
 
-    allocate( uVunk(nzlma,ib1:ib2),uVunk0(nzlma,ib1:ib2) )
+    allocate( uVunk(nzlma,nb),uVunk0(nzlma,nb) )
 
 !$OMP parallel
 
-    do ib=ib1,ib2
+    do ib=1,nb
 !$OMP do
        do lma=1,nzlma
           uVunk(lma,ib)=zero
           do j=1,MJJ(lma)
-             i=JJP(j,lma)
+             i=JJP(j,lma)-i0+1
 #ifdef _DRSDFT_
              uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*tpsi(i,ib)
 #else
@@ -1216,7 +1218,7 @@ CONTAINS
           jrank=num_2_rank(m,j)
           if( irank>=0 )then
              i2=0
-             do ib=ib1,ib2
+             do ib=1,nb
                 do i1=1,lma_nsend(irank)
                    i2=i2+1
                    sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
@@ -1234,7 +1236,7 @@ CONTAINS
           call mpi_waitall(nreq,ireq,istatus,ierr)
           if( jrank>=0 )then
              i2=0
-             do ib=ib1,ib2
+             do ib=1,nb
                 do i1=1,lma_nsend(jrank)
                    i2=i2+1
                    uVunk(recvmap(i1,jrank),ib) &
@@ -1247,14 +1249,14 @@ CONTAINS
     end do
 !$OMP end single
 
-    do ib=ib1,ib2
+    do ib=1,nb
        do m=1,N_nzqr
           lma1=nzqr_pair(1,m)
           lma2=nzqr_pair(2,m)
 !$OMP do
           do j=1,MJJ(lma1)
-             htpsi(JJP(j,lma1),ib)=htpsi(JJP(j,lma1),ib) &
-                  +Dij00(m)*uVk(j,lma1,k)*uVunk(lma2,ib)
+             i=JJP(j,lma1)-i0+1
+             htpsi(i,ib)=htpsi(i,ib)+Dij00(m)*uVk(j,lma1,k)*uVunk(lma2,ib)
           end do
 !$OMP end do
        end do

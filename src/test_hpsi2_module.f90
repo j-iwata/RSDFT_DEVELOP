@@ -1,7 +1,7 @@
 MODULE test_hpsi2_module
 
   use array_bound_module, only: MB
-  use localpot_module
+  use localpot_module, only: Vloc
   use hamiltonian_module
   use parallel_module
   use watch_module
@@ -79,7 +79,7 @@ CONTAINS
 !$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
-          call op_kinetic(1,tpsi,htpsi,n1,n2,1,nrhs)
+          call op_kinetic( tpsi, htpsi )
        end do
     end do
 !$OMP end parallel
@@ -89,7 +89,7 @@ CONTAINS
 !$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
-          call op_localpot(1,n2-n1+1,nrhs,tpsi,htpsi)
+          call op_localpot( tpsi, htpsi )
        end do
     end do
 !$OMP end parallel
@@ -99,7 +99,7 @@ CONTAINS
 !$OMP parallel private( loop, i )
     do loop=1,nloop
        do i=1,niter
-          call op_nonlocal(1,1,tpsi,htpsi,n1,n2,1,nrhs)
+          call op_nonlocal( tpsi, htpsi )
        end do
     end do
 !$OMP end parallel

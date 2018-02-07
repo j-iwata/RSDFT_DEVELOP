@@ -18,35 +18,33 @@ MODULE nonlocal_module
 
 CONTAINS
 
-  SUBROUTINE op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2,htpsi00)
+  SUBROUTINE op_nonlocal( tpsi, htpsi, k_in, s_in, htpsi00 )
 
     implicit none
-    integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT),optional :: htpsi00(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(:,:)
+    real(8),intent(INOUT) :: htpsi(:,:)
+    real(8),intent(INOUT),optional :: htpsi00(:,:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT),optional :: htpsi00(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(:,:)
+    complex(8),intent(INOUT) :: htpsi(:,:)
+    complex(8),intent(INOUT),optional :: htpsi00(:,:)
 #endif
+    integer,optional,intent(IN) :: k_in, s_in
+    integer :: k,s
+    k=1 ; if ( present(k_in) ) k=k_in
+    s=1 ; if ( present(s_in) ) s=s_in
     select case( pselect )
-    case(2,4)
+    case( 2 )
        if ( ps_type == 1 ) then
-          call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
+          call op_ps_nloc_mr( tpsi, htpsi, k )
        else
-!         call op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
-          call op_ps_nloc2_hp(k,tpsi,htpsi,n1,n2,ib1,ib2)
+          call op_ps_nloc2_hp( tpsi, htpsi, k )
        end if
     case(3)
-       call op_ps_nloc3(k,tpsi,htpsi,n1,n2,ib1,ib2)
-    case(5)
-       call op_ps_nloc_mr(k,tpsi,htpsi,n1,n2,ib1,ib2)
+       call op_ps_nloc3( tpsi, htpsi, k )
     case(102)
-      call op_ps_nloc2_uspp(k,s,tpsi,htpsi,n1,n2,ib1,ib2,htpsi00)
-    case default
-       stop "pselect/=2,4,5,102 are not implemented"
+      call op_ps_nloc2_uspp( tpsi, htpsi, htpsi00, k, s )
     end select
 
   END SUBROUTINE op_nonlocal
@@ -61,8 +59,6 @@ CONTAINS
        call calc_force_ps_nloc2( MI, force )
     case( 3 )
        call calc_force_ps_nloc3( MI, force )
-    case( 5 )
-       call stop_program("stop@force_nonlocal(1)")
     case( 102 )
        call stop_program("stop@force_nonlocal(2)")
     end select

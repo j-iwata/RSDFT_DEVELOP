@@ -133,19 +133,19 @@ CONTAINS
   END SUBROUTINE init_op_ps_nloc2_hp
 
 
-  SUBROUTINE op_ps_nloc2_hp(k,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_ps_nloc2_hp( tpsi, htpsi, k_in )
     implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(:,:)
+    real(8),intent(OUT) :: htpsi(:,:)
     real(8) :: tmp_sum
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(:,:)
+    complex(8),intent(OUT) :: htpsi(:,:)
     complex(8) :: tmp_sum
 #endif
-    integer :: i,ib,i1,i2,i3,j,jb,lma,m,ML0,n,nb
+    integer,optional,intent(IN) :: k_in
+    integer :: i,ib,i1,i2,i3,j,lma,m,ML0,n,nb,k,i0
     integer :: ierr,nreq
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
     real(8) :: c, ttmp(2), ttmp1(2)
@@ -154,23 +154,24 @@ CONTAINS
 
     if ( .not.init_flag ) stop "@op_ps_nloc2_hp(init_flag=.false.)"
 
-    nb = ib2-ib1+1
+    nb = size( tpsi, 2 )
+    i0 = Igrid(1,0)
+    k  = 1 ; if ( present(k_in) ) k=k_in
 
     !call watchb_omp( ttmp )
 
-    do ib=ib1,ib2
-       jb=ib-ib1+1
+    do ib=1,nb
        do lma=ompnzlma1,ompnzlma2
           tmp_sum=zero
           do j=1,MJJ(lma)
-             i=JJP(j,lma)
+             i=JJP(j,lma)-i0+1
 #ifdef _DRSDFT_
              tmp_sum = tmp_sum + uVk(j,lma,k)*tpsi(i,ib)
 #else
              tmp_sum = tmp_sum + conjg(uVk(j,lma,k))*tpsi(i,ib)
 #endif
           end do
-          uVunk(lma,jb) = iuV(lma)*dV*tmp_sum
+          uVunk(lma,ib) = iuV(lma)*dV*tmp_sum
        end do ! lma
     end do ! ib
 
@@ -245,19 +246,18 @@ CONTAINS
     case( 2 )
 
 !$OMP barrier
-       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
+       call comm_eqdiv_ps_nloc2_mol( uVunk )
 
     end select
 
 !$omp barrier
     !call watchb_omp( ttmp, time_nlpp(1,2) )
 
-    do ib=ib1,ib2
-       jb=ib-ib1+1
+    do ib=1,nb
        do lma=1,nzlma
           do j=ompMJJ1(lma,ompmyrank),ompMJJ2(lma,ompmyrank)
-             i=JJP(j,lma)
-             htpsi(i,ib)=htpsi(i,ib)+uVk(j,lma,k)*uVunk(lma,jb)
+             i=JJP(j,lma)-i0+1
+             htpsi(i,ib)=htpsi(i,ib)+uVk(j,lma,k)*uVunk(lma,ib)
           end do
        end do
     end do
@@ -275,11 +275,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(n1:,ib1:)
+    real(8),intent(INOUT) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(n1:,ib1:)
+    complex(8),intent(INOUT) :: htpsi(n1:,ib1:)
 #endif
     integer :: i,ib,j,jb,i1,i2,i3,m,lma,nb,ierr,nreq,lmani,lmanj
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512) 
@@ -385,7 +385,7 @@ CONTAINS
     case( 2 )
 
 !$OMP barrier
-       call comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
+       call comm_eqdiv_ps_nloc2_mol( uVunk )
 
     end select
 
@@ -511,27 +511,25 @@ CONTAINS
   END SUBROUTINE init_op_ps_nloc2
 
 
-  SUBROUTINE comm_eqdiv_ps_nloc2_mol(nzlma,ib1,ib2,uVunk)
+  SUBROUTINE comm_eqdiv_ps_nloc2_mol( uVunk )
     implicit none
-    integer,intent(IN) :: nzlma,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
+    real(8),intent(INOUT) :: uVunk(:,:)
 #else
-    complex(8),intent(INOUT) :: uVunk(nzlma,ib1:ib2)
+    complex(8),intent(INOUT) :: uVunk(:,:)
 #endif
-    integer :: nreq,irank,m,i1,i2,i3,ib,ierr,nb
+    integer :: nreq,irank,m,i1,i2,i3,ib,ierr,nb,nzlma
     integer :: istatus(mpi_status_size,512),ireq(512)
-    nb=ib2-ib1+1
+    nzlma=size(uVunk,1)
+    nb=size(uVunk,2)
     nreq=0
     do irank=0,nprocs_g-1
        m=lma_nsend(irank)
        if ( irank == myrank_g .or. m <= 0 ) cycle
-!       i2=0
-       do ib=ib1,ib2
+       do ib=1,nb
 !$OMP do
        do i1=1,m
-!          i2=i2+1
-          i2 = i1 + (ib-ib1)*m
+          i2 = i1 + (ib-1)*m
           sbufnl(i2,irank)=uVunk(sendmap(i1,irank),ib)
        end do
 !$OMP end do
@@ -552,12 +550,10 @@ CONTAINS
     do irank=0,nprocs_g-1
        m=lma_nsend(irank)
        if ( irank == myrank_g .or. m <= 0 ) cycle
-!       i2=0
-       do ib=ib1,ib2
+       do ib=1,nb
 !$OMP do
        do i1=1,m
-!          i2=i2+1
-          i2 = i1 + (ib-ib1)*m
+          i2 = i1 + (ib-1)*m
           i3 = recvmap(i1,irank)
           uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,irank)
        end do

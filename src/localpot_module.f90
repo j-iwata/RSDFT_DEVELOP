@@ -1,50 +1,55 @@
 MODULE localpot_module
 
-  use rgrid_module
-  use array_bound_module
- !use localpot2_module
-  use parallel_module
+!  use rgrid_module, only: Ngrid, Igrid
   use xc_module, only: Vxc
   use hartree_variables, only: Vh
   use ps_local_module, only: Vion
+ !use localpot2_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: Vloc,init_localpot,op_localpot,read_localpot &
-           ,construct_matrix_localpot
+  PUBLIC :: Vloc, init_localpot, construct_matrix_localpot
+  PUBLIC :: op_localpot
   PUBLIC :: update_localpot
 
   real(8),allocatable :: Vloc(:,:)
+  integer :: ML_0,ML_1,MS_0,MS_1
+  integer :: MS
+  integer,allocatable :: Ngrid(:),Igrid(:,:)
 
 CONTAINS
 
 
-  SUBROUTINE init_localpot
-    call write_border( 80, " init_localpot(start)" )
-    allocate( Vloc(ML_0:ML_1,MSP_0:MSP_1) )
+  SUBROUTINE init_localpot( ML_0_in,ML_1_in, MS_0_in,MS_1_in )
+    implicit none
+    integer,intent(IN) :: ML_0_in,ML_1_in,MS_0_in,MS_1_in
+    call write_border( 0, " init_localpot(start)" )
+    ML_0 = ML_0_in
+    ML_1 = ML_1_in
+    MS_0 = MS_0_in
+    MS_1 = MS_1_in
+    allocate( Vloc(ML_0:ML_1,MS_0:MS_1) )
     Vloc=0.0d0
-    call write_border( 80, " init_localpot(end)" )
+    call write_border( 0, " init_localpot(end)" )
   END SUBROUTINE init_localpot
 
 
-  SUBROUTINE op_localpot(s,mm,nn,f,vf)
+  SUBROUTINE op_localpot( f, Vf, s_in )
     implicit none
-    integer,intent(IN) :: s,mm,nn
 #ifdef _DRSDFT_
-    real(8),intent(IN) :: f(mm,nn)
-    real(8),intent(INOUT) :: vf(mm,nn)
-    real(8),allocatable :: ft(:)
-    real(8),parameter :: zero=0.0d0
-    integer,parameter :: TYP=MPI_REAL8
+    real(8),intent(IN) :: f(:,:)
+    real(8),intent(INOUT) :: Vf(:,:)
 #else
-    complex(8),intent(IN) :: f(mm,nn)
-    complex(8),intent(INOUT) :: vf(mm,nn)
-    complex(8),allocatable :: ft(:)
-    complex(8),parameter :: zero=(0.0d0,0.0d0)
-    integer,parameter :: TYP=RSDFT_MPI_COMPLEX16
+    complex(8),intent(IN) :: f(:,:)
+    complex(8),intent(INOUT) :: Vf(:,:)
 #endif
-    integer :: n,i,j,ierr
+    integer,optional,intent(IN) :: s_in
+    integer :: s,m,n,i,j
+
+    m = size( f, 1 )
+    n = size( f, 2 )
+    s = 1 ; if ( present(s_in) ) s=s_in
 
 !    if ( flag_localpot2 ) then
 !
@@ -71,13 +76,13 @@ CONTAINS
 !    else
 
 !!$OMP PARALLEL
-       do n=1,nn
+    do j=1,n
 !$OMP DO
-          do i=1,mm
-             vf(i,n) = vf(i,n) + Vloc(ML_0-1+i,s)*f(i,n)
-          end do
-!$OMP END DO
+       do i=1,m
+          Vf(i,j) = Vf(i,j) + Vloc(ML_0-1+i,s)*f(i,j)
        end do
+!$OMP END DO
+    end do
 !!$OMP END PARALLEL
 
 !    end if
@@ -86,6 +91,7 @@ CONTAINS
 
 
   SUBROUTINE read_localpot(file_name,rank)
+    implicit none
     character(*),intent(IN) :: file_name
     integer,intent(IN) :: rank
     integer,parameter :: unit=80
@@ -107,7 +113,7 @@ CONTAINS
     call mpi_bcast(LL_tmp,3*ML_tmp(0),mpi_integer,0,mpi_comm_world,ierr)
     allocate( rtmp3(0:ML_tmp(1)-1,0:ML_tmp(2)-1,0:ML_tmp(3)-1) )
     allocate( rtmp(ML_tmp(0)) )
-    do s=1,MSP
+    do s=1,MS
        if ( rank == 0 ) then
           read(unit) rtmp(:) ! rho
           read(unit) rtmp(:) ! Vloc
@@ -116,7 +122,7 @@ CONTAINS
        do i=1,ML_tmp(0)
           rtmp3( LL_tmp(1,i),LL_tmp(2,i),LL_tmp(3,i) ) = rtmp(i)
        end do
-       if ( MSP_0 <= s .and. s <= MSP_1 ) then
+       if ( MS_0 <= s .and. s <= MS_1 ) then
           i=ML_0-1
           do i3=Igrid(1,3),Igrid(2,3)
           do i2=Igrid(1,2),Igrid(2,2)
@@ -157,7 +163,7 @@ CONTAINS
   SUBROUTINE update_localpot
     implicit none
     integer :: s
-    do s=MSP_0,MSP_1
+    do s=MS_0,MS_1
        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
     end do
   END SUBROUTINE update_localpot

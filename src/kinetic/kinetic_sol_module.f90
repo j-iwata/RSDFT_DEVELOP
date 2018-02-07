@@ -17,19 +17,19 @@ MODULE kinetic_sol_module
 CONTAINS
 
 
-  SUBROUTINE op_kinetic_sol(k,tpsi,htpsi,n1,n2,ib1,ib2)
+  SUBROUTINE op_kinetic_sol( tpsi, htpsi, k_in )
     implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    real(8),parameter :: zero=0.d0
+    real(8),intent(IN)    ::  tpsi(:,:)
+    real(8),intent(INOUT) :: htpsi(:,:)
+    real(8),parameter :: zero=0.0d0
 #else
-    complex(8),intent(IN)    ::  tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
-    complex(8),parameter :: zero=(0.d0,0.d0)
+    complex(8),intent(IN)    ::  tpsi(:,:)
+    complex(8),intent(INOUT) :: htpsi(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
 #endif
-    integer :: i,ib,i1,i2,i3,nb,m,n,j
+    integer,optional,intent(IN) :: k_in
+    integer :: i,ib,i1,i2,i3,nb,m,n,j,k,i0
     integer :: a1,a2,a3,b1,b2,b3,p,mm,nn
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     real(8) :: c,d,et0,et1, ttmp(2)
@@ -42,6 +42,8 @@ CONTAINS
     time_bcfd(:,:)=0.0d0
 !$OMP end master
 
+    k=1 ; if ( present(k_in) ) k=k_in
+
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
     a2b = Igrid(1,2)
@@ -51,7 +53,8 @@ CONTAINS
     ab1 = (b1b-a1b+1)
     ab12= (b1b-a1b+1)*(b2b-a2b+1)
 
-    nb = ib2-ib1+1
+    nb = size( tpsi, 2 )
+    i0 = Igrid(1,0)
 
 !!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &
 !!$OMP                 ,n1_omp,n2_omp,j,p,d,mm,c)
@@ -59,8 +62,8 @@ CONTAINS
     mm=0
 !$  mm=omp_get_thread_num()
 
-    n1_omp = Igrid_omp(1,0,mm)
-    n2_omp = Igrid_omp(2,0,mm)
+    n1_omp = Igrid_omp(1,0,mm) - i0 + 1
+    n2_omp = Igrid_omp(2,0,mm) - i0 + 1
 
     a1b_omp = Igrid_omp(1,1,mm)
     b1b_omp = Igrid_omp(2,1,mm)
@@ -70,7 +73,7 @@ CONTAINS
     b3b_omp = Igrid_omp(2,3,mm)
 
     c=coef_lap0+const_k2(k)
-    do ib=ib1,ib2
+    do ib=1,nb
        do i=n1_omp,n2_omp
           htpsi(i,ib) = c*tpsi(i,ib)
        end do
@@ -78,12 +81,12 @@ CONTAINS
 
     !call watchb_omp( ttmp, time_kine(1,1) )
 
-    do ib=ib1,ib2
+    do ib=1,nb
        do i3=a3b_omp,b3b_omp
        do i2=a2b_omp,b2b_omp
        do i1=a1b_omp,b1b_omp
-          j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
-          www(i1,i2,i3,ib-ib1+1) = tpsi(j,ib)
+          j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+          www(i1,i2,i3,ib) = tpsi(j,ib)
        end do
        end do
        end do
@@ -99,23 +102,21 @@ CONTAINS
 
     if ( flag_nab ) then
 
-       do ib=ib1,ib2
-
-          p = ib-ib1+1
+       do ib=1,nb
 
           do m=1,Md
 
              do i3=a3b_omp,b3b_omp
              do i2=a2b_omp,b2b_omp
              do i1=a1b_omp,b1b_omp
-                j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+                j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
                 htpsi(j,ib)=htpsi(j,ib) &
-                     +zcoef_kin(1,m,k) *www(i1+m,i2,i3,p) &
-               +conjg(zcoef_kin(1,m,k))*www(i1-m,i2,i3,p) &
-                     +zcoef_kin(2,m,k) *www(i1,i2+m,i3,p) &
-               +conjg(zcoef_kin(2,m,k))*www(i1,i2-m,i3,p) &
-                     +zcoef_kin(3,m,k) *www(i1,i2,i3+m,p) &
-               +conjg(zcoef_kin(3,m,k))*www(i1,i2,i3-m,p)   
+                     +zcoef_kin(1,m,k) *www(i1+m,i2,i3,ib) &
+               +conjg(zcoef_kin(1,m,k))*www(i1-m,i2,i3,ib) &
+                     +zcoef_kin(2,m,k) *www(i1,i2+m,i3,ib) &
+               +conjg(zcoef_kin(2,m,k))*www(i1,i2-m,i3,ib) &
+                     +zcoef_kin(3,m,k) *www(i1,i2,i3+m,ib) &
+               +conjg(zcoef_kin(3,m,k))*www(i1,i2,i3-m,ib)   
              end do
              end do
              end do
@@ -126,20 +127,18 @@ CONTAINS
 
     else
 
-       do ib=ib1,ib2
-
-          p=ib-ib1+1
+       do ib=1,nb
 
           do m=1,Md
 
              do i3=a3b_omp,b3b_omp
              do i2=a2b_omp,b2b_omp
              do i1=a1b_omp,b1b_omp
-                j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+                j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
                 htpsi(j,ib)=htpsi(j,ib) &
-                  +coef_lap(1,m)*( www(i1-m,i2,i3,p)+www(i1+m,i2,i3,p) ) &
-                  +coef_lap(2,m)*( www(i1,i2-m,i3,p)+www(i1,i2+m,i3,p) ) &
-                  +coef_lap(3,m)*( www(i1,i2,i3-m,p)+www(i1,i2,i3+m,p) )
+                  +coef_lap(1,m)*( www(i1-m,i2,i3,ib)+www(i1+m,i2,i3,ib) ) &
+                  +coef_lap(2,m)*( www(i1,i2-m,i3,ib)+www(i1,i2+m,i3,ib) ) &
+                  +coef_lap(3,m)*( www(i1,i2,i3-m,ib)+www(i1,i2,i3+m,ib) )
              end do
              end do
              end do
@@ -188,16 +187,15 @@ CONTAINS
           call bcset_1(1,nb,Md,3)
 !$OMP barrier
 
-          do ib=ib1,ib2
-             p=ib-ib1+1
+          do ib=1,nb
              do m=1,Md
                 d=-ggg(4)*coef_nab(2,m)
                 do i3=a3b_omp,b3b_omp
                 do i2=a2b_omp,b2b_omp
                 do i1=a1b_omp,b1b_omp
-                   j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+                   j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
                    htpsi(j,ib)=htpsi(j,ib) &
-                        -d*(www(i1,i2-m,i3,p)-www(i1,i2+m,i3,p))
+                        -d*(www(i1,i2-m,i3,ib)-www(i1,i2+m,i3,ib))
                 end do
                 end do
                 end do
@@ -238,16 +236,15 @@ CONTAINS
           call bcset_1(1,nb,Md,5)
 !$OMP barrier
 
-          do ib=ib1,ib2
-             p=ib-ib1+1
+          do ib=1,nb
              do m=1,Md
                 d=-ggg(5)*coef_nab(3,m)
                 do i3=a3b_omp,b3b_omp
                 do i2=a2b_omp,b2b_omp
                 do i1=a1b_omp,b1b_omp
-                   j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+                   j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
                    htpsi(j,ib)=htpsi(j,ib) &
-                        -d*(www(i1,i2,i3-m,p)-www(i1,i2,i3+m,p))
+                        -d*(www(i1,i2,i3-m,ib)-www(i1,i2,i3+m,ib))
                 end do
                 end do
                 end do
@@ -288,16 +285,15 @@ CONTAINS
           call bcset_1(1,nb,Md,1)
 !$OMP barrier
 
-          do ib=ib1,ib2
-             p=ib-ib1+1
+          do ib=1,nb
              do m=1,Md
                 d=-ggg(6)*coef_nab(1,m)
                 do i3=a3b_omp,b3b_omp
                 do i2=a2b_omp,b2b_omp
                 do i1=a1b_omp,b1b_omp
-                   j=n1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+                   j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
                    htpsi(j,ib)=htpsi(j,ib) &
-                        -d*(www(i1-m,i2,i3,p)-www(i1+m,i2,i3,p))
+                        -d*(www(i1-m,i2,i3,ib)-www(i1+m,i2,i3,ib))
                 end do
                 end do
                 end do

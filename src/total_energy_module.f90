@@ -62,16 +62,16 @@ CONTAINS
     real(8),intent(INOUT) :: Etot
     integer,optional,intent(IN) :: unit_in
     logical,optional,intent(IN) :: flag_ncol
-    integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,unit
+    integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,nn,unit
     real(8) :: s0(4),s1(4),uu,cnst
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
     real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_
-    real(8),parameter :: zero=0.d0
+    real(8),parameter :: zero=0.0d0
     real(8),allocatable :: work(:,:)
     real(8),allocatable :: work00(:,:),zw1(:,:,:),zw2(:,:,:)
 #else
-    complex(8),parameter :: zero=(0.d0,0.d0)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: work(:,:)
     complex(8),allocatable :: work00(:,:),zw1(:,:,:),zw2(:,:,:)
 #endif
@@ -109,12 +109,13 @@ CONTAINS
 
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
+          nn =nb2-nb1+1
 
 !---------------------------------------------------- kinetic
 
           work=zero
 !$OMP parallel
-          call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+          call op_kinetic( unk(:,nb1:nb2,k,s), work(:,1:nn), k )
 !$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -128,7 +129,7 @@ CONTAINS
 
           work=zero
 !$OMP parallel
-          call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
+          call op_localpot( unk(:,nb1:nb2,k,s), work(:,1:nn), s )
 !$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -145,7 +146,7 @@ CONTAINS
              work=zero
              work00=zero
 !$OMP parallel
-             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -161,7 +162,7 @@ CONTAINS
 
              work=zero
 !$OMP parallel
-             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -176,12 +177,14 @@ CONTAINS
 !---------------------------------------------------- fock
 
           work=zero
-          call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
+          call op_fock(k,s,n1,n2,n,n,unk(:,nb1:nb2,k,s),work)
+          do i=nb1,nb2
 #ifdef _DRSDFT_
-          esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV
+             esp0(i,k,s,4)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
 #else
-          esp0(n,k,s,4)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+             esp0(i,k,s,4)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
+          end do
 
        end do ! n
        end do ! k

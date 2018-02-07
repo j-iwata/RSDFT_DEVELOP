@@ -64,7 +64,7 @@ CONTAINS
 #else
     complex(8),intent(INOUT) :: unk(:,:,:,:)
 #endif
-    integer :: ipc
+    integer :: ipc,kk,ss
     type(time) :: tt
 
     if ( flag_noncollinear ) then
@@ -80,6 +80,9 @@ CONTAINS
     ipc        = ictrl_cg(2)
     iswitch_gs = ictrl_cg(3)
 
+    kk = k - id_bzsm(myrank_k)
+    ss = s - id_spin(myrank_s)
+
     call init_cg
 
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
@@ -87,7 +90,7 @@ CONTAINS
     if ( pp_kind == "USPP" ) then
 
        call conjugate_gradient_g &
-            ( n1,n2,MB,k,s,Ncg,unk(:,:,k,s),esp(:,k,s),res(:,k,s),iswitch_gs )
+            ( n1,n2,MB,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s),iswitch_gs )
 
     else
 
@@ -96,12 +99,12 @@ CONTAINS
        case( 1 )
 
           call conjugate_gradient_1 &
-               (n1,n2,MB,k,s,Ncg,unk(:,:,k,s),esp(:,k,s),res(:,k,s))
+               (n1,n2,MB,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s))
 
        case( 2 )
 
           call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-          call lobpcg( k,s,Ncg,iswitch_gs,unk(:,:,k,s),esp(:,k,s),res(:,k,s) )
+          call lobpcg( k,s,Ncg,iswitch_gs,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s) )
 
        end select
 

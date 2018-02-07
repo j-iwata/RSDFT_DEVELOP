@@ -19,8 +19,8 @@ CONTAINS
 
     implicit none
     integer,intent(IN) :: k,n1,n2
-    complex(8),intent(IN)  :: tpsi(n1:n2,1,2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,1,2)
+    complex(8),intent(IN)  :: tpsi(n1:,:,:)
+    complex(8),intent(INOUT) :: htpsi(n1:,:,:)
     complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
     include 'mpif.h'
     integer :: i,is,j,i1,i2,m,lma,ns,ierr,nreq,lma1,lma2
