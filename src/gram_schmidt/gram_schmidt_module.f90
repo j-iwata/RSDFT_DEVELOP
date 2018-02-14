@@ -4,9 +4,10 @@ MODULE gram_schmidt_module
   use gram_schmidt_t_module
  !use gram_schmidt_u_module
   use gram_schmidt_g_module
+  use gram_schmidt_ncol_module, only: gram_schmidt_ncol, flag_noncollinear
   use var_sys_parameter
   use io_tools_module
-  use wf_module, only: gather_b_wf
+  use wf_module, only: gather_b_wf, unk
   use watch_module
 
   implicit none
@@ -32,6 +33,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n0,n1,k,s
     type(time) :: t
+
+    if ( flag_noncollinear ) then
+       call gram_schmidt_ncol( n0,n1,k,unk )
+       return
+    end if
 
     call write_border( 1, " gram_schmidt(start)" )
 

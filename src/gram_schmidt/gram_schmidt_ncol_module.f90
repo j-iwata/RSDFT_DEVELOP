@@ -2,11 +2,13 @@ MODULE gram_schmidt_ncol_module
 
   use rgrid_module, only: dV
   use parallel_module, only: comm_grid, id_bzsm, myrank_k
+  use noncollinear_module, only: flag_noncollinear
 
   implicit none
 
   PRIVATE
   PUBLIC :: gram_schmidt_ncol
+  PUBLIC :: flag_noncollinear
 
 CONTAINS
 
