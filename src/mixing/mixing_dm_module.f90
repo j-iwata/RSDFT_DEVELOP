@@ -53,6 +53,7 @@ CONTAINS
     if ( disp_switch ) then
        write(*,*) "Max. # of successive data for mixing: mmix=",mmix
        write(*,*) "Ratio of the mixing of the latest data: beta=",beta
+       write(*,*) "Only density mixing is available"
     end if
 
     allocate( Xin(m,n,mmix) ) ; Xin=(0.0d0,0.0d0)
@@ -85,12 +86,12 @@ CONTAINS
     mmix0 = min( mmix_count, mmix )
 
     if ( mmix == 1 .or. mmix0 < mmix ) then
-       f(:,:) = Xin(:,:,mmix) + beta*( Xou(:,:,mmix)-Xin(:,:,mmix) )
        do i=2,mmix
           Xin(:,:,i-1)=Xin(:,:,i)
           Xou(:,:,i-1)=Xou(:,:,i)
        end do
-       Xin(:,:,mmix) = f(:,:)
+       Xin(:,:,mmix) = Xin(:,:,mmix) + beta*( Xou(:,:,mmix)-Xin(:,:,mmix) )
+       f(:,:) = Xin(:,:,mmix)
        if ( disp_switch ) then
           write(*,*) "simple mixing: mmix0/mmix=",mmix0,mmix
           do i=1,mmix

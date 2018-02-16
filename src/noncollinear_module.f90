@@ -245,13 +245,13 @@ CONTAINS
     allocate( zw(ml) ) ; zw=(0.0d0,0.0d0)
 
     do j=1,size(den_mat,3)
-    do i=1,size(den_mat,3)
+    do i=1,size(den_mat,2)
        call rsdft_allgatherv( den_mat(:,i,j), zw, ir_grid, id_grid, comm_grid )
        if ( rank == 0 ) write(unit) zw
     end do
     end do
     do j=1,size(vxc_mat,3)
-    do i=1,size(vxc_mat,3)
+    do i=1,size(vxc_mat,2)
        call rsdft_allgatherv( vxc_mat(:,i,j), zw, ir_grid, id_grid, comm_grid )
        if ( rank == 0 ) write(unit) zw
     end do
