@@ -308,6 +308,7 @@ CONTAINS
           E_exchange=0.0d0
           E_correlation=0.0d0
           call calc_hartree(ML_0,ML_1,MSP,rho)
+          call calc_spin_density( rho, Ntot )
        else
           call calc_density( Ntot )
           call calc_hartree(ML_0,ML_1,MSP,rho)

@@ -20,6 +20,7 @@ MODULE density_module
   PUBLIC :: calc_density
   PUBLIC :: get_range_density, construct_density_v2
   PUBLIC :: writeDensity
+  PUBLIC :: calc_spin_density
 
   real(8),allocatable,PUBLIC :: rho(:,:)
   real(8),allocatable,PUBLIC :: rho_in(:,:)
@@ -168,7 +169,7 @@ CONTAINS
 
     end select
 
-    if ( present(Ntot) ) call calc_spin_density( Ntot )
+    if ( present(Ntot) ) call calc_spin_density( rho, Ntot )
 
     call write_border( 1, " calc_density(end)" )
 
@@ -191,22 +192,20 @@ CONTAINS
   END SUBROUTINE reduce_and_gather
 
 
-  SUBROUTINE calc_spin_density( Ntot )
+  SUBROUTINE calc_spin_density( rho, Ntot )
     implicit none
+    real(8),intent(IN)  :: rho(:,:)
     real(8),intent(OUT) :: Ntot(:)
     integer :: ierr
     real(8) :: tmp(4)
     tmp(:) = 0.0d0
-    tmp(1) = sum( rho(:,1) )*dV ! MIZUHO-IR for cellopt
-!!$    tmp(1) = sum( rho(:,1) )*dV_RHO
-    if ( MS_RHO == 2 ) then
-       tmp(2) = sum( rho(:,MS_RHO) )*dV ! MIZUHO-IR for cellopt
-!!$       tmp(2) = sum( rho(:,MS_RHO) )*dV_RHO
-       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV ! MIZUHO-IR for cellopt
-!!$       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
-       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV ! MIZUHO-IR for cellopt
-!!$       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
+    tmp(1) = sum( rho(:,1) )
+    if ( size(rho,2) == 2 ) then
+       tmp(2) = sum( rho(:,2) )
+       tmp(3) = sum( rho(:,1)-rho(:,2) )
+       tmp(4) = sum( abs(rho(:,1)-rho(:,2)) )
     end if
+    tmp(:)=tmp(:)*dV
     call mpi_allreduce( tmp,Ntot,4,mpi_real8,mpi_sum,comm_grid,ierr)
   END SUBROUTINE calc_spin_density
 
