@@ -186,7 +186,7 @@ CONTAINS
           call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
-       call calc_with_rhoIN_total_energy( Echk )
+       call calc_with_rhoIN_total_energy( Echk, flag_ncol=flag_noncollinear )
 
        call conv_check( iter, res, flag_conv )
        call global_watch( .false., flag_end1 )

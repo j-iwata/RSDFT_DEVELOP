@@ -267,6 +267,10 @@ CONTAINS
 
     cnst = sum( occ(:,:,:) )*const_ps_local
 
+    if ( present(flag_ncol) ) then
+       if ( flag_ncol ) cnst = sum( occ(:,:,1) )*const_ps_local
+    end if
+
     select case( pp_kind )
     case( "USPP" )
 
@@ -385,14 +389,16 @@ CONTAINS
     Ehat_in = E_hartree
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
+    cnst=sum(occ)*const_ps_local
     if ( present(flag_ncol) ) then
        if ( flag_ncol ) then
           Eeig_tmp=sum( occ(:,:,1)*esp(:,:,1) )
+          cnst=sum(occ(:,:,1))*const_ps_local
        end if
     end if
     call get_E_vdw_grimme( Evdw )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
-         - 2*E_exchange_exx + const_ps_local*sum(occ) + Evdw - DCxc
+         - 2*E_exchange_exx + cnst + Evdw - DCxc
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 

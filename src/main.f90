@@ -14,7 +14,7 @@ PROGRAM Real_Space_DFT
   use density_module
   use ps_local_module, only: Vion
   use array_bound_module, only: ML_0,ML_1,MSP_0,MSP_1,MBZ_0,MBZ_1,MBZ,MSP,MB_0,MB_1,set_array_bound
-  use wf_module, only: occ, init_wf
+  use wf_module, only: occ, init_wf ,esp,unk
   use xc_module
   use localpot_module
   use hartree_variables
@@ -62,7 +62,7 @@ PROGRAM Real_Space_DFT
   use linear_response_module
   use kinetic_sym_ini_module
   use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
-                                ,init_noncollinear
+                                ,init_noncollinear, calc_xc_noncollinear
   use init_occ_electron_ncol_module
   use rtddft_sol_module
   use aa_module, only: init_aa
@@ -423,13 +423,17 @@ PROGRAM Real_Space_DFT
 ! but potentials are also recalculated with new rho.
 
   if ( flag_read_ncol ) then
+
+     call calc_xc_noncollinear( unk, occ(:,:,1), rho, Vxc )
+     call calc_hartree( ML_0,ML_1,MSP,rho )
+
   else
 
-  call calc_hartree(ML_0,ML_1,MSP,rho)
-  call calc_xc
-  do s=MSP_0,MSP_1
-     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-  end do
+     call calc_hartree(ML_0,ML_1,MSP,rho)
+     call calc_xc
+     do s=MSP_0,MSP_1
+        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+     end do
 
   end if
 
@@ -444,8 +448,8 @@ PROGRAM Real_Space_DFT
 
 ! --- total energy ---
 
-  call calc_with_rhoIN_total_energy( Ehwf )
-  call calc_total_energy( recalc_esp, Etot )
+  call calc_with_rhoIN_total_energy( Ehwf, flag_ncol=flag_noncollinear )
+  call calc_total_energy( recalc_esp, Etot, flag_ncol=flag_noncollinear )
 
 ! ---
 

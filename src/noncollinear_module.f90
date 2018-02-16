@@ -40,6 +40,7 @@ CONTAINS
     do i=1,2
        vxc_mat(:,i,i)=vxc(:,i)
     end do
+    call calc_dc_xc( vxc_mat, den_mat, DCxc )
   END SUBROUTINE init_noncollinear
 
 
@@ -283,6 +284,7 @@ CONTAINS
     flag_read = .false.
 
     if ( IC <= 0 ) return
+    if ( .not.flag_noncollinear ) return
 
     call write_border( 0, " io_read_noncollinear(start)" )
 
