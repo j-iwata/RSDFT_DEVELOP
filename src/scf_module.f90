@@ -35,6 +35,7 @@ MODULE scf_module
   use eigenvalues_module
   use rsdft_mpi_module
   use noncollinear_module
+  use phase_control_module
 
   implicit none
 
@@ -270,6 +271,8 @@ CONTAINS
        if ( flag_noncollinear ) exit
 
        end do ! s
+
+       call phase_control( ML_0, ML_1, unk )
 
        call calc_time_watch( etime_lap(2) )
        call init_time_watch( etime_lap(3) )

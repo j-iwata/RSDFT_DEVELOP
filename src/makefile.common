@@ -161,3 +161,4 @@ MODS1 = \
        force_local_sol_module.o\
        force_local_mol_module.o\
        ps_pcc_module.o\
+       phase_control_module.o\
