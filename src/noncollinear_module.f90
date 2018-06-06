@@ -47,7 +47,11 @@ CONTAINS
   SUBROUTINE calc_xc_noncollinear( psi, occ, rho_out, vxc_out )
 
     implicit none
+#ifdef _DRSDFT_
+    real(8),intent(IN) :: psi(:,:,:,:)
+#else
     complex(8),intent(IN) :: psi(:,:,:,:)
+#endif
     real(8),intent(IN) :: occ(:,:)
     real(8),optional,intent(OUT) :: rho_out(:,:)
     real(8),optional,intent(OUT) :: vxc_out(:,:)
@@ -138,7 +142,11 @@ CONTAINS
 
   SUBROUTINE calc_dm_noncollinear( psi, occ, dm )
     implicit none
+#ifdef _DRSDFT_
+    real(8),intent(IN) :: psi(:,:,:,:)
+#else
     complex(8),intent(IN) :: psi(:,:,:,:)
+#endif
     real(8),intent(IN) :: occ(:,:)
     complex(8),intent(OUT) :: dm(:,:,:)
     integer :: n,k,i,j,mb,mk
@@ -153,9 +161,11 @@ CONTAINS
 
        do k=1,mk
        do n=1,mb
-
+#ifdef _DRSDFT_
+          dm(:,i,j) = dm(:,i,j) + occ(n,k)*psi(:,n,k,i)*psi(:,n,k,j)
+#else
           dm(:,i,j) = dm(:,i,j) + occ(n,k)*conjg( psi(:,n,k,i) )*psi(:,n,k,j)
-
+#endif
        end do
        end do
 

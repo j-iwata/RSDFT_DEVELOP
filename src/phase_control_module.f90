@@ -12,7 +12,11 @@ CONTAINS
   SUBROUTINE phase_control( m0, m1, unk )
     implicit none
     integer,intent(IN) :: m0,m1
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(:,:,:,:)
+#else
     complex(8),intent(INOUT) :: unk(:,:,:,:)
+#endif
     integer :: s,k,n,ierr
     real(8) :: a,b,r,co,si
     complex(8) :: z,p
