@@ -77,7 +77,7 @@ CONTAINS
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3,timer_counter
     integer :: np1,np2,np3,nrlma
-    logical,allocatable :: lcheck_tmp1(:,:)
+    logical,allocatable :: lcheck_tmp1(:,:), lcheck_tmp2(:,:)
     logical :: disp_sw
 
     call write_border( 0, " prep_ps_nloc2(start)" )
@@ -404,7 +404,8 @@ CONTAINS
     end do
     MMJJ = maxval( MJJ_tmp )
 
-    allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
+    allocate( lcheck_tmp1(0:np_grid-1,Mlma) ) ; lcheck_tmp1(:,:)=.false.
+    allocate( lcheck_tmp2(0:np_grid-1,Mlma) ) ; lcheck_tmp2(:,:)=.false.
     lma=0
     do a=1,Natom
        ik=ki_atom(a)
@@ -414,12 +415,14 @@ CONTAINS
           do m=1,2*L+1
              lma=lma+1
              if ( j > 0 ) then
-                lcheck_tmp1(lma,myrank_g)=.true.
+                lcheck_tmp2(myrank_g,lma)=.true.
              end if
           end do
        end do
     end do
-    call rsdft_allgather( lcheck_tmp1(:,myrank_g), lcheck_tmp1, comm_grid )
+    call MPI_ALLREDUCE( lcheck_tmp2, lcheck_tmp1, size(lcheck_tmp1), &
+                        MPI_LOGICAL, MPI_LOR, comm_grid, ierr )
+    deallocate( lcheck_tmp2 )
 
     call watcha( timer_counter )
 
@@ -460,7 +463,7 @@ CONTAINS
 
        icheck_tmp1(:)=0
        do n=0,np_grid-1
-          if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
+          if ( lcheck_tmp1(n,lma) ) icheck_tmp1(n) = 1
        end do
        icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
