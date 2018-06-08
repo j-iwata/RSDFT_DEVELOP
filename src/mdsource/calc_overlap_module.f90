@@ -22,15 +22,17 @@ CONTAINS
     real(8),intent(OUT) :: c(n,n)
     integer :: nme,i,j,k,ierr
     real(8),allocatable :: s(:),r(:)
+    real(8) :: ttmp(2),tttt(2,9)
+
+    tttt=0.0d0
+    !call watchb( ttmp )
 
     nblk0 = n
     nblk1 = 4
 
-    !call watcht(myrank==0,"",0)
-
     call calc_overlap_sub(m,n,nblk0,a,b,c)
 
-    !call watcht(myrank==0,"calc_overlap(1)",1)
+    !call watchb( ttmp, tttt(:,1) )
 
     nme = n*(n+1)/2
     allocate( s(nme),r(nme) )
@@ -42,12 +44,12 @@ CONTAINS
     end do
     end do
 
-    !call watcht(myrank==0,"calc_overlap(2)",1)
+    !call watchb( ttmp, tttt(:,2) )
 
     !call mpi_allreduce(MPI_IN_PLACE,s,nme,mpi_real8,mpi_sum,comm_grid,ierr)
     call rsdft_allreduce_sum( s, comm_grid )
 
-    !call watcht(myrank==0,"calc_overlap(3)",1)
+    !call watchb( ttmp, tttt(:,3) )
 
     do j=1,n
     do i=j,n
@@ -58,7 +60,13 @@ CONTAINS
 
     deallocate( r,s )
 
-    !call watcht(myrank==0,"calc_overlap(4)",1)
+    !call watchb( ttmp, tttt(:,4) )
+
+!    if ( myrank == 0 ) then
+!       do i=1,4
+!          write(*,'(4x,"time_calc_overlap(",i1,")",2f10.5)') i, tttt(:,i)
+!       end do
+!    end if
 
   END SUBROUTINE calc_overlap
 

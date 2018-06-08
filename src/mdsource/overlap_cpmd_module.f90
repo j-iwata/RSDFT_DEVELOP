@@ -27,7 +27,7 @@ CONTAINS
     integer :: mm1,mm2,ierr,m1,m2
     real(8) :: memax,mem,nop_tot,nop_max,nop_min,nop_0
     real(8) :: nop(13),ct(13),et(13)
-    real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
+    real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett,ttmp(2),tttt(2,9)
     real(8) :: tmp1
     real(8),parameter :: zero=0.d0
 !    integer,allocatable :: ir(:),id(:)
@@ -35,6 +35,9 @@ CONTAINS
 !    integer,allocatable :: ir_loc(:),id_loc(:)
     integer :: ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
+
+    tttt=0.0d0
+    !call watchb( ttmp )
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -56,10 +59,11 @@ CONTAINS
 !    end if
 
     !call watcht(myrank==0,"overlap(2-1)",1)
+    !call watchb( ttmp, tttt(:,1) )
 
     call dsyrk('L','t',MBT,ML0,-dV,psi_n(n1,1,k,s),ML0,zero,sig,MBC)
 
-    !call watcht(myrank==0,"overlap(2-2)",1)
+    !call watchb( ttmp, tttt(:,2) )
 
     n = (MBC*(MBC+1))/2
     if ( .not.allocated(w1) ) then
@@ -73,8 +77,12 @@ CONTAINS
     end do
     end do
 
+    !call watchb( ttmp, tttt(:,3) )
+
     !call mpi_allreduce(MPI_IN_PLACE,w1,n,mpi_real8,mpi_sum,comm_grid,ierr)
     call rsdft_allreduce_sum( w1(1:n), comm_grid )
+
+    !call watchb( ttmp, tttt(:,4) )
 
     do j=1,MBC
     do i=j,MBC
@@ -83,7 +91,7 @@ CONTAINS
     end do
     end do
 
-    !call watcht(myrank==0,"overlap(2-3)",1)
+    !call watchb( ttmp, tttt(:,5) )
 
 !$OMP parallel do
     do j=1  ,MBC
@@ -96,9 +104,15 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    !call watcht(myrank==0,"overlap(2-4)",1)
+    !call watchb( ttmp, tttt(:,6) )
 
 !    if ( np_band > 1 ) deallocate( id,ir )
+
+!    if ( myrank == 0 ) then
+!       do i=1,6
+!          write(*,'(2x,"time_overlap2(",i1,")",2f10.5)') i,tttt(:,i)
+!       end do
+!    end if
 
     return
 
@@ -113,7 +127,7 @@ CONTAINS
     integer :: mm1,mm2,ierr,m1,m2
     real(8) :: memax,mem,nop_tot,nop_max,nop_min,nop_0
     real(8) :: nop(13),ct(13),et(13)
-    real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
+    real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett,ttmp(2),tttt(2,9)
     real(8) :: tmp1
     real(8),parameter :: zero=0.d0
     integer,allocatable :: ir(:),id(:)
@@ -122,14 +136,15 @@ CONTAINS
     integer ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
 
+    tttt=0.0d0
+    !call watchb( ttmp )
+
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
     m1    = id_band_cpmd(myrank_b)+1
     m2    = id_band_cpmd(myrank_b)+ir_band_cpmd(myrank_b)
-
-    !call watcht(myrank==0,"",0)
 
     if ( np_band > 1 ) then
        allocate( ir(0:np_band-1) ) ; ir=0
@@ -144,13 +159,13 @@ CONTAINS
 !            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
-    !call watcht(myrank==0,"overlap(4-1)",1)
+    !call watchb( ttmp, tttt(:,1) )
 
 #ifdef _DRSDFT_
     call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_n(n1,1,k,s),-dV,tau)
 #endif
 
-    !call watcht(myrank==0,"overlap(4-2)",1)
+    !call watchb( ttmp, tttt(:,2) )
 
 !$OMP parallel do
     do j=1,MBC
@@ -163,9 +178,15 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    !call watcht(myrank==0,"overlap(4-3)",1)
+    !call watchb( ttmp, tttt(:,3) )
 
     if ( np_band > 1 ) deallocate( id,ir )
+
+!    if ( myrank == 0 ) then
+!       do i=1,3
+!          write(*,'(2x,"time_overlap4(",i1,")",2f10.5)') i,tttt(:,i)
+!       end do
+!    end if
 
     return
 
@@ -180,7 +201,7 @@ CONTAINS
     integer :: mm1,mm2,ierr,m1,m2
     real(8) :: memax,mem,nop_tot,nop_max,nop_min,nop_0
     real(8) :: nop(13),ct(13),et(13)
-    real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
+    real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett,ttmp(2),tttt(2,9)
     real(8) :: tmp1
     real(8),parameter :: zero=0.d0
     integer,allocatable :: ir(:),id(:)
@@ -189,14 +210,15 @@ CONTAINS
     integer ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
 
+    tttt=0.0d0
+    !call watchb( ttmp )
+
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
     ML0   = n2-n1+1
     mrnk  = id_class(myrank,4)
     m1    = id_band_cpmd(myrank_b)+1
     m2    = id_band_cpmd(myrank_b)+ir_band_cpmd(myrank_b)
-
-    !call watcht(myrank==0,"",0)
 
     if ( np_band > 1 ) then
        allocate( ir(0:np_band-1) ) ; ir=0
@@ -211,13 +233,13 @@ CONTAINS
 !            ,psi_v(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
     end if
 
-    !call watcht(myrank==0,"overlap(5-1)",1)
+    !call watchb( ttmp, tttt(:,1) )
 
 #ifdef _DRSDFT_
     call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_v(n1,1,k,s),dV,wrk)
 #endif
 
-    !call watcht(myrank==0,"overlap(5-2)",1)
+    !call watchb( ttmp, tttt(:,2) )
 
 !$OMP parallel do
     do j=1,MBC
@@ -229,9 +251,15 @@ CONTAINS
     end do
 !$OMP end parallel do 
 
-    !call watcht(myrank==0,"overlap(5-3)",1)
+    !call watchb( ttmp, tttt(:,3) )
 
     if ( np_band > 1 ) deallocate( id,ir )
+
+!    if ( myrank == 0 ) then
+!       do i=1,3
+!          write(*,'(2x,"time_overlap5(",i1,")",2f10.5)') i, tttt(:,i)
+!       end do
+!    end if
 
     return
 
