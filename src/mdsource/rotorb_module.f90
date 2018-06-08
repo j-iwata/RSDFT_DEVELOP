@@ -38,10 +38,10 @@ CONTAINS
 
     !call watcht(myrank==0,"",0)
 
-    if ( MBC < nprocs ) then
-       write(*,*) "MBC<nprocs!!!",MBC,nprocs,myrank
-       stop
-    end if
+!    if ( MBC < nprocs ) then
+!       write(*,*) "MBC<nprocs!!!",MBC,nprocs,myrank
+!       stop
+!    end if
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -101,7 +101,10 @@ CONTAINS
 
        !call watcht(myrank==0,"rotorb(3)",1)
 
-       call dgemm('n','n',MBT,li,MBT,hf,tau,MBC,tau(1,ls),MBC,hf,sig(1,ls),MBC)
+       if ( ls <= le ) then
+          call dgemm &
+               ('n','n',MBT,li,MBT,hf,tau,MBC,tau(1,ls),MBC,hf,sig(1,ls),MBC)
+       end if
 
        !call watcht(myrank==0,"rotorb(5)",1)
 
@@ -122,8 +125,10 @@ CONTAINS
 !          call mpi_allgatherv(wrk(1,ls),ir_i(myrank),mpi_real8 &
 !               ,wrk,ir_i,id_i,mpi_real8,mpi_comm_world,ierr)
 
-          call dgemm &
+          if ( ls <= le ) then
+             call dgemm &
                ('n','n',MBT,li,MBT,hm,wrk,MBC,wrk(1,ls),MBC,on,gamn(1,ls),MBC)
+          end if
 
           error0=0.0d0
           do j=ls,le

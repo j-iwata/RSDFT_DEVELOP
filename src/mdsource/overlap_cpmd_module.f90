@@ -30,9 +30,9 @@ CONTAINS
     real(8) :: ctime0,ctime1,etime0,etime1,ctt,ett
     real(8) :: tmp1
     real(8),parameter :: zero=0.d0
-    integer,allocatable :: ir(:),id(:)
+!    integer,allocatable :: ir(:),id(:)
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
-    integer,allocatable :: ir_loc(:),id_loc(:)
+!    integer,allocatable :: ir_loc(:),id_loc(:)
     integer :: ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
 
@@ -45,15 +45,15 @@ CONTAINS
 
     !call watcht(myrank==0,"",0)
 
-    if ( np_band > 1 ) then
-       allocate( ir(0:np_band-1) ) ; ir=0
-       allocate( id(0:np_band-1) ) ; id=0
-       ir(0:np_band-1)=ir_band_cpmd(0:np_band-1)*ML0
-       id(0:np_band-1)=id_band_cpmd(0:np_band-1)*ML0
-       call rsdft_allgatherv(psi_n(:,m1:m2,k,s),psi_n(:,:,k,s),ir,id,comm_band)
-!       call mpi_allgatherv(psi_n(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
-!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
-    end if
+!    if ( np_band > 1 ) then
+!       allocate( ir(0:np_band-1) ) ; ir=0
+!       allocate( id(0:np_band-1) ) ; id=0
+!       ir(0:np_band-1)=ir_band_cpmd(0:np_band-1)*ML0
+!       id(0:np_band-1)=id_band_cpmd(0:np_band-1)*ML0
+!       call rsdft_allgatherv(psi_n(:,m1:m2,k,s),psi_n(:,:,k,s),ir,id,comm_band)
+!!       call mpi_allgatherv(psi_n(n1,MB_0_CPMD,k,s),ir(mrnk),MPI_REAL8 &
+!!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
+!    end if
 
     !call watcht(myrank==0,"overlap(2-1)",1)
 
@@ -98,7 +98,7 @@ CONTAINS
 
     !call watcht(myrank==0,"overlap(2-4)",1)
 
-    if ( np_band > 1 ) deallocate( id,ir )
+!    if ( np_band > 1 ) deallocate( id,ir )
 
     return
 
