@@ -46,8 +46,6 @@ CONTAINS
     m1    = id_band_cpmd(myrank_b)+1
     m2    = id_band_cpmd(myrank_b)+ir_band_cpmd(myrank_b)
 
-    !call watcht(myrank==0,"",0)
-
 !    if ( np_band > 1 ) then
 !       allocate( ir(0:np_band-1) ) ; ir=0
 !       allocate( id(0:np_band-1) ) ; id=0
@@ -58,7 +56,6 @@ CONTAINS
 !!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
 !    end if
 
-    !call watcht(myrank==0,"overlap(2-1)",1)
     !call watchb( ttmp, tttt(:,1) )
 
     call dsyrk('L','t',MBT,ML0,-dV,psi_n(n1,1,k,s),ML0,zero,sig,MBC)

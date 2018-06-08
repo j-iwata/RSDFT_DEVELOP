@@ -38,7 +38,7 @@ subroutine rotorb2
      call dgemm('n','n',ML0,MB0,MBT,om,unk(n1,1,k,s),ML0 &
           ,wrk(1,MB_0_CPMD),MBC,on,psi_v(n1,MB_0_CPMD,k,s),ML0)
 
-     call watchb( ttmp, tttt(:,2) )
+     !call watchb( ttmp, tttt(:,2) )
 
   enddo ! k
   enddo ! s
