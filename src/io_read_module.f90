@@ -175,7 +175,7 @@ CONTAINS
          ML2_tmp /= ML2 .or. ML3_tmp /= ML3 ) stop "stop@simple_wf_io_read"
 
     if ( myrank == 0 ) then
-       read(3) LL_tmp(:,:)
+       read(3) LL_tmp(1:3,1:ML)
     end if
     call mpi_bcast(LL_tmp,3*ML,mpi_integer,0,mpi_comm_world,ierr)
 
