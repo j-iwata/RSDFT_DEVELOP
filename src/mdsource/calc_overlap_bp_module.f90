@@ -7,7 +7,7 @@ module calc_overlap_bp_module
 
   private
   public :: calc_overlap_bp
-  public :: mochikae, mochikae_back
+  public :: mochikae_matrix
 
   integer :: nblk0, nblk1
 
@@ -116,6 +116,12 @@ contains
     do j=1,nb
        do i=j+1,nb
           if ( ab(i,j) == 0.0d0 ) ab(i,j)=ab(j,i)
+       end do
+    end do
+
+    do j=1,nb
+       do i=1,j-1
+          ab(i,j)=0.0d0
        end do
     end do
 
@@ -287,6 +293,80 @@ contains
     deallocate( g )
 
   end subroutine mochikae_back
+
+
+  subroutine mochikae_matrix( a, nblk )
+    implicit none
+    real(8),intent(inout) :: a(:,:)
+    integer,intent(in) :: nblk
+    integer :: i,nb, blk_size, i0,i1,j0,j1,ib,irank_b
+    real(8),allocatable :: b(:,:), c(:,:)
+
+    nb = size( a, 1 )
+
+    allocate( b(nb,nb) ); b=0.0d0
+    allocate( c(nb,nb) ); c=0.0d0
+
+    call fill_matrix( a )
+
+    blk_size = nb/(nblk*nprocs_b)
+
+    j0 = 1
+    j1 = blk_size
+
+    do irank_b=0,nprocs_b-1
+
+       do ib=1,nb,nb/nblk
+
+          i0 = ib + irank_b*blk_size
+          i1 = i0 + blk_size - 1
+
+          do i=1,blk_size
+             b(i0+i-1,j0+i-1)=1.0d0
+          end do
+
+          j0 = j0 + blk_size
+          j1 = j1 + blk_size
+
+       end do
+
+    end do ! irank
+
+    a = matmul( a, b )
+    c = transpose( b )
+    b = matmul( c, a )
+    a = b
+
+    deallocate( c )
+    deallocate( b )
+
+    call cut_matrix( a )
+
+  end subroutine mochikae_matrix
+
+
+  subroutine fill_matrix( a )
+    implicit none
+    real(8),intent(inout) :: a(:,:)
+    integer :: i,j
+    do j=1,size(a,1)
+       do i=1,j-1
+          a(i,j)=a(j,i)
+       end do
+    end do
+  end subroutine fill_matrix
+
+
+  subroutine cut_matrix( a )
+    implicit none
+    real(8),intent(inout) :: a(:,:)
+    integer :: i,j
+    do j=1,size(a,1)
+       do i=1,j-1
+          a(i,j)=0.0d0
+       end do
+    end do
+  end subroutine cut_matrix
 
 
 end module calc_overlap_bp_module

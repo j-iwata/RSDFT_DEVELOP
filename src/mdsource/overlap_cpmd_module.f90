@@ -65,11 +65,8 @@ CONTAINS
 !
 ! --- (2)
 !
-    call mochikae( psi_n(:,1:MBT,k,s), 2 )
-    call calc_overlap_bp( MBT, psi_n(:,1:m2-m1+1,k,s), psi_n(:,1:m2-m1+1,k,s), -dV, sig )
-!    call calc_overlap_bp( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
-    call mochikae_back( psi_n(:,1:MBT,k,s), 2 )
-    call rsdft_allreduce_sum( psi_n(:,:,k,s), comm_band )
+    call calc_overlap_bp( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
+    call mochikae_matrix( sig, 2 )
 !
 ! -------
 
@@ -179,16 +176,9 @@ CONTAINS
 !
 ! --- (2)
 !
-    call mochikae(   unk(:,1:MBT,k,s), 2 )
-    call mochikae( psi_n(:,1:MBT,k,s), 2 )
-    call calc_overlap_bp( MBT, unk(:,1:m2-m1+1,k,s), psi_n(:,1:m2-m1+1,k,s), -dV, tau )
-!    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
+    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
+    call mochikae_matrix( tau, 2 )
     call rsdft_allreduce_sum( tau, comm_grid )
-    call mochikae_back( unk(:,1:MBT,k,s), 2 )
-    call rsdft_allreduce_sum( unk(:,:,k,s), comm_band )
-    call mochikae_back( psi_n(:,1:MBT,k,s), 2 )
-    call rsdft_allreduce_sum( psi_n(:,:,k,s), comm_band )
-1 continue
 !
 ! -------
 !
@@ -272,15 +262,9 @@ CONTAINS
 !
 ! --- (2)
 !
-    call mochikae(   unk(:,1:MBT,k,s), 2 )
-    call mochikae( psi_v(:,1:MBT,k,s), 2 )
-    call calc_overlap_bp( MBT, unk(:,1:m2-m1+1,k,s), psi_v(:,1:m2-m1+1,k,s), dV, wrk )
-!    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
+    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
+    call mochikae_matrix( wrk, 2 )
     call rsdft_allreduce_sum( wrk, comm_grid )
-    call mochikae_back( unk(:,1:MBT,k,s), 2 )
-    call rsdft_allreduce_sum( unk(:,:,k,s), comm_band )
-    call mochikae_back( psi_v(:,1:MBT,k,s), 2 )
-    call rsdft_allreduce_sum( psi_v(:,:,k,s), comm_band )
 !
 ! -------
 #endif
