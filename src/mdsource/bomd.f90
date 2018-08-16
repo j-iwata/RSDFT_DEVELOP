@@ -221,7 +221,7 @@ SUBROUTINE bomd
 
         call watch(ctime_cpmd(3),etime_cpmd(3))
 
-        call getforce_cpmd( ltime )
+        call getforce_cpmd( ltime ) ! band-parallel WFs(unk) are gathered here
 
         call watch(ctime_cpmd(4),etime_cpmd(4))
 
