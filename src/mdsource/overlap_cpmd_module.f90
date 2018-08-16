@@ -7,6 +7,7 @@ MODULE overlap_cpmd_module
        ,ir_band_cpmd,id_band_cpmd,MB_0_CPMD,MB_1_CPMD
   use watch_module
   use calc_overlap_module
+  use calc_overlap_bp_module
   use rsdft_mpi_module
 
   implicit none
@@ -58,7 +59,18 @@ CONTAINS
 
     !call watchb( ttmp, tttt(:,1) )
 
-    call dsyrk('L','t',MBT,ML0,-dV,psi_n(n1,1,k,s),ML0,zero,sig,MBC)
+! --- (1)
+!
+!    call dsyrk('L','t',MBT,ML0,-dV,psi_n(n1,1,k,s),ML0,zero,sig,MBC)
+!
+! --- (2)
+!
+    call mochikae( psi_n(:,1:MBT,k,s), 2 )
+    call calc_overlap_bp( MBT, psi_n(:,1:m2-m1+1,k,s), psi_n(:,1:m2-m1+1,k,s), -dV, sig )
+    call mochikae_back( psi_n(:,1:MBT,k,s), 2 )
+    call rsdft_allreduce_sum( psi_n(:,:,k,s), comm_band )
+!
+! -------
 
     !call watchb( ttmp, tttt(:,2) )
 
