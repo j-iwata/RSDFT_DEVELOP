@@ -67,6 +67,7 @@ CONTAINS
 !
     call mochikae( psi_n(:,1:MBT,k,s), 2 )
     call calc_overlap_bp( MBT, psi_n(:,1:m2-m1+1,k,s), psi_n(:,1:m2-m1+1,k,s), -dV, sig )
+!    call calc_overlap_bp( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
     call mochikae_back( psi_n(:,1:MBT,k,s), 2 )
     call rsdft_allreduce_sum( psi_n(:,:,k,s), comm_band )
 !
@@ -171,7 +172,26 @@ CONTAINS
     !call watchb( ttmp, tttt(:,1) )
 
 #ifdef _DRSDFT_
-    call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_n(n1,1,k,s),-dV,tau)
+!
+! --- (1)
+!
+!    call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_n(n1,1,k,s),-dV,tau)
+!
+! --- (2)
+!
+    call mochikae(   unk(:,1:MBT,k,s), 2 )
+    call mochikae( psi_n(:,1:MBT,k,s), 2 )
+    call calc_overlap_bp( MBT, unk(:,1:m2-m1+1,k,s), psi_n(:,1:m2-m1+1,k,s), -dV, tau )
+!    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
+    call rsdft_allreduce_sum( tau, comm_grid )
+    call mochikae_back( unk(:,1:MBT,k,s), 2 )
+    call rsdft_allreduce_sum( unk(:,:,k,s), comm_band )
+    call mochikae_back( psi_n(:,1:MBT,k,s), 2 )
+    call rsdft_allreduce_sum( psi_n(:,:,k,s), comm_band )
+1 continue
+!
+! -------
+!
 #endif
 
     !call watchb( ttmp, tttt(:,2) )
@@ -245,7 +265,24 @@ CONTAINS
     !call watchb( ttmp, tttt(:,1) )
 
 #ifdef _DRSDFT_
-    call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_v(n1,1,k,s),dV,wrk)
+!
+! --- (1)
+!
+!    call calc_overlap(ML0,MBT,unk(n1,1,k,s),psi_v(n1,1,k,s),dV,wrk)
+!
+! --- (2)
+!
+    call mochikae(   unk(:,1:MBT,k,s), 2 )
+    call mochikae( psi_v(:,1:MBT,k,s), 2 )
+    call calc_overlap_bp( MBT, unk(:,1:m2-m1+1,k,s), psi_v(:,1:m2-m1+1,k,s), dV, wrk )
+!    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
+    call rsdft_allreduce_sum( wrk, comm_grid )
+    call mochikae_back( unk(:,1:MBT,k,s), 2 )
+    call rsdft_allreduce_sum( unk(:,:,k,s), comm_band )
+    call mochikae_back( psi_v(:,1:MBT,k,s), 2 )
+    call rsdft_allreduce_sum( psi_v(:,:,k,s), comm_band )
+!
+! -------
 #endif
 
     !call watchb( ttmp, tttt(:,2) )
