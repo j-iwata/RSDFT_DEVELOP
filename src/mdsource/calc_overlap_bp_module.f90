@@ -1,7 +1,9 @@
 module calc_overlap_bp_module
 
-  use parallel_module, only: nprocs_b, myrank_b, comm_band
+  use parallel_module, only: nprocs_b, myrank_b, comm_band, myrank
   use rsdft_mpi_module
+  use calc_overlap_module, only: calc_overlap_no_mpi
+  use watch_module
 
   implicit none
 
@@ -23,8 +25,8 @@ contains
     integer :: m,n,nblk,blk_size
     integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1
     integer :: irank, jrank, istep, nstep
-    real(8),allocatable :: sendbuf(:,:), recvbuf(:,:)
-    integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags
+    real(8),allocatable :: sendbuf(:,:), recvbuf(:,:), ab_blk(:,:)
+    integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
     logical,allocatable :: ttt(:,:)
 
     call write_border( 1, "calc_overlap_bp(start)" )
@@ -44,6 +46,7 @@ contains
 
     allocate( sendbuf(m,blk_size) ); sendbuf=0.0d0
     allocate( recvbuf(m,blk_size) ); recvbuf=0.0d0
+    allocate( ab_blk(blk_size,blk_size) ); ab_blk=0.0d0
 
     do iblk=1,nblk
 
@@ -67,8 +70,13 @@ contains
 
        do istep=1,nprocs_b
 
-          call MPI_Irecv( recvbuf, m*blk_size, MPI_REAL8, jrank, itags, comm_band, ireq(1), ierr )
-          call MPI_Isend( sendbuf, m*blk_size, MPI_REAL8, irank, itags, comm_band, ireq(2), ierr )
+          if ( istep < nprocs_b ) then
+             call MPI_Irecv( recvbuf, m*blk_size, MPI_REAL8, jrank, itags, comm_band, ireq(1), ierr )
+             call MPI_Isend( sendbuf, m*blk_size, MPI_REAL8, irank, itags, comm_band, ireq(2), ierr )
+             nreq=2
+          else if ( istep == nprocs_b ) then
+             nreq=0
+          end if
 
           i0 = i0 + blk_size
           if ( i0 > b1 ) then
@@ -84,15 +92,39 @@ contains
           end if
           i1 = i0 + blk_size - 1
 
-          do j=j0,j1
-             do i=i0,i1
-                ab(i,j) = sum( sendbuf(:,i-i0+1)*b(:,j-j0+k0) )
+! --- (1)
+!
+!          do j=j0,j1
+!             do i=i0,i1
+!                ab(i,j) = sum( sendbuf(:,i-i0+1)*b(:,j-j0+k0) )*alpha
+!             end do
+!          end do
+!
+! --- (2)
+!
+          if ( istep == 1 ) then
+
+             call calc_overlap_no_mpi( sendbuf, b(:,k0:k1), alpha, ab_blk )
+             do j=j0,j1
+                do i=i0,i1
+                   if ( i >= j ) ab(i,j)=ab_blk(i-i0+1,j-j0+1)
+                end do
              end do
-          end do
 
-          call MPI_Waitall( 2, ireq, istatus, ierr )
+          else
 
-          sendbuf(:,:) = recvbuf(:,:)
+             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
+!             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
+!             ab(i0:i1,j0:j1) = ab_blk(:,:)
+
+          end if
+!
+! -------
+
+          if ( nreq == 2 ) then
+             call MPI_Waitall( 2, ireq, istatus, ierr )
+             sendbuf(:,:) = recvbuf(:,:)
+          end if
 
        end do ! istep
 
@@ -102,11 +134,15 @@ contains
           k0 = blk_size + 1
           j0 = myrank_b*blk_size + 1
           j1 = j0 + blk_size - 1
-          do j=j0,j1
-             do i=i0,i1
-                ab(i,j) = sum( a(:,i-i0+k0)*b(:,j-j0+1) )
-             end do
-          end do
+! --- (1)
+!          do j=j0,j1
+!             do i=i0,i1
+!                ab(i,j) = sum( a(:,i-i0+k0)*b(:,j-j0+1) )*alpha
+!             end do
+!          end do
+! --- (2)
+          call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab(i0,j0),nb)
+! -------
        end if
 
     end do ! iblk
@@ -125,8 +161,9 @@ contains
        end do
     end do
 
-    ab=ab*alpha
+    !ab=ab*alpha
 
+    deallocate( ab_blk  )
     deallocate( recvbuf )
     deallocate( sendbuf )
 
@@ -301,13 +338,22 @@ contains
     integer,intent(in) :: nblk
     integer :: i,nb, blk_size, i0,i1,j0,j1,ib,irank_b
     real(8),allocatable :: b(:,:), c(:,:)
+    real(8) :: ttmp(2),tttt(2,9)
+
+    !call write_border( 1, "mochikae_matrix(start)" )
+
+    !call watchb( ttmp ); tttt=0.0d0
 
     nb = size( a, 1 )
 
     allocate( b(nb,nb) ); b=0.0d0
     allocate( c(nb,nb) ); c=0.0d0
 
+    !call watchb( ttmp, tttt(:,1) )
+
     call fill_matrix( a )
+
+    !call watchb( ttmp, tttt(:,2) )
 
     blk_size = nb/(nblk*nprocs_b)
 
@@ -332,15 +378,31 @@ contains
 
     end do ! irank
 
-    a = matmul( a, b )
-    c = transpose( b )
-    b = matmul( c, a )
-    a = b
+    !call watchb( ttmp, tttt(:,3) )
+
+    !a = matmul( a, b )
+    !c = transpose( b )
+    !b = matmul( c, a )
+    !a = b
+    call DGEMM('N','N',nb,nb,nb,1.0d0,a,nb,b,nb,0.0d0,c,nb)
+    call DGEMM('T','N',nb,nb,nb,1.0d0,b,nb,c,nb,0.0d0,a,nb)
+
+    !call watchb( ttmp, tttt(:,4) )
 
     deallocate( c )
     deallocate( b )
 
     call cut_matrix( a )
+
+    !call watchb( ttmp, tttt(:,5) )
+
+    !if ( myrank == 0 ) then
+    !   do i=1,5
+    !      write(*,'(4x,"time_mochikae_matrix(",i1,")",2f10.5)') i, tttt(:,i)
+    !   end do
+    !end if
+
+    !call write_border( 1, "mochikae_matrix(end)" )
 
   end subroutine mochikae_matrix
 

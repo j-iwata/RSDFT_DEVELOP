@@ -8,6 +8,7 @@ MODULE calc_overlap_module
 
   PRIVATE
   PUBLIC :: calc_overlap
+  PUBLIC :: calc_overlap_no_mpi
 
   integer :: nblk0
   integer :: nblk1
@@ -118,5 +119,37 @@ CONTAINS
     end do ! i0
 
   END SUBROUTINE calc_overlap_sub
+
+
+  SUBROUTINE calc_overlap_no_mpi( a, b, dv, c )
+    implicit none
+    real(8),intent(IN)  :: a(:,:),b(:,:),dv
+    real(8),intent(OUT) :: c(:,:)
+    real(8) :: ttmp(2),tttt(2,9)
+    integer :: m,n
+
+    tttt=0.0d0
+    !call watchb( ttmp )
+
+    m = size( a, 1 )
+    n = size( a, 2 )
+
+    nblk0 = n
+    nblk1 = 4
+
+    call calc_overlap_sub( m, n, nblk0, a, b, c )
+
+    c=c*dv
+
+    !call watchb( ttmp, tttt(:,1) )
+
+!    if ( myrank == 0 ) then
+!       do i=1,1
+!          write(*,'(4x,"time_calc_overlap_no_mpi(",i1,")",2f10.5)') i, tttt(:,i)
+!       end do
+!    end if
+
+  END SUBROUTINE calc_overlap_no_mpi
+
 
 END MODULE calc_overlap_module
