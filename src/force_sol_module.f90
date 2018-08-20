@@ -9,6 +9,7 @@ MODULE force_sol_module
   use atom_module, only: aa_atom
   use vdw_grimme_module, only: calc_F_vdw_grimme
   use nonlocal_module, only: calc_force_nonlocal
+  use parallel_module, only: myrank
 
   implicit none
 
