@@ -28,8 +28,11 @@ contains
     real(8),allocatable :: sendbuf(:,:), recvbuf(:,:), ab_blk(:,:)
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
     logical,allocatable :: ttt(:,:)
+    real(8) :: ttmp(2),tttt(2,13)
 
     call write_border( 1, "calc_overlap_bp(start)" )
+
+    !call watchb( ttmp ); tttt=0.0d0
 
     ab(:,:)=0.0d0
 
@@ -48,7 +51,11 @@ contains
     allocate( recvbuf(m,blk_size) ); recvbuf=0.0d0
     allocate( ab_blk(blk_size,blk_size) ); ab_blk=0.0d0
 
+    !call watchb( ttmp, tttt(:,1) )
+
     do iblk=1,nblk
+
+       !call watchb( ttmp )
 
        b0 = (iblk-1)*nb/nblk + 1
        b1 = b0 + nb/nblk - 1
@@ -68,7 +75,11 @@ contains
 
        sendbuf(:,:) = a(:,k0:k1)
 
+       !call watchb( ttmp, tttt(:,2) )
+
        do istep=1,nprocs_b
+
+          !call watchb( ttmp )
 
           if ( istep < nprocs_b ) then
              call MPI_Irecv( recvbuf, m*blk_size, MPI_REAL8, jrank, itags, comm_band, ireq(1), ierr )
@@ -77,6 +88,8 @@ contains
           else if ( istep == nprocs_b ) then
              nreq=0
           end if
+
+          !call watchb( ttmp, tttt(:,3) )
 
           i0 = i0 + blk_size
           if ( i0 > b1 ) then
@@ -92,6 +105,8 @@ contains
           end if
           i1 = i0 + blk_size - 1
 
+          !call watchb( ttmp, tttt(:,4) )
+
 ! --- (1)
 !
 !          do j=j0,j1
@@ -104,29 +119,46 @@ contains
 !
           if ( istep == 1 ) then
 
+             !call watchb( ttmp )
+
              call calc_overlap_no_mpi( sendbuf, b(:,k0:k1), alpha, ab_blk )
+
+             !call watchb( ttmp, tttt(:,5) )
+
              do j=j0,j1
                 do i=i0,i1
                    if ( i >= j ) ab(i,j)=ab_blk(i-i0+1,j-j0+1)
                 end do
              end do
 
+             !call watchb( ttmp, tttt(:,6) )
+
           else
+
+             !call watchb( ttmp )
 
              call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
 !             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
 !             ab(i0:i1,j0:j1) = ab_blk(:,:)
 
+             !call watchb( ttmp, tttt(:,7) )
+
           end if
 !
 ! -------
+
+          !call watchb( ttmp )
 
           if ( nreq == 2 ) then
              call MPI_Waitall( 2, ireq, istatus, ierr )
              sendbuf(:,:) = recvbuf(:,:)
           end if
 
+          !call watchb( ttmp, tttt(:,8) )
+
        end do ! istep
+
+       !call watchb( ttmp )
 
        if ( iblk == 2 ) then
           i0 = b0 + myrank_b*blk_size
@@ -145,9 +177,15 @@ contains
 ! -------
        end if
 
+       !call watchb( ttmp, tttt(:,9) )
+
     end do ! iblk
 
+    !call watchb( ttmp )
+
     call rsdft_allreduce_sum( ab, comm_band )
+
+    !call watchb( ttmp, tttt(:,10) )
 
     do j=1,nb
        do i=j+1,nb
@@ -155,17 +193,29 @@ contains
        end do
     end do
 
+    !call watchb( ttmp, tttt(:,11) )
+
     do j=1,nb
        do i=1,j-1
           ab(i,j)=0.0d0
        end do
     end do
 
+    !call watchb( ttmp, tttt(:,12) )
+
     !ab=ab*alpha
 
     deallocate( ab_blk  )
     deallocate( recvbuf )
     deallocate( sendbuf )
+
+    !call watchb( ttmp, tttt(:,13) )
+
+    !if ( myrank == 0 ) then
+    !    do i=1,13
+    !       write(*,'(1x,"time_calc_overlap_bp(",i2.2,")",2f10.5)') i,tttt(:,i)
+    !    end do
+    !end if
 
     call write_border( 1, "calc_overlap_bp(end)" )
 
@@ -359,24 +409,34 @@ contains
 
     j0 = 1
     j1 = blk_size
-
     do irank_b=0,nprocs_b-1
-
        do ib=1,nb,nb/nblk
-
           i0 = ib + irank_b*blk_size
           i1 = i0 + blk_size - 1
-
           do i=1,blk_size
-             b(i0+i-1,j0+i-1)=1.0d0
+             !b(i0+i-1,j0+i-1)=1.0d0
+             b(:,j0+i-1)=a(:,i0+i-1)
           end do
-
           j0 = j0 + blk_size
           j1 = j1 + blk_size
-
        end do
-
     end do ! irank
+    a=b
+    j0 = 1
+    j1 = blk_size
+    do irank_b=0,nprocs_b-1
+       do ib=1,nb,nb/nblk
+          i0 = ib + irank_b*blk_size
+          i1 = i0 + blk_size - 1
+          do i=1,blk_size
+             !b(i0+i-1,j0+i-1)=1.0d0
+             b(j0+i-1,:)=a(i0+i-1,:)
+          end do
+          j0 = j0 + blk_size
+          j1 = j1 + blk_size
+       end do
+    end do ! irank
+    a=b
 
     !call watchb( ttmp, tttt(:,3) )
 
@@ -384,8 +444,8 @@ contains
     !c = transpose( b )
     !b = matmul( c, a )
     !a = b
-    call DGEMM('N','N',nb,nb,nb,1.0d0,a,nb,b,nb,0.0d0,c,nb)
-    call DGEMM('T','N',nb,nb,nb,1.0d0,b,nb,c,nb,0.0d0,a,nb)
+    !call DGEMM('N','N',nb,nb,nb,1.0d0,a,nb,b,nb,0.0d0,c,nb)
+    !call DGEMM('T','N',nb,nb,nb,1.0d0,b,nb,c,nb,0.0d0,a,nb)
 
     !call watchb( ttmp, tttt(:,4) )
 
