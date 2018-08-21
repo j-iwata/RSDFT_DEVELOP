@@ -128,8 +128,7 @@ CONTAINS
     real(8) :: ttmp(2),tttt(2,9)
     integer :: m,n
 
-    tttt=0.0d0
-    !call watchb( ttmp )
+    !call watchb( ttmp ); tttt=0.0d0
 
     m = size( a, 1 )
     n = size( a, 2 )

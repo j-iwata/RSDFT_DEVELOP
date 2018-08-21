@@ -23,7 +23,7 @@ contains
     real(8),intent(inout) :: ab(:,:)
     include 'mpif.h'
     integer :: m,n,nblk,blk_size
-    integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1
+    integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1,l0,l1
     integer :: irank, jrank, istep, nstep
     real(8),allocatable :: sendbuf(:,:), recvbuf(:,:), ab_blk(:,:)
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
@@ -183,25 +183,99 @@ contains
 
     !call watchb( ttmp )
 
-    call rsdft_allreduce_sum( ab, comm_band )
+! --- (1)
+!
+    !call rsdft_allreduce_sum( ab, comm_band )
+    !!call watchb( ttmp, tttt(:,10) )
+    !do j=1,nb
+    !   do i=j+1,nb
+    !      if ( ab(i,j) == 0.0d0 ) ab(i,j)=ab(j,i)
+    !   end do
+    !end do
+    !!call watchb( ttmp, tttt(:,11) )
+    !do j=1,nb
+    !   do i=1,j-1
+    !      ab(i,j)=0.0d0
+    !   end do
+    !end do
+    !!call watchb( ttmp, tttt(:,12) )
+!
+! --- (2)
+!
+    deallocate( sendbuf )
+    allocate( sendbuf(nb+blk_size,nb/nblk) ); sendbuf=0.0d0
 
-    !call watchb( ttmp, tttt(:,10) )
+    j0 = nb/nblk + 1 + myrank_b*blk_size
+    j1 = j0 + blk_size - 1
 
-    do j=1,nb
-       do i=j+1,nb
-          if ( ab(i,j) == 0.0d0 ) ab(i,j)=ab(j,i)
+    k0 = 1 + myrank_b*blk_size
+    k1 = k0 + blk_size - 1
+
+    i0 = 1
+    i1 = myrank_b*blk_size
+    if ( i0 <= i1 ) then
+       do i=i0,i1,blk_size
+          ab_blk(:,:) = ab(i:i+blk_size-1,j0:j1)
+          ab(i:i+blk_size-1,j0:j1) = 0.0d0
+          sendbuf(i:i+blk_size-1,k0:k1) = transpose( ab_blk )
        end do
-    end do
+    end if
 
-    !call watchb( ttmp, tttt(:,11) )
+    i0 = 1 + myrank_b*blk_size
+    i1 = i0 + nb/nblk + blk_size - 1
+    sendbuf(i0:i1,k0:k1) = ab(i0:i1,k0:k1)
 
-    do j=1,nb
-       do i=1,j-1
-          ab(i,j)=0.0d0
-       end do
-    end do
+    i0 = nb/nblk + (myrank_b+1)*blk_size + 1
+    i1 = nb
+    if ( i0 <= i1 ) then
+       sendbuf(i0:i1,k0:k1) = ab(i0:i1,j0:j1)
+    end if
 
-    !call watchb( ttmp, tttt(:,12) )
+    i0 = nb/nblk + 1 + myrank_b*blk_size
+    i1 = i0 + blk_size - 1
+    sendbuf(nb+1:nb+blk_size,k0:k1) = ab(i0:i1,i0:i1)
+
+    call rsdft_allgather( sendbuf(:,k0:k1), sendbuf, comm_band )
+
+    do irank=0,nprocs_b-1
+
+       j0 = nb/nblk + 1 + irank*blk_size
+       j1 = j0 + blk_size - 1
+
+       k0 = 1 + irank*blk_size
+       k1 = k0 + blk_size - 1
+
+       i0 = nb/nblk + 1 + irank*blk_size
+       i1 = i0 + blk_size - 1
+       ab(i0:i1,i0:i1) = sendbuf(nb+1:nb+blk_size,k0:k1)
+
+       i0 = nb/nblk + (irank+1)*blk_size + 1
+       i1 = nb
+       if ( i0 <= i1 ) then
+          ab(i0:i1,j0:j1) = sendbuf(i0:i1,k0:k1)
+       end if
+
+       i0 = 1 + irank*blk_size
+       i1 = i0 + nb/nblk + blk_size - 1
+       ab(i0:i1,k0:k1) = sendbuf(i0:i1,k0:k1)
+
+       i0 = 1
+       i1 = irank*blk_size
+       if ( i0 <= i1 ) then
+
+          l0=nb/nblk+irank*blk_size+1
+          l1=l0+blk_size-1
+          do i=i0,i1,blk_size
+             j0=i-i0+1
+             j1=j0+blk_size-1
+             ab(l0:l1,j0:j1) = sendbuf(i:i+blk_size-1,k0:k1)
+          end do
+
+       end if
+
+    end do ! irank
+!
+! -------
 
     !ab=ab*alpha
 
