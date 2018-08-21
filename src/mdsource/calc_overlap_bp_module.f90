@@ -460,8 +460,8 @@ contains
     implicit none
     real(8),intent(inout) :: a(:,:)
     integer,intent(in) :: nblk
-    integer :: i,nb, blk_size, i0,i1,j0,j1,ib,irank_b
-    real(8),allocatable :: b(:,:), c(:,:)
+    integer :: i,j,nb, blk_size, i0,i1,j0,j1,ib,irank_b
+    real(8),allocatable :: b(:,:)
     real(8) :: ttmp(2),tttt(2,9)
 
     !call write_border( 1, "mochikae_matrix(start)" )
@@ -471,46 +471,81 @@ contains
     nb = size( a, 1 )
 
     allocate( b(nb,nb) ); b=0.0d0
-    allocate( c(nb,nb) ); c=0.0d0
 
     !call watchb( ttmp, tttt(:,1) )
 
-    call fill_matrix( a )
+    call fill_matrix( a, nblk )
 
     !call watchb( ttmp, tttt(:,2) )
 
     blk_size = nb/(nblk*nprocs_b)
 
-    j0 = 1
-    j1 = blk_size
-    do irank_b=0,nprocs_b-1
-       do ib=1,nb,nb/nblk
-          i0 = ib + irank_b*blk_size
-          i1 = i0 + blk_size - 1
-          do i=1,blk_size
-             !b(i0+i-1,j0+i-1)=1.0d0
-             b(:,j0+i-1)=a(:,i0+i-1)
-          end do
-          j0 = j0 + blk_size
-          j1 = j1 + blk_size
+! --- (1)
+!
+!    j0 = 1
+!    j1 = blk_size
+!    do irank_b=0,nprocs_b-1
+!       do ib=1,nb,nb/nblk
+!          i0 = ib + irank_b*blk_size
+!          i1 = i0 + blk_size - 1
+!          do i=1,blk_size
+!             !b(i0+i-1,j0+i-1)=1.0d0
+!             b(:,j0+i-1)=a(:,i0+i-1)
+!          end do
+!          j0 = j0 + blk_size
+!          j1 = j1 + blk_size
+!       end do
+!    end do ! irank
+!    a=b
+!    j0 = 1
+!    j1 = blk_size
+!    do irank_b=0,nprocs_b-1
+!       do ib=1,nb,nb/nblk
+!          i0 = ib + irank_b*blk_size
+!          i1 = i0 + blk_size - 1
+!          do i=1,blk_size
+!             !b(i0+i-1,j0+i-1)=1.0d0
+!             b(j0+i-1,:)=a(i0+i-1,:)
+!          end do
+!          j0 = j0 + blk_size
+!          j1 = j1 + blk_size
+!       end do
+!    end do ! irank
+!    a=b
+!
+! --- (2)
+!
+    j0 = 1 + myrank_b*nb/nprocs_b
+    j1 = j0 + blk_size - 1
+    do ib=1,nb,nb/nblk
+       i0 = ib + myrank_b*blk_size
+       i1 = i0 + blk_size - 1
+       do i=1,blk_size
+          b(:,j0+i-1)=a(:,i0+i-1)
        end do
-    end do ! irank
-    a=b
-    j0 = 1
-    j1 = blk_size
-    do irank_b=0,nprocs_b-1
-       do ib=1,nb,nb/nblk
-          i0 = ib + irank_b*blk_size
-          i1 = i0 + blk_size - 1
-          do i=1,blk_size
-             !b(i0+i-1,j0+i-1)=1.0d0
-             b(j0+i-1,:)=a(i0+i-1,:)
-          end do
-          j0 = j0 + blk_size
-          j1 = j1 + blk_size
+       j0 = j0 + blk_size
+       j1 = j1 + blk_size
+    end do
+    j0 = 1 + myrank_b*nb/nprocs_b
+    j1 = j0 + nb/nprocs_b - 1
+    call rsdft_allgather( b(:,j0:j1), b, comm_band )
+    a=0.0d0
+    j0 = 1 + myrank_b*nb/nprocs_b
+    j1 = j0 + blk_size - 1
+    do ib=1,nb,nb/nblk
+       i0 = ib + myrank_b*blk_size
+       i1 = i0 + blk_size - 1
+       do j=1,nb
+       do i=1,blk_size
+          a(j0+i-1,j)=b(i0+i-1,j)
        end do
-    end do ! irank
-    a=b
+       end do
+       j0 = j0 + blk_size
+       j1 = j1 + blk_size
+    end do
+    call rsdft_allreduce_sum( a, comm_band )
+!
+! -------
 
     !call watchb( ttmp, tttt(:,3) )
 
@@ -523,7 +558,6 @@ contains
 
     !call watchb( ttmp, tttt(:,4) )
 
-    deallocate( c )
     deallocate( b )
 
     call cut_matrix( a )
@@ -541,15 +575,36 @@ contains
   end subroutine mochikae_matrix
 
 
-  subroutine fill_matrix( a )
+  subroutine fill_matrix( a, nblk )
     implicit none
     real(8),intent(inout) :: a(:,:)
+    integer,intent(in) :: nblk
     integer :: i,j
-    do j=1,size(a,1)
-       do i=1,j-1
-          a(i,j)=a(j,i)
+    integer :: iblk,j0,j1,nb,blk_size
+!
+! --- (1)
+!
+!    do j=1,size(a,1)
+!       do i=1,j-1
+!          a(i,j)=a(j,i)
+!       end do
+!    end do
+!
+! --- (2)
+!
+    nb = size(a,1)
+    blk_size = nb/(nprocs_b*nblk)
+    do iblk=1,nblk
+       j0 = 1 + myrank_b*blk_size + (iblk-1)*nb/nblk
+       j1 = j0 + blk_size - 1
+       do j=j0,j1
+          do i=1,j-1
+             a(i,j)=a(j,i)
+          end do
        end do
     end do
+!
+! -------
   end subroutine fill_matrix
 
 
