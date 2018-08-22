@@ -1,4 +1,4 @@
-module calc_overlap_bp_module
+module calc_overlap_bp2_module
 
   use parallel_module, only: nprocs_b, myrank_b, comm_band, myrank, comm_grid
   use rsdft_mpi_module
@@ -8,14 +8,14 @@ module calc_overlap_bp_module
   implicit none
 
   private
-  public :: calc_overlap_bp
-  public :: mochikae_matrix
+  public :: calc_overlap_bp2
+  public :: mochikae_matrix2
 
   integer :: nblk0, nblk1
 
 contains
 
-  subroutine calc_overlap_bp( nb, a, b, alpha, ab )
+  subroutine calc_overlap_bp2( nb, a, b, alpha, ab )
     implicit none
     integer,intent(in)  :: nb
     real(8),intent(in)  :: a(:,:), b(:,:)
@@ -30,7 +30,7 @@ contains
     logical,allocatable :: ttt(:,:)
     real(8) :: ttmp(2),tttt(2,14)
 
-    call write_border( 1, "calc_overlap_bp(start)" )
+    call write_border( 1, "calc_overlap_bp2(start)" )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp ); tttt=0.0d0
@@ -129,7 +129,9 @@ contains
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp )
 
-             call calc_overlap_no_mpi( sendbuf, b(:,k0:k1), alpha, ab_blk )
+             !call calc_overlap_no_mpi( sendbuf, b(:,k0:k1), alpha, ab_blk )
+             !call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
+             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
 
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp, tttt(:,5) )
@@ -148,9 +150,9 @@ contains
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp )
 
-             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
-!             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
-!             ab(i0:i1,j0:j1) = ab_blk(:,:)
+             !call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
+             call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
+             ab(i0:i1,j0:j1) = ab_blk(:,:)
 
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp, tttt(:,7) )
@@ -162,20 +164,38 @@ contains
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
           call watchb( ttmp )
 
+!          if ( i0 < j0 ) then
+!             do j=j0,j1
+!                do i=i0,i1
+!                   ab(j,i) = ab(i,j)
+!                end do
+!             end do
+!          else if ( i0 > j0 ) then
+             do j=j0,j1
+                do i=i0,i1
+                   ab(j,i) = ab(i,j)
+                end do
+             end do
+!          end if
+
+          call MPI_Barrier( MPI_COMM_WORLD, ierr )
+          call watchb( ttmp, tttt(:,8) )
+
           if ( nreq == 2 ) then
              call MPI_Waitall( 2, ireq, istatus, ierr )
              sendbuf(:,:) = recvbuf(:,:)
           end if
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          call watchb( ttmp, tttt(:,8) )
+          call watchb( ttmp, tttt(:,9) )
 
        end do ! istep
 
-       call MPI_Barrier( MPI_COMM_WORLD, ierr )
-       call watchb( ttmp )
-
        if ( iblk == 2 ) then
+
+          call MPI_Barrier( MPI_COMM_WORLD, ierr )
+          call watchb( ttmp )
+
           i0 = b0 + myrank_b*blk_size
           i1 = i0 + blk_size - 1
           k0 = blk_size + 1
@@ -190,10 +210,20 @@ contains
 ! --- (2)
           call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab(i0,j0),nb)
 ! -------
-       end if
 
-       call MPI_Barrier( MPI_COMM_WORLD, ierr )
-       call watchb( ttmp, tttt(:,9) )
+          call MPI_Barrier( MPI_COMM_WORLD, ierr )
+          call watchb( ttmp, tttt(:,10) )
+
+          do j=j0,j1
+             do i=i0,i1
+                ab(j,i) = ab(i,j)
+             end do
+          end do
+
+          call MPI_Barrier( MPI_COMM_WORLD, ierr )
+          call watchb( ttmp, tttt(:,11) )
+
+       end if
 
     end do ! iblk
 
@@ -202,8 +232,11 @@ contains
 
 ! --- (1)
 !
-    !call rsdft_allreduce_sum( ab, comm_band )
-    !!call watchb( ttmp, tttt(:,10) )
+    call rsdft_allreduce_sum( ab, comm_band )
+
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,12) )
+
     !do j=1,nb
     !   do i=j+1,nb
     !      if ( ab(i,j) == 0.0d0 ) ab(i,j)=ab(j,i)
@@ -219,6 +252,7 @@ contains
 !
 ! --- (2)
 !
+#ifdef test
     deallocate( sendbuf )
     allocate( sendbuf(nb+blk_size,nb/nblk) ); sendbuf=0.0d0
 
@@ -253,12 +287,12 @@ contains
     sendbuf(nb+1:nb+blk_size,k0:k1) = ab(i0:i1,i0:i1)
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
-    call watchb( ttmp, tttt(:,10) )
+    call watchb( ttmp, tttt(:,12) )
 
     call rsdft_allreduce_sum( sendbuf(:,k0:k1), comm_grid )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
-    call watchb( ttmp, tttt(:,11) )
+    call watchb( ttmp, tttt(:,13) )
 
     call rsdft_allgather( sendbuf(:,k0:k1), sendbuf, comm_band )
 
@@ -305,6 +339,7 @@ contains
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,13) )
+#endif
 !
 ! -------
 
@@ -325,7 +360,7 @@ contains
 
     call write_border( 1, "calc_overlap_bp(end)" )
 
-  end subroutine calc_overlap_bp
+  end subroutine calc_overlap_bp2
 
 
   subroutine calc_overlap_bp_1( a, b, alpha, ab )
@@ -488,7 +523,7 @@ contains
   end subroutine mochikae_back
 
 
-  subroutine mochikae_matrix( a, nblk )
+  subroutine mochikae_matrix2( a, nblk )
     implicit none
     real(8),intent(inout) :: a(:,:)
     integer,intent(in) :: nblk
@@ -497,7 +532,7 @@ contains
     real(8) :: ttmp(2),tttt(2,8)
     include 'mpif.h'
 
-    !call write_border( 1, "mochikae_matrix(start)" )
+    call write_border( 1, "mochikae_matrix2(start)" )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp ); tttt=0.0d0
@@ -509,7 +544,7 @@ contains
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,1) )
 
-    call fill_matrix( a, nblk )
+!    call fill_matrix( a, nblk )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,2) )
@@ -518,39 +553,42 @@ contains
 
 ! --- (1)
 !
-!    j0 = 1
-!    j1 = blk_size
-!    do irank_b=0,nprocs_b-1
-!       do ib=1,nb,nb/nblk
-!          i0 = ib + irank_b*blk_size
-!          i1 = i0 + blk_size - 1
-!          do i=1,blk_size
-!             !b(i0+i-1,j0+i-1)=1.0d0
-!             b(:,j0+i-1)=a(:,i0+i-1)
-!          end do
-!          j0 = j0 + blk_size
-!          j1 = j1 + blk_size
-!       end do
-!    end do ! irank
+    j0 = 1
+    j1 = blk_size
+    do irank_b=0,nprocs_b-1
+       do ib=1,nb,nb/nblk
+          i0 = ib + irank_b*blk_size
+          i1 = i0 + blk_size - 1
+          do i=1,blk_size
+             !b(i0+i-1,j0+i-1)=1.0d0
+             b(:,j0+i-1)=a(:,i0+i-1)
+          end do
+          j0 = j0 + blk_size
+          j1 = j1 + blk_size
+       end do
+    end do ! irank
 !    a=b
-!    j0 = 1
-!    j1 = blk_size
-!    do irank_b=0,nprocs_b-1
-!       do ib=1,nb,nb/nblk
-!          i0 = ib + irank_b*blk_size
-!          i1 = i0 + blk_size - 1
-!          do i=1,blk_size
-!             !b(i0+i-1,j0+i-1)=1.0d0
-!             b(j0+i-1,:)=a(i0+i-1,:)
-!          end do
-!          j0 = j0 + blk_size
-!          j1 = j1 + blk_size
-!       end do
-!    end do ! irank
+    j0 = 1
+    j1 = blk_size
+    do irank_b=0,nprocs_b-1
+       do ib=1,nb,nb/nblk
+          i0 = ib + irank_b*blk_size
+          i1 = i0 + blk_size - 1
+          do j=1,nb
+          do i=1,blk_size
+             !b(i0+i-1,j0+i-1)=1.0d0
+             !b(j0+i-1,:)=a(i0+i-1,:)
+             a(j0+i-1,j)=b(i0+i-1,j)
+          end do
+          end do
+          j0 = j0 + blk_size
+          j1 = j1 + blk_size
+       end do
+    end do ! irank
 !    a=b
 !
 ! --- (2)
-!
+#ifdef test
     j0 = 1 + myrank_b*nb/nprocs_b
     j1 = j0 + blk_size - 1
     do ib=1,nb,nb/nblk
@@ -596,7 +634,7 @@ contains
     call watchb( ttmp, tttt(:,6) )
 
     call rsdft_allreduce_sum( a, comm_band )
-!
+#endif
 ! -------
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
@@ -615,9 +653,9 @@ contains
     !   end do
     !end if
 
-    !call write_border( 1, "mochikae_matrix(end)" )
+    call write_border( 1, "mochikae_matrix2(end)" )
 
-  end subroutine mochikae_matrix
+  end subroutine mochikae_matrix2
 
 
   subroutine fill_matrix( a, nblk )
@@ -665,4 +703,4 @@ contains
   end subroutine cut_matrix
 
 
-end module calc_overlap_bp_module
+end module calc_overlap_bp2_module

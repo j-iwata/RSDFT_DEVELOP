@@ -8,6 +8,7 @@ MODULE overlap_cpmd_module
   use watch_module
   use calc_overlap_module
   use calc_overlap_bp_module
+  use calc_overlap_bp2_module
   use rsdft_mpi_module
 
   implicit none
@@ -37,8 +38,8 @@ CONTAINS
     integer :: ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
 
-    tttt=0.0d0
-    !call watchb( ttmp )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp ); tttt=0.0d0
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -57,7 +58,8 @@ CONTAINS
 !!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
 !    end if
 
-    !call watchb( ttmp, tttt(:,1) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,1) )
 
 ! --- (1)
 !
@@ -65,40 +67,44 @@ CONTAINS
 !
 ! --- (2)
 !
-    call calc_overlap_bp( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
-    call mochikae_matrix( sig, 2 )
+    call calc_overlap_bp2( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
+
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,2) )
+
+    call mochikae_matrix2( sig, 2 )
 !
 ! -------
 
-    !call watchb( ttmp, tttt(:,2) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,3) )
 
+    call allreduce_sub( sig )
+#ifdef test
     n = (MBC*(MBC+1))/2
     if ( .not.allocated(w1) ) then
        allocate( w1(n) ) ; w1=0.0d0
     end if
-
     do j=1,MBC
     do i=j,MBC
        m=(j-1)*MBC-(j*(j-1))/2+i
        w1(m)=sig(i,j)
     end do
     end do
-
-    !call watchb( ttmp, tttt(:,3) )
-
+    call watchb( ttmp, tttt(:,3) )
     !call mpi_allreduce(MPI_IN_PLACE,w1,n,mpi_real8,mpi_sum,comm_grid,ierr)
     call rsdft_allreduce_sum( w1(1:n), comm_grid )
-
-    !call watchb( ttmp, tttt(:,4) )
-
+    call watchb( ttmp, tttt(:,4) )
     do j=1,MBC
     do i=j,MBC
        m=(j-1)*MBC-(j*(j-1))/2+i
        sig(i,j)=w1(m)
     end do
     end do
+#endif
 
-    !call watchb( ttmp, tttt(:,5) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,5) )
 
 !$OMP parallel do
     do j=1  ,MBC
@@ -111,7 +117,8 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    !call watchb( ttmp, tttt(:,6) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,6) )
 
 !    if ( np_band > 1 ) deallocate( id,ir )
 
@@ -143,8 +150,8 @@ CONTAINS
     integer ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
 
-    tttt=0.0d0
-    !call watchb( ttmp )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp ); tttt=0.0d0
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -166,7 +173,8 @@ CONTAINS
 !!            ,psi_n(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
 !    end if
 
-    !call watchb( ttmp, tttt(:,1) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,1) )
 
 #ifdef _DRSDFT_
 !
@@ -176,15 +184,25 @@ CONTAINS
 !
 ! --- (2)
 !
-    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
-    call mochikae_matrix( tau, 2 )
-    call rsdft_allreduce_sum( tau, comm_grid )
+    call calc_overlap_bp2( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
+
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,2) )
+
+    call mochikae_matrix2( tau, 2 )
+    !call rsdft_allreduce_sum( tau, comm_grid )
 !
 ! -------
 !
 #endif
 
-    !call watchb( ttmp, tttt(:,2) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,3) )
+
+    call allreduce_sub( tau )
+
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,4) )
 
 !$OMP parallel do
     do j=1,MBC
@@ -197,12 +215,13 @@ CONTAINS
     end do
 !$OMP end parallel do
 
-    !call watchb( ttmp, tttt(:,3) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,5) )
 
 !    if ( np_band > 1 ) deallocate( id,ir )
 
 !    if ( myrank == 0 ) then
-!       do i=1,3
+!       do i=1,5
 !          write(*,'(2x,"time_overlap4(",i1,")",2f10.5)') i,tttt(:,i)
 !       end do
 !    end if
@@ -229,8 +248,8 @@ CONTAINS
     integer ls_loc,le_loc,li_loc
     complex(8),allocatable :: ztmp(:,:)
 
-    tttt=0.0d0
-    !call watchb( ttmp )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp ); tttt=0.0d0
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -252,7 +271,8 @@ CONTAINS
 !!            ,psi_v(n1,1,k,s),ir,id,MPI_REAL8,comm_band,ierr)
 !    end if
 
-    !call watchb( ttmp, tttt(:,1) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,1) )
 
 #ifdef _DRSDFT_
 !
@@ -262,14 +282,24 @@ CONTAINS
 !
 ! --- (2)
 !
-    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
-    call mochikae_matrix( wrk, 2 )
-    call rsdft_allreduce_sum( wrk, comm_grid )
+    call calc_overlap_bp2( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
+
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,2) )
+
+    call mochikae_matrix2( wrk, 2 )
+    !call rsdft_allreduce_sum( wrk, comm_grid )
 !
 ! -------
 #endif
 
-    !call watchb( ttmp, tttt(:,2) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,3) )
+
+    call allreduce_sub( wrk )
+
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,4) )
 
 !$OMP parallel do
     do j=1,MBC
@@ -281,12 +311,13 @@ CONTAINS
     end do
 !$OMP end parallel do 
 
-    !call watchb( ttmp, tttt(:,3) )
+    call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    call watchb( ttmp, tttt(:,5) )
 
 !    if ( np_band > 1 ) deallocate( id,ir )
 
 !    if ( myrank == 0 ) then
-!       do i=1,3
+!       do i=1,5
 !          write(*,'(2x,"time_overlap5(",i1,")",2f10.5)') i, tttt(:,i)
 !       end do
 !    end if
@@ -294,6 +325,31 @@ CONTAINS
     return
 
   END SUBROUTINE overlap5
+
+
+  subroutine allreduce_sub( sig )
+    implicit none
+    real(8),intent(inout) :: sig(:,:)
+    integer :: n,i,j,m
+    n = (MBC*(MBC+1))/2
+    if ( .not.allocated(w1) ) then
+       allocate( w1(n) ) ; w1=0.0d0
+    end if
+    do j=1,MBC
+    do i=j,MBC
+       m=(j-1)*MBC-(j*(j-1))/2+i
+       w1(m)=sig(i,j)
+    end do
+    end do
+    !call mpi_allreduce(MPI_IN_PLACE,w1,n,mpi_real8,mpi_sum,comm_grid,ierr)
+    call rsdft_allreduce_sum( w1(1:n), comm_grid )
+    do j=1,MBC
+    do i=j,MBC
+       m=(j-1)*MBC-(j*(j-1))/2+i
+       sig(i,j)=w1(m)
+    end do
+    end do
+  end subroutine allreduce_sub
 
 
 END MODULE overlap_cpmd_module
