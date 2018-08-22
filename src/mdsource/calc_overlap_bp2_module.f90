@@ -24,8 +24,9 @@ contains
     include 'mpif.h'
     integer :: m,n,nblk,blk_size
     integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1,l0,l1
+    integer :: p0,p1,q0,r0,r1
     integer :: irank, jrank, istep, nstep
-    real(8),allocatable :: sendbuf(:,:), recvbuf(:,:), ab_blk(:,:)
+    real(8),allocatable :: sendbuf(:,:), recvbuf(:,:), ab_blk(:,:), tr_blk(:,:)
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
     logical,allocatable :: ttt(:,:)
     real(8) :: ttmp(2),tttt(2,14)
@@ -51,6 +52,7 @@ contains
     allocate( sendbuf(m,blk_size) ); sendbuf=0.0d0
     allocate( recvbuf(m,blk_size) ); recvbuf=0.0d0
     allocate( ab_blk(blk_size,blk_size) ); ab_blk=0.0d0
+    allocate( tr_blk(blk_size,blk_size) ); tr_blk=0.0d0
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,1) )
@@ -136,11 +138,12 @@ contains
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp, tttt(:,5) )
 
-             do j=j0,j1
-                do i=i0,i1
-                   if ( i >= j ) ab(i,j)=ab_blk(i-i0+1,j-j0+1)
-                end do
-             end do
+             ab(i0:i1,j0:j1) = ab_blk(:,:)
+             !do j=j0,j1
+             !   do i=i0,i1
+             !      if ( i >= j ) ab(i,j)=ab_blk(i-i0+1,j-j0+1)
+             !   end do
+             !end do
 
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp, tttt(:,6) )
@@ -164,22 +167,49 @@ contains
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
           call watchb( ttmp )
 
-!          if ( i0 < j0 ) then
-!             do j=j0,j1
-!                do i=i0,i1
-!                   ab(j,i) = ab(i,j)
-!                end do
-!             end do
-!          else if ( i0 > j0 ) then
-             do j=j0,j1
-                do i=i0,i1
-                   ab(j,i) = ab(i,j)
-                end do
-             end do
-!          end if
+          if ( istep > 1 ) then
+! --- (1)
+             !do j=j0,j1
+             !   do i=i0,i1
+             !      ab(j,i) = ab(i,j)
+             !   end do
+             !end do
+! --- (2)
+             tr_blk = transpose( ab_blk )
+             ab(j0:j1,i0:i1) = tr_blk(:,:)
+          end if
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
           call watchb( ttmp, tttt(:,8) )
+
+#ifdef test
+          if ( istep == 1 .and. iblk == 2 ) then
+
+             call MPI_Barrier( MPI_COMM_WORLD, ierr )
+             call watchb( ttmp )
+
+             p0 = b0 + myrank_b*blk_size
+             p1 = i0 + blk_size - 1
+             q0 = blk_size + 1
+             r0 = myrank_b*blk_size + 1
+             r1 = r0 + blk_size - 1
+             call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,q0),m,b,m,0.0d0,ab_blk,blk_size)
+             ab(p0:p1,r0:r1) = ab_blk(:,:)
+
+             call MPI_Barrier( MPI_COMM_WORLD, ierr )
+             call watchb( ttmp, tttt(:,9) )
+
+             tr_blk = transpose( ab_blk )
+             ab(r0:r1,p0:p1) = tr_blk(:,:)
+
+             call MPI_Barrier( MPI_COMM_WORLD, ierr )
+             call watchb( ttmp, tttt(:,10) )
+
+          end if
+
+          call MPI_Barrier( MPI_COMM_WORLD, ierr )
+          call watchb( ttmp )
+#endif
 
           if ( nreq == 2 ) then
              call MPI_Waitall( 2, ireq, istatus, ierr )
@@ -191,6 +221,7 @@ contains
 
        end do ! istep
 
+!#ifdef test
        if ( iblk == 2 ) then
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
@@ -208,22 +239,29 @@ contains
 !             end do
 !          end do
 ! --- (2)
-          call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab(i0,j0),nb)
+!          call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab(i0,j0),nb)
+          call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab_blk,blk_size)
+          ab(i0:i1,j0:j1) = ab_blk(:,:)
 ! -------
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
           call watchb( ttmp, tttt(:,10) )
 
-          do j=j0,j1
-             do i=i0,i1
-                ab(j,i) = ab(i,j)
-             end do
-          end do
+! --- (1)
+          !do j=j0,j1
+          !   do i=i0,i1
+          !      ab(j,i) = ab(i,j)
+          !   end do
+          !end do
+! --- (2)
+          tr_blk = transpose( ab_blk )
+          ab(j0:j1,i0:i1) = tr_blk(:,:)
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
           call watchb( ttmp, tttt(:,11) )
 
        end if
+!#endif
 
     end do ! iblk
 
@@ -345,6 +383,7 @@ contains
 
     !ab=ab*alpha
 
+    deallocate( tr_blk  )
     deallocate( ab_blk  )
     deallocate( recvbuf )
     deallocate( sendbuf )
@@ -528,7 +567,7 @@ contains
     real(8),intent(inout) :: a(:,:)
     integer,intent(in) :: nblk
     integer :: i,j,nb, blk_size, i0,i1,j0,j1,ib,irank_b,ierr
-    real(8),allocatable :: b(:,:)
+    real(8),save,allocatable :: b(:,:)
     real(8) :: ttmp(2),tttt(2,8)
     include 'mpif.h'
 
@@ -539,7 +578,9 @@ contains
 
     nb = size( a, 1 )
 
-    allocate( b(nb,nb) ); b=0.0d0
+    if ( .not.allocated(b) ) then
+       allocate( b(nb,nb) ); b=0.0d0
+    end if
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,1) )
@@ -640,7 +681,7 @@ contains
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,7) )
 
-    deallocate( b )
+    !deallocate( b )
 
     call cut_matrix( a )
 
