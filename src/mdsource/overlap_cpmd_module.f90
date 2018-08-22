@@ -79,7 +79,7 @@ CONTAINS
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,3) )
 
-    call allreduce_sub( sig )
+!    call allreduce_sub( sig )
 #ifdef test
     n = (MBC*(MBC+1))/2
     if ( .not.allocated(w1) ) then
@@ -110,9 +110,9 @@ CONTAINS
     do j=1  ,MBC
        !do i=j+1,MBC
        !   sig(j,i) = sig(i,j)
-       do i=1,j-1
-          sig(i,j) = sig(j,i)
-       end do
+!       do i=1,j-1
+!          sig(i,j) = sig(j,i)
+!       end do
        sig(j,j)=sig(j,j)+1.0d0
     end do
 !$OMP end parallel do
@@ -199,7 +199,7 @@ CONTAINS
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,3) )
 
-    call allreduce_sub( tau )
+!    call allreduce_sub( tau )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,4) )
@@ -208,9 +208,9 @@ CONTAINS
     do j=1,MBC
        !do i=j+1,MBC
        !   tau(j,i) = tau(i,j)
-       do i=1,j-1
-          tau(i,j) = tau(j,i)
-       end do
+!       do i=1,j-1
+!          tau(i,j) = tau(j,i)
+!       end do
        tau(j,j)=tau(j,j)+1.0d0
     end do
 !$OMP end parallel do
@@ -296,11 +296,12 @@ CONTAINS
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,3) )
 
-    call allreduce_sub( wrk )
+!    call allreduce_sub( wrk )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,4) )
 
+#ifdef test
 !$OMP parallel do
     do j=1,MBC
     !do i=j+1,MBC
@@ -310,6 +311,7 @@ CONTAINS
     end do
     end do
 !$OMP end parallel do 
+#endif
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,5) )

@@ -29,7 +29,7 @@ contains
     real(8),allocatable :: sendbuf(:,:), recvbuf(:,:), ab_blk(:,:), tr_blk(:,:)
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
     logical,allocatable :: ttt(:,:)
-    real(8) :: ttmp(2),tttt(2,14)
+    real(8) :: ttmp(2),tttt(2,15)
 
     call write_border( 1, "calc_overlap_bp2(start)" )
 
@@ -138,6 +138,8 @@ contains
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp, tttt(:,5) )
 
+             call rsdft_allreduce_sum( ab_blk, comm_grid )
+
              ab(i0:i1,j0:j1) = ab_blk(:,:)
              !do j=j0,j1
              !   do i=i0,i1
@@ -155,10 +157,16 @@ contains
 
              !call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
              call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
-             ab(i0:i1,j0:j1) = ab_blk(:,:)
 
              call MPI_Barrier( MPI_COMM_WORLD, ierr )
              call watchb( ttmp, tttt(:,7) )
+
+             call rsdft_allreduce_sum( ab_blk, comm_grid )
+
+             ab(i0:i1,j0:j1) = ab_blk(:,:)
+
+             call MPI_Barrier( MPI_COMM_WORLD, ierr )
+             call watchb( ttmp, tttt(:,8) )
 
           end if
 !
@@ -180,7 +188,7 @@ contains
           end if
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          call watchb( ttmp, tttt(:,8) )
+          call watchb( ttmp, tttt(:,9) )
 
 #ifdef test
           if ( istep == 1 .and. iblk == 2 ) then
@@ -217,7 +225,7 @@ contains
           end if
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          call watchb( ttmp, tttt(:,9) )
+          call watchb( ttmp, tttt(:,10) )
 
        end do ! istep
 
@@ -241,11 +249,17 @@ contains
 ! --- (2)
 !          call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab(i0,j0),nb)
           call DGEMM('T','N',blk_size,blk_size,m,alpha,a(1,k0),m,b,m,0.0d0,ab_blk,blk_size)
+
+          call MPI_Barrier( MPI_COMM_WORLD, ierr )
+          call watchb( ttmp, tttt(:,11) )
+
+          call rsdft_allreduce_sum( ab_blk, comm_grid )
+
           ab(i0:i1,j0:j1) = ab_blk(:,:)
 ! -------
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          call watchb( ttmp, tttt(:,10) )
+          call watchb( ttmp, tttt(:,12) )
 
 ! --- (1)
           !do j=j0,j1
@@ -258,7 +272,7 @@ contains
           ab(j0:j1,i0:i1) = tr_blk(:,:)
 
           call MPI_Barrier( MPI_COMM_WORLD, ierr )
-          call watchb( ttmp, tttt(:,11) )
+          call watchb( ttmp, tttt(:,13) )
 
        end if
 !#endif
@@ -273,7 +287,7 @@ contains
     call rsdft_allreduce_sum( ab, comm_band )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
-    call watchb( ttmp, tttt(:,12) )
+    call watchb( ttmp, tttt(:,14) )
 
     !do j=1,nb
     !   do i=j+1,nb
@@ -389,10 +403,10 @@ contains
     deallocate( sendbuf )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
-    call watchb( ttmp, tttt(:,14) )
+    call watchb( ttmp, tttt(:,15) )
 
     !if ( myrank == 0 ) then
-    !    do i=1,14
+    !    do i=1,15
     !       write(*,'(1x,"time_calc_overlap_bp(",i2.2,")",2f10.5)') i,tttt(:,i)
     !    end do
     !end if
@@ -683,7 +697,7 @@ contains
 
     !deallocate( b )
 
-    call cut_matrix( a )
+    !call cut_matrix( a )
 
     call MPI_Barrier( MPI_COMM_WORLD, ierr )
     call watchb( ttmp, tttt(:,8) )
