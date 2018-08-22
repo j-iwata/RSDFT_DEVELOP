@@ -13,13 +13,11 @@ OBJS = cpmd_variables.o\
        alloc_cpmd.o\
        calc_overlap_module.o \
        calc_overlap_bp_module.o \
-       calc_overlap_bp2_module.o \
        overlap_cpmd_module.o \
        rotorb_module.o \
        blue_moon_module.o \
        bomd.o\
        getforce_cpmd.o\
        getforce.o\
-       rotorb2.o\
        calfke.o\
        wf_force.o\

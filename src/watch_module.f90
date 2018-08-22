@@ -163,11 +163,17 @@ CONTAINS
   END SUBROUTINE write_watcha
 
 
-  SUBROUTINE watchb( t_tmp, t_out )
+  SUBROUTINE watchb( t_tmp, t_out, barrier )
     implicit none
     real(8),intent(INOUT) :: t_tmp(2)
     real(8),optional,intent(INOUT) :: t_out(2)
+    character(2),optional,intent(in) :: barrier
     real(8) :: t_now(2)
+    integer :: ierr
+    include 'mpif.h'
+    if ( present(barrier) ) then
+       if ( barrier == "on" ) call MPI_Barrier( MPI_COMM_WORLD, ierr )
+    end if
     call watch( t_now(1), t_now(2) )
     if ( present(t_out) ) t_out(:) = t_out(:) + t_now(:) - t_tmp(:)
     t_tmp(:) = t_now(:)
