@@ -4,6 +4,7 @@ MODULE nonlocal_module
   use ps_nloc2_op_module, only: op_ps_nloc2, op_ps_nloc2_hp
   use ps_nloc2_module, only: calc_force_ps_nloc2, prep_uvk_ps_nloc2 &
                             ,prep_rvk_ps_nloc2
+  use force_ps_nloc2_module, only: calc_force_ps_nloc2_hp
   use ps_nloc3_module
   use ps_nloc_mr_module
   use PSnonLocOpG2
@@ -56,7 +57,8 @@ CONTAINS
     real(8),intent(OUT) :: force(3,MI)
     select case( pselect )
     case( 2 )
-       call calc_force_ps_nloc2( MI, force )
+       !call calc_force_ps_nloc2( MI, force )
+       call calc_force_ps_nloc2_hp( MI, force )
     case( 3 )
        call calc_force_ps_nloc3( MI, force )
     case( 102 )

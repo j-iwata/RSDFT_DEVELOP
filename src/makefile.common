@@ -11,6 +11,7 @@ MODS2 = localpot_module.o\
         hamiltonian_matrix_module.o\
         ps_getDij_module.o\
         force_ps_nloc2.o\
+        force_ps_nloc2_module.o\
         ps_nloc2_module.o\
         nonlocal_module.o\
         momentum_module.o\

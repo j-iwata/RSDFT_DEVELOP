@@ -14,6 +14,11 @@ module calc_overlap_bp_module
   real(8),allocatable :: ab_blk(:,:), tr_blk(:,:)
   real(8),allocatable :: ab_tmp(:,:)
 
+  interface calc_overlap_bp
+     module procedure calc_overlap_bp &
+          , calc_overlap_bp_zd, calc_overlap_bp_zz
+  end interface
+
 contains
 
   subroutine calc_overlap_bp( nb, a, b, alpha, ab )
@@ -310,6 +315,27 @@ contains
     !call write_border( 1, "matrix_permutation(end)" )
 
   end subroutine matrix_permutation
+
+
+  subroutine calc_overlap_bp_zd( nb, a, b, alpha, ab )
+    implicit none
+    integer,intent(in)  :: nb
+    complex(8),intent(in)  :: a(:,:)
+    real(8),intent(in)  :: b(:,:)
+    real(8),intent(in)  :: alpha
+    real(8),intent(inout) :: ab(:,:)
+    call stop_program( "calc_overlap_bp_zd is not implemented" )
+  end subroutine calc_overlap_bp_zd
+
+
+  subroutine calc_overlap_bp_zz( nb, a, b, alpha, ab )
+    implicit none
+    integer,intent(in)  :: nb
+    complex(8),intent(in)  :: a(:,:), b(:,:)
+    real(8),intent(in)  :: alpha
+    real(8),intent(inout) :: ab(:,:)
+    call stop_program( "calc_overlap_bp_zz is not implemented" )
+  end subroutine calc_overlap_bp_zz
 
 
 end module calc_overlap_bp_module

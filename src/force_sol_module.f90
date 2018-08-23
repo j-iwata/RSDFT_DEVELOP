@@ -1,7 +1,6 @@
 MODULE force_sol_module
 
   use force_local_sol_module, only: calc_force_local_sol
-  use ps_nloc2_module, only: calc_force_ps_nloc2
   use ps_pcc_module, only: flag_pcc_0
   use ps_pcc_force_module, only: calc_ps_pcc_force
   use force_ewald_module, only: calc_force_ewald
