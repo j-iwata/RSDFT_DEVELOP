@@ -23,20 +23,20 @@ CONTAINS
     real(8),intent(OUT) :: c(n,n)
     integer :: nme,i,j,k,ierr
     real(8),allocatable :: s(:),r(:)
-    real(8) :: ttmp(2),tttt(2,9)
+    real(8) :: ttmp(2),tttt(2,5)
 
-    tttt=0.0d0
-    !call watchb( ttmp )
+    !call watchb( ttmp, barrier="on" ); tttt=0.0d0
 
     nblk0 = n
     nblk1 = 4
 
     call calc_overlap_sub(m,n,nblk0,a,b,c)
 
-    !call watchb( ttmp, tttt(:,1) )
+    !call watchb( ttmp, tttt(:,1), barrier="on" )
 
     nme = n*(n+1)/2
-    allocate( s(nme),r(nme) )
+    allocate( s(nme) )
+    !allocate( r(nme) )
 
     do j=1,n
     do i=j,n
@@ -45,12 +45,12 @@ CONTAINS
     end do
     end do
 
-    !call watchb( ttmp, tttt(:,2) )
+    !call watchb( ttmp, tttt(:,2), barrier="on" )
 
     !call mpi_allreduce(MPI_IN_PLACE,s,nme,mpi_real8,mpi_sum,comm_grid,ierr)
     call rsdft_allreduce_sum( s, comm_grid )
 
-    !call watchb( ttmp, tttt(:,3) )
+    !call watchb( ttmp, tttt(:,3), barrier="on" )
 
     do j=1,n
     do i=j,n
@@ -59,12 +59,23 @@ CONTAINS
     end do
     end do
 
-    deallocate( r,s )
+    !deallocate( r )
+    deallocate( s )
 
-    !call watchb( ttmp, tttt(:,4) )
+    !call watchb( ttmp, tttt(:,4), barrier="on" )
+
+!$omp parallel do
+    do j=1,n-1
+       do i=j+1,n
+          c(j,i) = c(i,j)
+       end do
+    end do
+!$omp end parallel do
+
+    !call watchb( ttmp, tttt(:,5), barrier="on" )
 
 !    if ( myrank == 0 ) then
-!       do i=1,4
+!       do i=1,5
 !          write(*,'(4x,"time_calc_overlap(",i1,")",2f10.5)') i, tttt(:,i)
 !       end do
 !    end if

@@ -2,7 +2,7 @@ module calc_overlap_bp_module
 
   use parallel_module, only: nprocs_b, myrank_b, comm_band, myrank, comm_grid
   use rsdft_mpi_module
-  use calc_overlap_module, only: calc_overlap_no_mpi
+  use calc_overlap_module, only: calc_overlap_no_mpi, calc_overlap
   use watch_module
 
   implicit none
@@ -33,6 +33,11 @@ contains
     integer :: irank, jrank, istep, nstep
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
     real(8) :: ttmp(2),tttt(2,16)
+
+    if ( nprocs_b == 1 ) then
+       call calc_overlap( size(a,1), nb, a, b, alpha, ab )
+       return
+    end if
 
     !call write_border( 1, "calc_overlap_bp(start)" )
     !call watchb( ttmp, barrier="on" ); tttt=0.0d0

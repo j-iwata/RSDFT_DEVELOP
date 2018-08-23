@@ -6,7 +6,7 @@ module force_ps_nloc2_module
        , num_2_rank, recvmap, sendmap, sbufnl, rbufnl, Mlma, TYPE_MAIN, zero
   use var_ps_member, only: ps_type, norb, lo, rad1, dviod, ippform, NRps
   use pseudopot_module, only: pselect
-  use parallel_module, only: MB_d, comm_grid
+  use parallel_module, only: MB_d, comm_grid, myrank
   use atom_module, only: aa_atom, ki_atom, Natom, Nelement
   use aa_module, only: aa
   use force_sub_sub_module, only: gaunt, construct_gaunt_coef_l1
