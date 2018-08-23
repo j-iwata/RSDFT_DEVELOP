@@ -3,6 +3,7 @@ MODULE calc_overlap_module
   use parallel_module
   use watch_module
   use rsdft_mpi_module
+  use transpose_module
 
   implicit none
 
@@ -64,13 +65,21 @@ CONTAINS
 
     !call watchb( ttmp, tttt(:,4), barrier="on" )
 
-!$omp parallel do
-    do j=1,n-1
-       do i=j+1,n
-          c(j,i) = c(i,j)
-       end do
-    end do
-!$omp end parallel do
+! ---(1)
+!
+!!$omp parallel do
+!    do j=1,n-1
+!       do i=j+1,n
+!          c(j,i) = c(i,j)
+!       end do
+!    end do
+!!$omp end parallel do
+!
+! ---(2)
+!
+    call rsdft_transpose( c, 16 )
+!
+! ------
 
     !call watchb( ttmp, tttt(:,5), barrier="on" )
 
