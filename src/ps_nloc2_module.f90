@@ -1809,6 +1809,7 @@ CONTAINS
 
 !$OMP master
     call watchb( ttmp )
+!$OMP end master
 
 !$OMP workshare
     work2(:,:)=force2(:,:)

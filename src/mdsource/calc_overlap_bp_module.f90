@@ -12,6 +12,7 @@ module calc_overlap_bp_module
 
   real(8),allocatable :: sendbuf(:,:), recvbuf(:,:)
   real(8),allocatable :: ab_blk(:,:), tr_blk(:,:)
+  real(8),allocatable :: ab_tmp(:,:)
 
 contains
 
@@ -26,7 +27,6 @@ contains
     integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1,l0,l1
     integer :: irank, jrank, istep, nstep
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
-    logical,allocatable :: ttt(:,:)
     real(8) :: ttmp(2),tttt(2,16)
 
     !call write_border( 1, "calc_overlap_bp(start)" )
@@ -212,7 +212,12 @@ contains
 
     !call watchb( ttmp, barrier="on" )
 
-    call rsdft_allreduce_sum( ab, comm_band )
+!    call rsdft_allreduce_sum( ab, comm_band )
+    if ( .not.allocated(ab_tmp) ) then
+       allocate( ab_tmp(nb,nb) ); ab_tmp=0.0d0
+    end if
+    ab_tmp=ab
+    call MPI_Allreduce( ab_tmp, ab, size(ab), MPI_REAL8, MPI_SUM, comm_band, ierr )
 
     !call watchb( ttmp, tttt(:,14), barrier="on" )
 
@@ -265,13 +270,13 @@ contains
        do ib=1,nb,nb/nblk
           i0 = ib + irank_b*blk_size
           i1 = i0 + blk_size - 1
-!$OMP parallel do collapse(2)
+!!$OMP parallel do collapse(2)
           do i=1,blk_size
           do j=1,nb
              b(j,j0+i-1)=a(j,i0+i-1)
           end do
           end do
-!$OMP end parallel do
+!!$OMP end parallel do
           j0 = j0 + blk_size
           j1 = j1 + blk_size
        end do
@@ -282,13 +287,13 @@ contains
        do ib=1,nb,nb/nblk
           i0 = ib + irank_b*blk_size
           i1 = i0 + blk_size - 1
-!$OMP parallel do collpase(2)
+!!$OMP parallel do collapse(2)
           do j=1,nb
           do i=1,blk_size
              a(j0+i-1,j)=b(i0+i-1,j)
           end do
           end do
-!$OMP end parallel do
+!!$OMP end parallel do
           j0 = j0 + blk_size
           j1 = j1 + blk_size
        end do
