@@ -217,12 +217,17 @@ contains
 
     !call watchb( ttmp, barrier="on" )
 
-!    call rsdft_allreduce_sum( ab, comm_band )
-    if ( .not.allocated(ab_tmp) ) then
-       allocate( ab_tmp(nb,nb) ); ab_tmp=0.0d0
+    if ( nprocs_b > 1 ) then
+! ---(1)
+!       call rsdft_allreduce_sum( ab, comm_band )
+! ---(2)
+       if ( .not.allocated(ab_tmp) ) then
+          allocate( ab_tmp(nb,nb) ); ab_tmp=0.0d0
+       end if
+       ab_tmp=ab
+       call MPI_Allreduce( ab_tmp, ab, size(ab), MPI_REAL8, MPI_SUM, comm_band, ierr )
+! ------
     end if
-    ab_tmp=ab
-    call MPI_Allreduce( ab_tmp, ab, size(ab), MPI_REAL8, MPI_SUM, comm_band, ierr )
 
     !call watchb( ttmp, tttt(:,14), barrier="on" )
 
@@ -233,7 +238,7 @@ contains
 
     !call watchb( ttmp, tttt(:,15), barrier="on" )
 
-    if ( nprocs_b > 0 ) call matrix_permutation( ab, nblk )
+    if ( nprocs_b > 1 ) call matrix_permutation( ab, nblk )
 
     !call watchb( ttmp, tttt(:,16), barrier="on" )
 
