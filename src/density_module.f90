@@ -21,6 +21,7 @@ MODULE density_module
   PUBLIC :: get_range_density, construct_density_v2
   PUBLIC :: writeDensity
   PUBLIC :: calc_spin_density
+  public :: calc_density_2
 
   real(8),allocatable,PUBLIC :: rho(:,:)
   real(8),allocatable,PUBLIC :: rho_in(:,:)
@@ -221,6 +222,32 @@ CONTAINS
        end do
     end do
   END SUBROUTINE writeDensity
+
+
+  subroutine calc_density_2( u, o )
+    implicit none
+#ifdef _DRSDFT_
+    real(8),intent(in) :: u(:,:,:,:)
+#else
+    complex(8),intent(in) :: u(:,:,:,:)
+#endif
+    real(8),intent(in) :: o(:,:,:)
+    integer :: t,s,k,n,ns,nk,nb
+    nb=size(u,2)
+    nk=size(u,3)
+    ns=size(u,4)
+    rho=0.0d0
+    do s=1,ns
+       t=s-1+MS_0_RHO
+       do k=1,nk
+          do n=1,nb
+             rho(:,t) = rho(:,t) + o(n,k,s)*abs( u(:,n,k,s) )**2
+          end do
+       end do
+    end do
+    call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
+    call reduce_and_gather
+  end subroutine calc_density_2
 
 
 END MODULE density_module

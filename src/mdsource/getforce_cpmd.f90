@@ -16,7 +16,7 @@ SUBROUTINE getforce_cpmd( ltime )
   use ps_nloc_mr_module
   use localpot_module, only: Vloc
   use array_bound_module, only: MSP_0,MSP_1,MB_0,MB_1,ML_0,ML_1
-  use density_module
+  use density_module, only: rho, calc_density_2
   use xc_module
   use hartree_variables, only: Vh
   use hartree_module, only: calc_hartree
@@ -28,7 +28,7 @@ SUBROUTINE getforce_cpmd( ltime )
   use ps_prepNzqr_g_module
   use ps_qrij_prep_module
 
-  use wf_module, only: unk
+  use wf_module, only: unk, occ
   use rsdft_mpi_module
 
   implicit none
@@ -70,8 +70,7 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(3),etime_force(3))
 
-  if ( np_band > 1 ) call wf_gather_sub( unk )
-  call calc_density
+  call calc_density_2( unk(:,MB_0:MB_1,:,:), occ(MB_0:MB_1,:,:) )
 
   if ( ltime ) call watch(ctime_force(4),etime_force(4))
 
