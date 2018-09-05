@@ -61,7 +61,7 @@ CONTAINS
     deallocate( work )
 
 !    call check_disp_switch( disp_sw, 0 )
-!    if ( disp_sw ) then
+!    if ( myrank == 0 ) then
 !       write(*,*) "time(force1)",ctt(1)-ctt(0),ett(1)-ett(0)
 !       write(*,*) "time(force2)",ctt(2)-ctt(1),ett(2)-ett(1)
 !       write(*,*) "time(force3)",ctt(3)-ctt(2),ett(3)-ett(2)

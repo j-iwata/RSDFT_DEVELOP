@@ -175,16 +175,16 @@ CONTAINS
 
     L=maxval(lo)
     n=maxval(norb)
-!!$    if ( .not.allocated(icheck_tmp3) ) then ! MIZUHO-IR for cellopt
-    if( allocated(icheck_tmp3) ) deallocate(icheck_tmp3) ! MIZUHO-IR for cellopt
-    if( allocated(JJ_tmp) ) deallocate(JJ_tmp) ! MIZUHO-IR for cellopt
-    if( allocated(MJJ_tmp) ) deallocate(MJJ_tmp) ! MIZUHO-IR for cellopt
-    if( allocated(uV_tmp) ) deallocate(uV_tmp) ! MIZUHO-IR for cellopt
-       allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
-       allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
-       allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
-       allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
-!!$    end if ! MIZUHO-IR for cellopt
+    if ( .not.allocated(icheck_tmp3) ) then
+!    if( allocated(icheck_tmp3) ) deallocate(icheck_tmp3) ! MIZUHO-IR for cellopt
+!    if( allocated(JJ_tmp) ) deallocate(JJ_tmp) ! MIZUHO-IR for cellopt
+!    if( allocated(MJJ_tmp) ) deallocate(MJJ_tmp) ! MIZUHO-IR for cellopt
+!    if( allocated(uV_tmp) ) deallocate(uV_tmp) ! MIZUHO-IR for cellopt
+       allocate( icheck_tmp3(Natom,n,2*L+1) ); icheck_tmp3=0
+       allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ); JJ_tmp=0
+       allocate( MJJ_tmp(n,Natom)           ); MJJ_tmp=0
+       allocate( uV_tmp(MMJJ_0,n,Natom)     ); uV_tmp=0.0d0
+    end if
 
     call watcha( timer_counter )
 
@@ -937,7 +937,7 @@ CONTAINS
 
 ! ---
 
-!    if ( disp_sw ) then
+!    if ( myrank == 0 ) then
 !       call write_watcha( timer_counter,"prep_ps_nloc2" )
 !    end if
 
