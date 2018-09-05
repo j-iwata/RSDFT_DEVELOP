@@ -8,6 +8,7 @@ module rotorb_module
   use overlap_cpmd_module
   use watch_module
   use rsdft_mpi_module
+  use rotorb_sub_module, only: rotorb_sub
 
   implicit none
 
@@ -81,9 +82,7 @@ CONTAINS
 
        !call watchb( ttmp, tttt(:,3), barrier="on" )
 
-!$OMP parallel workshare
        gam(1:MBC,ls:le) = sig(1:MBC,ls:le)*hf      ! (I-A)/2
-!$OMP end parallel workshare
 
        !call watchb( ttmp, tttt(:,4), barrier="on" )
 
@@ -156,8 +155,12 @@ CONTAINS
 
        !call watchb( ttmp, tttt(:,11), barrier="on" )
 
+! ---(1)
        call DGEMM('N','N',ML0,MB0,MBT,on,unk(n1,1,k,s),ML0 &
             ,wrk(1,MB_0_CPMD),MBC,zr,psi_tmp(n1,MB_0_CPMD),ML0)
+! ---(2)
+!       call rotorb_sub( unk(:,MB_0_CPMD:MB_1_CPMD,k,s), wrk, psi_tmp(:,MB_0_CPMD:MB_1_CPMD), 1.0d0, 0.0d0 )
+! ------
 
        !call watchb( ttmp, tttt(:,12), barrier="on" )
 
@@ -223,8 +226,12 @@ CONTAINS
 
        !call watchb( ttmp, tttt(:,1), barrier="on" )
 
+! ---(1)
        call DGEMM('N','N',ML0,MB0,MBT,om,unk(n1,1,k,s),ML0 &
             ,wrk(1,MB_0_CPMD),MBC,on,psi_v(n1,MB_0_CPMD,k,s),ML0)
+! ---(2)
+!       call rotorb_sub( unk(:,MB_0_CPMD:MB_1_CPMD,k,s), wrk, psi_v(:,MB_0_CPMD:MB_1_CPMD,k,s), -1.0d0, 1.0d0 )
+! ------
 
        !call watchb( ttmp, tttt(:,2), barrier="on" )
 

@@ -70,6 +70,8 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(3),etime_force(3))
 
+  if ( np_band > 1 ) call wf_gather_sub( unk ) ! This lien should be removed for memory-band-parallel CPMD.
+
   call calc_density_2( unk(:,MB_0:MB_1,:,:), occ(MB_0:MB_1,:,:) )
 
   if ( ltime ) call watch(ctime_force(4),etime_force(4))

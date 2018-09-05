@@ -4,6 +4,7 @@ module calc_overlap_bp_module
   use rsdft_mpi_module
   use calc_overlap_module, only: calc_overlap_no_mpi, calc_overlap
   use watch_module
+  use transpose_module, only: rsdft_transpose
 
   implicit none
 
@@ -32,7 +33,7 @@ contains
     integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1,l0,l1
     integer :: irank, jrank, istep, nstep
     integer :: istatus(MPI_STATUS_SIZE,2), ireq(2), ierr, itags, nreq
-    real(8) :: ttmp(2),tttt(2,16)
+    real(8) :: ttmp(2),tttt(2,15)
 
     if ( nprocs_b == 1 ) then
        call calc_overlap( size(a,1), nb, a, b, alpha, ab )
@@ -83,9 +84,7 @@ contains
        k0 = (iblk-1)*blk_size + 1
        k1 = k0 + blk_size - 1
 
-!$OMP parallel workshare
        sendbuf(:,:) = a(:,k0:k1)
-!$OMP end parallel workshare
 
        !call watchb( ttmp, tttt(:,2), barrier="on" )
 
@@ -122,18 +121,18 @@ contains
           if ( istep == 1 ) then
 
              !call watchb( ttmp, barrier="on" )
-
-             !call calc_overlap_no_mpi( sendbuf, b(:,k0:k1), alpha, ab_blk )
+! ---(1)
+!             call calc_overlap_no_mpi( sendbuf, b(:,k0:k1), alpha, ab_blk )
+!             call rsdft_transpose( ab_blk, 16 )
+! ---(2)
              !call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab(i0,j0),nb)
              call DGEMM('T','N',blk_size,blk_size,m,alpha,sendbuf,m,b(1,k0),m,0.0d0,ab_blk,blk_size)
-
+! ------
              !call watchb( ttmp, tttt(:,5), barrier="on" )
 
              call rsdft_allreduce_sum( ab_blk, comm_grid )
 
-!$OMP parallel workshare
              ab(i0:i1,j0:j1) = ab_blk(:,:)
-!$OMP end parallel workshare
 
              !call watchb( ttmp, tttt(:,6), barrier="on" )
 
@@ -148,9 +147,7 @@ contains
 
              call rsdft_allreduce_sum( ab_blk, comm_grid )
 
-!$OMP parallel workshare
              ab(i0:i1,j0:j1) = ab_blk(:,:)
-!$OMP end parallel workshare
 
              !call watchb( ttmp, tttt(:,8), barrier="on" )
 
@@ -159,23 +156,15 @@ contains
           !call watchb( ttmp, barrier="on" )
 
           if ( istep > 1 ) then
-!$OMP parallel
-!$OMP workshare
              tr_blk = transpose( ab_blk )
-!$OMP end workshare
-!$OMP workshare
              ab(j0:j1,i0:i1) = tr_blk(:,:)
-!$OMP end workshare
-!$OMP end parallel
           end if
 
           !call watchb( ttmp, tttt(:,9), barrier="on" )
 
           if ( nreq == 2 ) then
              call MPI_Waitall( 2, ireq, istatus, ierr )
-!$OMP parallel workshare
              sendbuf(:,:) = recvbuf(:,:)
-!$OMP end parallel workshare
           end if
 
           !call watchb( ttmp, tttt(:,10), barrier="on" )
@@ -199,20 +188,12 @@ contains
 
           call rsdft_allreduce_sum( ab_blk, comm_grid )
 
-!$OMP parallel workshare
           ab(i0:i1,j0:j1) = ab_blk(:,:)
-!$OMP end parallel workshare
 
           !call watchb( ttmp, tttt(:,12), barrier="on" )
 
-!$OMP parallel
-!$OMP workshare
           tr_blk = transpose( ab_blk )
-!$OMP end workshare
-!$OMP workshare
           ab(j0:j1,i0:i1) = tr_blk(:,:)
-!$OMP end workshare
-!$OMP end parallel
 
           !call watchb( ttmp, tttt(:,13), barrier="on" )
 
@@ -236,19 +217,12 @@ contains
 
     !call watchb( ttmp, tttt(:,14), barrier="on" )
 
-    !deallocate( tr_blk  )
-    !deallocate( ab_blk  )
-    !deallocate( recvbuf )
-    !deallocate( sendbuf )
+    if ( nprocs_b > 1 ) call matrix_permutation( ab, nblk )
 
     !call watchb( ttmp, tttt(:,15), barrier="on" )
 
-    if ( nprocs_b > 1 ) call matrix_permutation( ab, nblk )
-
-    !call watchb( ttmp, tttt(:,16), barrier="on" )
-
 !    if ( myrank == 0 ) then
-!        do i=1,16
+!        do i=1,15
 !           write(*,'(1x,"time_calc_overlap_bp(",i2.2,")",2f10.5)') i,tttt(:,i)
 !        end do
 !    end if
@@ -267,7 +241,6 @@ contains
     real(8) :: ttmp(2),tttt(2,2)
 
     !call write_border( 1, "matrix_permutation(start)" )
-
     !call watchb( ttmp, barrier="on" ); tttt=0.0d0
 
     nb = size( a, 1 )
@@ -285,13 +258,11 @@ contains
        do ib=1,nb,nb/nblk
           i0 = ib + irank_b*blk_size
           i1 = i0 + blk_size - 1
-!!$OMP parallel do collapse(2)
           do i=1,blk_size
           do j=1,nb
              b(j,j0+i-1)=a(j,i0+i-1)
           end do
           end do
-!!$OMP end parallel do
           j0 = j0 + blk_size
           j1 = j1 + blk_size
        end do
@@ -302,13 +273,11 @@ contains
        do ib=1,nb,nb/nblk
           i0 = ib + irank_b*blk_size
           i1 = i0 + blk_size - 1
-!!$OMP parallel do collapse(2)
           do j=1,nb
           do i=1,blk_size
              a(j0+i-1,j)=b(i0+i-1,j)
           end do
           end do
-!!$OMP end parallel do
           j0 = j0 + blk_size
           j1 = j1 + blk_size
        end do
@@ -326,7 +295,8 @@ contains
 
   end subroutine matrix_permutation
 
-
+! ---------- dummy routines for different argument type
+!
   subroutine calc_overlap_bp_zd( nb, a, b, alpha, ab )
     implicit none
     integer,intent(in)  :: nb
@@ -336,8 +306,6 @@ contains
     real(8),intent(inout) :: ab(:,:)
     call stop_program( "calc_overlap_bp_zd is not implemented" )
   end subroutine calc_overlap_bp_zd
-
-
   subroutine calc_overlap_bp_zz( nb, a, b, alpha, ab )
     implicit none
     integer,intent(in)  :: nb
@@ -346,6 +314,7 @@ contains
     real(8),intent(inout) :: ab(:,:)
     call stop_program( "calc_overlap_bp_zz is not implemented" )
   end subroutine calc_overlap_bp_zz
-
+!
+! --------------------------------------------------------------
 
 end module calc_overlap_bp_module
