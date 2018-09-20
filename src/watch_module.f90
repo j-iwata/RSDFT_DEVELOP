@@ -39,7 +39,7 @@ MODULE watch_module
   data time_nlpp_indx(1:7)/"nlc1","nlcom","nlc2","com1","com2","com3","com4"/
   data time_cgpc_indx(8:13)/"recv","send","spack","waita","final","totbc"/
 
-  real(8) :: etime_limit
+  real(8) :: etime_limit=1.0d100
 
   real(8) :: global_ctime0,global_etime0
   logical :: flag_count_start=.true.
