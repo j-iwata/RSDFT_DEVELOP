@@ -284,7 +284,7 @@ SUBROUTINE bomd
         tote  = kine+Etot+fke+Ebath
         dif   = abs(tote-tote0)
 
-        write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
+        write(*,'(1x,f10.3,9g15.7)') tott,tote,Etot,kine,fke,ltemp
         write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
         if ( ltime ) then
@@ -371,6 +371,6 @@ SUBROUTINE bomd
 
 99 stop "stop@bomd(99)"
 
-10 format(10f15.8)
+10 format(10g15.7)
 
 END SUBROUTINE bomd
