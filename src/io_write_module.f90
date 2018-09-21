@@ -166,7 +166,7 @@ CONTAINS
 
     end if
 
-    if ( IO_ctrl == 3 ) then
+    if ( IO_ctrl == 3 .or. IO_Ctrl == 2 ) then
 
        if ( myrank == 0 ) close(unit)
 
@@ -227,7 +227,7 @@ CONTAINS
              end select
           end if
 
-       else if ( IO_ctrl == 3 ) then
+       else if ( IO_ctrl == 3 .or. IO_Ctrl == 2 ) then
 
           if ( flag_related ) then
              select case(OC)
@@ -245,7 +245,7 @@ CONTAINS
     end do ! k
     end do ! s
 
-    if ( IO_ctrl == 0 .and. myrank == 0 .or. IO_ctrl == 3 ) then
+    if ( IO_ctrl==0 .and. myrank==0 .or. IO_ctrl==3 .or. IO_Ctrl==2 ) then
        close(1)
     end if
 

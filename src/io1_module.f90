@@ -1,23 +1,27 @@
-MODULE io_read_module
+module io1_module
 
-  use parallel_module
-  use wf_module
-  use rgrid_module
+  use parallel_module, only: para, RSDFT_MPI_COMPLEX16, myrank &
+                           , np_grid, ir_grid, id_grid, comm_grid, myrank_g &
+                           , id_bzsm, ir_bzsm, id_spin, ir_spin, nprocs &
+                           , id_band, ir_band, id_class, myrank_f, comm_fkmb &
+                           , construct_para, get_np_parallel
+  use wf_module, only: wfrange, MB_WF,MB_0_WF,MB_1_WF,ML_0_WF,ML_1_WF &
+                      ,MS_0_WF, MS_1_WF, MS_WF, MK_0_WF, MK_1_WF, MK_WF &
+                      , occ, unk, allocate_b_wf, allocate_b_occ
+  use rgrid_module, only: Ngrid, Igrid
   use rgrid_mol_module, only: LL
-  use rsdft_mpi_module
+  use rsdft_mpi_module, only: rsdft_allgatherv
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: simple_wf_io_read
+  private
+  public :: read_data_io1
 
-CONTAINS
+contains
 
-  SUBROUTINE simple_wf_io_read( file_wf2, SYStype, IO_ctrl, DISP_SWITCH &
+  subroutine read_data_io1( file_wf2, SYStype, IO_ctrl, DISP_SWITCH &
        , b, wf_out, occ_out, kbb_out )
-
     implicit none
-
     character(*),intent(IN) :: file_wf2
     integer,intent(IN) :: SYStype, IO_ctrl
     logical,intent(IN) :: DISP_SWITCH
@@ -29,7 +33,7 @@ CONTAINS
 #endif
     real(8),allocatable,optional,intent(INOUT) :: occ_out(:,:,:)
     real(8),allocatable,optional,intent(INOUT) :: kbb_out(:,:)
-
+    include 'mpif.h'
     integer :: ierr,istatus(MPI_STATUS_SIZE,123),irank,jrank
     integer :: itmp(21),n,k,s,i,i1,i2,i3,j1,j2,j3,mx,my,mz,m1,m2,m3
     integer :: ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp,MB_tmp,MB1_tmp,MB2_tmp
@@ -57,7 +61,7 @@ CONTAINS
     real(4),allocatable :: dtmpSP(:)
     type(para) :: pinfo0, pinfo1
 
-    call write_border( 0, " simple_wf_io_read(start)" )
+    call write_border( 0, "read_data_io1(start)" )
 
 ! ---
 
@@ -519,13 +523,13 @@ CONTAINS
        write(*,*) "read from ",file_wf2
     end if
 
-    call write_border( 0, " simple_wf_io_read(end)" )
+    call write_border( 0, "read_data_io1(end)" )
 
     return
 
-  END SUBROUTINE simple_wf_io_read
+  end subroutine read_data_io1
 
-  SUBROUTINE chk_rank_relevance( n,k,s, irank, flag_related )
+  subroutine chk_rank_relevance( n,k,s, irank, flag_related )
     implicit none
     integer,intent(IN) :: n,k,s
     integer,intent(OUT) :: irank
@@ -551,9 +555,9 @@ CONTAINS
     if ( MK_0_WF <= k .and. k <= MK_1_WF .and. &
          MB_0_WF <= n .and. n <= MB_1_WF  .and. &
          MS_0_WF <= s .and. s <= MS_1_WF ) flag_related = .true.
-  END SUBROUTINE chk_rank_relevance
+  end subroutine chk_rank_relevance
 
-  SUBROUTINE get_corresponding_rank( mrank_g, n,k,s, p, irank )
+  subroutine get_corresponding_rank( mrank_g, n,k,s, p, irank )
     implicit none
     integer,intent(IN) :: mrank_g, n,k,s
     type(para),intent(INOUT) :: p
@@ -584,6 +588,6 @@ CONTAINS
     end do
     end do
     end do loop
-  END SUBROUTINE get_corresponding_rank
+  end subroutine get_corresponding_rank
 
-END MODULE io_read_module
+end module io1_module

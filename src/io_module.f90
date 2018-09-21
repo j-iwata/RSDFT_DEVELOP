@@ -6,6 +6,7 @@ MODULE io_module
   use rgrid_mol_module, only: LL
   use kinetic_module, only: SYStype
 
+  use io1_module, only: read_data_io1
   use io2_module
   use io_read_module
   use io_write_module
@@ -462,12 +463,19 @@ CONTAINS
 
     if ( IO_ctrl == 3 ) then
        call read_io2( SYStype, ierr )
-       if ( ierr == 0 ) call read_data_io2
+       if ( ierr == 0 ) IO_ctrl=2
     end if
 
-    if ( IO_ctrl == 0 .or. ierr < 0 ) then
+    select case( IO_ctrl )
+    case( 0 )
        call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
-    end if
+    case( 1 )
+       call read_data_io1( file_wf2, SYStype, IO_ctrl, disp_switch )
+    case( 2 )
+       call read_data_io2
+    case( 3 )
+       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+    end select
 
     call result_timer( "read_data", tt )
     call write_border( 0, " read_data(end)" )
