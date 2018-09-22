@@ -7,10 +7,11 @@ module io1_module
                            , construct_para, get_np_parallel
   use wf_module, only: wfrange, MB_WF,MB_0_WF,MB_1_WF,ML_0_WF,ML_1_WF &
                       ,MS_0_WF, MS_1_WF, MS_WF, MK_0_WF, MK_1_WF, MK_WF &
-                      , occ, unk, allocate_b_wf, allocate_b_occ
-  use rgrid_module, only: Ngrid, Igrid
+                      , occ, unk, allocate_b_wf, allocate_b_occ &
+                      , gather_wf, test_on_wf
+  use rgrid_module, only: Ngrid, Igrid, dV
   use rgrid_mol_module, only: LL
-  use rsdft_mpi_module, only: rsdft_allgatherv
+  use rsdft_mpi_module !, only: rsdft_allgatherv
 
   implicit none
 
@@ -19,12 +20,10 @@ module io1_module
 
 contains
 
-  subroutine read_data_io1( file_wf2, SYStype, IO_ctrl, DISP_SWITCH &
-       , b, wf_out, occ_out, kbb_out )
+  subroutine read_data_io1( file_wf2, SYStype, b, wf_out, occ_out, kbb_out )
     implicit none
     character(*),intent(IN) :: file_wf2
-    integer,intent(IN) :: SYStype, IO_ctrl
-    logical,intent(IN) :: DISP_SWITCH
+    integer,intent(IN) :: SYStype
     type(wfrange),optional,intent(INOUT) :: b
 #ifdef _DRSDFT_
     real(8),allocatable,optional,intent(INOUT) :: wf_out(:,:,:,:)
@@ -34,16 +33,18 @@ contains
     real(8),allocatable,optional,intent(INOUT) :: occ_out(:,:,:)
     real(8),allocatable,optional,intent(INOUT) :: kbb_out(:,:)
     include 'mpif.h'
-    integer :: ierr,istatus(MPI_STATUS_SIZE,123),irank,jrank
+    integer :: ierr,irank,jrank,itag,nreq
     integer :: itmp(21),n,k,s,i,i1,i2,i3,j1,j2,j3,mx,my,mz,m1,m2,m3
+    integer :: k1,k2,kk
     integer :: ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp,MB_tmp,MB1_tmp,MB2_tmp
     integer :: ML,ML1,ML2,ML3,MB,n1,n2,ML0,MBZ_tmp,MSP_tmp,MMBZ_tmp
     integer :: MB_0,MB_1,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1
     integer :: IO_ctrl0, OC, TYPE_WF
     integer,allocatable :: LL2(:,:),LL_tmp(:,:),ir(:),id(:)
+    integer,allocatable :: ireq(:),istatus(:,:)
     real(8) :: aa0(3,3),bb0(3,3)
     real(8),allocatable :: kbb0(:,:),occ_tmp(:,:,:)
-    logical :: flag_related, flag_newformat
+    logical :: flag_related, flag_newformat, DISP_SWITCH,flag_open
     character(5) :: cmyrank
     character(32) :: file_wf_split
 #ifdef _DRSDFT_
@@ -60,8 +61,12 @@ contains
     real(8),allocatable :: dtmp(:)
     real(4),allocatable :: dtmpSP(:)
     type(para) :: pinfo0, pinfo1
+    integer :: jrank_g,jrank_n,jrank_k,jrank_s,s1,s2,l1,l2,ln
+    integer :: jrank_mod,irank_g,iirank,check_file_id,current_file_id
+    real(8) :: sum0,sum1
 
     call write_border( 0, "read_data_io1(start)" )
+    call check_disp_switch( DISP_SWITCH, 0 )
 
 ! ---
 
@@ -70,9 +75,9 @@ contains
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
     MB  = MB_WF
-    n1  = ML_0_WF
-    n2  = ML_1_WF
-    ML0 = n2 - n1 + 1
+    m1  = ML_0_WF
+    m2  = ML_1_WF
+    ML0 = m2 - m1 + 1
 
     MB_0  = MB_0_WF
     MB_1  = MB_1_WF
@@ -90,7 +95,7 @@ contains
 
     if ( SYStype == 0 ) then
 
-       i=n1-1
+       i=m1-1
        do i3=Igrid(1,3),Igrid(2,3)
        do i2=Igrid(1,2),Igrid(2,2)
        do i1=Igrid(1,1),Igrid(2,1)
@@ -104,7 +109,7 @@ contains
 
     else if ( SYStype == 1 ) then
 
-       LL2(1:3,n1:n2) = LL(1:3,n1:n2)
+       LL2(1:3,m1:m2) = LL(1:3,m1:m2)
 
     end if
 
@@ -112,7 +117,7 @@ contains
 
     ir(0:np_grid-1)=3*ir_grid(0:np_grid-1)
     id(0:np_grid-1)=3*id_grid(0:np_grid-1)
-    call rsdft_allgatherv( LL2(:,n1:n2), LL2, ir, id, comm_grid )
+    call rsdft_allgatherv( LL2(:,m1:m2), LL2, ir, id, comm_grid )
 
     deallocate( id,ir )
 
@@ -224,15 +229,15 @@ contains
     call mpi_bcast(occ_tmp,size(occ_tmp),mpi_real8,0,mpi_comm_world,ierr)
     
     if ( present(occ_out) ) then
-       m1=b%MB0
-       m2=min(b%MB1,MB_tmp)
-       occ_out(m1:m2,b%MK0:b%MK1,b%MS0:b%MS1) &
-            = occ_tmp(m1:m2,b%MK0:b%MK1,b%MS0:b%MS1)
+       n1=b%MB0
+       n2=min(b%MB1,MB_tmp)
+       occ_out(n1:n2,b%MK0:b%MK1,b%MS0:b%MS1) &
+            = occ_tmp(n1:n2,b%MK0:b%MK1,b%MS0:b%MS1)
     else
-       m1=min(MB ,MB_tmp )
-       m2=min(MBZ,MBZ_tmp)
-       m3=min(MSP,MSP_tmp)
-       occ(1:m1,1:m2,1:m3)=occ_tmp(1:m1,1:m2,1:m3)
+       n=min(MB ,MB_tmp )
+       k=min(MBZ,MBZ_tmp)
+       s=min(MSP,MSP_tmp)
+       occ(1:n,1:k,1:s)=occ_tmp(1:n,1:k,1:s)
        if ( myrank == 0 ) then
           write(*,*) "sum(occ)=",sum(occ)
        end if
@@ -279,232 +284,172 @@ contains
 
     if ( SYStype == 0 ) then
 
-       allocate( utmp3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; utmp3=zero
+       allocate( utmp3(0:ML1-1,0:ML2-1,0:ML3-1) ); utmp3=zero
 
     else if ( SYStype == 1 ) then
 
        mx=(Ngrid(1)-1)/2
        my=(Ngrid(2)-1)/2
        mz=(Ngrid(3)-1)/2
-       allocate( utmp3(-mx:mx,-my:my,-mz:mz) ) ; utmp3=0.d0
+       allocate( utmp3(-mx:mx,-my:my,-mz:mz) ); utmp3=0.d0
 
     end if
 
-    if ( IO_ctrl == 3 ) then
+! ---
 
-       if ( myrank == 0 ) close(3)
+    if ( myrank == 0 ) close(3)
 
-       write(cmyrank,'(i5.5)') myrank
-       file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
+!    current_file_id=0
+!    if ( myrank < pinfo0%np(0) ) then
+!       write(cmyrank,'(i5.5)') myrank
+!       file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
+!       open(3,file=file_wf_split,form="unformatted")
+!    end if
 
-       open(3,file=file_wf_split,form="unformatted")
+! ---
 
-    end if
-
-    allocate( utmp(ML) ) ; utmp=zero
+    allocate( utmp(ML) ); utmp=zero
     if ( OC == 4 .or. OC == 5 ) then
-       allocate( utmpSP(ML) ) ; utmpSP=zero
+       allocate( utmpSP(ML) ); utmpSP=zero
     end if
 
-    if ( type_wf == 1 ) then
-
-       allocate( dtmp(ML) ) ; dtmp=0.0d0
+    if ( type_wf == 1 ) then ! real-wf
+       allocate( dtmp(ML) ); dtmp=0.0d0
        if ( OC == 4 .or. OC == 5 ) then
-          allocate( dtmpSP(ML) ) ; dtmpSP=0.0d0
+          allocate( dtmpSP(ML) ); dtmpSP=0.0d0
+       end if
+    end if
+
+! ---
+
+    allocate( istatus(MPI_STATUS_SIZE,nprocs+1) ); istatus=0
+    allocate( ireq(nprocs+1) ); ireq=0
+
+    jrank = -1
+
+    do jrank_s=0,pinfo0%spin%np-1
+
+       s1 = pinfo0%spin%id(jrank_s) + 1
+       s2 = s1 + pinfo0%spin%ir(jrank_s) - 1
+
+    do jrank_k=0,pinfo0%bzsm%np-1
+
+       k1 = pinfo0%bzsm%id(jrank_k) + 1
+       k2 = k1 + pinfo0%bzsm%ir(jrank_k) - 1
+
+    do jrank_n=0,pinfo0%band%np-1
+
+       n1 = pinfo0%band%id(jrank_n) + 1
+       n2 = n1 + pinfo0%band%ir(jrank_n) - 1
+
+    do jrank_g=0,pinfo0%grid%np-1
+
+       j1 = pinfo0%grid%id(jrank_g) + 1
+       j2 = j1 + pinfo0%grid%ir(jrank_g) - 1
+
+       jrank = jrank + 1
+
+       jrank_mod = mod( jrank, nprocs )
+
+       if ( jrank_mod == myrank ) then
+          write(cmyrank,'(i5.5)') jrank
+          file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
+          open(3,file=file_wf_split,form="unformatted")
        end if
 
-    end if
+       do s=s1,s2
+       do k=k1,k2
+       do n=n1,n2
 
-    do s=1,MSP_tmp
-    do k=1,MBZ_tmp
-    do n=MB1_tmp,MB2_tmp
-
-       if ( IO_ctrl == 0 ) then
-
-          call chk_rank_relevance( n,k,s, irank, flag_related )
-
-          if ( myrank == 0 ) then
+          if ( jrank_mod == myrank ) then
 
              select case( OC )
-             case default
-                if ( type_wf == 1 ) then
-                   read(3) dtmp
-                   utmp=dtmp
-                else
-                   read(3) utmp
+             case default ! double precision data
+
+                select case( type_wf )
+                case( 0 ) ! complex-wf
+                   read(3) utmp(j1:j2)
+                case( 1 ) ! real-wf
+                   read(3) dtmp(j1:j2)
+                   utmp(j1:j2)=dtmp(j1:j2)
+                case default
+                   write(*,*) "type_wf=",type_wf
+                   call stop_program_f("Illegal type_wf(stop@read_data_io1)")
+                end select
+
+             case( 4, 5 ) ! single precision data
+
+                select case( type_wf )
+                case( 0 ) ! complex-wf
+                   read(3) utmpSP(j1:j2)
+                   utmp(j1:j2)=utmpSP(j1:j2)
+                case( 1 ) ! real-wf
+                   read(3) dtmpSP(j1:j2)
+                   utmp(j1:j2)=dtmpSP(j1:j2)
+                case default
+                   write(*,*) "type_wf=",type_wf
+                   call stop_program_f("Illegal type_wf(stop@read_data_io1_2)")
+                end select
+
+             end select ! OC
+
+          end if !( jrank_mod==myrank )
+
+          nreq=0
+          itag=0
+          do irank_g=0,pinfo1%grid%np-1
+             call get_corresponding_rank( irank_g, n,k,s, pinfo1, irank )
+             i1 = pinfo1%grid%id(irank_g) + 1
+             i2 = i1 + pinfo1%grid%ir(irank_g) - 1
+             if ( j1<=i1.and.i1<=j2 .or. j1<=i2.and.i2<=j2 ) then
+                l1 = max( j1, i1 )
+                l2 = min( j2, i2 )
+                ln = l2 - l1 + 1
+                if ( jrank_mod == myrank ) then
+                   nreq=nreq+1
+                   call MPI_Isend( utmp(l1),ln,TYPE_MAIN &
+                        ,irank,itag,MPI_COMM_WORLD,ireq(nreq),ierr )
                 end if
-             case(4,5)
-                if ( type_wf == 1 ) then
-                   read(3) dtmpSP
-                   utmp=dtmpSP
-                else
-                   read(3) utmpSP
-                   utmp=utmpSP
+                if ( irank == myrank ) then
+                   nreq=nreq+1
+                   call MPI_Irecv( unk(l1,n,k,s),ln,TYPE_MAIN,jrank_mod &
+                        ,itag,MPI_COMM_WORLD,ireq(nreq),ierr )
                 end if
-             end select
-
-             do i=1,ML
-                i1=LL_tmp(1,i) ; i2=LL_tmp(2,i) ; i3=LL_tmp(3,i)
-                utmp3(i1,i2,i3)=utmp(i)
-             end do
-             do i=1,ML
-                i1=LL2(1,i) ; i2=LL2(2,i) ; i3=LL2(3,i)
-                utmp(i)=utmp3(i1,i2,i3)
-             end do
-
-          end if ![ myrank == 0 ]
-
-          call mpi_barrier(mpi_comm_world,ierr)
-
-          if ( irank /= 0 .and. myrank_f == 0 ) then
-
-             if ( myrank == 0 ) then
-                call mpi_send(utmp,ML,TYPE_MAIN,irank,0, &
-                     mpi_comm_world,ierr)
              end if
-             if ( myrank == irank ) then
-                call mpi_recv(utmp,ML,TYPE_MAIN,0,0, &
-                     mpi_comm_world,istatus,ierr)
-             end if
+          end do ! irank_g
 
-          end if
+          if ( nreq > 0 ) call MPI_Waitall( nreq, ireq, istatus, ierr )
 
-          call mpi_barrier(mpi_comm_world,ierr)
+       end do ! n
+       end do ! k
+       end do ! s
 
-          if ( flag_related ) then
-             if ( present(wf_out) ) then
-                call mpi_scatterv(utmp,ir_grid,id_grid,TYPE_MAIN &
-                     ,wf_out(n1,n,k,s),ML0,TYPE_MAIN,0,comm_grid,ierr)
-             else
-                call mpi_scatterv(utmp,ir_grid,id_grid,TYPE_MAIN &
-                     ,unk(n1,n,k,s),ML0,TYPE_MAIN,0,comm_grid,ierr)
-             end if
-          end if
+       if ( jrank_mod == myrank ) close(3)
 
-       else if ( IO_ctrl == 3 ) then
+    end do ! jrank_g
+    end do ! jrank_n
+    end do ! jrank_k
+    end do ! jrank_s
 
-          call get_corresponding_rank( myrank_g, n,k,s, pinfo1, irank )
-          call get_corresponding_rank( myrank_g, n,k,s, pinfo0, jrank )
+    do s=MSP_0,MSP_1
+    do k=MBZ_0,MBZ_1
+    do n=MB_0 ,MB_1
+       call rsdft_allgatherv( unk(m1:m2,n,k,s), utmp &
+            ,pinfo1%grid%ir, pinfo1%grid%id, comm_grid )
+       do i=1,ML
+          utmp3(LL_tmp(1,i),LL_tmp(2,i),LL_tmp(3,i))=utmp(i)
+       end do
+       do i=m1,m2
+          unk(i,n,k,s)=utmp3(LL2(1,i),LL2(2,i),LL2(3,i))
+       end do
+    end do
+    end do
+    end do
 
-          if ( irank == myrank .or. jrank == myrank ) then
+! ---
 
-             select case(OC)
-             case default
-
-                if ( type_wf == 1 ) then ! real-wf
-
-                   if ( jrank == myrank ) then
-                      read(3) dtmp(n1:n2)
-                   end if
-                   if ( irank == jrank ) then
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=dtmp(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=dtmp(n1:n2)
-                      end if
-                   else if ( irank == myrank ) then
-                      call mpi_recv(dtmp(n1),n2-n1+1,MPI_REAL8,jrank,0, &
-                           mpi_comm_world,istatus,ierr)
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=dtmp(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=dtmp(n1:n2)
-                      end if
-                   else if ( jrank == myrank ) then
-                      call mpi_send(dtmp(n1),n2-n1+1,MPI_REAL8,irank,0, &
-                           mpi_comm_world,ierr)
-                   end if
-
-                else ! complex-wf
-
-                   if ( jrank == myrank ) then
-                      read(3) utmp(n1:n2)
-                   end if
-                   if ( irank == jrank ) then
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=utmp(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=utmp(n1:n2)
-                      end if
-                   else if ( irank == myrank ) then
-                      call mpi_recv(utmp(n1),n2-n1+1,TYPE_MAIN,jrank,0, &
-                           mpi_comm_world,istatus,ierr)
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=utmp(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=utmp(n1:n2)
-                      end if
-                   else if ( jrank == myrank ) then
-                      call mpi_send(utmp(n1),n2-n1+1,TYPE_MAIN,irank,0, &
-                           mpi_comm_world,ierr)
-                   end if
-
-                end if
-
-             case(4,5)
-
-                if ( type_wf == 1 ) then
-
-                   if ( jrank == myrank ) then
-                      read(3) dtmpSP(n1:n2)
-                   end if
-                   if ( irank == jrank ) then
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=dtmpSP(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=dtmpSP(n1:n2)
-                      end if
-                   else if ( irank == myrank ) then
-                      call mpi_recv(dtmpSP(n1),n2-n1+1,MPI_REAL,jrank,0, &
-                           mpi_comm_world,istatus,ierr)
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=dtmpSP(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=dtmpSP(n1:n2)
-                      end if
-                   else if ( jrank == myrank ) then
-                      call mpi_send(dtmpSP(n1),n2-n1+1,MPI_REAL,irank,0, &
-                           mpi_comm_world,ierr)
-                   end if
-
-                else
-
-                   if ( jrank == myrank ) then
-                      read(3) utmpSP(n1:n2)
-                   end if
-                   if ( irank == jrank ) then
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=utmpSP(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=utmpSP(n1:n2)
-                      end if
-                   else if ( irank == myrank ) then
-                      call mpi_recv(utmpSP(n1),n2-n1+1,TYPE_MAIN,jrank,0, &
-                           mpi_comm_world,istatus,ierr)
-                      if ( present(wf_out) ) then
-                         wf_out(n1:n2,n,k,s)=utmpSP(n1:n2)
-                      else
-                         unk(n1:n2,n,k,s)=utmpSP(n1:n2)
-                      end if
-                   else if ( jrank == myrank ) then
-                      call mpi_send(utmpSP(n1),n2-n1+1,TYPE_MAIN,irank,0, &
-                           mpi_comm_world,ierr)
-                   end if
-
-                end if
-
-             end select
-
-          end if
-
-       end if
-
-    end do ! n
-    end do ! k
-    end do ! s
-
-    if ( IO_ctrl == 0 .and. myrank == 0 .or. IO_ctrl == 3 ) close(3)
-
+    deallocate( ireq )
+    deallocate( istatus )
     if ( allocated(dtmpSP) ) deallocate( dtmpSP )
     if ( allocated(dtmp) ) deallocate( dtmp )
     if ( allocated(utmpSP) ) deallocate( utmpSP )
@@ -519,43 +464,10 @@ contains
     call mpi_bcast( unk,size(unk),RSDFT_MPI_COMPLEX16,0,comm_fkmb,ierr )
 #endif
 
-    if ( DISP_SWITCH ) then
-       write(*,*) "read from ",file_wf2
-    end if
-
     call write_border( 0, "read_data_io1(end)" )
 
     return
-
   end subroutine read_data_io1
-
-  subroutine chk_rank_relevance( n,k,s, irank, flag_related )
-    implicit none
-    integer,intent(IN) :: n,k,s
-    integer,intent(OUT) :: irank
-    logical,intent(OUT) :: flag_related
-    integer :: i1,i2,i3,j1,j2,j3
-    do irank=0,nprocs-1
-       i1=id_band(id_class(irank,4))+1
-       j1=id_band(id_class(irank,4))+ir_band(id_class(irank,4))
-       i2=id_bzsm(id_class(irank,5))+1
-       j2=id_bzsm(id_class(irank,5))+ir_bzsm(id_class(irank,5))
-       i3=id_spin(id_class(irank,6))+1
-       j3=id_spin(id_class(irank,6))+ir_spin(id_class(irank,6))
-       if ( id_grid(id_class(irank,0))==0 .and. &
-            i1<=n .and. n<=j1 .and. &
-            i2<=k .and. k<=j2 .and. &
-            i3<=s .and. s<=j3 ) exit
-    end do
-    if ( irank >= nprocs ) then
-       write(*,*) "ERROR!(stpo@simple_wf_io_read): myrank=",myrank
-       call stop_program_f( "stop@chk_rank_relevance" )
-    end if
-    flag_related = .false.
-    if ( MK_0_WF <= k .and. k <= MK_1_WF .and. &
-         MB_0_WF <= n .and. n <= MB_1_WF  .and. &
-         MS_0_WF <= s .and. s <= MS_1_WF ) flag_related = .true.
-  end subroutine chk_rank_relevance
 
   subroutine get_corresponding_rank( mrank_g, n,k,s, p, irank )
     implicit none

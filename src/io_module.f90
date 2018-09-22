@@ -461,7 +461,8 @@ CONTAINS
 
     if ( IC == 2 ) return
 
-    if ( IO_ctrl == 3 ) then
+    if ( IO_ctrl == 2 .or. IO_ctrl == 3 ) then
+       IO_ctrl=3
        call read_io2( SYStype, ierr )
        if ( ierr == 0 ) IO_ctrl=2
     end if
@@ -470,7 +471,7 @@ CONTAINS
     case( 0 )
        call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
     case( 1 )
-       call read_data_io1( file_wf2, SYStype, IO_ctrl, disp_switch )
+       call read_data_io1( file_wf2, SYStype )
     case( 2 )
        call read_data_io2
     case( 3 )
