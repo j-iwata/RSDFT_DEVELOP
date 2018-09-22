@@ -453,7 +453,7 @@ CONTAINS
           write(*,*) "read from ",file_vrho2
        end if
 
-    end if
+    end if ! IC==2,3,13
 
 !
 ! --- Read WF ---

@@ -299,13 +299,6 @@ contains
 
     if ( myrank == 0 ) close(3)
 
-!    current_file_id=0
-!    if ( myrank < pinfo0%np(0) ) then
-!       write(cmyrank,'(i5.5)') myrank
-!       file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
-!       open(3,file=file_wf_split,form="unformatted")
-!    end if
-
 ! ---
 
     allocate( utmp(ML) ); utmp=zero
@@ -401,7 +394,7 @@ contains
              call get_corresponding_rank( irank_g, n,k,s, pinfo1, irank )
              i1 = pinfo1%grid%id(irank_g) + 1
              i2 = i1 + pinfo1%grid%ir(irank_g) - 1
-             if ( j1<=i1.and.i1<=j2 .or. j1<=i2.and.i2<=j2 ) then
+             if ( i1<=j1.and.j1<=i2 .or. i1<=j2.and.j2<=i2 ) then
                 l1 = max( j1, i1 )
                 l2 = min( j2, i2 )
                 ln = l2 - l1 + 1
