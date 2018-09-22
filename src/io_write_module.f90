@@ -166,7 +166,7 @@ CONTAINS
 
     end if
 
-    if ( IO_ctrl == 3 .or. IO_Ctrl == 2 ) then
+    if ( IO_ctrl >= 1 ) then
 
        if ( myrank == 0 ) close(unit)
 
@@ -200,7 +200,8 @@ CONTAINS
                         MB_0 <= n .and. n <= MB_1 .and. &
                         MS_0 <= s .and. s <= MS_1 )
 
-       if ( IO_ctrl == 0 ) then
+       select case( IO_ctrl )
+       case( 0 )
 
           if ( flag_related ) then
              call mpi_gatherv(unk(n1,n,k,s),ML0,TYPE_MAIN, &
@@ -227,7 +228,7 @@ CONTAINS
              end select
           end if
 
-       else if ( IO_ctrl == 3 .or. IO_Ctrl == 2 ) then
+       case( 1,2,3 )
 
           if ( flag_related ) then
              select case(OC)
@@ -239,13 +240,13 @@ CONTAINS
              end select
           end if
 
-       end if
+       end select
 
     end do ! n
     end do ! k
     end do ! s
 
-    if ( IO_ctrl==0 .and. myrank==0 .or. IO_ctrl==3 .or. IO_Ctrl==2 ) then
+    if ( IO_ctrl==0.and.myrank==0 .or. IO_ctrl>=1 ) then
        close(1)
     end if
 

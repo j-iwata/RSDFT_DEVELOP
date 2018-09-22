@@ -394,7 +394,8 @@ contains
              call get_corresponding_rank( irank_g, n,k,s, pinfo1, irank )
              i1 = pinfo1%grid%id(irank_g) + 1
              i2 = i1 + pinfo1%grid%ir(irank_g) - 1
-             if ( i1<=j1.and.j1<=i2 .or. i1<=j2.and.j2<=i2 ) then
+             if ( i1<=j1.and.j1<=i2 .or. i1<=j2.and.j2<=i2 .or. &
+                  j1<=i1.and.i1<=j2 .or. j1<=i2.and.i2<=j2 ) then
                 l1 = max( j1, i1 )
                 l2 = min( j2, i2 )
                 ln = l2 - l1 + 1
