@@ -28,7 +28,8 @@ end subroutine dealloc_md
 subroutine alloc_cpmd
   use array_bound_module, only: MB,MBZ_0,MBZ_1,MSP_0,MSP_1
   use cpmd_variables, only: tau,sig,gam,gamn,scr,wrk,psi_n,psi_v,MBC &
-                           ,ircnt,idisp,myrank,nprocs
+                           ,ircnt,idisp,myrank,nprocs &
+                           ,MB_0_CPMD,MB_1_CPMD
   implicit none 
   integer,allocatable :: ir_i(:),id_i(:)
   integer ls,le,li,i,k,n,n1,n2
@@ -64,8 +65,10 @@ subroutine alloc_cpmd
   scr=0.0d0 ; wrk =0.0d0
   n1=idisp(myrank)+1
   n2=idisp(myrank)+ircnt(myrank)
-  allocate( psi_v(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-  allocate( psi_n(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+!  allocate( psi_v(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+!  allocate( psi_n(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+  allocate( psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+  allocate( psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,MBZ_0:MBZ_1,MSP_0:MSP_1) )
   psi_v=0.0d0
   psi_n=0.0d0
   return
