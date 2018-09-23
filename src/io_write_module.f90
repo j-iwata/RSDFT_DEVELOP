@@ -18,15 +18,22 @@ CONTAINS
 
 
   SUBROUTINE simple_wf_io_write &
-       ( file_wf, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
+       ( file_wf, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch &
+       , wf_in, MB_in, MB_0_in, MB_1_in )
 
     implicit none
     character(*),intent(IN) :: file_wf
     integer,intent(IN) :: IO_ctrl, OC, SYStype
     integer,intent(INOUT) :: MBwr1,MBwr2
     logical,intent(IN) :: disp_switch
+#ifdef _DRSDFT_
+    real(8),optional,intent(in) :: wf_in(:,:,:,:)
+#else
+    complex(8),optional,intent(in) :: wf_in(:,:,:,:)
+#endif
+    integer,optional,intent(in) :: MB_in, MB_0_in, MB_1_in
     integer,parameter :: unit = 1
-    integer :: i,i1,i2,i3,j1,j2,j3,k,n,s,n1,n2
+    integer :: i,i1,i2,i3,j1,j2,j3,k,n,s,n1,n2,n0,k0,s0
     integer :: istatus(MPI_STATUS_SIZE,123),irank,ierr
     integer,allocatable :: irc(:),ids(:)
     integer,allocatable :: LL2(:,:)
@@ -64,9 +71,9 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    MB   = MB_WF
-    MB_0 = MB_0_WF
-    MB_1 = MB_1_WF
+    MB   = MB_WF   ; if ( present(MB_in)   ) MB=MB_in
+    MB_0 = MB_0_WF ; if ( present(MB_0_in) ) MB_0=MB_0_in
+    MB_1 = MB_1_WF ; if ( present(MB_1_in) ) MB_1=MB_1_in
     MK   = MK_WF
     MK_0 = MK_0_WF
     MK_1 = MK_1_WF
@@ -230,13 +237,22 @@ CONTAINS
 
        case( 1,2,3 )
 
+          n0=n-MB_0+1
+          k0=k-MK_0+1
+          s0=s-MS_0+1
+
           if ( flag_related ) then
              select case(OC)
              case default
                 write(unit) unk(n1:n2,n,k,s)
+                if ( present(wf_in) ) write(unit) wf_in(:,n0,k0,s0)
              case(4,5)
                 utmpSP(n1:n2)=unk(n1:n2,n,k,s)
                 write(unit) utmpSP(n1:n2)
+                if ( present(wf_in) ) then
+                   utmpSP(n1:n2)=wf_in(:,n0,k0,s0)
+                   write(unit) utmpSP(n1:n2)
+                end if
              end select
           end if
 

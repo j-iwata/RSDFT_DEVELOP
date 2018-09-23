@@ -4,7 +4,9 @@ MODULE cpmdio_module
   use wf_module, only: unk
   use io_tools_module
   use rsdft_mpi_module
+  use io1_module, only: read_data_io1
   use io2_module
+  use io_write_module, only: simple_wf_io_write
 
   implicit none
 
@@ -12,7 +14,8 @@ MODULE cpmdio_module
   PUBLIC :: write_data_cpmdio
   PUBLIC :: read_data_cpmdio
 
-  integer :: io_ctrl=0
+  integer :: IO_Ctrl=0
+  integer :: OC=0
   logical :: flag_init=.true.
 
 CONTAINS
@@ -20,13 +23,23 @@ CONTAINS
 
   SUBROUTINE write_data_cpmdio
     implicit none
+    logical :: disp_sw
+    integer :: i
+    disp_sw=(myrank==0)
     if ( flag_init ) then
-       call IOTools_readIntegerKeyword( "IOCTRL", io_ctrl )
+       call IOTools_readIntegerKeyword( "IOCTRL", IO_Ctrl )
+       call IOTools_readIntegerKeyword( "OC", OC )
        flag_init=.false.
     end if
     select case( io_ctrl )
     case default
        call write_data_cpmd_k_seri
+    case( 1 )
+       i=1
+       if ( OC == 0 ) OC=3
+       call simple_wf_io_write( "restart", IO_Ctrl, OC, SYStype &
+            , i, MBC, disp_sw, psi_v(:,MB_0_CPMD:MB_1_CPMD,:,:) &
+            , MBC, MB_0_CPMD, MB_1_CPMD )
     case( 3 )
        call write_data_cpmd_k_para
     end select
@@ -42,6 +55,10 @@ CONTAINS
     select case( io_ctrl )
     case default
        call read_data_cpmd_k_seri
+    case( 1 )
+       call read_data_io1( "restart", SYStype &
+            ,wf_out=psi_v(:,MB_0_CPMD:MB_1_CPMD,:,:) &
+            ,MB_in=MBC, MB_0_in=MB_0_CPMD, MB_1_in=MB_1_CPMD )
     case( 3 )
        call read_data_cpmd_k_para
     end select

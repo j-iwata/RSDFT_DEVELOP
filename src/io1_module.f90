@@ -20,18 +20,20 @@ module io1_module
 
 contains
 
-  subroutine read_data_io1( file_wf2, SYStype, b, wf_out, occ_out, kbb_out )
+  subroutine read_data_io1( file_wf2, SYStype, b, wf_out, occ_out, kbb_out &
+       ,MB_in, MB_0_in, MB_1_in )
     implicit none
     character(*),intent(IN) :: file_wf2
     integer,intent(IN) :: SYStype
     type(wfrange),optional,intent(INOUT) :: b
 #ifdef _DRSDFT_
-    real(8),allocatable,optional,intent(INOUT) :: wf_out(:,:,:,:)
+    real(8),optional,intent(INOUT) :: wf_out(:,:,:,:)
 #else
-    complex(8),allocatable,optional,intent(INOUT) :: wf_out(:,:,:,:)
+    complex(8),optional,intent(INOUT) :: wf_out(:,:,:,:)
 #endif
     real(8),allocatable,optional,intent(INOUT) :: occ_out(:,:,:)
     real(8),allocatable,optional,intent(INOUT) :: kbb_out(:,:)
+    integer,optional,intent(in) :: MB_in, MB_0_in, MB_1_in
     include 'mpif.h'
     integer :: ierr,irank,jrank,itag,nreq
     integer :: itmp(21),n,k,s,i,i1,i2,i3,j1,j2,j3,mx,my,mz,m1,m2,m3
@@ -50,20 +52,20 @@ contains
 #ifdef _DRSDFT_
     integer,parameter :: TYPE_MAIN=MPI_REAL8
     real(8),parameter :: zero=0.0d0
-    real(8),allocatable :: utmp(:), utmp3(:,:,:)
+    real(8),allocatable :: utmp(:,:), utmp3(:,:,:)
     real(4),allocatable :: utmpSP(:)
 #else
     integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
     complex(8),parameter :: zero=(0.0d0,0.0d0)
-    complex(8),allocatable :: utmp(:), utmp3(:,:,:)
+    complex(8),allocatable :: utmp(:,:), utmp3(:,:,:)
     complex(4),allocatable :: utmpSP(:)
 #endif
     real(8),allocatable :: dtmp(:)
     real(4),allocatable :: dtmpSP(:)
     type(para) :: pinfo0, pinfo1
-    integer :: jrank_g,jrank_n,jrank_k,jrank_s,s1,s2,l1,l2,ln
+    integer :: jrank_g,jrank_n,jrank_k,jrank_s,s1,s2,l1,l2,ln,nv,iv
     integer :: jrank_mod,irank_g,iirank,check_file_id,current_file_id
-    real(8) :: sum0,sum1
+    integer :: n0,k0,s0,l0
 
     call write_border( 0, "read_data_io1(start)" )
     call check_disp_switch( DISP_SWITCH, 0 )
@@ -74,13 +76,13 @@ contains
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
-    MB  = MB_WF
+    MB  = MB_WF     ; if ( present(MB_in) ) MB=MB_in
     m1  = ML_0_WF
     m2  = ML_1_WF
     ML0 = m2 - m1 + 1
 
-    MB_0  = MB_0_WF
-    MB_1  = MB_1_WF
+    MB_0  = MB_0_WF ; if ( present(MB_0_in) ) MB_0=MB_0_in 
+    MB_1  = MB_1_WF ; if ( present(MB_1_in) ) MB_1=MB_1_in 
     MBZ   = MK_WF
     MBZ_0 = MK_0_WF
     MBZ_1 = MK_1_WF
@@ -213,13 +215,12 @@ contains
              b%MS0 = 1
              b%MS1 = MSP_tmp
           end if
-          if ( present(wf_out) ) call allocate_b_wf( b, wf_out )
+!          if ( present(wf_out) ) call allocate_b_wf( b, wf_out )
           if ( present(occ_out) ) call allocate_b_occ( b, occ_out )
           if ( present(kbb_out) ) then
              allocate( kbb_out(3,b%MK0:b%MK1) ) ; kbb_out=0.0d0
           end if
        end if
-
     end if
 
 ! ---
@@ -301,7 +302,9 @@ contains
 
 ! ---
 
-    allocate( utmp(ML) ); utmp=zero
+    nv=1 ; if ( present(wf_out) ) nv=2
+
+    allocate( utmp(ML,nv) ); utmp=zero
     if ( OC == 4 .or. OC == 5 ) then
        allocate( utmpSP(ML) ); utmpSP=zero
     end if
@@ -315,8 +318,9 @@ contains
 
 ! ---
 
-    allocate( istatus(MPI_STATUS_SIZE,nprocs+1) ); istatus=0
-    allocate( ireq(nprocs+1) ); ireq=0
+    n=nv*(nprocs+1)
+    allocate( istatus(MPI_STATUS_SIZE,n) ); istatus=0
+    allocate( ireq(n) ); ireq=0
 
     jrank = -1
 
@@ -361,10 +365,14 @@ contains
 
                 select case( type_wf )
                 case( 0 ) ! complex-wf
-                   read(3) utmp(j1:j2)
+                   do iv=1,nv
+                      read(3) utmp(j1:j2,iv)
+                   end do
                 case( 1 ) ! real-wf
-                   read(3) dtmp(j1:j2)
-                   utmp(j1:j2)=dtmp(j1:j2)
+                   do iv=1,nv
+                      read(3) dtmp(j1:j2)
+                      utmp(j1:j2,iv)=dtmp(j1:j2)
+                   end do
                 case default
                    write(*,*) "type_wf=",type_wf
                    call stop_program_f("Illegal type_wf(stop@read_data_io1)")
@@ -374,11 +382,15 @@ contains
 
                 select case( type_wf )
                 case( 0 ) ! complex-wf
-                   read(3) utmpSP(j1:j2)
-                   utmp(j1:j2)=utmpSP(j1:j2)
+                   do iv=1,nv
+                      read(3) utmpSP(j1:j2)
+                      utmp(j1:j2,iv)=utmpSP(j1:j2)
+                   end do
                 case( 1 ) ! real-wf
-                   read(3) dtmpSP(j1:j2)
-                   utmp(j1:j2)=dtmpSP(j1:j2)
+                   do iv=1,nv
+                      read(3) dtmpSP(j1:j2)
+                      utmp(j1:j2,iv)=dtmpSP(j1:j2)
+                   end do
                 case default
                    write(*,*) "type_wf=",type_wf
                    call stop_program_f("Illegal type_wf(stop@read_data_io1_2)")
@@ -388,6 +400,9 @@ contains
 
           end if !( jrank_mod==myrank )
 
+          n0=n-MB_0+1
+          k0=k-MBZ_0+1
+          s0=s-MSP_0+1
           nreq=0
           itag=0
           do irank_g=0,pinfo1%grid%np-1
@@ -399,15 +414,23 @@ contains
                 l1 = max( j1, i1 )
                 l2 = min( j2, i2 )
                 ln = l2 - l1 + 1
+                l0 = l1 - m1 + 1
                 if ( jrank_mod == myrank ) then
-                   nreq=nreq+1
-                   call MPI_Isend( utmp(l1),ln,TYPE_MAIN &
-                        ,irank,itag,MPI_COMM_WORLD,ireq(nreq),ierr )
+                   do iv=1,nv
+                      nreq=nreq+1
+                      call MPI_Isend( utmp(l1,iv),ln,TYPE_MAIN &
+                           ,irank,itag+iv,MPI_COMM_WORLD,ireq(nreq),ierr )
+                   end do
                 end if
                 if ( irank == myrank ) then
                    nreq=nreq+1
                    call MPI_Irecv( unk(l1,n,k,s),ln,TYPE_MAIN,jrank_mod &
-                        ,itag,MPI_COMM_WORLD,ireq(nreq),ierr )
+                        ,itag+1,MPI_COMM_WORLD,ireq(nreq),ierr )
+                   if ( present(wf_out) ) then
+                      nreq=nreq+1
+                      call MPI_Irecv( wf_out(l0,n0,k0,s0),ln,TYPE_MAIN &
+                           ,jrank_mod,itag+2,MPI_COMM_WORLD,ireq(nreq),ierr )
+                   end if
                 end if
              end if
           end do ! irank_g
@@ -428,10 +451,10 @@ contains
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
     do n=MB_0 ,MB_1
-       call rsdft_allgatherv( unk(m1:m2,n,k,s), utmp &
+       call rsdft_allgatherv( unk(m1:m2,n,k,s), utmp(:,1) &
             ,pinfo1%grid%ir, pinfo1%grid%id, comm_grid )
        do i=1,ML
-          utmp3(LL_tmp(1,i),LL_tmp(2,i),LL_tmp(3,i))=utmp(i)
+          utmp3(LL_tmp(1,i),LL_tmp(2,i),LL_tmp(3,i))=utmp(i,1)
        end do
        do i=m1,m2
           unk(i,n,k,s)=utmp3(LL2(1,i),LL2(2,i),LL2(3,i))
@@ -439,6 +462,23 @@ contains
     end do
     end do
     end do
+
+    if ( present(wf_out) ) then
+       do s=1,size(wf_out,4)
+       do k=1,size(wf_out,3)
+       do n=1,size(wf_out,2)
+          call rsdft_allgatherv( wf_out(:,n,k,s), utmp(:,1) &
+               ,pinfo1%grid%ir, pinfo1%grid%id, comm_grid )
+          do i=1,ML
+             utmp3(LL_tmp(1,i),LL_tmp(2,i),LL_tmp(3,i))=utmp(i,1)
+          end do
+          do i=m1,m2
+             wf_out(i-m1+1,n,k,s)=utmp3(LL2(1,i),LL2(2,i),LL2(3,i))
+          end do
+       end do
+       end do
+       end do
+    end if
 
 ! ---
 
