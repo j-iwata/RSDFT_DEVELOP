@@ -125,7 +125,9 @@ subroutine read_cpmd_variables
    call IOTools_readIntegerKeyword( "TRJSTEP", trjstep , 2 )
    call IOTools_readIntegerKeyword( "WRTSTEP", wrtstep , 2 )
    call IOTools_readIntegerKeyword( "ALLTRAJ", all_traj, 2 )
-   call IOTools_readIntegerKeyword( "CPMDIO" , ctrl_cpmdio, 2 )
+   call IOTools_readIntegerKeyword( "CPMDIO"   , ctrl_cpmdio, 2 )
+   call IOTools_readIntegerKeyword( "CPMDWRITE", ctrl_cpmdio, 2 )
+   call IOTools_readIntegerKeyword( "CPMDREAD", ctrl_cpmdio_r, 2 )
    if ( myrank == 0 ) then
       close(2)
       write(*,*) "nstep =",nstep

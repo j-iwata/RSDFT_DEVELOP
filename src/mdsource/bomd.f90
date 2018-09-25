@@ -375,6 +375,6 @@ SUBROUTINE bomd
 
 99 stop "stop@bomd(99)"
 
-10 format(10g15.7)
+10 format(10f18.8)
 
 END SUBROUTINE bomd
