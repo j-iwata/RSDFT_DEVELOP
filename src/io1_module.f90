@@ -26,11 +26,11 @@ contains
     character(*),intent(IN) :: file_wf2
     integer,intent(IN) :: SYStype
     type(wfrange),optional,intent(INOUT) :: b
-#ifdef _DRSDFT_
+!#ifdef _DRSDFT_
     real(8),optional,intent(INOUT) :: wf_out(:,:,:,:)
-#else
-    complex(8),optional,intent(INOUT) :: wf_out(:,:,:,:)
-#endif
+!#else
+!    complex(8),optional,intent(INOUT) :: wf_out(:,:,:,:)
+!#endif
     real(8),allocatable,optional,intent(INOUT) :: occ_out(:,:,:)
     real(8),allocatable,optional,intent(INOUT) :: kbb_out(:,:)
     integer,optional,intent(in) :: MB_in, MB_0_in, MB_1_in
@@ -463,6 +463,7 @@ contains
     end do
     end do
 
+#ifdef _DRSDFT_
     if ( present(wf_out) ) then
        do s=1,size(wf_out,4)
        do k=1,size(wf_out,3)
@@ -479,6 +480,7 @@ contains
        end do
        end do
     end if
+#endif
 
 ! ---
 
