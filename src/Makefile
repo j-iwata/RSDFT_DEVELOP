@@ -99,7 +99,7 @@ all :
                         $(MODS0)\
                         $(OBJ_AO)\
                         $(MODS3)\
-                        $(OBJ_MD) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) -o rsdft.x
+                        $(OBJ_MD) main.o $(LIBXC_L) $(FFTW_L) $(LAPACK_L) $(EIGEN_L) -o rsdft.x
 
 lda0 : $(MODS1)
 lda1 : $(MODS0)

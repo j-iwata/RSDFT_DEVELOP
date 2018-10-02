@@ -1,57 +1,49 @@
 MODULE subspace_rotv_sl_module
 
-  use wf_module, only: unk,hunk,iflag_hunk
   use scalapack_module
-  use parallel_module
-  use subspace_diag_variables, only: MB_diag,NBLK2,zero,one,Vsub,TYPE_MAIN
-  use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
-  use bcast_module
-  use watch_module
+  use subspace_diag_variables
+  use vector_tools_module, only: vinfo
 
   implicit none
 
   PRIVATE
   PUBLIC :: subspace_rotv_sl
+  PUBLIC :: subspace_rotv_sl_bp1
+  PUBLIC :: subspace_rotv_sl_bp2
 
-#ifdef _DRSDFT_
   real(8),allocatable :: utmp(:,:),utmp2(:,:)
-#else
-  complex(8),allocatable :: utmp(:,:),utmp2(:,:)
-#endif
 
 CONTAINS
 
 
-  SUBROUTINE subspace_rotv_sl(k,s)
+  SUBROUTINE subspace_rotv_sl( u, v )
+
     implicit none
-    integer,intent(IN) :: k,s
-    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,loop
-    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,n_loop
-    type(time) :: t
+    real(8),intent(INOUT) :: u(:,:)
+    type(vinfo),intent(IN) :: v(2)
+    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,MB_0,MB_1
+    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,comm_grid
+    integer :: myrank
+    include 'mpif.h'
 
-    call write_border( 1, " subspace_rotv(start)" )
-    call start_timer( t )
+    call write_border( 1, " subspace_rotv_sl(start)" )
 
-    n1  = ML_0
-    n2  = ML_1
-    ML0 = ML_1-ML_0+1
-    MB  = MB_diag
+    ML0  = size( u, 1 )
+    MB   = MB_diag
+    MB_0 = v(2)%pinfo%id(v(2)%pinfo%me) + 1
+    MB_1 = MB_0 + v(2)%pinfo%ir(v(2)%pinfo%me) - 1
+    comm_grid = v(1)%pinfo%comm
 
-    NBLK2 = maxval(ircnt)
+    call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
+
+    NBLK2 = maxval( v(1)%pinfo%ir )
 
     allocate( utmp(NBLK2,MB_0:MB_1) )
     utmp=zero
 
-    n_loop=1
-    if ( iflag_hunk >= 1 ) then
-       n_loop=2
-    end if
+    do i1=1,maxval( v(1)%pinfo%ir ),NBLK2
 
-    do loop=1,n_loop
-
-    do i=1,maxval(ircnt),NBLK2
-       i1=n1+i-1
-       i2=min(i1+NBLK2-1,n2)
+       i2=min(i1+NBLK2-1,ML0)
        ii=i2-i1+1
 
        utmp(:,:)=zero
@@ -73,7 +65,7 @@ CONTAINS
              iroot1 = usermap(IPROW,IPCOL,1)
              iroot2 = usermap(IPROW,IPCOL,2)
 
-             if ( mm<1 .or. nn<1 ) cycle
+             if ( mm < 1 .or. nn < 1 ) cycle
 
              allocate( utmp2(ms:me,ns:ne) )
 
@@ -84,31 +76,11 @@ CONTAINS
                 i0=i0+mm
              end if
 
-!             call mpi_bcast(utmp2(ms,ns),mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
-#ifdef _DRSDFT_
-             call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
-#else
-             call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
-#endif
+             call mpi_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 
-             if ( ii>0 ) then
-#ifdef _DRSDFT_
-                if ( loop == 1 ) then
-                   call dgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
-                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
-                else if ( loop == 2 ) then
-                   call dgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
-                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
-                end if
-#else
-                if ( loop == 1 ) then
-                   call zgemm('N','N',ii,nn,mm,one,unk(i1,ms,k,s) &
-                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
-                else if ( loop == 2 ) then
-                   call zgemm('N','N',ii,nn,mm,one,hunk(i1,ms,k,s) &
-                        ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
-                end if
-#endif
+             if ( ii > 0 ) then
+                call dgemm('N','N',ii,nn,mm,one,u(i1,ms) &
+                     ,ML0,utmp2(ms,ns),mm,one,utmp(1,ns),NBLK2)
              end if
 
              deallocate( utmp2 )
@@ -120,26 +92,282 @@ CONTAINS
        end do ! ns
 
        if ( ii > 0 ) then
-          if ( loop == 1 ) then
 !$OMP parallel workshare
-             unk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
+          u(i1:i2,MB_0:MB_1)=utmp(1:ii,MB_0:MB_1)
 !$OMP end parallel workshare
-          else if ( loop == 2 ) then
-!$OMP parallel workshare
-             hunk(i1:i2,MB_0:MB_1,k,s)=utmp(1:ii,MB_0:MB_1)
-!$OMP end parallel workshare
-          end if
        end if
 
     end do ! ii
 
-    end do ! loop
-
     deallocate( utmp )
 
-    call result_timer( "rotv_sl", t )
-    call write_border( 1, " subspace_rotv(end)" )
+    call write_border( 1, " subspace_rotv_sl(end)" )
 
   END SUBROUTINE subspace_rotv_sl
+
+  SUBROUTINE subspace_rotv_sl_bp1( u, v )
+
+    implicit none
+    real(8),intent(INOUT) :: u(:,:)
+    type(vinfo),intent(IN) :: v(2)
+    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,MB_0,MB_1
+    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,comm_grid
+    integer :: myrank
+    include 'mpif.h'
+    real(8),allocatable :: utmp3(:,:),utmp4(:,:)
+    integer :: comm_band, np_band, irank_b, MBLK, myrank_b
+    integer :: irank_c, ncycle, icycle, ib, nbss
+    integer :: MB2, jj0
+
+    call write_border( 1, " subspace_rotv_sl_bp1(start)" )
+
+    ML0  = size( u, 1 )
+    MB   = MB_diag
+    MB_0 = v(2)%pinfo%id(v(2)%pinfo%me) + 1
+    MB_1 = MB_0 + v(2)%pinfo%ir(v(2)%pinfo%me) - 1
+    comm_grid = v(1)%pinfo%comm
+
+    np_band   = v(2)%pinfo%np
+    myrank_b  = v(2)%pinfo%me
+    comm_band = v(2)%pinfo%comm
+    MBLK=min(MBSIZE,NBSIZE)
+
+    call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
+
+    NBLK2 = maxval( v(1)%pinfo%ir )
+
+    allocate( utmp3(NBLK2,MBLK) ); utmp3=zero
+
+    MB2=(MB-1)/np_band+1
+    allocate( utmp4(NBLK2,MB2) ); utmp4=zero
+
+    ncycle=(MB-1)/MBLK+1
+
+    do i1=1,maxval( v(1)%pinfo%ir ),NBLK2
+
+       i2=min(i1+NBLK2-1,ML0)
+       ii=i2-i1+1
+
+       utmp4(:,:)=zero
+
+       i0=0
+       do icycle=1,ncycle
+          ms=MBLK*(icycle-1)+1
+          me=min(ms+MBLK-1,MB)
+          mm=me-ms+1
+
+          irank_b = mod( icycle-1, np_band )
+
+          IPROW=mod( (ms-1)/MBLK,NPROW )
+
+          utmp3=zero
+          if ( irank_b == myrank_b ) utmp3(1:ii,1:mm)=u(i1:i2,ms:me)
+
+          call mpi_bcast(utmp3,ii*mm,TYPE_MAIN,irank_b,comm_band,ierr)
+
+          j0=0
+          jj0=0
+          do ib=1,(ncycle-1)/np_band+1
+             nbss=(ib-1)*np_band+myrank_b+1
+             ns=MBLK*(nbss-1)+1
+             ne=min(ns+MBLK-1,MB)
+             nn=ne-ns+1
+
+             IPCOL=mod( (ns-1)/NBSIZE,NPCOL )
+
+             iroot1 = usermap(IPROW,IPCOL,1)
+             iroot2 = usermap(IPROW,IPCOL,2)
+
+             if ( mm < 1 .or. nn < 1 ) cycle
+
+             irank_c = mod( (ns-1)/MBLK, np_band )
+             if ( irank_c == myrank_b ) then
+             
+                allocate( utmp2(ms:me,ns:ne) )
+
+                if ( iroot1 == myrank ) then
+!$OMP parallel workshare
+                   utmp2(ms:me,ns:ne)=Vsub(i0+1:i0+mm,j0+1:j0+nn)
+!$OMP end parallel workshare
+                   j0=j0+nn
+                end if
+
+                call mpi_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+
+                if ( ii > 0 ) then
+                   call dgemm('N','N',ii,nn,mm,one,utmp3 &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp4(1,jj0+1),NBLK2)
+                   jj0=jj0+nn
+                end if
+
+                deallocate( utmp2 )
+
+             endif
+
+          end do ! ms
+
+          if ( any(usermap(IPROW,0:NPCOL-1,1)==myrank) ) i0=i0+mm
+
+       end do ! ns
+
+! update u(:,:)
+       if ( ii > 0 ) then
+          jj0=0
+          do ib=1,(ncycle-1)/np_band+1
+             nbss= (ib-1)*np_band+myrank_b+1
+             ns=MBLK*(nbss-1)+1
+             ne=min(ns+MBLK-1,MB)
+             nn=ne-ns+1
+             u(i1:i2,ns:ne)=utmp4(1:ii,jj0+1:jj0+nn)
+             jj0=jj0+nn
+          enddo
+       end if
+
+    end do ! ii
+
+    deallocate( utmp3 )
+    deallocate( utmp4 )
+
+    call write_border( 1, " subspace_rotv_sl_bp1(end)" )
+
+  END SUBROUTINE subspace_rotv_sl_bp1
+
+  SUBROUTINE subspace_rotv_sl_bp2( u, v )
+
+    implicit none
+    real(8),intent(INOUT) :: u(:,:)
+    type(vinfo),intent(IN) :: v(2)
+    integer :: i,i1,i2,ii,n1,n2,i0,j0,ns,ne,nn,ms,me,mm,MB_0,MB_1
+    integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,comm_grid
+    integer :: myrank
+    include 'mpif.h'
+    real(8),allocatable :: utmp3(:,:),utmp4(:,:)
+    integer :: comm_band, np_band, irank_b, MBLK, myrank_b
+    integer :: irank_c, ncycle, icycle, ib, nbss
+    integer :: MB2, jj0
+    integer :: msV, meV, nsV, neV
+
+    call write_border( 1, " subspace_rotv_sl_bp2(start)" )
+
+    ML0  = size( u, 1 )
+    MB   = MB_diag
+    MB_0 = v(2)%pinfo%id(v(2)%pinfo%me) + 1
+    MB_1 = MB_0 + v(2)%pinfo%ir(v(2)%pinfo%me) - 1
+    comm_grid = v(1)%pinfo%comm
+
+    np_band   = v(2)%pinfo%np
+    myrank_b  = v(2)%pinfo%me
+    comm_band = v(2)%pinfo%comm
+    MBLK=min(MBSIZE,NBSIZE)
+
+    call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
+
+    NBLK2 = maxval( v(1)%pinfo%ir )
+
+    allocate( utmp3(NBLK2,MBLK) ); utmp3=zero
+
+    MB2=(MB-1)/np_band+1
+    allocate( utmp4(NBLK2,MB2) ); utmp4=zero
+
+    ncycle=(MB-1)/MBLK+1
+
+    do i1=1,maxval( v(1)%pinfo%ir ),NBLK2
+
+       i2=min(i1+NBLK2-1,ML0)
+       ii=i2-i1+1
+
+       utmp4(:,:)=zero
+
+       i0=0
+       do icycle=1,ncycle
+          ms=MBLK*(icycle-1)+1
+          me=min(ms+MBLK-1,MB)
+          mm=me-ms+1
+
+          msV=MBLK*int((icycle-1)/np_band )+ 1
+          meV=min(msV+MBLK-1,MB)
+
+          irank_b = mod( icycle-1, np_band )
+
+          IPROW=mod( (ms-1)/MBLK,NPROW )
+
+          utmp3=zero
+          if ( irank_b == myrank_b ) utmp3(1:ii,1:mm)=u(i1:i2,msV:meV)
+
+          call mpi_bcast(utmp3,ii*mm,TYPE_MAIN,irank_b,comm_band,ierr)
+
+          j0=0
+          jj0=0
+          do ib=1,(ncycle-1)/np_band+1
+             nbss=(ib-1)*np_band+myrank_b+1
+             ns=MBLK*(nbss-1)+1
+             ne=min(ns+MBLK-1,MB)
+             nn=ne-ns+1
+
+             nsV = MBLK*(ib-1)+1
+             neV = min(nsV+MBLK-1,MB)
+
+             IPCOL=mod( (ns-1)/NBSIZE,NPCOL )
+
+             iroot1 = usermap(IPROW,IPCOL,1)
+             iroot2 = usermap(IPROW,IPCOL,2)
+
+             if ( mm < 1 .or. nn < 1 ) cycle
+
+             irank_c = mod( (ns-1)/MBLK, np_band )
+             if (irank_c==myrank_b) then
+             
+                allocate( utmp2(ms:me,ns:ne) )
+
+                if ( iroot1 == myrank ) then
+!$OMP parallel workshare
+                   utmp2(ms:me,ns:ne)=Vsub(i0+1:i0+mm,j0+1:j0+nn)
+!$OMP end parallel workshare
+                   j0=j0+nn
+                end if
+
+                call mpi_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+
+                if ( ii > 0 ) then
+                   call dgemm('N','N',ii,nn,mm,one,utmp3 &
+                        ,ML0,utmp2(ms,ns),mm,one,utmp4(1,jj0+1),NBLK2)
+                   jj0=jj0+nn
+                end if
+
+                deallocate( utmp2 )
+
+             endif
+
+          end do ! ms
+
+          if ( any(usermap(IPROW,0:NPCOL-1,1)==myrank) ) i0=i0+mm
+
+       end do ! ns
+
+! update u(:,:)
+       if ( ii > 0 ) then
+          jj0=0
+          do ib=1,(ncycle-1)/np_band+1
+             nbss= (ib-1)*np_band+myrank_b+1
+             ns=MBLK*(nbss-1)+1
+             ne=min(ns+MBLK-1,MB)
+             nn=ne-ns+1
+
+             nsV = MBLK*(ib-1)+1
+             neV = min(nsV+MBLK-1,MB)
+
+             u(i1:i2,nsV:neV)=utmp4(1:ii,jj0+1:jj0+nn)
+             jj0=jj0+nn
+          enddo
+       end if
+
+    end do ! ii
+
+    deallocate( utmp3 )
+    deallocate( utmp4 )
+
+    call write_border( 1, " subspace_rotv_sl_bp2(end)" )
+
+  END SUBROUTINE subspace_rotv_sl_bp2
 
 END MODULE subspace_rotv_sl_module

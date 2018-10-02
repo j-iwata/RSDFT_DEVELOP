@@ -21,6 +21,7 @@ MODULE sweep_module
   use gram_schmidt_ncol_module
   use subspace_diag_ncol_module
   use fermi_ncol_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
@@ -61,9 +62,10 @@ CONTAINS
   END SUBROUTINE init_sweep
 
 
-  SUBROUTINE calc_sweep( ierr_out, Diter_in, outer_loop_info &
+  SUBROUTINE calc_sweep( v, ierr_out, Diter_in, outer_loop_info &
                        , flag_ncol_in, suffix_in )
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN)  :: Diter_in
     character(*),optional,intent(IN) :: outer_loop_info
@@ -160,9 +162,9 @@ CONTAINS
 
           call conjugate_gradient( ML_0,ML_1, Nband, k,s, unk, esp, res )
 
-          call gram_schmidt(1,Nband,k,s)
+          call gram_schmidt(1,Nband,k,s,v)
 
-          call subspace_diag(k,s,ML_0,ML_1,unk,esp)
+          call subspace_diag(k,s,v)
 
        end do
 
@@ -196,7 +198,7 @@ CONTAINS
 
        if ( disp_switch ) call write_info_sweep
        call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
-       if ( myrank == 0 ) call write_eigenvalues( eval )
+!       if ( myrank == 0 ) call write_eigenvalues( eval )
 
        call calc_time_watch( etime )
        if ( disp_switch ) then
@@ -237,7 +239,7 @@ CONTAINS
        if ( myrank == 0 ) write(*,*) "sweep not converged"
     end if
 
-    call gather_wf
+!    call gather_wf
 
     call write_border( 0, " SWEEP END ----------" )
     call write_border( 0, "" )

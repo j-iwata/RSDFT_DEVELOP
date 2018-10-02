@@ -1,9 +1,12 @@
 OBJS = subspace_diag_variables.o\
        subspace_diag_la_module.o\
+       subspace_diag_la_bp_module.o\
        scalapack_module.o\
        subspace_mate_sl_module.o\
+       subspace_mate_sl_bp0_module.o\
        subspace_solv_sl_module.o\
        subspace_rotv_sl_module.o\
+       subspace_rotv_sl_bp0_module.o\
        subspace_diag_sl_module.o\
        subspace_diag_ncol_module.o\
        subspace_diag_module.o\

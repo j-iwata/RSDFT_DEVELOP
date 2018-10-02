@@ -20,9 +20,9 @@ CONTAINS
     implicit none
     integer,intent(IN) :: ML,MB,MK,MS,ML_0,ML_1,MB_0,MB_1,MK_0,MK_1,MS_0,MS_1
 #ifdef _DRSDFT_
-    real(8),intent(OUT) :: unk(ML_0:ML_1,MB,MK_0:MK_1,MS_0:MS_1)
+    real(8),intent(OUT) :: unk(:,:,:,:)
 #else
-    complex(8),intent(OUT) :: unk(ML_0:ML_1,MB,MK_0:MK_1,MS_0:MS_1)
+    complex(8),intent(OUT) :: unk(:,:,:,:)
 #endif
     integer :: s,k,n,i1,i2,i3,i,m0,m1,m12,ML1,ML2,ML3
     complex(8),allocatable :: z0(:,:,:),z1(:,:,:)
@@ -58,12 +58,12 @@ CONTAINS
                   MK_0 <= k .and. k <= MK_1 .and. &
                   MS_0 <= s .and. s <= MS_1 ) then
                 call backward_fft( z0, z1 )
-                i=m0-1
+                i=0
                 do i3=Igrid(1,3),Igrid(2,3)
                 do i2=Igrid(1,2),Igrid(2,2)
                 do i1=Igrid(1,1),Igrid(2,1)
                    i=i+1
-                   unk(i,n,k,s) = z0(i1,i2,i3)
+                   unk(i,n-MB_0+1,k-MK_0+1,s-MS_0+1) = z0(i1,i2,i3)
                 end do ! i1
                 end do ! i2
                 end do ! i3

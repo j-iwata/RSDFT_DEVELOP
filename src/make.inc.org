@@ -46,6 +46,12 @@ OMPFLAG   =
 #LIBXC_L = /home/iwata/libxc-3.0.0/lib/libxcf90.a \
 #          /home/iwata/libxc-3.0.0/lib/libxc.a
 ########################################################### Others #####
+#INCLUDE_DIR := -I/home.org/iwata/rsdft/EigenExa-2.3d/ $(INCLUDE_DIR)
+#EIGEN_L = -L/home.org/iwata/rsdft/EigenExa-2.3d/ -lEigenExa
+#CPP_FLAGS := -D_EIGEN_ $(CPP_FLAGS)
+#INCLUDE_DIR := -I/home/iwata/EigenExa-2.3k2_patched/ $(INCLUDE_DIR)
+#EIGEN_L = -L/home/iwata/EigenExa-2.3k2_patched/ -lEigenExa
+########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_MPI_COMPLEX16_ $(CPP_FLAGS)

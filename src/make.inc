@@ -31,20 +31,32 @@ OMPFLAG   =
 ####################### Generate REAL8 code ( RSMOL is supported ) #####
 CPP_FLAGS := -D_DRSDFT_ $(CPP_FLAGS)
 ####################### Spline interpolation is use for nonlocal pp ####
-CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
+#CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ######################### LAPACK is used ( ScaLAPACK is not used ) #####
 #CPP_FLAGS := -D_LAPACK_ $(CPP_FLAGS)
 ##################################################### FFTE is used #####
-#CPP_FLAGS := -D_FFTE_ $(CPP_FLAGS)
+CPP_FLAGS := -D_FFTE_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
-CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
-INCLUDE_DIR := -I/home/iwata/fftw-3.3.7/include/ $(INCLUDE_DIR)
-FFTW_L = -L/home/iwata/fftw-3.3.7/lib/ -lfftw3_mpi -lfftw3 -lm
+#CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
+#INCLUDE_DIR := -I/home/iwata/fftw-3.3.7/include/ $(INCLUDE_DIR)
+#FFTW_L = -L/home/iwata/fftw-3.3.7/lib/ -lfftw3_mpi -lfftw3 -lm
 ########################################################### Others #####
 #CPP_FLAGS := -D_LIBXC_ $(CPP_FLAGS)
 #INCLUDE_DIR := -I/home/iwata/libxc-3.0.0/include/ $(INCLUDE_DIR)
 #LIBXC_L = /home/iwata/libxc-3.0.0/lib/libxcf90.a \
 #          /home/iwata/libxc-3.0.0/lib/libxc.a
+########################################################### Others #####
+CPP_FLAGS := -D_EIGEN_ $(CPP_FLAGS)
+#INCLUDE_DIR := -I/home.org/iwata/rsdft/EigenExa-2.3d/ $(INCLUDE_DIR)
+#EIGEN_L = -L/home.org/iwata/rsdft/EigenExa-2.3d/ -lEigenExa
+#INCLUDE_DIR := -I/home/iwata/codesign/EigenExa-2.3d/ $(INCLUDE_DIR)
+#EIGEN_L = -L/home/iwata/codesign/EigenExa-2.3d/ -lEigenExa
+#INCLUDE_DIR := -I/home/iwata/codesign/ss_and_cpmd_042618/EigenExa-2.3k2_patched/ $(INCLUDE_DIR)
+#EIGEN_L = -L/home/iwata/codesign/ss_and_cpmd_042618/EigenExa-2.3k2_patched/ -lEigenExa
+INCLUDE_DIR := -I/home/iwata/codesign/EigenExa-2.3L_patched/ $(INCLUDE_DIR)
+EIGEN_L = -L/home/iwata/codesign/EigenExa-2.3L_patched/ -lEigenExa
+#INCLUDE_DIR := -I/home/iwata/codesign/ss_and_cpmd_042618/EigenExa-2.4p1_patched/src/ $(INCLUDE_DIR)
+#EIGEN_L = -L/home/iwata/codesign/ss_and_cpmd_042618/EigenExa-2.4p1_patched/src/ -lEigenExa
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
 CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
@@ -55,11 +67,11 @@ CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
 ################################################# compiler & options ###
 ########################################################################
 ##### INTEL                                                        #####
-#FC = mpif90
+FC = mpif90
 #FFLAGS0 = -cpp
 #FFLAGS0 = -cpp -fast -xHost
-#FFLAGS0 = -cpp -C
-#OMPFLAG = -openmp
+FFLAGS0 = -cpp -fcheck=all
+OMPFLAG = -fopenmp
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core \
            -lguide -lpthread
@@ -68,13 +80,14 @@ CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
            -lpthread
 #LAPACK_L = -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 \
            -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
-#LAPACK_L = -lm /Users/lhan/.homebrew/opt/scalapack/lib/libscalapack.dylib -lblas
+LAPACK_L = -L/home/iwata/lib -lscalapack -llapack -lblas
 #LAPACK_L = -mkl=sequential -lmkl_scalapack_lp64 -lmkl_blacs_sgimpt_lp64 -lmpi
+#LAPACK_L = -mkl=cluster
 ########################################################################
 ##### INTEL(2)                                                     #####
-FC = mpiifort
-FFLAGS0 = -cpp
-LAPACK_L = -mkl=cluster
+#FC = mpiifort
+#FFLAGS0 = -cpp
+#LAPACK_L = -mkl=cluster
 ########################################################################
 ##### PGF                                                          #####
 #FFLAGS0 = -Mpreprocess -O3

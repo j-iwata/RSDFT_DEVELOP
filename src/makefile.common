@@ -43,6 +43,7 @@ MODS2 = localpot_module.o\
         ps_init_module.o\
 
 MODS1 = \
+       sl_tools_module.o\
        enlarge_array_module.o\
        polint_module.o\
        spline_module.o\
@@ -61,10 +62,15 @@ MODS1 = \
        atom_module.o\
        rgrid_variables.o\
        parallel_module.o\
+       vector_tools_module.o\
+       reconst_module.o\
        info_module.o\
        filtering.o\
        expint_module.o\
        watch_module.o\
+       calc_overlap_module.o\
+       overlap_bp_module.o\
+       dtrmm_bp_module.o\
        fd_module.o\
        aa_module.o\
        symmetry_module.o\
@@ -143,7 +149,6 @@ MODS1 = \
        io_write_module.o\
        ps_nloc3_module.o\
        inner_product_module.o\
-       io1_module.o\
        io2_module.o\
        force_nloc2_mol_module.o\
        ps_nloc2_mol_module.o\

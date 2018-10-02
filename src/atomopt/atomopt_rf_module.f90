@@ -17,6 +17,7 @@ MODULE atomopt_rf_module
   use ps_nloc2_module
   use ps_nloc_mr_module
   use scf_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
@@ -30,9 +31,10 @@ MODULE atomopt_rf_module
 CONTAINS
 
 
-  SUBROUTINE atomopt_rf( SYStype_in, fmax_tol, NiterSCF_in )
+  SUBROUTINE atomopt_rf( v, SYStype_in, fmax_tol, NiterSCF_in )
 
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(IN) :: SYStype_in
     real(8),intent(IN) :: fmax_tol
     integer,optional,intent(IN) :: NiterSCF_in
@@ -87,7 +89,7 @@ CONTAINS
        end do
     end if
 
-    call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+    call scf( v, etot, ierr ) ; if ( ierr == -1 ) goto 999
     call calc_force( ion%natom, ion%force, fmax )
 
     if ( fmax <= fmax_tol ) goto 900
@@ -159,7 +161,7 @@ CONTAINS
 
           call write_coordinates_atom( 97, 3 )
 
-          call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+          call scf( v, etot, ierr ) ; if ( ierr == -1 ) goto 999
           call calc_force( ion%natom, ion%force, fmax )
 
           if ( fmax <= fmax_tol ) goto 900
@@ -256,8 +258,9 @@ CONTAINS
   END SUBROUTINE atomopt_rf
 
 
-  SUBROUTINE scf( etot, ierr_out )
+  SUBROUTINE scf( v, etot, ierr_out )
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     real(8),intent(OUT) :: etot
     integer,intent(OUT) :: ierr_out
 
@@ -290,7 +293,7 @@ CONTAINS
 
     end select
 
-    call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
+    call calc_scf( v, disp_scf, ierr_out, NiterSCF, Etot_out=etot )
 
   END SUBROUTINE scf
 

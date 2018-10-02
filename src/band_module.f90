@@ -33,6 +33,7 @@ MODULE band_module
   use rsdft_mpi_module
   use eigenvalues_module, only: control_eigenvalues
   use noncollinear_module, only: flag_noncollinear
+  use vector_tools_module, only: vinfo
   
   implicit none
 
@@ -45,9 +46,10 @@ MODULE band_module
 CONTAINS
 
 
-  SUBROUTINE band( MBV_in, disp_switch, job_ctrl_in )
+  SUBROUTINE band( v, MBV_in, disp_switch, job_ctrl_in )
 
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(IN) :: MBV_in
     logical,intent(IN) :: disp_switch
     integer,optional,intent(IN) :: job_ctrl_in
@@ -108,7 +110,7 @@ CONTAINS
     if ( iflag_hunk == 0 ) call deallocate_work_wf
 
     if ( MB < mb_band ) then
-       call modify_mb
+       call modify_mb( v )
        call modify_arraysize
     end if
 
@@ -261,7 +263,7 @@ CONTAINS
 ! --- sweep ---
 
        write(loop_info,'("( iktrj=",i4," )")') iktrj
-       call calc_sweep( ierr,Diter_band,loop_info,flag_noncollinear,"band" )
+       call calc_sweep( v,ierr,Diter_band,loop_info,flag_noncollinear,"band" )
 
 ! ---
 
@@ -381,17 +383,18 @@ CONTAINS
   END SUBROUTINE recv_wf_band
 
 
-  SUBROUTINE modify_mb
+  SUBROUTINE modify_mb( v )
 
     implicit none
 
+    type(vinfo),intent(IN) :: v(2)
     integer :: i,j
 
     if ( mb_band <= Nband ) return
 
     Nband = mb_band
 
-    call init_scalapack( Nband )
+    call init_scalapack( Nband, node_partition(1:4) )
 
     ir_band(:)=0
     do i=0,Nband-1
@@ -405,7 +408,7 @@ CONTAINS
     MB_0 = id_band(myrank_b) + 1
     MB_1 = id_band(myrank_b) + ir_band(myrank_b)
 
-    call init_subspace_diag( Nband )
+    call init_subspace_diag( Nband, v(2) )
 
   END SUBROUTINE modify_mb
 

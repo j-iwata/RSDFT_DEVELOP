@@ -25,6 +25,8 @@ CONTAINS
     integer :: n,m,ierr
     real(8) :: c,d
 
+    call write_border( 1, "gram_schmidt_m(start)" )
+
     do n=n0,n1
        do m=n0,n-1
 #ifdef _DRSDFT_
@@ -40,6 +42,8 @@ CONTAINS
        c=1.d0/sqrt(d)
        unk(:,n,k,s)=c*unk(:,n,k,s)
     end do
+
+    call write_border( 1, "gram_schmidt_m(end)" )
 
   END SUBROUTINE gram_schmidt_m
 

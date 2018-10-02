@@ -46,6 +46,13 @@ MODULE parallel_module
   integer,allocatable :: pinfo_grid(:,:)
   logical :: disp_switch_parallel=.false.
 
+  type ParaInfo
+     integer :: comm
+     integer :: np,me
+     integer,allocatable :: ir(:)
+     integer,allocatable :: id(:)
+  end type ParaInfo
+
   type dr
      integer :: np
      integer,allocatable :: id(:)

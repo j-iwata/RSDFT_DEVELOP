@@ -6,7 +6,6 @@ MODULE io_module
   use rgrid_mol_module, only: LL
   use kinetic_module, only: SYStype
 
-  use io1_module, only: read_data_io1
   use io2_module
   use io_read_module
   use io_write_module
@@ -453,7 +452,7 @@ CONTAINS
           write(*,*) "read from ",file_vrho2
        end if
 
-    end if ! IC==2,3,13
+    end if
 
 !
 ! --- Read WF ---
@@ -461,22 +460,14 @@ CONTAINS
 
     if ( IC == 2 ) return
 
-    if ( IO_ctrl == 2 .or. IO_ctrl == 3 ) then
-       IO_ctrl=3
+    if ( IO_ctrl == 3 ) then
        call read_io2( SYStype, ierr )
-       if ( ierr == 0 ) IO_ctrl=2
+       if ( ierr == 0 ) call read_data_io2
     end if
 
-    select case( IO_ctrl )
-    case( 0 )
+    if ( IO_ctrl == 0 .or. ierr < 0 ) then
        call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
-    case( 1 )
-       call read_data_io1( file_wf2, SYStype )
-    case( 2 )
-       call read_data_io2
-    case( 3 )
-       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
-    end select
+    end if
 
     call result_timer( "read_data", tt )
     call write_border( 0, " read_data(end)" )

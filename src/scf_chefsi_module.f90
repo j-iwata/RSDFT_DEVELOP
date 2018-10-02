@@ -37,6 +37,7 @@ MODULE scf_chefsi_module
   !use localpot2_te_module, only: localpot2_te, diff_Etot_lpot2
 
   use ChebyshevFilter_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
@@ -102,8 +103,9 @@ CONTAINS
   END SUBROUTINE read_scf_chefsi
 
 
-  SUBROUTINE calc_scf_chefsi( Diter, ierr_out, disp_switch )
+  SUBROUTINE calc_scf_chefsi( v, Diter, ierr_out, disp_switch )
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(IN)  :: Diter
     integer,intent(OUT) :: ierr_out
     logical,intent(IN) :: disp_switch
@@ -144,7 +146,7 @@ CONTAINS
 
           if ( iter == 1 ) then
              call watcht(disp_switch,"",0)
-             call subspace_diag(k,s,ML_0,ML_1,unk,esp)
+             call subspace_diag(k,s,v)
              call watcht(disp_switch,"diag",1)
           end if
 
@@ -160,12 +162,12 @@ CONTAINS
 
              call watcht(disp_switch,"chef",1)
 
-             call gram_schmidt(1,Nband,k,s)
+             call gram_schmidt(1,Nband,k,s,v)
 
              call watcht(disp_switch,"gs  ",1)
 
              if ( second_diag .or. idiag < Ndiag ) then
-                call subspace_diag(k,s,ML_0,ML_1,unk,esp)
+                call subspace_diag(k,s,v)
                 call watcht(disp_switch,"diag",1)
              else if ( idiag == Ndiag ) then
                 call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)

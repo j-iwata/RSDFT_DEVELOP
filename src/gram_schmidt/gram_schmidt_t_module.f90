@@ -89,6 +89,8 @@ CONTAINS
     integer :: nbss,k1,ib,NBAND_BLK,ncycle,mrnk
     integer,allocatable :: ir(:),id(:)
 
+    call write_border( 1, " gram_cshmidt_t(start)" )
+
     ML0   = ML_1-ML_0+1
     mrnk  = id_class(myrank,4)
 
@@ -145,6 +147,8 @@ CONTAINS
     end do ! k1
 
     deallocate( id,ir )
+
+    call write_border( 1, " gram_cshmidt_t(end)" )
 
     return
 

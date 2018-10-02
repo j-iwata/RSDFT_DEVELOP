@@ -5,6 +5,7 @@ MODULE dos_module
   use io_tools_module
   use wf_module, only: esp, occ, res, write_info_esp_wf
   use sweep_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
@@ -41,9 +42,10 @@ CONTAINS
   END SUBROUTINE read_param_dos
 
 
-  SUBROUTINE calc_dos( ierr )
+  SUBROUTINE calc_dos( v, ierr )
 
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(OUT) :: ierr
     logical :: disp_sw, flag
     integer :: i,n,k,s,nb,nk,ns
@@ -74,7 +76,7 @@ CONTAINS
 
     call init_sweep( 3, max_ref_band, esp_conv_tol )
 
-    call calc_sweep( ierr, max_loop_dos, "(DOS)", suffix_in="dos" )
+    call calc_sweep( v, ierr, max_loop_dos, "(DOS)", suffix_in="dos" )
 
     if ( myrank == 0 ) then
 

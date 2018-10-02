@@ -15,7 +15,7 @@ MODULE scf_module
   use bz_module
   use wf_module
   use cg_module
-  use array_bound_module
+  use array_bound_module, only: ML_0,ML_1,ML,MSP_0,MSP_1,MSP,MB_0,MB_1,MBZ_0,MBZ_1
   use gram_schmidt_module
   use io_module
   use total_energy_module, only: calc_total_energy,calc_with_rhoIn_total_energy
@@ -36,6 +36,11 @@ MODULE scf_module
   use rsdft_mpi_module
   use noncollinear_module
   use phase_control_module
+  use cg_ncol_module
+  use gram_schmidt_ncol_module
+  use subspace_diag_ncol_module
+  use esp_calc_ncol_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
@@ -77,8 +82,11 @@ CONTAINS
   END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf(ierr_out,Diter_in,tol_force_in,outer_loop_info,Etot_out)
+  SUBROUTINE calc_scf( v, disp_switch, ierr_out, Diter_in, tol_force_in &
+                      ,outer_loop_info, Etot_out )
     implicit none
+    type(vinfo),intent(IN) :: v(2)
+    logical,intent(IN) :: disp_switch
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN) :: Diter_in
     real(8),optional,intent(IN) :: tol_force_in
@@ -92,6 +100,11 @@ CONTAINS
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     logical :: flag_exit,flag_conv,flag_conv_f,flag_conv_e
     logical :: flag_end, flag_end1, flag_end2
+    real(8),allocatable :: ftmp(:,:,:)
+    real(8) :: tol_force
+    character(40) :: chr_iter
+    character(22) :: add_info
+    type(time) :: etime, etime_tot, etime_lap(10)
     logical :: flag_recalc_esp = .false.
     logical :: disp_switch
     logical,external :: exit_program
@@ -223,11 +236,13 @@ CONTAINS
 
           end if
 
-          call watchb( t_tmp, t_out(:,1) )
-
-          if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,unk,esp )
-
-          call watchb( t_tmp, t_out(:,2) )
+          if ( flag_noncollinear ) then
+#ifndef _DRSDFT_
+             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+#endif
+          else
+             call subspace_diag(k,s,v)
+          end if
 
 #ifdef _DRSDFT_
           call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
@@ -248,20 +263,16 @@ CONTAINS
 
              call watchb( t_tmp )
 
-             call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
+             call conjugate_gradient(ML_0,ML_1,Nband,MB_0,MB_1,k,s &
+                  ,unk(:,:,k,s),esp(1,k,s),res(1,k,s))
 
-             call watchb( t_tmp, t_out(:,4) )
-
-             call gram_schmidt(1,Nband,k,s)
-
-             call watchb( t_tmp, t_out(:,5) )
+             call gram_schmidt(1,Nband,k,s,v)
 
              if ( second_diag == 1 .or. idiag < Ndiag ) then
-                call subspace_diag( k,s,ML_0,ML_1,unk,esp )
-                call watchb( t_tmp, t_out(:,2) )
+                call subspace_diag(k,s,v)
              else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
-                call watchb( t_tmp, t_out(:,6) )
+                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
+                     ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
              end if
 
           end do ! idiag
@@ -351,13 +362,13 @@ CONTAINS
 
 ! --- convergence check by density & potential ---
 
-       allocate( v(ML_0:ML_1,MSP_0:MSP_1,2) ) ; v=0.0d0
+       allocate( ftmp(ML_0:ML_1,MSP_0:MSP_1,2) ) ; ftmp=0.0d0
        do s=MSP_0,MSP_1
-          v(:,s,1) = Vion(:) + Vh(:) + Vxc(:,s)
-          v(:,s,2) = rho(:,s)
+          ftmp(:,s,1) = Vion(:) + Vh(:) + Vxc(:,s)
+          ftmp(:,s,2) = rho(:,s)
        end do
-       call calc_sqerr( size(v,1), size(v,2), MSP, 2, v, sqerr_out )
-       deallocate( v )
+       call calc_sqerr( size(ftmp,1),size(ftmp,2),MSP,2,ftmp,sqerr_out )
+       deallocate( ftmp )
 
        if ( maxval( sqerr_out(1:MSP) ) <= scf_conv(1) .or. &
             maxval( sqerr_out(MSP+1:2*MSP) ) <= scf_conv(2) ) flag_conv=.true.
@@ -459,7 +470,7 @@ CONTAINS
 
        call write_esp_wf
        call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
-       if ( myrank == 0 ) call write_eigenvalues( eval )
+!       if ( myrank == 0 ) call write_eigenvalues( eval )
 
        call calc_time_watch( etime )
        call watchb( t_tmp, t_out(:,13) )
@@ -510,7 +521,7 @@ CONTAINS
     else if ( flag_end2 ) then
        ierr_out = -3
     else
-       call gather_wf
+!       call gather_wf
     end if
 
     call calc_time_watch( etime_tot )

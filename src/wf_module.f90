@@ -105,7 +105,7 @@ CONTAINS
     if ( allocated(unk) ) deallocate(unk)
     if ( allocated(referred_orbital) ) deallocate(referred_orbital)
 
-    allocate( unk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
+    allocate( unk(ML_0_WF:ML_1_WF,MB_0_WF:MB_1_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
     unk=zero
     allocate( esp(MB_WF,MK_WF,MS_WF) )
     esp=0.0d0

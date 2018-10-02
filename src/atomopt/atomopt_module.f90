@@ -37,6 +37,7 @@ MODULE atomopt_module
   use atomopt_rf_module
   use atomopt_bfgs_module
   use atomopt_diis_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
@@ -62,19 +63,20 @@ MODULE atomopt_module
 CONTAINS
 
 
-  SUBROUTINE atomopt( iswitch_opt, iswitch_latopt )
+  SUBROUTINE atomopt( v, iswitch_opt, iswitch_latopt )
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(IN) :: iswitch_opt
     integer,intent(IN) :: iswitch_latopt
     select case( iswitch_opt )
     case( 1, 2 )
-       call atomopt_cg( iswitch_opt, iswitch_latopt )
+       call atomopt_cg( v, iswitch_opt, iswitch_latopt )
     case( 4 )
-       call atomopt_diis( SYStype, feps, diter_opt )
+       call atomopt_diis( v, SYStype, feps, diter_opt )
     case( 5 )
-       call atomopt_bfgs( SYStype, feps, diter_opt )
+       call atomopt_bfgs( v, SYStype, feps, diter_opt )
     case( 6 )
-       call atomopt_rf( SYStype, feps, diter_opt )
+       call atomopt_rf( v, SYStype, feps, diter_opt )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
        call stop_program("atomopt")
@@ -147,8 +149,9 @@ CONTAINS
 
 !-------------------------------------------------- atomopt_cg
 
-  SUBROUTINE atomopt_cg( iswitch_opt, iswitch_latopt )
+  SUBROUTINE atomopt_cg( v, iswitch_opt, iswitch_latopt )
     implicit none
+    type(vinfo),intent(IN) :: v(2)
     integer,intent(IN) :: iswitch_opt
     integer,intent(IN) :: iswitch_latopt ! MIZUHO-IR for cellopt
     integer,parameter :: max_nhist=1000
@@ -767,7 +770,7 @@ CONTAINS
           call calc_E_vdw_grimme( aa_atom )
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
-          call calc_scf( ierr,diter_opt,feps,loop_info,Etot )
+          call calc_scf( v,disp_switch_loc,ierr,diter_opt,feps,loop_info,Etot )
 
           if ( ierr == -1 .or. ierr == -3 ) then
              exit opt_ion

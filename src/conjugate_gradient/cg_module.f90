@@ -4,9 +4,7 @@ MODULE cg_module
   use hamiltonian_module
   use cgpc_module
   use parallel_module
-  use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
- !use cg_u_module, only: init_cg_u, cg_u
   use cggs_module
   use wf_module, only: hunk, iflag_hunk
   use kinetic_module, only: SYStype
@@ -55,7 +53,7 @@ CONTAINS
   END SUBROUTINE init_cg
 
 
-  SUBROUTINE conjugate_gradient( n1,n2, MB, k,s, unk, esp, res )
+  SUBROUTINE conjugate_gradient( ML_0,ML_1,MB,MB_0,MB_1,k,s, unk, esp, res )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s
     real(8),intent(INOUT) :: esp(:,:,:),res(:,:,:)
@@ -85,7 +83,7 @@ CONTAINS
 
     call init_cg
 
-    call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
+    call init_cgpc( ML_0,ML_1, k, s, dV, SYStype, ipc )
 
     if ( pp_kind == "USPP" ) then
 
@@ -118,7 +116,7 @@ CONTAINS
 
 #ifdef _DRSDFT_
 
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(ML_0,ML_1,MB,MB_0,MB_1,k,s,Mcg,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg
     real(8),intent(INOUT) :: unk(n1:,:)
@@ -156,6 +154,8 @@ CONTAINS
     time_cgpc_indx(1:13) = (/" "," "," "," "," "," "," "," "," "," "," "," "," "/)
 
     ML0 = ML_1-ML_0+1
+    n1  = ML_0
+    n2  = ML_1
 
     mm  = ML0
     c1  = 2.0d0

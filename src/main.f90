@@ -66,6 +66,7 @@ PROGRAM Real_Space_DFT
   use init_occ_electron_ncol_module
   use rtddft_sol_module
   use aa_module, only: init_aa
+  use vector_tools_module, only: vinfo
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -82,6 +83,7 @@ PROGRAM Real_Space_DFT
   character(32) :: lattice_index
   character(20) :: systype_in="SOL"
   integer :: nloop
+  type(vinfo) :: v(2)
 
 ! --- start MPI ---
 
@@ -214,13 +216,13 @@ PROGRAM Real_Space_DFT
 
   call generate_bz
 
-  if ( myrank == 0 ) call write_info_bz( bb )
+!  if ( myrank == 0 ) call write_info_bz( bb )
 
 ! --- initial set up for parallel computation ---
 
 !  call test_bcast
 
-  call init_scalapack( Nband )
+  call init_scalapack( Nband, node_partition(1:4) )
 
   call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
 
@@ -266,7 +268,54 @@ PROGRAM Real_Space_DFT
 
   call set_array_bound
 
-  if ( SYStype == 1 ) then ! MOL mol
+! --- vector info ---
+
+  v(1)%factor=dV
+  v(1)%pinfo%comm=comm_grid
+  v(1)%pinfo%np=np_grid
+  v(1)%pinfo%me=myrank_g
+  allocate( v(1)%pinfo%ir(0:np_grid-1) ) ; v(1)%pinfo%ir=ir_grid
+  allocate( v(1)%pinfo%id(0:np_grid-1) ) ; v(1)%pinfo%id=id_grid
+  v(2)%factor=1.0d0
+  v(2)%pinfo%comm=comm_band
+  v(2)%pinfo%np=np_band
+  v(2)%pinfo%me=myrank_b
+  allocate( v(2)%pinfo%ir(0:np_band-1) ) ; v(2)%pinfo%ir=ir_band
+  allocate( v(2)%pinfo%id(0:np_band-1) ) ; v(2)%pinfo%id=id_band
+
+! --- Pseudopotential, initial density, and partial core correction ---
+
+!  call read_pseudopot( Nelement, myrank )
+
+!-------- init density 
+
+  call init_density(Nelectron,dV)
+
+!----------------------- SOL sol -----
+
+  if ( SYStype == 0 ) then
+
+     call init_ps_local
+     call init_ps_pcc
+
+     call construct_strfac  !----- structure factor
+
+     call construct_ps_local
+     call construct_ps_pcc
+     call construct_ps_initrho( rho )
+
+     call destruct_strfac   !----- structure factor
+
+     call ps_nloc_initiate( Gcut )
+
+!----------------------- MOL mol -----
+
+  else if ( SYStype == 1 ) then
+
+     call init_ps_local_mol(Gcut)
+     call init_ps_pcc_mol
+     call init_ps_initrho_mol
+
      call Construct_RgridMol(Igrid)
      call ConstructBoundary_RgridMol(Md,Igrid)
   end if
@@ -315,7 +364,9 @@ PROGRAM Real_Space_DFT
 
 ! --- Initialization of subspace diagonalization ---
 
-  call init_subspace_diag( Nband )
+  call prep_scalapack( Nband, v )
+
+  call init_subspace_diag( Nband, v(2) )
 
 ! --- Initial wave functions ---
 
@@ -323,7 +374,7 @@ PROGRAM Real_Space_DFT
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
-     call gram_schmidt(1,Nband,k,s)
+     call gram_schmidt(1,Nband,k,s,v)
   end do
   end do
 
@@ -405,7 +456,7 @@ PROGRAM Real_Space_DFT
 
   do s=MSP_0,MSP_1
   do k=MBZ_0,MBZ_1
-     call gram_schmidt(1,Nband,k,s)
+     call gram_schmidt(1,Nband,k,s,v)
   end do
   end do
 
@@ -456,13 +507,14 @@ PROGRAM Real_Space_DFT
   if ( iswitch_dos == 1 ) then
 
      call control_xc_hybrid(1)
-     call calc_dos( ierr )
+     call calc_dos( v, ierr )
      goto 900
 
   else
 
-     call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
+     call calc_sweep( v, ierr, flag_ncol_in=flag_noncollinear )
      if ( ierr < 0 ) goto 900
+     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
 
   end if
 
@@ -470,11 +522,11 @@ PROGRAM Real_Space_DFT
 
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( ierr, tol_force_in=feps, Etot_out=Etot )
+     call calc_scf( v, disp_switch, ierr, tol_force_in=feps, Etot_out=Etot )
      if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( 2 )
-     call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
+     call calc_scf_chefsi( v, Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( -1 )
@@ -499,11 +551,11 @@ PROGRAM Real_Space_DFT
   if( iswitch_opt >= 1 .or. iswitch_latopt >= 1 ) then
 
      if ( iswitch_opt /= 3 ) then
-        call atomopt(iswitch_opt,iswitch_latopt)
+        call atomopt(v,iswitch_opt,iswitch_latopt)
         call calc_total_energy( recalc_esp, Etot, 6 )
      else
         if ( SYStype == 0 ) then
-           call bomd
+           call bomd(v)
         else
            write(*,*) "MD for SYStype/=0 is not avaiable"
            goto 900
@@ -518,7 +570,7 @@ PROGRAM Real_Space_DFT
 
   if ( iswitch_band > 0 ) then
      call control_xc_hybrid(1)
-     call band(nint(Nelectron*0.5d0),disp_switch,iswitch_band)
+     call band(v,nint(Nelectron*0.5d0),disp_switch,iswitch_band)
   end if
 
 !
@@ -556,6 +608,7 @@ PROGRAM Real_Space_DFT
   call global_watch(disp_switch)
   if ( SYStype == 0 ) call finalize_fftw
   call close_info
+  call end_eigen_free
   call end_mpi_parallel
 
 END PROGRAM Real_Space_DFT

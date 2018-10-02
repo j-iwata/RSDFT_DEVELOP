@@ -1,7 +1,7 @@
 !-----------------------------------------------------------------------
 !  Main routine for molecular dynamics
 !-----------------------------------------------------------------------
-SUBROUTINE bomd
+SUBROUTINE bomd(v)
 
   use lattice_module, only: lattice, get_aa_lattice
   use atom_module, only: Natom,ki_atom,zn_atom,aa_atom &
@@ -13,7 +13,7 @@ SUBROUTINE bomd
                            ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime &
-                           ,wrtstep, all_traj, ctrl_cpmdio
+                           ,wrtstep, all_traj
   use parallel_module
   use total_energy_module
   use wf_module
@@ -28,9 +28,11 @@ SUBROUTINE bomd
   use berendsen_module
   use nose_hoover_chain_module
   use nose_hoover_chain_ele_module
+  use vector_tools_module, only: vinfo
 
   implicit none
 
+  type(vinfo),intent(IN) :: v(2)
   integer :: i,j,k,n,s,ierr,ib1,ib2
   real(8) :: tott,dif,kine,tote,tote0,dt2,ltemp
   real(8) :: fke,Ebath_ion,Ebath_ele,Ebath
@@ -134,7 +136,7 @@ SUBROUTINE bomd
      call alloc_cpmd
      if ( .not.inivel ) call read_data_cpmdio
      if ( lquench ) then
-        call getforce
+        call getforce(v)
         psi_v=0.0d0
      else
         call getforce_cpmd( ltime )
@@ -144,7 +146,7 @@ SUBROUTINE bomd
      call calfke( fke )
      if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
   else
-     call getforce
+     call getforce(v)
   end if
 
 ! --- initial bath parameters
@@ -255,9 +257,7 @@ SUBROUTINE bomd
 
      if ( lblue ) then ! Blue-Moon Method
         call rattle( Rion, Velocity )
-        if ( mod(itime-1,trjstep)==0 .and. ctrl_cpmdio > 0 ) then
-           call write_blue_data(itime,myrank==0)
-        end if
+        if ( mod(itime-1,trjstep)==0 ) call write_blue_data(itime,myrank==0)
      end if
 
      call vcom( Velocity ) ! center of mass motion off
@@ -286,7 +286,7 @@ SUBROUTINE bomd
         tote  = kine+Etot+fke+Ebath
         dif   = abs(tote-tote0)
 
-        write(*,'(1x,f10.3,9g15.7)') tott,tote,Etot,kine,fke,ltemp
+        write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
         write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
         if ( ltime ) then
@@ -320,7 +320,7 @@ SUBROUTINE bomd
 
      end if
 
-     if ( mod(itime,wrtstep) == 0 .and. ctrl_cpmdio > 0 ) then
+     if ( mod(itime,wrtstep) == 0 ) then
         if ( myrank == 0 ) call mdio( 1, tote0 )
         if ( lcpmd ) then
            if ( lbathnew  ) call write_nose_data
@@ -344,13 +344,11 @@ SUBROUTINE bomd
 ! --- loop end
 !
 
-  if ( ctrl_cpmdio > 0 ) then
-     if ( myrank == 0 ) call mdio( 1,tote0 )
-     if ( lcpmd ) then
-        if ( lbathnew  ) call write_nose_data
-        if ( lbathnewe ) call write_nosee_data
-        call write_data_cpmdio
-     end if
+  if ( myrank == 0 ) call mdio( 1,tote0 )
+  if ( lcpmd ) then
+     if ( lbathnew  ) call write_nose_data
+     if ( lbathnewe ) call write_nosee_data
+     call write_data_cpmdio
   end if
 
   if ( lcpmd ) call dealloc_cpmd
@@ -375,6 +373,6 @@ SUBROUTINE bomd
 
 99 stop "stop@bomd(99)"
 
-10 format(10f18.8)
+10 format(10f15.8)
 
 END SUBROUTINE bomd
