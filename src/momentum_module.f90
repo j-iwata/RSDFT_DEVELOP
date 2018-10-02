@@ -25,8 +25,8 @@ CONTAINS
   SUBROUTINE calc_expectval_momentum(k,n1,n2,b1,b2,tpsi,pxyz)
     implicit none
     integer,intent(IN)    :: k,n1,n2,b1,b2
-    complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
-    real(8),intent(OUT)   :: pxyz(3,b1:b2)
+    complex(8),intent(IN) :: tpsi(n1:,b1:)
+    real(8),intent(OUT)   :: pxyz(:,b1:)
     integer :: ib,ierr
     real(8) :: kxyz(3),pxyz0(3,b1:b2)
     pxyz0=0.0d0
@@ -58,12 +58,12 @@ CONTAINS
   SUBROUTINE momentum_kine(n1,n2,b1,b2,tpsi,pxyz)
     implicit none
     integer,intent(IN)    :: n1,n2,b1,b2
-    complex(8),intent(IN) :: tpsi(n1:n2,b1:b2)
-    real(8),intent(INOUT) :: pxyz(3,b1:b2)
+    complex(8),intent(IN) :: tpsi(n1:,b1:)
+    real(8),intent(INOUT) :: pxyz(:,b1:)
     integer :: n,nb,ib,i,i1,i2,i3,j,a1b,b1b,a2b,b2b,a3b,b3b
     real(8) :: c,a1,a2,a3,a2x_nab(3),a2y_nab(3),a2z_nab(3),pi2
     complex(8),allocatable :: uuu(:,:)
-    complex(8),parameter :: zi=(0.d0,1.d0)
+    complex(8),parameter :: zi=(0.0d0,1.0d0)
 
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)

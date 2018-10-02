@@ -22,7 +22,7 @@ CONTAINS
     real(8),intent(OUT)   :: jav(3)
     character(3),optional,intent(IN) :: coordinates
     integer :: n,k,s
-    real(8) :: pxyz(3),aa_inv(3,3)
+    real(8) :: pxyz(3,1),aa_inv(3,3)
 
     jav(:)=0.0d0
     do s=MS_0_WF,MS_1_WF
@@ -32,9 +32,9 @@ CONTAINS
        pxyz=0.0d0
 #ifndef _DRSDFT_
        call calc_expectval_momentum &
-            (k,ML_0_WF,ML_1_WF,1,1,unk(ML_0_WF,n,k,s),pxyz)
+            (k,ML_0_WF,ML_1_WF,1,1,unk(:,n:n,k,s),pxyz)
 #endif
-       jav(:)=jav(:)+occ(n,k,s)*pxyz(:)
+       jav(:)=jav(:)+occ(n,k,s)*pxyz(:,1)
     end do
     end do
     end do
@@ -43,8 +43,8 @@ CONTAINS
        if ( coordinates == "xyz" ) then
        else
           call get_inverse_lattice( aa, aa_inv )
-          pxyz=jav
-          jav(:)=matmul( aa_inv, pxyz(:) )
+          pxyz(:,1)=jav
+          jav(:)=matmul( aa_inv, pxyz(:,1) )
        end if
     end if
 

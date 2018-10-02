@@ -18,7 +18,7 @@ CONTAINS
   SUBROUTINE init_efield
     implicit none
     Evec(:)=0.0d0
-    call IOTools_readReal8Keywords( "EFIELD", Evec )
+    call IOTools_readReal8Keyword( "EFIELD", Evec )
     icontrol = -1
     if ( any( Evec /= 0.0d0 ) ) icontrol = 1
   END SUBROUTINE init_efield

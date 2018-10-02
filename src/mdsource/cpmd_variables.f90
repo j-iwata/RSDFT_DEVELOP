@@ -193,6 +193,8 @@ MODULE cpmd_variables
   integer :: trjstep=1
   integer :: wrtstep=0
   integer :: all_traj=0
+  integer :: ctrl_cpmdio=1
+  integer :: ctrl_cpmdio_r=1
 
 END MODULE cpmd_variables
 

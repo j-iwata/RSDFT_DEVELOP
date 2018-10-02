@@ -7,7 +7,6 @@ MODULE io_tools_module
   PUBLIC :: IOTools_readStringKeyword
   PUBLIC :: IOTools_readIntegerKeyword
   PUBLIC :: IOTools_readReal8Keyword
-  PUBLIC :: IOTools_readReal8Keywords
   PUBLIC :: IOTools_readIntegerString
   PUBLIC :: IOTools_findKeyword
 
@@ -30,6 +29,11 @@ MODULE io_tools_module
   INTERFACE IOTools_readStringKeyword
      MODULE PROCEDURE IOTools_readStringKeyword_sca &
                      ,IOTools_readStringKeyword_vec
+  END INTERFACE
+
+  INTERFACE IOTools_readReal8Keyword
+     MODULE PROCEDURE IOTools_readReal8Keyword_sca &
+                     ,IOTools_readReal8Keyword_vec
   END INTERFACE
 
 CONTAINS
@@ -181,7 +185,7 @@ CONTAINS
   END SUBROUTINE IOTools_readIntegerKeyword_vec
 
 
-  SUBROUTINE IOTools_readReal8Keyword( keyword, variable, unit_in )
+  SUBROUTINE IOTools_readReal8Keyword_sca( keyword, variable, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     real(8),intent(INOUT) :: variable
@@ -198,7 +202,7 @@ CONTAINS
           if ( ckey == keyword ) then
              backspace(unit)
              read(unit,*) cbuf,variable
-             if ( abs(variable) < 1.d-2 ) then
+             if ( abs(variable) < 1.d-2 .or. abs(variable) > 1.d3 ) then
                 write(*,'(1x,A10," : ",ES15.7)') keyword,variable
              else
                 write(*,'(1x,A10," : ",F15.10)') keyword,variable
@@ -211,10 +215,10 @@ CONTAINS
 #ifndef _NOMPI_
     call MPI_BCAST(variable,1,MPI_REAL8,0,MPI_COMM_WORLD,i)
 #endif
-  END SUBROUTINE IOTools_readReal8Keyword
+  END SUBROUTINE IOTools_readReal8Keyword_sca
 
 
-  SUBROUTINE IOTools_readReal8Keywords( keyword, variables, unit_in )
+  SUBROUTINE IOTools_readReal8Keyword_vec( keyword, variables, unit_in )
     implicit none
     character(*),intent(IN) :: keyword
     real(8),intent(INOUT) :: variables(:)
@@ -231,7 +235,7 @@ CONTAINS
           if ( ckey == keyword ) then
              backspace(unit)
              read(unit,*) cbuf,variables(:)
-             if ( any(abs(variables) < 1.d-2) ) then
+             if ( any(abs(variables) < 1.d-2 .or. abs(variables) > 1.d3) ) then
                 write(*,'(1x,A10," : ",3ES15.7)') keyword,variables(:)
              else
                 write(*,'(1x,A10," : ",3F15.10)') keyword,variables(:)
@@ -244,7 +248,7 @@ CONTAINS
 #ifndef _NOMPI_
     call MPI_BCAST(variables,size(variables),MPI_REAL8,0,MPI_COMM_WORLD,i)
 #endif
-  END SUBROUTINE IOTools_readReal8Keywords
+  END SUBROUTINE IOTools_readReal8Keyword_vec
 
 
   SUBROUTINE IOTools_readIntegerString( keyword, variable1, variable2, u, norewind )

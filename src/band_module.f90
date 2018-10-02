@@ -40,8 +40,6 @@ MODULE band_module
   PUBLIC :: band
   PUBLIC :: read_band
 
-  integer :: unit = 1
-
   character(64),parameter :: version="version2.1"
 
 CONTAINS
@@ -239,7 +237,7 @@ CONTAINS
           end do
        endif
 
-       call init_kinetic(aa,bb,Nbzsm,kbb,DISP_SWITCH=disp_switch)
+       call init_kinetic(aa,bb,Nbzsm,kbb)
 
        select case( pselect )
        case( 2 )
@@ -295,7 +293,7 @@ CONTAINS
        do n=1,mb2_band
        do s=MSP_0,MSP_1
           call calc_expectval_momentum &
-               (MBZ_0,ML_0,ML_1,1,1,unk(ML_0,n,MBZ_0,s),pxyz(1,n,myrank_k,s))
+               (MBZ_0,ML_0,ML_1,1,1,unk(:,n:n,MBZ_0,s),pxyz(:,n:n,myrank_k,s))
        end do ! s
        end do ! n
 #endif

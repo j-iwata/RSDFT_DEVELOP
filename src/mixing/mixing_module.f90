@@ -19,7 +19,7 @@ MODULE mixing_module
 
   integer :: imix = 10
   integer :: mmix = 4
-  real(8) :: beta = 1.0d0
+  real(8) :: beta = 1.1d0
   integer :: iomix = 0
   integer :: iochk(2) = 0
 
@@ -193,7 +193,7 @@ CONTAINS
 
     max_loop = 1
 
-    if ( beta >= 1.0d0 ) then
+    if ( beta > 1.0d0 ) then
        if ( all(dif0==0.0d0) ) then
           max_loop = 1
           beta = 0.05d0

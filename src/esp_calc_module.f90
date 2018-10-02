@@ -5,6 +5,7 @@ MODULE esp_calc_module
   use parallel_module
   use wf_module, only: hunk, iflag_hunk
   use rsdft_mpi_module
+  use esp_calc_ncol_module, only: flag_noncollinear, esp_calc_ncol
 
   implicit none
 
@@ -13,20 +14,28 @@ MODULE esp_calc_module
 
 CONTAINS
 
-  SUBROUTINE esp_calc(k,s,wf,n1,n2,ns,ne,e)
+  SUBROUTINE esp_calc(k,s,n1,n2,ns,ne,wf,e)
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ns,ne
 #ifdef _DRSDFT_
-    real(8),intent(IN) :: wf(n1:n2,ns:ne)
+    real(8),intent(IN) :: wf(:,:,:,:)
     real(8),allocatable :: hwf(:,:)
 #else
-    complex(8),intent(IN) :: wf(n1:n2,ns:ne)
+    complex(8),intent(IN) :: wf(:,:,:,:)
     complex(8),allocatable :: hwf(:,:)
 #endif
-    real(8),intent(OUT) :: e(ns:ne)
-    integer :: n,ierr
+    real(8),intent(OUT) :: e(:,:,:)
+    integer :: n,ierr,k0,s0
 
-    e(:)=0.0d0
+    if ( flag_noncollinear ) then
+       call esp_calc_ncol( k,n1,n2,wf,e )
+       return
+    end if
+
+    k0 = k - id_bzsm(myrank_k)
+    s0 = s - id_spin(myrank_s)
+
+    e(:,k,s)=0.0d0
 
     allocate( hwf(n1:n2,1) ) ; hwf=0.0d0
 
@@ -34,18 +43,18 @@ CONTAINS
        if ( iflag_hunk >= 1 ) then
           hwf(:,1)=hunk(:,n,k,s)
        else
-          call hamiltonian(k,s,wf(n1,n),hwf,n1,n2,n,n)
+          call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
        end if
 #ifdef _DRSDFT_
-       e(n) = sum( wf(:,n)*hwf(:,1) )*dV
+       e(n,k,s) = sum( wf(:,n,k0,s0)*hwf(:,1) )*dV
 #else
-       e(n) = sum( conjg(wf(:,n))*hwf(:,1) )*dV
+       e(n,k,s) = sum( conjg(wf(:,n,k0,s0))*hwf(:,1) )*dV
 #endif
     end do
 
     deallocate( hwf )
 
-    call rsdft_allreduce_sum( e(ns:ne), comm_grid )
+    call rsdft_allreduce_sum( e(ns:ne,k,s), comm_grid )
 
   END SUBROUTINE esp_calc
 

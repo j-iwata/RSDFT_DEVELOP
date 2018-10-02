@@ -35,13 +35,13 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n,k,s,n1,n2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: psi(n1:n2)
-    real(8),intent(INOUT) :: tpsi(n1:n2)
+    real(8),intent(IN)  :: psi(n1:)
+    real(8),intent(INOUT) :: tpsi(n1:)
     real(8),allocatable :: trho(:),tvht(:),tphi(:)
     integer,parameter :: TYPE_MAIN = MPI_REAL8
 #else
-    complex(8),intent(IN)  :: psi(n1:n2)
-    complex(8),intent(INOUT) :: tpsi(n1:n2)
+    complex(8),intent(IN)  :: psi(n1:)
+    complex(8),intent(INOUT) :: tpsi(n1:)
     complex(8),allocatable :: trho(:),tvht(:),tphi(:)
     integer,parameter :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
 #endif
@@ -169,11 +169,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN) :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN) :: tpsi(n1:,ib1:)
+    real(8),intent(INOUT) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN) :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN) :: tpsi(n1:,ib1:)
+    complex(8),intent(INOUT) :: htpsi(n1:,ib1:)
 #endif
     integer :: ib,i
 
@@ -190,7 +190,7 @@ CONTAINS
     else if ( iflag_hybrid > 0 ) then
 
        do ib=ib1,ib2
-          call Fock( ib, k, s, n1, n2, tpsi(n1,ib), htpsi(n1,ib) )
+          call Fock( ib, k, s, n1, n2, tpsi(n1:n2,ib), htpsi(n1:n2,ib) )
        end do
 
     end if

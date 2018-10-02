@@ -7,14 +7,10 @@ MODULE atomopt_module
   use scf_module
   use eion_module, only: calc_eion
   use strfac_module
-!  use ps_local_module
-!  use ps_pcc_module
-!  use pseudopot_module
   use ps_nloc2_module
   use ps_nloc3_module
   use ps_nloc_mr_module
   use force_module
-  use kinetic_module, only: SYStype
   use ps_local_mol_module, only: construct_ps_local_mol
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
@@ -28,15 +24,14 @@ MODULE atomopt_module
   use stress_module, only: calc_stress
   use rgrid_module, only: Ngrid,Hgrid,Igrid,dV,Init_Rgrid,InitParallel_Rgrid
   use ggrid_module, only: Init_Ggrid,InitParallel_Ggrid,Gcut
-  use kinetic_variables, only: Md, ggg
-  !use bz_module, only: kbb,Nbzsm,generate_bz
+  use kinetic_variables, only: Md, ggg, SYStype
   use bz_module, only: kbb
   use kinetic_module, only: init_kinetic
   use ps_local_module, only: init_ps_local, Vion, construct_ps_local
   use ps_pcc_module, only: init_ps_pcc, construct_ps_pcc
   use ps_nloc_initiate_module, only: ps_nloc_initiate
   use pseudopot_module, only: read_pseudopot, pselect
-  use lattice_module, only: lattice, backup_aa_lattice
+  use lattice_module, only: lattice, backup_aa_lattice, construct_lattice
   use aa_module, only: init_aa
   !--- end MIZUHO-IR for cellopt
   use atomopt_rf_module
@@ -708,28 +703,19 @@ CONTAINS
           case default
              !--- begin MIZUHO-IR for cellopt
              if( iswitch_latopt >= 1 ) then
-                ! update Va, volume of the cell
-                ax = 1.0d0
-                call init_aa( aa_obj )
-                ! update aa_backup trough aa_obj
+                aa_obj%LatticeVector = aa
+                aa_obj%LatticeConstant = 1.0d0
+                call construct_lattice( aa_obj )
                 call backup_aa_lattice( aa_obj )
-
-                ! update Hgrid, grid spacing Hgrid.
-                ! update dV, volume of a grid element.
-                call Init_Rgrid( SYStype, Md, 2 )
-
-                ! update bb, reciprocal vectors.
-                call construct_bb(aa)
-                ! update MGL and GG, reciprocal grid.
-                call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch_loc )
-
-                ! update kbb, sampling K points
-                !call generate_bz
+                call init_aa( aa_obj )
+                call Init_Rgrid( SYStype, Md, aa_obj )
+                call construct_bb( aa_obj%LatticeVector )
+                call Init_Ggrid( Ngrid, bb )
 
                 ! update MG_0 and MG_1, index of G grid.
                 call InitParallel_Ggrid( nprocs, myrank )
                 ! update ggg, zcoef_kin, etc, FDM coefficients.
-                call init_kinetic( aa, bb, size(kbb,2), kbb, Hgrid, Igrid, MB_d, disp_switch_loc )
+                call init_kinetic( aa,bb,size(kbb,2),kbb,Hgrid,Igrid,MB_d )
 
                 ! update vqlg using updated Va.
                 call init_ps_local
@@ -781,7 +767,7 @@ CONTAINS
           call calc_E_vdw_grimme( aa_atom )
 
           write(loop_info,'("( linmin:",i3,", cg:",i3," )")') itlin,icy
-          call calc_scf( disp_switch_loc,ierr,diter_opt,feps,loop_info,Etot )
+          call calc_scf( ierr,diter_opt,feps,loop_info,Etot )
 
           if ( ierr == -1 .or. ierr == -3 ) then
              exit opt_ion

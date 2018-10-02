@@ -13,12 +13,15 @@ MODULE ps_initrho_module
   use random_initrho_module
   use psv_initrho_module
   use io_tools_module
+  use watch_module
 
   implicit none
 
   PRIVATE
   PUBLIC :: construct_ps_initrho
   PUBLIC :: read_ps_initrho
+  PUBLIC :: derivative_ps_initrho_r
+  PUBLIC :: get_ps_initrho
 
   logical :: flag_initrho_0
   logical,allocatable :: flag_initrho(:)
@@ -26,8 +29,10 @@ MODULE ps_initrho_module
 
   complex(8),parameter :: z0=(0.0d0,0.0d0)
 
-  integer :: iswitch_initrho=0
+  integer :: iswitch_initrho=1
   logical :: analytic=.false.
+
+  real(8),allocatable :: rho_ini_backup(:,:)
 
 CONTAINS
 
@@ -45,8 +50,11 @@ CONTAINS
     implicit none
     real(8),intent(OUT) :: rho(:,:)
     integer :: s
+    real(8) :: tt(2),to(2)
 
     call write_border( 0, " construct_ps_initrho(start)" )
+    call watchb( tt )
+    to=0.0d0
 
 ! ---
 
@@ -88,6 +96,20 @@ CONTAINS
 
     call check_initrho( rho )
 
+! ---
+
+    if ( .not.allocated(rho_ini_backup) ) then
+       allocate( rho_ini_backup(size(rho,1),size(rho,2)) )
+       rho_ini_backup=0.0d0
+    end if
+    rho_ini_backup = rho
+
+! ---
+
+    call watchb( tt, to )
+    if ( disp_switch_parallel ) then
+       write(*,'(1x,"time(construct_ps_initrho)=",2f10.3)') to(1),to(2)
+    end if
     call write_border( 0, " construct_ps_initrho(end)" )
 
   END SUBROUTINE construct_ps_initrho
@@ -535,6 +557,88 @@ CONTAINS
        end if
     end do
   END SUBROUTINE check_initrho
+
+
+  SUBROUTINE derivative_ps_initrho_r( rho, iatom, displace )
+    implicit none
+    real(8),intent(INOUT) :: rho(:,:)
+    integer,intent(IN) :: iatom
+    real(8),intent(IN) :: displace(3)
+    integer :: iatm,ielm,i,i1,i2,i3,j1,j2,j3,m_grid,m_spin,ierr,s
+    real(8) :: a,a1,a2,a3,x,y,z,r1,r2,r3,c1,c2,c3,rr,zi,d,dd,b1,b2,b3
+    real(8),allocatable :: rho_tmp(:,:)
+
+    c1   = 1.0d0/Ngrid(1)
+    c2   = 1.0d0/Ngrid(2)
+    c3   = 1.0d0/Ngrid(3)
+
+    ielm = ki_atom(iatom)
+
+    a1=aa_atom(1,iatom)
+    a2=aa_atom(2,iatom)
+    a3=aa_atom(3,iatom)
+
+    b1=a1+displace(1)
+    b2=a2+displace(2)
+    b3=a3+displace(3)
+
+    allocate( rho_tmp(size(rho,1),2) ) ; rho_tmp=0.0d0
+
+    do j3=-1,1
+    do j2=-1,1
+    do j1=-1,1
+       i=0
+       do i3=Igrid(1,3),Igrid(2,3)
+       do i2=Igrid(1,2),Igrid(2,2)
+       do i1=Igrid(1,1),Igrid(2,1)
+          i=i+1
+          r1=i1*c1
+          r2=i2*c2
+          r3=i3*c3
+          x=aa(1,1)*(r1-a1-j1)+aa(1,2)*(r2-a2-j2)+aa(1,3)*(r3-a3-j3)
+          y=aa(2,1)*(r1-a1-j1)+aa(2,2)*(r2-a2-j2)+aa(2,3)*(r3-a3-j3)
+          z=aa(3,1)*(r1-a1-j1)+aa(3,2)*(r2-a2-j2)+aa(3,3)*(r3-a3-j3)
+          rr=x*x+y*y+z*z
+          if ( analytic ) then
+             call use_analytic_function( rr,cdd_coef(:,:,ielm),d )
+          else
+             call use_interpolation( sqrt(rr),rad(:,ielm),cdd(:,ielm),d )
+          end if
+          x=aa(1,1)*(r1-b1-j1)+aa(1,2)*(r2-b2-j2)+aa(1,3)*(r3-b3-j3)
+          y=aa(2,1)*(r1-b1-j1)+aa(2,2)*(r2-b2-j2)+aa(2,3)*(r3-b3-j3)
+          z=aa(3,1)*(r1-b1-j1)+aa(3,2)*(r2-b2-j2)+aa(3,3)*(r3-b3-j3)
+          rr=x*x+y*y+z*z
+          if ( analytic ) then
+             call use_analytic_function( rr,cdd_coef(:,:,ielm),dd )
+          else
+             call use_interpolation( sqrt(rr),rad(:,ielm),cdd(:,ielm),dd )
+          end if
+          rho_tmp(i,1) = rho_tmp(i,1) + d
+          rho_tmp(i,2) = rho_tmp(i,2) + dd
+       end do
+       end do
+       end do
+    end do
+    end do
+    end do
+
+    call normalize_initrho( Zps(ielm), rho_tmp(:,1) )
+    call normalize_initrho( Zps(ielm), rho_tmp(:,2) )
+
+    rho(:,1) = rho(:,1) - rho_tmp(:,1) + rho_tmp(:,2)
+
+    deallocate( rho_tmp )
+
+!    call check_initrho( rho )
+
+  END SUBROUTINE derivative_ps_initrho_r
+
+
+  SUBROUTINE get_ps_initrho( rho )
+    implicit none
+    real(8),intent(INOUT) :: rho(:,:)
+    if ( allocated(rho_ini_backup) ) rho=rho_ini_backup
+  END SUBROUTINE get_ps_initrho
 
 
 END MODULE ps_initrho_module

@@ -83,13 +83,13 @@ CONTAINS
   END SUBROUTINE send_cgpc
 
 
-  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, SYStype_in, ipc_out )
+  SUBROUTINE init_cgpc( n1, n2, k, s, dV_in, SYStype_in, ipc_in )
     implicit none
     integer,intent(IN) :: n1,n2,k,s,systype_in
     real(8),intent(IN) :: dV_in
-    integer,optional,intent(OUT) :: ipc_out
+    integer,optional,intent(IN) :: ipc_in
 
-    if ( present(ipc_out) ) ipc_out=iswitch_cgpc
+    if ( present(ipc_in) ) iswitch_cgpc=ipc_in
 
     SYStype = SYStype_in
     if ( mloop == 0 ) then
@@ -128,11 +128,11 @@ CONTAINS
     integer,intent(IN) :: k,s,nn,ML0
     real(8),intent(IN) :: E(nn)
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
-    real(8),intent(IN) :: xk(ML0,nn)
+    real(8),intent(INOUT) :: gk(ML0:,:),Pgk(ML0:,:)
+    real(8),intent(IN) :: xk(ML0:,:)
 #else
-    complex(8),intent(INOUT) :: gk(ML0,nn),Pgk(ML0,nn)
-    complex(8),intent(IN) :: xk(ML0,nn)
+    complex(8),intent(INOUT) :: gk(ML0:,:),Pgk(ML0:,:)
+    complex(8),intent(IN) :: xk(ML0:,:)
 #endif
 
     select case( iswitch_cgpc )

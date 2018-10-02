@@ -1,7 +1,6 @@
 MODULE force_sol_module
 
   use force_local_sol_module, only: calc_force_local_sol
-  use ps_nloc2_module, only: calc_force_ps_nloc2
   use ps_pcc_module, only: flag_pcc_0
   use ps_pcc_force_module, only: calc_ps_pcc_force
   use force_ewald_module, only: calc_force_ewald
@@ -9,6 +8,7 @@ MODULE force_sol_module
   use atom_module, only: aa_atom
   use vdw_grimme_module, only: calc_F_vdw_grimme
   use nonlocal_module, only: calc_force_nonlocal
+  use parallel_module, only: myrank
 
   implicit none
 
@@ -61,7 +61,7 @@ CONTAINS
     deallocate( work )
 
 !    call check_disp_switch( disp_sw, 0 )
-!    if ( disp_sw ) then
+!    if ( myrank == 0 ) then
 !       write(*,*) "time(force1)",ctt(1)-ctt(0),ett(1)-ett(0)
 !       write(*,*) "time(force2)",ctt(2)-ctt(1),ett(2)-ett(1)
 !       write(*,*) "time(force3)",ctt(3)-ctt(2),ett(3)-ett(2)

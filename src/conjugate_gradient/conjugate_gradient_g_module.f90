@@ -26,11 +26,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg,iswitch_gs
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(n1:n2,MB)
+    real(8),intent(INOUT) :: unk(n1:,:)
 #else
-    complex(8),intent(INOUT) :: unk(n1:n2,MB)
+    complex(8),intent(INOUT) :: unk(n1:,:)
 #endif
-    real(8),intent(INOUT) :: esp(MB),res(MB)
+    real(8),intent(INOUT) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i
     real(8),parameter :: ep0=0.d0
@@ -104,7 +104,7 @@ CONTAINS
        E1(:)=1.d10
 
        call watch(ct0,et0)
-       call hamiltonian(k,s,unk(n1,ns),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+       call hamiltonian(k,s,unk(n1:n2,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        call watch(ct1,et1) ; ctt(1)=ctt(1)+ct1-ct0 ; ett(1)=ett(1)+et1-et0
 
        do n=1,nn
@@ -117,7 +117,7 @@ CONTAINS
 
        do n=1,nn
 !----- USPP -----
-          call get_Sf( unk(n1,n+ns-1),n1,n2,k,Sf )
+          call get_Sf( unk(n1:n2,n+ns-1),n1,n2,k,Sf )
 !$OMP parallel do
           do i=n1,n2
              gk(i,n)=-c1*(hxk(i,n)-E(n)*Sf(i))
@@ -152,7 +152,7 @@ CONTAINS
 
           call watch(ct1,et1) ; ctt(2)=ctt(2)+ct1-ct0 ; ett(2)=ett(2)+et1-et0
 ! --- Preconditioning ---
-          call preconditioning(E,k,s,nn,ML0,unk(n1,ns),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(n1:n2,ns:ne),gk,Pgk)
           call watch(ct0,et0) ; ctt(4)=ctt(4)+ct0-ct1 ; ett(4)=ett(4)+et0-et1
 
 ! ---
@@ -200,7 +200,7 @@ CONTAINS
 ! need omp_parallel
 !             call get_gSf( unk(n1,m,k,s),unk(n1,m,k,s),n1,n2,k,vtmp2(1:n),0 )
 !             call get_gSf( pk(n1,n),unk(n1,m,k,s),n1,n2,k,vtmp2(2:n),0 )
-             call get_Sf( unk(n1,m),n1,n2,k,Sf )
+             call get_Sf( unk(n1:n2,m),n1,n2,k,Sf )
              gSf=zero
              do i=n1,n2
 #ifdef _DRSDFT_

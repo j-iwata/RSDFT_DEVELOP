@@ -114,7 +114,7 @@ CONTAINS
              do m=MB_0,MB_1,MB_d
                 n=min(m+MB_d-1,MB_1)
                 call hamiltonian &
-                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                     (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
              end do
           end do
           end do
@@ -131,7 +131,7 @@ CONTAINS
                 n=min(m+MB_d-1,MB_1)
                 workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
                 call hamiltonian &
-                     (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                     (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
                 hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
              end do ! m
           end do ! k
@@ -158,25 +158,11 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          if ( flag_noncollinear ) then
-#ifndef _DRSDFT_
-             call conjugate_gradient_ncol( ML_0,ML_1, Nband, k &
-                                          ,unk, esp(1,k,1), res(1,k,1) )
+          call conjugate_gradient( ML_0,ML_1, Nband, k,s, unk, esp, res )
 
-             call gram_schmidt_ncol( 1,Nband, k, unk )
+          call gram_schmidt(1,Nband,k,s)
 
-             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
-#endif
-          else
-
-             call conjugate_gradient( ML_0,ML_1, Nband, k,s &
-                                     ,unk(ML_0,1,k,s), esp(1,k,s), res(1,k,s) )
-
-             call gram_schmidt(1,Nband,k,s)
-
-             call subspace_diag(k,s)
-
-          end if
+          call subspace_diag(k,s,ML_0,ML_1,unk,esp)
 
        end do
 
@@ -197,11 +183,10 @@ CONTAINS
           call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
                               ,esp,weight_bz,occ)
        else
-          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                         ,esp,weight_bz,occ,disp_switch)
+          call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
-       call calc_with_rhoIN_total_energy( Echk )
+       call calc_with_rhoIN_total_energy( Echk, flag_ncol=flag_noncollinear )
 
        call conv_check( iter, res, flag_conv )
        call global_watch( .false., flag_end1 )
@@ -223,7 +208,7 @@ CONTAINS
 
        call write_data( disp_switch, flag_exit, "wf", suffix )
 
-       call result_timer( tt, "sweep" )
+       call result_timer( "sweep", tt )
 
        if ( flag_exit ) exit
 

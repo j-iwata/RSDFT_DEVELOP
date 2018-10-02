@@ -1,6 +1,5 @@
 MODULE global_variables
 
-  use aa_module
   use bb_module
   use atom_module
   use rgrid_sol_module
@@ -44,7 +43,6 @@ MODULE global_variables
   use total_energy_module
   use mixing_module
   use esp_gather_module
-  use fermi_module
   use watch_module
   use io_module
   use array_bound_module

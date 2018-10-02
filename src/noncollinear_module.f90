@@ -40,13 +40,18 @@ CONTAINS
     do i=1,2
        vxc_mat(:,i,i)=vxc(:,i)
     end do
+    call calc_dc_xc( vxc_mat, den_mat, DCxc )
   END SUBROUTINE init_noncollinear
 
 
   SUBROUTINE calc_xc_noncollinear( psi, occ, rho_out, vxc_out )
 
     implicit none
+#ifdef _DRSDFT_
+    real(8),intent(IN) :: psi(:,:,:,:)
+#else
     complex(8),intent(IN) :: psi(:,:,:,:)
+#endif
     real(8),intent(IN) :: occ(:,:)
     real(8),optional,intent(OUT) :: rho_out(:,:)
     real(8),optional,intent(OUT) :: vxc_out(:,:)
@@ -137,7 +142,11 @@ CONTAINS
 
   SUBROUTINE calc_dm_noncollinear( psi, occ, dm )
     implicit none
+#ifdef _DRSDFT_
+    real(8),intent(IN) :: psi(:,:,:,:)
+#else
     complex(8),intent(IN) :: psi(:,:,:,:)
+#endif
     real(8),intent(IN) :: occ(:,:)
     complex(8),intent(OUT) :: dm(:,:,:)
     integer :: n,k,i,j,mb,mk
@@ -152,9 +161,11 @@ CONTAINS
 
        do k=1,mk
        do n=1,mb
-
+#ifdef _DRSDFT_
+          dm(:,i,j) = dm(:,i,j) + occ(n,k)*psi(:,n,k,i)*psi(:,n,k,j)
+#else
           dm(:,i,j) = dm(:,i,j) + occ(n,k)*conjg( psi(:,n,k,i) )*psi(:,n,k,j)
-
+#endif
        end do
        end do
 
@@ -190,13 +201,13 @@ CONTAINS
 
   SUBROUTINE op_xc_noncollinear( tpsi, hpsi )
     implicit none
-    complex(8),intent(IN) :: tpsi(:,:)
-    complex(8),intent(INOUT) :: hpsi(:,:)
+    complex(8),intent(IN) :: tpsi(:,:,:)
+    complex(8),intent(INOUT) :: hpsi(:,:,:)
     if ( .not.flag_noncollinear ) return
     if ( .not.allocated(vxc_mat) ) return
     !call write_border( 1, "op_xc_noncollinear(start)" )
-    hpsi(:,1) = hpsi(:,1) + vxc_mat(:,1,1)*tpsi(:,1) + vxc_mat(:,1,2)*tpsi(:,2)
-    hpsi(:,2) = hpsi(:,2) + vxc_mat(:,2,1)*tpsi(:,1) + vxc_mat(:,2,2)*tpsi(:,2)
+    hpsi(:,1,1) = hpsi(:,1,1) + vxc_mat(:,1,1)*tpsi(:,1,1) + vxc_mat(:,1,2)*tpsi(:,1,2)
+    hpsi(:,1,2) = hpsi(:,1,2) + vxc_mat(:,2,1)*tpsi(:,1,1) + vxc_mat(:,2,2)*tpsi(:,1,2)
     !call write_border( 1, "op_xc_noncollinear(end)" )
   END SUBROUTINE op_xc_noncollinear
 
@@ -244,13 +255,13 @@ CONTAINS
     allocate( zw(ml) ) ; zw=(0.0d0,0.0d0)
 
     do j=1,size(den_mat,3)
-    do i=1,size(den_mat,3)
+    do i=1,size(den_mat,2)
        call rsdft_allgatherv( den_mat(:,i,j), zw, ir_grid, id_grid, comm_grid )
        if ( rank == 0 ) write(unit) zw
     end do
     end do
     do j=1,size(vxc_mat,3)
-    do i=1,size(vxc_mat,3)
+    do i=1,size(vxc_mat,2)
        call rsdft_allgatherv( vxc_mat(:,i,j), zw, ir_grid, id_grid, comm_grid )
        if ( rank == 0 ) write(unit) zw
     end do
@@ -260,7 +271,7 @@ CONTAINS
 
     if ( rank == 0 ) close(unit)
 
-    call result_timer( tt, "io_write_noncollinear" )
+    call result_timer( "io_write_noncollinear", tt )
 
     call write_border( 0, " io_write_noncollinear(end)" )
 
@@ -283,6 +294,7 @@ CONTAINS
     flag_read = .false.
 
     if ( IC <= 0 ) return
+    if ( .not.flag_noncollinear ) return
 
     call write_border( 0, " io_read_noncollinear(start)" )
 

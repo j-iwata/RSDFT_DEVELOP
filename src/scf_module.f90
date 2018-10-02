@@ -34,12 +34,8 @@ MODULE scf_module
   use io_tools_module
   use eigenvalues_module
   use rsdft_mpi_module
-
   use noncollinear_module
-  use cg_ncol_module
-  use gram_schmidt_ncol_module
-  use subspace_diag_ncol_module
-  use esp_calc_ncol_module
+  use phase_control_module
 
   implicit none
 
@@ -52,6 +48,9 @@ MODULE scf_module
   real(8) :: scf_conv(2) = 0.0d0
   real(8) :: fmax_conv   = 0.0d0
   real(8) :: etot_conv   = 0.0d0
+  logical :: errlog_scf  = .false.
+  logical :: nodiag_scf  = .false.
+  integer,parameter :: unit_err=40
 
   real(8),allocatable :: Vloc0(:,:)
   real(8),allocatable :: rho_0(:,:),vxc_0(:,:),vht_0(:)
@@ -65,12 +64,12 @@ CONTAINS
   SUBROUTINE read_scf
     implicit none
     integer :: itmp(2)
-    scf_conv(1) = 1.d-20
-    scf_conv(2) = 0.0d0
-    call IOTools_readReal8Keywords( "SCFCONV" , scf_conv )
+    call IOTools_readReal8Keyword( "SCFCONV" , scf_conv )
     call IOTools_readReal8Keyword( "FMAXCONV", fmax_conv )
     call IOTools_readReal8Keyword( "ETOTCONV", etot_conv )
     call IOTools_readIntegerKeyword( "DITER", Diter_scf )
+    call IOTools_findKeyword( "ERRLOG", errlog_scf )
+    call IOTools_findKeyword( "NODIAG", nodiag_scf )
     itmp=-1
     call IOTools_readIntegerKeyword( "NDIAG", itmp )
     if ( itmp(1) > 0 ) Ndiag=itmp(1)
@@ -78,33 +77,34 @@ CONTAINS
   END SUBROUTINE read_scf
 
 
-  SUBROUTINE calc_scf( disp_switch, ierr_out, Diter_in, tol_force_in &
-                      ,outer_loop_info, Etot_out )
+  SUBROUTINE calc_scf(ierr_out,Diter_in,tol_force_in,outer_loop_info,Etot_out)
     implicit none
-    logical,intent(IN) :: disp_switch
     integer,intent(OUT) :: ierr_out
     integer,optional,intent(IN) :: Diter_in
     real(8),optional,intent(IN) :: tol_force_in
     character(*),optional,intent(IN)  :: outer_loop_info
     real(8),optional,intent(OUT) :: Etot_out
+    real(8),allocatable :: v(:,:,:)
+    real(8) :: tol_force
+    real(8) :: Etot, Ehwf, diff_etot
+    real(8) :: Ntot(4), sqerr_out(4), t_out(2,14), t_ini(2), t_tmp(2)
     integer :: iter,s,k,n,m,ierr,idiag,i,j,Diter
     integer :: ML01,MSP01,ib1,ib2,iflag_hybrid,iflag_hybrid_0
     logical :: flag_exit,flag_conv,flag_conv_f,flag_conv_e
     logical :: flag_end, flag_end1, flag_end2
-    real(8),allocatable :: v(:,:,:)
-    real(8) :: tol_force
+    logical :: flag_recalc_esp = .false.
+    logical :: disp_switch
+    logical,external :: exit_program
     character(40) :: chr_iter
     character(22) :: add_info
-    type(time) :: etime, etime_tot, etime_lap(10)
-    logical :: flag_recalc_esp = .false.
-    real(8) :: Etot, Ehwf, diff_etot
-    real(8) :: Ntot(4), sqerr_out(4)
-    logical,external :: exit_program
     type(eigv) :: eval
+    type(time) :: etime, etime_tot, etime_lap(10)
     type(time) :: tt
 
     call write_border( 0, "" )
     call write_border( 0, " SCF START -----------" )
+
+    call check_disp_switch( disp_switch, 0 )
 
     call init_time_watch( etime_tot )
     call init_time_watch( etime_lap(1) )
@@ -123,6 +123,7 @@ CONTAINS
     Diter       = Diter_scf ; if ( present(Diter_in) ) Diter=Diter_in
     Etot        = 0.0d0
     time_scf(:) = 0.0d0
+    t_out       = 0.0d0
 
     add_info ="" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
 
@@ -146,7 +147,10 @@ CONTAINS
     call init_mixing(ML01,MSP,MSP_0,MSP_1,comm_grid,comm_spin &
                     ,dV,rho(ML_0,MSP_0),Vloc(ML_0,MSP_0) &
                     ,ir_grid,id_grid,myrank)
-    call init_sqerr( ML01, MSP01, MSP, rho(ML_0,MSP_0), Vloc(ML_0,MSP_0) )
+
+    call init_sqerr( ML01, MSP01, MSP, Vloc(ML_0,MSP_0), rho(ML_0,MSP_0) )
+
+    rho_in = rho
 
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
@@ -159,7 +163,7 @@ CONTAINS
           do m=MB_0,MB_1,MB_d
              n=min(m+MB_d-1,MB_1)
              call hamiltonian &
-                  (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                  (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
           end do
        end do
        end do
@@ -177,9 +181,9 @@ CONTAINS
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
        call start_timer( tt )
-
        call init_time_watch( etime )
        call init_time_watch( etime_lap(2) )
+       call watchb( t_ini(1) ) ; t_out=0.0d0
 
        esp0=esp
 
@@ -187,6 +191,8 @@ CONTAINS
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
+
+          call watchb( t_tmp )
 
           call control_xc_hybrid( iflag_hybrid_0 )
 
@@ -209,7 +215,7 @@ CONTAINS
                    n=min(m+MB_d-1,MB_1)
                    workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
                    call hamiltonian &
-                        (k,s,unk(ML_0,m,k,s),hunk(ML_0,m,k,s),ML_0,ML_1,m,n)
+                        (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
                    hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
                 end do
                 deallocate( workwf )
@@ -217,13 +223,11 @@ CONTAINS
 
           end if
 
-          if ( flag_noncollinear ) then
-#ifndef _DRSDFT_
-             call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
-#endif
-          else
-             call subspace_diag(k,s)
-          end if
+          call watchb( t_tmp, t_out(:,1) )
+
+          if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,unk,esp )
+
+          call watchb( t_tmp, t_out(:,2) )
 
 #ifdef _DRSDFT_
           call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
@@ -234,40 +238,31 @@ CONTAINS
 
           call control_xc_hybrid(1)
 
+          call watchb( t_tmp, t_out(:,3) )
+
           do idiag=1,Ndiag
 
              if ( Ndiag > 1 .and. disp_switch ) then
                 write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
              end if
 
-             if ( flag_noncollinear ) then
-#ifndef _DRSDFT_
-                call conjugate_gradient_ncol( ML_0,ML_1,Nband,k &
-                     ,unk,esp(1,k,1),res(1,k,1) )
+             call watchb( t_tmp )
 
-                call gram_schmidt_ncol( 1,Nband, k, unk )
+             call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
 
-                if ( second_diag == 1 .or. idiag < Ndiag ) then
-                   call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
-                else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                   call esp_calc_ncol( k, ML_0,ML_1, unk, esp )
-                end if
-#endif
-             else ! flag_noncollinear
+             call watchb( t_tmp, t_out(:,4) )
 
-                call conjugate_gradient(ML_0,ML_1,Nband,k,s &
-                     ,unk(ML_0,1,k,s),esp(1,k,s),res(1,k,s))
+             call gram_schmidt(1,Nband,k,s)
 
-                call gram_schmidt(1,Nband,k,s)
+             call watchb( t_tmp, t_out(:,5) )
 
-                if ( second_diag == 1 .or. idiag < Ndiag ) then
-                   call subspace_diag(k,s)
-                else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                   call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
-                        ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
-                end if
-
-             end if ! flag_noncollinear
+             if ( second_diag == 1 .or. idiag < Ndiag ) then
+                call subspace_diag( k,s,ML_0,ML_1,unk,esp )
+                call watchb( t_tmp, t_out(:,2) )
+             else if ( second_diag == 2 .and. idiag == Ndiag ) then
+                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
+                call watchb( t_tmp, t_out(:,6) )
+             end if
 
           end do ! idiag
 
@@ -277,8 +272,11 @@ CONTAINS
 
        end do ! s
 
+       call phase_control( ML_0, ML_1, unk )
+
        call calc_time_watch( etime_lap(2) )
        call init_time_watch( etime_lap(3) )
+       call watchb( t_tmp )
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
@@ -293,12 +291,12 @@ CONTAINS
           call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin &
                ,Nelectron,Ndspin,esp,weight_bz,occ )
        else
-          call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron &
-               ,Ndspin,esp,weight_bz,occ,disp_switch)
+          call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
        call calc_time_watch( etime_lap(3) )
        call init_time_watch( etime_lap(4) )
+       call watchb( t_tmp, t_out(:,7) )
 
 ! --- total energy ---
 
@@ -313,6 +311,7 @@ CONTAINS
           E_exchange=0.0d0
           E_correlation=0.0d0
           call calc_hartree(ML_0,ML_1,MSP,rho)
+          call calc_spin_density( rho, Ntot )
        else
           call calc_density( Ntot )
           call calc_hartree(ML_0,ML_1,MSP,rho)
@@ -348,6 +347,7 @@ CONTAINS
 
        call calc_time_watch( etime_lap(4) )
        call init_time_watch( etime_lap(5) )
+       call watchb( t_tmp, t_out(:,8) )
 
 ! --- convergence check by density & potential ---
 
@@ -379,6 +379,7 @@ CONTAINS
 
        call calc_time_watch( etime_lap(5) )
        call init_time_watch( etime_lap(6) )
+       call watchb( t_tmp, t_out(:,9) )
 
 ! --- convergence check by Fmax ---
 
@@ -396,12 +397,14 @@ CONTAINS
                   fmax, tol_force
              write(*,'(1x," ( diff/tol =",es13.5," /",es12.5," )",l5)') &
                   fdiff,fmax_conv,flag_conv_f
+             !write(11,*) iter,fmax
           end if
        end if
 
        flag_conv = ( flag_conv .or. flag_conv_f .or. flag_conv_e )
 
        call calc_time_watch( etime_lap(6) )
+       call watchb( t_tmp, t_out(:,10) )
 
 ! ---
 
@@ -414,6 +417,7 @@ CONTAINS
        flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
        call init_time_watch( etime_lap(7) )
+       call watchb( t_tmp, t_out(:,11) )
 
 ! --- mixing ---
 
@@ -431,7 +435,7 @@ CONTAINS
           if ( mod(imix,2) == 0 ) then
              if ( flag_noncollinear ) then
              else
-                call normalize_density
+                call normalize_density( rho )
                 m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
                 call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
                 call calc_hartree(ML_0,ML_1,MSP,rho)
@@ -444,9 +448,12 @@ CONTAINS
 
           call getDij
 
+          rho_in = rho
+
        end if
 
        call calc_time_watch( etime_lap(7) )
+       call watchb( t_tmp, t_out(:,12) )
 
 ! ---
 
@@ -455,23 +462,32 @@ CONTAINS
        if ( myrank == 0 ) call write_eigenvalues( eval )
 
        call calc_time_watch( etime )
-       if ( disp_switch ) then
-          write(*,*)
-          write(*,'(1x,"time(scf)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
-          etime%t0, etime%tmin, etime%tmax
-          !do i=1,7
-          !   write(*,'(1x,"time(",i3,")=",f10.3,"(rank0)",f10.3,"(min)" &
-          !        ,f10.3,"(max)")') i,etime_lap(i)%t0, etime_lap(i)%tmin &
-          !                           ,etime_lap(i)%tmax
-          !end do
-          !write(*,*)
-       end if
+       call watchb( t_tmp, t_out(:,13) )
 
        call write_data(disp_switch,flag_exit)
        if ( flag_noncollinear ) call io_write_noncollinear( myrank,flag_exit )
        call write_info_scf( (myrank==0) )
+       call write_err_info(iter,sqerr_out(1:2*Nspin),diff_etot,flag_exit,(myrank==0) )
 
-       call result_timer( tt, "scf" )
+       call result_timer( "scf", tt )
+
+       call watchb( t_ini, t_out(:,14) )
+
+       if ( disp_switch ) then
+       write(*,'(1x,"elapsed_time ",f8.3,"(scf)" &
+                                   ,f8.3,"(sd) " &
+                                   ,f8.3,"(esp)" &
+                                   ,f8.3,"(cg) " &
+                                   ,f8.3,"(gs) " &
+                                   ,f8.3,"(for)" &
+                                   ,f8.3,"(oth)")') &
+                                   t_out(2,14) &
+                                   ,t_out(2,2) &
+                                   ,t_out(2,6) &
+                                   ,t_out(2,4),t_out(2,5) &
+                                   ,t_out(2,10) &
+                                   ,t_out(2,1)+t_out(2,3)+sum( t_out(2,6:9) )+sum( t_out(2,11:13) )
+       end if
 
        if ( flag_exit ) then
           call finalize_mixing
@@ -538,6 +554,25 @@ CONTAINS
     end if
     call write_border( 1, " write_info_scf(end)" )
   END SUBROUTINE write_info_scf
+
+
+  SUBROUTINE write_err_info( iter, sqerr, dEtot, flag_finalize, flag )
+    implicit none
+    integer,intent(IN) :: iter
+    real(8),intent(IN) :: sqerr(:), dEtot
+    logical,intent(IN) :: flag_finalize, flag
+    logical :: flag_new=.true.
+    if ( .not.errlog_scf .or. .not.flag ) return
+    if ( flag_new ) then
+       open(unit_err,file="errlog_scf")
+       flag_new=.false.
+    else
+       open(unit_err,file="errlog_scf",position="append")
+    end if
+    write(unit_err,'(1x,i6,5f18.10)') iter,log10(sqerr(:)),dEtot
+    if ( flag_finalize ) write(unit_err,'(/)')
+    close(unit_err)
+  END SUBROUTINE write_err_info
 
 
 !  SUBROUTINE sub_localpot2_scf( disp_switch )

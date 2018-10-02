@@ -77,7 +77,7 @@ CONTAINS
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3,timer_counter
     integer :: np1,np2,np3,nrlma
-    logical,allocatable :: lcheck_tmp1(:,:)
+    logical,allocatable :: lcheck_tmp1(:,:), lcheck_tmp2(:,:)
     logical :: disp_sw
 
     call write_border( 0, " prep_ps_nloc2(start)" )
@@ -175,16 +175,16 @@ CONTAINS
 
     L=maxval(lo)
     n=maxval(norb)
-!!$    if ( .not.allocated(icheck_tmp3) ) then ! MIZUHO-IR for cellopt
-    if( allocated(icheck_tmp3) ) deallocate(icheck_tmp3) ! MIZUHO-IR for cellopt
-    if( allocated(JJ_tmp) ) deallocate(JJ_tmp) ! MIZUHO-IR for cellopt
-    if( allocated(MJJ_tmp) ) deallocate(MJJ_tmp) ! MIZUHO-IR for cellopt
-    if( allocated(uV_tmp) ) deallocate(uV_tmp) ! MIZUHO-IR for cellopt
-       allocate( icheck_tmp3(Natom,n,2*L+1) ) ; icheck_tmp3=0
-       allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ) ; JJ_tmp=0
-       allocate( MJJ_tmp(n,Natom)           ) ; MJJ_tmp=0
-       allocate( uV_tmp(MMJJ_0,n,Natom)     ) ; uV_tmp=0.d0
-!!$    end if ! MIZUHO-IR for cellopt
+    if ( .not.allocated(icheck_tmp3) ) then
+!    if( allocated(icheck_tmp3) ) deallocate(icheck_tmp3) ! MIZUHO-IR for cellopt
+!    if( allocated(JJ_tmp) ) deallocate(JJ_tmp) ! MIZUHO-IR for cellopt
+!    if( allocated(MJJ_tmp) ) deallocate(MJJ_tmp) ! MIZUHO-IR for cellopt
+!    if( allocated(uV_tmp) ) deallocate(uV_tmp) ! MIZUHO-IR for cellopt
+       allocate( icheck_tmp3(Natom,n,2*L+1) ); icheck_tmp3=0
+       allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ); JJ_tmp=0
+       allocate( MJJ_tmp(n,Natom)           ); MJJ_tmp=0
+       allocate( uV_tmp(MMJJ_0,n,Natom)     ); uV_tmp=0.0d0
+    end if
 
     call watcha( timer_counter )
 
@@ -404,7 +404,8 @@ CONTAINS
     end do
     MMJJ = maxval( MJJ_tmp )
 
-    allocate( lcheck_tmp1(Mlma,0:np_grid-1) ) ; lcheck_tmp1(:,:)=.false.
+    allocate( lcheck_tmp1(0:np_grid-1,Mlma) ) ; lcheck_tmp1(:,:)=.false.
+    allocate( lcheck_tmp2(0:np_grid-1,Mlma) ) ; lcheck_tmp2(:,:)=.false.
     lma=0
     do a=1,Natom
        ik=ki_atom(a)
@@ -414,12 +415,14 @@ CONTAINS
           do m=1,2*L+1
              lma=lma+1
              if ( j > 0 ) then
-                lcheck_tmp1(lma,myrank_g)=.true.
+                lcheck_tmp2(myrank_g,lma)=.true.
              end if
           end do
        end do
     end do
-    call rsdft_allgather( lcheck_tmp1(:,myrank_g), lcheck_tmp1, comm_grid )
+    call MPI_ALLREDUCE( lcheck_tmp2, lcheck_tmp1, size(lcheck_tmp1), &
+                        MPI_LOGICAL, MPI_LOR, comm_grid, ierr )
+    deallocate( lcheck_tmp2 )
 
     call watcha( timer_counter )
 
@@ -460,7 +463,7 @@ CONTAINS
 
        icheck_tmp1(:)=0
        do n=0,np_grid-1
-          if ( lcheck_tmp1(lma,n) ) icheck_tmp1(n) = 1
+          if ( lcheck_tmp1(n,lma) ) icheck_tmp1(n) = 1
        end do
        icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
 
@@ -934,7 +937,7 @@ CONTAINS
 
 ! ---
 
-!    if ( disp_sw ) then
+!    if ( myrank == 0 ) then
 !       call write_watcha( timer_counter,"prep_ps_nloc2" )
 !    end if
 
@@ -1301,7 +1304,7 @@ CONTAINS
     real(8) :: a1,a2,a3,c1,c2,c3,d1,d2,d3
     real(8) :: x,y,z,r,kr,pi2,c
     real(8) :: tmp,tmp0,tmp1
-    real(8) :: ctt(0:5),ett(0:5)
+    real(8) :: ttmp(2), tttt(2,12)
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),duVdR(:,:,:)
 #ifdef _DRSDFT_
@@ -1320,11 +1323,15 @@ CONTAINS
 
     call check_disp_switch( disp_sw, 0 )
 
-    flag_init_force = .true. ! MIZUHO-IR for cellopt
+    call watchb( ttmp ); tttt=0.0d0
+
+    !flag_init_force = .true. ! MIZUHO-IR for cellopt (comment-out by ji for CPMD performance)
     if ( flag_init_force ) then
        call ps_nloc2_init_derivative
        flag_init_force = .false.
     end if
+
+    call watchb( ttmp, tttt(:,1) )
 
     if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
@@ -1348,8 +1355,6 @@ CONTAINS
     pi2 = 2.d0*acos(-1.d0)
 
     maxerr=0.d0
-    ctt(:)=0.d0
-    ett(:)=0.d0
 
     a1b=Igrid(1,1)
     a2b=Igrid(1,2)
@@ -1365,6 +1370,8 @@ CONTAINS
     c1=1.d0/ML1
     c2=1.d0/ML2
     c3=1.d0/ML3
+
+    call watchb( ttmp, tttt(:,2) )
 
     if ( .not.allocated(ilm1) ) then
        L1=maxval(lo)+1
@@ -1400,14 +1407,14 @@ CONTAINS
        end do
     end if
 
-    call watch(ctt(4),ett(4))
+    call watchb( ttmp, tttt(:,3) )
 
     allocate( wtmp5(0:3,nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
     allocate( vtmp2(0:3,nzlma,MB_d) )
     allocate( a_rank(Natom) )
     allocate( duVdR(3,MMJJ,nzlma) )
 
-    call watch(ctt(5),ett(5))
+    call watchb( ttmp, tttt(:,4) )
 
 !$OMP parallel
 
@@ -1435,10 +1442,12 @@ CONTAINS
     end do
 !$OMP end do
 
+    call watchb( ttmp, tttt(:,5) )
+
     if ( any( ippform == 4 ) ) then
 
 !$OMP master
-       call watch(ctt(0),ett(0))
+       call watchb( ttmp )
 !$OMP end master
 
 !$OMP single
@@ -1447,10 +1456,12 @@ CONTAINS
 !$OMP end single
 
 !$OMP master
-       call watch(ctt(1),ett(1))
+       call watchb( ttmp, tttt(:,6) )
 !$OMP end master
 
     else
+
+    call watchb( ttmp )
 
 #ifndef _SPLINE_
 !$OMP single
@@ -1485,7 +1496,7 @@ CONTAINS
 !$OMP end workshare
 
 !$OMP master
-    call watch(ctt(0),ett(0))
+    call watchb( ttmp, tttt(:,7) )
 !$OMP end master
 
 !$OMP do schedule(dynamic) firstprivate( maxerr ) &
@@ -1593,7 +1604,7 @@ CONTAINS
 !$OMP end do
 
 !$OMP master
-    call watch(ctt(1),ett(1))
+    call watchb( ttmp, tttt(:,8) )
 !$OMP end master
 
 #ifndef _SPLINE_
@@ -1603,6 +1614,8 @@ CONTAINS
 #endif
 
     end if
+
+    call watchb( ttmp )
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
@@ -1688,7 +1701,7 @@ CONTAINS
     end do ! s
 
 !$OMP master
-    call watch(ctt(2),ett(2))
+    call watchb( ttmp, tttt(:,9) )
 !$OMP end master
 
 !$OMP single
@@ -1702,7 +1715,12 @@ CONTAINS
     force2(:,:)=0.d0
 !$OMP end workshare
 
+!$OMP master
+    call watchb( ttmp, tttt(:,10) )
+!$OMP end master
+
 !$OMP single
+    call watchb( ttmp )
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
     do n=MB_0,MB_1,MB_d
@@ -1786,7 +1804,12 @@ CONTAINS
     deallocate( ireq )
 
     allocate( work2(3,Natom) )
+    call watchb( ttmp, tttt(:,11) )
 !$OMP end single
+
+!$OMP master
+    call watchb( ttmp )
+!$OMP end master
 
 !$OMP workshare
     work2(:,:)=force2(:,:)
@@ -1802,17 +1825,16 @@ CONTAINS
 !$OMP end single
 
 !$OMP master
-    call watch(ctt(3),ett(3))
+    call watchb( ttmp, tttt(:,12) )
 !$OMP end master
 
 !$OMP end parallel
 
-!    if ( disp_sw ) then
-!       write(*,*) "time(force_nloc2_1)",ctt(1)-ctt(0),ett(1)-ett(0)
-!       write(*,*) "time(force_nloc2_2)",ctt(2)-ctt(1),ett(2)-ett(1)
-!       write(*,*) "time(force_nloc2_3)",ctt(3)-ctt(2),ett(3)-ett(2)
-!       write(*,*) "time(force_nloc2_4)",ctt(5)-ctt(4),ett(5)-ett(4)
-!    end if
+    !if ( myrank == 0 ) then
+    !   do i=1,12
+    !      write(*,'("time_force_nloc2(",i2")') tttt(:,i)
+    !   end do
+    !end if
 
   END SUBROUTINE calc_force_ps_nloc2
 

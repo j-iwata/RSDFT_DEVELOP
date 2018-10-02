@@ -62,18 +62,18 @@ CONTAINS
     real(8),intent(INOUT) :: Etot
     integer,optional,intent(IN) :: unit_in
     logical,optional,intent(IN) :: flag_ncol
-    integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,unit
+    integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,nn,unit
     real(8) :: s0(4),s1(4),uu,cnst
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
     real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_
-    real(8),parameter :: zero=0.d0
+    real(8),parameter :: zero=0.0d0
     real(8),allocatable :: work(:,:)
-    real(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
+    real(8),allocatable :: work00(:,:),zw1(:,:,:),zw2(:,:,:)
 #else
-    complex(8),parameter :: zero=(0.d0,0.d0)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: work(:,:)
-    complex(8),allocatable :: work00(:,:),zw1(:,:),zw2(:,:)
+    complex(8),allocatable :: work00(:,:),zw1(:,:,:),zw2(:,:,:)
 #endif
     include 'mpif.h'
     complex(8) :: ztmp,ztmp1
@@ -100,8 +100,8 @@ CONTAINS
        allocate( esp0_Q(MB,MBZ,MSP) ) ; esp0_Q=0.0d0
        allocate( work(n1:n2,MB_d)   ) ; work=zero
        allocate( work00(n1:n2,MB_d) ) ; work00=zero
-       allocate( zw1(n1:n2,MSP) ) ; zw1=zero
-       allocate( zw2(n1:n2,MSP) ) ; zw2=zero
+       allocate( zw1(n1:n2,1,MSP) ) ; zw1=zero
+       allocate( zw2(n1:n2,1,MSP) ) ; zw2=zero
 
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
@@ -109,12 +109,13 @@ CONTAINS
 
           nb1=n
           nb2=min(nb1+MB_d-1,MB_1)
+          nn =nb2-nb1+1
 
 !---------------------------------------------------- kinetic
 
           work=zero
 !$OMP parallel
-          call op_kinetic(k,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+          call op_kinetic( unk(:,nb1:nb2,k,s), work(:,1:nn), k )
 !$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -128,7 +129,7 @@ CONTAINS
 
           work=zero
 !$OMP parallel
-          call op_localpot(s,n2-n1+1,nb2-nb1+1,unk(n1,n,k,s),work)
+          call op_localpot( unk(:,nb1:nb2,k,s), work(:,1:nn), s )
 !$OMP end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -145,7 +146,7 @@ CONTAINS
              work=zero
              work00=zero
 !$OMP parallel
-             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2,work00)
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -161,7 +162,7 @@ CONTAINS
 
              work=zero
 !$OMP parallel
-             call op_nonlocal(k,s,unk(n1,n,k,s),work,n1,n2,nb1,nb2)
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -176,12 +177,14 @@ CONTAINS
 !---------------------------------------------------- fock
 
           work=zero
-          call op_fock(k,s,n1,n2,n,n,unk(n1,n,k,s),work)
+          call op_fock(k,s,n1,n2,n,n,unk(:,nb1:nb2,k,s),work)
+          do i=nb1,nb2
 #ifdef _DRSDFT_
-          esp0(n,k,s,4)=sum( unk(:,n,k,s)*work(:,1) )*dV
+             esp0(i,k,s,4)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
 #else
-          esp0(n,k,s,4)=sum( conjg(unk(:,n,k,s))*work(:,1) )*dV
+             esp0(i,k,s,4)=sum( conjg(unk(:,i,k,s))*work(:,i-nb1+1) )*dV
 #endif
+          end do
 
        end do ! n
        end do ! k
@@ -194,7 +197,7 @@ CONTAINS
           if ( flag_ncol ) then
              do k=MBZ_0,MBZ_1
              do n=MB_0 ,MB_1
-                zw1(:,:)=unk(:,n,k,:)
+                zw1(:,1,:)=unk(:,n,k,:)
                 zw2=zero
 #ifndef _DRSDFT_
                 call hamiltonian_ncol( k, n1,n2, zw1, zw2 )
@@ -263,6 +266,10 @@ CONTAINS
     end if
 
     cnst = sum( occ(:,:,:) )*const_ps_local
+
+    if ( present(flag_ncol) ) then
+       if ( flag_ncol ) cnst = sum( occ(:,:,1) )*const_ps_local
+    end if
 
     select case( pp_kind )
     case( "USPP" )
@@ -382,14 +389,16 @@ CONTAINS
     Ehat_in = E_hartree
     Exc_in  = Exc
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
+    cnst=sum(occ)*const_ps_local
     if ( present(flag_ncol) ) then
        if ( flag_ncol ) then
           Eeig_tmp=sum( occ(:,:,1)*esp(:,:,1) )
+          cnst=sum(occ(:,:,1))*const_ps_local
        end if
     end if
     call get_E_vdw_grimme( Evdw )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
-         - 2*E_exchange_exx + const_ps_local*sum(occ) + Evdw - DCxc
+         - 2*E_exchange_exx + cnst + Evdw - DCxc
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
@@ -407,6 +416,7 @@ CONTAINS
        end if
        write(u,*) "Total Energy ",Etot,diff_etot
        write(u,*) "Harris Energy",Ehwf
+       write(u,*) "Free Energy  ",Fene
        write(u,*) "Ion-Ion                    ",Eewald
        write(u,*) "Local Potential            ",Eloc
        write(u,*) "Ion Local Potential        ",Eion
@@ -418,6 +428,7 @@ CONTAINS
        write(u,*) "Correlation Energy         ",E_correlation
        write(u,*) "Sum of eigenvalues         ",Eeig
        write(u,*) "Fermi energy               ",efermi
+       write(u,*) "Entropy                    ",Eentropy
        if ( u == 6 ) call write_border( 0, "" )
     end if
 !    u(:) = (/ 6, 99 /)

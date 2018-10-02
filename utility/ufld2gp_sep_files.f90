@@ -17,6 +17,10 @@ PROGRAM ufld2gp
   real(8),allocatable :: kxyz_pc(:,:),kxyz_sc(:,:)
   real(8),allocatable :: esp(:,:,:), weight(:,:,:)
   real(8) :: emax,emin,e_mergin,eta,de,pi,f(2),e,x,dummy(4),d
+<<<<<<< HEAD
+=======
+  real(8) :: fmin(2),fmax(2)
+>>>>>>> tmp
   logical :: flag
 
 ! ---
@@ -127,7 +131,11 @@ PROGRAM ufld2gp
      end if
 
      k0=0
+<<<<<<< HEAD
      if ( loop_read > 0 ) k0=kmaxp(loop_read-1)
+=======
+!     if ( loop_read > 0 ) k0=kmaxp(loop_read-1)
+>>>>>>> tmp
 
      open(u1,file=file_name,status="old")
 
@@ -214,6 +222,12 @@ PROGRAM ufld2gp
   kxyz_pc(:,0) = kxyz_pc(:,1)
   x=0.0d0
 
+<<<<<<< HEAD
+=======
+  fmin(:)= 1.d100
+  fmax(:)=-1.d100
+
+>>>>>>> tmp
   do k=1,nk
 
      x = x + sqrt( sum( (kxyz_pc(:,k)-kxyz_pc(:,k-1))**2 ) )/aB
@@ -228,10 +242,19 @@ PROGRAM ufld2gp
               f(s) = f(s) + eta/( (e-esp(n,k,s))**2 + eta**2 )*weight(n,k,s)
            end do
            f(s)=f(s)/pi
+<<<<<<< HEAD
         end do
 
         write(u2,'(1x,4f20.15)') x,e*HT,(f(s),s=1,ns)
         write(u3,'(1x,4f20.15)') x,e*HT,(log(f(s)),s=1,ns)
+=======
+           fmin(s)=min(fmin(s),f(s))
+           fmax(s)=max(fmax(s),f(s))
+        end do
+
+        write(u2,'(1x,4f25.15)') x,e*HT,(f(s),s=1,ns)
+        write(u3,'(1x,4f25.15)') x,e*HT,(log(f(s)),s=1,ns)
+>>>>>>> tmp
 
      end do ! i
 
@@ -240,6 +263,13 @@ PROGRAM ufld2gp
 
   end do ! k
 
+<<<<<<< HEAD
+=======
+  write(*,*) "fmin=",(fmin(s),s=1,ns)
+  write(*,*) "fmax=",(fmax(s),s=1,ns)
+  write(*,*) "log(fmax)=",(log(fmax(s)),s=1,ns)
+
+>>>>>>> tmp
 ! ---
 
   deallocate( weight  )

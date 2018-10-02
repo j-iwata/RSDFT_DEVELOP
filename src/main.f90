@@ -1,7 +1,48 @@
 PROGRAM Real_Space_DFT
 
-  use global_variables
-  use parameters_module
+  use parallel_module
+  use global_variables, only: iswitch_test,iswitch_scf,iswitch_tddft,iswitch_band,iswitch_opt,iswitch_dos,iswitch_latopt
+  use kinetic_variables, only: SYStype, Md, kin_select
+  use grid_module, only: grid_info
+  use rgrid_module
+  use ggrid_module
+  use atom_module
+  use pseudopot_module
+  use bb_module
+  use electron_module
+  use bz_module
+  use density_module
+  use ps_local_module, only: Vion
+  use array_bound_module, only: ML_0,ML_1,MSP_0,MSP_1,MBZ_0,MBZ_1,MBZ,MSP,MB_0,MB_1,set_array_bound
+  use wf_module, only: occ, init_wf ,esp,unk
+  use xc_module
+  use localpot_module
+  use hartree_variables
+  use xc_hybrid_module
+  use io_module
+  use atomopt_module
+  use scf_chefsi_module
+  use scf_module
+  use total_energy_module
+  use sweep_module
+
+  use watch_module
+  use info_module
+  use force_module
+  use symmetry_module
+  use scalapack_module
+  use bc_module
+  use kinetic_module
+  use rgrid_mol_module
+  use test_hpsi2_module
+  use eion_module
+  use subspace_diag_module
+  use gram_schmidt_module
+  use init_occ_electron_module
+  use hartree_module
+  use test_force_module
+
+  use parameters_module, only: read_parameters
   use func2gp_module
   use band_module
   use dos_module, only: calc_dos
@@ -9,9 +50,9 @@ PROGRAM Real_Space_DFT
   use rtddft_mol_module
   use omp_variables, only: init_omp
   use test_rtsol_module
-  use ps_nloc_initiate_module
-  use ps_getDij_module
-  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword
+  use ps_getDij_module, only: getDij
+  use ps_init_module, only: ps_init
+  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword
   use lattice_module
   use ffte_sub_module, only: init_ffte_sub
   use fftw_module
@@ -21,9 +62,10 @@ PROGRAM Real_Space_DFT
   use linear_response_module
   use kinetic_sym_ini_module
   use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
-                                ,init_noncollinear
+                                ,init_noncollinear, calc_xc_noncollinear
   use init_occ_electron_ncol_module
   use rtddft_sol_module
+  use aa_module, only: init_aa
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -32,11 +74,13 @@ PROGRAM Real_Space_DFT
   integer :: i,n,k,s,iter,m,ierr,i1,i2,i3,m1,m2,m3,j,mm1,mm2,mm3,info
   real(8),allocatable :: force(:,:),forcet(:,:),vtmp(:)
   type(lattice) :: aa_obj, bb_obj
+  type(grid_info) :: rgrid
   logical,parameter :: recalc_esp=.true.
-  logical :: flag_read_ncol=.false.
+  logical :: flag_read_ncol=.false., DISP_SWITCH
   real(8) :: Etot, Ehwf
-  integer :: info_level=0
+  integer :: info_level=1
   character(32) :: lattice_index
+  character(20) :: systype_in="SOL"
   integer :: nloop
 
 ! --- start MPI ---
@@ -53,6 +97,11 @@ PROGRAM Real_Space_DFT
 
 ! --- init_io_tools ---
 
+  if ( myrank == 0 ) then
+     open(unit_input_parameters  ,file="fort.1" ,status="old")
+     open(unit_atomic_coordinates,file="fort.970",status="old")
+  end if
+
   call init_io_tools( myrank, unit_input_parameters )
 
 ! --- STDOUT and LOG control (ext0/write_info.f90) ---
@@ -67,40 +116,65 @@ PROGRAM Real_Space_DFT
 
   call check_disp_length( info_level, 1 )
      
-! --- input parameters ---
+! ---  Type of System ( RS-SOL or RS-MOL ) ---
 
-  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
+  call IOTools_readStringKeyword( "SYSTYPE", systype_in )
+  call convert_to_capital( systype_in )
+  SYStype=0
+  select case( systype_in(1:3) )
+  case( "SOL" )
+     SYStype=0
+  case( "MOL" )
+     SYStype=1
+  end select
+
+! --- input parameters ---
 
   call read_parameters
 
-! ---  Type of System ( RS-SOL or RS-MOL ) ---
+  call read_atom( myrank, unit_atomic_coordinates, aa_obj )
 
-  call IOTools_readIntegerKeyword( "SYSTYPE", Systype )
+  call read_lattice( aa_obj )
+
+! --- Real-Space Grid (MOL) ( lattice is defiend by MOLGRID ) ---
+
+  if ( SYStype /= 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
 
 ! --- Lattice ---
 
-  call write_border( 0, " main( aa & bb )(start)" )
+  call construct_lattice( aa_obj )
+  call backup_aa_lattice( aa_obj )
 
   call init_aa( aa_obj )
 
-  call backup_aa_lattice( aa_obj )
+  call check_lattice( aa_obj%LatticeVector, lattice_index )
+  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
+
+! --- Real-Space Grid (SOL) ( lattice is used to define the grid ) ---
+
+  if ( SYStype == 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
+
+! --- Reciprocal Lattice ---
+
+  call construct_bb( aa_obj%LatticeVector )
+
+! --- G-space Grid ---
+
+  call Init_Ggrid( Ngrid, bb )
+
+! --- coordinate transformation of atomic positions ---
 
   if ( SYStype == 0 ) then
      call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
      if ( myrank == 0 ) then
-        call write_coordinates_atom( 1, 3, "atomic_coordinates_aa_ini" )
+        call write_coordinates_atom( 96, 3, "atomic_coordinates_aa_ini" )
      end if
   else if ( SYStype == 1 ) then
      call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
      if ( myrank == 0 ) then
-        call write_coordinates_atom( 1, 3, "atomic_coordinates_xyz_ini" )
+        call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
      end if
   end if
-
-  call check_lattice( aa, lattice_index )
-  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
-
-  call write_border( 0, " main( aa & bb )(end)" )
 
 ! --- Pseudopotential ---
 
@@ -118,36 +192,23 @@ PROGRAM Real_Space_DFT
 
 ! --- init_force ---
 
-  call init_force
-
-! --- R-space Grid ---
-
-  call Init_Rgrid( SYStype, Md, unit=2 )
-
-! --- Reciprocal Lattice ---
-
-  call construct_bb(aa)
-  call get_reciprocal_lattice( aa_obj, bb_obj )
-
-! --- G-space Grid ---
-
-  call Init_Ggrid( Ngrid, bb, Hgrid, disp_switch )
+  call init_force( SYStype )
 
 ! --- Test ( Egg-Box Effect ) ---
 
   if ( iswitch_test == 2 ) then
-     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/ax
+     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/aa_obj%LatticeConstant
      if ( disp_switch ) then
         write(*,*) "--- EGG BOX TEST !!! ---"
         do i=1,size(aa_atom,2)
-           write(*,*) aa_atom(1,i),aa_atom(1,i)*ax,Hgrid(1)*0.5d0
+           write(*,*) aa_atom(1,i),aa_atom(1,i)*aa_obj%LatticeConstant,Hgrid(1)*0.5d0
         end do
      end if
   end if
 
 ! --- Symmetry ---
 
-  call init_symmetry( Ngrid,dV,aa,bb, Natom,ki_atom,aa_atom )
+  call init_symmetry( Ngrid,dV,aa_obj%LatticeVector,bb, Natom,ki_atom,aa_atom )
 
 ! --- Brillouin Zone sampling ---
 
@@ -175,6 +236,10 @@ PROGRAM Real_Space_DFT
                 ,Igrid(1,3),Igrid(2,3),Igrid(1,0),Igrid(2,0) &
                 ,SYStype, disp_switch )
 
+! --- grid info ( real space ) ---
+
+  call set_grid_info_rgrid( rgrid, aa_obj%LatticeVector, Md )
+
 ! --- Initialization for FFT ---
 
   if ( SYStype == 0 ) then
@@ -191,61 +256,28 @@ PROGRAM Real_Space_DFT
 
 ! --- kinetic energy oprator coefficients ---
 
-  call init_kinetic( aa, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d, DISP_SWITCH )
+  call read_kinetic ! Md & kin_select
 
-  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa )
+  call init_kinetic( aa_obj%LatticeVector, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d )
+
+  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa_obj%LatticeVector )
 
 ! --- ??? ---
 
   call set_array_bound
 
-! --- Pseudopotential, initial density, and partial core correction ---
-
-!  call read_pseudopot( Nelement, myrank )
-
-
-!-------- init density 
-
-  call init_density(Nelectron,dV)
-
-!----------------------- SOL sol -----
-
-  if ( SYStype == 0 ) then
-
-     call init_ps_local
-     call init_ps_pcc
-
-     call construct_strfac  !----- structure factor
-
-     call construct_ps_local
-     call construct_ps_pcc
-     call construct_ps_initrho( rho )
-
-     call destruct_strfac   !----- structure factor
-
-     call ps_nloc_initiate( Gcut )
-
-!----------------------- MOL mol -----
-
-  else if ( SYStype == 1 ) then
-
-     call init_ps_local_mol(Gcut)
-     call init_ps_pcc_mol
-     call init_ps_initrho_mol
-
+  if ( SYStype == 1 ) then ! MOL mol
      call Construct_RgridMol(Igrid)
-
-     call construct_ps_local_mol
-     call construct_ps_pcc_mol
-     call construct_ps_initrho_mol
-     call normalize_density
-
-     call ps_nloc2_init(Gcut)
-     call prep_ps_nloc2_mol
-
      call ConstructBoundary_RgridMol(Md,Igrid)
-
   end if
+
+! --- init density & potentials ---
+
+  call init_density( Nelectron, dV )
+
+  call ps_init( SYStype, Gcut, rho )
+
+  call normalize_density( rho )
 
 ! --- External electric field (included in the local ionic potential) ---
 
@@ -330,7 +362,7 @@ PROGRAM Real_Space_DFT
 
   call init_xc_hybrid( ML_0, ML_1, Nelectron, Nspin, Nband &
        , MMBZ, Nbzsm, MBZ_0, MBZ_1, MSP, MSP_0, MSP_1, MB_0, MB_1 &
-       , kbb, bb, Va, SYStype, np_fkmb, disp_switch )
+       , kbb, bb, aa_obj%Volume, SYStype, np_fkmb, disp_switch )
 
 ! --- Initial Potential ---
 
@@ -344,7 +376,7 @@ PROGRAM Real_Space_DFT
      Vxc=0.0d0
   end if
 
-  call init_localpot
+  call init_localpot( ML_0,ML_1, MSP_0,MSP_1 )
 
   do s=MSP_0,MSP_1
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
@@ -391,13 +423,17 @@ PROGRAM Real_Space_DFT
 ! but potentials are also recalculated with new rho.
 
   if ( flag_read_ncol ) then
+
+     call calc_xc_noncollinear( unk, occ(:,:,1), rho, Vxc )
+     call calc_hartree( ML_0,ML_1,MSP,rho )
+
   else
 
-  call calc_hartree(ML_0,ML_1,MSP,rho)
-  call calc_xc
-  do s=MSP_0,MSP_1
-     Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
-  end do
+     call calc_hartree(ML_0,ML_1,MSP,rho)
+     call calc_xc
+     do s=MSP_0,MSP_1
+        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+     end do
 
   end if
 
@@ -407,13 +443,13 @@ PROGRAM Real_Space_DFT
 
 ! --- init_vdW_Grimme ---
 
-  call init_vdw_grimme( aa, ki_atom, zn_atom )
+  call init_vdw_grimme( aa_obj%LatticeVector, ki_atom, zn_atom )
   call calc_E_vdw_grimme( aa_atom )
 
 ! --- total energy ---
 
-  call calc_with_rhoIN_total_energy( Ehwf )
-  call calc_total_energy( recalc_esp, Etot )
+  call calc_with_rhoIN_total_energy( Ehwf, flag_ncol=flag_noncollinear )
+  call calc_total_energy( recalc_esp, Etot, flag_ncol=flag_noncollinear )
 
 ! ---
 
@@ -434,7 +470,7 @@ PROGRAM Real_Space_DFT
 
   select case( iswitch_scf )
   case( 1 )
-     call calc_scf( disp_switch, ierr, tol_force_in=feps, Etot_out=Etot )
+     call calc_scf( ierr, tol_force_in=feps, Etot_out=Etot )
      if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
   case( 2 )

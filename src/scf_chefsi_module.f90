@@ -144,7 +144,7 @@ CONTAINS
 
           if ( iter == 1 ) then
              call watcht(disp_switch,"",0)
-             call subspace_diag(k,s)
+             call subspace_diag(k,s,ML_0,ML_1,unk,esp)
              call watcht(disp_switch,"diag",1)
           end if
 
@@ -165,11 +165,10 @@ CONTAINS
              call watcht(disp_switch,"gs  ",1)
 
              if ( second_diag .or. idiag < Ndiag ) then
-                call subspace_diag(k,s)
+                call subspace_diag(k,s,ML_0,ML_1,unk,esp)
                 call watcht(disp_switch,"diag",1)
              else if ( idiag == Ndiag ) then
-                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
-                             ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
                 call watcht(disp_switch,"esp_calc",1)
              end if
 
@@ -184,8 +183,7 @@ CONTAINS
 
        call watcht(disp_switch,"esp_gather",1)
 
-       call calc_fermi(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                      ,esp,weight_bz,occ,disp_switch)
+       call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
 
        call watcht(disp_switch,"fermi",1)
 
@@ -213,7 +211,7 @@ CONTAINS
             ,Vloc(ML_0,MSP_0), disp_switch )
 
        if ( mod(imix,2) == 0 ) then
-          call normalize_density
+          call normalize_density( rho )
           m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
           call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
           call calc_hartree(ML_0,ML_1,MSP,rho)

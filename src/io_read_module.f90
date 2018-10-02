@@ -126,11 +126,10 @@ CONTAINS
        write(*,*) "flag_newformat=",flag_newformat
 
        if ( flag_newformat ) then
-          read(3) itmp(1:4)
-          read(3) itmp(5:7)
-          read(3) itmp(8:10)
-          read(3) itmp(11:13)
-!          read(3) itmp(14:21)
+          read(3) itmp(1:4)    ! ML,ML1,ML2,ML3
+          read(3) itmp(5:7)    ! MB,MB1,MB2
+          read(3) itmp(8:10)   ! MBZ,MSP,MMBZ
+          read(3) itmp(11:13)  ! IO_Ctrl0,OC,TYPE_WF
        else
           rewind 3
           read(3) itmp(1:4)
@@ -175,7 +174,7 @@ CONTAINS
          ML2_tmp /= ML2 .or. ML3_tmp /= ML3 ) stop "stop@simple_wf_io_read"
 
     if ( myrank == 0 ) then
-       read(3) LL_tmp(:,:)
+       read(3) LL_tmp(1:3,1:ML)
     end if
     call mpi_bcast(LL_tmp,3*ML,mpi_integer,0,mpi_comm_world,ierr)
 
@@ -249,7 +248,7 @@ CONTAINS
        end if
 
        if ( myrank == 0 ) then
-          read(3) itmp(14:21)
+          read(3) itmp(14:21)  ! parallel_info(0:7)
           read(3)
           read(3)
           read(3)
@@ -258,11 +257,17 @@ CONTAINS
        end if
        call mpi_bcast(itmp(14),8,mpi_integer,0,mpi_comm_world,ierr)
 
+! parallelization of the previous calculation
+!
        pinfo0%np(0:7) = itmp(14:21) 
        call construct_para( ML_tmp, MB_tmp, MBZ_tmp, MSP_tmp, pinfo0 )
-
+!
+! parallelization of the present calculation
+!
        call get_np_parallel( pinfo1%np )
        call construct_para( ML, MB, MBZ, MSP, pinfo1 )
+!
+! -------------------------------------------
 
     end if
 
@@ -382,7 +387,7 @@ CONTAINS
              select case(OC)
              case default
 
-                if ( type_wf == 1 ) then
+                if ( type_wf == 1 ) then ! real-wf
 
                    if ( jrank == myrank ) then
                       read(3) dtmp(n1:n2)
@@ -406,7 +411,7 @@ CONTAINS
                            mpi_comm_world,ierr)
                    end if
 
-                else
+                else ! complex-wf
 
                    if ( jrank == myrank ) then
                       read(3) utmp(n1:n2)

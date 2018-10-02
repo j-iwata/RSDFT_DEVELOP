@@ -315,7 +315,7 @@ CONTAINS
        zsum1=z0
        zsum2=z0
        zsum3=z0
-!$OMP parallel do reduction(+:zsum1,zsum2,zsum3) private( Gx,Gy,Gz,j,ztmp )
+!$OMP parallel do reduction(+:zsum1,zsum2,zsum3) private( Gx,Gy,Gz,Gr,j,ztmp )
        do i=1,NGgrid(0)
 !       do i=MG_0,MG_1
           Gx=bb(1,1)*LLG_f(1,i)+bb(1,2)*LLG_f(2,i)+bb(1,3)*LLG_f(3,i)

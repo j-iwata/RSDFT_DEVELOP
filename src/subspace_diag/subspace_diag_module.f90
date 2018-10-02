@@ -5,6 +5,7 @@ MODULE subspace_diag_module
   use subspace_diag_variables
   use subspace_diag_la_module
   use subspace_diag_sl_module
+  use subspace_diag_ncol_module
 
   implicit none
 
@@ -14,14 +15,24 @@ MODULE subspace_diag_module
 CONTAINS
 
 
-  SUBROUTINE subspace_diag(k,s)
+  SUBROUTINE subspace_diag( k,s,ML_0,ML_1,unk,esp )
     implicit none
-    integer,intent(IN) :: k,s
-#ifdef _LAPACK_
-    call subspace_diag_la(k,s)
+    integer,intent(IN) :: k,s,ML_0,ML_1
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: unk(:,:,:,:)
 #else
-    call subspace_diag_sl(k,s)
+    complex(8),intent(INOUT) :: unk(:,:,:,:)
 #endif
+    real(8),intent(INOUT) :: esp(:,:,:)
+    if ( flag_noncollinear ) then
+       call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+    else
+#ifdef _LAPACK_
+       call subspace_diag_la(k,s)
+#else
+       call subspace_diag_sl(k,s)
+#endif
+    end if
   END SUBROUTINE subspace_diag
 
 

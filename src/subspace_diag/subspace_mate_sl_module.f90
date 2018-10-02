@@ -78,7 +78,7 @@ CONTAINS
           do ib1=ns,ne,MB_d
              ib2=min(ib1+MB_d-1,ne)
              call hamiltonian &
-                  (k,s,unk(n1,ib1,k,s),hpsi(n1,ib1-ns+1),n1,n2,ib1,ib2)
+                  (k,s,unk(:,ib1:ib2,k,s),hpsi(:,ib1-ns+1:ib2-ns+1),n1,n2,ib1,ib2)
           end do
        end if
 
@@ -356,7 +356,7 @@ CONTAINS
     deallocate( vtmp2 )
     deallocate( irecv_me, isend_me )
 
-    call result_timer( t, "mate_sl" )
+    call result_timer( "mate_sl", t )
     call write_border( 1, " subspace_mate_sl(end)" )
 
   END SUBROUTINE subspace_mate_sl

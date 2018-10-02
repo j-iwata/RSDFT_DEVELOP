@@ -2,18 +2,24 @@ MODULE gram_schmidt_ncol_module
 
   use rgrid_module, only: dV
   use parallel_module, only: comm_grid, id_bzsm, myrank_k
+  use noncollinear_module, only: flag_noncollinear
 
   implicit none
 
   PRIVATE
   PUBLIC :: gram_schmidt_ncol
+  PUBLIC :: flag_noncollinear
 
 CONTAINS
 
   SUBROUTINE gram_schmidt_ncol( n0,n1, k0, psi )
     implicit none
     integer,intent(IN) :: n0,n1,k0
+#ifdef _DRSDFT_
+    real(8),intent(INOUT) :: psi(:,:,:,:)
+#else
     complex(8),intent(INOUT) :: psi(:,:,:,:)
+#endif
     complex(8) :: uu,vv
     complex(8),parameter :: zero=(0.0d0,0.0d0)
     integer :: n,m,s,MS,ierr,k
@@ -30,7 +36,11 @@ CONTAINS
        do m=n0,n-1
           uu=zero
           do s=1,MS
+#ifdef _DRSDFT_
+             uu = uu + sum( psi(:,m,k,s)*psi(:,n,k,s) )*dV
+#else
              uu = uu + sum( conjg(psi(:,m,k,s))*psi(:,n,k,s) )*dV
+#endif
           end do
           call mpi_allreduce(uu,vv,1,MPI_COMPLEX16,MPI_SUM,comm_grid,ierr)
           do s=1,MS

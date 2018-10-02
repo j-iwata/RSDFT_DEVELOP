@@ -1,63 +1,26 @@
 MODULE rgrid_sol_module
 
+  use io_tools_module
   use rgrid_variables
 
   implicit none
 
   PRIVATE
-  PUBLIC :: Read_RgridSol, ReadOldformat_RgridSol &
-           ,Init_RgridSol, InitParallel_RgridSol
+  PUBLIC :: Read_RgridSol, Init_RgridSol, InitParallel_RgridSol
 
 CONTAINS
 
 
-  SUBROUTINE Read_RgridSol( rank, unit )
+  SUBROUTINE Read_RgridSol
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(5) :: cbuf,ckey
-    Ngrid(:)=0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "NGRID" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ngrid(1:3)
-             if ( Ngrid(2) == 0 .or. Ngrid(3) == 0 ) then
-                Ngrid(2) = Ngrid(1)
-                Ngrid(3) = Ngrid(1)
-                write(*,*) "Ngrid(2:3) is replaced: Ngrid(1:3)=",Ngrid(1:3)
-             end if
-          end if
-       end do
-999    continue
-       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
+    Ngrid(0:3)=0
+    call IOTools_readIntegerKeyword( "NGRID", Ngrid(1:3) )
+    if ( Ngrid(2) == 0 .or. Ngrid(3) == 0 ) then
+       Ngrid(2) = Ngrid(1)
+       Ngrid(3) = Ngrid(1)
+       write(*,*) "Ngrid(2:3) is replaced: Ngrid(1:3)=",Ngrid(1:3)
     end if
-    call Send_RgridSol(0)
   END SUBROUTINE Read_RgridSol
-
-
-  SUBROUTINE ReadOldformat_RgridSol( rank, unit )
-    implicit none
-    integer,intent(IN) :: rank,unit
-    Ngrid(:)=0
-    if ( rank == 0 ) then
-       read(unit,*) Ngrid(1:3)
-       write(*,*) "Ngrid(1:3)=",Ngrid(1:3)
-    end if
-    call Send_RgridSol(0)
-  END SUBROUTINE ReadOldformat_RgridSol
-
-
-  SUBROUTINE Send_RgridSol(rank)
-    implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(Ngrid(1),3,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE Send_RgridSol
 
 
   SUBROUTINE Init_RgridSol(aa)

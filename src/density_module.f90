@@ -9,7 +9,7 @@ MODULE density_module
   use var_sys_parameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
-  use rgrid_module, only: dV ! MIZUHO-IR for cellopt
+  use rgrid_module, only: dV
   use rsdft_mpi_module
 
   implicit none
@@ -20,8 +20,11 @@ MODULE density_module
   PUBLIC :: calc_density
   PUBLIC :: get_range_density, construct_density_v2
   PUBLIC :: writeDensity
+  PUBLIC :: calc_spin_density
+  public :: calc_density_2
 
   real(8),allocatable,PUBLIC :: rho(:,:)
+  real(8),allocatable,PUBLIC :: rho_in(:,:)
   real(8),PUBLIC :: sum_dspin(2)
 
   integer :: ML_RHO,ML_0_RHO,ML_1_RHO
@@ -88,9 +91,11 @@ CONTAINS
     MS_1_RHO = id_spin(myrank_s) + ir_spin(myrank_s)
 
     if ( .not. allocated(rho) ) then
-       allocate( rho(ML_0_RHO:ML_1_RHO,MS_RHO) )
+       allocate( rho(ML_0_RHO:ML_1_RHO,MS_RHO) ) ; rho=0.0d0
        call random_number(rho)
-       call normalize_density
+       call normalize_density( rho )
+       allocate( rho_in(ML_0_RHO:ML_1_RHO,MS_RHO) ) ; rho_in=0.0d0
+       rho_in=rho
     end if
 
     call write_border( 1, " init_density(end)" )
@@ -99,17 +104,17 @@ CONTAINS
 
 !-----------------------------------------------------------------------
 
-  SUBROUTINE normalize_density
+  SUBROUTINE normalize_density( rho_io )
     implicit none
+    real(8),intent(INOUT) :: rho_io(:,:)
     real(8) :: c,d
     integer :: ierr
     include 'mpif.h'
     call write_border( 1, " normalize_density(start)" )
-    c=sum(rho)*dV ! MIZUHO-IR for cellopt
-!!$    c=sum(rho)*dV_RHO
+    c=sum(rho_io)*dV
     call mpi_allreduce(c,d,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
     c=Nelectron_RHO/d
-    rho=c*rho
+    rho_io=c*rho_io
     call write_border( 1, " normalize_density(end)" )
   END SUBROUTINE normalize_density
 
@@ -165,7 +170,7 @@ CONTAINS
 
     end select
 
-    if ( present(Ntot) ) call calc_spin_density( Ntot )
+    if ( present(Ntot) ) call calc_spin_density( rho, Ntot )
 
     call write_border( 1, " calc_density(end)" )
 
@@ -188,22 +193,20 @@ CONTAINS
   END SUBROUTINE reduce_and_gather
 
 
-  SUBROUTINE calc_spin_density( Ntot )
+  SUBROUTINE calc_spin_density( rho, Ntot )
     implicit none
+    real(8),intent(IN)  :: rho(:,:)
     real(8),intent(OUT) :: Ntot(:)
     integer :: ierr
     real(8) :: tmp(4)
     tmp(:) = 0.0d0
-    tmp(1) = sum( rho(:,1) )*dV ! MIZUHO-IR for cellopt
-!!$    tmp(1) = sum( rho(:,1) )*dV_RHO
-    if ( MS_RHO == 2 ) then
-       tmp(2) = sum( rho(:,MS_RHO) )*dV ! MIZUHO-IR for cellopt
-!!$       tmp(2) = sum( rho(:,MS_RHO) )*dV_RHO
-       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV ! MIZUHO-IR for cellopt
-!!$       tmp(3) = sum(     rho(:,1)-rho(:,MS_RHO)  )*dV_RHO
-       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV ! MIZUHO-IR for cellopt
-!!$       tmp(4) = sum( abs(rho(:,1)-rho(:,MS_RHO)) )*dV_RHO
+    tmp(1) = sum( rho(:,1) )
+    if ( size(rho,2) == 2 ) then
+       tmp(2) = sum( rho(:,2) )
+       tmp(3) = sum( rho(:,1)-rho(:,2) )
+       tmp(4) = sum( abs(rho(:,1)-rho(:,2)) )
     end if
+    tmp(:)=tmp(:)*dV
     call mpi_allreduce( tmp,Ntot,4,mpi_real8,mpi_sum,comm_grid,ierr)
   END SUBROUTINE calc_spin_density
 
@@ -219,6 +222,32 @@ CONTAINS
        end do
     end do
   END SUBROUTINE writeDensity
+
+
+  subroutine calc_density_2( u, o )
+    implicit none
+#ifdef _DRSDFT_
+    real(8),intent(in) :: u(:,:,:,:)
+#else
+    complex(8),intent(in) :: u(:,:,:,:)
+#endif
+    real(8),intent(in) :: o(:,:,:)
+    integer :: t,s,k,n,ns,nk,nb
+    nb=size(u,2)
+    nk=size(u,3)
+    ns=size(u,4)
+    rho=0.0d0
+    do s=1,ns
+       t=s-1+MS_0_RHO
+       do k=1,nk
+          do n=1,nb
+             rho(:,t) = rho(:,t) + o(n,k,s)*abs( u(:,n,k,s) )**2
+          end do
+       end do
+    end do
+    call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
+    call reduce_and_gather
+  end subroutine calc_density_2
 
 
 END MODULE density_module

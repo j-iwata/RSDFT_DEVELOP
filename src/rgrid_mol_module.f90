@@ -1,5 +1,7 @@
 MODULE rgrid_mol_module
 
+  use io_tools_module
+
   implicit none
 
   PRIVATE
@@ -23,44 +25,21 @@ MODULE rgrid_mol_module
 CONTAINS
 
 
-  SUBROUTINE Read_RgridMol(rank,unit)
+  SUBROUTINE Read_RgridMol
     implicit none
-    integer,intent(IN)  :: rank,unit
-    Box_Shape=0
+    real(8) :: grid(3)
+    Box_Shape=1
     Hsize=0.0d0
     Rsize=0.0d0
     Zsize=0.0d0
+    grid(:)=0.0d0
     iswitch_eqdiv=0
-    if ( rank == 0 ) then
-       write(*,'(a60," read_rgrid_mol")') repeat("-",60)
-       read(unit,*) Box_Shape
-       select case(Box_Shape)
-       case(1)
-          read(unit,*) Hsize,Rsize
-       case(2)
-          read(unit,*) Hsize,Rsize,Zsize
-       end select
-       read(unit,*) iswitch_eqdiv
-       write(*,*) "Box_Shape=",Box_Shape
-       write(*,*) "Hsize=",Hsize
-       write(*,*) "Rsize=",Rsize
-       write(*,*) "Zsize=",Zsize
-       write(*,*) "iswitch_eqdiv=",iswitch_eqdiv
-    end if
-    call Send_RgridMol(rank)
+    call IOTools_readReal8Keyword( "MOLGRID" , grid(1:3) )
+    call IOTools_readIntegerKeyword( "MOLEQDIV", iswitch_eqdiv )
+    Hsize=grid(1)
+    Rsize=grid(2)
+    Zsize=grid(3)
   END SUBROUTINE Read_RgridMol
-
-  SUBROUTINE Send_RgridMol(rank)
-    implicit none
-    integer,intent(IN)  :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(Box_Shape,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Hsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Rsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Zsize,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iswitch_eqdiv,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE Send_RgridMol
 
 
   SUBROUTINE GetGridSize_RgridMol( Hsize_out, Rsize_out, Zsize_out )

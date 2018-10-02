@@ -75,7 +75,7 @@ CONTAINS
        call op_momentum( "z", k0, unk(:,n0:n0,k0,s0), work )
        call ortho_valence( unk(:,1:mvb,k0,s0), work(:,1) )
        call ortho_valence( unk(:,1:mvb,k0,s0), psi_bar(:,n,k,s) )
-       call solve_sternheimer( n0,k0,s0, work(:,1), psi_bar(:,n,k,s) )
+       call solve_sternheimer( n0,k0,s0, work(:,1), psi_bar(:,n:n,k,s) )
        call ortho_valence( unk(:,1:mvb,k0,s0), psi_bar(:,n,k,s) )
     end do
     end do
@@ -95,7 +95,7 @@ CONTAINS
        if ( n0 > mvb ) cycle
        work(:,1) = -Eexternal*psi_bar(:,n,k,s)
        call ortho_valence( unk(:,1:mvb,k0,s0), dlt_psi(:,n,k,s) )
-       call solve_sternheimer( n0,k0,s0, work(:,1), dlt_psi(:,n,k,s) )
+       call solve_sternheimer( n0,k0,s0, work(:,1), dlt_psi(:,n:n,k,s) )
        call ortho_valence( unk(:,1:mvb,k0,s0), dlt_psi(:,n,k,s) )
     end do
     end do
@@ -177,7 +177,7 @@ CONTAINS
           if ( n0 > mvb ) cycle
           work(:,1) = -Eexternal*psi_bar(:,n,k,s) - dlt_vhxc(:)*unk(:,n0,k0,s0)
           call ortho_valence( unk(:,1:mvb,k0,s0), work(:,1) )
-          call solve_sternheimer( n0,k0,s0, work(:,1), dlt_psi(:,n,k,s) )
+          call solve_sternheimer( n0,k0,s0, work(:,1), dlt_psi(:,n:n,k,s) )
           call ortho_valence( unk(:,1:mvb,k0,s0), dlt_psi(:,n,k,s) )
        end do
        end do
@@ -249,13 +249,13 @@ CONTAINS
     integer,intent(IN)       :: n, k, s
 #ifdef _DRSDFT_
     real(8),intent(IN)    :: rhs(:)
-    real(8),intent(INOUT) :: psi(:)
-    real(8),allocatable :: p(:), r(:), Ap(:), xmin(:)
+    real(8),intent(INOUT) :: psi(:,:)
+    real(8),allocatable :: p(:,:), r(:,:), Ap(:,:), xmin(:)
     real(8) :: r0r0,rr,pAp,bb,ztmp,alpha,beta
 #else
     complex(8),intent(IN)    :: rhs(:)
-    complex(8),intent(INOUT) :: psi(:)
-    complex(8),allocatable :: p(:), r(:), Ap(:), xmin(:)
+    complex(8),intent(INOUT) :: psi(:,:)
+    complex(8),allocatable :: p(:,:), r(:,:), Ap(:,:), xmin(:)
     complex(8) :: r0r0,rr,pAp,bb,ztmp,alpha,beta
 #endif
     complex(8),parameter :: zero=(0.0d0,0.0d0)
@@ -267,27 +267,27 @@ CONTAINS
     call calc_inner_product( rhs, rhs, bb )
 
     m =size( psi, 1 )
-    allocate( r(m)    ) ; r=zero
-    allocate( p(m)    ) ; p=zero
-    allocate( Ap(m)   ) ; Ap=zero
+    allocate( r(m,1)  ) ; r=zero
+    allocate( p(m,1)  ) ; p=zero
+    allocate( Ap(m,1) ) ; Ap=zero
     allocate( xmin(m) ) ; xmin=zero
 
     call op_matrix( n,k,s, psi, r )
-    r = rhs - r
+    r(:,1) = rhs - r(:,1)
     p = r
 
-    call calc_inner_product( r, r, r0r0 )
+    call calc_inner_product( r(:,1), r(:,1), r0r0 )
 
     err = sqrt( abs(r0r0)/abs(bb) )
     errmin = err
     if ( err <= tol ) goto 900
 
-    xmin = psi
+    xmin = psi(:,1)
 
     do icg=1,maxcg
 
        call op_matrix( n,k,s, p, Ap )
-       call calc_inner_product( p, Ap, pAp )
+       call calc_inner_product( p(:,1), Ap(:,1), pAp )
 
 !------
 !(1)
@@ -301,12 +301,12 @@ CONTAINS
 
        r = r - alpha*Ap
 
-       call calc_inner_product( r, r, rr )
+       call calc_inner_product( r(:,1), r(:,1), rr )
 
        err = sqrt( abs(rr)/abs(bb) )
        if ( err < errmin ) then
           errmin = err
-          xmin = psi
+          xmin = psi(:,1)
        end if
        if ( err <= tol ) exit
 
@@ -334,7 +334,7 @@ CONTAINS
 
     if ( err > tol ) then
 !       write(*,*) "solve sternheimer",icg, err, errmin
-       if ( err > errmin ) psi = xmin
+       if ( err > errmin ) psi(:,1) = xmin
     end if
 
     deallocate( Ap )
@@ -347,11 +347,11 @@ CONTAINS
     implicit none
     integer,intent(IN)     :: n,k,s
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: x(:)
-    real(8),intent(OUT) :: Ax(:)
+    real(8),intent(IN)  :: x(:,:)
+    real(8),intent(OUT) :: Ax(:,:)
 #else
-    complex(8),intent(IN)  :: x(:)
-    complex(8),intent(OUT) :: Ax(:)
+    complex(8),intent(IN)  :: x(:,:)
+    complex(8),intent(OUT) :: Ax(:,:)
 #endif
     integer :: n1,n2
     n1=Igrid(1,0)

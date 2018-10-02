@@ -13,7 +13,7 @@ SUBROUTINE bomd
                            ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime &
-                           ,wrtstep, all_traj
+                           ,wrtstep, all_traj, ctrl_cpmdio
   use parallel_module
   use total_energy_module
   use wf_module
@@ -221,7 +221,7 @@ SUBROUTINE bomd
 
         call watch(ctime_cpmd(3),etime_cpmd(3))
 
-        call getforce_cpmd( ltime )
+        call getforce_cpmd( ltime ) ! band-parallel WFs(unk) are gathered here
 
         call watch(ctime_cpmd(4),etime_cpmd(4))
 
@@ -255,7 +255,9 @@ SUBROUTINE bomd
 
      if ( lblue ) then ! Blue-Moon Method
         call rattle( Rion, Velocity )
-        if ( mod(itime-1,trjstep)==0 ) call write_blue_data(itime,myrank==0)
+        if ( mod(itime-1,trjstep)==0 .and. ctrl_cpmdio > 0 ) then
+           call write_blue_data(itime,myrank==0)
+        end if
      end if
 
      call vcom( Velocity ) ! center of mass motion off
@@ -284,7 +286,7 @@ SUBROUTINE bomd
         tote  = kine+Etot+fke+Ebath
         dif   = abs(tote-tote0)
 
-        write(*,'(1x,f10.3,9f15.8)') tott,tote,Etot,kine,fke,ltemp
+        write(*,'(1x,f10.3,9g15.7)') tott,tote,Etot,kine,fke,ltemp
         write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
         if ( ltime ) then
@@ -318,7 +320,7 @@ SUBROUTINE bomd
 
      end if
 
-     if ( mod(itime,wrtstep) == 0 ) then
+     if ( mod(itime,wrtstep) == 0 .and. ctrl_cpmdio > 0 ) then
         if ( myrank == 0 ) call mdio( 1, tote0 )
         if ( lcpmd ) then
            if ( lbathnew  ) call write_nose_data
@@ -342,11 +344,13 @@ SUBROUTINE bomd
 ! --- loop end
 !
 
-  if ( myrank == 0 ) call mdio( 1,tote0 )
-  if ( lcpmd ) then
-     if ( lbathnew  ) call write_nose_data
-     if ( lbathnewe ) call write_nosee_data
-     call write_data_cpmdio
+  if ( ctrl_cpmdio > 0 ) then
+     if ( myrank == 0 ) call mdio( 1,tote0 )
+     if ( lcpmd ) then
+        if ( lbathnew  ) call write_nose_data
+        if ( lbathnewe ) call write_nosee_data
+        call write_data_cpmdio
+     end if
   end if
 
   if ( lcpmd ) call dealloc_cpmd
@@ -371,6 +375,6 @@ SUBROUTINE bomd
 
 99 stop "stop@bomd(99)"
 
-10 format(10f15.8)
+10 format(10f18.8)
 
 END SUBROUTINE bomd

@@ -154,9 +154,9 @@ CONTAINS
     if ( present(rho_in) ) then
        rho_tmp(:,:)=rho_in(:,:)
        Vxc_out(:,:)=0.0d0
-       if ( .not.( XCtype == "LDAPZ81" .or. XCtype == "LDAPW92" ) ) then
-          call stop_program("LDA is only available for noncollinear calc")
-       end if
+!       if ( .not.( XCtype == "LDAPZ81" .or. XCtype == "LDAPW92" ) ) then
+!          call stop_program("LDA is only available for noncollinear calc")
+!       end if
     else
        rho_tmp(:,:)=rho(:,:)
        if ( .not.allocated(Vxc) ) then
@@ -197,11 +197,16 @@ CONTAINS
     case('LDAPW92')
 
        if ( flag_pcc_0 ) stop "PCC is not implemented in LDAPW92" 
-       call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,Exc,Vxc,dV,comm_grid)
+       call calc_pw92_gth(ML_0,ML_1,MSP,MSP_0,MSP_1,rho,ene%Exc,pot%xc%val,dV,comm_grid)
 
        if ( present(Vxc_out) ) then
-          Exc_out = Exc
-          Vxc_out = Vxc
+          Exc_out = ene%Exc
+          Vxc_out = pot%xc%val
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
        end if
 
     case('GGAPBE96_')
@@ -209,16 +214,31 @@ CONTAINS
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype )
 
-       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+       call calc_GGAPBE96( rho_tmp, ene%Exc, pot%xc%val, ene%Ex, ene%Ec )
+
+       if ( present(Vxc_out) ) then
+          Exc_out = ene%Exc
+          Vxc_out = pot%xc%val
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
+       end if
 
     case('PBE','PBE96','GGAPBE96')
 
        call calc_GGAPBE96_2( rg, density, ene, pot )
 
-       E_exchange    = ene%Ex
-       E_correlation = ene%Ec
-       Exc           = ene%Exc
-       Vxc(:,:)      = pot%xc%val(:,:)
+       if ( present(Vxc_out) ) then
+          Exc_out = ene%Exc
+          Vxc_out = pot%xc%val
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
+       end if
 
     case('PBEsol')
 
@@ -227,7 +247,17 @@ CONTAINS
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype, mu_in=mu )
 
-       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+       call calc_GGAPBE96( rho_tmp, ene%Exc, pot%xc%val, ene%Ex, ene%Ec )
+
+       if ( present(Vxc_out) ) then
+          Exc_out = ene%Exc
+          Vxc_out = pot%xc%val
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
+       end if
 
     case('revPBE')
 
@@ -236,7 +266,17 @@ CONTAINS
        call init_GGAPBE96( Igrid, MSP_0, MSP_1, MSP, comm_grid, dV &
             ,Md, Hgrid, Ngrid, SYStype, Kp_in=kappa )
 
-       call calc_GGAPBE96( rho_tmp, Exc, Vxc, E_exchange, E_correlation )
+       call calc_GGAPBE96( rho_tmp, ene%Exc, pot%xc%val, ene%Ex, ene%Ec )
+
+       if ( present(Vxc_out) ) then
+          Exc_out = ene%Exc
+          Vxc_out = pot%xc%val
+       else
+          E_exchange    = ene%Ex
+          E_correlation = ene%Ec
+          Exc           = ene%Exc
+          Vxc(:,:)      = pot%xc%val(:,:)
+       end if
 
     case('HF')
 

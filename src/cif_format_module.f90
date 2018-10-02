@@ -104,7 +104,7 @@ CONTAINS
     aa_obj%LatticeVector(:,2) = aa_obj%LatticeVector(:,2)*alatl(2)/bohr
     aa_obj%LatticeVector(:,3) = aa_obj%LatticeVector(:,3)*alatl(3)/bohr
 
-    aa_obj%LatticeConstant = alatl(1)/bohr
+    aa_obj%LatticeConstant = 1.0d0
 
     if ( rank == 0 ) then
        do i=1,3

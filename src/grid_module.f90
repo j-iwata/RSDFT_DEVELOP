@@ -18,6 +18,7 @@ MODULE grid_module
   PUBLIC :: get_info_rs_grid
   PUBLIC :: z_convert_1d_to_3d_grid
   PUBLIC :: z_convert_3d_to_1d_grid
+  PUBLIC :: grid_info
 
   type grid
      type( ArrayRange1D ) :: g1
@@ -26,6 +27,20 @@ MODULE grid_module
      real(8) :: VolumeElement
      integer :: comm
   end type grid
+
+  type grid_info
+     integer :: head(0:3)
+     integer :: tail(0:3)
+     integer :: size(0:3)
+     real(8) :: spacing(3)
+     real(8) :: dV
+     real(8) :: lattice(3,3)
+     real(8) :: Rsize, Zsize
+     integer :: comm
+     integer :: Norder_FD
+     integer,allocatable :: LL(:,:)
+     integer,allocatable :: KK(:,:)
+  end type grid_info
 
 CONTAINS
 

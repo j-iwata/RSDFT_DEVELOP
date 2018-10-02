@@ -8,7 +8,7 @@ MODULE lattice_module
   PUBLIC :: lattice
   PUBLIC :: init_lattice
   PUBLIC :: get_reciprocal_lattice
-  PUBLIC :: construct_aa_lattice
+  PUBLIC :: construct_lattice
   PUBLIC :: read_lattice
   PUBLIC :: get_inverse_lattice
   PUBLIC :: backup_aa_lattice
@@ -32,22 +32,19 @@ CONTAINS
 
   SUBROUTINE read_lattice( aa, unit )
     implicit none
-    type(lattice),intent(OUT) :: aa
+    type(lattice),intent(INOUT) :: aa
     integer,optional,intent(IN) :: unit
-    aa%LatticeConstant=0.0d0
-    aa%LatticeVector(:,:)=0.0d0
     if ( present(unit) ) then
        call IOTools_readReal8Keyword( "AX", aa%LatticeConstant, unit )
-       call IOTools_readReal8Keywords( "A1", aa%LatticeVector(:,1), unit )
-       call IOTools_readReal8Keywords( "A2", aa%LatticeVector(:,2), unit )
-       call IOTools_readReal8Keywords( "A3", aa%LatticeVector(:,3), unit )
+       call IOTools_readReal8Keyword( "A1", aa%LatticeVector(:,1), unit )
+       call IOTools_readReal8Keyword( "A2", aa%LatticeVector(:,2), unit )
+       call IOTools_readReal8Keyword( "A3", aa%LatticeVector(:,3), unit )
     else
        call IOTools_readReal8Keyword( "AX", aa%LatticeConstant )
-       call IOTools_readReal8Keywords( "A1", aa%LatticeVector(:,1) )
-       call IOTools_readReal8Keywords( "A2", aa%LatticeVector(:,2) )
-       call IOTools_readReal8Keywords( "A3", aa%LatticeVector(:,3) )
+       call IOTools_readReal8Keyword( "A1", aa%LatticeVector(:,1) )
+       call IOTools_readReal8Keyword( "A2", aa%LatticeVector(:,2) )
+       call IOTools_readReal8Keyword( "A3", aa%LatticeVector(:,3) )
     end if
-    call construct_aa_lattice( aa )
   END SUBROUTINE read_lattice
 
 
@@ -59,13 +56,13 @@ CONTAINS
   END SUBROUTINE init_lattice
 
 
-  SUBROUTINE construct_aa_lattice( aa )
+  SUBROUTINE construct_lattice( aa )
     implicit none
     type(lattice),intent(INOUT) :: aa
     aa%LatticeVector(:,:) = aa%LatticeConstant * aa%LatticeVector(:,:)
     call calc_VectorLength( aa%LatticeVector, aa%Length )
     call calc_volume_lattice( aa%LatticeVector, aa%Volume )
-  END SUBROUTINE construct_aa_lattice
+  END SUBROUTINE construct_lattice
 
 
   SUBROUTINE calc_VectorLength( aa, aal )

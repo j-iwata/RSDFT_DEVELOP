@@ -33,7 +33,7 @@ SUBROUTINE wf_force
          call watch(ct0,et0)
 #ifdef _DRSDFT_
          call hamiltonian &
-              (k,s,unk(ML_0,ns,k,s),psi_n(ML_0,ns,k,s),ML_0,ML_1,ns,ne)
+              (k,s,unk(:,ns:ne,k,s),psi_n(:,ns:ne,k,s),ML_0,ML_1,ns,ne)
 #endif
          call watch(ct1,et1)
          do n=ns,ne

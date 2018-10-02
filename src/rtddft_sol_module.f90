@@ -88,7 +88,7 @@ CONTAINS
     tddft%nt=nint(sbuf(2))
     tddft%ialg=nint(sbuf(3))
     tddft%nalg=nint(sbuf(4))
-    call IOTools_readReal8Keywords( "FIELD", tddft%field )
+    call IOTools_readReal8Keyword( "FIELD", tddft%field )
     call IOTools_readIntegerKeyword( "OC2TD", nt_wr )
 
     tddft%tmax = tddft%dt * tddft%nt
@@ -205,7 +205,7 @@ CONTAINS
           kbb(:,k) = kbb_bak(:,k) + dkbb(:)
        end do
 
-       call init_kinetic( aa,bb,size(kbb,2),kbb,disp_switch=.false. )
+       call init_kinetic( aa,bb,size(kbb,2),kbb )
        call update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )
 
        call calc_macro_current( jav )
@@ -232,7 +232,7 @@ CONTAINS
           kbb(:,k) = kbb_bak(:,k) + dkbb(:)
        end do
 
-       call init_kinetic( aa,bb,size(kbb,2),kbb,disp_switch=.false. )
+       call init_kinetic( aa,bb,size(kbb,2),kbb )
        call update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )
 
 #ifndef _DRSDFT_

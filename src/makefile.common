@@ -11,6 +11,7 @@ MODS2 = localpot_module.o\
         hamiltonian_matrix_module.o\
         ps_getDij_module.o\
         force_ps_nloc2.o\
+        force_ps_nloc2_module.o\
         ps_nloc2_module.o\
         nonlocal_module.o\
         momentum_module.o\
@@ -20,8 +21,8 @@ MODS2 = localpot_module.o\
         test_rtsol_module.o\
         noncollinear_module.o\
         hamiltonian_ncol_module.o\
-        esp_calc_module.o\
         esp_calc_ncol_module.o\
+        esp_calc_module.o\
         total_energy_module.o\
         io_module.o\
         ps_nloc_initiate_module.o\
@@ -30,12 +31,16 @@ MODS2 = localpot_module.o\
         rtddft_mol_module.o\
         force_sol_module.o\
         force_mol_module.o\
+        force_correction_module.o\
         test_force_module.o\
         force_module.o\
         stress_module.o\
         linear_response_module.o\
         current_module.o\
         rtddft_sol_module.o\
+        ps_init_sol_module.o\
+        ps_init_mol_module.o\
+        ps_init_module.o\
 
 MODS1 = \
        enlarge_array_module.o\
@@ -67,7 +72,7 @@ MODS1 = \
        eigenvalues_module.o\
        ewald_variables.o\
        bcast_module.o\
-       fermi_mp_module.o\
+       fermi_module.o\
        fermi_ncol_module.o\
        band_variables.o\
        real_complex_module.o\
@@ -138,6 +143,7 @@ MODS1 = \
        io_write_module.o\
        ps_nloc3_module.o\
        inner_product_module.o\
+       io1_module.o\
        io2_module.o\
        force_nloc2_mol_module.o\
        ps_nloc2_mol_module.o\
@@ -157,4 +163,4 @@ MODS1 = \
        force_local_sol_module.o\
        force_local_mol_module.o\
        ps_pcc_module.o\
-
+       phase_control_module.o\

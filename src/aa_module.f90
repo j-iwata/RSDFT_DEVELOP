@@ -1,6 +1,6 @@
 MODULE aa_module
 
-  use lattice_module, only: lattice, construct_aa_lattice
+  use lattice_module, only: lattice
   use io_tools_module
 
   implicit none
@@ -23,14 +23,8 @@ CONTAINS
   SUBROUTINE init_aa( aa_obj )
     implicit none
     type(lattice),intent(INOUT) :: aa_obj
-    if ( ax == 0.0d0 ) then
-       ax = aa_obj%LatticeConstant
-       aa = aa_obj%LatticeVector/ax
-    else
-       aa_obj%LatticeConstant = ax
-       aa_obj%LatticeVector = aa
-       call construct_aa_lattice( aa_obj )
-    end if
+    ax = aa_obj%LatticeConstant
+    aa = aa_obj%LatticeVector/ax
     call set_org_aa( ax, aa )
     call construct_aa
   END SUBROUTINE init_aa
@@ -44,9 +38,9 @@ CONTAINS
     aa(2,2)=1.0d0
     aa(3,3)=1.0d0
     call IOTools_readReal8Keyword( "AX", ax )
-    call IOTools_readReal8Keywords( "A1", aa(:,1) )
-    call IOTools_readReal8Keywords( "A2", aa(:,2) )
-    call IOTools_readReal8Keywords( "A3", aa(:,3) )
+    call IOTools_readReal8Keyword( "A1", aa(:,1) )
+    call IOTools_readReal8Keyword( "A2", aa(:,2) )
+    call IOTools_readReal8Keyword( "A3", aa(:,3) )
   END SUBROUTINE read_aa
 
 

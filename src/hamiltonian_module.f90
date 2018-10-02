@@ -1,6 +1,5 @@
 MODULE hamiltonian_module
 
-  use parallel_module, only: myrank
   use kinetic_module
   use localpot_module
   use nonlocal_module
@@ -21,25 +20,25 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(n1:,ib1:)
+    real(8),intent(OUT) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(n1:,ib1:)
+    complex(8),intent(OUT) :: htpsi(n1:,ib1:)
 #endif
     real(8) :: ttmp(2)
 
 !$OMP parallel
 
 !$OMP workshare
-    htpsi=(0.d0,0.d0)
+    htpsi=(0.0d0,0.0d0)
 !$OMP end workshare
 
     call watchb_omp( ttmp )
 
 ! --- Kinetic energy ---
 
-    call op_kinetic(k,tpsi,htpsi,n1,n2,ib1,ib2)
+    call op_kinetic( tpsi, htpsi, k )
 
 !$OMP barrier
 
@@ -47,7 +46,7 @@ CONTAINS
 
 ! --- local potential ---
 
-    call op_localpot(s,n2-n1+1,ib2-ib1+1,tpsi,htpsi)
+    call op_localpot( tpsi, htpsi, s )
 
 !$OMP barrier
 
@@ -55,7 +54,7 @@ CONTAINS
 
 ! --- nonlocal potential ---
 
-    call op_nonlocal(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+    call op_nonlocal( tpsi, htpsi, k, s )
 
 !$OMP barrier
 
@@ -76,11 +75,11 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    real(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    real(8),intent(IN)  :: tpsi(n1:,ib1:)
+    real(8),intent(OUT) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:n2,ib1:ib2)
-    complex(8),intent(OUT) :: htpsi(n1:n2,ib1:ib2)
+    complex(8),intent(IN)  :: tpsi(n1:,ib1:)
+    complex(8),intent(OUT) :: htpsi(n1:,ib1:)
 #endif
     real(8) :: ttmp(2)
     integer :: ib
@@ -88,16 +87,14 @@ CONTAINS
 !$OMP parallel
 
 !$OMP workshare
-    htpsi=(0.d0,0.d0)
+    htpsi=(0.0d0,0.0d0)
 !$OMP end workshare
 
     call watchb_omp( ttmp )
 
 ! --- Kinetic energy ---
 
-    do ib=ib1,ib2
-       call op_kinetic(k,tpsi(n1,ib),htpsi(n1,ib),n1,n2,ib,ib)
-    end do
+    call op_kinetic( tpsi(:,ib1:ib2), htpsi(:,ib1:ib2), k )
 
 !$OMP barrier
 
@@ -105,9 +102,7 @@ CONTAINS
 
 ! --- local potential ---
 
-    do ib=ib1,ib2
-       call op_localpot(s,n2-n1+1,1,tpsi(n1,ib),htpsi(n1,ib))
-    end do
+    call op_localpot( tpsi, htpsi, s )
 
 !$OMP barrier
 
@@ -115,9 +110,7 @@ CONTAINS
 
 ! --- nonlocal potential ---
 
-    do ib=ib1,ib2
-       call op_nonlocal(k,s,tpsi(n1,ib),htpsi(n1,ib),n1,n2,ib,ib)
-    end do
+    call op_nonlocal( tpsi(:,ib1:ib2), htpsi(:,ib1:ib2), k, s )
 
 !$OMP barrier
 

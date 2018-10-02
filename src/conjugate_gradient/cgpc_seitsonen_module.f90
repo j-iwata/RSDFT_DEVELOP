@@ -56,7 +56,7 @@ CONTAINS
     allocate( T1(nn) ) ; T1=0.0d0
     allocate( Hwf(mm,nn) ) ; Hwf=zero
 
-    call op_kinetic(k,wf,Hwf,1,mm,1,nn)
+    call op_kinetic( wf, Hwf, k )
 
     do n=1,nn
 #ifdef _DRSDFT_

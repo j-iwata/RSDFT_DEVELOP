@@ -3,6 +3,7 @@ MODULE wf_module
   use parallel_module
   use wf_sub_module
   use rsdft_mpi_module
+  use io_tools_module
 
   implicit none
 
@@ -12,7 +13,7 @@ MODULE wf_module
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
            ,Sunk &
            ,write_wf &
-           ,hunk, read_wf, iflag_hunk, workwf &
+           ,hunk, iflag_hunk, workwf &
            ,allocate_work_wf, deallocate_work_wf
   PUBLIC :: write_esp_wf
   PUBLIC :: write_info_esp_wf
@@ -64,27 +65,9 @@ MODULE wf_module
 CONTAINS
 
 
-  SUBROUTINE read_wf( rank, unit )
+  SUBROUTINE read_wf
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i,ierr
-    character(6) :: cbuf,ckey
-    call write_border( 0, " read_wf(start)" )
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey == "WORKWF" ) then
-             backspace(unit)
-             read(unit,*) cbuf,iwork_wf
-          end if
-       end do
-999    continue
-       write(*,*) "iwork_wf=",iwork_wf
-    end if
-    call mpi_bcast(iwork_wf,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call write_border( 0, " read_wf(end)" )
+    call IOTools_readIntegerKeyword( "WORKWF", iwork_wf )
   END SUBROUTINE read_wf
 
 
@@ -94,6 +77,8 @@ CONTAINS
     integer :: SYStype
 
     call write_border( 0, " init_wf(start)" )
+
+    call read_wf
 
     SYStype=0
     if ( present(SYStype_in) ) SYStype=SYStype_in

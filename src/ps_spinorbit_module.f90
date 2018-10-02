@@ -19,8 +19,8 @@ CONTAINS
 
     implicit none
     integer,intent(IN) :: k,n1,n2
-    complex(8),intent(IN)  :: tpsi(n1:n2,2)
-    complex(8),intent(INOUT) :: htpsi(n1:n2,2)
+    complex(8),intent(IN)  :: tpsi(n1:,:,:)
+    complex(8),intent(INOUT) :: htpsi(n1:,:,:)
     complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
     include 'mpif.h'
     integer :: i,is,j,i1,i2,m,lma,ns,ierr,nreq,lma1,lma2
@@ -37,7 +37,7 @@ CONTAINS
 
     if ( dV == 0.0d0 ) call get_info_rs_grid( dV_rs=dV, comm_rs=comm_grid )
 
-    ns = size( tpsi, 2 )
+    ns = size( tpsi, 3 )
 
     allocate( uVunk(nzlma,ns)  ) ; uVunk=zero
     allocate( uVunk0(nzlma,ns) ) ; uVunk0=zero
@@ -50,7 +50,7 @@ CONTAINS
           uVunk(lma,is)=zero
           do j=1,MJJ(lma)
              i=JJP(j,lma)
-             uVunk(lma,is)=uVunk(lma,is)+conjg(uVk_so00(j,lma,k))*tpsi(i,is)
+             uVunk(lma,is)=uVunk(lma,is)+conjg(uVk_so00(j,lma,k))*tpsi(i,1,is)
           end do
           uVunk(lma,is) = 0.5d0*uVunk(lma,is)*dV
        end do
@@ -120,8 +120,8 @@ CONTAINS
 !$OMP do
        do j=1,MJJ(lma1)
           i=JJP(j,lma1)
-          htpsi(i,1)=htpsi(i,1)+uVk_so11(j,lma1,k)*zc1+uVk_so12(j,lma1,k)*zc2
-          htpsi(i,2)=htpsi(i,2)+uVk_so21(j,lma1,k)*zc1+uVk_so22(j,lma1,k)*zc2
+          htpsi(i,1,1)=htpsi(i,1,1)+uVk_so11(j,lma1,k)*zc1+uVk_so12(j,lma1,k)*zc2
+          htpsi(i,1,2)=htpsi(i,1,2)+uVk_so21(j,lma1,k)*zc1+uVk_so22(j,lma1,k)*zc2
 !          work(i,1)=work(i,1)+uVk_so11(j,lma1,k)*zc1+uVk_so12(j,lma1,k)*zc2
 !          work(i,2)=work(i,2)+uVk_so21(j,lma1,k)*zc1+uVk_so22(j,lma1,k)*zc2
        end do
