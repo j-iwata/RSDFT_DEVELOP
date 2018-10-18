@@ -483,7 +483,7 @@ CONTAINS
        if ( irank_b == myrank_b ) then
           do ib1=msV,meV
              ib2=ib1
-             call hamiltonian(k,s,u(:,ib1),hu2(:,ix0+ib1-msV+1),n1,n2,ib1,ib2)
+             call hamiltonian(k,s,u(:,ib1:ib2),hu2(:,ix0+ib1-msV+1:ix0+ib2-msV+1),n1,n2,ib1,ib2)
           end do
           ix0=ix0+meV-msV+1
        end if
@@ -812,7 +812,7 @@ CONTAINS
        if ( irank_b == myrank_b) then
           do ib1=msV,meV
              ib2=ib1
-             call hamiltonian(k,s,u(:,ib1),hu2(:,ix0+ib1-msV+1),n1,n2,ib1,ib2)
+             call hamiltonian(k,s,u(:,ib1:ib2),hu2(:,ix0+ib1-msV+1:ix0+ib2-msV+1),n1,n2,ib1,ib2)
           end do
           ix0=ix0+meV-msV+1
        end if
@@ -957,7 +957,7 @@ CONTAINS
        if ( irank_b == myrank_b) then
           do ib1=msV,meV
              ib2=ib1
-             call hamiltonian(k,s,u(:,ib1),hu2(:,ix0+ib1-msV+1),n1,n2,ib1,ib2)
+             call hamiltonian(k,s,u(:,ib1:ib2),hu2(:,ix0+ib1-msV+1:ix0+ib2-msV+1),n1,n2,ib1,ib2)
           end do
           ix0=ix0+meV-msV+1
        end if

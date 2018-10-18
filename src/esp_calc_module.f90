@@ -25,7 +25,7 @@ CONTAINS
     complex(8),allocatable :: hwf(:,:)
 #endif
     real(8),intent(OUT) :: e(:,:,:)
-    integer :: n,ierr,k0
+    integer :: n,ierr,k0,m
 
     if ( flag_noncollinear ) then
        call esp_calc_ncol( k,n1,n2,wf,e )
@@ -39,15 +39,16 @@ CONTAINS
     allocate( hwf(n1:n2,1) ) ; hwf=0.0d0
 
     do n=ns,ne
+       m=n-ns+1
        if ( iflag_hunk >= 1 ) then
           hwf(:,1)=hunk(:,n,k,s)
        else
-          call hamiltonian(k,s,wf(:,n:n,k0,s),hwf,n1,n2,n,n)
+          call hamiltonian(k,s,wf(:,m:m,k0,s),hwf,n1,n2,n,n)
        end if
 #ifdef _DRSDFT_
-       e(n,k,s) = sum( wf(:,n,k0,s)*hwf(:,1) )*dV
+       e(n,k,s) = sum( wf(:,m,k0,s)*hwf(:,1) )*dV
 #else
-       e(n,k,s) = sum( conjg(wf(:,n,k0,s))*hwf(:,1) )*dV
+       e(n,k,s) = sum( conjg(wf(:,m,k0,s))*hwf(:,1) )*dV
 #endif
     end do
 

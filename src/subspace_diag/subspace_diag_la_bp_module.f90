@@ -79,7 +79,7 @@ contains
     deallocate( ir )
 
     do m=1,MB
-       call hamiltonian(k,s,psiu(1,m),psit(1,m),n1,n2,m,m)
+       call hamiltonian(k,s,psiu(:,m:m),psit(:,m:m),n1,n2,m,m)
     end do
 
     call watch(ct(3),et(3))
@@ -188,7 +188,7 @@ contains
     LWORK=max(LWORK,WORK1)
     LIWORK=max(LIWORK,WORK2)
 
-    call result_timer( t, "sd" )
+    call result_timer( "sd", t )
     call write_border( 1, " subspace_diag_la_bp(end)" )
 
     return

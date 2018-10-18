@@ -68,6 +68,7 @@ MODS1 = \
        filtering.o\
        expint_module.o\
        watch_module.o\
+       transpose_module.o\
        calc_overlap_module.o\
        overlap_bp_module.o\
        dtrmm_bp_module.o\

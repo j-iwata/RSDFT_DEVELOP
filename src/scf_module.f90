@@ -92,8 +92,7 @@ CONTAINS
     real(8),optional,intent(IN) :: tol_force_in
     character(*),optional,intent(IN)  :: outer_loop_info
     real(8),optional,intent(OUT) :: Etot_out
-    real(8),allocatable :: v(:,:,:)
-    real(8) :: tol_force
+!    real(8),allocatable :: v(:,:,:)
     real(8) :: Etot, Ehwf, diff_etot
     real(8) :: Ntot(4), sqerr_out(4), t_out(2,14), t_ini(2), t_tmp(2)
     integer :: iter,s,k,n,m,ierr,idiag,i,j,Diter
@@ -102,11 +101,7 @@ CONTAINS
     logical :: flag_end, flag_end1, flag_end2
     real(8),allocatable :: ftmp(:,:,:)
     real(8) :: tol_force
-    character(40) :: chr_iter
-    character(22) :: add_info
-    type(time) :: etime, etime_tot, etime_lap(10)
     logical :: flag_recalc_esp = .false.
-    logical :: disp_switch
     logical,external :: exit_program
     character(40) :: chr_iter
     character(22) :: add_info
@@ -117,7 +112,7 @@ CONTAINS
     call write_border( 0, "" )
     call write_border( 0, " SCF START -----------" )
 
-    call check_disp_switch( disp_switch, 0 )
+!    call check_disp_switch( disp_switch, 0 )
 
     call init_time_watch( etime_tot )
     call init_time_watch( etime_lap(1) )
@@ -263,16 +258,14 @@ CONTAINS
 
              call watchb( t_tmp )
 
-             call conjugate_gradient(ML_0,ML_1,Nband,MB_0,MB_1,k,s &
-                  ,unk(:,:,k,s),esp(1,k,s),res(1,k,s))
+             call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
 
              call gram_schmidt(1,Nband,k,s,v)
 
              if ( second_diag == 1 .or. idiag < Ndiag ) then
                 call subspace_diag(k,s,v)
              else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                call esp_calc(k,s,unk(ML_0,MB_0,k,s) &
-                     ,ML_0,ML_1,MB_0,MB_1,esp(MB_0,k,s))
+                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
              end if
 
           end do ! idiag

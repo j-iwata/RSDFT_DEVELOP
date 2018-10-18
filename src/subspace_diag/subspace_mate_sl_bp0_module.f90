@@ -49,7 +49,7 @@ contains
     deallocate( ir )
 
     do ib=1,nb
-       call hamiltonian(k,s,psiu(1,ib),psit(1,ib),m1,m2,ib,ib)
+       call hamiltonian(k,s,psiu(:,ib:ib),psit(:,ib:ib),m1,m2,ib,ib)
     end do
 
     UPLO="L"

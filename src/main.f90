@@ -268,6 +268,11 @@ PROGRAM Real_Space_DFT
 
   call set_array_bound
 
+  if ( SYStype == 1 ) then ! MOL mol
+     call Construct_RgridMol(Igrid)
+     call ConstructBoundary_RgridMol(Md,Igrid)
+  end if
+
 ! --- vector info ---
 
   v(1)%factor=dV
@@ -282,43 +287,6 @@ PROGRAM Real_Space_DFT
   v(2)%pinfo%me=myrank_b
   allocate( v(2)%pinfo%ir(0:np_band-1) ) ; v(2)%pinfo%ir=ir_band
   allocate( v(2)%pinfo%id(0:np_band-1) ) ; v(2)%pinfo%id=id_band
-
-! --- Pseudopotential, initial density, and partial core correction ---
-
-!  call read_pseudopot( Nelement, myrank )
-
-!-------- init density 
-
-  call init_density(Nelectron,dV)
-
-!----------------------- SOL sol -----
-
-  if ( SYStype == 0 ) then
-
-     call init_ps_local
-     call init_ps_pcc
-
-     call construct_strfac  !----- structure factor
-
-     call construct_ps_local
-     call construct_ps_pcc
-     call construct_ps_initrho( rho )
-
-     call destruct_strfac   !----- structure factor
-
-     call ps_nloc_initiate( Gcut )
-
-!----------------------- MOL mol -----
-
-  else if ( SYStype == 1 ) then
-
-     call init_ps_local_mol(Gcut)
-     call init_ps_pcc_mol
-     call init_ps_initrho_mol
-
-     call Construct_RgridMol(Igrid)
-     call ConstructBoundary_RgridMol(Md,Igrid)
-  end if
 
 ! --- init density & potentials ---
 
@@ -363,8 +331,6 @@ PROGRAM Real_Space_DFT
   call init_eion( SYStype, disp_switch )
 
 ! --- Initialization of subspace diagonalization ---
-
-  call prep_scalapack( Nband, v )
 
   call init_subspace_diag( Nband, v(2) )
 

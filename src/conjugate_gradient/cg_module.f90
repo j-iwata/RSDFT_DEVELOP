@@ -6,7 +6,7 @@ MODULE cg_module
   use parallel_module
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
   use cggs_module
-  use wf_module, only: hunk, iflag_hunk
+  use wf_module, only: hunk, iflag_hunk, MB_0 => MB_0_WF, MB_1 => MB_1_WF
   use kinetic_module, only: SYStype
   use watch_module
   use conjugate_gradient_g_module, only: conjugate_gradient_g, pp_kind
@@ -53,7 +53,7 @@ CONTAINS
   END SUBROUTINE init_cg
 
 
-  SUBROUTINE conjugate_gradient( ML_0,ML_1,MB,MB_0,MB_1,k,s, unk, esp, res )
+  SUBROUTINE conjugate_gradient( n1,n2,MB,k,s, unk, esp, res )
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s
     real(8),intent(INOUT) :: esp(:,:,:),res(:,:,:)
@@ -83,7 +83,7 @@ CONTAINS
 
     call init_cg
 
-    call init_cgpc( ML_0,ML_1, k, s, dV, SYStype, ipc )
+    call init_cgpc( n1,n2, k, s, dV, SYStype, ipc )
 
     if ( pp_kind == "USPP" ) then
 
@@ -116,13 +116,13 @@ CONTAINS
 
 #ifdef _DRSDFT_
 
-  SUBROUTINE conjugate_gradient_1(ML_0,ML_1,MB,MB_0,MB_1,k,s,Mcg,unk,esp,res)
+  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
     implicit none
     integer,intent(IN) :: n1,n2,MB,k,s,Mcg
     real(8),intent(INOUT) :: unk(n1:,:)
     real(8),intent(INOUT) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
-    integer :: mm,icmp,i,TYPE_MAIN,timer_counter
+    integer :: mm,icmp,i,TYPE_MAIN,timer_counter,ns0,ns1
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
@@ -153,9 +153,7 @@ CONTAINS
     timecg_indx(1:7) = (/"hamil","dotp ","allr ","prec ","init ","deall","tot  "/)
     time_cgpc_indx(1:13) = (/" "," "," "," "," "," "," "," "," "," "," "," "," "/)
 
-    ML0 = ML_1-ML_0+1
-    n1  = ML_0
-    n2  = ML_1
+    ML0 = n2-n1+1
 
     mm  = ML0
     c1  = 2.0d0
@@ -181,7 +179,14 @@ CONTAINS
 
     call watchb( ttmp, timecg(:,5) )
 
-    do ns=MB_0,MB_1,MB_d
+    ns0 = 1
+    ns1 = size( unk, 2 )
+    if ( ns1 == MB ) then
+       ns0 = MB_0
+       ns1 = MB_1
+    end if
+
+    do ns=ns0,ns1,MB_d
        ne=ns
        nn=ne-ns+1
 
@@ -444,7 +449,7 @@ CONTAINS
     complex(8),intent(INOUT) :: unk(n1:,:)
     real(8),intent(INOUT) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
-    integer :: mm,icmp,i,TYPE_MAIN
+    integer :: mm,icmp,i,TYPE_MAIN,ns0,ns1
     real(8),parameter :: ep0=0.d0
     real(8),parameter :: ep1=1.d-15
     real(8) :: rwork(9),W(2),c,d,r,ct0,ct1,et0,et1,ctt(4),ett(4)
@@ -474,7 +479,7 @@ CONTAINS
     time_cgpc(:,:)=0.0d0
     timecg_indx(1:7) = (/"hamil","oprat","allrd","precn","ortho","other","total"/)
 
-    ML0 = ML_1-ML_0+1
+    ML0 = n2-n1+1
 
     mm  = 2*ML0
     icmp= 2
@@ -499,7 +504,14 @@ CONTAINS
 
     call watchb( ttmp, timecg(:,6) )
 
-    do ns=MB_0,MB_1
+    ns0 = 1
+    ns1 = size( unk, 2 )
+    if ( ns1 == MB ) then
+       ns0 = MB_0
+       ns1 = MB_1
+    end if
+
+    do ns=ns0,ns1,MB_d
        ne=ns
        nn=ne-ns+1
 

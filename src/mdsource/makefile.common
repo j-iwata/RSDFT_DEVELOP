@@ -11,8 +11,6 @@ OBJS = cpmd_variables.o\
        mdio.o\
        active_band.o\
        alloc_cpmd.o\
-       transpose_module.o\
-       calc_overlap_module.o \
        calc_overlap_bp_module.o \
        overlap_cpmd_module.o \
        rotorb_sub_module.o\

@@ -36,7 +36,7 @@ CONTAINS
 
     np_band = v(2)%pinfo%np
 
-    !call prep_scalapack( MB_diag, v )
+    call prep_scalapack( MB_diag, v )
 
     allocate( Hsub(LLD_R,LLD_C) )
     Hsub=zero
