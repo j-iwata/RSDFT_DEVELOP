@@ -163,13 +163,13 @@
       rewind 970
       write(u,'(a7)') "# RSDFT"
       write(u,'(a9," /")') "'LDAPZ81'"
-      write(u,*) ax
-      write(u,'(3f10.5)') aa(:,1)
-      write(u,'(3f10.5)') aa(:,2)
-      write(u,'(3f10.5)') aa(:,3)
+      write(970,'("AX",f20.15)') ax
+      write(970,'("A1",3f20.15)') aa(:,1)
+      write(970,'("A2",3f20.15)') aa(:,2)
+      write(970,'("A3",3f20.15)') aa(:,3)
       write(970,'(i4,i6,i4)') MKI,MI
       do a=1,MI
-         write(970,'(i4,3f15.10,i4)') Kion(a),asi(:,a)
+         write(970,'(i4,3f15.10,i4)') Kion(a),asi(:,a),1
       end do
       write(u,'(2i8," /Nband Nspin")') MB, 1
       write(u,'(f8.3," /Next_electron")') 0.0
