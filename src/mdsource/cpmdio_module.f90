@@ -29,12 +29,15 @@ CONTAINS
     integer :: i
     disp_sw=(myrank==0)
     if ( flag_init_w ) then
-       !call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_w )
-       IO_ctrl_w = ctrl_cpmdio
+       if ( ctrl_cpmdio < 100 ) then
+          IO_ctrl_w = ctrl_cpmdio
+       else
+          call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_w )
+       end if
        call IOTools_readIntegerKeyword( "OC", OC )
        flag_init_w=.false.
     end if
-    select case( io_ctrl_w )
+    select case( IO_ctrl_w )
     case default
        call write_data_cpmd_k_seri
     case( 1 )
@@ -52,8 +55,11 @@ CONTAINS
   SUBROUTINE read_data_cpmdio
     implicit none
     if ( flag_init_r ) then
-       !call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_r )
-       IO_ctrl_r = ctrl_cpmdio_r
+       if ( ctrl_cpmdio_r < 100 ) then
+          IO_ctrl_r = ctrl_cpmdio_r
+       else
+          call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_r )
+       end if
        flag_init_r=.false.
     end if
     select case( IO_ctrl_r )
