@@ -465,7 +465,7 @@ CONTAINS
 
        ! set context for eigen and map process
 
-       ICTXT_E = MPI_COMM_WORLD !eigen_get_blacs_context()
+       call blacs_get(0,0,ICTXT_E)
        call blacs_gridmap(ICTXT_E,usermap2(0,0,1),NPROW2,NPROW2,NPCOL2)
 
        LLD_R_e = NUMROC(MB,1,x_inod,0,nprow2)
