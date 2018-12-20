@@ -182,7 +182,7 @@ CONTAINS
     call watchb( ttmp, timecg(:,5) )
 
     do ns=MB_0,MB_1,MB_d
-       ne=ns
+       ne=min(ns+MB_d-1,MB_1)
        nn=ne-ns+1
 
        E1(:)=1.d10
