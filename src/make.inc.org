@@ -38,13 +38,13 @@ OMPFLAG   =
 #CPP_FLAGS := -D_FFTE_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
 #CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
-#INCLUDE_DIR := -I/home/iwata/fftw-3.3.4/include/ $(INCLUDE_DIR)
-#FFTW_L = -L/home/iwata/fftw-3.3.4/lib/ -lfftw3_mpi -lfftw3 -lm
+#INCLUDE_DIR := -I/home/iwata/fftw/include/ $(INCLUDE_DIR)
+#FFTW_L = -L/home/iwata/fftw/lib/ -lfftw3_mpi -lfftw3 -lm
 ########################################################### Others #####
 #CPP_FLAGS := -D_LIBXC_ $(CPP_FLAGS)
-#INCLUDE_DIR := -I/home/iwata/libxc-3.0.0/include/ $(INCLUDE_DIR)
-#LIBXC_L = /home/iwata/libxc-3.0.0/lib/libxcf90.a \
-#          /home/iwata/libxc-3.0.0/lib/libxc.a
+#INCLUDE_DIR := -I/home/iwata/libxc/include/ $(INCLUDE_DIR)
+#LIBXC_L = /home/iwata/libxc/lib/libxcf90.a \
+#          /home/iwata/libxc/lib/libxc.a
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
