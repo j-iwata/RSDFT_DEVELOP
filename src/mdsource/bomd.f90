@@ -169,8 +169,8 @@ SUBROUTINE bomd
 
   if ( myrank == 0 ) then
      write(*,'(a)') "initial energy"
-     write(*,'(5a15)') "Etotal","Etot_DFT","kine","fke","Ebath"
-     write(*,'(5f15.8)') tote0,Etot,kine,fke,Ebath
+     write(*,'(1x,a10,6a20)') "time","Etotal","Etot_DFT","kine","fke","ltemp","Ebath"
+     write(*,'(1x,f10.3,6f20.8)') 0.0d0,tote0,Etot,kine,fke,ltemp,Ebath
      dif  = 0.0d0
      tott = 0.0d0
      if ( inivel ) write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
@@ -286,7 +286,7 @@ SUBROUTINE bomd
         tote  = kine+Etot+fke+Ebath
         dif   = abs(tote-tote0)
 
-        write(*,'(1x,f10.3,9g15.7)') tott,tote,Etot,kine,fke,ltemp
+        write(*,'(1x,f10.3,9f20.8)') tott,tote,Etot,kine,fke,ltemp
         write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
         if ( ltime ) then
@@ -375,6 +375,6 @@ SUBROUTINE bomd
 
 99 stop "stop@bomd(99)"
 
-10 format(10f18.8)
+10 format(10f20.8)
 
 END SUBROUTINE bomd
