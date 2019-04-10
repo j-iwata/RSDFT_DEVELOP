@@ -1,7 +1,7 @@
 MODULE para_rgrid_comm
 
   use parallel_module, only: node_partition,myrank_g,nprocs_g,COMM_GRID,myrank &
-                            ,RSDFT_MPI_COMPLEX16
+                            ,RSDFT_MPI_COMPLEX16, RSDFT_MPI_REAL8
   use hsort_module
 
   implicit none
@@ -10,12 +10,10 @@ MODULE para_rgrid_comm
   PUBLIC :: prepThreeWayComm,do3StepComm,do3StepComm_real
   PUBLIC :: do3StepComm_dQ,do3StepComm_F
 
-  include 'mpif.h'
-
 #ifdef _DRSDFT_
-  integer,parameter,PUBLIC :: TYPE_MAIN = MPI_REAL8
+  integer,parameter,public :: TYPE_MAIN = RSDFT_MPI_REAL8
 #else
-  integer,parameter,PUBLIC :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
+  integer,parameter,public :: TYPE_MAIN = RSDFT_MPI_COMPLEX16
 #endif
 
 CONTAINS
@@ -29,7 +27,7 @@ CONTAINS
     integer,intent(IN) :: NLRankMap(nr)
     integer,intent(OUT) :: NRxyz(1:6)
     integer,allocatable,intent(OUT) :: Num2Rank0(:,:)
-    
+    include 'mpif.h'
     integer :: ir,n,m,i,j,k
     integer :: i1,i2,i3
     integer :: np1,np2,np3

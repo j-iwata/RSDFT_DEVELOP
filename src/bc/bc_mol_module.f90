@@ -8,8 +8,6 @@ MODULE bc_mol_module
   PRIVATE
   PUBLIC :: init_bcset_mol
 
-  include 'mpif.h'
-
 CONTAINS
 
   SUBROUTINE init_bcset_mol(Md,Ngrid,nproc,myrnk,comm,pinfo_grid)

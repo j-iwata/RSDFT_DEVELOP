@@ -66,6 +66,7 @@ PROGRAM Real_Space_DFT
   use init_occ_electron_ncol_module
   use rtddft_sol_module
   use aa_module, only: init_aa
+  use rsdft_mpi_module, only: init_rsdft_mpi
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -86,6 +87,8 @@ PROGRAM Real_Space_DFT
 ! --- start MPI ---
 
   call start_mpi_parallel
+
+  call init_rsdft_mpi
 
 ! --- global time counter start ---
 

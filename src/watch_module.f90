@@ -16,8 +16,6 @@ MODULE watch_module
   PUBLIC :: init_time_watch, calc_time_watch
   PUBLIC :: start_timer, result_timer
 
-  include 'mpif.h'
-
   integer,parameter :: DP=kind(0.0d0)
 
   real(8) :: ct0=0.d0, ctt=0.d0
@@ -120,6 +118,7 @@ CONTAINS
     logical,optional,intent(OUT) :: flag_timelimit
     integer :: ierr
     real(8) :: ct,et,s(2),r(2)
+    include 'mpif.h'
     call watch( ct, et )
     if ( flag_count_start ) then
        global_ctime0=ct
@@ -142,6 +141,7 @@ CONTAINS
     implicit none
     integer,intent(INOUT) :: icounter
     integer :: n
+    include 'mpif.h'
     n = min( max(icounter+1,0), max_timea_counter )
     call cpu_time( timea(n,1) )
     timea(n,2) = mpi_wtime()
@@ -201,6 +201,7 @@ CONTAINS
     real(8),intent(INOUT) :: t_tmp(2)
     real(8),optional,intent(INOUT) :: t_out(2)
     real(8) :: tnow(2)
+    include 'mpif.h'
 !$OMP master
     call cpu_time( tnow(1) )
     tnow(2) = mpi_wtime()
@@ -213,6 +214,7 @@ CONTAINS
   SUBROUTINE init_time_watch( t )
     implicit none
     type(time),intent(INOUT) :: t
+    include 'mpif.h'
     t%t0 = mpi_wtime()
   END SUBROUTINE init_time_watch
 
@@ -221,6 +223,7 @@ CONTAINS
     type(time),intent(INOUT) :: t
     integer,optional,intent(IN) :: comm_in
     integer :: i, comm
+    include 'mpif.h'
     t%t1 = mpi_wtime()
     t%t0 = t%t1 - t%t0
     comm=MPI_COMM_WORLD ; if ( present(comm_in) ) comm=comm_in

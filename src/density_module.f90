@@ -32,8 +32,6 @@ MODULE density_module
 
   real(8) :: Nelectron_RHO !,dV_RHO ! MIZUHO-IR for cellopt
 
-  include 'mpif.h'
-
 CONTAINS
 
 !-----------------------------------------------------------------------
@@ -199,6 +197,7 @@ CONTAINS
     real(8),intent(OUT) :: Ntot(:)
     integer :: ierr
     real(8) :: tmp(4)
+    include 'mpif.h'
     tmp(:) = 0.0d0
     tmp(1) = sum( rho(:,1) )
     if ( size(rho,2) == 2 ) then

@@ -38,8 +38,6 @@ MODULE atom_module
   integer :: iformat_org=0
   real(DP),parameter :: bohr=0.529177d0
 
-  include 'mpif.h'
-
 CONTAINS
 
 
@@ -51,6 +49,7 @@ CONTAINS
     character(8) :: cbuf, ckey, cdummy(2)
     character(80) :: line
     integer :: idummy(2),ierr
+    include 'mpif.h'
 
     call write_border( 0, " read_atom(start)" )
 
@@ -125,6 +124,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: rank,unit
     integer :: idummy(99),i
+    include 'mpif.h'
 
     if ( rank == 0 ) then
        idummy(:)=0
@@ -186,6 +186,7 @@ CONTAINS
     integer,intent(IN) :: rank, unit
     integer :: i, j, idummy(99)
     character(2) :: cbuf
+    include 'mpif.h'
 
     if ( rank == 0 ) then
 

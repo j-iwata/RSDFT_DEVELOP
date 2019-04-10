@@ -3,6 +3,7 @@ MODULE rsdft_mpi_module
   implicit none
 
   PRIVATE
+  public :: init_rsdft_mpi
   PUBLIC :: rsdft_allreduce_sum
   PUBLIC :: d_rsdft_allreduce_sum_5, d_rsdft_allreduce_sum_6
   PUBLIC :: rsdft_bcast
@@ -43,18 +44,22 @@ MODULE rsdft_mpi_module
                       z_rsdft_allgatherv33
   END INTERFACE
 
-  include 'mpif.h'
-#ifdef _NO_MPI_COMPLEX16_
-  integer,parameter :: RSDFT_MPI_COMPLEX16=MPI_DOUBLE_COMPLEX
-#else
-  integer,parameter :: RSDFT_MPI_COMPLEX16=MPI_COMPLEX16
-#endif
-
+  integer :: RSDFT_MPI_COMPLEX16
   integer :: ndiv_allreduce = 100
 
 CONTAINS
 
 !-------------------------------------------------- rsdft_allreduce_sum
+
+  subroutine init_rsdft_mpi
+    implicit none
+    include 'mpif.h'
+#ifdef _NO_MPI_COMPLEX16_
+    RSDFT_MPI_COMPLEX16=MPI_DOUBLE_COMPLEX
+#else
+    RSDFT_MPI_COMPLEX16=MPI_COMPLEX16
+#endif
+  end subroutine init_rsdft_mpi
 
   SUBROUTINE d_rsdft_allreduce_sum_0( a, comm )
     implicit none

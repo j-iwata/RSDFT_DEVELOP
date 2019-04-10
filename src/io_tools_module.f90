@@ -11,11 +11,6 @@ MODULE io_tools_module
   PUBLIC :: IOTools_findKeyword
 
   integer,parameter :: max_trial_read = 10000
-
-#ifndef _NOMPI_
-  include 'mpif.h'
-#endif
-
   integer :: myrank = 0
   integer :: unit_default = 1
   integer :: unit_input_result = 110
@@ -71,6 +66,9 @@ CONTAINS
     integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
     integer :: i,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
@@ -100,6 +98,9 @@ CONTAINS
     integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
     integer :: i,j,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
@@ -133,6 +134,9 @@ CONTAINS
     integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
     integer :: i,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
@@ -163,6 +167,9 @@ CONTAINS
     integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
     integer :: i,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
@@ -192,6 +199,9 @@ CONTAINS
     integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
     integer :: i,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
@@ -225,6 +235,9 @@ CONTAINS
     integer,optional,intent(IN) :: unit_in
     character(10) :: cbuf,ckey
     integer :: i,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
@@ -260,6 +273,9 @@ CONTAINS
     logical,optional,intent(IN) :: norewind
     character(10) :: cbuf,ckey
     integer :: i,unit
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default ; if ( present(u) ) unit=u
     if ( myrank == 0 ) then
@@ -291,6 +307,9 @@ CONTAINS
     logical,optional,intent(IN) :: flag_bcast
     integer :: i,unit
     character(10) :: cbuf,ckey
+#ifndef _NOMPI_
+    include 'mpif.h'
+#endif
     call check_init
     unit=unit_default
     if ( present(unit_out) ) unit_out=unit
