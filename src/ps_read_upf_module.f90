@@ -164,7 +164,7 @@ CONTAINS
 
              if ( ckey(1:9) == "<PP_BETA>" ) then
                 read(g,*) j, lo(j)
-                read(g,*) nrc ; if ( nrc > nrr) stop"stop@ps_read_upf(1)"
+                read(g,*) nrc ; if ( nrc > nrr) stop "stop@ps_read_upf(1)"
                 read(g,*) viod(1:nrc,j)
                 read(g,*) cbuf
                 NRps(j)=nrc

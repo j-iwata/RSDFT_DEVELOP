@@ -529,7 +529,7 @@ CONTAINS
              end do
           end do
        end if
-       stop'FERMI'
+       stop 'FERMI'
     end if
 
 100 continue

@@ -157,7 +157,7 @@ CONTAINS
 !
     if ( ndata/=nsmpl ) then
        write(6,*)' ERROR ON # OF DATA  NSMPL,NDATA=',nsmpl,ndata
-       stop' MKQG0'
+       stop ' MKQG0'
     end if
     h=exp( log(rend/r1)/(ndata-1) )
     r(1)=r1
