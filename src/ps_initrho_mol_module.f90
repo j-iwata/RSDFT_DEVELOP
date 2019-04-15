@@ -132,7 +132,7 @@ CONTAINS
                 end if
              end do
              maxerr=max(maxerr,err0)
-             rho(i,1)=rho(i,1)+v0
+             rho(i-ML_0+1,1)=rho(i-ML_0+1,1)+v0
           end if
        end do ! i
     end do ! a

@@ -59,9 +59,9 @@ CONTAINS
           d  = htpsi(i-n1+1,ib)
           do m=1,Md
              c = coef_kin(m)
-             d = d + c*( www(i1-m,i2,i3,n)+www(i1+m,i2,i3,n) &
-                       + www(i1,i2-m,i3,n)+www(i1,i2+m,i3,n) &
-                       + www(i1,i2,i3-m,n)+www(i1,i2,i3+m,n) )
+             d = d + c*( www(i1-m,i2,i3,ib)+www(i1+m,i2,i3,ib) &
+                       + www(i1,i2-m,i3,ib)+www(i1,i2+m,i3,ib) &
+                       + www(i1,i2,i3-m,ib)+www(i1,i2,i3+m,ib) )
           end do
           htpsi(i-n1+1,ib) = d
        end do

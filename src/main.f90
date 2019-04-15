@@ -139,6 +139,22 @@ PROGRAM Real_Space_DFT
 
   call read_lattice( aa_obj )
 
+  call construct_lattice( aa_obj )
+
+! --- coordinate transformation of atomic positions ---
+
+  if ( SYStype == 0 ) then
+     call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
+     if ( myrank == 0 ) then
+        call write_coordinates_atom( 96, 3, "atomic_coordinates_aa_ini" )
+     end if
+  else if ( SYStype == 1 ) then
+     call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
+     if ( myrank == 0 ) then
+        call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
+     end if
+  end if
+
 ! --- Real-Space Grid (MOL) ( lattice is defiend by MOLGRID ) ---
 
   if ( SYStype /= 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
@@ -164,20 +180,6 @@ PROGRAM Real_Space_DFT
 ! --- G-space Grid ---
 
   call Init_Ggrid( Ngrid, bb )
-
-! --- coordinate transformation of atomic positions ---
-
-  if ( SYStype == 0 ) then
-     call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
-     if ( myrank == 0 ) then
-        call write_coordinates_atom( 96, 3, "atomic_coordinates_aa_ini" )
-     end if
-  else if ( SYStype == 1 ) then
-     call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
-     if ( myrank == 0 ) then
-        call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
-     end if
-  end if
 
 ! --- Pseudopotential ---
 
