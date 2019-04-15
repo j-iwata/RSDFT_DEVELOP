@@ -117,6 +117,7 @@ CONTAINS
     referred_orbital=.true.
 
     call random_initial_wf
+!    call delta_initial_wf
 !    call fft_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
 !        ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
 !    call random_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
@@ -153,6 +154,27 @@ CONTAINS
     end do
 
   END SUBROUTINE random_initial_wf
+
+
+  subroutine delta_initial_wf
+    implicit none
+    integer :: s,k,n,i
+    unk=(0.0d0,0.0d0)
+    i=0
+    do s=1,MS_WF
+       do k=1,MK_WF
+          do n=1,MB_WF
+             i=i+1
+             if ( ML_0_WF <= i .and. i <= ML_1_WF .and. &
+                  MB_0_WF <= n .and. n <= MB_1_WF .and. &
+                  MK_0_WF <= k .and. k <= MK_1_WF .and. &
+                  MS_0_WF <= s .and. s <= MS_1_WF ) then
+                unk(i,n,k,s)=(1.0d0,0.0d0)
+             end if
+          end do
+       end do
+    end do
+  end subroutine delta_initial_wf
 
 
   SUBROUTINE set_initial_wf( indx, wf )
