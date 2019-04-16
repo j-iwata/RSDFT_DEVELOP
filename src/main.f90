@@ -140,6 +140,7 @@ PROGRAM Real_Space_DFT
   call read_lattice( aa_obj )
 
   call construct_lattice( aa_obj )
+  call backup_aa_lattice( aa_obj )
 
 ! --- coordinate transformation of atomic positions ---
 
@@ -157,11 +158,13 @@ PROGRAM Real_Space_DFT
 
 ! --- Real-Space Grid (MOL) ( lattice is defiend by MOLGRID ) ---
 
-  if ( SYStype /= 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
+  if ( SYStype /= 0 ) then
+     call Init_Rgrid( SYStype, Md, aa_obj )
+     call construct_lattice( aa_obj )
+  end if
 
 ! --- Lattice ---
 
-  call construct_lattice( aa_obj )
   call backup_aa_lattice( aa_obj )
 
   call init_aa( aa_obj )
