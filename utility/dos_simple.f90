@@ -185,7 +185,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: u
     integer :: n,k,i,j,s
-    real(8) :: dummy(3)
+    real(8) :: dummy(6)
     character(11) :: cbuf
 
     rewind u
