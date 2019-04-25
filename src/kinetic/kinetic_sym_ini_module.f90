@@ -22,11 +22,12 @@ MODULE kinetic_sym_ini_module
 CONTAINS
 
 
-  SUBROUTINE init_kinetic_sym( indx, aa )
+  SUBROUTINE init_kinetic_sym( indx, aa, ierr )
 
     implicit none
     character(*),intent(IN) :: indx
     real(8),intent(IN) :: aa(3,3)
+    integer,optional,intent(OUT) :: ierr 
     integer :: i,k
 
     call write_border( 0, " init_kinetic_sym(start)" )
@@ -41,6 +42,7 @@ CONTAINS
     case default
        write(*,*) "indx= ",indx
        call write_string( "this lattice is undefined(init_kinetic_sym)" )
+       if ( present(ierr) ) ierr=1
        return
     end select
 
@@ -50,6 +52,8 @@ CONTAINS
     do k=1,Nbzsm
        call construct_kinetic_sym( kgroup_mat(:,:,1:kgroup_g(k),k), k )
     end do
+
+    if ( present(ierr) ) ierr=0
 
     call write_border( 0, " init_kinetic_sym(end)" )
 

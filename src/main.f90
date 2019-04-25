@@ -268,7 +268,10 @@ PROGRAM Real_Space_DFT
 
   call init_kinetic( aa_obj%LatticeVector, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d )
 
-  if ( kin_select == 2 ) call init_kinetic_sym( lattice_index, aa_obj%LatticeVector )
+  if ( kin_select == 2 ) then
+     call init_kinetic_sym( lattice_index, aa_obj%LatticeVector, ierr )
+     if ( ierr /= 0 ) kin_select=0
+  end if
 
 ! --- ??? ---
 
