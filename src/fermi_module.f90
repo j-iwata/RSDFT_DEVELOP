@@ -104,7 +104,7 @@ CONTAINS
     real(8) :: ef1,ef2,ef,ef0,oc0,zne,Ntmp,ff,xx,d,Nele1,Nele2,sqrt_pi
     integer :: n,k,s,ichk_conv,loop,MBN,MBZ,MSP
     real(8),parameter :: eps=1.0d-12, e_mergin=0.0004d0
-    integer,parameter :: max_loop=10000
+    integer,parameter :: max_loop=1000000
     logical :: disp_switch
 
     call write_border( 1, " calc_fermi_mp(start)" )
