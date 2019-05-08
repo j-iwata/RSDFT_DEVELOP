@@ -356,9 +356,9 @@ CONTAINS
           end if
        end if
 
-       if ( ckey(1:9) == "<PP_MESH " ) then
+       if ( ckey(1:8) == "<PP_MESH" ) then
 
-          write(*,*) ckey(1:9)
+          write(*,*) ckey(1:8)
 
           do i=1,max_loop
              read(g,'(a)') cbuf
@@ -601,13 +601,14 @@ CONTAINS
     implicit none
     character(*),intent(IN) :: buf, str
     integer,intent(OUT) :: n
-    integer :: i, l, len_str
+    integer :: i, j, l, len_str
     character(8) :: str_out
     l = index( buf, str )
     if ( l /= 0 ) then
        len_str = len_trim( adjustl(str) )
        i=l+len_str+1
-       str_out = buf(i:i)
+       j=index( buf(i:), '"' ) + i - 2
+       str_out = buf(i:j)
        read(str_out,*) n
     end if
   END SUBROUTINE get_num_from_string
