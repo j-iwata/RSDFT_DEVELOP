@@ -73,6 +73,7 @@ INCLUDE_DIR := -I$(DIR_MD) $(INCLUDE_DIR)
 .PHONY: all clean
 
 all :
+	./git_info.sh
 	@$(MAKE) lda0
 	cd $(DIR0) ; $(MAKE)
 	cd $(DIR1) ; $(MAKE)

@@ -47,6 +47,8 @@ CONTAINS
     write(unit,'(a70)') repeat("-",70)
     write(unit,*) "RSDFT ver.1.0.0"
 
+    include 'git_info.inc'
+
     write(unit,'(a60," header_info")') repeat("-",60)
 
     call date_and_time(DATE=date_start,TIME=time_start)
