@@ -714,9 +714,10 @@ CONTAINS
           do ir=1,3
              call mpi_alltoallv(utmp2(1,ir),ir_grid,id_grid,TYPE_MAIN &
                   ,wtmp4(nn1,0,myrank_b,ir),icnt,idis,TYPE_MAIN,comm_grid,ierr)
-             call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g, &
-                  TYPE_MAIN,wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN, &
-                  comm_band,ierr)
+             !call mpi_allgather(wtmp4(nn1,0,myrank_b,ir),ML0*nprocs_g, &
+             !     TYPE_MAIN,wtmp4(nn1,0,0,ir),ML0*nprocs_g,TYPE_MAIN, &
+             !     comm_band,ierr)
+             call rsdft_allgather( wtmp4(:,:,myrank_b,ir), wtmp4(:,:,:,ir), comm_band )
              lma1=lma-(myrank_b*nprocs_g+myrank_g)-1
              do j=0,nprocs_b-1
              do i=0,nprocs_g-1
