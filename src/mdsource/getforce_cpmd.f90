@@ -40,7 +40,7 @@ SUBROUTINE getforce_cpmd( ltime )
   c=1.0d0/(2.0d0*acos(-1.0d0))
   aa_atom = matmul(transpose(bb),Rion)*c
   call shift_aa_coordinates_atom( aa_atom )
-  Force   = 0.0d0
+  !Force   = 0.0d0
 
   if ( ltime ) call watch(ctime_force(0),etime_force(0))
 

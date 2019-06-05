@@ -341,6 +341,7 @@ CONTAINS
     implicit none
     real(8),intent(INOUT) :: aa_atom(:,:)
     integer :: i,j
+!$OMP parallel do private( i,j )
     do i=1,size(aa_atom,2)
        do j=1,3
 10        if ( aa_atom(j,i) < 0.0d0 ) then
@@ -354,6 +355,7 @@ CONTAINS
           end if
        end do
     end do
+!$OMP end parallel do
   END SUBROUTINE shift_aa_coordinates_atom
 
 

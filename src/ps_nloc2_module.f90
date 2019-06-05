@@ -700,7 +700,7 @@ CONTAINS
           i1=JJ_MAP(1,i,lma)
           i2=JJ_MAP(2,i,lma)
           i3=JJ_MAP(3,i,lma)
-          if ( icheck_tmp4(i1,i2,i3) == 0 .and. uV(i,lma) /= 0.0d0 ) then
+          if ( icheck_tmp4(i1,i2,i3) == 0 .and. abs(uV(i,lma)) > 1.0d-14 ) then
              j=j+1
              icheck_tmp4(i1,i2,i3)=j
           end if
@@ -1180,7 +1180,7 @@ CONTAINS
              u3=uV(i,lma)
              kr=d1*(c1*i1+m1)+d2*(c2*i2+m2)+d3*(c3*i3+m3)
              ztmp0=dcmplx(cos(kr),-sin(kr))*u3
-             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
+             if ( j3 == 0 .and. abs(u3) > 1.0d-14 ) then
                 j=j+1
                 icheck_tmp4(i1,i2,i3)=j
                 uVk(j,lma,k) = ztmp0
@@ -1266,7 +1266,7 @@ CONTAINS
              x=(c1*i1+m1)*aa(1,1)+(c2*i2+m2)*aa(1,2)+(c3*i3+m3)*aa(1,3)
              y=(c1*i1+m1)*aa(2,1)+(c2*i2+m2)*aa(2,2)+(c3*i3+m3)*aa(2,3)
              z=(c1*i1+m1)*aa(3,1)+(c2*i2+m2)*aa(3,2)+(c3*i3+m3)*aa(3,3)
-             if ( j3 == 0 .and. u3 /= 0.0d0 ) then
+             if ( j3 == 0 .and. abs(u3) > 1.0d-14 ) then
                 j=j+1
                 icheck_tmp4(i1,i2,i3)=j
                 xVk(j,lma,k)=x*ztmp0
