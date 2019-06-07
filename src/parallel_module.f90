@@ -22,6 +22,7 @@ MODULE parallel_module
            ,disp_switch_parallel
   PUBLIC :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
   public :: get_range_parallel
+  public :: construct_id_ir_parallel
 
 #ifdef _NO_MPI_COMPLEX16_
   integer,parameter,public :: RSDFT_MPI_COMPLEX16 = MPI_DOUBLE_COMPLEX
@@ -573,6 +574,33 @@ CONTAINS
        n2=n1+ir_spin(myrank_s)-1
     end select
   end subroutine get_range_parallel
+
+
+  subroutine construct_id_ir_parallel( id, ir, nn, comm_in, n0, n1 )
+    implicit none
+    integer,allocatable,intent(inout) :: id(:), ir(:)
+    integer,intent(in) :: nn
+    integer,optional,intent(in) :: comm_in
+    integer,optional,intent(out) :: n0, n1
+    integer :: np, ierr, i, j, comm, irank
+    comm=MPI_COMM_WORLD
+    if ( present(comm_in) ) comm=comm_in
+    call MPI_Comm_size( comm, np, ierr )
+    allocate( id(0:np-1) ); id=0
+    allocate( ir(0:np-1) ); ir=0
+    do i=0,nn-1
+       j=mod( i, np )
+       ir(j)=ir(j)+1
+    end do
+    do j=0,np-1
+       id(j) = sum( ir(0:j) ) - ir(j)
+    end do
+    if ( present(n0) .or. present(n1) ) then
+       call MPI_Comm_rank( comm, irank, ierr )
+       if ( present(n0) ) n0=id(irank)+1
+       if ( present(n1) ) n1=id(irank)+ir(irank)
+    end if
+  end subroutine construct_id_ir_parallel
 
 
 END MODULE parallel_module

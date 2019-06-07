@@ -150,9 +150,21 @@ CONTAINS
   END SUBROUTINE construct_NMGL_Ggrid
 
 
-  SUBROUTINE construct_Ggrid(itype)
+  subroutine construct_Ggrid( itype, LLG_out )
     implicit none
-    integer,intent(IN) :: itype
+    integer,intent(in) :: itype
+    integer,allocatable,optional,intent(inout) :: LLG_out(:,:)
+    if ( present(LLG_out) ) then
+       call construct_Ggrid_sub( itype, LLG_out )
+    else
+       call construct_Ggrid_sub( itype, LLG )
+    end if
+  end subroutine construct_Ggrid
+
+  subroutine construct_Ggrid_sub( itype, LLG )
+    implicit none
+    integer,intent(in) :: itype
+    integer,allocatable,intent(inout) :: LLG(:,:)
     integer :: i1,i2,i3,n
     real(8) :: s
     select case(itype)
@@ -218,7 +230,7 @@ CONTAINS
        end do
        end do
     end select
-  END SUBROUTINE construct_Ggrid
+  end subroutine construct_Ggrid_sub
 
 
   SUBROUTINE destruct_Ggrid
