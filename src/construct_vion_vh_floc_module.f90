@@ -404,11 +404,11 @@ contains
 
     !call watchb( ttmp, ttt(:,13), barrier='on' )
 
-    if ( myrank == 0 ) then
-       do i=1,size(ttt,2)
-          write(*,'(1x,"vvf2(",i2,")",2f10.5)') i,ttt(:,i)
-       end do
-    end if
+    !if ( myrank == 0 ) then
+    !   do i=1,size(ttt,2)
+    !      write(*,'(1x,"vvf2(",i2,")",2f10.5)') i,ttt(:,i)
+    !   end do
+    !end if
 
     !call write_border( 1, " construct_vion_vh_floc_2(end)" )
 
