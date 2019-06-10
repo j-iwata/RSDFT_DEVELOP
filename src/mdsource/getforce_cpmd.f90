@@ -30,7 +30,7 @@ SUBROUTINE getforce_cpmd( ltime )
 
   use wf_module, only: unk, occ
   use rsdft_mpi_module
-  use construct_vion_vh_floc_module, only: construct_vion_vh_floc
+  use construct_vion_vh_floc_module, only: construct_vion_vh_floc_2
   use nonlocal_module, only: calc_force_nonlocal
   use force_ewald_module, only: calc_force_ewald
 
@@ -38,7 +38,7 @@ SUBROUTINE getforce_cpmd( ltime )
 
   logical,intent(IN) :: ltime
   integer :: i,s
-  real(8) :: ctime_force(0:9),etime_force(0:9),c
+  real(8) :: ctime_force(0:9),etime_force(0:9),c,ttmp(2),ttt(2,2)
   real(8),allocatable :: work2(:,:)
 
   c=1.0d0/(2.0d0*acos(-1.0d0))
@@ -54,7 +54,11 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( flag_pcc_0 ) then
      call construct_strfac
+#ifdef _FFTE_
     !call construct_ps_local
+#else
+     call construct_ps_local
+#endif
      call construct_ps_pcc
      call destruct_strfac
   end if
@@ -82,8 +86,12 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(4),etime_force(4))
 
+#ifdef _FFTE_
+  call construct_vion_vh_floc_2( rho, Vion, Vh, Force, E_hartree )
  !call calc_hartree(ML_0,ML_1,MSP_1-MSP_0+1,rho(ML_0,MSP_0))
-  call construct_vion_vh_floc( rho, Vion, Vh, Force, E_hartree )
+#else
+  call calc_hartree(ML_0,ML_1,MSP_1-MSP_0+1,rho(ML_0,MSP_0))
+#endif
 
   if ( ltime ) call watch(ctime_force(5),etime_force(5))
 
@@ -99,14 +107,21 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(7),etime_force(7))
 
+#ifdef _FFTE_
   !call calc_force(Natom,Force)
-
   allocate( work2(3,Natom) ); work2=0.0d0
+  !call watchb( ttmp, barrier='on' ); ttt=0.0d0
   call calc_force_nonlocal( Natom, work2 )
+  !call watchb( ttmp, ttt(:,1), barrier='on' )
   Force=Force+work2
+  !call watchb( ttmp, barrier='on' )
   call calc_force_ewald( Natom, work2 )
+  !call watchb( ttmp, ttt(:,2), barrier='on' )
   Force=Force+work2
   deallocate( work2 )
+#else
+  call calc_force( Natom, Force )
+#endif
 
   if ( ltime ) call watch(ctime_force(8),etime_force(8))
 
@@ -118,6 +133,7 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime .and. myrank==0 ) then
      write(17,'(9f10.5)') (etime_force(i+1)-etime_force(i),i=0,8)
+     !write(*,'("fnloc,fewld",4f10.5)') ttt
   endif
 
   return
