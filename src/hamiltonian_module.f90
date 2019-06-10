@@ -54,7 +54,7 @@ CONTAINS
 
 ! --- nonlocal potential ---
 
-    call op_nonlocal( tpsi, htpsi, k, s )
+    call op_nonlocal( tpsi, htpsi, k, s, ib1, ib2 )
 
 !$OMP barrier
 

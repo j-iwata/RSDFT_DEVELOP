@@ -40,6 +40,16 @@ MODULE ps_nloc2_variables
   real(8),allocatable :: Dij00(:)
   real(8),allocatable :: Kij00(:)
 
+  public :: backup_uVunk_ps_nloc2
+  public :: restore_uVunk_ps_nloc2
+  public :: prep_backup_uVunk_ps_nloc2
+  logical,public :: flag_backup_uVunk_ps_nloc2=.false.
+#ifdef _DRSDFT_
+  real(8),allocatable,private :: uVunk_backup(:,:,:,:)
+#else
+  complex(8),allocatable,private :: uVunk_backup(:,:,:,:)
+#endif
+
 CONTAINS
 
   SUBROUTINE allocate_ps_nloc2(MB_d)
@@ -72,5 +82,41 @@ CONTAINS
       write(5300+myrank,'(2I7)') nzlma,iorbmap(i)
     enddo
   END SUBROUTINE checkMapsBeforeForce
+
+
+  subroutine prep_backup_uVunk_ps_nloc2( mb0,mb1,mk0,mk1,ms0,ms1 )
+    implicit none
+    integer,intent(in) :: mb0,mb1,mk0,mk1,ms0,ms1
+    if ( allocated(uVunk_backup) ) deallocate(uVunk_backup)
+    allocate( uVunk_backup(nzlma,mb0:mb1,mk0:mk1,ms0:ms1) )
+    uVunk_backup =zero
+    flag_backup_uVunk_ps_nloc2 = .true.
+  end subroutine prep_backup_uVunk_ps_nloc2
+
+
+  subroutine backup_uVunk_ps_nloc2( wtmp5 )
+    implicit none
+#ifdef _DRSDFT_
+    real(8),intent(in) :: wtmp5(0:,:,:,:,:)
+#else
+    complex(8),intent(in) :: wtmp5(0:,:,:,:,:)
+#endif
+    if ( .not.flag_backup_uVunk_ps_nloc2 ) return
+    uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
+  end subroutine backup_uVunk_ps_nloc2
+
+
+  subroutine restore_uVunk_ps_nloc2( uVunk_out, mb0,mb1,k,s )
+    implicit none
+#ifdef _DRSDFT_
+    real(8),intent(out) :: uVunk_out(:,:)
+#else
+    complex(8),intent(out) :: uVunk_out(:,:)
+#endif
+    integer,intent(in) :: mb0,mb1,k,s
+    if ( .not.flag_backup_uVunk_ps_nloc2 ) return
+    uVunk_out(:,:) = uVunk_backup(:,mb0:mb1,k,s)
+  end subroutine restore_uVunk_ps_nloc2
+
 
 END MODULE ps_nloc2_variables

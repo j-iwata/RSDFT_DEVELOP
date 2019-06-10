@@ -133,7 +133,7 @@ CONTAINS
   END SUBROUTINE init_op_ps_nloc2_hp
 
 
-  SUBROUTINE op_ps_nloc2_hp( tpsi, htpsi, k_in )
+  SUBROUTINE op_ps_nloc2_hp( tpsi, htpsi, k_in, s_in, ib1, ib2 )
     implicit none
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(:,:)
@@ -144,19 +144,26 @@ CONTAINS
     complex(8),intent(OUT) :: htpsi(:,:)
     complex(8) :: tmp_sum
 #endif
-    integer,optional,intent(IN) :: k_in
-    integer :: i,ib,i1,i2,i3,j,lma,m,ML0,n,nb,k,i0
+    integer,optional,intent(IN) :: k_in, s_in, ib1, ib2
+    integer :: i,ib,i1,i2,i3,j,lma,m,ML0,n,nb,k,s,i0
     integer :: ierr,nreq
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
     real(8) :: c, ttmp(2), ttmp1(2)
 
     if ( Mlma <= 0 ) return
 
+    k = 1 ; if ( present(k_in) ) k=k_in
+    s = 1 ; if ( present(s_in) ) s=s_in
+
+    if ( flag_backup_uVunk_ps_nloc2 ) then
+       call op_ps_nloc2_with_restore_uVunk( htpsi, k, s, ib1, ib2 )
+       return
+    end if
+
     if ( .not.init_flag ) stop "@op_ps_nloc2_hp(init_flag=.false.)"
 
     nb = size( tpsi, 2 )
     i0 = Igrid(1,0)
-    k  = 1 ; if ( present(k_in) ) k=k_in
 
     !call watchb_omp( ttmp )
 
@@ -268,6 +275,37 @@ CONTAINS
     return 
       
   END SUBROUTINE op_ps_nloc2_hp
+
+
+  subroutine op_ps_nloc2_with_restore_uVunk( htpsi,k,s,ib1,ib2 )
+    implicit none
+#ifdef _DRSDFT_
+    real(8),intent(out) :: htpsi(:,:)
+#else
+    complex(8),intent(out) :: htpsi(:,:)
+#endif
+    integer,intent(in) :: k, s, ib1, ib2
+    integer :: i,j,ib,nb,lma,i0
+
+    call write_border( 1, " op_ps_nloc2_with_restore_uVUnk(start)" )
+
+    nb = size( htpsi, 2 )
+    i0 = Igrid(1,0)
+
+    call restore_uVunk_ps_nloc2( uVunk(:,1:nb),ib1,ib2,k,s )
+
+    do ib=1,nb
+       do lma=1,nzlma
+          do j=ompMJJ1(lma,ompmyrank),ompMJJ2(lma,ompmyrank)
+             i=JJP(j,lma)-i0+1
+             htpsi(i,ib)=htpsi(i,ib)+uVk(j,lma,k)*uVunk(lma,ib)
+          end do
+       end do
+    end do
+
+    call write_border( 1, " op_ps_nloc2_with_restore_uVUnk(end)" )
+
+  end subroutine op_ps_nloc2_with_restore_uVunk
 
 
   SUBROUTINE op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)

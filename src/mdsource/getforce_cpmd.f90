@@ -15,7 +15,7 @@ SUBROUTINE getforce_cpmd( ltime )
   use ps_nloc3_module
   use ps_nloc_mr_module
   use localpot_module, only: Vloc
-  use array_bound_module, only: MSP_0,MSP_1,MB_0,MB_1,ML_0,ML_1
+  use array_bound_module, only: MSP_0,MSP_1,MB_0,MB_1,ML_0,ML_1,MBZ_0,MBZ_1
   use density_module, only: rho, calc_density_2
   use xc_module
   use hartree_variables, only: Vh, E_hartree
@@ -33,6 +33,7 @@ SUBROUTINE getforce_cpmd( ltime )
   use construct_vion_vh_floc_module, only: construct_vion_vh_floc_2
   use nonlocal_module, only: calc_force_nonlocal
   use force_ewald_module, only: calc_force_ewald
+  use ps_nloc2_variables, only: prep_backup_uVunk_ps_nloc2
 
   implicit none
 
@@ -40,6 +41,7 @@ SUBROUTINE getforce_cpmd( ltime )
   integer :: i,s
   real(8) :: ctime_force(0:9),etime_force(0:9),c,ttmp(2),ttt(2,2)
   real(8),allocatable :: work2(:,:)
+  logical,save :: first_time=.true.
 
   c=1.0d0/(2.0d0*acos(-1.0d0))
   aa_atom = matmul(transpose(bb),Rion)*c
@@ -106,6 +108,11 @@ SUBROUTINE getforce_cpmd( ltime )
   call getDij
 
   if ( ltime ) call watch(ctime_force(7),etime_force(7))
+
+  if ( first_time ) then
+     call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
+     first_time=.false.
+  end if
 
 #ifdef _FFTE_
   !call calc_force(Natom,Force)

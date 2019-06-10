@@ -16,15 +16,16 @@ SUBROUTINE getforce
   use cpmd_variables, only: Rion,Force,pmass,AMU,disp_switch &
        ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
   use scf_module
-  use array_bound_module, only: MB_0,MB_1
+  use array_bound_module, only: MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
   use parallel_module, only: end_mpi_parallel, disp_switch_parallel
-
   use ps_prepNzqr_g_module
   use ps_qrij_prep_module
+  use ps_nloc2_variables, only: prep_backup_uVunk_ps_nloc2
 
   implicit none
   real(8) :: c
   integer :: a,Diter1,ierr
+  logical,save :: first_time=.true.
 
   Diter1       = 100
   c            = 1.d0/(2.d0*acos(-1.d0))
@@ -65,6 +66,11 @@ SUBROUTINE getforce
 
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD
+
+  if ( first_time ) then
+     call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
+     first_time = .false.
+  end if
 
   Force(:,:)=0.0d0
   call calc_force(Natom,Force)
