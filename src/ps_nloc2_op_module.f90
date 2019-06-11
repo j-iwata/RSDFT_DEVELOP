@@ -287,7 +287,7 @@ CONTAINS
     integer,intent(in) :: k, s, ib1, ib2
     integer :: i,j,ib,nb,lma,i0
 
-    call write_border( 1, " op_ps_nloc2_with_restore_uVUnk(start)" )
+!    call write_border( 1, " op_ps_nloc2_with_restore_uVUnk(start)" )
 
     nb = size( htpsi, 2 )
     i0 = Igrid(1,0)
@@ -303,7 +303,7 @@ CONTAINS
        end do
     end do
 
-    call write_border( 1, " op_ps_nloc2_with_restore_uVUnk(end)" )
+!    call write_border( 1, " op_ps_nloc2_with_restore_uVUnk(end)" )
 
   end subroutine op_ps_nloc2_with_restore_uVunk
 

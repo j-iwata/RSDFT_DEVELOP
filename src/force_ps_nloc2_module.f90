@@ -555,11 +555,13 @@ contains
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
+!$OMP do schedule(dynamic) private( n,c )
     do n=MB_0 ,MB_1
        if ( occ(n,k,s) == 0.0d0 ) cycle
        c=1.0d0/(-2.0d0*occ(n,k,s)*dV)
        wtmp5(0,:,n,k,s)=c*wtmp5(0,:,n,k,s)
     end do
+!$OMP end do
     end do
     end do
     call backup_uVunk_ps_nloc2( wtmp5 )

@@ -102,7 +102,9 @@ CONTAINS
     complex(8),intent(in) :: wtmp5(0:,:,:,:,:)
 #endif
     if ( .not.flag_backup_uVunk_ps_nloc2 ) return
+!$OMP workshare
     uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
+!$OMP end workshare
   end subroutine backup_uVunk_ps_nloc2
 
 
@@ -115,7 +117,9 @@ CONTAINS
 #endif
     integer,intent(in) :: mb0,mb1,k,s
     if ( .not.flag_backup_uVunk_ps_nloc2 ) return
+!$OMP workshare
     uVunk_out(:,:) = uVunk_backup(:,mb0:mb1,k,s)
+!$OMP end workshare
   end subroutine restore_uVunk_ps_nloc2
 
 
