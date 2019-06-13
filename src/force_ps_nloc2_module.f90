@@ -4,7 +4,7 @@ module force_ps_nloc2_module
   use ps_nloc2_variables, only: nzlma, MMJJ, mmap, lmap, amap &
        , iorbmap, JJ_MAP, MJJ_MAP, JJP, MJJ, uVk, nrlma_xyz, iuV, lma_nsend &
        , num_2_rank, recvmap, sendmap, sbufnl, rbufnl, Mlma, TYPE_MAIN, zero &
-       , backup_uVunk_ps_nloc2
+       , backup_uVunk_ps_nloc2, flag_backup_uVunk_ps_nloc2
   use var_ps_member, only: ps_type, norb, lo, rad1, dviod, ippform, NRps
   use pseudopot_module, only: pselect
   use parallel_module, only: MB_d, comm_grid, myrank
@@ -553,18 +553,20 @@ contains
 
 ! ---
 
-    do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
+    if ( flag_backup_uVunk_ps_nloc2 ) then
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
 !$OMP do schedule(dynamic) private( n,c )
-    do n=MB_0 ,MB_1
-       if ( occ(n,k,s) == 0.0d0 ) cycle
-       c=1.0d0/(-2.0d0*occ(n,k,s)*dV)
-       wtmp5(0,:,n,k,s)=c*wtmp5(0,:,n,k,s)
-    end do
+       do n=MB_0 ,MB_1
+          if ( occ(n,k,s) == 0.0d0 ) cycle
+          c=1.0d0/(-2.0d0*occ(n,k,s)*dV)
+          wtmp5(0,:,n,k,s)=c*wtmp5(0,:,n,k,s)
+       end do
 !$OMP end do
-    end do
-    end do
-    call backup_uVunk_ps_nloc2( wtmp5 )
+       end do
+       end do
+       call backup_uVunk_ps_nloc2( wtmp5 )
+    end if
 
 ! ---
 
