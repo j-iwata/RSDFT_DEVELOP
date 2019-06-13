@@ -41,7 +41,6 @@ SUBROUTINE getforce_cpmd( ltime )
   integer :: i,s
   real(8) :: ctime_force(0:9),etime_force(0:9),c,ttmp(2),ttt(2,2)
   real(8),allocatable :: work2(:,:)
-  logical,save :: first_time=.true.
 
   c=1.0d0/(2.0d0*acos(-1.0d0))
   aa_atom = matmul(transpose(bb),Rion)*c
@@ -109,10 +108,7 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(7),etime_force(7))
 
-  if ( first_time ) then
-     call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
-     first_time=.false.
-  end if
+  call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
 
 #ifdef _FFTE_
   !call calc_force(Natom,Force)

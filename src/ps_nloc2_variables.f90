@@ -87,10 +87,13 @@ CONTAINS
   subroutine prep_backup_uVunk_ps_nloc2( mb0,mb1,mk0,mk1,ms0,ms1 )
     implicit none
     integer,intent(in) :: mb0,mb1,mk0,mk1,ms0,ms1
-    if ( allocated(uVunk_backup) ) deallocate(uVunk_backup)
+    flag_backup_uVunk_ps_nloc2=.true.
+    if ( allocated(uVunk_backup) ) then
+       if ( size(uVunk_backup,1) == nzlma ) return
+       deallocate(uVunk_backup)
+    end if
     allocate( uVunk_backup(nzlma,mb0:mb1,mk0:mk1,ms0:ms1) )
     uVunk_backup =zero
-    flag_backup_uVunk_ps_nloc2 = .true.
   end subroutine prep_backup_uVunk_ps_nloc2
 
 

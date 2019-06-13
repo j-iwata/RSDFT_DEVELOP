@@ -25,7 +25,6 @@ SUBROUTINE getforce
   implicit none
   real(8) :: c
   integer :: a,Diter1,ierr
-  logical,save :: first_time=.true.
 
   Diter1       = 100
   c            = 1.d0/(2.d0*acos(-1.d0))
@@ -67,10 +66,7 @@ SUBROUTINE getforce
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD
 
-  if ( first_time ) then
-     call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
-     first_time = .false.
-  end if
+  call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
 
   Force(:,:)=0.0d0
   call calc_force(Natom,Force)
