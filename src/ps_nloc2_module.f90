@@ -30,12 +30,13 @@ MODULE ps_nloc2_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: prep_ps_nloc2 &
+  private
+  public :: prep_ps_nloc2 &
            ,calc_force_ps_nloc2 &
            ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
            ,prep_ps_nloc2_esm
-  PUBLIC :: prepMapsTmp
+  public :: prepMapsTmp
+  public :: construct_lma_map_ps_nloc2
 
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)
@@ -2621,5 +2622,30 @@ CONTAINS
     deallocate( icheck_tmp4 )
 
   END SUBROUTINE prep_uvk_ps_nloc2_esm
+
+
+  subroutine construct_lma_map_ps_nloc2( map )
+    implicit none
+    integer,intent(inout),allocatable :: map(:)
+    integer :: a, ik, iorb, l, m, lma, i
+    allocate( map(nzlma) ); map=0
+    lma=0
+    do a=1,Natom
+       ik=ki_atom(a)
+    do iorb=1,norb(ik)
+       l=lo(iorb,ik)
+    do m=-l,l
+       lma=lma+1
+       do i=1,nzlma
+          if ( amap(i)==a .and. iorbmap(i)==iorb .and. mmap(i)==m ) then
+             map(i)=lma
+             exit
+          end if
+       end do
+    end do ! m
+    end do ! iorb
+    end do ! a
+  end subroutine construct_lma_map_ps_nloc2
+
 
 END MODULE ps_nloc2_module

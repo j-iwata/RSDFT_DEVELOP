@@ -21,6 +21,7 @@ MODULE parallel_module
            ,start_mpi_parallel,end_mpi_parallel &
            ,disp_switch_parallel
   PUBLIC :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
+  public :: get_range_parallel
 
 #ifdef _NO_MPI_COMPLEX16_
   integer,parameter,public :: RSDFT_MPI_COMPLEX16 = MPI_DOUBLE_COMPLEX
@@ -551,6 +552,27 @@ CONTAINS
     call write_border( 80, " init_parallel(end)" )
 
   END SUBROUTINE init_parallel
+
+
+  subroutine get_range_parallel( n1, n2, indx )
+    implicit none
+    integer,intent(out) :: n1,n2
+    character(*),intent(in) :: indx
+    select case( indx )
+    case( 'g','grid' )
+       n1=id_grid(myrank_g)+1
+       n2=n1+ir_grid(myrank_g)-1
+    case( 'b','band' )
+       n1=id_band(myrank_b)+1
+       n2=n1+ir_band(myrank_b)-1
+    case( 'k','bzsm' )
+       n1=id_bzsm(myrank_k)+1
+       n2=n1+ir_bzsm(myrank_k)-1
+    case( 's','spin' )
+       n1=id_spin(myrank_s)+1
+       n2=n1+ir_spin(myrank_s)-1
+    end select
+  end subroutine get_range_parallel
 
 
 END MODULE parallel_module
