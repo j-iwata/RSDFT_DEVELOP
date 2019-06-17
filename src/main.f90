@@ -204,7 +204,7 @@ PROGRAM Real_Space_DFT
 
 ! --- Test ( Egg-Box Effect ) ---
 
-  if ( iswitch_test == 2 ) then
+  if ( iswitch_test == 10 ) then
      aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/aa_obj%LatticeConstant
      if ( disp_switch ) then
         write(*,*) "--- EGG BOX TEST !!! ---"
@@ -393,6 +393,13 @@ PROGRAM Real_Space_DFT
      Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
   end do
 
+!-------------------- Force Test
+
+  if ( iswitch_test == 2 ) then
+     call test_force( SYStype, .false. )
+     goto 900
+  end if
+
 !-------------------- Real-Time Test
 
   if ( iswitch_test == 3 ) then
@@ -500,7 +507,7 @@ PROGRAM Real_Space_DFT
 !
   ! begin MIZUHO-IR for cellopt
   if( iswitch_opt == -1 ) then
-     call test_force(SYStype)
+     call test_force( SYStype, DISP_SWITCH )
   end if
 
   if( iswitch_latopt == -1 ) then

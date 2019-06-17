@@ -29,7 +29,7 @@ CONTAINS
     integer :: i, j, n1, n2, nrhs, niter, ierr
     integer :: loop,ii
     real(8), allocatable :: sums(:)
-    real(8) :: t0, t1, t2, t3, t4, t5
+    real(8) :: t0, t1, t2, t3, t4, t5, ttmp(2), ttt(2,0:4)
     logical,save :: flag_allocate=.false.
 
     n1  = idisp(myrank)+1
@@ -40,14 +40,32 @@ CONTAINS
        flag_allocate=.true.
     end if
 
+    nrhs=1
+
     do ii = 0,10
 
     time_hmlt(:,:)=0.0d0
 !    time_kine(:,:)=0.0d0
 !    time_nlpp(:,:)=0.0d0
 
-    nrhs = 2**ii
-    if ( nrhs > MB_d ) exit
+    if ( (ii>0.and.nrhs>=MB) .or. nrhs>MB_d ) then
+       exit
+    else if ( ii == 0 ) then
+       nrhs=1
+    else if ( mod(MB,nrhs*2) == 0 ) then
+       nrhs=nrhs*2
+    else if ( mod(MB,nrhs*3) == 0 ) then
+       nrhs=nrhs*3
+    else if ( mod(MB,nrhs*5) == 0 ) then
+       nrhs=nrhs*5
+    else if ( mod(MB,nrhs*7) == 0 ) then
+       nrhs=nrhs*7
+    else if ( MB_d >= MB ) then
+       nrhs=MB
+    end if
+
+!    nrhs = 2**ii
+!    if ( nrhs > MB_d ) exit
 
     niter = MB/nrhs
 
@@ -61,7 +79,8 @@ CONTAINS
        write(*,*) '------------ Start test_hpsi2 ------------'
     end if
 
-    t0 = mpi_wtime()
+    !t0 = mpi_wtime()
+    call watchb( ttmp, barrier="on" ); ttt=0.0d0 
 
     do loop=1,nloop
        do i = 1, niter
@@ -69,12 +88,14 @@ CONTAINS
        end do
     end do
 
-    t1 = mpi_wtime()
+    !t1 = mpi_wtime()
+    call watchb( ttmp, ttt(:,0), barrier="on" )
 
     time_kine(:,:)=0.0d0
     time_nlpp(:,:)=0.0d0
 
-    t2 = mpi_wtime()
+    !t2 = mpi_wtime()
+    call watchb( ttmp, barrier="on" )
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
@@ -84,7 +105,8 @@ CONTAINS
     end do
 !$OMP end parallel
 
-    t3 = mpi_wtime()
+    !t3 = mpi_wtime()
+    call watchb( ttmp, ttt(:,1), barrier="on" )
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
@@ -94,7 +116,8 @@ CONTAINS
     end do
 !$OMP end parallel
 
-    t4 = mpi_wtime()
+    !t4 = mpi_wtime()
+    call watchb( ttmp, ttt(:,2), barrier="on" )
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
@@ -104,7 +127,8 @@ CONTAINS
     end do
 !$OMP end parallel
 
-    t5 = mpi_wtime()
+    !t5 = mpi_wtime()
+    call watchb( ttmp, ttt(:,3), barrier="on" )
 
     sums(:) = 0d0
     do i = 1, nrhs
@@ -119,22 +143,26 @@ CONTAINS
 
     call rsdft_allreduce_sum( sums(1:nrhs), comm_grid )
 
+    ttt(1,4) = sum( ttt(1,1:3) )
+    ttt(2,4) = sum( ttt(2,1:3) )
+
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,*) 'nloop =',nloop
        write(*,*) 'nrhs = ', nrhs
        write(*,*) 'niter = ', niter
-       write(*,*) 'time(tot) = ', t1 - t0
-       call write_watchb( time_hmlt, 4, time_hmlt_indx )
-       write(*,*) 'time(kin) = ', t3 - t2
-       call write_watchb( time_kine, 11, time_kine_indx )
-       write(*,*) 'time(loc) = ', t4 - t3
-       write(*,*) 'time(nlc) = ', t5 - t4
-       write(*,*) 'time(tot) = ', t5 - t2
-       call write_watchb( time_nlpp, 3, time_nlpp_indx )
-       write(*,*) 'check sum'
-       do i = 1, nrhs
-          write(*,*) sums(i),sum(sums)
-       end do
+       write(*,*) 'niter*nrhs =',niter*nrhs,MB
+       write(*,*) 'time(tot) = ', ttt(:,0) !t1 - t0
+       !call write_watchb( time_hmlt, 4, time_hmlt_indx )
+       write(*,*) 'time(kin) = ', ttt(:,1) !t3 - t2
+       !call write_watchb( time_kine, 11, time_kine_indx )
+       write(*,*) 'time(loc) = ', ttt(:,2) !t4 - t3
+       write(*,*) 'time(nlc) = ', ttt(:,3) !t5 - t4
+       write(*,*) 'time(tot) = ', ttt(:,4) !t5 - t2
+       !call write_watchb( time_nlpp, 3, time_nlpp_indx )
+       !write(*,*) 'check sum'
+       !do i = 1, nrhs
+       !   write(*,*) sums(i),sum(sums)
+       !end do
     end if
 
     deallocate( sums )

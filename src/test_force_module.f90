@@ -1,4 +1,4 @@
-MODULE test_force_module
+module test_force_module
 
   use watch_module
   use parallel_module
@@ -16,21 +16,25 @@ MODULE test_force_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: test_force
+  private
+  public :: test_force
 
   logical :: disp_switch
+  integer :: MB
 
-CONTAINS
+contains
 
 
-  SUBROUTINE test_force(systype)
+  subroutine test_force( systype, disp_switch_in )
     implicit none
-    integer,intent(IN) :: systype
+    integer,intent(in) :: systype
+    logical,intent(in) :: disp_switch_in
 
-    call write_border( 60, " test_force(start)" )
+    call write_border( 0, " test_force(start)" )
 
-    disp_switch = ( myrank == 0 )
+    disp_switch = disp_switch_in
+
+    MB = sum( ir_band )
 
     select case(systype)
     case default
@@ -41,23 +45,29 @@ CONTAINS
        call test_force_mol
     end select
 
-    call write_border( 60, " test_force(end)" )
+    call write_border( 0, " test_force(end)" )
 
-  END SUBROUTINE test_force
+  end subroutine test_force
 
 
-  SUBROUTINE test_force_sol
+  subroutine test_force_sol
     implicit none
     real(8),allocatable :: force(:,:),forcet(:,:)
-    integer :: i
+    integer :: i,ii,MBD_org
+    real(8) :: ttmp(2),ttt(2,0:9)
 
     allocate( force(3,Natom)  ) ; force=0.d0
     allocate( forcet(3,Natom) ) ; forcet=0.d0
 
-    call watcht(disp_switch,"floc",0)
+    call watchb( ttmp, barrier='on' ); ttt=0.0d0
+
     call calc_force_local_sol( Natom, force )
-    call watcht(disp_switch,"floc",1)
+
+    call watchb( ttmp, ttt(:,1), barrier='on' )
+
     forcet(:,:)=forcet(:,:)+force(:,:)
+
+    call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
        do i=1,Natom
@@ -66,9 +76,9 @@ CONTAINS
     end if
 
     if ( flag_pcc_0 ) then
-       call watcht(disp_switch,"fpcc",0)
+       call watchb( ttmp, barrier='on' )
        call calc_ps_pcc_force( Natom, force )
-       call watcht(disp_switch,"fpcc",1)
+       call watchb( ttmp, ttt(:,4), barrier='on' )
        forcet(:,:)=forcet(:,:)+force(:,:)
        if ( disp_switch ) then
           do i=1,Natom
@@ -77,10 +87,15 @@ CONTAINS
        end if
     end if
 
-    call watcht(disp_switch,"fewl",0)
+    call watchb( ttmp, barrier='on' )
+
     call calc_force_ewald(Natom,force)
-    call watcht(disp_switch,"fewl",1)
+
+    call watchb( ttmp, ttt(:,2), barrier='on' )
+
     forcet(:,:)=forcet(:,:)+force(:,:)
+
+    call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
        do i=1,Natom
@@ -88,22 +103,83 @@ CONTAINS
        end do
     end if
 
-    call watcht(disp_switch,"fnlc",0)
+! --- Nonlocal Part ---
+
+    ttt(:,3)=0.0d0
+
+    call watchb( ttmp, barrier='on' )
+
     call calc_force_nonlocal(Natom,force)
-    call watcht(disp_switch,"fnlc",1)
+
+    call watchb( ttmp, ttt(:,3), barrier='on' )
+    if ( myrank == 0 ) then
+       write(*,*) "MB_d / MB =",MB_d, " / ",MB
+       write(*,*) "time(nloc)=",ttt(:,3)
+    end if
+
+    MBD_org = MB_d
+
+    MB_d = 1
+
+    do ii=0,10
+
+    if ( (ii>0.and.MB_d>=MB) .or. MB_d>MBD_org ) then
+       exit
+    else if ( ii == 0 ) then
+       MB_d=1
+    else if ( mod(MB,MB_d*2) == 0 ) then
+       MB_d=MB_d*2
+    else if ( mod(MB,MB_d*3) == 0 ) then
+       MB_d=MB_d*3
+    else if ( mod(MB,MB_d*5) == 0 ) then
+       MB_d=MB_d*5
+    else if ( mod(MB,MB_d*7) == 0 ) then
+       MB_d=MB_d*7
+    else if ( MB_d >= MB ) then
+       MB_d=MB
+    end if
+
+    ttt(:,3)=0.0d0
+
+    call watchb( ttmp, barrier='on' )
+
+    call calc_force_nonlocal(Natom,force)
+
+    call watchb( ttmp, ttt(:,3), barrier='on' )
+
+    if ( myrank == 0 ) then
+       write(*,*) "MB_d / MB =",MB_d, " / ",MB
+       write(*,*) "time(nloc)=",ttt(:,3)
+    end if
+
+    end do ! ii
+
     forcet(:,:)=forcet(:,:)+force(:,:)
+
+    call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
        do i=1,Natom
           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
        end do
     end if
+
+    MB_d = MBD_org
+
+! ---
 
     if ( disp_switch ) then
        write(*,*) "ftot"
        do i=1,Natom
           write(*,'(1x,i6,3g20.10,i6)') i,forcet(1:3,i),myrank
        end do
+    end if
+
+    if ( myrank == 0 ) then
+       write(*,*) "time(loc) =",ttt(:,1)
+       write(*,*) "time(ewld)=",ttt(:,2)
+       if ( flag_pcc_0 ) write(*,*) "time(pcc) =",ttt(:,4)
+       write(*,*) "time(othr)=",ttt(:,5)
     end if
 
     deallocate( forcet )
