@@ -13,7 +13,7 @@ MODULE ps_pcc_module
   PUBLIC :: rhoc,flag_pcc_0,init_ps_pcc,construct_ps_pcc,cdcg
 
   real(8),allocatable :: rhoc(:)
-  logical :: flag_pcc_0
+  logical :: flag_pcc_0=.false.
   logical,allocatable :: flag_pcc(:)
   real(8),allocatable :: cdcg(:,:)
 

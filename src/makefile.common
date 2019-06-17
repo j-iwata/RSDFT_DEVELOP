@@ -119,6 +119,7 @@ MODS1 = \
        minimal_box_module.o\
        virtualH_module.o\
        pseudopot_module.o\
+       allel_module.o\
        func2gp_module.o\
        ps_nloc2_init_module.o\
        eion_mol_module.o\
