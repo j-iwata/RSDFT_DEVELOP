@@ -124,21 +124,26 @@ CONTAINS
              Mr(ielm)                 = ps(ielm)%Mr
              norb(ielm)               = ps(ielm)%norb
              Zps(ielm)                = ps(ielm)%Zps
+             if ( norb(ielm) /= 0 ) then
              anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
              inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
              Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
              NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
              lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
              no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+             end if
              vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
              cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
              cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
              rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
              rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
              parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
              nlf(ielm)                = ps(ielm)%nlf
+
+             if ( norb(ielm) /= 0 ) then
+
+             viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
              nrf(1:norb(ielm),ielm)   = ps(ielm)%nrf(1:norb(ielm))
 
              if ( pselect == 102 ) then !-----> uspp
@@ -166,6 +171,8 @@ CONTAINS
 
                 ps_type=1
                 anorm(:,ielm)=1.0d0
+
+             end if
 
              end if
 

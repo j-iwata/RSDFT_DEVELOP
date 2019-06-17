@@ -222,12 +222,14 @@ CONTAINS
     end if
 
     psp%Mr = max( ndlc,nsmpl,ndata ) + 1
-    psp%norb = max( 1, sum(nr(1:nl)) )
+    psp%norb = sum(nr(1:nl))
     call ps_allocate_ps1d( psp )
 
     psp%nlf      = nl
     psp%Zps      = znuc
     psp%Zelement = zatom
+
+    if ( psp%norb /= 0 ) then
 
     iorb=0
     do l=1,nl
@@ -256,6 +258,8 @@ CONTAINS
     multref = .false.
     if ( count(psp%anorm/=0.0d0) < count(psp%Dij/=0.0d0) ) multref = .true.
 
+    end if
+
     uspp = .false.
     if ( ippform(ielm) > 100 ) uspp = .true.
 
@@ -268,6 +272,8 @@ CONTAINS
     psp%rad(1) = 0.0d0
     psp%vql(1) = psp%vql(2)
 !
+    if ( psp%norb /= 0 ) then
+
     iorb=0
     do l=1,nl
        do j=1,nr(l)
@@ -280,6 +286,8 @@ CONTAINS
           psp%viod(1,iorb) = 0.0d0
        end do ! j
     end do ! l
+
+    end if
 
 ! dr/dx
     h=log( rr(ndlc)/rr(1) )/(ndlc-1)
@@ -338,17 +346,21 @@ CONTAINS
     write(*,*) "zatom                   =",psp%Zelement
     write(*,*) "# of radial mesh points =",psp%Mr
     write(*,*) "r(1),...,r(end)         =",psp%rad(1),psp%rad(psp%Mr)
+    if ( psp%norb /= 0 ) then
     write(*,*) "NRps                    =",psp%NRps(1:psp%norb)
     write(*,*) "# of orbitals           =",psp%norb
     write(*,*) "angular momentum        =",psp%lo(1:psp%norb)
     write(*,*) "cut off radius          =",psp%Rps(1:psp%norb)
+    end if
     write(*,*) "Zps                     =",psp%Zps
     write(*,*) "xc_pot                  =   ",xc_pot
     write(*,*) "a1,a2,a3,a4             =",a1,a2
     write(*,*) "                         ",a3,a4
+    if ( psp%norb /= 0 ) then
     write(*,*) "Reference               =",psp%nrf(1:psp%nlf)
     write(*,*) "anorm                   =",psp%anorm(1:psp%norb)
     write(*,*) "inorm                   =",psp%inorm(1:psp%norb)
+    end if
     write(*,*) "sum(cdd)                =",sum( psp%cdd(:)*psp%rab(:) )
     write(*,*) "sum(cdc)                =",sum( psp%cdc(:)*psp%rab(:) )*temp
 
