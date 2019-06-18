@@ -16,7 +16,7 @@ MODULE parallel_module
            ,np_band,np_spin,np_bzsm,np_grid &
            ,id_class,ircnt,idisp,ir_spin,id_spin &
            ,ir_band,id_band,ir_grid,id_grid,ir_bzsm,id_bzsm &
-           ,pinfo_grid,MB_d &
+           ,pinfo_grid,MB_d,MB_d_nl &
            ,read_parallel,init_parallel &
            ,start_mpi_parallel,end_mpi_parallel &
            ,disp_switch_parallel
@@ -39,7 +39,7 @@ MODULE parallel_module
   integer :: comm_band, myrank_b, nprocs_b, np_band
   integer :: comm_bzsm, myrank_k, nprocs_k, np_bzsm
   integer :: comm_fkmb, myrank_f, nprocs_f, np_fkmb
-  integer :: MB_d
+  integer :: MB_d, MB_d_nl
   integer,allocatable :: id_class(:,:),ircnt(:),idisp(:)
   integer,allocatable :: ir_grid(:),id_grid(:)
   integer,allocatable :: ir_band(:),id_band(:)
@@ -127,6 +127,7 @@ CONTAINS
     character(5) :: cbuf,ckey
     node_partition(:)=1
     MB_d = 0
+    MB_d_nl = 0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -137,12 +138,14 @@ CONTAINS
              read(unit,*) cbuf,node_partition(1:max_parallel)
           else if ( ckey(1:3) == "MBD" ) then
              backspace(unit)
-             read(unit,*) cbuf,MB_d
+             read(unit,*) cbuf,MB_d,MB_d_nl
           end if
        end do
 999    continue
        write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
-       write(*,*) "MB_d=",MB_d
+       write(*,*) "MB_d   =",MB_d
+       if ( MB_d_nl == 0 ) MB_d_nl=MB_d
+       write(*,*) "MB_d_nl=",MB_d_nl
     end if
     call send_parallel(0)
   END SUBROUTINE read_parallel
@@ -168,6 +171,7 @@ CONTAINS
     integer :: ierr
     call mpi_bcast(node_partition,max_parallel,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(MB_d,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(MB_d_nl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_parallel
 
 
@@ -544,6 +548,9 @@ CONTAINS
 
     n = min( MB_d,ir_band(id_class(myrank,4)) )
     MB_d = max( n,1 )
+
+    n = min( MB_d_nl,ir_band(id_class(myrank,4)) )
+    MB_d_nl = max( n,1 )
 
 ! ---
 
