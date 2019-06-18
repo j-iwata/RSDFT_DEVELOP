@@ -22,8 +22,10 @@ contains
     real(8),intent(out) :: Zps(:)
     real(8),intent(in) ::Vcell_in
     call IOTools_findKeyword( "ALLEL", flag_allel, flag_bcast=.true. )
-    Zps=zn_atom
-    Vcell=Vcell_in
+    if ( flag_allel ) then
+       Zps=zn_atom
+       Vcell=Vcell_in
+    end if
   end subroutine init_allel
 
   subroutine init_ae_local_allel
