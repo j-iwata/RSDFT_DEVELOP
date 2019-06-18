@@ -53,16 +53,18 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(1),etime_force(1))
 
+#ifdef _FFTE_
   if ( flag_pcc_0 ) then
      call construct_strfac
-#ifdef _FFTE_
-    !call construct_ps_local
-#else
-     call construct_ps_local
-#endif
      call construct_ps_pcc
      call destruct_strfac
   end if
+#else
+  call construct_strfac
+  call construct_ps_local
+  call construct_ps_pcc
+  call destruct_strfac
+#endif
 
   if ( ltime ) call watch(ctime_force(2),etime_force(2))
 
@@ -89,7 +91,6 @@ SUBROUTINE getforce_cpmd( ltime )
 
 #ifdef _FFTE_
   call construct_vion_vh_floc_2( rho, Vion, Vh, Force, E_hartree )
- !call calc_hartree(ML_0,ML_1,MSP_1-MSP_0+1,rho(ML_0,MSP_0))
 #else
   call calc_hartree(ML_0,ML_1,MSP_1-MSP_0+1,rho(ML_0,MSP_0))
 #endif
