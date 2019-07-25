@@ -72,6 +72,7 @@ CONTAINS
     do ik=1,MKI
        Mr1=Mr(ik)
        Mr0=maxloc( cdd(1:Mr1,ik) ,1 )
+       NRc(ik)=Mr1
        do ir=Mr0,Mr1
           if ( cdd(ir,ik) < 1.d-9 ) then
              NRc(ik)=ir
