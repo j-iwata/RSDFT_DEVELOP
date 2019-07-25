@@ -123,7 +123,7 @@ CONTAINS
 
     if ( MSP == 1 .or. iter > Nfixed ) then
 
-       call get_ef( znel, esp, MSP, ef )
+       call get_ef( znel, esp, wbz, MSP, ef )
 
        do loop=1,max_loop
           ef1 = ef - loop*e_mergin
@@ -183,7 +183,7 @@ CONTAINS
 
           zne = 0.5d0*znel + (3-2*s)*0.5d0*dspn
 
-          call get_ef( zne, esp(:,:,s:s), MSP, ef )
+          call get_ef( zne, esp(:,:,s:s), wbz, MSP, ef )
 
           do loop=1,max_loop
              ef1 = ef - loop*e_mergin
@@ -291,10 +291,11 @@ CONTAINS
   END FUNCTION ff0
 
 
-  SUBROUTINE get_ef( Nelectron, esp, msp, ef )
+  SUBROUTINE get_ef( Nelectron, esp, wbz, msp, ef )
     implicit none
     real(8),intent(IN) :: Nelectron
     real(8),intent(IN) :: esp(:,:,:)
+    real(8),intent(IN) :: wbz(:)
     integer,intent(IN) :: msp
     real(8),intent(OUT) :: ef
     integer :: n,k,s,i,p(3)
@@ -308,7 +309,7 @@ CONTAINS
        p=minloc(esp,mask=msk)
        e2=esp(p(1),p(2),p(3))
        do i=1,2/msp
-          Ncount=Ncount+1.0d0
+          Ncount=Ncount+wbz(k)
           if ( abs(Ncount-Nelectron)<1.d-10 ) then
              ef=e2
              exit loop
