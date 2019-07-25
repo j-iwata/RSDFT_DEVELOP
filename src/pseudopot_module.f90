@@ -7,6 +7,7 @@ MODULE pseudopot_module
   use ps_read_YB_module
   use ps_read_UPF_module
   use ps_gth_module
+  use ps_read_psp8_module
   use io_tools_module
   use virtualH_module
   use simc_module, only: fit_initrho_simc
@@ -249,6 +250,30 @@ CONTAINS
                    anorm(:,ielm)=1.0d0
                 end if
              end if
+
+          case( 6 )
+
+             call ps_read_psp8( unit_ps, ps(ielm) )
+
+             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+             Mr(ielm)                 = ps(ielm)%Mr
+             norb(ielm)               = ps(ielm)%norb
+             Zps(ielm)                = ps(ielm)%Zps
+             if ( ps(ielm)%norb > 0 ) then
+             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+             viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                      = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+             end if
+             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
 
           case default
 
