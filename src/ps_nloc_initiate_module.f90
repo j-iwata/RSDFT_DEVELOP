@@ -30,7 +30,13 @@ CONTAINS
 
        pp_kind="NCPP"
 
-       call ps_nloc2_init( Gcut )
+       if ( pselect == 1 ) then
+          call ps_nloc2_init( Gcut, no_mask=.true. )
+          pselect = 2
+       else
+          call ps_nloc2_init( Gcut )
+       end if
+
        if ( ps_type == 0 ) then
           call prep_ps_nloc2
        else if ( ps_type == 1 ) then

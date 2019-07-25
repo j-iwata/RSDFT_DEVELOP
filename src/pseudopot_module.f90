@@ -75,7 +75,7 @@ CONTAINS
 
     if ( any(ippform>100) ) pselect=102
 
-    if ( .not.( pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
+    if ( .not.( pselect==1 .or. pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
        stop "invalid pselect(stop@read_param_pseudopot)"
     end if
 
