@@ -56,7 +56,7 @@ CONTAINS
     integer :: i,j,m,n,i0,i1,i2,i3,z,nsym,itmp(0:3)
     integer :: nbas,isym,natm
     integer,allocatable :: iatm(:),katm(:)
-    character(30) :: cbuf, cbuf2
+    character(30) :: cbuf, cbuf1, cbuf2
     character(30),allocatable :: cdummy(:)
     real(8),parameter :: bohr=0.529177d0
     real(8) :: alatl(3),angle(3),deg2rad,rr
@@ -125,7 +125,18 @@ CONTAINS
           open(u1,file="cif_sym.dat")
 
           i=0
-20        read(unit,*) cbuf
+20        read(unit,'(a)') cbuf
+
+! There may be two types of format
+!   a)  1 'x, y, z'
+!   b)  'x, y, z'
+! The following treatment absorbs the both types
+!
+          read(cbuf,*,END=22) cbuf1,cbuf2
+          cbuf1=cbuf2
+22        continue
+          cbuf=cbuf1
+
           if ( cbuf /= "loop_" ) then
              i=i+1
              call chr_to_matrix( cbuf, R )
