@@ -17,6 +17,7 @@ CONTAINS
     real(8),intent(IN) :: rad(NRc),rad1(NRps),vrad(NRc)
     real(8),intent(INOUT) :: tarIN(NRps)
     integer :: i,j
+    real(8),parameter :: ep=1.d-14
     real(8) :: r,r1
     real(8) :: sb0x,sb1x,sb0y,sb1y,sum0
     real(8),allocatable :: tmp(:)
@@ -27,9 +28,9 @@ CONTAINS
       r=rad1(i)
        select case(L)
        case(0)
-          if ( r==0.d0 ) then
+          if ( abs(r) <= ep ) then
              r1=rad(1)             !-- log_mesh points 
-             if ( r1==0.d0 ) then
+             if ( abs(r1) <= ep ) then
                 tmp(1)=qc*qc*qc/3.d0
              else
                 tmp(1)=sin(qc*r1)/(r1*r1*r1)-qc*cos(qc*r1)/(r1*r1)
@@ -41,9 +42,9 @@ CONTAINS
           else
              do j=1,NRc
                 r1=rad(j)
-                if ( r1==0.d0 ) then
+                if ( abs(r1) <= ep ) then
                    tmp(j)=sin(qc*r)/(r*r*r)-qc*cos(qc*r)/(r*r)
-                else if ( r1==r ) then
+                else if ( abs(r1-r) <= ep ) then
                    tmp(j)=(2.d0*qc*r-sin(2.d0*qc*r))/(4.d0*r*r*r)
                 else
                    tmp(j)=( sin(qc*(r-r1))/(r-r1)-sin(qc*(r+r1))/(r+r1) ) &
@@ -52,15 +53,15 @@ CONTAINS
              end do
           end if
        case(1)
-          if ( r==0.d0 ) then
+          if ( abs(r) <= ep ) then
              tarIN(i)=0.d0
              cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
-                if ( r1==0.d0 ) then
+                if ( abs(r1) <= ep ) then
                    tmp(j)=0.d0
-                else if ( r1==r ) then
+                else if ( abs(r1-r) <= ep ) then
                    sb0x=sin(qc*r)/(qc*r)
                    sb1x=sb0x/(qc*r)-cos(qc*r)/(qc*r)
                    tmp(j)=(2.d0*qc*r-sin(2.d0*qc*r))/(4.d0*r*r*r) &
@@ -75,15 +76,15 @@ CONTAINS
              end do
           end if
        case(2)
-          if ( r==0.d0 ) then
+          if ( abs(r) <= ep ) then
              tarIN(i)=0.d0
              cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
-                if ( r1==0.d0 ) then
+                if ( abs(r1) <= ep ) then
                    tmp(j)=0.d0
-                else if ( r1==r ) then
+                else if ( abs(r1-r) <= ep ) then
                    sb1x=sin(qc*r)/(qc*qc*r*r)-cos(qc*r)/(qc*r)
                    tmp(j)=(2.d0*qc*r-sin(2.d0*qc*r))/(4.d0*r*r*r) &
                         -3.d0*qc*sb1x*sb1x/(r*r)
@@ -98,15 +99,15 @@ CONTAINS
              end do
           end if
        case(3)
-          if ( r==0.d0 ) then
+          if ( abs(r) <= ep ) then
              tarIN(i)=0.d0
              cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
-                if ( r1==0.d0 ) then
+                if ( abs(r1) <= ep ) then
                    tmp(j)=0.d0
-                else if ( r1==r ) then
+                else if ( abs(r1-r) <= ep ) then
                    sb0x=sin(qc*r)/(qc*r)
                    sb1x=sin(qc*r)/(qc*qc*r*r)-cos(qc*r)/(qc*r)
                    tmp(j)=(2.d0*qc*r-sin(2.d0*qc*r))/(4.d0*r*r*r) &
@@ -126,15 +127,15 @@ CONTAINS
              end do
           end if
        case(4)
-          if ( r==0.d0 ) then
+          if ( abs(r) <= ep ) then
              tarIN(i)=0.d0
              cycle ! i
           else
              do j=1,NRc
                 r1=rad(j)
-                if ( r1==0.d0 ) then
+                if ( abs(r1) <= ep ) then
                    tmp(j)=0.d0
-                else if ( r1==r ) then
+                else if ( abs(r1-r) <= ep ) then
                    sb0x=sin(qc*r)/(qc*r)
                    sb1x=sin(qc*r)/(qc*qc*r*r)-cos(qc*r)/(qc*r)
                    tmp(j)=(2.d0*qc*r-sin(2.d0*qc*r))/(4.d0*r*r*r) &
