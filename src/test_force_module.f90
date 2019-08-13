@@ -70,6 +70,7 @@ contains
     call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
+       write(*,*) "(flocal)"
        do i=1,Natom
           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
        end do
@@ -81,6 +82,7 @@ contains
        call watchb( ttmp, ttt(:,4), barrier='on' )
        forcet(:,:)=forcet(:,:)+force(:,:)
        if ( disp_switch ) then
+          write(*,*) "(fpcc)"
           do i=1,Natom
              write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
           end do
@@ -98,6 +100,7 @@ contains
     call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
+       write(*,*) "(fewald)"
        do i=1,Natom
           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
        end do
@@ -159,6 +162,7 @@ contains
     call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
+       write(*,*) "(fnloc)"
        do i=1,Natom
           write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
        end do
