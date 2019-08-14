@@ -432,7 +432,8 @@ CONTAINS
        write(u,*) "Fermi energy               ",efermi
        write(u,*) "Entropy                    ",Eentropy
        write(u,*) "Constant of local part     ",const_ps_local*sum(occ)
-       write(u,*) "Totao Energy (wo constant) ",Etot_wo_cnst
+       write(u,*) "Total Energy (wo constant) ",Etot_wo_cnst
+       write(u,*) "Dispersion energy          ",Evdw
        if ( u == 6 ) call write_border( 0, "" )
     end if
 !    u(:) = (/ 6, 99 /)
