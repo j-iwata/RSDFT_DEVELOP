@@ -3,6 +3,7 @@ MODULE kinetic_module
   use kinetic_variables
   use kinetic_sol_module
   use kinetic_sym_module
+  use kinetic_allgatherv_module
   use kinetic_mol_module
   use fd_module
 
@@ -207,8 +208,10 @@ CONTAINS
        select case( kin_select )
        case default
           call op_kinetic_sol( tpsi, htpsi, k )
-       case(2:)
+       case(2)
           call op_kinetic_sym( tpsi, htpsi, k )
+       case(3)
+          call op_kinetic_allgatherv( tpsi, htpsi, k )
        end select
     case(1)
        call op_kinetic_mol( tpsi, htpsi )
