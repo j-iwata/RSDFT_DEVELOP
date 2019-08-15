@@ -292,6 +292,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s
     integer :: mm,ierr
+    if ( MB_0_WF == 1 .and. MB_1_WF == MB_WF ) return
     call write_border( 1, " gather_b_wf(start)" )
     mm=ML_1_WF-ML_0_WF+1
     ir_band(:)=ir_band(:)*mm
