@@ -29,6 +29,8 @@ MODULE fftw_module
   integer(8) :: plan_2d_forward
   integer :: size_2d(2)=(/0,0/)
 
+  logical :: flag_init_fftw=.false.
+
 CONTAINS
 
 
@@ -101,6 +103,8 @@ CONTAINS
     call mpi_allgather(i1,1,MPI_INTEGER,ir,1,MPI_INTEGER,comm_fftw,ierr)
     call mpi_allgather(i2,1,MPI_INTEGER,id,1,MPI_INTEGER,comm_fftw,ierr)
 
+    flag_init_fftw=.true.
+
     call write_border( 0, " init_fftw(end)" )
 #endif
   END SUBROUTINE init_fftw
@@ -111,6 +115,7 @@ CONTAINS
     implicit none
     integer :: ierr
     include "fftw3-mpi.f03"
+    if ( .not.flag_init_fftw ) return
     call mpi_comm_free(comm_fftw,ierr)
     call fftw_destroy_plan(plan_forward)
     call fftw_destroy_plan(plan_backward)
