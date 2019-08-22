@@ -1,7 +1,5 @@
 module rsdft_sendrecv_module
 
-  use parallel_module, only: node_partition
-
   implicit none
 
   private
@@ -12,8 +10,9 @@ module rsdft_sendrecv_module
 contains
 
 #ifdef test
-  subroutine test_sendrecv
+  subroutine test_sendrecv( node_partition )
     implicit none
+    integer,intent(in) :: node_partition(:)
     integer :: i,j,k,m,mt,n,i0,ierr,myrank,nprocs,npow,p
     integer :: irank,jrank,itag,ireq(100),nreq
     real(8),allocatable :: a(:), b(:), c(:)

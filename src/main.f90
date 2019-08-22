@@ -69,6 +69,8 @@ PROGRAM Real_Space_DFT
   use aa_module, only: init_aa
   use rsdft_mpi_module, only: init_rsdft_mpi
   use allel_module, only: init_allel
+!  use bcast_module, only: test_bcast
+!  use rsdft_sendrecv_module, only: test_sendrecv
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -231,6 +233,8 @@ PROGRAM Real_Space_DFT
 ! --- initial set up for parallel computation ---
 
 !  call test_bcast
+!  call test_sendrecv( node_partition )
+!  goto 900
 
   call init_scalapack( Nband )
 
