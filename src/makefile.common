@@ -54,6 +54,9 @@ MODS1 = \
        bb_module.o\
        ggrid_module.o\
        maskf_module.o\
+       rsdft_allreduce_module.o\
+       rsdft_sendrecv_module.o\
+       rsdft_allgather_module.o\
        rsdft_mpi_module.o\
        omp_variables.o\
        io_tools_module.o\
@@ -96,11 +99,13 @@ MODS1 = \
        array_bound_module.o\
        esp_gather_module.o\
        ps_nloc2_variables.o\
+       vdw_grimme_d3_module.o\
        vdw_grimme_module.o\
        strfac_module.o\
        rgrid_sol_module.o\
        var_ps_member.o\
        ps_gth_module.o\
+       ps_read_psp8_module.o\
        ps_read_upf_module.o\
        ps_read_yb_module.o\
        ps_read_tm_module.o\
@@ -165,3 +170,4 @@ MODS1 = \
        force_local_mol_module.o\
        ps_pcc_module.o\
        phase_control_module.o\
+       allel_module.o\

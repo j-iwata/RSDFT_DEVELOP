@@ -4,6 +4,7 @@ MODULE wf_module
   use wf_sub_module
   use rsdft_mpi_module
   use io_tools_module
+  use watch_module, only: watchb
 
   implicit none
 
@@ -292,18 +293,25 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s
     integer :: mm,ierr
+    real(8) :: ttmp(2),tttt(2,3)
+    if ( MB_0_WF == 1 .and. MB_1_WF == MB_WF ) return
     call write_border( 1, " gather_b_wf(start)" )
+    call watchb( ttmp ); tttt=0.0d0
     mm=ML_1_WF-ML_0_WF+1
     ir_band(:)=ir_band(:)*mm
     id_band(:)=id_band(:)*mm
+    call watchb( ttmp, tttt(:,1) )
     call rsdft_allgatherv( unk(:,MB_0_WF:MB_1_WF,k,s) &
          , unk(:,:,k,s), ir_band, id_band, comm_band )
+    call watchb( ttmp, tttt(:,2) )
     if ( iflag_hunk >= 1 ) then
        call rsdft_allgatherv( hunk(:,MB_0_WF:MB_1_WF,k,s) &
             , hunk(:,:,k,s), ir_band, id_band, comm_band )
     end if
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
+    call watchb( ttmp, tttt(:,3) )
+    !write(*,'(1x,"gather_b_wf",3(" (",i1,")",2f8.3))') (mm,tttt(:,mm),mm=1,3)
     call write_border( 1, " gather_b_wf(end)" )
   END SUBROUTINE gather_b_wf
 

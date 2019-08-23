@@ -154,11 +154,17 @@ CONTAINS
 
     if ( flag_n12 .or. flag_n23 .or. flag_n31 ) then
 
+       !call watchb_omp( ttmp )
+
 !$OMP workshare
        wk=www
 !$OMP end workshare
 
+       !call watchb_omp( ttmp, time_kine(1,2) )
+
        if ( flag_n12 ) then
+
+          !call watchb_omp( ttmp )
 
           do n=1,nb
              do i3=a3b_omp,b3b_omp
@@ -183,9 +189,13 @@ CONTAINS
              end do
           end do
 
+          !call watchb_omp( ttmp, time_kine(1,4) )
+
 !$OMP barrier
           call bcset_1(1,nb,Md,3)
 !$OMP barrier
+
+          !call watchb_omp( ttmp, time_kine(1,3) )
 
           do ib=1,nb
              do m=1,Md
@@ -202,11 +212,15 @@ CONTAINS
              end do
           end do
 
+          !call watchb_omp( ttmp, time_kine(1,4) )
+
 !$OMP barrier
 
        end if
 
        if ( flag_n23 ) then
+
+          !call watchb_omp( ttmp )
 
           do n=1,nb
              do i3=a3b_omp,b3b_omp
@@ -232,9 +246,13 @@ CONTAINS
              end do
           end do
 
+          !call watchb_omp( ttmp, time_kine(1,4) )
+
 !$OMP barrier
           call bcset_1(1,nb,Md,5)
 !$OMP barrier
+
+          !call watchb_omp( ttmp, time_kine(1,3) )
 
           do ib=1,nb
              do m=1,Md
@@ -251,11 +269,15 @@ CONTAINS
              end do
           end do
 
+          !call watchb_omp( ttmp, time_kine(1,4) )
+
 !$OMP barrier
 
        end if
 
        if ( flag_n31 ) then
+
+          !call watchb_omp( ttmp )
 
           do n=1,nb
              do i3=a3b_omp,b3b_omp
@@ -281,9 +303,13 @@ CONTAINS
              end do
           end do
 
+          !call watchb_omp( ttmp, time_kine(1,4) )
+
 !$OMP barrier
           call bcset_1(1,nb,Md,1)
 !$OMP barrier
+
+          !call watchb_omp( ttmp, time_kine(1,3) )
 
           do ib=1,nb
              do m=1,Md
@@ -299,6 +325,8 @@ CONTAINS
                 end do
              end do
           end do
+
+          !call watchb_omp( ttmp, time_kine(1,4) )
 
        end if
 

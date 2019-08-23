@@ -69,9 +69,10 @@ CONTAINS
   END SUBROUTINE send_ps_nloc2_init
 
 
-  SUBROUTINE ps_nloc2_init(qcut)
+  SUBROUTINE ps_nloc2_init( qcut, no_mask )
     implicit none
     real(8),intent(IN) :: qcut
+    logical,optional,intent(in) :: no_mask
     integer :: i,j,ik,iorb,L,m,m0,m1,m2,MMr,NRc,iloc(1)
     real(8),parameter :: dr=2.d-3
     real(8) :: qc,Rc,sum0,const,pi
@@ -80,6 +81,13 @@ CONTAINS
     real(8),allocatable :: vrad(:),tmp(:),wm(:,:,:),vtmp(:,:,:)
 
     if ( any( ippform == 4 ) ) return
+
+    if ( present(no_mask) ) then
+       if ( no_mask ) then
+          call ps_nloc2_init_no_mask
+          return
+       end if
+    end if
 
     qc = qcut*qcfac
     if ( qc<=0.d0 ) qc=qcut
@@ -341,6 +349,32 @@ CONTAINS
     deallocate( g )
     return
   END SUBROUTINE simp
+
+
+  subroutine ps_nloc2_init_no_mask
+    implicit none
+    integer :: i,ik,iorb,NRc
+
+    call allocateRps
+    call allocateRad1( maxval(Mr) )
+    rad1=rad
+
+    do ik=1,size(viod,3)
+       do iorb=1,norb(ik)
+          NRc=NRps0(iorb,ik)
+          do i=2,NRc
+             viod(i,iorb,ik) = viod(i,iorb,ik)/rad(i,ik)
+          end do
+          if ( rad(1,ik) == 0.0d0 ) then
+             viod(1,iorb,ik) = viod(2,iorb,ik)
+          else
+             viod(1,iorb,ik) = viod(1,iorb,ik)/rad(1,ik)
+          end if
+       end do ! iorb
+    end do ! ik
+
+    return
+  end subroutine ps_nloc2_init_no_mask
 
 
 END MODULE ps_nloc2_init_module

@@ -61,12 +61,16 @@ PROGRAM Real_Space_DFT
   use stress_module, only: test_stress ! MIZUHO-IR for cellopt
   use linear_response_module
   use kinetic_sym_ini_module
+  use kinetic_allgatherv_module, only: init_kinetic_allgatherv
   use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
                                 ,init_noncollinear, calc_xc_noncollinear
   use init_occ_electron_ncol_module
   use rtddft_sol_module
   use aa_module, only: init_aa
   use rsdft_mpi_module, only: init_rsdft_mpi
+  use allel_module, only: init_allel
+!  use bcast_module, only: test_bcast
+!  use rsdft_sendrecv_module, only: test_sendrecv
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -188,6 +192,8 @@ PROGRAM Real_Space_DFT
 
   call read_pseudopot( Nelement, myrank )
 
+  call init_allel( Zps, abs(aa_obj%Volume) )
+
 ! --- info atoms ---
 
   call write_info_atom( Zps, file_ps )
@@ -227,6 +233,8 @@ PROGRAM Real_Space_DFT
 ! --- initial set up for parallel computation ---
 
 !  call test_bcast
+!  call test_sendrecv( node_partition )
+!  goto 900
 
   call init_scalapack( Nband )
 
@@ -271,6 +279,8 @@ PROGRAM Real_Space_DFT
   if ( kin_select == 2 ) then
      call init_kinetic_sym( lattice_index, aa_obj%LatticeVector, ierr )
      if ( ierr /= 0 ) kin_select=0
+  else if ( kin_select == 3 ) then
+     call init_kinetic_allgatherv( Igrid, comm_grid )
   end if
 
 ! --- ??? ---

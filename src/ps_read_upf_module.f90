@@ -205,12 +205,17 @@ CONTAINS
     end do ! loop
 10 continue
 
-    psp%Mr = nrr + 1
+    if ( rr(1) > 0.0d0 ) then
+       psp%Mr = nrr + 1
+    else
+       psp%Mr = nrr
+    end if
     psp%norb = norb
     call ps_allocate_ps1d( psp )
 
     psp%Zps = Zps
 
+    if ( rr(1) > 0.0d0 ) then
     do i=nrr+1,2,-1
        psp%rad(i) =  rr(i-1)
        psp%rab(i) =  rx(i-1)
@@ -223,6 +228,15 @@ CONTAINS
     psp%cdd(1) = 0.0d0
     psp%cdc(1) = 0.0d0
     psp%vql(1) = psp%vql(2)
+    else 
+    do i=1,nrr
+       psp%rad(i) =  rr(i)
+       psp%rab(i) =  rx(i)
+       psp%cdd(i) = cdd(i)
+       psp%cdc(i) = cdc(i)
+       psp%vql(i) = vql(i)
+    end do
+    end if
 
     psp%vql(:) = 0.5d0*psp%vql(:)
 
@@ -232,12 +246,20 @@ CONTAINS
        psp%anorm(j) = anorm(j)
     end do
 
+    if ( rr(1) > 0.0d0 ) then
     do j=1,norb
        do i=NRps(j)+1,2,-1
           psp%viod(i,j) = viod(i-1,j)
        end do
        psp%viod(1,j) = 0.0d0
     end do
+    else
+    do j=1,norb
+       do i=1,NRps(j)
+          psp%viod(i,j) = viod(i,j)
+       end do
+    end do
+    end if
 
     do j=1,norb
        do i=nrr,1,-1
@@ -506,12 +528,17 @@ CONTAINS
     end do ! loop
 10 continue
 
-    psp%Mr = nrr + 1
+    if ( rr(1) > 0.0d0 ) then
+       psp%Mr = nrr + 1
+    else
+       psp%Mr = nrr
+    end if
     psp%norb = norb
     call ps_allocate_ps1d( psp )
 
     psp%Zps = Zps
 
+    if ( rr(1) > 0.0d0 ) then
     do i=nrr+1,2,-1
        psp%rad(i) =  rr(i-1)
        psp%rab(i) =  rx(i-1)
@@ -524,6 +551,15 @@ CONTAINS
     psp%cdd(1) = 0.0d0
     psp%cdc(1) = 0.0d0
     psp%vql(1) = psp%vql(2)
+    else
+    do i=1,nrr
+       psp%rad(i) =  rr(i)
+       psp%rab(i) =  rx(i)
+       psp%cdd(i) = cdd(i)
+       psp%cdc(i) = cdc(i)
+       psp%vql(i) = vql(i)
+    end do
+    end if
 
     psp%vql(:) = 0.5d0*psp%vql(:)
 
@@ -534,12 +570,20 @@ CONTAINS
        psp%no(j) = no( lo(j) )
     end do
 
+    if ( rr(1) > 0.0d0 ) then
     do j=1,norb
        do i=nrr+1,2,-1
           psp%viod(i,j) = viod(i-1,j)
        end do
        psp%viod(1,j) = 0.0d0
     end do
+    else
+    do j=1,norb
+       do i=1,nrr
+          psp%viod(i,j) = viod(i,j)
+       end do
+    end do
+    end if
 
     do j=1,norb
        do i=nrr,1,-1

@@ -31,6 +31,9 @@ CONTAINS
     real(8), allocatable :: sums(:)
     real(8) :: t0, t1, t2, t3, t4, t5, ttmp(2), ttt(2,0:4)
     logical,save :: flag_allocate=.false.
+    real(8) :: time_hmlt_min(2,4),time_hmlt_max(2,4)
+    real(8) :: time_kine_min(2,11),time_kine_max(2,11)
+    real(8) :: time_nlpp_min(2,3),time_nlpp_max(2,3)
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -45,10 +48,12 @@ CONTAINS
     do ii = 0,10
 
     time_hmlt(:,:)=0.0d0
-!    time_kine(:,:)=0.0d0
-!    time_nlpp(:,:)=0.0d0
+    time_kine(:,:)=0.0d0
+    time_nlpp(:,:)=0.0d0
 
-    if ( (ii>0.and.nrhs>=MB) .or. nrhs>MB_d ) then
+    if ( ii > 0.and. MB_d == 1 ) then
+       exit
+    else if ( (ii>0.and.nrhs>=MB) .or. nrhs>MB_d ) then
        exit
     else if ( ii == 0 ) then
        nrhs=1
@@ -146,19 +151,38 @@ CONTAINS
     ttt(1,4) = sum( ttt(1,1:3) )
     ttt(2,4) = sum( ttt(2,1:3) )
 
+    call get_time_min(  4, time_hmlt, time_hmlt_min )
+    call get_time_max(  4, time_hmlt, time_hmlt_max )
+    call get_time_min( 11, time_kine, time_kine_min )
+    call get_time_max( 11, time_kine, time_kine_max )
+    call get_time_min(  3, time_nlpp, time_nlpp_min )
+    call get_time_max(  3, time_nlpp, time_nlpp_max )
+
     if ( DISP_SWITCH_PARALLEL ) then
        write(*,*) 'nloop =',nloop
        write(*,*) 'nrhs = ', nrhs
        write(*,*) 'niter = ', niter
        write(*,*) 'niter*nrhs =',niter*nrhs,MB
        write(*,*) 'time(tot) = ', ttt(:,0) !t1 - t0
-       !call write_watchb( time_hmlt, 4, time_hmlt_indx )
+       call write_watchb( time_hmlt, 4, time_hmlt_indx )
+       write(*,*) "(min)"
+       call write_watchb( time_hmlt_min, 4, time_hmlt_indx )
+       write(*,*) "(max)"
+       call write_watchb( time_hmlt_max, 4, time_hmlt_indx )
        write(*,*) 'time(kin) = ', ttt(:,1) !t3 - t2
-       !call write_watchb( time_kine, 11, time_kine_indx )
+       call write_watchb( time_kine, 11, time_kine_indx )
+       write(*,*) "(min)"
+       call write_watchb( time_kine_min, 11, time_kine_indx )
+       write(*,*) "(max)"
+       call write_watchb( time_kine_max, 11, time_kine_indx )
        write(*,*) 'time(loc) = ', ttt(:,2) !t4 - t3
        write(*,*) 'time(nlc) = ', ttt(:,3) !t5 - t4
        write(*,*) 'time(tot) = ', ttt(:,4) !t5 - t2
-       !call write_watchb( time_nlpp, 3, time_nlpp_indx )
+       call write_watchb( time_nlpp, 3, time_nlpp_indx )
+       write(*,*) "(min)"
+       call write_watchb( time_nlpp_min, 3, time_nlpp_indx )
+       write(*,*) "(max)"
+       call write_watchb( time_nlpp_max, 3, time_nlpp_indx )
        !write(*,*) 'check sum'
        !do i = 1, nrhs
        !   write(*,*) sums(i),sum(sums)
@@ -198,6 +222,24 @@ CONTAINS
     call DLARNV(2, iseed, nrow*ncol, tmpV)
     V(:,1:ncol) = tmpV(:,1:ncol)
   end subroutine myrand
+
+  subroutine get_time_min( n, t_in, t_min )
+    implicit none
+    integer,intent(IN)  :: n
+    real(8),intent(IN)  :: t_in(:,:)
+    real(8),intent(OUT) :: t_min(:,:)
+    integer :: i
+    call mpi_allreduce( t_in , t_min, 2*n, mpi_real8, mpi_min, comm_grid, i )
+  end subroutine get_time_min
+
+  subroutine get_time_max( n, t_in, t_max )
+    implicit none
+    integer,intent(IN)  :: n
+    real(8),intent(IN)  :: t_in(:,:)
+    real(8),intent(OUT) :: t_max(:,:)
+    integer :: i
+    call mpi_allreduce( t_in , t_max, 2*n, mpi_real8, mpi_max, comm_grid, i )
+  end subroutine get_time_max
 
 END MODULE test_hpsi2_module
 

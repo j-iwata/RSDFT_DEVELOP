@@ -44,29 +44,33 @@ CONTAINS
 
   SUBROUTINE test_bcast
     implicit none
-    integer :: i,j,k,m,mt,n,ierr,myrank
+    integer :: i,j,k,m,mt,n,ierr,myrank,npow
     real(8),allocatable :: a(:)
     real(8) :: ct,ct0,ct1,ctmin,et,et0,et1,etmin
  
     return
 
     call MPI_COMM_RANK(MPI_COMM_WORLD,myrank,ierr)
-    n=2**20
+
+    npow=20
+    n=2**npow
     allocate( a(n) ) ; a(:)=1.d0
     ctmin=1.d100
     etmin=1.d100
-    do j=0,20
+    do j=0,npow
        m = 2**j
        mt=0
-       do i=1,2**(20-j)
+       do i=1,2**(npow-j)
           mt=mt+m
        end do
+       call MPI_Barrier( MPI_COMM_WORLD, ierr )
        call cpu_time(ct0) ; et0=mpi_wtime()
        do k=1,10
-          do i=1,2**(20-j)
-             call MPI_BCAST(a,m,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+          do i=1,2**(npow-j)
+             call MPI_BCAST(a(i),m,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
           end do
        end do ! k
+       call MPI_Barrier( MPI_COMM_WORLD, ierr )
        call cpu_time(ct1) ; et1=mpi_wtime()
        ct=ct1-ct0
        et=et1-et0

@@ -52,6 +52,7 @@ MODULE total_energy_module
   real(8) :: Eion_in = 0.d0
 
   real(8) :: diff_etot = 0.d0
+  real(8) :: Etot_wo_cnst = 0.d0
 
 CONTAINS
 
@@ -399,6 +400,7 @@ CONTAINS
     call get_E_vdw_grimme( Evdw )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
          - 2*E_exchange_exx + cnst + Evdw - DCxc
+    Etot_wo_cnst = Etot - cnst
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
@@ -429,6 +431,9 @@ CONTAINS
        write(u,*) "Sum of eigenvalues         ",Eeig
        write(u,*) "Fermi energy               ",efermi
        write(u,*) "Entropy                    ",Eentropy
+       write(u,*) "Constant of local part     ",const_ps_local*sum(occ)
+       write(u,*) "Total Energy (wo constant) ",Etot_wo_cnst
+       write(u,*) "Dispersion energy          ",Evdw
        if ( u == 6 ) call write_border( 0, "" )
     end if
 !    u(:) = (/ 6, 99 /)

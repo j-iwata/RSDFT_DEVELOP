@@ -56,7 +56,7 @@ CONTAINS
     integer :: i,j,m,n,i0,i1,i2,i3,z,nsym,itmp(0:3)
     integer :: nbas,isym,natm
     integer,allocatable :: iatm(:),katm(:)
-    character(30) :: cbuf, cbuf2
+    character(30) :: cbuf, cbuf1, cbuf2
     character(30),allocatable :: cdummy(:)
     real(8),parameter :: bohr=0.529177d0
     real(8) :: alatl(3),angle(3),deg2rad,rr
@@ -91,18 +91,29 @@ CONTAINS
 
     deg2rad = acos(-1.0d0)/180.0d0
 
-    aa_obj%LatticeVector(:,3) = (/ 0.0d0, 0.0d0, 1.0d0 /)
+!    aa_obj%LatticeVector(:,3) = (/ 0.0d0, 0.0d0, 1.0d0 /)
+!    aa_obj%LatticeVector(:,1) = (/ sin(angle(2)*deg2rad)**2, 0.0d0, 0.0d0 /)
+!    aa_obj%LatticeVector(:,2) = 0.0d0
+!    aa_obj%LatticeVector(1,2) = cos(angle(3)*deg2rad)/aa_obj%LatticeVector(1,1)
+!    aa_obj%LatticeVector(2,2) = sqrt( sin(angle(1)*deg2rad)**2 &
+!                                    - aa_obj%LatticeVector(1,2)**2 )
 
-    aa_obj%LatticeVector(:,1) = (/ sin(angle(2)*deg2rad)**2, 0.0d0, 0.0d0 /)
-
-    aa_obj%LatticeVector(:,2) = 0.0d0
-    aa_obj%LatticeVector(1,2) = cos(angle(3)*deg2rad)/aa_obj%LatticeVector(1,1)
-    aa_obj%LatticeVector(2,2) = sqrt( sin(angle(1)*deg2rad)**2 &
-                                    - aa_obj%LatticeVector(1,2)**2 )
+    aa_obj%LatticeVector(:,1) = (/ 1.0d0, 0.0d0, 0.0d0 /)
+    aa_obj%LatticeVector(1,2) = cos(angle(3)*deg2rad)
+    aa_obj%LatticeVector(2,2) = sin(angle(3)*deg2rad)
+    aa_obj%LatticeVector(1,3) = cos(angle(2)*deg2rad)
+    aa_obj%LatticeVector(2,3) = cos(angle(1)*deg2rad) &
+                                        /sin(angle(3)*deg2rad)
+    aa_obj%LatticeVector(3,3) = sqrt( 1.0d0 - aa_obj%LatticeVector(1,3)**2 &
+                                            - aa_obj%LatticeVector(2,3)**2 )
 
     aa_obj%LatticeVector(:,1) = aa_obj%LatticeVector(:,1)*alatl(1)/bohr
     aa_obj%LatticeVector(:,2) = aa_obj%LatticeVector(:,2)*alatl(2)/bohr
     aa_obj%LatticeVector(:,3) = aa_obj%LatticeVector(:,3)*alatl(3)/bohr
+
+    where( abs(aa_obj%LatticeVector) < 1.d-5 )
+       aa_obj%LatticeVector=0.0d0
+    end where
 
     aa_obj%LatticeConstant = 1.0d0
 
@@ -125,7 +136,18 @@ CONTAINS
           open(u1,file="cif_sym.dat")
 
           i=0
-20        read(unit,*) cbuf
+20        read(unit,'(a)') cbuf
+
+! There may be two types of format
+!   a)  1 'x, y, z'
+!   b)  'x, y, z'
+! The following treatment absorbs the both types
+!
+          read(cbuf,*,END=22) cbuf1,cbuf2
+          cbuf1=cbuf2
+22        continue
+          cbuf=cbuf1
+
           if ( cbuf /= "loop_" ) then
              i=i+1
              call chr_to_matrix( cbuf, R )

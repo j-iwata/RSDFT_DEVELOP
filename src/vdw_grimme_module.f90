@@ -9,12 +9,16 @@
 MODULE vdw_grimme_module
 
   use io_tools_module
+  use vdw_grimme_d3_module
 
   implicit none
 
   PRIVATE
-  PUBLIC :: init_vdw_grimme, calc_E_vdw_grimme, calc_F_vdw_grimme &
-       ,read_vdw_grimme, get_E_vdw_grimme
+  PUBLIC :: init_vdw_grimme
+  PUBLIC :: read_vdw_grimme
+  PUBLIC :: get_E_vdw_grimme
+  PUBLIC :: calc_E_vdw_grimme
+  PUBLIC :: calc_F_vdw_grimme
 
   real(8) :: C6(54),R0(54),s6
 
@@ -31,12 +35,12 @@ MODULE vdw_grimme_module
   real(8) :: aa(3,3)
   integer :: MI_0, MI_1
   integer :: lmax
-  integer,allocatable :: atom_num(:), Kion(:)
+  integer,allocatable :: atom_num(:), Kion(:), zatom(:)
   logical :: flag_init = .true.
-  logical :: iswitch_vdw = .false.
+  logical :: iswitch_dftd2 = .false.
+  logical :: iswitch_dftd3 = .false.
   character(8) :: xctype
 
-  include 'mpif.h'
 
 CONTAINS
 
@@ -44,8 +48,17 @@ CONTAINS
   SUBROUTINE read_vdw_grimme
     implicit none
     call write_border( 0, " read_vdw_grimme(start)" )
-    call IOTools_findKeyword( "VDW", iswitch_vdw, flag_bcast=.true. )
+    call IOTools_findKeyword( "DFTD2", iswitch_dftd2, flag_bcast=.true. )
+    call IOTools_findKeyword( "DFTD3", iswitch_dftd3, flag_bcast=.true. )
+    if ( iswitch_dftd2 .and. iswitch_dftd3 ) iswitch_dftd2=.false.
     call IOTools_readStringKeyword( "XCTYPE", xctype )
+    if ( iswitch_dftd2 .or. iswitch_dftd3 ) then
+       select case( xctype )
+       case( "GGAPBE96","PBE","PBE96" )
+       case default
+          call stop_program( "only pbe+vdw is implemented" )
+       end select
+    end if
     call write_border( 0, " read_vdw_grimme(end)" )
   END SUBROUTINE read_vdw_grimme
 
@@ -54,9 +67,9 @@ CONTAINS
     implicit none
     real(8),intent(IN) :: aa_in(3,3)
     integer,intent(IN) :: ki_in(:), z_in(:)
-    integer :: Natom
+    integer :: Natom,i
 
-    if ( .not.iswitch_vdw ) return
+    if ( .not.(iswitch_dftd2.or.iswitch_dftd3) ) return
 
     call write_border( 0, " init_vdw_grimme(start)" )
 
@@ -73,6 +86,11 @@ CONTAINS
        write(*,*) "atomic number is necessary for vdW"
        stop "stop@init_vdw_grimme"
     end if
+
+    allocate( zatom(Natom) ) ; zatom=0
+    do i=1,Natom
+       zatom(i)=atom_num(Kion(i))
+    end do
 
     if ( xctype(1:8) == "GGAPBE96" ) then
        s6 = s6_pbe
@@ -130,8 +148,16 @@ CONTAINS
     real(8) :: Rix,Riy,Riz,Rjx,Rjy,Rjz,Rij
     real(8) :: C6i,C6j,C6ij,R0i,R0j,fdmp,Rr
     real(8),save :: chk_sum0=1.d10
+    include 'mpif.h'
 
-    if ( .not.iswitch_vdw ) return
+    if ( .not.(iswitch_dftd2.or.iswitch_dftd3) ) return
+
+    if ( iswitch_dftd3 ) then
+       call calc_E_vdw_grimme_D3( aa, asi, zatom, Edisp )
+       Edisp0=Edisp
+       if ( present(Edisp_out) ) Edisp_out=Edisp
+       return
+    end if
 
     call write_border( 1, " calc_vdw_grimme(start)" )
 
@@ -209,8 +235,8 @@ CONTAINS
 
     end do ! l
 
-    call mpi_allreduce(Edisp0,Edisp,1,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
-    call mpi_allreduce(err0,err,1,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,ierr)
+    call MPI_Allreduce(Edisp0,Edisp,1,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call MPI_Allreduce(err0,err,1,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,ierr)
 
     Edisp  = -s6*Edisp/2.0d0
     Edisp0 = Edisp
@@ -243,8 +269,14 @@ CONTAINS
     real(8) :: C6i,C6j,C6ij,R0i,R0j,fdmp,Rr
     real(8) :: tx,ty,tz,err,err0,c0,c1,ierr
     real(8),allocatable :: Fdisp0(:,:), Fdisp1(:,:)
+    include 'mpif.h'
 
-    if ( .not.iswitch_vdw ) return
+    if ( .not.(iswitch_dftd2.or.iswitch_dftd3) ) return
+
+    if ( iswitch_dftd3 ) then
+       call calc_F_vdw_grimme_D3( aa, asi, zatom, Fdisp )
+       return
+    end if
 
     if ( flag_init ) then
        write(*,*) "You should call init_vdw_grimme first"
@@ -322,8 +354,8 @@ CONTAINS
 
     end do ! l
 
-    call mpi_allreduce(Fdisp0,Fdisp1,3*MI,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
-    call mpi_allreduce(err0,err,1,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,ierr)
+    call MPI_Allreduce(Fdisp0,Fdisp1,3*MI,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call MPI_Allreduce(err0,err,1,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,ierr)
 
     Fdisp(:,:) = Fdisp(:,:) + Fdisp1(:,:)
 
@@ -416,9 +448,10 @@ CONTAINS
     integer,intent(OUT) :: n0,n1
     integer :: i,j,np,myrnk
     integer,allocatable :: ircnt(:)
+    include 'mpif.h'
 
-    call MPI_COMM_SIZE( MPI_COMM_WORLD, np   , i )
-    call MPI_COMM_RANK( MPI_COMM_WORLD, myrnk, i )
+    call MPI_Comm_size( MPI_COMM_WORLD, np   , i )
+    call MPI_Comm_rank( MPI_COMM_WORLD, myrnk, i )
 
     allocate( ircnt(0:np-1) )
 
