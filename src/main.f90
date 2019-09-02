@@ -71,8 +71,8 @@ PROGRAM Real_Space_DFT
   use allel_module, only: init_allel
 !  use bcast_module, only: test_bcast
 !  use rsdft_sendrecv_module, only: test_sendrecv
-  use vector_tools_module, only: set_vinfo_vector_tools
-  use sl_tools_module, only: backup_param_sl_tools
+!  use vector_tools_module, only: set_vinfo_vector_tools
+!  use sl_tools_module, only: backup_param_sl_tools
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -239,7 +239,7 @@ PROGRAM Real_Space_DFT
 !  goto 900
 
   call init_scalapack( Nband )
-  call backup_param_sl_tools( NPROW, NPCOL, MBSIZE, NBSIZE )
+!  call backup_param_sl_tools( NPROW, NPCOL, MBSIZE, NBSIZE )
 
   call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
 
@@ -298,8 +298,8 @@ PROGRAM Real_Space_DFT
 
 ! --- vector info ---
 
-  call set_vinfo_vector_tools( 1, dV   , comm_grid, np_grid, myrank_g, ir_grid, id_grid )
-  call set_vinfo_vector_tools( 2, 1.0d0, comm_band, np_band, myrank_b, ir_band, id_band )
+!  call set_vinfo_vector_tools( 1, dV   , comm_grid, np_grid, myrank_g, ir_grid, id_grid )
+!  call set_vinfo_vector_tools( 2, 1.0d0, comm_band, np_band, myrank_b, ir_band, id_band )
 
 ! --- init density & potentials ---
 
