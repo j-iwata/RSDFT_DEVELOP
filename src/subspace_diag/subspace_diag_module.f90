@@ -98,7 +98,7 @@ CONTAINS
     if ( disp_switch_parallel ) then
        write(*,'(1x,6a10)') "rank_b","tri","m","n","nme","idis"
        do i=0,np_band-1
-          write(*,'(1x,6i10)') i,mat_block(i,0:4)
+          write(*,'(1x,6i10)') i,(mat_block(i,j),j=0,4)
        end do
     end if
 

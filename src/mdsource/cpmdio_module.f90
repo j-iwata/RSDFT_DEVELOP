@@ -7,6 +7,7 @@ MODULE cpmdio_module
   use io1_module, only: read_data_io1
   use io2_module
   use io_write_module, only: simple_wf_io_write
+  use rgrid_module, only: Igrid,Ngrid
 
   implicit none
 
@@ -19,6 +20,7 @@ MODULE cpmdio_module
   integer :: OC=0
   logical :: flag_init_r=.true.
   logical :: flag_init_w=.true.
+  integer :: node_partition_old(3)
 
 CONTAINS
 
@@ -60,6 +62,8 @@ CONTAINS
        else
           call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_r )
        end if
+       node_partition_old=1
+       call IOTools_readIntegerKeyword( "OLD_PROCS", node_partition_old )
        flag_init_r=.false.
     end if
     select case( IO_ctrl_r )
@@ -71,6 +75,8 @@ CONTAINS
             ,MB_in=MBC, MB_0_in=MB_0_CPMD, MB_1_in=MB_1_CPMD )
     case( 3 )
        call read_data_cpmd_k_para
+    case( 4 )
+       call read_data_cpmd_k_para_tmp
     end select
   END SUBROUTINE read_data_cpmdio
 
@@ -245,6 +251,118 @@ CONTAINS
     close(1)
     return
   END SUBROUTINE read_data_cpmd_k_para
+
+
+  SUBROUTINE read_data_cpmd_k_para_tmp
+    implicit none
+    integer :: n1,n2,n3,ML0_old(3),n,k,i,j,ispin,ierr
+    integer :: i1,i2,i3
+    integer :: a1_old,a2_old,a3_old,b1_old,b2_old,b3_old
+    character(len=64) :: filename
+    integer :: n1_now, nprocs_old, irank_old
+    integer,allocatable :: Igrid_old(:,:,:)
+    real(8) :: tmp0,tmp1
+    real(8),allocatable :: w_old(:,:,:)
+
+    n1_now  = idisp(myrank)+1
+
+    nprocs_old = product( node_partition_old )
+    ML0_old(1:3) = Ngrid(1:3)/node_partition_old(1:3)
+
+    allocate( Igrid_old(2,3,0:nprocs_old-1) ); Igrid_old=0
+
+    irank_old=-1
+    do i3=0,node_partition_old(3)-1
+    do i2=0,node_partition_old(2)-1
+    do i1=0,node_partition_old(1)-1
+       irank_old=irank_old+1
+       Igrid_old(1,1,irank_old)=i1*ML0_old(1)
+       Igrid_old(2,1,irank_old)=(i1+1)*ML0_old(1)
+       Igrid_old(1,2,irank_old)=i2*ML0_old(2)
+       Igrid_old(2,2,irank_old)=(i2+1)*ML0_old(2)
+       Igrid_old(1,3,irank_old)=i3*ML0_old(3)
+       Igrid_old(2,3,irank_old)=(i3+1)*ML0_old(3)
+    end do
+    end do
+    end do
+
+    allocate( w_old(ML0_old(1),ML0_old(2),ML0_old(3)) ); w_old=zero
+
+    do irank_old=0,nprocs_old-1
+
+       a1_old = Igrid_old(1,1,irank_old)
+       a2_old = Igrid_old(1,2,irank_old)
+       a3_old = Igrid_old(1,3,irank_old)
+       b1_old = Igrid_old(2,1,irank_old)
+       b2_old = Igrid_old(2,2,irank_old)
+       b3_old = Igrid_old(2,3,irank_old)
+
+       write(filename,"('restart_',i5.5,'.dat')") irank_old
+       open(1,file=filename,form="unformatted")
+
+       do ispin=MSP_0,MSP_1 
+       do k=MBZ_0,MBZ_1
+       do n=MB_0_CPMD,MB_1_CPMD
+          do i3=1,ML0_old(3)
+          do i2=1,ML0_old(2)
+          do i1=1,ML0_old(1)
+             read(1) w_old(i1,i2,i3)
+          end do
+          end do
+          end do
+          i=n1_now-1
+          do i3=Igrid(1,3),Igrid(2,3)
+          do i2=Igrid(1,2),Igrid(2,2)
+          do i1=Igrid(1,1),Igrid(2,1)
+             i=i+1
+             if ( a1_old <= i1 .and. i1 <= b1_old .and. &
+                  a2_old <= i2 .and. i2 <= b2_old .and. &
+                  a3_old <= i3 .and. i3 <= b3_old ) then
+                unk(i,n,k,ispin)=w_old(i1-a1_old+1,i2-a2_old+1,i3-a3_old+1)
+             end if
+          end do
+          end do
+          end do
+       end do
+       end do
+       end do
+
+       do ispin=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+       do n=MB_0_CPMD,MB_1_CPMD
+          do i3=1,ML0_old(3)
+          do i2=1,ML0_old(2)
+          do i1=1,ML0_old(1)
+             read(1) w_old(i1,i2,i3)
+          end do
+          end do
+          end do
+          i=n1_now-1
+          do i3=Igrid(1,3),Igrid(2,3)
+          do i2=Igrid(1,2),Igrid(2,2)
+          do i1=Igrid(1,1),Igrid(2,1)
+             i=i+1
+             if ( a1_old <= i1 .and. i1 <= b1_old .and. &
+                  a2_old <= i2 .and. i2 <= b2_old .and. &
+                  a3_old <= i3 .and. i3 <= b3_old ) then
+                psi_v(i,n,k,ispin)=w_old(i1-a1_old+1,i2-a2_old+1,i3-a3_old+1)
+             end if
+          end do
+          end do
+          end do
+       end do
+       end do
+       end do
+
+       close(1)
+
+    end do ! irank_old
+
+    deallocate( w_old )
+    deallocate( Igrid_old )
+
+    return
+  END SUBROUTINE read_data_cpmd_k_para_tmp
 
 
 END MODULE cpmdio_module

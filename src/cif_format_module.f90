@@ -56,8 +56,8 @@ CONTAINS
     integer :: i,j,m,n,i0,i1,i2,i3,z,nsym,itmp(0:3)
     integer :: nbas,isym,natm
     integer,allocatable :: iatm(:),katm(:)
-    character(30) :: cbuf, cbuf1, cbuf2
-    character(30),allocatable :: cdummy(:)
+    character(40) :: cbuf, cbuf1, cbuf2
+    character(40),allocatable :: cdummy(:)
     real(8),parameter :: bohr=0.529177d0
     real(8) :: alatl(3),angle(3),deg2rad,rr
     real(8) :: R(3,4),asi(3),rsi(3),Rasi(3)
