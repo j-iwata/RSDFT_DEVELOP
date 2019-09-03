@@ -60,7 +60,7 @@ CONTAINS
     character(40),allocatable :: cdummy(:)
     real(8),parameter :: bohr=0.529177d0
     real(8) :: alatl(3),angle(3),deg2rad,rr
-    real(8) :: R(3,4),asi(3),rsi(3),Rasi(3)
+    real(8) :: R(3,4),asi(3),rsi(3),rtm(3),Rasi(3)
     real(8),allocatable :: rot(:,:,:),atm(:,:)
     include 'mpif.h'
 
@@ -240,8 +240,10 @@ CONTAINS
        loop_i : do i=1,natm
           read(u2,*) cbuf,z,asi(:)
           call shift_aa_coordinates_atom( asi )
+          rsi=matmul( aa_obj%LatticeVector, asi )
           do j=1,n
-             rr=sum( (asi-atm(:,j))**2 )
+             rtm=matmul( aa_obj%LatticeVector, atm(:,j) )
+             rr=sum( (rsi-rtm)**2 )
              if ( rr < 1.d-3 ) cycle loop_i
           end do
           if ( iatm(z) == 0 ) iatm(z)=maxval(iatm)+1
