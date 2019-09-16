@@ -81,8 +81,8 @@ contains
     do j=1,psp%norb
        do i=psp%Mr,1,-1
           if ( abs(psp%viod(i,j)) >=1.d-13 ) then
-             psp%Rps(j) = psp%rad(i-1)
-             psp%NRps(j)= i-1
+             psp%Rps(j) = psp%rad(i+1)
+             psp%NRps(j)= i+1
              exit
           end if
        end do
