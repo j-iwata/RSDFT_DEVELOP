@@ -104,6 +104,7 @@ MODS1 = \
        rgrid_sol_module.o\
        var_ps_member.o\
        ps_gth_module.o\
+       ps_read_adpack_module.o\
        ps_read_psp8_module.o\
        ps_read_upf_module.o\
        ps_read_yb_module.o\
