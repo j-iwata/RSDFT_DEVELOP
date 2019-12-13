@@ -130,6 +130,7 @@ CONTAINS
           write(*,*) "diter_opt         =",diter_opt
        end if
        write(*,*) "strlog            =",strlog
+       write(*,*) "forcelog          =",forcelog
     end if
     call send_atomopt
   END SUBROUTINE read_atomopt
