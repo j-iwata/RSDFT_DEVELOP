@@ -45,17 +45,21 @@ SUBROUTINE bomd
   call write_border( 0, "" )
   call write_border( 0, " CPMD START -----------" )
 
-#ifndef _DRSDFT_
-  write(*,*) "RS-CPMD is not available for COMPLEX16 WFs"
-  write(*,*) "Please re-compile the program"
-  call stop_program( "" )
-#endif
 
   call check_disp_switch( .false., 1 )
 
   lblue = .false.
 
   call read_cpmd_variables ! in 'alloc_cpmd.f90'
+
+  if( lcpmd )then
+#ifndef _DRSDFT_
+     write(*,*) "RS-CPMD is not available for COMPLEX16 WFs"
+     write(*,*) "Please re-compile the program"
+     call stop_program( "" )
+#endif
+  end if
+
   if ( lblue ) call read_blue
 
   tote0       = 0.d0
@@ -144,7 +148,12 @@ SUBROUTINE bomd
      call calfke( fke )
      if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
   else
+     MB_0_CPMD=MB_0
+     MB_1_CPMD=MB_1
+     ib1=MB_0
+     ib2=MB_1
      call getforce
+     call calc_total_energy( .false., Etot )
   end if
 
 ! --- initial bath parameters
