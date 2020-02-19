@@ -74,9 +74,9 @@ contains
              do s=1,nspin
              do k=1,MBZ
                 select case (kinteg)
-                case default
-                   xx=(esp(ib,k,s)-ef)/ekbt
-                   ff=ff0(kinteg,xx)
+                !case default
+                !   xx=(esp(ib,k,s)-ef)/ekbt
+                !   ff=ff0(kinteg,xx)
                 case (-1)
                    if ( ekbt<eps ) then
                       if ( (esp(ib,k,s)-ef )>0.0d0 ) then
