@@ -331,8 +331,8 @@ SUBROUTINE bomd
 
      if ( mod(itime,wrtstep) == 0 .and. ctrl_cpmdio > 0 ) then
         if ( myrank == 0 ) call mdio( 1, tote0 )
+        if ( lbathnew ) call write_nose_data
         if ( lcpmd ) then
-           if ( lbathnew  ) call write_nose_data
            if ( lbathnewe ) call write_nosee_data
            call write_data_cpmdio
         end if
@@ -355,8 +355,8 @@ SUBROUTINE bomd
 
   if ( ctrl_cpmdio > 0 ) then
      if ( myrank == 0 ) call mdio( 1,tote0 )
+     if ( lbathnew ) call write_nose_data
      if ( lcpmd ) then
-        if ( lbathnew  ) call write_nose_data
         if ( lbathnewe ) call write_nosee_data
         call write_data_cpmdio
      end if
