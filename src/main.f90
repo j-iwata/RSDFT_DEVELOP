@@ -272,6 +272,8 @@ PROGRAM Real_Space_DFT
 
 !- FD boundary set -
 
+  call IOTools_readIntegerKeyword( "MD", Md )
+
   call init_bcset( Md, SYStype )
 
 ! --- kinetic energy oprator coefficients ---
