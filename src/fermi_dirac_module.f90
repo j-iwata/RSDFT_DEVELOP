@@ -4,6 +4,7 @@ module fermi_dirac_module
 
   private
   public :: fermi_dirac
+  public :: entropy_fd
 
 contains
 
@@ -19,12 +20,8 @@ contains
     integer :: ib,id,n,k,s,efconv
     real(8) :: ctime0,ctime1,etime0,etime1
     real(8) :: zne,octmp,ff,xx,ff0
-!SF120504
     real(8),parameter :: eps=1.0d-10, big=36.9d0
     integer,parameter :: mxcycl=100
-!    real(8),parameter :: eps=1.d-13, big=36.9d0
-!    integer,parameter :: mxcycl=500
-!/SF120504
     integer,parameter :: kinteg=-1
     integer :: MB, MBZ, nspin, mb1, mb2
     logical :: flag, disp_switch
@@ -185,6 +182,7 @@ contains
        !   end do
        !   end do
        !end if
+
     end do loop_mb1
 
     call stop_program('FERMI(1)')
@@ -322,5 +320,32 @@ contains
   !  end if
   !  return
   !END FUNCTION HermitePoly
+
+  subroutine entropy_fd( Eentropy, ekbt, occ )
+    implicit none
+    real(8), intent(out) :: Eentropy
+    real(8), intent(in)  :: ekbt
+    real(8), intent(in)  :: occ(:,:,:)
+    real(8) :: factor1,factor2,Sf,f,g
+    integer :: n,k,s,nb,nk,ns
+    nb=size(occ,1)
+    nk=size(occ,2)
+    ns=size(occ,3)
+    factor1=ns/2.0d0  ! ns=1: factor1=0.5,  ns=2: factor1=1.0
+    factor2=2.0d0/ns  ! ns=1: factor2=2.0,  ns=2: factor2=1.0
+    Eentropy=0.0d0
+    do s=1,ns
+    do k=1,nk
+    do n=1,nb
+       Sf=0.0d0
+       f=occ(n,k,s)*factor1
+       if ( f > 0.0d0 ) Sf=Sf-f*log(f)
+       g=1.0d0-f
+       if ( g > 0.0d0 ) Sf=Sf-g*log(g)
+       Eentropy=Eentropy+factor2*ekbt*Sf
+    end do
+    end do
+    end do
+  end subroutine entropy_fd
 
 end module fermi_dirac_module

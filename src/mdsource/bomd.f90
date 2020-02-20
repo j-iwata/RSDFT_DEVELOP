@@ -147,13 +147,13 @@ SUBROUTINE bomd
      call calc_total_energy( .false., Etot )
      call calfke( fke )
      if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
-  else
+  else ! bomd
      MB_0_CPMD=MB_0
      MB_1_CPMD=MB_1
      ib1=MB_0
      ib2=MB_1
      call getforce
-     call calc_total_energy( .false., Etot )
+     call calc_total_energy( .false., Free_energy=Etot )
   end if
 
 ! --- initial bath parameters
@@ -256,7 +256,7 @@ SUBROUTINE bomd
      else ! BOMD
 
         call getforce
-        call calc_total_energy( .false., Etot )
+        call calc_total_energy( .false., Free_energy=Etot )
 
      end if
 

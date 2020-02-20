@@ -1,6 +1,6 @@
 module fermi_module
 
-  use fermi_dirac_module
+  use fermi_dirac_module, only: fermi_dirac, entropy_fd
   use bberf_module
   use io_tools_module
   use watch_module, only: start_timer,result_timer
@@ -94,6 +94,7 @@ contains
              call fermi_dirac(occ,efermi,esp,ekbt,znel,wbz,dspn)
           else
              call fermi_dirac(occ,efermi,esp,ekbt,znel,wbz)
+             call entropy_fd( Eentropy, ekbt, occ )
           end if
        end select
 
