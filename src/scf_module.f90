@@ -248,7 +248,7 @@ CONTAINS
 
              call watchb( t_tmp )
 
-             call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
+             call conjugate_gradient(ML_0,ML_1,k,s,unk,esp,res)
 
              call watchb( t_tmp, t_out(:,4) )
 
@@ -272,7 +272,7 @@ CONTAINS
 
        end do ! s
 
-       call phase_control( ML_0, ML_1, unk )
+       !call phase_control( ML_0, ML_1, unk )
 
        call calc_time_watch( etime_lap(2) )
        call init_time_watch( etime_lap(3) )

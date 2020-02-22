@@ -158,7 +158,7 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          call conjugate_gradient( ML_0,ML_1, Nband, k,s, unk, esp, res )
+          call conjugate_gradient( ML_0,ML_1, k,s, unk, esp, res )
 
           call gram_schmidt(1,Nband,k,s)
 

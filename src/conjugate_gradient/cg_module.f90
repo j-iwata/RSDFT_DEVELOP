@@ -1,4 +1,4 @@
-MODULE cg_module
+module cg_module
 
   use rgrid_module, only: zdV,dV
   use hamiltonian_module
@@ -17,58 +17,54 @@ MODULE cg_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: conjugate_gradient
-  PUBLIC :: read_cg
+  private
+  public :: conjugate_gradient
+  public :: read_cg
 
-  integer :: Ncg = 3
-  integer :: iswitch_gs = 0
   integer :: iswitch_cg = 1
+  integer :: Ncg = 3
+  integer :: iswitch_pc = 1
+  integer :: iswitch_gs = 0
+  integer :: ictrl_cg(3) = (/ 3, 1, 0 /)
   logical :: flag_init_read = .true.
   logical :: flag_init_cg = .true.
-  integer :: ictrl_cg(3) = (/ 3, 1, 0 /)
 
-CONTAINS
-
-
-  SUBROUTINE read_cg
-    implicit none
-    call IOTools_readIntegerKeyword( "NCG" , Ncg )
-    call IOTools_readIntegerKeyword( "ICG" , iswitch_cg )
-    call IOTools_readIntegerKeyword( "SWGS", iswitch_gs )
-    call IOTools_readIntegerKeyword( "CTRLCG", ictrl_cg )
-    flag_init_read = .false.
-  END SUBROUTINE read_cg
-
-
-  SUBROUTINE init_cg
-    implicit none
-    logical :: disp
-    if ( .not.flag_init_cg ) return
-    call check_disp_switch( disp, 0 )
-    if ( disp ) then
-       write(*,*) "NCG =",Ncg
-       write(*,*) "ICG =",iswitch_cg
-       write(*,*) "SWGS=",iswitch_gs
-    end if
-    flag_init_cg=.false.
-  END SUBROUTINE init_cg
-
-
-  SUBROUTINE conjugate_gradient( n1,n2, MB, k,s, unk, esp, res )
-    implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s
-    real(8),intent(INOUT) :: esp(:,:,:),res(:,:,:)
+  interface conjugate_gradient_1
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(:,:,:,:)
+     module procedure d_conjugate_gradient_1
 #else
-    complex(8),intent(INOUT) :: unk(:,:,:,:)
+     module procedure z_conjugate_gradient_1
+#endif
+  end interface
+
+contains
+
+
+  subroutine read_cg
+    implicit none
+    call IOTools_readIntegerKeyword( "ICG" , iswitch_cg )
+    call IOTools_readIntegerKeyword( "NCG" , ictrl_cg(1) )
+    call IOTools_readIntegerKeyword( "SWPC", ictrl_cg(2) )
+    call IOTools_readIntegerKeyword( "SWGS", ictrl_cg(3) )
+    call IOTools_readIntegerKeyword( "CTRLCG", ictrl_cg(1:3) )
+    flag_init_read = .false.
+  end subroutine read_cg
+
+
+  subroutine conjugate_gradient( n1,n2, k,s, unk, esp, res )
+    implicit none
+    integer,intent(in) :: n1, n2, k, s
+    real(8),intent(inout) :: esp(:,:,:),res(:,:,:)
+#ifdef _DRSDFT_
+    real(8),intent(inout) :: unk(n1:,:,:,:)
+#else
+    complex(8),intent(inout) :: unk(n1:,:,:,:)
 #endif
     integer :: ipc,kk,ss
     type(time) :: tt
 
     if ( flag_noncollinear ) then
-       call conjugate_gradient_ncol( n1,n2,MB,k,unk,esp(:,k,s),res(:,k,s) )
+       call conjugate_gradient_ncol( n1,n2,size(esp,1),k,unk,esp(:,k,s),res(:,k,s) )
        return
     end if
 
@@ -83,14 +79,12 @@ CONTAINS
     kk = k - id_bzsm(myrank_k)
     ss = s - id_spin(myrank_s)
 
-    call init_cg
-
     call init_cgpc( n1, n2, k, s, dV, SYStype, ipc )
 
     if ( pp_kind == "USPP" ) then
 
        call conjugate_gradient_g &
-            ( n1,n2,MB,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s),iswitch_gs )
+            ( n1,n2,size(esp,1),k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s),iswitch_gs )
 
     else
 
@@ -99,7 +93,7 @@ CONTAINS
        case( 1 )
 
           call conjugate_gradient_1 &
-               (n1,n2,MB,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s))
+               (n1,n2,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s))
 
        case( 2 )
 
@@ -114,15 +108,14 @@ CONTAINS
 
     call write_border( 1, " conjugate_gradient(end)" )
 
-  END SUBROUTINE conjugate_gradient
+  end subroutine conjugate_gradient
 
 #ifdef _DRSDFT_
-
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
+  subroutine d_conjugate_gradient_1(n1,n2,k,s,Mcg,unk,esp,res)
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg
-    real(8),intent(INOUT) :: unk(n1:,:)
-    real(8),intent(INOUT) :: esp(:),res(:)
+    integer,intent(in) :: n1,n2,k,s,Mcg
+    real(8),intent(inout) :: unk(n1:,:)
+    real(8),intent(inout) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i,TYPE_MAIN,timer_counter
     real(8),parameter :: ep0=0.d0
@@ -142,7 +135,7 @@ CONTAINS
     character(5) :: timecg_indx(7)
     character(5) :: time_cgpc_indx(13)
 
-    call watchb( ttmp_cg ) ; ttmp(:)=ttmp_cg(:)
+    call watchb( ttmp_cg ); ttmp(:)=ttmp_cg(:)
 
     TYPE_MAIN = MPI_REAL8
 
@@ -194,7 +187,7 @@ CONTAINS
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
        else
-          call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,unk(:,ns:ne),hxk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
        call watchb( ttmp, timecg(:,1) )
@@ -248,14 +241,14 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk(:,1:nn),Pgk(:,1:nn))
 
           call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
           do n=ns,ne
-             call cggs( iswitch_gs, ML0, MB, n, dV, unk, Pgk(n1,n-ns+1) )
+             call cggs( iswitch_gs, ML0, size(unk,2), n, dV, unk, Pgk(n1,n-ns+1) )
           end do
 
 ! ---
@@ -288,7 +281,7 @@ CONTAINS
 
           call watchb( ttmp, timecg(:,2) )
 
-          call hamiltonian(k,s,pk,hpk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,pk(:,1:nn),hpk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
           call watchb( ttmp, timecg(:,1) )
 
@@ -327,7 +320,7 @@ CONTAINS
              end if
 !- Fix the phase -
              c=utmp2(1,1)
-             if( c<0.d0 ) then
+             if( c<0.0d0 ) then
                 utmp2(1,1)=-utmp2(1,1)
                 utmp2(2,1)=-utmp2(2,1)
              end if
@@ -434,15 +427,14 @@ CONTAINS
 !       write(*,*) "iswitch_gs=",iswitch_gs
 !    end if
 
-  END SUBROUTINE conjugate_gradient_1
+  end subroutine d_conjugate_gradient_1
 
 #else
-
-  SUBROUTINE conjugate_gradient_1(n1,n2,MB,k,s,Mcg,unk,esp,res)
+  subroutine z_conjugate_gradient_1(n1,n2,k,s,Mcg,unk,esp,res)
     implicit none
-    integer,intent(IN) :: n1,n2,MB,k,s,Mcg
-    complex(8),intent(INOUT) :: unk(n1:,:)
-    real(8),intent(INOUT) :: esp(:),res(:)
+    integer,intent(in) :: n1,n2,k,s,Mcg
+    complex(8),intent(inout) :: unk(n1:,:)
+    real(8),intent(inout) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i,TYPE_MAIN
     real(8),parameter :: ep0=0.d0
@@ -456,25 +448,26 @@ CONTAINS
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
     complex(8),allocatable :: utmp2(:,:),btmp2(:,:),utmp3(:,:)
     real(8) :: ttmp(2),timecg(2,9),ttmp_cg(2)
-    character(5) :: timecg_indx(7)
+    character(5) :: timecg_indx(9)
     logical :: disp
 
-    call watchb( ttmp ) ; ttmp_cg=ttmp
+    call watchb( ttmp ); ttmp_cg=ttmp
 
     TYPE_MAIN = RSDFT_MPI_COMPLEX16
 
-    ctt(:)=0.d0
-    ett(:)=0.d0
-    ctt_hamil(:)=0.d0
-    ett_hamil(:)=0.d0
+    ctt(:)=0.0d0
+    ett(:)=0.0d0
+    ctt_hamil(:)=0.0d0
+    ett_hamil(:)=0.0d0
     timecg(:,:)=0.0d0
     time_hmlt(:,:)=0.0d0
     time_kine(:,:)=0.0d0
     time_nlpp(:,:)=0.0d0
     time_cgpc(:,:)=0.0d0
-    timecg_indx(1:7) = (/"hamil","oprat","allrd","precn","ortho","other","total"/)
+    timecg_indx(1:8) = (/"hamil","oprat","allrd","precn" &
+                        ,"ortho","other","opra2","total"/)
 
-    ML0 = ML_1-ML_0+1
+    ML0 = size( unk, 1 )
 
     mm  = 2*ML0
     icmp= 2
@@ -483,24 +476,30 @@ CONTAINS
     Nhpsi  = 0
     Npc    = 0
 
-    allocate( hxk(n1:n2,MB_d), hpk(n1:n2,MB_d) )
-    allocate( gk(n1:n2,MB_d) , Pgk(n1:n2,MB_d) )
-    allocate( pk(n1:n2,MB_d) , pko(n1:n2,MB_d) )
-    allocate( sb(MB_d),rb(MB_d) )
+    allocate( hxk(n1:n2,MB_d) )
+    allocate( hpk(n1:n2,MB_d) )
+    allocate( gk(n1:n2,MB_d) )
+    allocate( Pgk(n1:n2,MB_d) )
+    allocate( pk(n1:n2,MB_d) )
+    allocate( pko(n1:n2,MB_d) )
+    allocate( sb(MB_d) )
+    allocate( rb(MB_d) )
     allocate( E(MB_d),E1(MB_d),gkgk(MB_d),bk(MB_d) )
-    allocate( vtmp2(6,MB_d),wtmp2(6,MB_d) )
-    allocate( utmp2(2,2),btmp2(2,2) )
+    allocate( vtmp2(6,MB_d) )
+    allocate( wtmp2(6,MB_d) )
+    allocate( utmp2(2,2) )
+    allocate( btmp2(2,2) )
     allocate( utmp3(2,MB_d) )
 
 !$OMP parallel workshare
-    res(:)  = 0.d0
-    esp(:)  = 0.d0
+    res(:)=0.0d0
+    esp(:)=0.0d0
 !$OMP end parallel workshare
 
     call watchb( ttmp, timecg(:,6) )
 
-    do ns=MB_0,MB_1
-       ne=ns
+    do ns=MB_0,MB_1,MB_d
+       ne=min(ns+MB_d-1,MB_1)
        nn=ne-ns+1
 
        E1(1:nn)=1.d10
@@ -512,7 +511,7 @@ CONTAINS
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
        else
-          call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,unk(:,ns:ne),hxk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
        call watchb( ttmp, timecg(:,1) )
@@ -568,14 +567,14 @@ CONTAINS
 
           call watchb( ttmp, timecg(:,6) )
 
-          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
+          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk(:,1:nn),Pgk(:,1:nn))
 
           call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
           do n=ns,ne
-             call cggs( iswitch_gs, ML0, MB, n, dV, unk, Pgk(n1,n-ns+1) )
+             call cggs( iswitch_gs, ML0, size(unk,2), n, dV, unk, Pgk(n1,n-ns+1) )
           end do
 
           call watchb( ttmp, timecg(:,5) )
@@ -606,11 +605,12 @@ CONTAINS
 !$OMP end parallel do
              end do
           end if
+
           gkgk(1:nn)=rb(1:nn)
 
           call watchb( ttmp, timecg(:,2) )
 
-          call hamiltonian(k,s,pk,hpk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian(k,s,pk(:,1:nn),hpk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
           call watchb( ttmp, timecg(:,1) )
 
@@ -685,7 +685,7 @@ CONTAINS
 
           end do ! n
 
-          call watchb( ttmp, timecg(:,2) )
+          call watchb( ttmp, timecg(:,7) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
@@ -730,8 +730,11 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
-!    call watchb( ttmp, timecg(:,6) )
-!    call watchb( ttmp_cg, timecg(:,7) )
+    call watchb( ttmp, timecg(:,6) )
+    call watchb( ttmp_cg, timecg(:,8) )
+
+!    ctt_hamil(1:4)=time_hmlt(1,1:4)
+!    ett_hamil(1:4)=time_hmlt(2,1:4)
 
 !    call check_disp_switch( disp, 0 )
 !    if ( disp ) then
@@ -747,8 +750,7 @@ CONTAINS
 !       call write_watchb( timecg, 7, timecg_indx )
 !    end if
 
-  END SUBROUTINE conjugate_gradient_1
-
+  end subroutine z_conjugate_gradient_1
 #endif
 
   SUBROUTINE get_time_min( n, t_in, t_min )
@@ -778,4 +780,4 @@ CONTAINS
   END SUBROUTINE get_time_max
 
 
-END MODULE cg_module
+end module cg_module
