@@ -143,7 +143,7 @@ CONTAINS
     ompflag1 = .FALSE.
     time_bcfd(:,:) = 0.0d0
 
-!$omp parallel private ( n, iloop, b )
+!$omp parallel private ( n, iloop, b ) copyin( ompi )
 
     !call watchb_omp( ttmp )
 

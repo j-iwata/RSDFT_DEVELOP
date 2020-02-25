@@ -933,6 +933,7 @@ CONTAINS
     call watcha( timer_counter )
 
     call init_op_ps_nloc2_hp(.true.)
+    call init_op_ps_nloc2
 
     call watcha( timer_counter )
 

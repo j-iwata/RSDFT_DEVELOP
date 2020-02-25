@@ -8,7 +8,7 @@ MODULE nonlocal_module
   use ps_nloc3_module
   use ps_nloc_mr_module
   use PSnonLocOpG2
-  use parallel_module, only: myrank
+  use parallel_module, only: myrank, ir_grid, id_grid, myrank_g
 
   implicit none
 
@@ -32,7 +32,7 @@ CONTAINS
     complex(8),intent(INOUT),optional :: htpsi00(:,:)
 #endif
     integer,optional,intent(IN) :: k_in, s_in
-    integer :: k,s
+    integer :: k,s,n1,n2
     k=1 ; if ( present(k_in) ) k=k_in
     s=1 ; if ( present(s_in) ) s=s_in
     select case( pselect )
@@ -40,7 +40,10 @@ CONTAINS
        if ( ps_type == 1 ) then
           call op_ps_nloc_mr( tpsi, htpsi, k )
        else
-          call op_ps_nloc2_hp( tpsi, htpsi, k )
+          !call op_ps_nloc2_hp( tpsi, htpsi, k )
+          n1=id_grid(myrank_g)+1
+          n2=n1+ir_grid(myrank_g)-1
+          call op_ps_nloc2( k, tpsi, htpsi, n1, n2, 1, size(tpsi,2) )
        end if
     case(3)
        call op_ps_nloc3( tpsi, htpsi, k )
