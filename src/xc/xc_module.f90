@@ -128,7 +128,7 @@ CONTAINS
     type( xcpot ) :: pot
     type( xcene ) :: ene
 
-    call write_border( 1, " calc_xc(start)" )
+!    call write_border( 1, " calc_xc(start)" )
     call check_disp_switch( disp_sw, 0 )
 
     if ( flag_read ) call read_xc
@@ -421,7 +421,7 @@ CONTAINS
 
     deallocate( rho_tmp )
 
-    call write_border( 1, " calc_xc(end)" )
+!    call write_border( 1, " calc_xc(end)" )
 
   END SUBROUTINE calc_xc
 

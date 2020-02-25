@@ -79,7 +79,7 @@ CONTAINS
     include 'mpif.h'
     complex(8) :: ztmp,ztmp1
 
-    call write_border( 1, " calc_total_energy(start)" )
+!    call write_border( 1, " calc_total_energy(start)" )
 
     Etot_0 = Etot
 
@@ -333,7 +333,7 @@ CONTAINS
 !    diff_etot = Etot - Ehwf
 
     unit=99 ; if ( present(unit_in) ) unit=unit_in
-    call write_info_total_energy( Etot, (myrank==0), unit )
+!    call write_info_total_energy( Etot, (myrank==0), unit )
 
     call check_disp_length( i, 0 )
     if ( i > 1 ) call write_info_total_energy( Etot, (myrank==0), 6 )
@@ -366,7 +366,7 @@ CONTAINS
     Eentropy_0 = Eentropy
     Fene_0     = Fene
 
-    call write_border( 1, " calc_total_energy(end)" )
+!    call write_border( 1, " calc_total_energy(end)" )
 
   END SUBROUTINE calc_total_energy
 
@@ -377,7 +377,7 @@ CONTAINS
     logical,optional,intent(IN)  :: flag_ncol
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
-    call write_border( 1, " calc_with_rhoIN_total_energy(start)" )
+!    call write_border( 1, " calc_with_rhoIN_total_energy(start)" )
     sb(:)=0.d0
     do s=MSP_0,MSP_1
        sb(1) = sb(1) + sum(Vloc(:,s)*rho(:,s))
@@ -401,7 +401,7 @@ CONTAINS
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
          - 2*E_exchange_exx + cnst + Evdw - DCxc
     Etot_wo_cnst = Etot - cnst
-    call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
+!    call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
   END SUBROUTINE calc_with_rhoIN_total_energy
 
 

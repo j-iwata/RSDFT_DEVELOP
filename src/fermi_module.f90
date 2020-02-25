@@ -57,7 +57,7 @@ CONTAINS
     real(8) :: oc0
     integer :: n,k,s
 
-    call start_timer
+!    call start_timer
 
     if ( flag_read ) call read_fermi
 
@@ -91,7 +91,7 @@ CONTAINS
 
     end if
 
-    call result_timer( "fermi" )
+!    call result_timer( "fermi" )
 
   END SUBROUTINE calc_fermi
 
@@ -107,7 +107,7 @@ CONTAINS
     integer,parameter :: max_loop=1000000
     logical :: disp_switch
 
-    call write_border( 1, " calc_fermi_mp(start)" )
+!    call write_border( 1, " calc_fermi_mp(start)" )
 
     call check_disp_switch( disp_switch, 0 )
 
@@ -251,7 +251,7 @@ CONTAINS
 
     deallocate( msk )
 
-    call write_border( 1, " calc_fermi_mp(end)" )
+!    call write_border( 1, " calc_fermi_mp(end)" )
 
   END SUBROUTINE calc_fermi_mp
 

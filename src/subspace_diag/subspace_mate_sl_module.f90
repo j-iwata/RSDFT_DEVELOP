@@ -36,8 +36,8 @@ CONTAINS
     complex(8) :: ztmp
     type(time) :: t
 
-    call write_border( 1, " subspace_mate_sl(start)" )
-    call start_timer( t )
+!    call write_border( 1, " subspace_mate_sl(start)" )
+!    call start_timer( t )
 
     UPLO = 'L'
 
@@ -356,8 +356,8 @@ CONTAINS
     deallocate( vtmp2 )
     deallocate( irecv_me, isend_me )
 
-    call result_timer( "mate_sl", t )
-    call write_border( 1, " subspace_mate_sl(end)" )
+!    call result_timer( "mate_sl", t )
+!    call write_border( 1, " subspace_mate_sl(end)" )
 
   END SUBROUTINE subspace_mate_sl
 

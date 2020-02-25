@@ -34,7 +34,7 @@ CONTAINS
     htpsi=(0.0d0,0.0d0)
 !$OMP end workshare
 
-    call watchb_omp( ttmp )
+    !call watchb_omp( ttmp )
 
 ! --- Kinetic energy ---
 
@@ -42,7 +42,7 @@ CONTAINS
 
 !$OMP barrier
 
-    call watchb_omp( ttmp, time_hmlt(1,1) )
+    !call watchb_omp( ttmp, time_hmlt(1,1) )
 
 ! --- local potential ---
 
@@ -50,7 +50,7 @@ CONTAINS
 
 !$OMP barrier
 
-    call watchb_omp( ttmp, time_hmlt(1,2) )
+    !call watchb_omp( ttmp, time_hmlt(1,2) )
 
 ! --- nonlocal potential ---
 
@@ -58,15 +58,15 @@ CONTAINS
 
 !$OMP barrier
 
-    call watchb_omp( ttmp, time_hmlt(1,3) )
+    !call watchb_omp( ttmp, time_hmlt(1,3) )
 
 !$OMP end parallel
 
-    call watchb( ttmp )
+    !call watchb( ttmp )
 
     call op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
 
-    call watchb( ttmp, time_hmlt(1,4) )
+    !call watchb( ttmp, time_hmlt(1,4) )
 
   END SUBROUTINE hamiltonian
 

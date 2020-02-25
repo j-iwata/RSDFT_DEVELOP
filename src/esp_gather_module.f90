@@ -17,7 +17,7 @@ CONTAINS
     integer :: MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
     integer,allocatable :: ir(:),id(:)
 
-    call write_border( 1, " esp_gather(start)" )
+!    call write_border( 1, " esp_gather(start)" )
 
     np = max( np_band,np_bzsm,np_spin )
 
@@ -53,7 +53,7 @@ CONTAINS
 
     deallocate( id,ir )
 
-    call write_border( 1, " esp_gather(end)" )
+!    call write_border( 1, " esp_gather(end)" )
 
   END SUBROUTINE esp_gather
 

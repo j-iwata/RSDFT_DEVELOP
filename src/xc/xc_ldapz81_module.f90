@@ -131,6 +131,7 @@ CONTAINS
     real(8) :: f,dfdrhoa,dfdrhob
     real(8) :: ecd(2),ecdz,mu(2)
     integer :: i
+    real(8),allocatable :: Eci(:)
 
     ThrFouPi = 3.0d0/( 4.0d0*acos(-1.0d0) )
     onethr   = 1.0d0/3.0d0
@@ -140,6 +141,8 @@ CONTAINS
 
     factor = 1.0d0
     if ( MSP == 1 ) factor=0.5d0
+
+    allocate( Eci(ML_0:ML_1) ); Eci=0.0d0
 
     Ec = 0.0d0
 
@@ -161,7 +164,7 @@ CONTAINS
           ecd(2) = gam(2)/( 1.0d0 + bet1(2)*rssq + bet2(2)*rs )
 
           f=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr)
-          Ec = Ec + trho*ecd(1) &
+          Eci(i) = trho*ecd(1) &
                + gam(2)/(  trho**onethr &
                          + bet1(2)*(trho*ThrFouPi)**onesix &
                          + bet2(2)*ThrFouPi**onethr )*f &
@@ -190,7 +193,7 @@ CONTAINS
 
           ecdz = ecd(1) + ( ecd(2) - ecd(1) )*f
 
-          Ec = Ec + trho*ecdz
+          Eci(i) = trho*ecdz
 
           mu(1) = ecd(1) - onethr*( A(1) + C(1)*rs*(1.0d0+rsln) + rs*D(1) )
           mu(2) = ecd(2) - onethr*( A(2) + C(2)*rs*(1.0d0+rsln) + rs*D(2) )
@@ -211,6 +214,10 @@ CONTAINS
        vco(i,MSP) = mu(1) + ( mu(2)-mu(1) )*f + ( ecd(2)-ecd(1) )*dfdrhob
 
     end do ! i
+
+    Ec = sum(Eci)
+
+    deallocate( Eci )
 
     return
   END SUBROUTINE calc_ldapz81_c

@@ -72,9 +72,9 @@ CONTAINS
        return
     end if
 
-    call write_border( 1, " conjugate_gradient(start)" )
+!    call write_border( 1, " conjugate_gradient(start)" )
 
-    call start_timer( tt )
+!    call start_timer( tt )
 
     Ncg        = ictrl_cg(1)
     ipc        = ictrl_cg(2)
@@ -110,9 +110,9 @@ CONTAINS
 
     end if
 
-    call result_timer( "cg", tt )
+!    call result_timer( "cg", tt )
 
-    call write_border( 1, " conjugate_gradient(end)" )
+!    call write_border( 1, " conjugate_gradient(end)" )
 
   END SUBROUTINE conjugate_gradient
 
@@ -142,7 +142,7 @@ CONTAINS
     character(5) :: timecg_indx(7)
     character(5) :: time_cgpc_indx(13)
 
-    call watchb( ttmp_cg ) ; ttmp(:)=ttmp_cg(:)
+!    call watchb( ttmp_cg ) ; ttmp(:)=ttmp_cg(:)
 
     TYPE_MAIN = MPI_REAL8
 
@@ -179,7 +179,7 @@ CONTAINS
     esp(:) = 0.0d0
 !$OMP end parallel workshare
 
-    call watchb( ttmp, timecg(:,5) )
+!    call watchb( ttmp, timecg(:,5) )
 
     do ns=MB_0,MB_1,MB_d
        ne=min(ns+MB_d-1,MB_1)
@@ -187,7 +187,7 @@ CONTAINS
 
        E1(:)=1.d10
 
-       call watchb( ttmp )
+!       call watchb( ttmp )
 
        if ( iflag_hunk >= 1 ) then
 !$OMP parallel workshare
@@ -197,17 +197,17 @@ CONTAINS
           call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
-       call watchb( ttmp, timecg(:,1) )
+!       call watchb( ttmp, timecg(:,1) )
 
        do n=1,nn
           call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
        end do
 
-       call watchb( ttmp, timecg(:,2) )
+!       call watchb( ttmp, timecg(:,2) )
 
        call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watchb( ttmp, timecg(:,3) )
+!       call watchb( ttmp, timecg(:,3) )
 
        do n=1,nn
 !$OMP parallel do
@@ -218,15 +218,15 @@ CONTAINS
           call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
        end do
 
-       call watchb( ttmp, timecg(:,2) )
+!       call watchb( ttmp, timecg(:,2) )
 
        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watchb( ttmp, timecg(:,3) )
+!       call watchb( ttmp, timecg(:,3) )
 
        do icg=1,Mcg+1
 
-          call watchb( ttmp )
+!          call watchb( ttmp )
 
           Ncgtot=Ncgtot+1
 
@@ -244,13 +244,13 @@ CONTAINS
           if ( all(abs(E(1:nn)-E1(1:nn))<ep1) ) exit
           if ( icg==Mcg+1 ) exit
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
 ! --- Preconditioning ---
 
           call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
 
-          call watchb( ttmp, timecg(:,4) )
+!          call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
@@ -264,11 +264,11 @@ CONTAINS
              call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
           end do
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+!          call watchb( ttmp, timecg(:,3) )
 
           if ( icg==1 ) then
 !$OMP parallel workshare
@@ -286,11 +286,11 @@ CONTAINS
           end if
           gkgk(1:nn)=rb(1:nn)
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call hamiltonian(k,s,pk,hpk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
-          call watchb( ttmp, timecg(:,1) )
+!          call watchb( ttmp, timecg(:,1) )
 
           do n=1,nn
              vtmp2(1:6,n)=zero
@@ -303,11 +303,11 @@ CONTAINS
              call dot_product( pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
           end do
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+!          call watchb( ttmp, timecg(:,3) )
 
           do n=1,nn
              m=n+ns-1
@@ -355,11 +355,11 @@ CONTAINS
 
           end do ! n
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+!          call watchb( ttmp, timecg(:,3) )
 
           do n=1,nn
              m=n+ns-1
@@ -381,7 +381,7 @@ CONTAINS
              end if
           end do
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
        end do ! icg
 
@@ -389,7 +389,7 @@ CONTAINS
 
     end do  ! band-loop
 
-    call watchb( ttmp )
+!    call watchb( ttmp )
 
     deallocate( utmp3 )
     deallocate( btmp2,utmp2  )
@@ -400,8 +400,8 @@ CONTAINS
     deallocate( Pgk,gk  )
     deallocate( hpk,hxk )
 
-    call watchb( ttmp, timecg(:,6) )
-    call watchb( ttmp_cg, timecg(:,7) )
+!    call watchb( ttmp, timecg(:,6) )
+!    call watchb( ttmp_cg, timecg(:,7) )
 
 !    call get_time_min( 7, timecg, timecg_min )
 !    call get_time_max( 7, timecg, timecg_max )
@@ -459,7 +459,7 @@ CONTAINS
     character(5) :: timecg_indx(7)
     logical :: disp
 
-    call watchb( ttmp ) ; ttmp_cg=ttmp
+!    call watchb( ttmp ) ; ttmp_cg=ttmp
 
     TYPE_MAIN = RSDFT_MPI_COMPLEX16
 
@@ -497,7 +497,7 @@ CONTAINS
     esp(:)  = 0.d0
 !$OMP end parallel workshare
 
-    call watchb( ttmp, timecg(:,6) )
+!    call watchb( ttmp, timecg(:,6) )
 
     do ns=MB_0,MB_1
        ne=ns
@@ -505,7 +505,7 @@ CONTAINS
 
        E1(1:nn)=1.d10
 
-       call watchb( ttmp )
+!       call watchb( ttmp )
 
        if ( iflag_hunk >= 1 ) then
 !$OMP parallel workshare
@@ -515,17 +515,17 @@ CONTAINS
           call hamiltonian(k,s,unk(:,ns:ne),hxk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
        end if
 
-       call watchb( ttmp, timecg(:,1) )
+!       call watchb( ttmp, timecg(:,1) )
 
        do n=1,nn
           call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
        end do
 
-       call watchb( ttmp, timecg(:,2) )
+!       call watchb( ttmp, timecg(:,2) )
 
        call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watchb( ttmp, timecg(:,3) )
+!       call watchb( ttmp, timecg(:,3) )
 
        do n=1,nn
 !$OMP parallel do
@@ -536,15 +536,15 @@ CONTAINS
           call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
        end do
 
-       call watchb( ttmp, timecg(:,2) )
+!       call watchb( ttmp, timecg(:,2) )
 
        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watchb( ttmp, timecg(:,3) )
+!       call watchb( ttmp, timecg(:,3) )
 
        do icg=1,Mcg+1
 
-          call watchb( ttmp )
+!          call watchb( ttmp )
 
           Ncgtot=Ncgtot+1
 
@@ -556,7 +556,7 @@ CONTAINS
 
           res(ns:ne)=rb(1:nn)
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
 ! --- Convergence check ---
 
@@ -566,11 +566,11 @@ CONTAINS
 
 ! --- Preconditioning ---
 
-          call watchb( ttmp, timecg(:,6) )
+!          call watchb( ttmp, timecg(:,6) )
 
           call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk,Pgk)
 
-          call watchb( ttmp, timecg(:,4) )
+!          call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
@@ -578,7 +578,7 @@ CONTAINS
              call cggs( iswitch_gs, ML0, MB, n, dV, unk, Pgk(n1,n-ns+1) )
           end do
 
-          call watchb( ttmp, timecg(:,5) )
+!          call watchb( ttmp, timecg(:,5) )
 
 ! ---
 
@@ -586,11 +586,11 @@ CONTAINS
              call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
           end do
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+!          call watchb( ttmp, timecg(:,3) )
 
           if ( icg==1 ) then
 !$OMP parallel workshare
@@ -608,11 +608,11 @@ CONTAINS
           end if
           gkgk(1:nn)=rb(1:nn)
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call hamiltonian(k,s,pk,hpk,n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
 
-          call watchb( ttmp, timecg(:,1) )
+!          call watchb( ttmp, timecg(:,1) )
 
           do n=1,nn
              vtmp2(1:6,n)=zero
@@ -625,11 +625,11 @@ CONTAINS
              call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
           end do
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+!          call watchb( ttmp, timecg(:,3) )
 
           do n=1,nn
              m=n+ns-1
@@ -685,11 +685,11 @@ CONTAINS
 
           end do ! n
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
           call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+!          call watchb( ttmp, timecg(:,3) )
 
           do n=1,nn
              m=n+ns-1
@@ -711,7 +711,7 @@ CONTAINS
              end if
           end do
 
-          call watchb( ttmp, timecg(:,2) )
+!          call watchb( ttmp, timecg(:,2) )
 
        end do ! icg
 
@@ -719,7 +719,7 @@ CONTAINS
 
     end do  ! band-loop
 
-    call watchb( ttmp )
+!    call watchb( ttmp )
 
     deallocate( utmp3 )
     deallocate( btmp2,utmp2  )

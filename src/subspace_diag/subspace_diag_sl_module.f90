@@ -19,8 +19,8 @@ CONTAINS
     integer,intent(IN) :: k,s
     type(time) :: t
 
-    call write_border( 1, " subspace_diag_sl(start)" )
-    call start_timer( t )
+!    call write_border( 1, " subspace_diag_sl(start)" )
+!    call start_timer( t )
 
     call prep_scalapack( MB_diag )
 
@@ -40,8 +40,8 @@ CONTAINS
 
     deallocate( Vsub )
 
-    call result_timer( "sd", t )
-    call write_border( 1, " subspace_diag_sl(end)" )
+!    call result_timer( "sd", t )
+!    call write_border( 1, " subspace_diag_sl(end)" )
 
   END SUBROUTINE subspace_diag_sl
 

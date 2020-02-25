@@ -37,7 +37,7 @@ CONTAINS
     complex(8),allocatable :: zwork3(:,:,:)
     include 'fftw3-mpi.f03'
 
-    call write_border( 1, " calc_hartree_sol_fftw(start)" )
+!    call write_border( 1, " calc_hartree_sol_fftw(start)" )
 
     if ( first_time ) then
        call construct_Ggrid(0)
@@ -115,7 +115,7 @@ CONTAINS
     deallocate( zwork3 )
     deallocate( work )
 
-    call write_border( 1, " calc_hartree_sol_fftw(end)" )
+!    call write_border( 1, " calc_hartree_sol_fftw(end)" )
 #endif
   END SUBROUTINE calc_hartree_sol_fftw
 

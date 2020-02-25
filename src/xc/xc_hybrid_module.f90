@@ -355,14 +355,14 @@ CONTAINS
     implicit none
     integer,intent(IN) :: ictrl
     if ( iflag_hybrid == 3 ) return
-    call write_border( 1, " control_xc_hybrid(start)" )
+!    call write_border( 1, " control_xc_hybrid(start)" )
     if ( iflag_hf   == 0 .and. iflag_hse    == 0 .and. &
          iflag_pbe0 == 0 .and. iflag_lcwpbe == 0 ) then
        iflag_hybrid = 0
     else
        iflag_hybrid = ictrl
     end if
-    call write_border( 1, " control_xc_hybrid(end)" )
+!    call write_border( 1, " control_xc_hybrid(end)" )
   END SUBROUTINE control_xc_hybrid
 
 

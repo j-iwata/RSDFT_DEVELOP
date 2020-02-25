@@ -29,8 +29,8 @@ CONTAINS
     integer :: IPCOL,IPROW,iroot1,iroot2,ierr,ML0,MB,n_loop
     type(time) :: t
 
-    call write_border( 1, " subspace_rotv(start)" )
-    call start_timer( t )
+!    call write_border( 1, " subspace_rotv(start)" )
+!    call start_timer( t )
 
     n1  = ML_0
     n2  = ML_1
@@ -137,8 +137,8 @@ CONTAINS
 
     deallocate( utmp )
 
-    call result_timer( "rotv_sl", t )
-    call write_border( 1, " subspace_rotv(end)" )
+!    call result_timer( "rotv_sl", t )
+!    call write_border( 1, " subspace_rotv(end)" )
 
   END SUBROUTINE subspace_rotv_sl
 

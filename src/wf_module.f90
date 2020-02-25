@@ -76,8 +76,10 @@ CONTAINS
     implicit none
     integer,optional,intent(IN) :: SYStype_in
     integer :: SYStype
+    real(8) :: ttmp0(2), ttmp1(2)
 
     call write_border( 0, " init_wf(start)" )
+    call watchb(ttmp0)
 
     call read_wf
 
@@ -126,6 +128,7 @@ CONTAINS
 
     if ( iwork_wf == 1 ) call allocate_work_wf( iwork_wf )
 
+    call watchb(ttmp1); write(*,*) "time(init_wf)",ttmp1-ttmp0
     call write_border( 0, " init_wf(end)" )
 
   END SUBROUTINE init_wf
@@ -142,17 +145,18 @@ CONTAINS
     ir(:)=MB_0_WF+ML_0_WF
     call random_seed( put=ir )
     deallocate( ir )
- 
-    do s=MS_0_WF,MS_1_WF
-       do k=MK_0_WF,MK_1_WF
-          do n=MB_0_WF,MB_1_WF
-             do i=ML_0_WF,ML_1_WF
-                call random_number(u)
-                unk(i,n,k,s)=dcmplx(u(1),u(2))
-             end do
-          end do
-       end do
-    end do
+
+    call random_number( unk ) 
+!    do s=MS_0_WF,MS_1_WF
+!       do k=MK_0_WF,MK_1_WF
+!          do n=MB_0_WF,MB_1_WF
+!             do i=ML_0_WF,ML_1_WF
+!                call random_number(u)
+!                unk(i,n,k,s)=dcmplx(u(1),u(2))
+!             end do
+!          end do
+!       end do
+!    end do
 
   END SUBROUTINE random_initial_wf
 
@@ -280,13 +284,13 @@ CONTAINS
   SUBROUTINE gather_wf
     implicit none
     integer :: k,s
-    call write_border( 1, " gather_wf(start)" )
+!    call write_border( 1, " gather_wf(start)" )
     do s=MS_0_WF,MS_1_WF
     do k=MK_0_WF,MK_1_WF
        call gather_b_wf( k, s )
     end do
     end do
-    call write_border( 1, " gather_wf(end)" )
+!    call write_border( 1, " gather_wf(end)" )
   END SUBROUTINE gather_wf
 
   SUBROUTINE gather_b_wf( k, s )

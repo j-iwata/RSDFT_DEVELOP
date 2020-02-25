@@ -28,8 +28,8 @@ CONTAINS
 
 #ifndef _LAPACK_
 
-    call write_border( 1, " subspace_solv_sl(start)" )
-    call start_timer( t )
+!    call write_border( 1, " subspace_solv_sl(start)" )
+!    call start_timer( t )
 
     MB = MB_diag
 
@@ -132,8 +132,8 @@ CONTAINS
        stop
     end if
 
-    call result_timer( "solv_sl", t )
-    call write_border( 1, " subspace_solv_sl(end)" )
+!    call result_timer( "solv_sl", t )
+!    call write_border( 1, " subspace_solv_sl(end)" )
 
     return
 

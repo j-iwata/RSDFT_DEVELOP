@@ -89,6 +89,7 @@ PROGRAM Real_Space_DFT
   character(32) :: lattice_index
   character(20) :: systype_in="SOL"
   integer :: nloop,itmp(3)
+  real(8) :: time_main(2,0:9), ttmp(2)
 
 ! --- start MPI ---
 
@@ -99,6 +100,9 @@ PROGRAM Real_Space_DFT
 ! --- global time counter start ---
 
   call global_watch(.false.)
+
+  time_main=0.0d0
+  call watchb( time_main(1:2,0) )
 
 ! --- info ---
 
@@ -501,6 +505,13 @@ PROGRAM Real_Space_DFT
      call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
      if ( ierr < 0 ) goto 900
 
+  end if
+
+
+  ttmp=time_main(:,0); time_main(:,0)=0.0d0
+  call watchb( ttmp, time_main(:,0) )
+  if( DISP_SWITCH )then
+     write(*,*) "time(init(main))=",time_main(:,0)
   end if
 
 ! ---

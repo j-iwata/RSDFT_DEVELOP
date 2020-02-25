@@ -44,7 +44,7 @@ CONTAINS
     real(8),allocatable :: f(:,:,:)
     include 'mpif.h'
 
-    call write_border( 1, " calc_sqerr(start)" )
+!    call write_border( 1, " calc_sqerr(start)" )
 
     allocate( f(m,nmax,ndat) ) ; f=0.0d0
 
@@ -67,7 +67,7 @@ CONTAINS
 
     if ( flag_g ) call calc_sqerr_g( m, n, nmax, ndat, f_in )
 
-    call write_border( 1, " calc_sqerr(end)" )
+!    call write_border( 1, " calc_sqerr(end)" )
 
     return
   END SUBROUTINE calc_sqerr

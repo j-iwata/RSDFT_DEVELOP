@@ -55,7 +55,7 @@ CONTAINS
     real(8),allocatable :: trho(:),tvh(:)
     integer :: i,s
 
-    call write_border( 1, " calc_hartree(start)" )
+!    call write_border( 1, " calc_hartree(start)" )
 
     if ( present(vout) ) then
        allocate( tvh(n1:n2) )
@@ -98,7 +98,7 @@ CONTAINS
        deallocate( tvh )
     end if
 
-    call write_border( 1, " calc_hartree(end)" )
+!    call write_border( 1, " calc_hartree(end)" )
 
   END SUBROUTINE calc_hartree
 

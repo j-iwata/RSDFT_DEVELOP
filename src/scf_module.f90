@@ -178,12 +178,12 @@ CONTAINS
     do iter=1,Diter
 
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
-       call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
+!       call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
-       call start_timer( tt )
-       call init_time_watch( etime )
-       call init_time_watch( etime_lap(2) )
-       call watchb( t_ini(1) ) ; t_out=0.0d0
+!       call start_timer( tt )
+!       call init_time_watch( etime )
+!       call init_time_watch( etime_lap(2) )
+!       call watchb( t_ini(1) ) ; t_out=0.0d0
 
        esp0=esp
 
@@ -192,7 +192,7 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          call watchb( t_tmp )
+!          call watchb( t_tmp )
 
           call control_xc_hybrid( iflag_hybrid_0 )
 
@@ -223,11 +223,11 @@ CONTAINS
 
           end if
 
-          call watchb( t_tmp, t_out(:,1) )
+!          call watchb( t_tmp, t_out(:,1) )
 
           if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,unk,esp )
 
-          call watchb( t_tmp, t_out(:,2) )
+!          call watchb( t_tmp, t_out(:,2) )
 
 #ifdef _DRSDFT_
           call mpi_bcast( unk,size(unk),MPI_REAL8,0,comm_fkmb,ierr )
@@ -238,7 +238,7 @@ CONTAINS
 
           call control_xc_hybrid(1)
 
-          call watchb( t_tmp, t_out(:,3) )
+!          call watchb( t_tmp, t_out(:,3) )
 
           do idiag=1,Ndiag
 
@@ -246,22 +246,22 @@ CONTAINS
                 write(*,'(a5," idiag=",i4)') repeat("-",5),idiag
              end if
 
-             call watchb( t_tmp )
+!             call watchb( t_tmp )
 
              call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
 
-             call watchb( t_tmp, t_out(:,4) )
+!             call watchb( t_tmp, t_out(:,4) )
 
              call gram_schmidt(1,Nband,k,s)
 
-             call watchb( t_tmp, t_out(:,5) )
+!             call watchb( t_tmp, t_out(:,5) )
 
              if ( second_diag == 1 .or. idiag < Ndiag ) then
                 call subspace_diag( k,s,ML_0,ML_1,unk,esp )
-                call watchb( t_tmp, t_out(:,2) )
+!                call watchb( t_tmp, t_out(:,2) )
              else if ( second_diag == 2 .and. idiag == Ndiag ) then
                 call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
-                call watchb( t_tmp, t_out(:,6) )
+!                call watchb( t_tmp, t_out(:,6) )
              end if
 
           end do ! idiag
@@ -274,9 +274,9 @@ CONTAINS
 
        call phase_control( ML_0, ML_1, unk )
 
-       call calc_time_watch( etime_lap(2) )
-       call init_time_watch( etime_lap(3) )
-       call watchb( t_tmp )
+!       call calc_time_watch( etime_lap(2) )
+!       call init_time_watch( etime_lap(3) )
+!       call watchb( t_tmp )
 
        call esp_gather(Nband,Nbzsm,Nspin,esp)
 
@@ -294,9 +294,9 @@ CONTAINS
           call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
        end if
 
-       call calc_time_watch( etime_lap(3) )
-       call init_time_watch( etime_lap(4) )
-       call watchb( t_tmp, t_out(:,7) )
+!       call calc_time_watch( etime_lap(3) )
+!       call init_time_watch( etime_lap(4) )
+!       call watchb( t_tmp, t_out(:,7) )
 
 ! --- total energy ---
 
@@ -345,9 +345,9 @@ CONTAINS
           end if
        end if
 
-       call calc_time_watch( etime_lap(4) )
-       call init_time_watch( etime_lap(5) )
-       call watchb( t_tmp, t_out(:,8) )
+!       call calc_time_watch( etime_lap(4) )
+!       call init_time_watch( etime_lap(5) )
+!       call watchb( t_tmp, t_out(:,8) )
 
 ! --- convergence check by density & potential ---
 
@@ -377,9 +377,9 @@ CONTAINS
           end if
        end if
 
-       call calc_time_watch( etime_lap(5) )
-       call init_time_watch( etime_lap(6) )
-       call watchb( t_tmp, t_out(:,9) )
+!       call calc_time_watch( etime_lap(5) )
+!       call init_time_watch( etime_lap(6) )
+!       call watchb( t_tmp, t_out(:,9) )
 
 ! --- convergence check by Fmax ---
 
@@ -403,12 +403,12 @@ CONTAINS
 
        flag_conv = ( flag_conv .or. flag_conv_f .or. flag_conv_e )
 
-       call calc_time_watch( etime_lap(6) )
-       call watchb( t_tmp, t_out(:,10) )
+!       call calc_time_watch( etime_lap(6) )
+!       call watchb( t_tmp, t_out(:,10) )
 
 ! ---
 
-       call global_watch( .false., flag_end1 )
+!       call global_watch( .false., flag_end1 )
 
        flag_end2 = exit_program()
 
@@ -416,8 +416,8 @@ CONTAINS
 
        flag_exit = (flag_conv.or.flag_end.or.(iter==Diter))
 
-       call init_time_watch( etime_lap(7) )
-       call watchb( t_tmp, t_out(:,11) )
+!       call init_time_watch( etime_lap(7) )
+!       call watchb( t_tmp, t_out(:,11) )
 
 ! --- mixing ---
 
@@ -452,8 +452,8 @@ CONTAINS
 
        end if
 
-       call calc_time_watch( etime_lap(7) )
-       call watchb( t_tmp, t_out(:,12) )
+!       call calc_time_watch( etime_lap(7) )
+!       call watchb( t_tmp, t_out(:,12) )
 
 ! ---
 
@@ -461,17 +461,17 @@ CONTAINS
        call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
        if ( myrank == 0 ) call write_eigenvalues( eval )
 
-       call calc_time_watch( etime )
-       call watchb( t_tmp, t_out(:,13) )
+!       call calc_time_watch( etime )
+!       call watchb( t_tmp, t_out(:,13) )
 
        call write_data(disp_switch,flag_exit)
        if ( flag_noncollinear ) call io_write_noncollinear( myrank,flag_exit )
        call write_info_scf( (myrank==0) )
        call write_err_info(iter,sqerr_out(1:2*Nspin),diff_etot,flag_exit,(myrank==0) )
 
-       call result_timer( "scf", tt )
+!       call result_timer( "scf", tt )
 
-       call watchb( t_ini, t_out(:,14) )
+!       call watchb( t_ini, t_out(:,14) )
 
        if ( disp_switch ) then
        write(*,'(1x,"elapsed_time ",f8.3,"(scf)" &
@@ -540,7 +540,7 @@ CONTAINS
     logical,intent(IN) :: flag
     integer :: s,k,n
     integer,parameter :: u=99
-    call write_border( 1, " write_info_scf(start)" )
+!    call write_border( 1, " write_info_scf(start)" )
     if ( flag ) then
        write(u,*) "Eigenvalues"
        write(u,'(a4,a6,a20,2a13,1x)') &
@@ -552,7 +552,7 @@ CONTAINS
        end do
        end do
     end if
-    call write_border( 1, " write_info_scf(end)" )
+!    call write_border( 1, " write_info_scf(end)" )
   END SUBROUTINE write_info_scf
 
 

@@ -408,6 +408,7 @@ CONTAINS
        jb=ib-ib1+1
        do lma=1,nzlma
 !$OMP do
+!NEC$ ivdep
           do j=1,MJJ(lma)
              i=JJP(j,lma)
              htpsi(i,ib) = htpsi(i,ib) + uVk(j,lma,k)*uVunk(lma,jb)

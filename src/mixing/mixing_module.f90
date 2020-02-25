@@ -152,7 +152,7 @@ CONTAINS
     complex(8),allocatable :: Xou_bak(:,:,:),Xin_bak(:,:,:)
     real(8),allocatable :: f(:,:),g(:,:),h(:,:),h_old(:,:),h_bak(:,:)
 
-    call write_border( 1, " perform_mixing(start)" )
+!    call write_border( 1, " perform_mixing(start)" )
 
     disp_switch = .false.
     if ( present(disp_sw_in) ) disp_switch = disp_sw_in
@@ -292,7 +292,7 @@ CONTAINS
     deallocate( h_old )
     deallocate( h,g,f )
 
-    call write_border( 1, " perform_mixing(end)" )
+!    call write_border( 1, " perform_mixing(end)" )
 
   END SUBROUTINE perform_mixing
 
@@ -304,7 +304,7 @@ CONTAINS
     real(8),intent(OUT)   :: sqerr_out(4)
     integer :: n,ierr
     real(8),allocatable :: f(:,:),g(:,:)
-    call write_border( 1, " calc_sqerr_mixing(start)" )
+!    call write_border( 1, " calc_sqerr_mixing(start)" )
     allocate( f(m,MSP) ) ; f=0.0d0
     allocate( g(m,MSP) ) ; g=0.0d0
     n=m*(n2-n1+1)
@@ -312,7 +312,7 @@ CONTAINS
     call mpi_allgather( g_io(1,n1),n,MPI_REAL8,g,n,MPI_REAL8,comm_spin,ierr)
     call calc_sqerr( m, MSP, f, g, sqerr_out )
     deallocate( g,f )
-    call write_border( 1, " calc_sqerr_mixing(end)" )
+!    call write_border( 1, " calc_sqerr_mixing(end)" )
     return
   END SUBROUTINE calc_sqerr_mixing
 

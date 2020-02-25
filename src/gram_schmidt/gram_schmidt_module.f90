@@ -39,9 +39,9 @@ CONTAINS
        return
     end if
 
-    call write_border( 1, " gram_schmidt(start)" )
+!    call write_border( 1, " gram_schmidt(start)" )
 
-    call start_timer( t )
+!    call start_timer( t )
 
     if ( flag_init_read ) call read_gram_schmidt
 
@@ -64,9 +64,9 @@ CONTAINS
 
     end if
 
-    call result_timer( "gs", t )
+!    call result_timer( "gs", t )
 
-    call write_border( 1, " gram_schmidt(end)" )
+!    call write_border( 1, " gram_schmidt(end)" )
 
   END SUBROUTINE gram_schmidt
 
