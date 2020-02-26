@@ -202,7 +202,6 @@ CONTAINS
                 hunk(:,n,k,s) = hunk(:,n,k,s) &
                      + ( Vloc(:,s)-Vloc0(:,s) )*unk(:,n,k,s)
              end do
-             Vloc0(:,s)=Vloc(:,s)
 
           else if ( iflag_hunk == 2 ) then
 
@@ -269,6 +268,8 @@ CONTAINS
        end do ! k
 
        if ( flag_noncollinear ) exit
+
+       if ( iflag_hunk == 1 ) Vloc0(:,s)=Vloc(:,s)
 
        end do ! s
 
