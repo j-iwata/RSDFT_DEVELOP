@@ -112,10 +112,11 @@ CONTAINS
     count0=count
   END SUBROUTINE watcht
 
-  SUBROUTINE global_watch(disp_switch,flag_timelimit)
+  SUBROUTINE global_watch(disp_switch,flag_timelimit,indx)
     implicit none
     logical,intent(IN) :: disp_switch
     logical,optional,intent(OUT) :: flag_timelimit
+    character(*),optional,intent(in) :: indx
     integer :: ierr
     real(8) :: ct,et,s(2),r(2)
     include 'mpif.h'
@@ -133,7 +134,13 @@ CONTAINS
        flag_timelimit=.false.
        if ( r(2) > etime_limit ) flag_timelimit=.true.
     end if
-    if ( disp_switch ) write(*,'(1x,"TIME(END)",3f12.5)') r(1:2)
+    if ( disp_switch ) then
+       if ( present(indx) ) then
+          write(*,'(1x,"TIME(",a,")",3f12.5)') trim(indx),r(1:2)
+       else
+          write(*,'(1x,"TIME(END)",3f12.5)') r(1:2)
+       end if
+    end if
   END SUBROUTINE global_watch
 
 

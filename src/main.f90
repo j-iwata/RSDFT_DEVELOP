@@ -492,6 +492,14 @@ PROGRAM Real_Space_DFT
 
 ! ---
 
+  call write_border( 0, 'End Initialization' )
+  call global_watch( disp_switch, indx='INIT')
+  call write_border( 0, '' )
+
+
+
+! ---
+
   if ( iswitch_dos == 1 ) then
 
      call control_xc_hybrid(1)

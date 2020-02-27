@@ -481,13 +481,19 @@ CONTAINS
                                    ,f8.3,"(cg) " &
                                    ,f8.3,"(gs) " &
                                    ,f8.3,"(for)" &
+                                   ,f8.3,"(eto)" &
+                                   ,f8.3,"(pot)" &
                                    ,f8.3,"(oth)")') &
-                                   t_out(2,14) &
+                                    t_out(2,14) &
                                    ,t_out(2,2) &
                                    ,t_out(2,6) &
                                    ,t_out(2,4),t_out(2,5) &
                                    ,t_out(2,10) &
-                                   ,t_out(2,1)+t_out(2,3)+sum( t_out(2,6:9) )+sum( t_out(2,11:13) )
+                                   ,t_out(2,8) &
+                                   ,t_out(2,12) &
+                                   ,( t_out(2,1)+t_out(2,3) &
+                                     +t_out(2,7)+t_out(2,9) &
+                                     +t_out(2,11)+t_out(2,13) )
        end if
 
        if ( flag_exit ) then
