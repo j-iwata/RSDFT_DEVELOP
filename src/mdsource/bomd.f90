@@ -79,7 +79,7 @@ SUBROUTINE bomd
      !close(3)
      open( 4,file='info.dat',status='replace')
      open(15,file='time.dat',status='replace')
-     if ( ltime ) then
+     if ( lcpmd .and. ltime ) then
         open(16,file='time_cpmd_loop.dat',status='replace')
         write(16,'(6x,9(1x,a9))') "PSI_V","PSI_N","ROTORB","GETFORCE_CPMD" &
                    ,"WF_FORCE","PSI_V","ROTORB2","CALFKE","TOTAL_ENERGY"
@@ -177,12 +177,18 @@ SUBROUTINE bomd
   if ( inivel ) tote0 = kine + Etot + fke + Ebath
 
   if ( myrank == 0 ) then
-     write(*,'(a)') "initial energy"
-     write(*,'(1x,a10,6a20)') "time","Etotal","Etot_DFT","kine","fke","ltemp","Ebath"
-     write(*,'(1x,f10.3,6f20.8)') 0.0d0,tote0,Etot,kine,fke,ltemp,Ebath
      dif  = 0.0d0
      tott = 0.0d0
-     if ( inivel ) write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
+     write(*,'(a)') "initial energy"
+     if( lcpmd )then
+        write(*,'(1x,a10,6a20)') "time","Etotal","Etot_DFT","kine","fke","ltemp","Ebath"
+        write(*,'(1x,f10.3,6f20.8)') tott,tote0,Etot,kine,fke,ltemp,Ebath
+        if ( inivel ) write(4,10) tott,tote0,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
+     else
+        write(*,'(1x,a10,6a20)') "time","Etotal","Etot_DFT","kine","ltemp","Ebath"
+        write(*,'(1x,f10.3,6f20.8)') tott,tote0,Etot,kine,ltemp,Ebath
+        if ( inivel ) write(4,10) tott,tote0,dif,Etot,kine,Ebath,ltemp,sum(esp)
+     end if
   end if
 
 ! --- loop start
@@ -295,10 +301,15 @@ SUBROUTINE bomd
         tote  = kine+Etot+fke+Ebath
         dif   = abs(tote-tote0)
 
-        write(*,'(1x,f10.3,9f20.8)') tott,tote,Etot,kine,fke,ltemp
-        write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
+        if( lcpmd )then
+           write(*,'(1x,f10.3,9f20.8)') tott,tote,Etot,kine,fke,ltemp
+           write(4,10) tott,tote,dif,Etot,kine,fke,Ebath,ltemp,sum(esp),Ebath_ele
+        else
+           write(*,'(1x,f10.3,9f20.8)') tott,tote,Etot,kine,ltemp
+           write(4,10) tott,tote,dif,Etot,kine,Ebath,ltemp,sum(esp)
+        end if
         write(15,'(i6,2f20.5)') itime,ctime1-ctime0,etime1-etime0
-        if ( ltime ) then
+        if ( lcpmd .and. ltime ) then
            write(16,'(i6,9f10.5)') itime,(etime_cpmd(k+1)-etime_cpmd(k),k=0,8)
         end if
 
@@ -327,15 +338,20 @@ SUBROUTINE bomd
            end if
         end if
 
-     end if
+     end if !myrnak==0
 
-     if ( mod(itime,wrtstep) == 0 .and. ctrl_cpmdio > 0 ) then
+     if( lcpmd )then
+        if ( mod(itime,wrtstep) == 0 .and. ctrl_cpmdio > 0 ) then
+           if ( myrank == 0 ) call mdio( 1, tote0 )
+           if ( lbathnew ) call write_nose_data
+           if ( lcpmd ) then
+              if ( lbathnewe ) call write_nosee_data
+              call write_data_cpmdio
+           end if
+        end if
+     else
         if ( myrank == 0 ) call mdio( 1, tote0 )
         if ( lbathnew ) call write_nose_data
-        if ( lcpmd ) then
-           if ( lbathnewe ) call write_nosee_data
-           call write_data_cpmdio
-        end if
      end if
 
      call global_watch(.false.,flag_etlimit)
