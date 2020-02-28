@@ -457,8 +457,6 @@ contains
 
     ctt(:)=0.0d0
     ett(:)=0.0d0
-    ctt_hamil(:)=0.0d0
-    ett_hamil(:)=0.0d0
     timecg(:,:)=0.0d0
     time_hmlt(:,:)=0.0d0
     time_kine(:,:)=0.0d0

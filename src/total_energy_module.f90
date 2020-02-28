@@ -67,7 +67,7 @@ contains
     integer,optional,intent(in) :: unit_in
     logical,optional,intent(in) :: flag_ncol
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,nn,unit
-    real(8) :: s0(4),s1(4),uu,cnst
+    real(8) :: s0(4),s1(4),uu,cnst,c1,c2
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
     real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_
@@ -294,29 +294,42 @@ contains
 
     case( "NCPP" )
 
-    s0(:)=0.d0
-    do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
-    do n=MB_0,MB_1
-       s1(:)=0.d0
-       do i=n1,n2
-          uu=abs(unk(i,n,k,s))**2
-          s1(1) = s1(1) + uu*Vloc(i,s)
-          s1(2) = s1(2) + uu*Vion(i)
-          s1(3) = s1(3) + uu*Vh(i)          ! not used?
-          s1(4) = s1(4) + uu*Vxc(i,s)       ! not used?
-       end do
-       s0(:)=s0(:)+occ(n,k,s)*s1(:)
-    end do
-    end do
-    end do
-    s1(:)=s0(:)*dV
-    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_grid,ierr)
-    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_band,ierr)
-    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_bzsm,ierr)
-    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_spin,ierr)
+!    s0(:)=0.d0
+!    do s=MSP_0,MSP_1
+!    do k=MBZ_0,MBZ_1
+!    do n=MB_0,MB_1
+!       s1(:)=0.d0
+!       do i=n1,n2
+!          uu=abs(unk(i,n,k,s))**2
+!          s1(1) = s1(1) + uu*Vloc(i,s)
+!          s1(2) = s1(2) + uu*Vion(i)
+!          s1(3) = s1(3) + uu*Vh(i)          ! not used?
+!          s1(4) = s1(4) + uu*Vxc(i,s)       ! not used?
+!       end do
+!       s0(:)=s0(:)+occ(n,k,s)*s1(:)
+!    end do
+!    end do
+!    end do
+!    s1(:)=s0(:)*dV
+!    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_grid,ierr)
+!    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_band,ierr)
+!    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_bzsm,ierr)
+!    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_spin,ierr)
 !    s0(:)=s0(:)*dV/np_fkmb
 !    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
+
+       c1=0
+       c2=0
+       do s=MSP_0,MSP_1
+          do i=n1,n2
+             c1 = c1 + rho(i,s)*Vloc(i,s)
+             c2 = c2 + rho(i,s)*Vion(i)
+          end do
+       end do
+       s1(1)=c1*dV
+       s1(2)=c2*dV
+       call MPI_Allreduce( s1,s0,2,MPI_REAL8,MPI_SUM,comm_grid,ierr )
+       call MPI_Allreduce( s0,s1,2,MPI_REAL8,MPI_SUM,comm_spin,ierr )
 
     end select
 
@@ -429,8 +442,16 @@ contains
        write(u,*) "Ion-Ion                    ",Eewald
        write(u,*) "Local Potential            ",Eloc
        write(u,*) "Ion Local Potential        ",Eion
-       if ( Enlc /= 0.0d0 ) write(u,*) "Ion Nonlocal Potential     ",Enlc
-       if ( Ekin /= 0.0d0 ) write(u,*) "Kinetic Energy             ",Ekin
+       if ( Enlc /= 0.0d0 ) then
+          write(u,*) "Ion Nonlocal Potential     ",Enlc
+       else
+          write(u,*) "Ion Nonlocal Potential     ","Not computed"
+       end if
+       if ( Ekin /= 0.0d0 ) then
+          write(u,*) "Kinetic Energy             ",Ekin
+       else
+          write(u,*) "Kinetic Energy             ","Not computed"
+       end if
        write(u,*) "Hartree Energy             ",E_hartree
        write(u,*) "Exchange-Correlation Energy",Exc
        write(u,*) "Exchange Energy            ",E_exchange

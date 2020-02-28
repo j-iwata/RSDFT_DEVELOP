@@ -306,7 +306,7 @@ CONTAINS
     integer,optional,intent(OUT) :: unit_out
     logical,optional,intent(IN) :: flag_bcast
     integer :: i,unit
-    character(10) :: cbuf,ckey
+    character(16) :: cbuf,ckey
 #ifndef _NOMPI_
     include 'mpif.h'
 #endif

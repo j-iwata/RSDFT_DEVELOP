@@ -273,6 +273,9 @@ CONTAINS
 
           else !Md==4 or Md==6
 
+             do j=n1_omp,n2_omp
+                htpsi(j,ib) = (c+vloc(j))*tpsi(j,ib)
+             end do
              do m = 1, Md
              do i3=a3b_omp,b3b_omp
              do i2=a2b_omp,b2b_omp
