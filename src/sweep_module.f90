@@ -105,6 +105,8 @@ CONTAINS
 
     call get_flag_xc_hybrid( iflag_hybrid )
 
+    if ( iflag_hunk >= 1 ) call control_work_wf( "USE_ALL" )
+
     select case( iflag_hybrid )
     case(0,1,3)
 
@@ -215,6 +217,8 @@ CONTAINS
     end do ! iter
 
     if ( myrank == 0 ) call write_info_esp_wf( 2 )
+
+    if ( iflag_hunk >= 1 ) call control_work_wf( "DEFAULT_SETTING" )
 
     deallocate( esp0 )
 

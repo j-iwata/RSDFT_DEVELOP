@@ -8,7 +8,7 @@ module cg_module
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
  !use cg_u_module, only: init_cg_u, cg_u
   use cggs_module
-  use wf_module, only: hunk, iflag_hunk
+  use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_CG
   use kinetic_module, only: SYStype
   use watch_module
   use conjugate_gradient_g_module, only: conjugate_gradient_g, pp_kind
@@ -182,7 +182,7 @@ contains
 
        call watchb( ttmp )
 
-       if ( iflag_hunk >= 1 ) then
+       if ( USE_WORKWF_AT_CG .and. iflag_hunk >= 1 ) then
 !$OMP parallel workshare
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
@@ -504,7 +504,7 @@ contains
 
        call watchb( ttmp )
 
-       if ( iflag_hunk >= 1 ) then
+       if ( USE_WORKWF_AT_CG .and. iflag_hunk >= 1 ) then
 !$OMP parallel workshare
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare

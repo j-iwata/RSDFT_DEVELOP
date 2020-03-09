@@ -1,6 +1,6 @@
 MODULE subspace_rotv_sl_module
 
-  use wf_module, only: unk,hunk,iflag_hunk
+  use wf_module, only: unk,hunk,iflag_hunk,USE_WORKWF_AT_ROTV
   use scalapack_module
   use parallel_module
   use subspace_diag_variables, only: MB_diag,NBLK2,zero,one,Vsub,TYPE_MAIN
@@ -44,7 +44,7 @@ CONTAINS
     utmp=zero
 
     n_loop=1
-    if ( iflag_hunk >= 1 ) then
+    if ( USE_WORKWF_AT_ROTV .and. iflag_hunk >= 1 ) then
        n_loop=2
     end if
 

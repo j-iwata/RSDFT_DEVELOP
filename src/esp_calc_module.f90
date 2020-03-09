@@ -3,7 +3,7 @@ module esp_calc_module
   use hamiltonian_module
   use rgrid_module, only: dV
   use parallel_module
-  use wf_module, only: hunk, iflag_hunk
+  use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_ESPCAL
   use rsdft_mpi_module
   use esp_calc_ncol_module, only: flag_noncollinear, esp_calc_ncol
 
@@ -41,7 +41,12 @@ contains
 
     do n=ns,ne
        if ( iflag_hunk >= 1 ) then
-          hwf(:,1)=hunk(:,n,k,s)
+          if ( USE_WORKWF_AT_ESPCAL ) then
+             hwf(:,1)=hunk(:,n,k,s)
+          else
+             call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
+             hunk(:,n,k,s)=hwf(:,1)
+          end if
        else
           call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
        end if
