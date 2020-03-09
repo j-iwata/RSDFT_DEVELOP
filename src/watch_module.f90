@@ -23,15 +23,15 @@ MODULE watch_module
   integer :: count0=0
 
   real(8) :: time_cgpc(2,16)
-  real(8) :: time_hmlt(2,4)
+  real(8) :: time_hmlt(2,5)
   real(8) :: time_kine(2,16)
   real(8) :: time_nlpp(2,8)
   real(8) :: time_bcfd(2,8)
-  character(5) :: time_hmlt_indx(4)
+  character(5) :: time_hmlt_indx(5)
   character(5) :: time_kine_indx(16)
   character(5) :: time_nlpp_indx(8)
   character(5) :: time_cgpc_indx(16)
-  data time_hmlt_indx(1:4)/"kine","loc","nlc","exx"/
+  data time_hmlt_indx(1:5)/"kine","loc","nlc","exx","bak"/
   data time_kine_indx(1:11)/"kine1","kine2","bc","kine3","kine4" &
                      ,"recv","send","spack","waita","final","totbc"/
   data time_nlpp_indx(1:7)/"nlc1","nlcom","nlc2","com1","com2","com3","com4"/

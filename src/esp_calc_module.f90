@@ -1,4 +1,4 @@
-MODULE esp_calc_module
+module esp_calc_module
 
   use hamiltonian_module
   use rgrid_module, only: dV
@@ -9,22 +9,22 @@ MODULE esp_calc_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: esp_calc
+  private
+  public :: esp_calc
 
-CONTAINS
+contains
 
-  SUBROUTINE esp_calc(k,s,n1,n2,ns,ne,wf,e)
+  subroutine esp_calc(k,s,n1,n2,ns,ne,wf,e)
     implicit none
-    integer,intent(IN) :: k,s,n1,n2,ns,ne
+    integer,intent(in) :: k,s,n1,n2,ns,ne
 #ifdef _DRSDFT_
-    real(8),intent(IN) :: wf(:,:,:,:)
+    real(8),intent(in) :: wf(:,:,:,:)
     real(8),allocatable :: hwf(:,:)
 #else
-    complex(8),intent(IN) :: wf(:,:,:,:)
+    complex(8),intent(in) :: wf(:,:,:,:)
     complex(8),allocatable :: hwf(:,:)
 #endif
-    real(8),intent(OUT) :: e(:,:,:)
+    real(8),intent(out) :: e(:,:,:)
     integer :: n,ierr,k0,s0
 
     if ( flag_noncollinear ) then
@@ -56,6 +56,6 @@ CONTAINS
 
     call rsdft_allreduce_sum( e(ns:ne,k,s), comm_grid )
 
-  END SUBROUTINE esp_calc
+  end subroutine esp_calc
 
-END MODULE esp_calc_module
+end module esp_calc_module
