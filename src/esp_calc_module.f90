@@ -1,30 +1,30 @@
-MODULE esp_calc_module
+module esp_calc_module
 
   use hamiltonian_module
   use rgrid_module, only: dV
   use parallel_module
-  use wf_module, only: hunk, iflag_hunk
+  use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_ESPCAL
   use rsdft_mpi_module
   use esp_calc_ncol_module, only: flag_noncollinear, esp_calc_ncol
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: esp_calc
+  private
+  public :: esp_calc
 
-CONTAINS
+contains
 
-  SUBROUTINE esp_calc(k,s,n1,n2,ns,ne,wf,e)
+  subroutine esp_calc(k,s,n1,n2,ns,ne,wf,e)
     implicit none
-    integer,intent(IN) :: k,s,n1,n2,ns,ne
+    integer,intent(in) :: k,s,n1,n2,ns,ne
 #ifdef _DRSDFT_
-    real(8),intent(IN) :: wf(:,:,:,:)
+    real(8),intent(in) :: wf(:,:,:,:)
     real(8),allocatable :: hwf(:,:)
 #else
-    complex(8),intent(IN) :: wf(:,:,:,:)
+    complex(8),intent(in) :: wf(:,:,:,:)
     complex(8),allocatable :: hwf(:,:)
 #endif
-    real(8),intent(OUT) :: e(:,:,:)
+    real(8),intent(out) :: e(:,:,:)
     integer :: n,ierr,k0,s0
 
     if ( flag_noncollinear ) then
@@ -41,7 +41,12 @@ CONTAINS
 
     do n=ns,ne
        if ( iflag_hunk >= 1 ) then
-          hwf(:,1)=hunk(:,n,k,s)
+          if ( USE_WORKWF_AT_ESPCAL ) then
+             hwf(:,1)=hunk(:,n,k,s)
+          else
+             call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
+             hunk(:,n,k,s)=hwf(:,1)
+          end if
        else
           call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
        end if
@@ -56,6 +61,6 @@ CONTAINS
 
     call rsdft_allreduce_sum( e(ns:ne,k,s), comm_grid )
 
-  END SUBROUTINE esp_calc
+  end subroutine esp_calc
 
-END MODULE esp_calc_module
+end module esp_calc_module

@@ -202,7 +202,6 @@ CONTAINS
                 hunk(:,n,k,s) = hunk(:,n,k,s) &
                      + ( Vloc(:,s)-Vloc0(:,s) )*unk(:,n,k,s)
              end do
-             Vloc0(:,s)=Vloc(:,s)
 
           else if ( iflag_hunk == 2 ) then
 
@@ -248,7 +247,7 @@ CONTAINS
 
 !             call watchb( t_tmp )
 
-             call conjugate_gradient(ML_0,ML_1,Nband,k,s,unk,esp,res)
+             call conjugate_gradient(ML_0,ML_1,k,s,unk,esp,res)
 
 !             call watchb( t_tmp, t_out(:,4) )
 
@@ -270,9 +269,11 @@ CONTAINS
 
        if ( flag_noncollinear ) exit
 
+       if ( iflag_hunk == 1 ) Vloc0(:,s)=Vloc(:,s)
+
        end do ! s
 
-       call phase_control( ML_0, ML_1, unk )
+       !call phase_control( ML_0, ML_1, unk )
 
 !       call calc_time_watch( etime_lap(2) )
 !       call init_time_watch( etime_lap(3) )
@@ -480,13 +481,19 @@ CONTAINS
                                    ,f8.3,"(cg) " &
                                    ,f8.3,"(gs) " &
                                    ,f8.3,"(for)" &
+                                   ,f8.3,"(eto)" &
+                                   ,f8.3,"(pot)" &
                                    ,f8.3,"(oth)")') &
-                                   t_out(2,14) &
+                                    t_out(2,14) &
                                    ,t_out(2,2) &
                                    ,t_out(2,6) &
                                    ,t_out(2,4),t_out(2,5) &
                                    ,t_out(2,10) &
-                                   ,t_out(2,1)+t_out(2,3)+sum( t_out(2,6:9) )+sum( t_out(2,11:13) )
+                                   ,t_out(2,8) &
+                                   ,t_out(2,12) &
+                                   ,( t_out(2,1)+t_out(2,3) &
+                                     +t_out(2,7)+t_out(2,9) &
+                                     +t_out(2,11)+t_out(2,13) )
        end if
 
        if ( flag_exit ) then

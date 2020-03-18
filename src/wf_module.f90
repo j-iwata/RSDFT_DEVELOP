@@ -22,6 +22,14 @@ MODULE wf_module
   PUBLIC :: allocate_b_wf, allocate_b_occ
   PUBLIC :: referred_orbital
   PUBLIC :: set_initial_wf
+  public :: control_work_wf
+
+  logical, public :: USE_WORKWF_AT_ESPCAL = .true.
+  logical, public :: USE_WORKWF_AT_GS     = .true.
+  logical, public :: USE_WORKWF_AT_MATE   = .true.
+  logical, public :: USE_WORKWF_AT_ROTV   = .true.
+  logical, public :: USE_WORKWF_AT_CG     = .true.
+  logical :: backup_workwf_sw(5)=.true.
 
 #ifdef _DRSDFT_
   real(8),parameter :: zero=0.d0
@@ -126,7 +134,19 @@ CONTAINS
 !    call random_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
 !         ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk,SYStype )
 
-    if ( iwork_wf == 1 ) call allocate_work_wf( iwork_wf )
+    if ( iwork_wf == 1 ) then
+       call allocate_work_wf( iwork_wf )
+       USE_WORKWF_AT_ESPCAL = .false.
+       USE_WORKWF_AT_GS     = .false.
+       USE_WORKWF_AT_MATE   = .true.
+       USE_WORKWF_AT_ROTV   = .false.
+       USE_WORKWF_AT_CG     = .false.
+       backup_workwf_sw = (/ USE_WORKWF_AT_ESPCAL, &
+                             USE_WORKWF_AT_GS,     &
+                             USE_WORKWF_AT_MATE,   &
+                             USE_WORKWF_AT_ROTV,   &
+                             USE_WORKWF_AT_CG      /)
+    end if
 
     call watchb(ttmp1); write(*,*) "time(init_wf)",ttmp1-ttmp0
     call write_border( 0, " init_wf(end)" )
@@ -451,5 +471,27 @@ CONTAINS
     occup=0.0d0
   END SUBROUTINE allocate_b_occ
 
+
+  subroutine control_work_wf( ctrl )
+    implicit none
+    character(*), intent(in) :: ctrl
+    select case( ctrl )
+    case( "USE_ALL" )
+       USE_WORKWF_AT_ESPCAL = .true.
+       USE_WORKWF_AT_GS     = .true.
+       USE_WORKWF_AT_MATE   = .true.
+       USE_WORKWF_AT_ROTV   = .true.
+       USE_WORKWF_AT_CG     = .true.
+    case( "DEFAULT_SETTING" )
+       USE_WORKWF_AT_ESPCAL = backup_workwf_sw(1)
+       USE_WORKWF_AT_GS     = backup_workwf_sw(2)
+       USE_WORKWF_AT_MATE   = backup_workwf_sw(3)
+       USE_WORKWF_AT_ROTV   = backup_workwf_sw(4)
+       USE_WORKWF_AT_CG     = backup_workwf_sw(5)
+    case default
+       write(*,*) ctrl
+       call stop_program("keyword is not defined(stop@cnotrol_work_wf)")
+    end select
+  end subroutine control_work_wf
 
 END MODULE wf_module

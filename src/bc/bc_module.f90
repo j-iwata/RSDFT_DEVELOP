@@ -13,7 +13,6 @@ MODULE bc_module
 
   PRIVATE
   PUBLIC :: init_bcset
-  PUBLIC :: allocate_bcset
   PUBLIC :: bcset
   PUBLIC :: bcset_1
   PUBLIC :: bcset_3
@@ -734,8 +733,6 @@ CONTAINS
           end select
        end do
     end do
-
-    call allocate_bcset
 
     call write_border( 80, " init_bcset_sol(end)" )
 

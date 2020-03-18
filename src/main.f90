@@ -276,6 +276,8 @@ PROGRAM Real_Space_DFT
 
 !- FD boundary set -
 
+  call IOTools_readIntegerKeyword( "MD", Md )
+
   call init_bcset( Md, SYStype )
 
 ! --- kinetic energy oprator coefficients ---
@@ -494,6 +496,14 @@ PROGRAM Real_Space_DFT
 
 ! ---
 
+  call write_border( 0, 'End Initialization' )
+  call global_watch( disp_switch, indx='INIT')
+  call write_border( 0, '' )
+
+
+
+! ---
+
   if ( iswitch_dos == 1 ) then
 
      call control_xc_hybrid(1)
@@ -520,11 +530,11 @@ PROGRAM Real_Space_DFT
   case( 1 )
      call calc_scf( ierr, tol_force_in=feps, Etot_out=Etot )
      if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
+     call calc_total_energy( recalc_esp,Etot,unit_in=6,flag_ncol=flag_noncollinear )
   case( 2 )
      call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp, Etot, 6, flag_noncollinear )
+     call calc_total_energy( recalc_esp,Etot,unit_in=6,flag_ncol=flag_noncollinear )
   case( -1 )
      if ( nprocs == 1 ) then
         call construct_hamiltonian_matrix( Ngrid(0) )
@@ -535,7 +545,6 @@ PROGRAM Real_Space_DFT
 !
 ! --- Force test, atomopt, CPMD ---
 !
-  ! begin MIZUHO-IR for cellopt
   if( iswitch_opt == -1 ) then
      call test_force( SYStype, DISP_SWITCH )
   end if
@@ -548,7 +557,7 @@ PROGRAM Real_Space_DFT
 
      if ( iswitch_opt /= 3 ) then
         call atomopt(iswitch_opt,iswitch_latopt)
-        call calc_total_energy( recalc_esp, Etot, 6 )
+        call calc_total_energy( recalc_esp, Etot, unit_in=6 )
      else
         if ( SYStype == 0 ) then
            call bomd

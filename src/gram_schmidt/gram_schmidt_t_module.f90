@@ -1,7 +1,7 @@
 MODULE gram_schmidt_t_module
 
   use rgrid_module, only: dV,zdV
-  use wf_module, only: unk,hunk,iflag_hunk
+  use wf_module, only: unk,hunk,iflag_hunk,USE_WORKWF_AT_GS
   use array_bound_module, only: ML_0,ML_1,MB,MB_0
   use parallel_module
   use rsdft_mpi_module
@@ -117,7 +117,7 @@ CONTAINS
 
        n=ML0*(ne-ns+1)
        call mpi_bcast(unk(ML_0,ns,k,s),n,TYPE_MAIN,irank_b,comm_band,ierr)
-       if ( iflag_hunk >= 1 ) then
+       if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
           call mpi_bcast(hunk(ML_0,ns,k,s),n,TYPE_MAIN,irank_b,comm_band,ierr)
        end if
 
@@ -190,14 +190,14 @@ CONTAINS
 #ifdef _DRSDFT_
              call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
                   ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
-             if ( iflag_hunk >= 1 ) then
+             if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
                 call dgemm(TRANSB,TRANSB,ML0,mm,nn,one,hunk(ML_0,ns,k,s) &
                      ,ML0,utmp2,nn,one,hunk(ML_0,ms,k,s),ML0)
              end if
 #else
              call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,unk(ML_0,ns,k,s) &
                   ,ML0,utmp2,nn,one,unk(ML_0,ms,k,s),ML0)
-             if ( iflag_hunk >= 1 ) then
+             if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
                 call zgemm(TRANSB,TRANSB,ML0,mm,nn,one,hunk(ML_0,ns,k,s) &
                      ,ML0,utmp2,nn,one,hunk(ML_0,ms,k,s),ML0)
              end if
@@ -219,7 +219,7 @@ CONTAINS
                 do i=ML_0,ML_1
                    unk(i,ms,k,s)=c*unk(i,ms,k,s)
                 end do
-                if ( iflag_hunk >= 1 ) then
+                if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
                    do i=ML_0,ML_1
                       hunk(i,ms,k,s)=c*hunk(i,ms,k,s)
                    end do
@@ -250,14 +250,14 @@ CONTAINS
 #ifdef _DRSDFT_
                    call dgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s) &
                         ,ML0,utmp,1,one,unk(ML_0,m,k,s),1)
-                   if ( iflag_hunk >= 1 ) then
+                   if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
                       call dgemv(TRANSB,ML0,n-ns+1,one,hunk(ML_0,ns,k,s) &
                            ,ML0,utmp,1,one,hunk(ML_0,m,k,s),1)
                    end if
 #else
                    call zgemv(TRANSB,ML0,n-ns+1,one,unk(ML_0,ns,k,s) &
                         ,ML0,utmp,1,one,unk(ML_0,m,k,s),1)
-                   if ( iflag_hunk >= 1 ) then
+                   if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
                       call zgemv(TRANSB,ML0,n-ns+1,one,hunk(ML_0,ns,k,s) &
                            ,ML0,utmp,1,one,hunk(ML_0,m,k,s),1)
                    end if
@@ -280,7 +280,7 @@ CONTAINS
                    do i=ML_0,ML_1
                       unk(i,m,k,s)=c*unk(i,m,k,s)
                    end do
-                   if ( iflag_hunk >= 1 ) then
+                   if ( USE_WORKWF_AT_GS .and. iflag_hunk >= 1 ) then
                       do i=ML_0,ML_1
                          hunk(i,m,k,s)=c*hunk(i,m,k,s)
                       end do
