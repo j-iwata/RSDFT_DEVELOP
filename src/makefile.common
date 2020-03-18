@@ -59,6 +59,7 @@ MODS1 = \
        rsdft_mpi_module.o\
        omp_variables.o\
        io_tools_module.o\
+       sl_tools_module.o\
        lattice_module.o\
        cif_format_module.o\
        atom_module.o\

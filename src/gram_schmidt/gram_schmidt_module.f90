@@ -3,6 +3,7 @@ MODULE gram_schmidt_module
   use gram_schmidt_m_module
   use gram_schmidt_t_module
   use gram_schmidt_t3_module
+  use gram_schmidt_lusl_module
  !use gram_schmidt_u_module
   use gram_schmidt_g_module
   use gram_schmidt_ncol_module, only: gram_schmidt_ncol, flag_noncollinear
@@ -64,6 +65,13 @@ CONTAINS
       !   call gram_schmidt_u(n0,n1,k,s)
       case( 3 )
          call gram_schmidt_t3( unk(:,:,k,s), comm_grid, comm_band )
+#ifdef _DRSDFT_
+      case( 4 )
+         call gram_schmidt_lusl( unk(:,:,k,s) )
+#else
+      case( 4 )
+         write(*,*) "z_gram_schmidt_lusl is not implemented yet"
+#endif
       end select
 
     end if
