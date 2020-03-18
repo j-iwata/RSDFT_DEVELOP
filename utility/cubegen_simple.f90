@@ -7,7 +7,7 @@ PROGRAM cubegen_simple
   integer :: idum,MB,MBZ,i,j,k,n,ML,ML1,ML2,ML3,MI,MKI
   integer :: NBLK1,NBLK2,NBLK,np1,np2,np3,i1,i2,i3,n1,n2,n3
   integer :: MBwr1,MBwr2,MBZ0,MB0
-  integer :: zatom(5)
+  integer :: zatom(9)
   real(8) :: aa(3,3),ax,r0(3),aL(3),aa_del(3,3),va,fac
   real(8) :: c,d,a,b
   integer,allocatable :: Kion(:),mkd(:)
@@ -29,7 +29,7 @@ PROGRAM cubegen_simple
   read(u1,*) ckey
   read(u1,*) MKI,MI,zatom(1:MKI)
 
-  if ( MKI > 5 ) then
+  if ( MKI > 9 ) then
      write(*,*) "MKI=",MKI,size(zatom)
      stop
   end if
