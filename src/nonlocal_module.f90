@@ -40,10 +40,10 @@ CONTAINS
        if ( ps_type == 1 ) then
           call op_ps_nloc_mr( tpsi, htpsi, k )
        else
-          !call op_ps_nloc2_hp( tpsi, htpsi, k )
-          n1=id_grid(myrank_g)+1
-          n2=n1+ir_grid(myrank_g)-1
-          call op_ps_nloc2( k, tpsi, htpsi, n1, n2, 1, size(tpsi,2) )
+          call op_ps_nloc2_hp( tpsi, htpsi, k )
+          !n1=id_grid(myrank_g)+1
+          !n2=n1+ir_grid(myrank_g)-1
+          !call op_ps_nloc2( k, tpsi, htpsi, n1, n2, 1, size(tpsi,2) )
        end if
     case(3)
        call op_ps_nloc3( tpsi, htpsi, k )
