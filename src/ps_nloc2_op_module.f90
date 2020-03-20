@@ -256,6 +256,8 @@ CONTAINS
     do ib=1,nb
        do lma=1,nzlma
 !NEC$ ivdep
+!NEC$ vovertake
+!NEC$ vob
           do j=ompMJJ1(lma,ompmyrank),ompMJJ2(lma,ompmyrank)
              i=JJP(j,lma)-i0+1
              htpsi(i,ib)=htpsi(i,ib)+uVk(j,lma,k)*uVunk(lma,ib)

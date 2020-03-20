@@ -687,7 +687,7 @@ CONTAINS
           rr=x*x+y*y+z*z
           if ( rr == 0.0d0 ) cycle
           r=sqrt(rr)
-          t=bberfc(alpha*r)/r
+          t=erfc(alpha*r)/r
           sum0=sum0+t
           ic1=ic1+1
           if ( t == 0.0d0 ) then
