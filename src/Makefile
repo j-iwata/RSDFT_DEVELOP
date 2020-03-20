@@ -109,7 +109,7 @@ lda2 : $(MODS2)
 lda3 : $(MODS3)
 
 clean :
-	rm -f *.o *.mod mpif.h *.lst *.optlog *.i90
+	rm -f *.o *.mod mpif.h *.lst *.L *.LL *.optlog *.i90
 	cd $(DIR0) ; $(MAKE) clean
 	cd $(DIR1) ; $(MAKE) clean
 	cd $(DIR2) ; $(MAKE) clean

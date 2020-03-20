@@ -7,5 +7,5 @@ FFLAGS := -I../hartree -I../xc -I../kinetic -I../bc -I../mixing -I../subspace_di
 all : $(OBJS)
 
 clean :
-	rm -r -f *.o *.mod mpif.h *.lst *.optlog *.i90
+	rm -r -f *.o *.mod mpif.h *.lst *.L *.LL *.optlog *.i90
 
