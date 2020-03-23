@@ -5,6 +5,7 @@ module gram_schmidt_lusl_module
 !  use watch_module, only: timer => watchb, write_timer => write_watchb
   use rgrid_variables, only: dV  
   use parallel_module, only: comm_grid
+  use dsyrk_module, only: calc_dsyrk3, ialgo_dsyrk, nblk_dsyrk
 
   implicit none
 
@@ -19,6 +20,8 @@ module gram_schmidt_lusl_module
   character(1) :: UPLO='U'
 
   integer,public :: iparam_gs_lusl(9)=1
+  integer :: ialgo_dtrmm = 1
+  integer :: nblk_dtrmm = 1
 
   logical :: flag_init = .false.
 
@@ -103,6 +106,11 @@ contains
     call descinit( desca,n,n,sl%mbsize,sl%nbsize,0,0,icontxt,LDR,ierr )
     call descinit( descz,n,n,sl%mbsize,sl%nbsize,0,0,icontxt,LDR,ierr )
 
+    ialgo_dsyrk = iparam_gs_lusl(1)
+    nblk_dsyrk  = iparam_gs_lusl(3)
+    ialgo_dtrmm = iparam_gs_lusl(2)
+    nblk_dtrmm  = iparam_gs_lusl(4)
+
     flag_init = .true.
 
 !    call write_border( 1, " init_lusl(end)" )
@@ -131,7 +139,7 @@ contains
     end subroutine tr
   end subroutine calc_dsyrk
 
-  subroutine calc_dsyrk3( u, S )
+  subroutine calc_dsyrk2( u, S )
     implicit none
     real(8),intent(in) :: u(:,:)
     real(8),intent(inout) :: S(:,:)
@@ -142,7 +150,7 @@ contains
 
     m=size(u,1)
     n=size(u,2)
-    nblk = max( n/iparam_gs_lusl(1), 1 )
+    nblk = max( n/nblk_dsyrk, 1 )
 
     do jblk = 1, n, nblk
 
@@ -157,7 +165,7 @@ contains
           ni = i1 - i0 + 1
 
           if ( iblk == jblk ) then
-             if ( iparam_gs_lusl(3) == 1 ) then
+             if ( ialgo_dsyrk == 1 ) then
                 call DGEMM( 'T','N',ni,nj,m,dV,u(1,i0),m,u(1,j0),m,zero,S(i0,j0),n )
              else
                 call DSYRK( 'U', 'C', ni, m, dV, u(1,i0), m, zero, S(i0,i0), n )
@@ -179,7 +187,7 @@ contains
 !    subroutine tr
 !       utmp=transpose(u)
 !    end subroutine tr
-  end subroutine calc_dsyrk3
+  end subroutine calc_dsyrk2
 
   subroutine d_gram_schmidt_lusl( u )
     implicit none
@@ -207,6 +215,7 @@ contains
 !    call DSYRK( 'U', 'C', n, m, dV, u, m, zero, S, n )
 !    call DGEMM('T','N',n,n,m,dV,u,m,u,m,zero,S,n)
 !    call calc_dsyrk( u, S )
+!    call calc_dsyrk2( u, S )
     call calc_dsyrk3( u, S )
 
     do j=1,n
@@ -308,7 +317,7 @@ contains
     m=size(u,1)
     n=size(u,2)
 
-    nblk = max( n/iparam_gs_lusl(2), 1 )
+    nblk = max( n/nblk_dtrmm, 1 )
 
     call alloc_utmp
 
@@ -325,7 +334,7 @@ contains
           ni = i1 - i0 + 1
 
           if ( iblk == jblk ) then
-             if ( iparam_gs_lusl(4) == 1 ) then
+             if ( ialgo_dtrmm == 1 ) then
                 call DGEMM( 'N','N',m,ni,ni,one,u(1,i0),m,S(i0,i0),n,one,utmp(1,i0),m )
              else
                 call DTRMM( 'R', 'U', 'N', 'N', m, ni, one, S(i0,i0), n, u(1,i0), m )

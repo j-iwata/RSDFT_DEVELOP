@@ -6,7 +6,7 @@ module subspace_sdsl_module
   use rgrid_variables, only: dV
   use parallel_module, only: comm_grid, comm_band, MB_d, id_band, id_grid
   use hamiltonian_module, only: hamiltonian
-  use calc_overlap_sd_module, only: calc_overlap_sd, calc_overlap_sd_blk
+  use calc_overlap_sd_module, only: calc_overlap_sd, calc_overlap_sd_blk, nblk_ovlp
 
   implicit none
 
@@ -36,6 +36,8 @@ module subspace_sdsl_module
   interface subspace_sdsl
      module procedure d_subspace_sdsl
   end interface
+
+  integer :: iparam_sdsl(2)=0
 
 contains
 
@@ -67,6 +69,9 @@ contains
 !    call IOTools_readIntegerKeyword( "NBSIZE", sl%nbsize, unit )
 !    call IOTools_readStringKeyword( "UPLO", UPLO, unit )
 !    close( unit )
+
+    call IOTools_readIntegerKeyword( "SDPARAM", iparam_sdsl )
+    if ( iparam_sdsl(2) /= 0 ) nblk_ovlp=iparam_sdsl(2)
 
     if( sl%nprow==0 .or. sl%npcol==0 .or. sl%mbsize==0 .or. sl%nbsize==0 )then
        call restore_param_sl( sl )
@@ -230,8 +235,11 @@ contains
 
     allocate( H(nband,nband) ); H=zero
 
-    call calc_overlap_sd( u, utmp, dV, H )
-    !call calc_overlap_sd_blk( u, utmp, dV, H )
+    if ( iparam_sdsl(1) == 0 ) then
+       call calc_overlap_sd( u, utmp, dV, H )
+    else
+       call calc_overlap_sd_blk( u, utmp, dV, H )
+    end if
 
 !    call timer( ttmp,time(:,it) ); tlabel(it)="ovlp"; it=it+1
 

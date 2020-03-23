@@ -24,7 +24,7 @@ MODULE gram_schmidt_module
 
   logical :: flag_init_read = .true.
 
-  integer :: iparam_gs(9)=0
+  integer :: iparam_gs(9)=1
 
 CONTAINS
 

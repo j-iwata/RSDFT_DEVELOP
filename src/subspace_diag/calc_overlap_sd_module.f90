@@ -15,6 +15,8 @@ module calc_overlap_sd_module
   integer :: nblk1
   real(8),parameter :: alpha=1.0d0, beta=0.0d0
 
+  integer,public :: nblk_ovlp=2
+
 contains
 
   subroutine calc_overlap_sd( a,b,dv,c )
@@ -35,7 +37,7 @@ contains
     n = size( a, 2 )
 
     nblk0 = n
-    nblk1 = 4
+    nblk1 = nblk_ovlp; if ( nblk1 < 0 ) nblk1=n
 
     call calc_overlap_sd_sub(nblk0,a,b,c)
 
@@ -163,11 +165,13 @@ contains
                 c(i0:i1,j0:j1)=ctmp(:,:)
                 deallocate( ctmp )
              else
-                do j=j0,j1
-                do i=j ,i1
-                    c(i,j)=sum( a(:,i)*b(:,j) )
-                end do
-                end do
+!                do j=j0,j1
+!                do i=j ,i1
+!                    c(i,j)=sum( a(:,i)*b(:,j) )
+!                end do
+!                end do
+                call dgemm &
+                     ('T','N',ni,nj,m,alpha,a(1,i0),m,b(1,j0),m,beta,c(i0,j0),n)
              end if
 
           end if
@@ -191,7 +195,7 @@ contains
 
     m=size(a,1)
     n=size(a,2)
-    nblk = n/2
+    nblk = n/nblk_ovlp
 
     do jblk = 1, n, nblk
 

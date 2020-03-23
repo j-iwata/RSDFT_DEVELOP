@@ -23,6 +23,8 @@ MODULE kinetic_sol_module
   real(8) :: clap21,clap22,clap23,clap24,clap25,clap26
   real(8) :: clap31,clap32,clap33,clap34,clap35,clap36
 
+  real(8),allocatable :: coef(:)
+
 CONTAINS
 
 
@@ -129,6 +131,11 @@ CONTAINS
     if( present(vloc) )then
        select case( Md )
        case( 4 )
+          do ib=1,nb
+          do i=n1_omp,n2_omp
+             htpsi(i,ib) = (c+vloc(i))*tpsi(i,ib)
+          end do
+          end do
        case( 6 )
        case default
           do ib=1,nb
@@ -324,7 +331,51 @@ CONTAINS
 
           if ( present(vloc) ) then
           if ( flag_clap .and. Md == 4 ) then
+#ifdef _NEC_AURORA_
 
+          if ( .not.allocated(coef) ) then
+             allocate( coef(25) ); coef=0.0d0
+             coef( 1) = clap34
+             coef( 2) = clap33
+             coef( 3) = clap32
+             coef( 4) = clap31
+             coef( 5) = clap24
+             coef( 6) = clap23
+             coef( 7) = clap22
+             coef( 8) = clap21
+             coef( 9) = clap14
+             coef(10) = clap13
+             coef(11) = clap12
+             coef(12) = clap11
+             coef(13) = 0.0d0
+             coef(14) = clap11
+             coef(15) = clap12
+             coef(16) = clap13
+             coef(17) = clap14
+             coef(18) = clap21
+             coef(19) = clap22
+             coef(20) = clap23
+             coef(21) = clap24
+             coef(22) = clap31
+             coef(23) = clap32
+             coef(24) = clap33
+             coef(25) = clap34
+          end if
+
+          call sca_compute_with_4x4y4za_d( &
+               b1b-a1b+1,
+               b2b-a2b+1,
+               b3b-a3b+1,
+               size(www,1),
+               size(www,2),
+               www(Igrid(1,1),Igrid(1,2),Igrid(1,3),ib),
+               b1b-a1b+1,
+               b2b-a2b+1,
+               htpsi(1,ib),
+               coef,
+               0.0d0                     )
+
+#else
           do i3=a3b_omp,b3b_omp
           do i2=a2b_omp,b2b_omp
           do i1=a1b_omp,b1b_omp
@@ -358,7 +409,7 @@ CONTAINS
           end do
           end do
           end do
-
+#endif
           else if ( flag_clap .and. Md == 6 ) then
 
           do i3=a3b_omp,b3b_omp

@@ -77,12 +77,14 @@ CONTAINS
           select case(jdir)
           case(1,2)
 !$OMP do
+             i=0
              do i1=c1,d1
              do i3=c3,d3
              do i2=c2,d2
-                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+!                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+!                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+!                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                i=i+1
                 sbuf(i,n,jdir)=www(i1,i2,i3,ib)
              end do
              end do
@@ -90,12 +92,14 @@ CONTAINS
 !$OMP end do
           case(3,4)
 !$OMP do
+             i=0
              do i2=c2,d2
              do i3=c3,d3
              do i1=c1,d1
-                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+!                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+!                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+!                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                i=i+1
                 sbuf(i,n,jdir)=www(i1,i2,i3,ib)
              end do
              end do
@@ -103,12 +107,14 @@ CONTAINS
 !$OMP end do
           case(5,6)
 !$OMP do
+             i=0
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+!                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+!                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+!                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                i=i+1
                 sbuf(i,n,jdir)=www(i1,i2,i3,ib)
              end do
              end do
@@ -158,12 +164,14 @@ CONTAINS
           select case(idir)
           case(1,2)
 !$OMP do
+             i=0
              do i1=c1,d1
              do i3=c3,d3
              do i2=c2,d2
-                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+!                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+!                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+!                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                i=i+1
                 www(i1,i2,i3,ib)=rbuf(i,n,idir)
              end do
              end do
@@ -171,12 +179,14 @@ CONTAINS
 !$OMP end do
           case(3,4)
 !$OMP do
+             i=0
              do i2=c2,d2
              do i3=c3,d3
              do i1=c1,d1
-                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+!                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+!                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+!                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                i=i+1
                 www(i1,i2,i3,ib)=rbuf(i,n,idir)
              end do
              end do
@@ -184,12 +194,14 @@ CONTAINS
 !$OMP end do
           case(5,6)
 !$OMP do
+             i=0
              do i3=c3,d3
              do i2=c2,d2
              do i1=c1,d1
-                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
-                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
-                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+!                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+!                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+!                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                i=i+1
                 www(i1,i2,i3,ib)=rbuf(i,n,idir)
              end do
              end do
