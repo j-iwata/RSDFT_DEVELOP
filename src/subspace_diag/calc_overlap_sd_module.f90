@@ -10,6 +10,7 @@ module calc_overlap_sd_module
   private
   public :: calc_overlap_sd
   public :: calc_overlap_sd_blk
+  public :: calc_overlap_sd_dsyr2k
 
   integer :: nblk0
   integer :: nblk1
@@ -246,5 +247,18 @@ contains
 
   end subroutine calc_overlap_sd_blk
 
+  subroutine calc_overlap_sd_dsyr2k( a,b,dv,c )
+    implicit none
+    real(8),intent(in) :: a(:,:),b(:,:)
+    real(8),intent(inout) :: c(:,:)
+    real(8),intent(in) :: dv
+    real(8),parameter :: zero=0.0d0
+    real(8) :: z
+    integer :: m,n
+    m=size(a,1)
+    n=size(a,2)
+    z=dv*0.5d0
+    call dsyr2k('L','T',n,m,z,a,m,b,m,zero,c,n)
+  end subroutine calc_overlap_sd_dsyr2k
 
 end module calc_overlap_sd_module

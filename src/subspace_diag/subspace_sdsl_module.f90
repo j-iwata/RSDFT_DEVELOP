@@ -6,7 +6,7 @@ module subspace_sdsl_module
   use rgrid_variables, only: dV
   use parallel_module, only: comm_grid, comm_band, MB_d, id_band, id_grid
   use hamiltonian_module, only: hamiltonian
-  use calc_overlap_sd_module, only: calc_overlap_sd, calc_overlap_sd_blk, nblk_ovlp
+  use calc_overlap_sd_module, only: calc_overlap_sd, calc_overlap_sd_blk, nblk_ovlp, calc_overlap_sd_dsyr2k
 
   implicit none
 
@@ -235,11 +235,16 @@ contains
 
     allocate( H(nband,nband) ); H=zero
 
-    if ( iparam_sdsl(1) == 0 ) then
+    select case( iparam_sdsl(1) )
+    case( 0 )
        call calc_overlap_sd( u, utmp, dV, H )
-    else
+    case( 1 )
        call calc_overlap_sd_blk( u, utmp, dV, H )
-    end if
+    case( 2 )
+       call calc_overlap_sd_dsyr2k( u, utmp, dV, H )
+!    case default
+!       write(*,*) "iparam_sdsl(1)=",iparam_sdsl(1)," is not available"
+    end select
 
 !    call timer( ttmp,time(:,it) ); tlabel(it)="ovlp"; it=it+1
 
