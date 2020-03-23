@@ -7,6 +7,9 @@ MODULE kinetic_sol_module
   use kinetic_variables, only: coef_lap0, coef_lap, zcoef_kin, coef_nab &
        ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md, wk
   use watch_module, only: watchb_omp, time_kine, time_bcfd
+#ifndef _NEC_AURORA_
+  use sca
+#endif
 
   implicit none
 
@@ -24,6 +27,7 @@ MODULE kinetic_sol_module
   real(8) :: clap31,clap32,clap33,clap34,clap35,clap36
 
   real(8),allocatable :: coef(:)
+  real(8),allocatable :: www_o(:,:,:) 
 
 CONTAINS
 
@@ -331,7 +335,7 @@ CONTAINS
 
           if ( present(vloc) ) then
           if ( flag_clap .and. Md == 4 ) then
-#ifdef _NEC_AURORA_
+#ifndef _NEC_AURORA_
 
           if ( .not.allocated(coef) ) then
              allocate( coef(25) ); coef=0.0d0
@@ -360,21 +364,30 @@ CONTAINS
              coef(23) = clap32
              coef(24) = clap33
              coef(25) = clap34
+             allocate( www_o(a1b:b1b,a2b:b2b,a3b:b3b) ); www_o=zero
           end if
 
           call sca_compute_with_4x4y4za_d( &
-               b1b-a1b+1,
-               b2b-a2b+1,
-               b3b-a3b+1,
-               size(www,1),
-               size(www,2),
-               www(Igrid(1,1),Igrid(1,2),Igrid(1,3),ib),
-               b1b-a1b+1,
-               b2b-a2b+1,
-               htpsi(1,ib),
-               coef,
+               b1b-a1b+1, &
+               b2b-a2b+1, &
+               b3b-a3b+1, &
+               size(www,1), &
+               size(www,2), &
+               www(Igrid(1,1),Igrid(1,2),Igrid(1,3),ib), &
+               b1b-a1b+1, &
+               b2b-a2b+1, &
+               www_o, &
+               coef, &
                0.0d0                     )
 
+          do i3=a3b_omp,b3b_omp
+          do i2=a2b_omp,b2b_omp
+          do i1=a1b_omp,b1b_omp
+             j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+             htpsi(j,ib) = htpsi(j,ib) + www_o(i1,i2,i3)
+          end do
+          end do
+          end do
 #else
           do i3=a3b_omp,b3b_omp
           do i2=a2b_omp,b2b_omp
