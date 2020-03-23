@@ -74,6 +74,34 @@ CONTAINS
           !call watchb_omp( ttmp )
 
           do ib=ib1,ib2
+          select case(jdir)
+          case(1,2)
+!$OMP do
+             do i1=c1,d1
+             do i3=c3,d3
+             do i2=c2,d2
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,jdir)=www(i1,i2,i3,ib)
+             end do
+             end do
+             end do
+!$OMP end do
+          case(3,4)
+!$OMP do
+             do i2=c2,d2
+             do i3=c3,d3
+             do i1=c1,d1
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                sbuf(i,n,jdir)=www(i1,i2,i3,ib)
+             end do
+             end do
+             end do
+!$OMP end do
+          case(5,6)
 !$OMP do
              do i3=c3,d3
              do i2=c2,d2
@@ -86,6 +114,7 @@ CONTAINS
              end do
              end do
 !$OMP end do
+          end select
           end do ! ib
 
           !call watchb_omp( ttmp, time_bcfd(1,3) )
@@ -126,6 +155,34 @@ CONTAINS
           if ( fdinfo_recv(9,n,idir)<1 ) cycle
 
           do ib=ib1,ib2
+          select case(idir)
+          case(1,2)
+!$OMP do
+             do i1=c1,d1
+             do i3=c3,d3
+             do i2=c2,d2
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                www(i1,i2,i3,ib)=rbuf(i,n,idir)
+             end do
+             end do
+             end do
+!$OMP end do
+          case(3,4)
+!$OMP do
+             do i2=c2,d2
+             do i3=c3,d3
+             do i1=c1,d1
+                i = 1 + i1-c1 + (i2-c2)*(d1-c1+1) &
+                      + (i3-c3)*(d1-c1+1)*(d2-c2+1) &
+                      + (ib-ib1)*(d1-c1+1)*(d2-c2+1)*(d3-c3+1) 
+                www(i1,i2,i3,ib)=rbuf(i,n,idir)
+             end do
+             end do
+             end do
+!$OMP end do
+          case(5,6)
 !$OMP do
              do i3=c3,d3
              do i2=c2,d2
@@ -138,7 +195,8 @@ CONTAINS
              end do
              end do
 !$OMP end do
-          end do
+          end select
+          end do ! ib
 
        end do ! n
     end do ! idir

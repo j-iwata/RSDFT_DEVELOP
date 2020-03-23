@@ -40,8 +40,8 @@ CONTAINS
     integer,allocatable :: ir(:),id(:)
     type(time) :: t
 
-    call write_border( 1, " subspace_diag_la(start)" )
-    call start_timer( t )
+!    call write_border( 1, " subspace_diag_la(start)" )
+!    call start_timer( t )
 
     n1  = ML_0
     n2  = ML_1
@@ -63,14 +63,14 @@ CONTAINS
 
     call gather_b_wf( k, s )
 
-    call watch(ct(1),et(1))
+!    call watch(ct(1),et(1))
 
     allocate( Hsub(MB,MB) )
     Hsub=zero
 
     allocate( psit(ML0,MB) )
 
-    call watch(ct(2),et(2))
+!    call watch(ct(2),et(2))
 
     if ( iflag_hunk >= 1 ) then
        psit(:,:)=hunk(:,:,k,s)
@@ -80,11 +80,11 @@ CONTAINS
        end do
     end if
 
-    call watch(ct(3),et(3))
+!    call watch(ct(3),et(3))
 
 #ifdef _DRSDFT_
-    call dsyr2k('U','T',MB,ML0,zz,unk(n1,1,k,s),ML0,psit,ML0,zero,Hsub,MB)
-!    call dgemm('T','N',MB,MB,ML0, dV,unk(n1,1,k,s),ML0,psit,ML0,zero,Hsub,MB)
+!    call dsyr2k('U','T',MB,ML0,zz,unk(n1,1,k,s),ML0,psit,ML0,zero,Hsub,MB)
+    call dgemm('T','N',MB,MB,ML0, dV,unk(n1,1,k,s),ML0,psit,ML0,zero,Hsub,MB)
 #else
     call zher2k('U','C',MB,ML0,zz,unk(n1,1,k,s),ML0,psit,ML0,zero,Hsub,MB)
 !    call zgemm('C','N',MB,MB,ML0,zdV,unk(n1,1,k,s),ML0,psit,ML0,zero,Hsub,MB)
@@ -98,7 +98,7 @@ CONTAINS
 !    end do
 #endif
 
-    call watch(ct(4),et(4))
+!    call watch(ct(4),et(4))
 
     deallocate( psit )
 
@@ -107,17 +107,63 @@ CONTAINS
     allocate( Htmp(MB,MB) )
     Htmp=Hsub
 
-    call watch(ct(5),et(5))
+!    call watch(ct(5),et(5))
 
     call mpi_allreduce(Htmp,Hsub,MB*MB,TYPE_MAIN,MPI_SUM,comm_grid,ierr)
 
-    call watch(ct(6),et(6))
+!    call watch(ct(6),et(6))
 
     deallocate( Htmp )
 
 ! --- solve eigenvalue problem ---
 
-    call watch(ct(7),et(7))
+!    call watch(ct(7),et(7))
+
+     call call_lapack
+
+!    call watch(ct(8),et(8))
+
+! --- Rotation ---
+
+    allocate( psit(ML0,MB) ) ; psit=zero
+
+#ifdef _DRSDFT_
+    call dgemm('N','N',ML0,MB,MB,one,unk(n1,1,k,s),ML0 &
+               ,Hsub(1,1),MB,zero,psit,ML0)
+#else
+    call zgemm('N','N',ML0,MB,MB,one,unk(n1,1,k,s),ML0 &
+               ,Hsub(1,1),MB,zero,psit,ML0)
+#endif
+    unk(:,:,k,s)=psit(:,:)
+
+    if ( iflag_hunk >= 1 ) then
+#ifdef _DRSDFT_
+       call dgemm('N','N',ML0,MB,MB,one,hunk(n1,1,k,s),ML0 &
+            ,Hsub(1,1),MB,zero,psit,ML0)
+#else
+       call zgemm('N','N',ML0,MB,MB,one,hunk(n1,1,k,s),ML0 &
+            ,Hsub(1,1),MB,zero,psit,ML0)
+#endif
+       hunk(:,:,k,s)=psit(:,:)
+    end if
+
+    deallocate( psit )
+
+!    call watch(ct(9),et(9))
+
+    deallocate( Hsub )
+
+    LWORK=max(LWORK,WORK1)
+    LIWORK=max(LIWORK,WORK2)
+
+!    call result_timer( "sd", t )
+!    call write_border( 1, " subspace_diag_la(end)" )
+
+    return
+
+  contains
+ 
+  subroutine call_lapack
 
     WORK1 = 0
     WORK2 = 0
@@ -180,45 +226,7 @@ CONTAINS
 
     end select
 
-    call watch(ct(8),et(8))
-
-! --- Rotation ---
-
-    allocate( psit(ML0,MB) ) ; psit=zero
-
-#ifdef _DRSDFT_
-    call dgemm('N','N',ML0,MB,MB,one,unk(n1,1,k,s),ML0 &
-               ,Hsub(1,1),MB,zero,psit,ML0)
-#else
-    call zgemm('N','N',ML0,MB,MB,one,unk(n1,1,k,s),ML0 &
-               ,Hsub(1,1),MB,zero,psit,ML0)
-#endif
-    unk(:,:,k,s)=psit(:,:)
-
-    if ( iflag_hunk >= 1 ) then
-#ifdef _DRSDFT_
-       call dgemm('N','N',ML0,MB,MB,one,hunk(n1,1,k,s),ML0 &
-            ,Hsub(1,1),MB,zero,psit,ML0)
-#else
-       call zgemm('N','N',ML0,MB,MB,one,hunk(n1,1,k,s),ML0 &
-            ,Hsub(1,1),MB,zero,psit,ML0)
-#endif
-       hunk(:,:,k,s)=psit(:,:)
-    end if
-
-    deallocate( psit )
-
-    call watch(ct(9),et(9))
-
-    deallocate( Hsub )
-
-    LWORK=max(LWORK,WORK1)
-    LIWORK=max(LIWORK,WORK2)
-
-    call result_timer( "sd", t )
-    call write_border( 1, " subspace_diag_la(end)" )
-
-    return
+    end subroutine call_lapack
 
   END SUBROUTINE subspace_diag_la
 

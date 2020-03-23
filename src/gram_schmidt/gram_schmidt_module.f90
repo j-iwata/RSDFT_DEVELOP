@@ -4,6 +4,7 @@ MODULE gram_schmidt_module
   use gram_schmidt_t_module
   use gram_schmidt_t3_module
   use gram_schmidt_lusl_module
+  use gram_schmidt_luslbp_module
  !use gram_schmidt_u_module
   use gram_schmidt_g_module
   use gram_schmidt_ncol_module, only: gram_schmidt_ncol, flag_noncollinear
@@ -23,11 +24,14 @@ MODULE gram_schmidt_module
 
   logical :: flag_init_read = .true.
 
+  integer :: iparam_gs(9)=0
+
 CONTAINS
 
   SUBROUTINE read_gram_schmidt
     implicit none
     call IOTools_readIntegerKeyword( "GS", iswitch_algorithm )
+    call IOTools_readIntegerKeyword( "GSPARAM", iparam_gs )
     flag_init_read = .false.
   END SUBROUTINE read_gram_schmidt
 
@@ -36,6 +40,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: n0,n1,k,s
     type(time) :: t
+    integer :: i
 
     if ( flag_noncollinear ) then
        call gram_schmidt_ncol( n0,n1,k,unk )
@@ -67,9 +72,14 @@ CONTAINS
          call gram_schmidt_t3( unk(:,:,k,s), comm_grid, comm_band )
 #ifdef _DRSDFT_
       case( 4 )
+         do i=1,4
+            if ( iparam_gs(i) /= 0 ) iparam_gs_lusl(i)=iparam_gs(i)
+         end do
          call gram_schmidt_lusl( unk(:,:,k,s) )
+      case( 5 )
+         call gram_schmidt_luslbp( unk(:,:,k,s) )
 #else
-      case( 4 )
+      case( 4,5 )
          write(*,*) "z_gram_schmidt_lusl is not implemented yet"
 #endif
       end select

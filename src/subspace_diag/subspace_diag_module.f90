@@ -5,6 +5,7 @@ MODULE subspace_diag_module
   use subspace_diag_variables
   use subspace_diag_la_module
   use subspace_diag_sl_module
+  use subspace_sdsl_module
   use subspace_diag_ncol_module
 
   implicit none
@@ -30,7 +31,8 @@ CONTAINS
 #ifdef _LAPACK_
        call subspace_diag_la(k,s)
 #else
-       call subspace_diag_sl(k,s)
+!      call subspace_diag_sl(k,s)
+       call subspace_sdsl( k, s, unk(:,:,k,s), esp(:,k,s) )
 #endif
     end if
   END SUBROUTINE subspace_diag

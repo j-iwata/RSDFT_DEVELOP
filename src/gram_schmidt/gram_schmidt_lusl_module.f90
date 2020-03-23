@@ -18,6 +18,8 @@ module gram_schmidt_lusl_module
   integer :: LDR,LDC
   character(1) :: UPLO='U'
 
+  integer,public :: iparam_gs_lusl(9)=1
+
   logical :: flag_init = .false.
 
   interface gram_schmidt_lusl
@@ -108,6 +110,77 @@ contains
   end subroutine init_lusl
 
 
+  subroutine calc_dsyrk( u, S )
+    implicit none
+    real(8),intent(in) :: u(:,:)
+    real(8),intent(inout) :: S(:,:)
+    real(8),parameter :: zero=0.0d0
+    real(8),allocatable :: utmp(:,:)
+    integer :: m,n
+    m=size(u,1)
+    n=size(u,2)
+    call dsyrk( 'U', 'C', n, m, dV, u, m, zero, S, n )
+!    allocate( utmp(n,m) ); utmp=zero !transpose(u)
+!    call tr
+!    call DGEMM( 'N', 'N', n, n, m, dV, utmp, n, u, m, zero, S, n )
+!    call DGEMM( 'T', 'N', n, n, m, dV, u, m, u, m, zero, S, n )
+!    deallocate( utmp )
+  contains
+    subroutine tr
+       utmp=transpose(u)
+    end subroutine tr
+  end subroutine calc_dsyrk
+
+  subroutine calc_dsyrk3( u, S )
+    implicit none
+    real(8),intent(in) :: u(:,:)
+    real(8),intent(inout) :: S(:,:)
+    real(8),parameter :: zero=0.0d0, one=1.0d0
+    real(8),allocatable :: utmp(:,:)
+    integer :: m,n,nblk,iblk,jblk
+    integer :: i0,i1,j0,j1,ni,nj
+
+    m=size(u,1)
+    n=size(u,2)
+    nblk = max( n/iparam_gs_lusl(1), 1 )
+
+    do jblk = 1, n, nblk
+
+       j0 = jblk
+       j1 = min( jblk+nblk, n )
+       nj = j1 - j0 + 1
+
+       do iblk = 1, jblk, nblk
+
+          i0 = iblk
+          i1 = min( iblk+nblk, n )
+          ni = i1 - i0 + 1
+
+          if ( iblk == jblk ) then
+             if ( iparam_gs_lusl(3) == 1 ) then
+                call DGEMM( 'T','N',ni,nj,m,dV,u(1,i0),m,u(1,j0),m,zero,S(i0,j0),n )
+             else
+                call DSYRK( 'U', 'C', ni, m, dV, u(1,i0), m, zero, S(i0,i0), n )
+             end if
+          else
+             call DGEMM( 'T','N',ni,nj,m,dV,u(1,i0),m,u(1,j0),m,zero,S(i0,j0),n )
+          end if
+
+       end do !iblk
+
+    end do !jblk
+
+!    allocate( utmp(n,m) ) !; utmp=transpose(u)
+!    call tr
+!    call DGEMM( 'N', 'N', n, n, m, dV, utmp, n, u, m, zero, S, n )
+!    call DGEMM( 'T', 'N', n, n, m, dV, u, m, u, m, zero, S, n )
+!    deallocate( utmp )
+!  contains
+!    subroutine tr
+!       utmp=transpose(u)
+!    end subroutine tr
+  end subroutine calc_dsyrk3
+
   subroutine d_gram_schmidt_lusl( u )
     implicit none
     real(8),intent(inout)  :: u(:,:)
@@ -131,7 +204,18 @@ contains
 
 !    call timer( ttmp,time(:,it),'on' ); tlabel(it)="init"; it=it+1
 
-    call dsyrk( UPLO, 'C', n, m, dV, u, m, zero, S, n )
+!    call DSYRK( 'U', 'C', n, m, dV, u, m, zero, S, n )
+!    call DGEMM('T','N',n,n,m,dV,u,m,u,m,zero,S,n)
+!    call calc_dsyrk( u, S )
+    call calc_dsyrk3( u, S )
+
+    do j=1,n
+    do i=j+1,n
+       S(i,j)=zero
+    end do
+    end do
+
+!    write(*,*) sum((Ssub-S)**2),count(S/=zero),count(Ssub/=zero)
 
     call MPI_Allreduce &
          ( MPI_IN_PLACE, S, size(S), MPI_REAL8, MPI_SUM, comm_grid, ierr )
@@ -161,12 +245,16 @@ contains
 !    u = utmp
 !    deallocate( utmp )
 !    call timer( ttmp,time(:,it) ); tlabel(it)="dgemm"; it=it+1
+!
+!    if ( UPLO == 'U' .or. UPLO == 'u' ) then
+!       call dtrmm( 'R', 'U', 'N', 'N', m, n, one, S, n, u, m )
+!    else
+!       call dtrmm( 'R', 'L', 'T', 'N', m, n, one, S, n, u, m )
+!    end if
 
-    if ( UPLO == 'U' .or. UPLO == 'u' ) then
-       call dtrmm( 'R', 'U', 'N', 'N', m, n, one, S, n, u, m )
-    else
-       call dtrmm( 'R', 'L', 'T', 'N', m, n, one, S, n, u, m )
-    end if
+!    call calc_dtrmm( u, S )
+    call calc_dtrmm3( u, S )
+!    call calc_dtrmm4( u, S )
 
 !    call timer( ttmp,time(:,it),'on' ); tlabel(it)="dtrmm"; it=it+1
 
@@ -182,88 +270,157 @@ contains
 
   end subroutine d_gram_schmidt_lusl
 
-#ifdef TSET
-  SUBROUTINE z_LUGS_sl_test( u, v )
+
+  subroutine calc_dtrmm( u, S )
     implicit none
-    complex(8),intent(INOUT) :: u(:,:)
-    type(vinfo),intent(IN)   :: v(2)
-    complex(8),allocatable :: S(:,:),Ssub(:,:),Bsub(:,:),utmp(:,:)
-    complex(8),parameter :: zero=(0.0d0,0.0d0), one=(1.0d0,0.0d0)
-    integer :: m,n,ierr,i,j
-    integer,allocatable :: ipiv(:)
-    type(slinfo) :: sl
-    include 'mpif.h'
+    real(8),intent(inout) :: u(:,:)
+    real(8),intent(in) :: S(:,:)
+    real(8),parameter :: zero=0.0d0,one=1.0d0
+    integer :: m,n
+    real(8),allocatable :: utmp(:,:)
+    m=size(u,1)
+    n=size(u,2)
+    call dtrmm( 'R', 'U', 'N', 'N', m, n, one, S, n, u, m )
+!    call alloc_utmp
+!    utmp=u
+!    call DGEMM( 'N', 'N', m, n, n, one, utmp, m, S, n, zero, u, m )
+!    call dealloc_utmp
+  contains
+    subroutine alloc_utmp
+      implicit none
+      allocate( utmp(m,n) ); utmp=zero
+    end subroutine alloc_utmp
+    subroutine dealloc_utmp
+      deallocate( utmp )
+    end subroutine dealloc_utmp
+  end subroutine calc_dtrmm
 
-    call write_border( 1, " z_LUGS_sl_test(start)" )
 
-    m = size( u, 1 )
-    n = sum( v(2)%pinfo%ir )
+  subroutine calc_dtrmm3( u, S )
+    implicit none
+    real(8),intent(inout) :: u(:,:)
+    real(8),intent(in) :: S(:,:)
+    real(8),parameter :: zero=0.0d0,one=1.0d0
+    integer :: m,n,j0,j1,i0,i1,iblk,jblk
+    integer :: nblk,nj,ni
+    real(8),allocatable :: utmp(:,:)
 
-    call init_sl_test( n )
+    m=size(u,1)
+    n=size(u,2)
 
-    sl%myrow  = myrow
-    sl%mycol  = mycol
-    sl%nprow  = nprow
-    sl%npcol  = npcol
-    sl%mbsize = mbsize
-    sl%nbsize = nbsize
+    nblk = max( n/iparam_gs_lusl(2), 1 )
 
-    allocate( S(n,n)        ) ; S=zero
-    allocate( Ssub(LDR,LDC) ) ; Ssub=zero
-    allocate( Bsub(LDR,LDC) ) ; Bsub=zero
+    call alloc_utmp
 
-    do i=1,n
-       S(i,i) = one
-    end do
-    call distribute_matrix( sl, S, Bsub )
+    do jblk = 1, n, nblk
 
-    S = zero
-    call zherk( 'U', 'C', n, m, one, u, m, zero, S, n )
-    call mpi_allreduce( mpi_in_place, S, size(S), mpi_complex16, &
-         mpi_sum, v(1)%pinfo%comm, ierr )
+       j0 = jblk
+       j1 = min( jblk+nblk-1, n )
+       nj = j1 - j0 + 1
 
-    call fill_matrix( S )
-    call distribute_matrix( sl, S, Ssub )
+       do iblk = 1, jblk, nblk
 
-    call pzpotrf( 'U', n, Ssub, 1, 1, desca, ierr )
+          i0 = iblk
+          i1 = min( iblk+nblk-1, n )
+          ni = i1 - i0 + 1
 
-    call gather_matrix( sl, Ssub, S )
-    do j=1,n
-       do i=j+1,n
-          S(i,j)=zero
-       end do
-    end do
-    call distribute_matrix( sl, S, Ssub )
+          if ( iblk == jblk ) then
+             if ( iparam_gs_lusl(4) == 1 ) then
+                call DGEMM( 'N','N',m,ni,ni,one,u(1,i0),m,S(i0,i0),n,one,utmp(1,i0),m )
+             else
+                call DTRMM( 'R', 'U', 'N', 'N', m, ni, one, S(i0,i0), n, u(1,i0), m )
+             end if
+          else
+             call DGEMM( 'N','N',m,nj,ni,one,u(1,i0),m,S(i0,j0),n,one,utmp(1,j0),m )
+          end if
 
-    allocate( ipiv(n) ) ; ipiv=0
-    do i=1,n
-       ipiv(i)=i
-    end do
-!
-! If pivot information is necessary, following routine should be called
-!    call pzgetrf( n, n, Ssub, 1, 1, desca, ipiv, ierr )
+       end do !iblk
 
-    call pzgetrs( 'N', n, n, Ssub, 1, 1, desca, ipiv, Bsub, 1, 1, descz, ierr )
+    end do !jblk
 
-    deallocate( ipiv )
+    !u=utmp
+    call dealloc_utmp
 
-    call gather_matrix( sl, Bsub, S )
+  contains
+    subroutine alloc_utmp
+      implicit none
+      allocate( utmp(m,n) ); utmp=zero
+    end subroutine alloc_utmp
+    subroutine dealloc_utmp
+      u=utmp
+      deallocate( utmp )
+    end subroutine dealloc_utmp
+  end subroutine calc_dtrmm3
 
-    deallocate( Bsub )
-    deallocate( Ssub )
 
-    allocate( utmp(m,n) ) ; utmp=zero
-    call zgemm( 'N', 'N', m, n, n, one, u, m, S, n, zero, utmp, m )
-    u = utmp
-    deallocate( utmp )
+  subroutine calc_dtrmm4( u, S )
+    implicit none
+    real(8),intent(inout) :: u(:,:)
+    real(8),intent(in) :: S(:,:)
+    real(8),parameter :: zero=0.0d0,one=1.0d0
+    integer :: m,n,j0,j1,i0,i1,iblk,jblk
+    integer :: nblk,nj,ni
+    real(8),allocatable :: utmp(:,:)
+    real(8),allocatable :: stmp(:,:)
 
-    deallocate( S )
+    m=size(u,1)
+    n=size(u,2)
 
-    call blacs_gridexit( icontxt )
+    nblk = max( n/2, 1 )
 
-    call write_border( 1, " z_LUGS_sl_test(end)" )
+    call alloc_utmp
 
-  END SUBROUTINE z_LUGS_sl_test
-#endif
+    do iblk = 1, n, nblk
+       i0 = iblk
+       i1 = min( iblk+nblk-1, n )
+       ni = i1 - i0 + 1
+       utmp(:,i0:i1) = u(:,i0:i1)
+       call DTRMM( 'R', 'U', 'N', 'N', m, ni, one, S(i0,i0), n, utmp(1,i0), m )
+    end do !iblk
+
+ ! ---
+
+    do jblk = 1, n, nblk
+
+       j0 = jblk
+       j1 = min( jblk+nblk-1, n )
+       nj = j1 - j0 + 1
+
+       do iblk = 1, jblk-1, nblk
+
+          i0 = iblk
+          i1 = min( iblk+nblk-1, n )
+          ni = i1 - i0 + 1
+
+          call DGEMM( 'N','N',m,nj,ni,one,u(1,i0),m,S(i0,j0),n,one,utmp(1,j0),m )
+
+       end do !iblk
+
+    end do !jblk
+
+    !u=utmp
+    call dealloc_utmp
+
+  contains
+
+    subroutine alloc_utmp
+      implicit none
+      allocate( utmp(m,n) ); utmp=zero
+    end subroutine alloc_utmp
+    subroutine dealloc_utmp
+      u=utmp
+      deallocate( utmp )
+    end subroutine dealloc_utmp
+
+!    subroutine alloc_stmp
+!      implicit none
+!      allocate( stmp(i0:i1,i0:i1) ); stmp=S(i0:i1,i0:i1)
+!    end subroutine alloc_stmp
+!    subroutine dealloc_stmp
+!      deallocate( stmp )
+!    end subroutine dealloc_stmp
+
+  end subroutine calc_dtrmm4
+
 
 end module gram_schmidt_lusl_module
