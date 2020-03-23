@@ -6,7 +6,7 @@ module subspace_sdsl_module
   use rgrid_variables, only: dV
   use parallel_module, only: comm_grid, comm_band, MB_d, id_band, id_grid
   use hamiltonian_module, only: hamiltonian
-  use calc_overlap_sd_module, only: calc_overlap_sd
+  use calc_overlap_sd_module, only: calc_overlap_sd, calc_overlap_sd_blk
 
   implicit none
 
@@ -231,6 +231,7 @@ contains
     allocate( H(nband,nband) ); H=zero
 
     call calc_overlap_sd( u, utmp, dV, H )
+    !call calc_overlap_sd_blk( u, utmp, dV, H )
 
 !    call timer( ttmp,time(:,it) ); tlabel(it)="ovlp"; it=it+1
 

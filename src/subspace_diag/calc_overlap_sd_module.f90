@@ -9,6 +9,7 @@ module calc_overlap_sd_module
 
   private
   public :: calc_overlap_sd
+  public :: calc_overlap_sd_blk
 
   integer :: nblk0
   integer :: nblk1
@@ -176,5 +177,70 @@ contains
     end do ! i0
 
   end subroutine calc_overlap_sd_sub
+
+
+  subroutine calc_overlap_sd_blk( a, b, dv, c )
+    implicit none
+    real(8),intent(in) :: a(:,:), b(:,:)
+    real(8),intent(in) :: dv
+    real(8),intent(inout) :: c(:,:)
+    real(8),parameter :: zero=0.0d0, one=1.0d0
+    real(8),allocatable :: s(:)
+    integer :: m,n,nblk,iblk,jblk
+    integer :: i0,i1,j0,j1,ni,nj,nme,i,j,k
+
+    m=size(a,1)
+    n=size(a,2)
+    nblk = n/2
+
+    do jblk = 1, n, nblk
+
+       j0 = jblk
+       j1 = min( jblk+nblk, n )
+       nj = j1 - j0 + 1
+
+       do iblk = jblk, n, nblk
+
+          i0 = iblk
+          i1 = min( iblk+nblk, n )
+          ni = i1 - i0 + 1
+
+          if ( iblk == jblk ) then
+             call DGEMM( 'T','N',ni,nj,m,dv,a(1,i0),m,b(1,j0),m,zero,c(i0,j0),n )
+          else
+             call DGEMM( 'T','N',ni,nj,m,dv,a(1,i0),m,b(1,j0),m,zero,c(i0,j0),n )
+          end if
+
+       end do !iblk
+
+    end do !jblk
+
+    nme = n*(n+1)/2
+    allocate( s(nme) )
+
+    do j=1,n
+    do i=j,n
+       k=(j-1)*n-(j*(j-1))/2+i
+       s(k)=c(i,j)*dv
+    end do
+    end do
+
+    !call watchb( ttmp, tttt(:,2), barrier="on" )
+
+    call rsdft_allreduce_sum( s, comm_grid )
+
+    !call watchb( ttmp, tttt(:,3), barrier="on" )
+
+    do j=1,n
+    do i=j,n
+       k=(j-1)*n-(j*(j-1))/2+i
+       c(i,j)=s(k)
+    end do
+    end do
+
+    deallocate( s )
+
+  end subroutine calc_overlap_sd_blk
+
 
 end module calc_overlap_sd_module
