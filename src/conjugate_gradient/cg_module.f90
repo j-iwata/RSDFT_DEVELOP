@@ -25,7 +25,7 @@ module cg_module
   integer :: Ncg = 3
   integer :: iswitch_pc = 1
   integer :: iswitch_gs = 0
-  integer :: ictrl_cg(3) = (/ 3, 4, 0 /)
+  integer :: ictrl_cg(3) = (/ 3, 1, 0 /)
   logical :: flag_init_read = .true.
   logical :: flag_init_cg = .true.
 
