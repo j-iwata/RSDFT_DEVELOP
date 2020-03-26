@@ -181,7 +181,7 @@ CONTAINS
 
        else if ( rs < 1.0d0 ) then
 
-          if ( rs <= 0.0d0 ) stop "calc_ldapz81"
+          !if ( rs <= 0.0d0 ) stop "calc_ldapz81"
 
           rsln = log(rs)
 
@@ -200,8 +200,8 @@ CONTAINS
 
        else
 
-          write(*,*) "rs=",rs,trho
-          call stop_program( "error@ldapz81_c" )
+          !write(*,*) "rs=",rs,trho
+          !call stop_program( "error@ldapz81_c" )
 
        end if
 

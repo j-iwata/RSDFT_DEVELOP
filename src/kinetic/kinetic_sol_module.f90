@@ -7,7 +7,7 @@ MODULE kinetic_sol_module
   use kinetic_variables, only: coef_lap0, coef_lap, zcoef_kin, coef_nab &
        ,flag_nab, flag_n12, flag_n23, flag_n31, const_k2, ggg, Md, wk
   use watch_module, only: watchb_omp, time_kine, time_bcfd
-#ifndef _NEC_AURORA_
+#ifdef __NEC__
   use sca
 #endif
 
@@ -17,7 +17,6 @@ MODULE kinetic_sol_module
   PUBLIC :: op_kinetic_sol
   PUBLIC :: construct_matrix_kinetic_sol
 
-  integer,allocatable :: ijk(:,:)
   complex(8),allocatable :: zc1a(:),zc2a(:),zc3a(:)
 
   logical :: flag_clap=.true.
@@ -27,7 +26,6 @@ MODULE kinetic_sol_module
   real(8) :: clap31,clap32,clap33,clap34,clap35,clap36
 
   real(8),allocatable :: coef(:)
-  real(8),allocatable :: www_o(:,:,:) 
 
 CONTAINS
 
@@ -46,7 +44,7 @@ CONTAINS
     integer,optional,intent(IN) :: k_in
     real(8),optional,intent(in) :: vloc(:)
     integer :: i,ib,i1,i2,i3,nb,m,n,j,k,i0
-    integer :: a1,a2,a3,b1,b2,b3,p,mm,nn
+    integer :: a1,a2,a3,b1,b2,b3,p,mm,nn,ML0
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     real(8) :: c,d,et0,et1, ttmp(2)
     integer,allocatable :: ic(:)
@@ -71,19 +69,6 @@ CONTAINS
 
     nb = size( tpsi, 2 )
     i0 = Igrid(1,0)
-
-    !if( .not.allocated(ijk) )then
-    !   allocate( ijk(3,size(tpsi,1)) ); ijk=0
-    !   j=0
-    !   do i3=a3b,b3b
-    !   do i2=a2b,b2b
-    !   do i1=a1b,b1b
-    !      j=j+1
-    !      ijk(1:3,j)=(/i1,i2,i3/)
-    !   end do
-    !   end do
-    !   end do
-    !end if
 
     if ( flag_clap_setval ) then
        if ( flag_clap_setval ) then
@@ -135,11 +120,13 @@ CONTAINS
     if( present(vloc) )then
        select case( Md )
        case( 4 )
+#ifdef __NEC__
           do ib=1,nb
           do i=n1_omp,n2_omp
              htpsi(i,ib) = (c+vloc(i))*tpsi(i,ib)
           end do
           end do
+#endif
        case( 6 )
        case default
           do ib=1,nb
@@ -163,9 +150,6 @@ CONTAINS
        end do
        end do
        end do
-       !do j=1,size(tpsi,1)
-       !   www(ijk(1,j),ijk(2,j),ijk(3,j),ib)=tpsi(j,ib)
-       !end do
     end do
 
 !$OMP barrier
@@ -335,8 +319,7 @@ CONTAINS
 
           if ( present(vloc) ) then
           if ( flag_clap .and. Md == 4 ) then
-#ifndef _NEC_AURORA_
-
+#ifdef __NEC__
           if ( .not.allocated(coef) ) then
              allocate( coef(25) ); coef=0.0d0
              coef( 1) = clap34
@@ -364,7 +347,7 @@ CONTAINS
              coef(23) = clap32
              coef(24) = clap33
              coef(25) = clap34
-             allocate( www_o(a1b:b1b,a2b:b2b,a3b:b3b) ); www_o=zero
+             ML0=size(htpsi,1)
           end if
 
           call sca_compute_with_4x4y4za_d( &
@@ -376,18 +359,9 @@ CONTAINS
                www(Igrid(1,1),Igrid(1,2),Igrid(1,3),ib), &
                b1b-a1b+1, &
                b2b-a2b+1, &
-               www_o, &
+               htpsi(1:ML0,ib), &
                coef, &
-               0.0d0                     )
-
-          do i3=a3b_omp,b3b_omp
-          do i2=a2b_omp,b2b_omp
-          do i1=a1b_omp,b1b_omp
-             j=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
-             htpsi(j,ib) = htpsi(j,ib) + www_o(i1,i2,i3)
-          end do
-          end do
-          end do
+               1.0d0                     )
 #else
           do i3=a3b_omp,b3b_omp
           do i2=a2b_omp,b2b_omp

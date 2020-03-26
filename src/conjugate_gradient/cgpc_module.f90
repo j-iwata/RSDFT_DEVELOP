@@ -11,6 +11,9 @@ MODULE cgpc_module
   use cgpc_gausseidel_module
   use cgpc_hprsdft_module
   use omp_variables
+#ifdef __NEC__
+  use sca
+#endif
 
   implicit none
 
@@ -27,6 +30,7 @@ MODULE cgpc_module
 #ifdef _DRSDFT_
   real(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
   real(8),parameter :: zero=0.d0
+  real(8),allocatable :: www_o(:,:,:)
 #else
   complex(8),allocatable :: ftmp2(:,:),gtmp2(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
@@ -413,7 +417,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: k,s,mm,nn
     real(8),intent(INOUT) :: E(nn)
-    real(8) :: c,c1,c2,c3,d
+    real(8) :: c,c1,c2,c3,d,coef(7)
     integer :: m,n,i,i1,i2,i3,j
     integer :: a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
     integer,allocatable :: ic(:)
@@ -450,12 +454,16 @@ CONTAINS
     a3b_omp = Igrid_omp(1,3,mt)
     b3b_omp = Igrid_omp(2,3,mt)
 
+#ifdef __NEC__
+    coef(1:7)=(/c3,c2,c1,0.0d0,c1,c2,c3/)
+#else
     do n=1,nn
        d=c-E(n)
        do i=n1_omp,n2_omp
           ftmp2(i,n)=d*gtmp2(i,n)
        end do
     end do
+#endif
 
 !!$OMP workshare
 !    www(:,:,:,:)=zero
@@ -474,7 +482,23 @@ CONTAINS
 
     call bcset_1(1,nn,1,0)
 !$OMP barrier
-
+#ifdef __NEC__
+    do n=1,nn
+       coef(4)=c-E(n)
+       call sca_compute_with_1x1y1za_d( &
+               b1b-a1b+1, &
+               b2b-a2b+1, &
+               b3b-a3b+1, &
+               size(www,1), &
+               size(www,2), &
+               www(Igrid(1,1),Igrid(1,2),Igrid(1,3),n), &
+               b1b-a1b+1, &
+               b2b-a2b+1, &
+               ftmp2(1,n), &
+               coef, &
+               0.0d0                  )
+    end do
+#else
     do n=1,nn
        do i3=a3b_omp,b3b_omp
        do i2=a2b_omp,b2b_omp
@@ -487,6 +511,7 @@ CONTAINS
        end do
        end do
     end do
+#endif
 !$OMP barrier
 
     return
