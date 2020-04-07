@@ -209,8 +209,8 @@ CONTAINS
           irankb = mod( icycle-1, np_band )
 
           IPROW=mod( (ms-1)/MBLK,NPROW )
+          if (irankb == myrank_b ) aa(:,1:meV-msV+1) = u(:,msV:meV)
 
-          if (irankb == myrank_b ) aa(:,:) = u(:,msV:meV)
           call rsdft_bcast ( aa, irankb, comm_band )
 
           j0=0

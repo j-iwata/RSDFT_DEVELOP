@@ -83,6 +83,7 @@ CONTAINS
     logical :: flag_noncollinear
     logical :: disp_switch
 
+    ierr_out = 0
     Diter=Nsweep ; if ( present(Diter_in) ) Diter=Diter_in
     if ( Diter <= 0 ) return
 
@@ -94,7 +95,6 @@ CONTAINS
     flag_exit = .false.
     flag_conv = .false.
     Echk      = 0.0d0
-    ierr_out  = 0
     add_info  = "" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
 
     flag_noncollinear = .false.

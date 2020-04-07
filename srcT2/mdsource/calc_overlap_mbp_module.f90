@@ -172,7 +172,8 @@ CONTAINS
                        do i=j,me
                          if (i/=j) then
                             c(i0+i-ms+1,j0+j-ns+1)=wtmp2(i,j)*dv
-                            c(j0+j-ns+1,i0+i-ms+1)=wtmp2(i,j)*dv
+! 2020/01/28                c(j0+j-ns+1,i0+i-ms+1)=wtmp2(i,j)*dv
+                            c(i0+j-ns+1,j0+i-ms+1)=wtmp2(i,j)*dv
                          else
                             c(i0+i-ms+1,j0+j-ns+1)=wtmp2(i,j)*dv + 1.0d0
 !                           c(i0+i-ms+1,j0+j-ns+1)=wtmp2(i,j)*dv
@@ -183,7 +184,8 @@ CONTAINS
                     do j=ns,ne
                        do i=j,me
                           c(i0+i-ms+1,j0+j-ns+1)=wtmp2(i,j)*dv
-                          c(j0+j-ns+1,i0+i-ms+1)=wtmp2(i,j)*dv
+! 2020/01/28              c(j0+j-ns+1,i0+i-ms+1)=wtmp2(i,j)*dv
+                          c(i0+j-ns+1,j0+i-ms+1)=wtmp2(i,j)*dv
                        enddo
                     enddo
                  endif
