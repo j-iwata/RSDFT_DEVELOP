@@ -35,7 +35,9 @@ CONTAINS
 
     integer :: i,i0,i1,i2,ib1,ib2,j,j0,j1,j2,m,me,mm,ms,MB
     integer :: MBLK,MBLKH,ML0,n1,n2,mms,mme,nnn,nns,n,ne,nn,ns
-    integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+!   integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+    integer,allocatable :: istatus(:,:),ireq(:)
+    integer :: nreq,itag,ierr,nwork
     integer :: IPROW,IPCOL,iroot1,iroot2,mrnk,nrecv_me,nsend_me
     integer,allocatable :: ir(:),id(:),irecv_me(:,:),isend_me(:,:)
     complex(8) :: ztmp
@@ -58,7 +60,11 @@ CONTAINS
 
     call gather_b_wf( k, s )
 
-    allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+!   allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+    nwork=(MB-1)/MBLK+1
+    nwork=((nwork-1)/nprow+1)*((nwork-1)/npcol+1)
+    allocate( istatus(MPI_STATUS_SIZE,nwork), ireq(nwork) )
+    allocate( irecv_me(nwork,0:8),isend_me(nwork,0:8) )
 
     nrecv_me      = 0
     nsend_me      = 0
@@ -425,7 +431,9 @@ CONTAINS
     integer :: MB_0,MB_1,myrank,n1,n2
     integer :: MBLK,MBLKH,ML0,mms,mme,nnn,nns,n,ne,nn,ns
     include 'mpif.h'
-    integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+!   integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+    integer,allocatable :: istatus(:,:),ireq(:)
+    integer :: nreq,itag,ierr,nwork
     integer :: IPROW,IPCOL,iroot1,iroot2,mrnk,nrecv_me,nsend_me,comm_grid
     integer,allocatable :: ir(:),id(:),irecv_me(:,:),isend_me(:,:)
     complex(8) :: ztmp
@@ -451,7 +459,12 @@ CONTAINS
 
     call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
 
-    allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+!   allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+    nwork=(MB-1)/MBLK+1
+    nwork=((nwork-1)/nprow+1)*((nwork-1)/npcol+1)
+    allocate( istatus(MPI_STATUS_SIZE,nwork), ireq(nwork) )
+    allocate( irecv_me(nwork,0:8),isend_me(nwork,0:8) )
+
     irecv_me(:,:) =-1
     isend_me(:,:) =-1
 
@@ -507,7 +520,8 @@ CONTAINS
 
        j0=0
 
-       if ( irank_b == myrank_b ) uB(:,:)=u(:,msV:meV)
+!      if ( irank_b == myrank_b ) uB(:,:)=u(:,msV:meV)
+       if ( irank_b == myrank_b ) uB(:,1:mm)=u(:,msV:meV)
 
        call rsdft_bcast( uB, irank_b, comm_band)
 
@@ -754,7 +768,9 @@ CONTAINS
     integer :: MB_0,MB_1,myrank,n1,n2
     integer :: MBLK,MBLKH,ML0,mms,mme,nnn,nns,n,ne,nn,ns
     include 'mpif.h'
-    integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+!   integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+    integer,allocatable :: istatus(:,:),ireq(:)
+    integer :: nreq,itag,ierr,nwork
     integer :: IPROW,IPCOL,iroot1,iroot2,mrnk,nrecv_me,nsend_me,comm_grid
     integer,allocatable :: ir(:),id(:),irecv_me(:,:),isend_me(:,:)
     complex(8) :: ztmp
@@ -780,7 +796,12 @@ CONTAINS
 
     call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
 
-    allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+!   allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+    nwork=(MB-1)/MBLK+1
+    nwork=((nwork-1)/nprow+1)*((nwork-1)/npcol+1)
+    allocate( istatus(MPI_STATUS_SIZE,nwork), ireq(nwork) )
+    allocate( irecv_me(nwork,0:8),isend_me(nwork,0:8) )
+
     irecv_me(:,:) =-1
     isend_me(:,:) =-1
 
@@ -836,7 +857,8 @@ CONTAINS
 
        j0=0
 
-       if ( irank_b == myrank_b ) uB(:,:)=u(:,msV:meV)
+!      if ( irank_b == myrank_b ) uB(:,:)=u(:,msV:meV)
+       if ( irank_b == myrank_b ) uB(:,1:mm)=u(:,msV:meV)
 
        call rsdft_bcast( uB, irank_b, comm_band)
 
@@ -898,7 +920,9 @@ CONTAINS
     integer :: MB_0,MB_1,myrank,n1,n2
     integer :: MBLK,MBLKH,ML0,mms,mme,nnn,nns,n,ne,nn,ns
     include 'mpif.h'
-    integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+!   integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+    integer,allocatable :: istatus(:,:),ireq(:)
+    integer :: nreq,itag,ierr,nwork
     integer :: IPROW,IPCOL,iroot1,iroot2,mrnk,nrecv_me,nsend_me,comm_grid
     integer,allocatable :: ir(:),id(:),irecv_me(:,:),isend_me(:,:)
     complex(8) :: ztmp
@@ -924,7 +948,12 @@ CONTAINS
 
     call MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
 
-    allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+!   allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+    nwork=(MB-1)/MBLK+1
+    nwork=((nwork-1)/nprow+1)*((nwork-1)/npcol+1)
+    allocate( istatus(MPI_STATUS_SIZE,nwork), ireq(nwork) )
+    allocate( irecv_me(nwork,0:8),isend_me(nwork,0:8) )
+
     irecv_me(:,:) =-1
     isend_me(:,:) =-1
 
@@ -981,7 +1010,8 @@ CONTAINS
 
        j0=0
 
-       if ( irank_b == myrank_b ) uB(:,:)=u(:,msV:meV)
+!      if ( irank_b == myrank_b ) uB(:,:)=u(:,msV:meV)
+       if ( irank_b == myrank_b ) uB(:,1:mm)=u(:,msV:meV)
 
        call rsdft_bcast( uB, irank_b, comm_band)
 

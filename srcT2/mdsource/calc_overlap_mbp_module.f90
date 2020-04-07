@@ -4,6 +4,7 @@ MODULE calc_overlap_mbp_module
   use rsdft_mpi_module, only: rsdft_allreduce_sum
   use scalapack_module, only: usermap, NPROW, NPCOL, MBSIZE, NBSIZE
   use rsdft_mpi_module, only: rsdft_bcast
+  use array_bound_module, only: MB
 
   implicit none
   include 'mpif.h'
@@ -16,6 +17,7 @@ MODULE calc_overlap_mbp_module
   real(8),parameter :: alpha=1.d0,beta=0.d0
 
   integer,allocatable :: ir(:),id(:),irecv_me(:,:),isend_me(:,:)
+  integer,allocatable :: istatus(:,:),ireq(:)
   integer :: nsend_me, nrecv_me
 
 CONTAINS
@@ -65,7 +67,8 @@ CONTAINS
     ii0=0
     jj0=0
 
-    call init_srdata
+!   call init_srdata
+    call init_srdata (MBLK)
 
 !   call calc_overlap_sub(m,n,MBLK0,a,b,c)
 
@@ -84,7 +87,8 @@ CONTAINS
        meV = min( msV+MBLK-1, n )
 
 !----  Brodcast ( irankb => other process in comm_band)
-       if (irankb==myrank_b) aa(:,:) = a(:,msV:meV)
+!      if (irankb==myrank_b) aa(:,:) = a(:,msV:meV)
+       if (irankb==myrank_b) aa(:,1:mm) = a(:,msV:meV)
        call rsdft_bcast ( aa, irankb, comm_band )
 
        j0=0
@@ -262,15 +266,25 @@ CONTAINS
 
 
 
-  SUBROUTINE init_srdata
+  SUBROUTINE init_srdata(n)
     implicit none
+    integer,intent(IN) :: n
+    integer :: nsize   
 
-    allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+!   allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+    nsize=(MB-1)/n+1
+    nsize=(nsize*nsize-1)/2+1
+    nsize=((nsize-1)/nprow+1)*((nsize-1)/npcol+1)
+    allocate( irecv_me(nsize,0:8),isend_me(nsize,0:8) )
+    allocate( istatus(MPI_STATUS_SIZE,nsize),ireq(nsize) )
+    
 
     nrecv_me      = 0
     nsend_me      = 0
     irecv_me(:,:) =-1
     isend_me(:,:) =-1
+    istatus(:,:) = 0
+    ireq(:)= 0
 
     return
   END SUBROUTINE init_srdata
@@ -325,7 +339,8 @@ CONTAINS
     real(8), intent(INOUT) :: Hsub(:,:)
     integer :: i, j, n, m, i0, j0
     real(8),allocatable :: vtmp2(:,:), wtmp2(:,:)
-    integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+!   integer :: istatus(MPI_STATUS_SIZE,123),nreq,ireq(123),itag,ierr
+    integer :: nreq,itag,ierr
     integer ::  ms, me, ns, ne, i1, i2, j1, j2
 
     n=0
@@ -403,6 +418,7 @@ CONTAINS
 
   SUBROUTINE finalize_srdata
     deallocate( irecv_me,isend_me )
+    deallocate( istatus,ireq )
   END SUBROUTINE finalize_srdata
 
 

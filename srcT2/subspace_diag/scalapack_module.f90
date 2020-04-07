@@ -595,14 +595,21 @@ CONTAINS
     integer,allocatable :: irecv_me(:,:), isend_me(:,:)
     real(8),allocatable :: wtmp(:,:,:), Hsub_w(:,:)
     real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
+    integer :: nwork
 
 ! alloc work array
     MBLK=max(MBSIZE, NBSIZE)
-    allocate (wtmp(MBLK,MBLK,1000));wtmp=0.d0
+!   allocate (wtmp(MBLK,MBLK,1000));wtmp=0.d0
+    nwork=(MB-1)/MBLK+1
+    nwork=((nwork-1)/nprow+1)*((nwork-1)/npcol+1)
+    allocate (wtmp(MBLK,MBLK,nwork));wtmp=0.d0
     allocate (Hsub_w(MBLK,MBLK));Hsub_w=0.d0
-    allocate (ireq(1000));ireq=0
-    allocate (istatus(MPI_STATUS_SIZE,1000));istatus=0
-    allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+!   allocate (ireq(1000));ireq=0
+!   allocate (istatus(MPI_STATUS_SIZE,1000));istatus=0
+!   allocate( irecv_me(99,0:8),isend_me(99,0:8) )
+    allocate (ireq(nwork));ireq=0
+    allocate (istatus(MPI_STATUS_SIZE,nwork));istatus=0
+    allocate( irecv_me(nwork,0:8),isend_me(nwork,0:8) )
 
     nrecv_me      = 0
     nsend_me      = 0
@@ -758,6 +765,9 @@ CONTAINS
        end do
 
     end if
+
+   write(*,*) "debug> myrank,nrecv_me=",myrank,nrecv_me,nreq
+   write(*,*) "debug> myrank,nsend_me=",myrank,nsend_me,nreq
 
     call mpi_barrier(mpi_comm_world,ierr)
     deallocate (ireq, istatus, wtmp, Hsub_w)
