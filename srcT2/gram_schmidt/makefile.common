@@ -1,0 +1,8 @@
+OBJS = gram_schmidt_m_module.o gram_schmidt_m_bp_module.o \
+       gram_schmidt_t_module.o\
+       gram_schmidt_g_module.o gram_schmidt_ncol_module.o\
+       gram_schmidt_t2_module.o gram_schmidt_h_module.o\
+       gram_schmidt_hbp_module.o gram_schmidt_p_module.o\
+       gram_schmidt_pbp_module.o \
+       lugs_sl_test_module.o lugs_sl_bp_test_module.o\
+       gram_schmidt_module.o\

@@ -1,0 +1,18 @@
+OBJS = xc_variables.o\
+       xc_ldapz81_module.o\
+       xc_ggapbe96_mol_module.o\
+       xc_ggapbe96_2_module.o\
+       xc_ggapbe96_module.o\
+       xc_hybrid_module.o\
+       fock_cg_module.o\
+       fock_fftw_module.o\
+       fock_ffte_module.o\
+       fock_fft_module.o\
+       fock_module.o\
+       xc_hf_module.o\
+       xc_hse_module.o\
+       xc_pw92_gth_module.o\
+       xc_vdw_module.o\
+       libxc_module.o\
+       xc_module.o\
+

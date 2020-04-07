@@ -1,0 +1,1 @@
+OBJS = ext_sub_minpac.o

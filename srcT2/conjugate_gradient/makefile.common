@@ -1,0 +1,12 @@
+OBJS = cggs_module.o\
+       cgpc_2_module.o\
+       cgpc_hprsdft_module.o\
+       cgpc_gausseidel_module.o\
+       cgpc_seitsonen_module.o\
+       cgpc_diag_module.o\
+       cgpc_module.o\
+       conjugate_gradient_g_module.o\
+       cg_lobpcg_module.o\
+       cg_ncol_module.o\
+       cg_module.o\
+       chebyshev_filter_module.o\
