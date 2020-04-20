@@ -127,7 +127,8 @@ CONTAINS
     allocate( referred_orbital(MB_WF,MK_WF,MS_WF) )
     referred_orbital=.true.
 
-    call random_initial_wf
+    call random_initial_wf_2
+!    call random_initial_wf
 !    call delta_initial_wf
 !    call fft_initial_wf_sub( ML_WF,MB_WF,MK_WF,MS_WF,ML_0_WF,ML_1_WF &
 !        ,MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF,unk )
@@ -179,6 +180,38 @@ CONTAINS
 !    end do
 
   END SUBROUTINE random_initial_wf
+
+
+  SUBROUTINE random_initial_wf_2
+    implicit none
+    integer :: s,k,n,nnn,i,j,i0,i1
+    integer,allocatable :: ir(:)
+    real(8) :: u(2)
+    real(8),allocatable :: w(:)
+    call random_seed( size=n )
+    allocate( ir(n) )
+    ir(:)=MB_0_WF+ML_0_WF
+    call random_seed( put=ir )
+    deallocate( ir )
+    nnn=size(unk,1)
+    allocate( w(nnn) ); w=0.0d0
+    call random_number(w)
+    i0=0
+    do s=MS_0_WF,MS_1_WF
+    do k=MK_0_WF,MK_1_WF
+    do n=MB_0_WF,MB_1_WF
+       i0=i0+1
+       do i=i0,nnn
+          unk(i-i0+ML_0_WF,n,k,s)=w(i)
+       end do
+       do i=1,i0-1
+          unk(nnn-i0+ML_WF+i,n,k,s)=w(i)
+       end do
+    end do
+    end do
+    end do
+    deallocate(w)
+  END SUBROUTINE random_initial_wf_2
 
 
   subroutine delta_initial_wf

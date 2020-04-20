@@ -72,7 +72,7 @@ CONTAINS
   SUBROUTINE get_cpu_time( ct )
     implicit none
     real(DP),intent(OUT) :: ct
-    call cpu_time( ct )
+    ct=0.0_DP; !call cpu_time( ct )
   END SUBROUTINE get_cpu_time
 
   SUBROUTINE get_elapsed_time( et )

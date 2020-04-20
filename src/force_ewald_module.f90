@@ -5,7 +5,7 @@ MODULE force_ewald_module
   use bb_module, only: bb
   use atom_module, only: Natom, aa_atom, ki_atom
   use pseudopot_module, only: Zps
-  use bberf_module
+  !use bberf_module
   use rsdft_mpi_module
   use watch_module
 
@@ -121,7 +121,7 @@ CONTAINS
              z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
              rr=x*x+y*y+z*z
              r=sqrt(rr)
-             c=-( bberfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+             c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
              sum1=sum1+c*x
              sum2=sum2+c*y
              sum3=sum3+c*z
@@ -154,7 +154,7 @@ CONTAINS
           z=sum( aa(3,1:3)*(aa_atom(1:3,b)-aa_atom(1:3,a)+LR(1:3,i)) )
           rr=x*x+y*y+z*z
           r=sqrt(rr)
-          c=-( bberfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
           ic1(1)=ic1(1)+1
           if ( c == 0.0d0 ) then
              ic2(1)=ic2(1)+1
@@ -180,7 +180,7 @@ CONTAINS
           z=sum( aa(3,1:3)*(aa_atom(1:3,a)-aa_atom(1:3,b)+LR(1:3,i)) )
           rr=x*x+y*y+z*z
           r=sqrt(rr)
-          c=-( bberfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
+          c=-( erfc(sqeta*r) + const1*exp(-eta*rr)*r )/(r*rr)
           ic1(2)=ic1(2)+1
           if ( c == 0.0d0 ) then
              ic2(2)=ic2(2)+1

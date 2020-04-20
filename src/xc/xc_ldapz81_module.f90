@@ -128,10 +128,10 @@ CONTAINS
     real(8) :: c0,factor
     real(8) :: s0(2),s1(2)
     real(8) :: trho,rs,rssq,rsln,rhoa,rhob
-    real(8) :: f,dfdrhoa,dfdrhob
-    real(8) :: ecd(2),ecdz,mu(2)
+    real(8) :: f,fa,fb,dfdrhoa,dfdrhob
+    real(8) :: ecda(2),ecdb(2),ecdz,mua(2),mub(2)
     integer :: i
-    real(8),allocatable :: Eci(:)
+    real(8),allocatable :: Eci(:),Ecia(:),Ecib(:)
 
     ThrFouPi = 3.0d0/( 4.0d0*acos(-1.0d0) )
     onethr   = 1.0d0/3.0d0
@@ -143,6 +143,8 @@ CONTAINS
     if ( MSP == 1 ) factor=0.5d0
 
     allocate( Eci(ML_0:ML_1) ); Eci=0.0d0
+    allocate( Ecia(ML_0:ML_1) ); Ecia=0.0d0
+    allocate( Ecib(ML_0:ML_1) ); Ecib=0.0d0
 
     Ec = 0.0d0
 
@@ -156,68 +158,75 @@ CONTAINS
 
        rs = (ThrFouPi/trho)**onethr
 
-       if ( rs >= 1.0d0 ) then
+       !if ( rs >= 1.0d0 ) then
 
           rssq = sqrt(rs)
 
-          ecd(1) = gam(1)/( 1.0d0 + bet1(1)*rssq + bet2(1)*rs )
-          ecd(2) = gam(2)/( 1.0d0 + bet1(2)*rssq + bet2(2)*rs )
+          ecda(1) = gam(1)/( 1.0d0 + bet1(1)*rssq + bet2(1)*rs )
+          ecda(2) = gam(2)/( 1.0d0 + bet1(2)*rssq + bet2(2)*rs )
 
-          f=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr)
-          Eci(i) = trho*ecd(1) &
+          fa=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr)
+          fa = fa/trho**fouthr
+
+          Ecia(i) = trho*ecda(1) &
                + gam(2)/(  trho**onethr &
                          + bet1(2)*(trho*ThrFouPi)**onesix &
-                         + bet2(2)*ThrFouPi**onethr )*f &
+                         + bet2(2)*ThrFouPi**onethr )*fa &
                - gam(1)/(  trho**onethr &
                          + bet1(1)*(trho*ThrFouPi)**onesix &
-                         + bet2(1)*ThrFouPi**onethr )*f
+                         + bet2(1)*ThrFouPi**onethr )*fa
 
-          f = f/trho**fouthr
-
-          mu(1) = ecd(1) + ecd(1)*onethr*( 0.5d0*bet1(1)/rssq + bet2(1) ) &
+          mua(1) = ecda(1) + ecda(1)*onethr*( 0.5d0*bet1(1)/rssq + bet2(1) ) &
                           /( 1.0d0/rs + bet1(1)/rssq + bet2(1) )
-          mu(2) = ecd(2) + ecd(2)*onethr*( 0.5d0*bet1(2)/rssq + bet2(2) ) &
+          mua(2) = ecda(2) + ecda(2)*onethr*( 0.5d0*bet1(2)/rssq + bet2(2) ) &
                           /( 1.0d0/rs + bet1(2)/rssq + bet2(2) )
 
-       else if ( rs < 1.0d0 ) then
+       !else if ( rs < 1.0d0 ) then
 
           !if ( rs <= 0.0d0 ) stop "calc_ldapz81"
 
           rsln = log(rs)
 
-          ecd(1) = A(1)*rsln + B(1) + C(1)*rs*rsln + D(1)*rs
-          ecd(2) = A(2)*rsln + B(2) + C(2)*rs*rsln + D(2)*rs
+          ecdb(1) = A(1)*rsln + B(1) + C(1)*rs*rsln + D(1)*rs
+          ecdb(2) = A(2)*rsln + B(2) + C(2)*rs*rsln + D(2)*rs
 
-          f=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr) &
+          fb=c0*((2.0d0*rhoa)**fouthr+(2.0d0*rhob)**fouthr-2.0d0*trho**fouthr) &
                /trho**fouthr
 
-          ecdz = ecd(1) + ( ecd(2) - ecd(1) )*f
+          ecdz = ecdb(1) + ( ecdb(2) - ecdb(1) )*fb
 
-          Eci(i) = trho*ecdz
+          Ecib(i) = trho*ecdz
 
-          mu(1) = ecd(1) - onethr*( A(1) + C(1)*rs*(1.0d0+rsln) + rs*D(1) )
-          mu(2) = ecd(2) - onethr*( A(2) + C(2)*rs*(1.0d0+rsln) + rs*D(2) )
+          mub(1) = ecdb(1) - onethr*( A(1) + C(1)*rs*(1.0d0+rsln) + rs*D(1) )
+          mub(2) = ecdb(2) - onethr*( A(2) + C(2)*rs*(1.0d0+rsln) + rs*D(2) )
 
-       else
+       !else
 
           !write(*,*) "rs=",rs,trho
           !call stop_program( "error@ldapz81_c" )
 
-       end if
+       !end if
 
        dfdrhoa = c0*fouthr*2.0d0*rhob &
             *( (2.0d0*rhoa)**onethr - (2.0d0*rhob)**onethr )/trho**fouthr
        dfdrhob =-c0*fouthr*2.0d0*rhoa &
             *( (2.0d0*rhoa)**onethr - (2.0d0*rhob)**onethr )/trho**fouthr
 
-       vco(i,1)   = mu(1) + ( mu(2)-mu(1) )*f + ( ecd(2)-ecd(1) )*dfdrhoa
-       vco(i,MSP) = mu(1) + ( mu(2)-mu(1) )*f + ( ecd(2)-ecd(1) )*dfdrhob
+       if ( rs >= 1.0d0 ) then
+       vco(i,1)   = mua(1) + ( mua(2)-mua(1) )*fa + ( ecda(2)-ecda(1) )*dfdrhoa
+       vco(i,MSP) = mua(1) + ( mua(2)-mua(1) )*fa + ( ecda(2)-ecda(1) )*dfdrhob
+       Eci(i)=Ecia(i)
+       else
+       vco(i,1)   = mub(1) + ( mub(2)-mub(1) )*fb + ( ecdb(2)-ecdb(1) )*dfdrhoa
+       vco(i,MSP) = mub(1) + ( mub(2)-mub(1) )*fb + ( ecdb(2)-ecdb(1) )*dfdrhob
+       Eci(i)=Ecib(i)
+       end if
 
     end do ! i
 
     Ec = sum(Eci)
 
-    deallocate( Eci )
+    deallocate( Ecia,Ecib,Eci )
 
     return
   END SUBROUTINE calc_ldapz81_c
