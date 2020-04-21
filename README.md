@@ -1,4 +1,4 @@
-# RSDFT_DEVELOP
+# RSDFT for SX-Aurora TSUBASA
 
 ## Installation
 Download or clone the branch SX-AuroraTSUBASA, and
