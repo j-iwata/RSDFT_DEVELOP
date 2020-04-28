@@ -147,6 +147,7 @@ MODS1 = \
        ps_nloc_mr_module.o\
        ps_spinorbit_module.o\
        io_write_module.o\
+       ps_nloc3_gth_module.o\
        ps_nloc3_module.o\
        inner_product_module.o\
        io1_module.o\
