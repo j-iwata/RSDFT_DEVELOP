@@ -1,6 +1,6 @@
 # RS-CPMD
 
-Gamma-point sampling mode is only available for CPMD calculations.
+Only Gamma-point sampling mode is available for CPMD calculations.
 
 ## Installation
 Download or clone the branch RSCPMD, and type the following commands
