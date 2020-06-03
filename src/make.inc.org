@@ -53,7 +53,7 @@ OMPFLAG   =
 #DFTD3_L = /home/iwata/DFT-D3/lib/libdftd3.a
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
-#CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
+CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_MPI_COMPLEX16_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_DIV_ALLREDUCE_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_QPRECISION_ $(CPP_FLAGS)
