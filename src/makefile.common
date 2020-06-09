@@ -76,6 +76,7 @@ MODS1 = \
        eigenvalues_module.o\
        ewald_variables.o\
        bcast_module.o\
+       fermi_dirac_module.o\
        fermi_module.o\
        fermi_ncol_module.o\
        band_variables.o\
@@ -147,6 +148,7 @@ MODS1 = \
        ps_nloc_mr_module.o\
        ps_spinorbit_module.o\
        io_write_module.o\
+       ps_nloc3_gth_module.o\
        ps_nloc3_module.o\
        inner_product_module.o\
        io1_module.o\

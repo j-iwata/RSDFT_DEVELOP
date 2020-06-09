@@ -23,15 +23,15 @@ MODULE watch_module
   integer :: count0=0
 
   real(8) :: time_cgpc(2,16)
-  real(8) :: time_hmlt(2,4)
+  real(8) :: time_hmlt(2,5)
   real(8) :: time_kine(2,16)
   real(8) :: time_nlpp(2,8)
   real(8) :: time_bcfd(2,8)
-  character(5) :: time_hmlt_indx(4)
+  character(5) :: time_hmlt_indx(5)
   character(5) :: time_kine_indx(16)
   character(5) :: time_nlpp_indx(8)
   character(5) :: time_cgpc_indx(16)
-  data time_hmlt_indx(1:4)/"kine","loc","nlc","exx"/
+  data time_hmlt_indx(1:5)/"kine","loc","nlc","exx","bak"/
   data time_kine_indx(1:11)/"kine1","kine2","bc","kine3","kine4" &
                      ,"recv","send","spack","waita","final","totbc"/
   data time_nlpp_indx(1:7)/"nlc1","nlcom","nlc2","com1","com2","com3","com4"/
@@ -112,10 +112,11 @@ CONTAINS
     count0=count
   END SUBROUTINE watcht
 
-  SUBROUTINE global_watch(disp_switch,flag_timelimit)
+  SUBROUTINE global_watch(disp_switch,flag_timelimit,indx)
     implicit none
     logical,intent(IN) :: disp_switch
     logical,optional,intent(OUT) :: flag_timelimit
+    character(*),optional,intent(in) :: indx
     integer :: ierr
     real(8) :: ct,et,s(2),r(2)
     include 'mpif.h'
@@ -133,7 +134,13 @@ CONTAINS
        flag_timelimit=.false.
        if ( r(2) > etime_limit ) flag_timelimit=.true.
     end if
-    if ( disp_switch ) write(*,'(1x,"TIME(END)",3f12.5)') r(1:2)
+    if ( disp_switch ) then
+       if ( present(indx) ) then
+          write(*,'(1x,"TIME(",a,")",3f12.5)') trim(indx),r(1:2)
+       else
+          write(*,'(1x,"TIME(END)",3f12.5)') r(1:2)
+       end if
+    end if
   END SUBROUTINE global_watch
 
 

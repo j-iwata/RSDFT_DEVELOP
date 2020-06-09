@@ -68,8 +68,8 @@ CONTAINS
 
     ctt(:)=0.d0
     ett(:)=0.d0
-    ctt_hamil(:)=0.d0
-    ett_hamil(:)=0.d0
+    !ctt_hamil(:)=0.d0
+    !ett_hamil(:)=0.d0
 
     ML0 = ML_1-ML_0+1
 

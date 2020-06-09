@@ -18,6 +18,8 @@ MODULE fock_module
   PRIVATE
   PUBLIC :: Fock, op_fock, UpdateWF_fock
 
+  integer, public :: current_band_index_fock=0
+
 #ifdef _DRSDFT_
   real(8),parameter :: zero = 0.0d0
   integer,parameter :: TYPE_MAIN = MPI_REAL8
@@ -27,6 +29,10 @@ MODULE fock_module
 #endif
 
   integer :: SYStype=0
+
+  interface op_fock
+     module procedure op_fock, op_fock_simple
+  end interface
 
 CONTAINS
 
@@ -196,6 +202,45 @@ CONTAINS
     end if
 
   END SUBROUTINE op_fock
+
+
+  subroutine op_fock_simple( k,s,tpsi,hpsi )
+    implicit none
+    integer,intent(in) :: k,s
+#ifdef _DRSDFT_
+    real(8),intent(in) :: tpsi(:,:)
+    real(8),intent(inout) :: hpsi(:,:)
+#else
+    complex(8),intent(in) :: tpsi(:,:)
+    complex(8),intent(inout) :: hpsi(:,:)
+#endif
+    integer :: ib,i,n1,n2,ib1,ib2,n
+
+    if ( iflag_hybrid == 0 ) return
+
+    n1  = 1
+    n2  = size(tpsi,1)
+    ib1 = 1
+    ib2 = size(tpsi,2)
+    n   = current_band_index_fock
+
+    if ( iflag_hybrid == 2 ) then
+
+       do ib=ib1,ib2
+          do i=n1,n2
+             hpsi(i,ib)=hpsi(i,ib)+hunk(i,ib-ib1+n,k,s)
+          end do
+       end do
+
+    else if ( iflag_hybrid > 0 ) then
+
+       do ib=ib1,ib2
+          call Fock( ib,k,s,ML_0,ML_1, tpsi(:,ib),hpsi(:,ib) )
+       end do
+
+    end if
+
+  end subroutine op_fock_simple
 
 
   SUBROUTINE UpdateWF_fock( SYStype_in )

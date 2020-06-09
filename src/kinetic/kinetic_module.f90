@@ -191,7 +191,7 @@ CONTAINS
   END SUBROUTINE get_ggg_kinetic
 
 
-  SUBROUTINE op_kinetic( tpsi, htpsi, k_in )
+  SUBROUTINE op_kinetic( tpsi, htpsi, k_in, vloc )
     implicit none
 #ifdef _DRSDFT_
     real(8),intent(IN)  :: tpsi(:,:)
@@ -201,13 +201,18 @@ CONTAINS
     complex(8),intent(INOUT) :: htpsi(:,:)
 #endif
     integer,optional,intent(IN) :: k_in
+    real(8),optional,intent(in) :: vloc(:)
     integer :: k
     k=1 ; if ( present(k_in) ) k=k_in
     select case(SYStype)
     case default
        select case( kin_select )
        case default
-          call op_kinetic_sol( tpsi, htpsi, k )
+          if( present(vloc) )then
+             call op_kinetic_sol( tpsi, htpsi, k, vloc )
+          else
+             call op_kinetic_sol( tpsi, htpsi, k )
+          end if
        case(2)
           call op_kinetic_sym( tpsi, htpsi, k )
        case(3)

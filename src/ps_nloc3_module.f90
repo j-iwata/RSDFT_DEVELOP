@@ -1,4 +1,4 @@
-MODULE ps_nloc3_module
+module ps_nloc3_module
 
   use pseudopot_module
   use bb_module
@@ -12,16 +12,17 @@ MODULE ps_nloc3_module
   use wf_module
   use electron_module
   use ps_nloc2_variables
-  use var_ps_member, only: ps_type
+  use var_ps_member, only: ps_type,Rps0
   use ylm_module
   use hsort_module
   use fft_module
   use rsdft_mpi_module
+  use ps_nloc3_gth_module, only: init_ps3_gth
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_ps_nloc3, prep_ps_nloc3, op_ps_nloc3, calc_force_ps_nloc3
+  private
+  public :: init_ps_nloc3, prep_ps_nloc3, op_ps_nloc3, calc_force_ps_nloc3
 
   integer :: m_mapgk, m_norb
   integer,allocatable :: mapgk(:,:)
@@ -42,10 +43,10 @@ MODULE ps_nloc3_module
   complex(8),parameter :: one=(1.0d0,0.0d0)
 #endif
 
-CONTAINS
+contains
 
 
-  SUBROUTINE init_ps_nloc3
+  subroutine init_ps_nloc3
     implicit none
     real(8)   ,parameter :: ep=1.d-14, dr=2.d-3
     integer :: ik,ig,i,i0,j,iorb,L,lm,m,iq,k,NRc,MMr,ierr,MKI
@@ -58,10 +59,10 @@ CONTAINS
     integer,allocatable :: indx(:),itmp(:),itmp2(:)
     real(8),allocatable :: tmp(:),tmp2(:)
 
-    if ( any( ippform == 4 ) ) then
-       write(*,*) "ippform=4 & pselect=3 is not implemented yet"
-       stop "stop@init_ps_nloc3(1)"
-    end if
+   !  if ( any( ippform == 4 ) ) then
+   !     write(*,*) "ippform=4 & pselect=3 is not implemented yet"
+   !     stop "stop@init_ps_nloc3(1)"
+   !  end if
     if ( ps_type == 1 ) then
        write(*,*) "Multi-reference with pselect=3 is not implemented yet"
        stop "stop@init_ps_nloc3(2)"
@@ -135,101 +136,111 @@ CONTAINS
     if ( allocated(viodgk2) ) deallocate( viodgk2 )
     allocate( viodgk2(m_mapgk,m_norb,MKI) )
     viodgk2=0.0d0
- !-------------------------------------------------
+!-------------------------------------------------
 
-    NRc=maxval(NRps)
-    allocate( tmp(NRc) ) ; tmp=0.d0
+    if ( any(ippform==4) ) then
 
-    const=pi4/Vcell
-    do ik=1,MKI
-       do iorb=1,norb(ik)
-          L=lo(iorb,ik)
-          NRc=NRps(iorb,ik)
-          select case(L)
-          case(0)
-             do i=1,m
-                q=tmp2(i)
-                if ( q==0.d0 ) then
-                   do j=1,NRc
-                      tmp(j)=rad(j,ik)*viod(j,iorb,ik)*rab(j,ik)
-                   end do
-                   call simp(tmp(1:NRc),sum0,2)
-                else
-                   q=sqrt(q)
-                   do j=1,NRc
-                      r=rad(j,ik)
-                      x=q*r
-                      if ( x<1.d-1 ) then
-                         sb=-(1.d0/39916800.d0*x**10-1.d0/362880.d0*x**8+1.d0/5040.d0*x**6 &
-                              -1.d0/120.d0*x**4+1.d0/6.d0*x**2-1.d0)
-                      else
-                         sb=sin(x)/x
-                      end if
-                      tmp(j)=r*viod(j,iorb,ik)*sb*rab(j,ik)
-                   end do
-                   call simp(tmp(1:NRc),sum0,2)
-                end if
-                viodgk2(i,iorb,ik)=const*sum0
-             end do
-          case(1)
-             do i=1,m
-                q=tmp2(i)
-                if ( q==0.d0 ) then
-                   sum0=0.d0
-                else
-                   q=sqrt(q)
-                   do j=1,NRc
-                      x=q*rad(j,ik)
-                      if ( x<1.d-1 ) then
-                         sb=1.d0/3991680.d0*x**9-1.d0/45360.d0*x**7 &
-                              +1.d0/840.d0*x**5-1.d0/30.d0*x**3+1.d0/3.d0*x
-                      else
-                         sb=sin(x)/x**2-cos(x)/x
-                      end if
-                      tmp(j)=rad(j,ik)*viod(j,iorb,ik)*sb*rab(j,ik)
-                   end do
-                   call simp(tmp(1:NRc),sum0,2)
-                end if
-                viodgk2(i,iorb,ik)=const*sum0
-             end do
-          case(2)
-             do i=1,m
-                q=tmp2(i)
-                if ( q==0.d0 ) then
-                   sum0=0.d0
-                else
-                   q=sqrt(q)
-                   do j=1,NRc
-                      x=q*rad(j,ik)
-                      if ( x<1.d-1 ) then
-                         sb=1.d0/51891840.d0*x**10-1.d0/498960.d0*x**8 &
-                              +1.d0/7560.d0*x**6-1.d0/210.d0*x**4+1.d0/15.d0*x**2
-                      else
-                         sb=(3.d0-1.d0*x**2)/x**3*sin(x)-3.d0/x**2*cos(x)
-                      end if
-                      tmp(j)=rad(j,ik)*viod(j,iorb,ik)*sb*rab(j,ik)
-                   end do
-                   call simp(tmp(1:NRc),sum0,2)
-                end if
-                viodgk2(i,iorb,ik)=const*sum0
-             end do
-          case default
-             write(*,*) "PP for L>2 is not implemented."
-             stop
-          end select
-       end do !iorb
-    end do !ik
+       tmp2=sqrt(tmp2)
+       call init_ps3_gth( norb,no,lo,Rps,hnl,tmp2,viodgk2 )
+       viodgk2 = viodgk2/Vcell
 
-    deallocate( tmp,tmp2 )
+    else
+
+       NRc=maxval(NRps)
+       allocate( tmp(NRc) ) ; tmp=0.d0
+
+       const=pi4/Vcell
+       do ik=1,MKI
+          do iorb=1,norb(ik)
+             L=lo(iorb,ik)
+             NRc=NRps(iorb,ik)
+             select case(L)
+             case(0)
+                do i=1,m
+                   q=tmp2(i)
+                   if ( q==0.d0 ) then
+                      do j=1,NRc
+                         tmp(j)=rad(j,ik)*viod(j,iorb,ik)*rab(j,ik)
+                      end do
+                      call simp(tmp(1:NRc),sum0,2)
+                   else
+                      q=sqrt(q)
+                      do j=1,NRc
+                         r=rad(j,ik)
+                         x=q*r
+                         if ( x<1.d-1 ) then
+                            sb=-(1.d0/39916800.d0*x**10-1.d0/362880.d0*x**8+1.d0/5040.d0*x**6 &
+                                 -1.d0/120.d0*x**4+1.d0/6.d0*x**2-1.d0)
+                         else
+                            sb=sin(x)/x
+                         end if
+                         tmp(j)=r*viod(j,iorb,ik)*sb*rab(j,ik)
+                      end do
+                      call simp(tmp(1:NRc),sum0,2)
+                   end if
+                   viodgk2(i,iorb,ik)=const*sum0
+                end do
+             case(1)
+                do i=1,m
+                   q=tmp2(i)
+                   if ( q==0.d0 ) then
+                      sum0=0.d0
+                   else
+                      q=sqrt(q)
+                      do j=1,NRc
+                         x=q*rad(j,ik)
+                         if ( x<1.d-1 ) then
+                            sb=1.d0/3991680.d0*x**9-1.d0/45360.d0*x**7 &
+                                 +1.d0/840.d0*x**5-1.d0/30.d0*x**3+1.d0/3.d0*x
+                         else
+                            sb=sin(x)/x**2-cos(x)/x
+                         end if
+                         tmp(j)=rad(j,ik)*viod(j,iorb,ik)*sb*rab(j,ik)
+                      end do
+                      call simp(tmp(1:NRc),sum0,2)
+                   end if
+                   viodgk2(i,iorb,ik)=const*sum0
+                end do
+             case(2)
+                do i=1,m
+                   q=tmp2(i)
+                   if ( q==0.d0 ) then
+                      sum0=0.d0
+                   else
+                      q=sqrt(q)
+                      do j=1,NRc
+                         x=q*rad(j,ik)
+                         if ( x<1.d-1 ) then
+                            sb=1.d0/51891840.d0*x**10-1.d0/498960.d0*x**8 &
+                                 +1.d0/7560.d0*x**6-1.d0/210.d0*x**4+1.d0/15.d0*x**2
+                         else
+                            sb=(3.d0-1.d0*x**2)/x**3*sin(x)-3.d0/x**2*cos(x)
+                         end if
+                         tmp(j)=rad(j,ik)*viod(j,iorb,ik)*sb*rab(j,ik)
+                      end do
+                      call simp(tmp(1:NRc),sum0,2)
+                   end if
+                   viodgk2(i,iorb,ik)=const*sum0
+                end do
+             case default
+                write(*,*) "PP for L>2 is not implemented."
+                stop
+             end select
+          end do !iorb
+       end do !ik
+
+       deallocate( tmp,tmp2 )
+
+    end if
 
     return
-  END SUBROUTINE init_ps_nloc3
+  end subroutine init_ps_nloc3
 
-  SUBROUTINE simp(f,s,m)
+  subroutine simp(f,s,m)
     implicit none
-    integer,intent(IN)  :: m
-    real(8),intent(IN)  :: f(:)
-    real(8),intent(OUT) :: s
+    integer,intent(in)  :: m
+    real(8),intent(in)  :: f(:)
+    real(8),intent(out) :: s
     real(8),allocatable :: g(:)
     integer :: i,n,nn,nmax
     n=size(f) ; nmax=int(n/m)*m
@@ -261,10 +272,10 @@ CONTAINS
     end select
     deallocate( g )
     return
-  END SUBROUTINE simp
+  end subroutine simp
 
 
-  SUBROUTINE prep_ps_nloc3
+  subroutine prep_ps_nloc3
     implicit none
     complex(8),parameter :: zi=(0.0d0,1.0d0), z0=(0.0d0,0.0d0)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
@@ -299,43 +310,43 @@ CONTAINS
 
     if ( first_time ) then
 
-! allocate ---------------------------------------------
-    allocate( uVk(nn1:nn2,Mlma,MBZ_0:MBZ_1) ) ; uVk(:,:,:)=zero
-    allocate( iuV(Mlma)     ) ; iuV=0
-    allocate( amap(Mlma)    ) ; amap=0
-    allocate( lmap(Mlma)    ) ; lmap=0
-    allocate( mmap(Mlma)    ) ; mmap=0
-    allocate( iorbmap(Mlma) ) ; iorbmap=0
-    allocate( idis(0:nprocs_g-1),icnt(0:nprocs_g-1) )
-!-------------------------------------------------------
+       ! allocate ---------------------------------------------
+       allocate( uVk(nn1:nn2,Mlma,MBZ_0:MBZ_1) ) ; uVk(:,:,:)=zero
+       allocate( iuV(Mlma)     ) ; iuV=0
+       allocate( amap(Mlma)    ) ; amap=0
+       allocate( lmap(Mlma)    ) ; lmap=0
+       allocate( mmap(Mlma)    ) ; mmap=0
+       allocate( iorbmap(Mlma) ) ; iorbmap=0
+       allocate( idis(0:nprocs_g-1),icnt(0:nprocs_g-1) )
+       !-------------------------------------------------------
 
-    nzlma = Mlma
+       nzlma = Mlma
 
-    Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
+       Mlma_np = (Mlma+(nprocs_g*nprocs_b)-1)/(nprocs_g*nprocs_b)
 
-    icnt(0:nprocs_g-1)=ML0
-    idis(0)=0
-    do i=1,nprocs_g-1
-       idis(i)=sum( icnt(0:i) )-icnt(i)
-    end do
+       icnt(0:nprocs_g-1)=ML0
+       idis(0)=0
+       do i=1,nprocs_g-1
+          idis(i)=sum( icnt(0:i) )-icnt(i)
+       end do
 
-    lma=0
-    do a=1,Natom
-       ik=ki_atom(a)
-       do iorb=1,norb(ik)
-          L=lo(iorb,ik)
-          do m=-L,L
-             lma=lma+1
-             lmap(lma)=L
-             mmap(lma)=m
-             amap(lma)=a
-             iorbmap(lma)=iorb
-             iuV(lma)=inorm(iorb,ik)
+       lma=0
+       do a=1,Natom
+          ik=ki_atom(a)
+          do iorb=1,norb(ik)
+             L=lo(iorb,ik)
+             do m=-L,L
+                lma=lma+1
+                lmap(lma)=L
+                mmap(lma)=m
+                amap(lma)=a
+                iorbmap(lma)=iorb
+                iuV(lma)=inorm(iorb,ik)
+             end do
           end do
        end do
-    end do
 
-    first_time = .false.
+       first_time = .false.
 
     end if
 
@@ -457,23 +468,23 @@ CONTAINS
 
     return
 
-  END SUBROUTINE prep_ps_nloc3
+  end subroutine prep_ps_nloc3
 
 
 
-  SUBROUTINE op_ps_nloc3( tpsi, htpsi, k_in )
+  subroutine op_ps_nloc3( tpsi, htpsi, k_in )
     implicit none
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(:,:)
-    real(8),intent(INOUT) :: htpsi(:,:)
+    real(8),intent(in)  :: tpsi(:,:)
+    real(8),intent(inout) :: htpsi(:,:)
     real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
     character(1),parameter :: TRANSA='T'
     character(1),parameter :: TRANSB='N'
 #else
     character(1),parameter :: TRANSA='C'
     character(1),parameter :: TRANSB='N'
-    complex(8),intent(IN)  :: tpsi(:,:)
-    complex(8),intent(INOUT) :: htpsi(:,:)
+    complex(8),intent(in)  :: tpsi(:,:)
+    complex(8),intent(inout) :: htpsi(:,:)
     complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
 #endif
     integer,optional,intent(IN) :: k_in
@@ -515,13 +526,13 @@ CONTAINS
 
     deallocate( uVunk0,uVunk )
 
-  END SUBROUTINE op_ps_nloc3
+  end subroutine op_ps_nloc3
 
 
-  SUBROUTINE calc_force_ps_nloc3(MI,force2)
+  subroutine calc_force_ps_nloc3(MI,force2)
     implicit none
-    integer,intent(IN)  :: MI
-    real(8),intent(OUT) :: force2(3,MI)
+    integer,intent(in)  :: MI
+    real(8),intent(out) :: force2(3,MI)
     integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,ierr,ML0,j1,j2,j3,irank
     integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir,n
     integer,allocatable :: LL2(:,:),a2lma(:)
@@ -808,7 +819,7 @@ CONTAINS
 
     deallocate( work2 )
 
-  END SUBROUTINE calc_force_ps_nloc3
+  end subroutine calc_force_ps_nloc3
 
 
-END MODULE ps_nloc3_module
+end module ps_nloc3_module

@@ -98,18 +98,18 @@ CONTAINS
     integer,intent(IN) :: Kion(MI)
     real(8),intent(IN) :: asi(3,MI)
     integer,parameter :: u=2
-    integer :: i,i1,i2,j,k,n,ierr,flag
+    integer :: i,i1,i2,j,k,n,ierr,flag,isym
     integer :: A11,A12,A13,A21,A22,A23,A31,A32,A33,gcounter
     integer :: AAA(9,19683)
     real(8) :: RR0(3),RR1(3),RR2(3),RRR
     real(8) :: R1q,R2q,R3q,R1p,R2p,R3p,R1s,R2s,R3s
-    real(8) :: tmp2(3,3,2), aa0(3,3)
+    real(8) :: tmp2(3,3,2), aa0(3,3),tmp(4)
     real(8) :: c1
     real(8),allocatable :: XX(:,:), pga_tmp(:,:)
     character(12) :: label_sym, cbuf
 
     if ( .not.(abs(isymmetry)==1 .or. abs(isymmetry)==2 .or. &
-               abs(isymmetry)==3) )  return
+               abs(isymmetry)==3 .or. abs(isymmetry)==4) )  return
 
     call write_border( 0, " input_symdat(start)" )
 
@@ -126,7 +126,7 @@ CONTAINS
 !
     if ( myrank == 0 ) then
 
-       if ( abs(isymmetry) <= 2 ) open(u,file=file_symdat,status='old')
+       if ( abs(isymmetry) /= 3 ) open(u,file=file_symdat,status='old')
 
        select case( isymmetry )
 !(1)
@@ -317,6 +317,34 @@ CONTAINS
 !
 !---
 !
+       case( 4, -4 )
+
+          nsym=0
+          do
+             read(u,*,END=40) tmp(1:4)
+             nsym=nsym+1
+             if (tmp(4) /= 0.0d0) nnp=max( nnp, nint(1.0d0/tmp(4)) )
+          end do
+40        nsym=nsym/3
+          
+          write(*,*) "nsym, nnp=",nsym, nnp
+
+          allocate( rga(3,3,nsym) ); rga=0
+          allocate( rgb(3,3,nsym) ); rgb=0.0d0
+          allocate( pga(3,nsym) ); pga=0
+          allocate( pgb(3,nsym) ); pgb=0
+
+          rewind u
+          do isym = 1, nsym
+             do i=1,3
+                read(u,*) tmp(1:4)
+                do j=1,3
+                   rga(i,j,isym)=nint(tmp(j))
+                end do
+                pga(i,isym)=nint(nnp*tmp(4))
+             end do
+          end do
+
        end select
 
        close(u)

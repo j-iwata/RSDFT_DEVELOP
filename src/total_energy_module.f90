@@ -1,4 +1,4 @@
-MODULE total_energy_module
+module total_energy_module
 
   use rgrid_module, only: dV
   use hamiltonian_module
@@ -20,15 +20,15 @@ MODULE total_energy_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: calc_total_energy
-  PUBLIC :: calc_with_rhoIN_total_energy
-  PUBLIC :: Ekin,Eion,Enlc,cnst ! MIZUHO-IR for stress
+  private
+  public :: calc_total_energy
+  public :: calc_with_rhoIN_total_energy
+  public :: Ekin,Eion,Enlc,cnst
 
   integer :: scf_iter_
 
   real(8) :: Ekin,Eloc,Enlc,Eeig,Eion,Fene,Evdw
-  real(8) :: cnst ! MIZUHO-IR for stress
+  real(8) :: cnst
   real(8) :: Etot_0=0.d0
   real(8) :: Ekin_0=0.d0
   real(8) :: Eloc_0=0.d0
@@ -53,18 +53,21 @@ MODULE total_energy_module
 
   real(8) :: diff_etot = 0.d0
   real(8) :: Etot_wo_cnst = 0.d0
+  real(8) :: Etot_1 = 0.0d0
 
-CONTAINS
+contains
 
 
-  SUBROUTINE calc_total_energy( flag_recalc_esp, Etot, unit_in, flag_ncol )
+  subroutine calc_total_energy &
+       ( flag_recalc_esp, Etot, Free_energy, unit_in, flag_ncol )
     implicit none
-    logical,intent(IN) :: flag_recalc_esp
-    real(8),intent(INOUT) :: Etot
-    integer,optional,intent(IN) :: unit_in
-    logical,optional,intent(IN) :: flag_ncol
+    logical,intent(in) :: flag_recalc_esp
+    real(8),optional,intent(inout) :: Etot
+    real(8),optional,intent(inout) :: Free_energy
+    integer,optional,intent(in) :: unit_in
+    logical,optional,intent(in) :: flag_ncol
     integer :: i,n,k,s,n1,n2,ierr,nb1,nb2,nn,unit
-    real(8) :: s0(4),s1(4),uu,cnst
+    real(8) :: s0(4),s1(4),uu,cnst,c1,c2
     real(8),allocatable :: esp0(:,:,:,:),esp1(:,:,:,:)
     real(8),allocatable :: esp0_Q(:,:,:),esp1_Q(:,:,:)
 #ifdef _DRSDFT_
@@ -81,9 +84,10 @@ CONTAINS
 
     call write_border( 1, " calc_total_energy(start)" )
 
-    Etot_0 = Etot
+    if ( present(Etot) ) Etot_1 = Etot
 
-    Etot = 0.d0
+    Etot_0 = Etot_1
+    Etot_1 = 0.0d0
     Ekin = 0.d0
     Eloc = 0.d0
     Enlc = 0.d0
@@ -290,29 +294,42 @@ CONTAINS
 
     case( "NCPP" )
 
-    s0(:)=0.d0
-    do s=MSP_0,MSP_1
-    do k=MBZ_0,MBZ_1
-    do n=MB_0,MB_1
-       s1(:)=0.d0
-       do i=n1,n2
-          uu=abs(unk(i,n,k,s))**2
-          s1(1) = s1(1) + uu*Vloc(i,s)
-          s1(2) = s1(2) + uu*Vion(i)
-          s1(3) = s1(3) + uu*Vh(i)          ! not used?
-          s1(4) = s1(4) + uu*Vxc(i,s)       ! not used?
-       end do
-       s0(:)=s0(:)+occ(n,k,s)*s1(:)
-    end do
-    end do
-    end do
-    s1(:)=s0(:)*dV
-    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_grid,ierr)
-    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_band,ierr)
-    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_bzsm,ierr)
-    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_spin,ierr)
+!    s0(:)=0.d0
+!    do s=MSP_0,MSP_1
+!    do k=MBZ_0,MBZ_1
+!    do n=MB_0,MB_1
+!       s1(:)=0.d0
+!       do i=n1,n2
+!          uu=abs(unk(i,n,k,s))**2
+!          s1(1) = s1(1) + uu*Vloc(i,s)
+!          s1(2) = s1(2) + uu*Vion(i)
+!          s1(3) = s1(3) + uu*Vh(i)          ! not used?
+!          s1(4) = s1(4) + uu*Vxc(i,s)       ! not used?
+!       end do
+!       s0(:)=s0(:)+occ(n,k,s)*s1(:)
+!    end do
+!    end do
+!    end do
+!    s1(:)=s0(:)*dV
+!    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_grid,ierr)
+!    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_band,ierr)
+!    call mpi_allreduce(s1,s0,4,mpi_real8,mpi_sum,comm_bzsm,ierr)
+!    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,comm_spin,ierr)
 !    s0(:)=s0(:)*dV/np_fkmb
 !    call mpi_allreduce(s0,s1,4,mpi_real8,mpi_sum,MPI_COMM_WORLD,ierr)
+
+       c1=0
+       c2=0
+       do s=MSP_0,MSP_1
+          do i=n1,n2
+             c1 = c1 + rho(i,s)*Vloc(i,s)
+             c2 = c2 + rho(i,s)*Vion(i)
+          end do
+       end do
+       s1(1)=c1*dV
+       s1(2)=c2*dV
+       call MPI_Allreduce( s1,s0,2,MPI_REAL8,MPI_SUM,comm_grid,ierr )
+       call MPI_Allreduce( s0,s1,2,MPI_REAL8,MPI_SUM,comm_spin,ierr )
 
     end select
 
@@ -321,22 +338,25 @@ CONTAINS
 
     call get_E_vdw_grimme( Evdw )
 
-    Etot = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
-         - 2*E_exchange_exx + Evdw + cnst - DCxc
+    Etot_1 = Eeig - Eloc + E_hartree + Exc + Eion + Eewald &
+           - 2*E_exchange_exx + Evdw + cnst - DCxc
 
     Ehwf = Eeig - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
          - 2*E_exchange_exx + Evdw + cnst -DCxc
 
-    Fene = Etot - Eentropy
+    Fene = Etot_1 - Eentropy
 
-    diff_etot = Etot - Etot_0
-!    diff_etot = Etot - Ehwf
+    diff_etot = Etot_1 - Etot_0
+!    diff_etot = Etot_1 - Ehwf
+
+    if ( present(Etot) ) Etot = Etot_1
+    if ( present(Free_energy) ) Free_energy = Fene
 
     unit=99 ; if ( present(unit_in) ) unit=unit_in
-    call write_info_total_energy( Etot, (myrank==0), unit )
+    call write_info_total_energy( Etot_1, (myrank==0), unit )
 
     call check_disp_length( i, 0 )
-    if ( i > 1 ) call write_info_total_energy( Etot, (myrank==0), 6 )
+    if ( i > 1 ) call write_info_total_energy( Etot_1, (myrank==0), 6 )
 
 !    if ( present(flag_rewind) ) then
 !       call write_info_total_energy( disp_switch, flag_rewind )
@@ -344,12 +364,12 @@ CONTAINS
 !       call write_info_total_energy( disp_switch, .false. )
 !    end if
 !    if ( disp_switch ) then
-!       write(*,'(1x,"Total Energy   =",f16.8,2x,"(Hartree)")') Etot
+!       write(*,'(1x,"Total Energy   =",f16.8,2x,"(Hartree)")') Etot_1
 !       write(*,'(1x,"Harris Energy  =",f16.8,2x,"(Hartree)")') Ehwf
-!       write(*,'(1x,"difference    =",g13.5)') Etot-Ehwf
+!       write(*,'(1x,"difference    =",g13.5)') Etot_1-Ehwf
 !       write(*,'(1x,"Total (Harris) Energy =",f16.8,2x,"(",f16.8,")" &
-!            ,2x,"(Hartree)")') Etot, Ehwf
-!       write(*,'(1x,"difference =",g13.5)') Etot-Ehwf
+!            ,2x,"(Hartree)")') Etot_1, Ehwf
+!       write(*,'(1x,"difference =",g13.5)') Etot_1-Ehwf
 !    end if
 
     Ekin_0 = Ekin
@@ -422,8 +442,16 @@ CONTAINS
        write(u,*) "Ion-Ion                    ",Eewald
        write(u,*) "Local Potential            ",Eloc
        write(u,*) "Ion Local Potential        ",Eion
-       if ( Enlc /= 0.0d0 ) write(u,*) "Ion Nonlocal Potential     ",Enlc
-       if ( Ekin /= 0.0d0 ) write(u,*) "Kinetic Energy             ",Ekin
+       if ( Enlc /= 0.0d0 ) then
+          write(u,*) "Ion Nonlocal Potential     ",Enlc
+       else
+          write(u,*) "Ion Nonlocal Potential     ","Not computed"
+       end if
+       if ( Ekin /= 0.0d0 ) then
+          write(u,*) "Kinetic Energy             ",Ekin
+       else
+          write(u,*) "Kinetic Energy             ","Not computed"
+       end if
        write(u,*) "Hartree Energy             ",E_hartree
        write(u,*) "Exchange-Correlation Energy",Exc
        write(u,*) "Exchange Energy            ",E_exchange
