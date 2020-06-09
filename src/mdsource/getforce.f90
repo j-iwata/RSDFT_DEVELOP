@@ -3,7 +3,7 @@
 !-----------------------------------------------------------------------
 SUBROUTINE getforce
   use bb_module
-  use atom_module, only: Natom,aa_atom,ki_atom,zn_atom
+  use atom_module, only: Natom,aa_atom,ki_atom,zn_atom,shift_aa_coordinates_atom
   use strfac_module
   use ps_local_module
   use ps_pcc_module
@@ -21,14 +21,17 @@ SUBROUTINE getforce
   use ps_prepNzqr_g_module
   use ps_qrij_prep_module
   use ps_nloc2_variables, only: prep_backup_uVunk_ps_nloc2
+  use io_tools_module
 
   implicit none
   real(8) :: c
   integer :: a,Diter1,ierr
 
-  Diter1       = 100
+  !Diter1       = 100
+  call IOTools_readIntegerKeyword( "DITER", Diter1 )
   c            = 1.d0/(2.d0*acos(-1.d0))
   aa_atom(:,:) = matmul(transpose(bb),Rion)*c
+  call shift_aa_coordinates_atom( aa_atom )
 
   call calc_eion
 

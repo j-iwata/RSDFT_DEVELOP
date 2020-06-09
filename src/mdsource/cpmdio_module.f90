@@ -40,7 +40,7 @@ CONTAINS
        flag_init_w=.false.
     end if
     select case( IO_ctrl_w )
-    case default
+    case( 0 )
        call write_data_cpmd_k_seri
     case( 1 )
        i=1
@@ -67,7 +67,7 @@ CONTAINS
        flag_init_r=.false.
     end if
     select case( IO_ctrl_r )
-    case default
+    case( 0 )
        call read_data_cpmd_k_seri
     case( 1 )
        call read_data_io1( "restart", SYStype &

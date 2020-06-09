@@ -549,6 +549,11 @@ PROGRAM Real_Space_DFT
         call calc_total_energy( recalc_esp, Etot, unit_in=6 )
      else
         if ( SYStype == 0 ) then
+           !if ( flag_noncollinear ) then
+           !   call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+           !else
+           !   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+           !end if
            call bomd
         else
            write(*,*) "MD for SYStype/=0 is not avaiable"
