@@ -96,10 +96,9 @@ contains
        end if
     end do
 
-    do i=1,size(psp%viod,1)
-      write(10,'(1x,10f20.15)') psp%rad(i),(psp%viod(i,icount),icount=1,psp%norb)
-    end do
-stop "jjj"
+!    do i=1,size(psp%viod,1)
+!      write(10,'(1x,10f20.15)') psp%rad(i),(psp%viod(i,icount),icount=1,psp%norb)
+!    end do
 
     do i=1,psp%Mr-1
        dx = x(i+1) - x(i)
@@ -111,7 +110,7 @@ stop "jjj"
 
     icount=-1
     do
-       read(g,*) cbuf
+       read(g,*,END=9) cbuf
        if ( cbuf == "<density.PCC" ) then
           icount=0
           cycle
@@ -127,9 +126,11 @@ stop "jjj"
        end if
     end do
 
+9   continue
+
     do iorb=1,psp%norb
        do i=psp%Mr,1,-1
-          if ( abs(psp%viod(i,iorb)) >= 1.d-13 ) then
+          if ( abs(psp%viod(i,iorb))**2 >= 1.d-8 ) then
              icount=min(i+1,psp%Mr)
              psp%Rps(iorb) = psp%rad(icount)
              psp%NRps(iorb)= icount
