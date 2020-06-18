@@ -33,6 +33,8 @@ MODULE cgpc_hprsdft_module
   real(8) :: H1,H2,H3
   logical :: init_flag=.false.
 
+  real(8) :: c0,c1,c2,c3
+
 !$omp threadprivate( omp1,omp2,ompi,ompnsw,ompmyrank,ompnprocs &
 !$omp               ,ompn1,ompn2,ompA3,ompB3 )
 
@@ -119,6 +121,11 @@ CONTAINS
     allocate( pk_pc(mm,MB_d) ) ; pk_pc=zero
     allocate( gtmp2(mm,MB_d) ) ; gtmp2=zero
     allocate( ftmp2(mm,MB_d) ) ; ftmp2=zero
+
+    c0=ggg(1)/H1**2+ggg(2)/H2**2+ggg(3)/H3**2
+    c1=-0.5d0/H1**2*ggg(1)
+    c2=-0.5d0/H2**2*ggg(2)
+    c3=-0.5d0/H3**2*ggg(3)
 
   END SUBROUTINE init_cgpc_hprsdft
 
@@ -284,22 +291,23 @@ CONTAINS
 
     integer,intent(IN) :: k,s,mm,nn
     real(8) :: E(nn)
-    real(8) :: c,c1,c2,c3,d,ttmp(2)
+!    real(8) :: c0,c1,c2,c3
+    real(8) :: d,ttmp(2)
     integer :: n,i,i1,i2,i3
 
     !call watchb_omp( ttmp )
 
-    c =ggg(1)/H1**2+ggg(2)/H2**2+ggg(3)/H3**2
-    c1=-0.5d0/H1**2*ggg(1)
-    c2=-0.5d0/H2**2*ggg(2)
-    c3=-0.5d0/H3**2*ggg(3)
+!    c0=ggg(1)/H1**2+ggg(2)/H2**2+ggg(3)/H3**2
+!    c1=-0.5d0/H1**2*ggg(1)
+!    c2=-0.5d0/H2**2*ggg(2)
+!    c3=-0.5d0/H3**2*ggg(3)
 
-    do n=1,nn
-       d=c-E(n)
-       do i=omp1,omp2
-          ftmp2(i,n)=d*gtmp2(i,n)
-       end do
-    end do
+!    do n=1,nn
+!       d=c0-E(n)
+!       do i=omp1,omp2
+!          ftmp2(i,n)=d*gtmp2(i,n)
+!       end do
+!    end do
 
 !$omp barrier
     !call watchb_omp( ttmp, time_cgpc(1,4) )
@@ -326,12 +334,17 @@ CONTAINS
     !call watchb_omp( ttmp, time_cgpc(1,6) )
 
     do n=1,nn
+       d=c0-E(n)
        i=ompnsw
        do i3=ompA3,ompB3
        do i2=a2b,b2b
        do i1=a1b,b1b
           i=i+1
-          ftmp2(i,n)=ftmp2(i,n) &
+          !ftmp2(i,n)=ftmp2(i,n) &
+          !     +c1*( www(i1+1,i2,i3,n)+www(i1-1,i2,i3,n) ) &
+          !     +c2*( www(i1,i2+1,i3,n)+www(i1,i2-1,i3,n) ) &
+          !     +c3*( www(i1,i2,i3+1,n)+www(i1,i2,i3-1,n) )
+          ftmp2(i,n)=d*www(i1,i2,i3,n) &
                +c1*( www(i1+1,i2,i3,n)+www(i1-1,i2,i3,n) ) &
                +c2*( www(i1,i2+1,i3,n)+www(i1,i2-1,i3,n) ) &
                +c3*( www(i1,i2,i3+1,n)+www(i1,i2,i3-1,n) )

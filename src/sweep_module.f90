@@ -81,6 +81,7 @@ CONTAINS
     logical :: flag_noncollinear
     logical :: disp_switch
 
+    ierr_out  = 0
     Diter=Nsweep ; if ( present(Diter_in) ) Diter=Diter_in
     if ( Diter <= 0 ) return
 
@@ -92,7 +93,6 @@ CONTAINS
     flag_exit = .false.
     flag_conv = .false.
     Echk      = 0.0d0
-    ierr_out  = 0
     add_info  = "" ; if ( present(outer_loop_info) ) add_info=outer_loop_info
 
     flag_noncollinear = .false.
@@ -104,6 +104,8 @@ CONTAINS
     allocate( esp0(Nband,Nbzsm,Nspin) ) ; esp0=0.0d0
 
     call get_flag_xc_hybrid( iflag_hybrid )
+
+    if ( iflag_hunk >= 1 ) call control_work_wf( "USE_ALL" )
 
     select case( iflag_hybrid )
     case(0,1,3)
@@ -158,7 +160,7 @@ CONTAINS
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
 
-          call conjugate_gradient( ML_0,ML_1, Nband, k,s, unk, esp, res )
+          call conjugate_gradient( ML_0,ML_1, k,s, unk, esp, res )
 
           call gram_schmidt(1,Nband,k,s)
 
@@ -215,6 +217,8 @@ CONTAINS
     end do ! iter
 
     if ( myrank == 0 ) call write_info_esp_wf( 2 )
+
+    if ( iflag_hunk >= 1 ) call control_work_wf( "DEFAULT_SETTING" )
 
     deallocate( esp0 )
 

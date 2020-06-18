@@ -3,7 +3,7 @@ MODULE subspace_mate_sl_module
   use rgrid_module, only: dV,zdV
   use parallel_module
   use hamiltonian_module
-  use wf_module, only: unk,esp,hunk,iflag_hunk,gather_b_wf
+  use wf_module, only: unk,esp,hunk,iflag_hunk,gather_b_wf,USE_WORKWF_AT_MATE
   use scalapack_module
   use subspace_diag_variables, only: MB_diag,NBLK1,zero,TYPE_MAIN,Hsub,mat_block
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
@@ -72,7 +72,7 @@ CONTAINS
 
        IPCOL = mod( (ns-1)/NBSIZE, NPCOL )
 
-       if ( iflag_hunk >= 1 ) then
+       if ( USE_WORKWF_AT_MATE .and. iflag_hunk >= 1 ) then
           hpsi(:,1:nn)=hunk(:,ns:ne,k,s)
        else
           do ib1=ns,ne,MB_d

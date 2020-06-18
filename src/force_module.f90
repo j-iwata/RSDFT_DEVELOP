@@ -82,12 +82,13 @@ CONTAINS
   END SUBROUTINE read_force
 
 
-  SUBROUTINE calc_force( MI, force, fmax, disp )
+  SUBROUTINE calc_force( MI, force, fmax, disp, unit )
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     real(8),optional,intent(OUT) :: fmax
     logical,optional,intent(IN) :: disp
+    integer,optional,intent(IN) :: unit
 
 !    if ( flag_init ) call init_force
 
@@ -107,12 +108,26 @@ CONTAINS
     call sym_force ( MI, ki_atom, aa_atom, force )
 
     if ( present(disp) ) call write_info_force( force, ki_atom, disp )
+    if ( present(unit) ) then
+       open( unit, file='forcelog_bare' )
+       write(unit,'("# XYZ-components of atomic force (unit is in Hartree/bohr)")')
+       write(unit,'("# Bare force")')
+       call write_force_to_file( unit, force, ki_atom )
+       close( unit )
+    end if
 
     if ( Ntim > 0 ) then
        call constraint_force( MI, force )
        if ( present(disp) ) then
           if ( disp ) write(*,*) "(with constraint)"
           call write_info_force( force, ki_atom, disp )
+       end if
+       if ( present(unit) ) then
+          open( unit, file='forcelog_constraint' )
+          write(unit,'("# XYZ-components of atomic force (unit is in Hartree/bohr)")')
+          write(unit,'("# Constraint force")')
+          call write_force_to_file( unit, force, ki_atom )
+          close( unit )
        end if
     end if
 
@@ -192,6 +207,18 @@ CONTAINS
        end if
     end if
   END SUBROUTINE write_info_force
+
+
+  SUBROUTINE write_force_to_file( unit, f, k )
+    implicit none
+    integer,intent(IN) :: unit
+    real(8),intent(IN) :: f(:,:)
+    integer,intent(IN) :: k(:)
+    integer :: a
+    do a=1,size( f, 2 )
+       write(unit,'(1x,i3,3g21.12)') k(a),f(1:3,a)
+    end do
+  END SUBROUTINE write_force_to_file
 
 
 END MODULE force_module

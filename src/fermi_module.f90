@@ -1,14 +1,15 @@
-MODULE fermi_module
+module fermi_module
 
+  use fermi_dirac_module, only: fermi_dirac, entropy_fd
   use bberf_module
   use io_tools_module
   use watch_module, only: start_timer,result_timer
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: calc_fermi
-  PUBLIC :: ekbt, efermi, Eentropy
+  private
+  public :: calc_fermi
+  public :: ekbt, efermi, Eentropy
 
   real(8) :: ekbt, efermi, Eentropy
   integer :: mb1,mb2,kinteg,mp_version
@@ -21,7 +22,7 @@ MODULE fermi_module
   logical :: flag_read = .true.
   logical,allocatable :: msk(:,:,:)
 
-CONTAINS
+contains
 
 
   SUBROUTINE read_fermi
@@ -84,10 +85,18 @@ CONTAINS
        select case( mp_version )
        case default
           call calc_fermi_mp( iter,nfixed,znel,dspn,esp,wbz,occ )
+          call calc_entropy_mp( esp, efermi, ekbt, wbz, Eentropy )
        case( 1 )
           call calc_fermi_mp_1( iter,nfixed,znel,dspn,esp,wbz,occ )
+          call calc_entropy_mp( esp, efermi, ekbt, wbz, Eentropy )
+       case( -1 )
+          if( iter <= nfixed )then
+             call fermi_dirac(occ,efermi,esp,ekbt,znel,wbz,dspn)
+          else
+             call fermi_dirac(occ,efermi,esp,ekbt,znel,wbz)
+             call entropy_fd( Eentropy, ekbt, occ )
+          end if
        end select
-       call calc_entropy_mp( esp, efermi, ekbt, wbz, Eentropy )
 
     end if
 
@@ -557,4 +566,4 @@ CONTAINS
   END SUBROUTINE calc_fermi_mp_1
 
 
-END MODULE fermi_module
+end module fermi_module

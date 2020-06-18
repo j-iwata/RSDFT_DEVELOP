@@ -51,9 +51,11 @@ MODULE atomopt_module
   logical :: disp_switch_loc
   integer :: diter_opt
 
+  integer :: forcelog = 0
   integer :: strlog = 0
   integer,parameter :: unit_atmopt = 87
   integer,parameter :: unit_strlog = 86
+  integer,parameter :: unit198 = 198
   integer,parameter :: unit197 = 197
   integer,parameter :: unit97 = 97
   real(8), parameter :: M_PI       = 3.14159265358979323846d0
@@ -113,6 +115,9 @@ CONTAINS
           else if ( ckey(1:8) == "STRLOG" ) then
              backspace(unit)
              read(unit,*) cbuf,strlog
+          else if ( ckey(1:8) == "FORCELOG" ) then
+             backspace(unit)
+             read(unit,*) cbuf,forcelog
           end if
        end do
 999    continue
@@ -125,6 +130,7 @@ CONTAINS
           write(*,*) "diter_opt         =",diter_opt
        end if
        write(*,*) "strlog            =",strlog
+       write(*,*) "forcelog          =",forcelog
     end if
     call send_atomopt
   END SUBROUTINE read_atomopt
@@ -142,6 +148,7 @@ CONTAINS
     call mpi_bcast(decr  ,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(diter_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(strlog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(forcelog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atomopt
 
 
@@ -776,7 +783,11 @@ CONTAINS
           end if
           iter_final=ierr
 
-          call calc_force( Natom, Force )
+          if ( forcelog > 0 ) then
+             call calc_force( Natom, Force, unit=unit198 )
+          else
+             call calc_force( Natom, Force )
+          end if
           ! MIZUHO-IR for cellopt
           if( .not. iswitch_opt >= 1 ) then
              Force(:,1:Natom) = 0.0d0

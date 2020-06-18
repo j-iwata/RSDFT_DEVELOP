@@ -98,18 +98,29 @@ CONTAINS
 !    aa_obj%LatticeVector(2,2) = sqrt( sin(angle(1)*deg2rad)**2 &
 !                                    - aa_obj%LatticeVector(1,2)**2 )
 
-    aa_obj%LatticeVector(:,1) = (/ 1.0d0, 0.0d0, 0.0d0 /)
-    aa_obj%LatticeVector(1,2) = cos(angle(3)*deg2rad)
-    aa_obj%LatticeVector(2,2) = sin(angle(3)*deg2rad)
-    aa_obj%LatticeVector(1,3) = cos(angle(2)*deg2rad)
-    aa_obj%LatticeVector(2,3) = cos(angle(1)*deg2rad) &
-                                        /sin(angle(3)*deg2rad)
-    aa_obj%LatticeVector(3,3) = sqrt( 1.0d0 - aa_obj%LatticeVector(1,3)**2 &
-                                            - aa_obj%LatticeVector(2,3)**2 )
+!    aa_obj%LatticeVector(:,1) = (/ 1.0d0, 0.0d0, 0.0d0 /)
+!    aa_obj%LatticeVector(1,2) = cos(angle(3)*deg2rad)
+!    aa_obj%LatticeVector(2,2) = sin(angle(3)*deg2rad)
+!    aa_obj%LatticeVector(1,3) = cos(angle(2)*deg2rad)
+!    aa_obj%LatticeVector(2,3) = cos(angle(1)*deg2rad) &
+!                                       /sin(angle(3)*deg2rad)
+!    aa_obj%LatticeVector(3,3) = sqrt( 1.0d0 - aa_obj%LatticeVector(1,3)**2 &
+!                                            - aa_obj%LatticeVector(2,3)**2 )
+!    aa_obj%LatticeVector(:,1) = aa_obj%LatticeVector(:,1)*alatl(1)/bohr
+!    aa_obj%LatticeVector(:,2) = aa_obj%LatticeVector(:,2)*alatl(2)/bohr
+!    aa_obj%LatticeVector(:,3) = aa_obj%LatticeVector(:,3)*alatl(3)/bohr
 
-    aa_obj%LatticeVector(:,1) = aa_obj%LatticeVector(:,1)*alatl(1)/bohr
-    aa_obj%LatticeVector(:,2) = aa_obj%LatticeVector(:,2)*alatl(2)/bohr
-    aa_obj%LatticeVector(:,3) = aa_obj%LatticeVector(:,3)*alatl(3)/bohr
+    aa_obj%LatticeVector(:,1) = (/ alatl(1), 0.0d0, 0.0d0 /)
+    aa_obj%LatticeVector(1,2) = cos(angle(3)*deg2rad)*alatl(2)
+    aa_obj%LatticeVector(2,2) = sqrt(alatl(2)**2-aa_obj%LatticeVector(1,2)**2)
+    aa_obj%LatticeVector(3,2) = 0.0d0
+    aa_obj%LatticeVector(1,3) = cos(angle(2)*deg2rad)*alatl(3)
+    aa_obj%LatticeVector(2,3) = ( cos(angle(1)*deg2rad)*alatl(2)*alatl(3) &
+                                 -aa_obj%LatticeVector(1,2)*aa_obj%LatticeVector(1,3) ) &
+                                /aa_obj%LatticeVector(2,2)
+    aa_obj%LatticeVector(3,3) = sqrt( alatl(3)**2 - aa_obj%LatticeVector(1,3)**2 &
+                                                  - aa_obj%LatticeVector(2,3)**2 )
+    aa_obj%LatticeVector(:,:) = aa_obj%LatticeVector(:,:)/bohr
 
     where( abs(aa_obj%LatticeVector) < 1.d-5 )
        aa_obj%LatticeVector=0.0d0
