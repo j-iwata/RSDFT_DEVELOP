@@ -6,6 +6,7 @@ module io_read_wf_simple_module
   use rgrid_mol_module, only: LL
   use rsdft_mpi_module
   use watch_module, only: watchb
+  use io_read_wf_general_module, only: read_wf_general
 
   implicit none
 
@@ -273,7 +274,15 @@ contains
 !
 ! -------------------------------------------
 
-    end if
+    end if !flag_newformat
+
+! ---
+
+    if ( .not.(all(pinfo0%np==1).or.all(pinfo1%np==pinfo0%np)) ) then
+
+       call read_wf_general( pinfo0,pinfo1,ML1,ML2,ML3,MB_tmp,MBZ_tmp,MSP_tmp,MB,MBZ,MSP,type_wf )
+
+    else
 
 ! ---
 
@@ -292,7 +301,13 @@ contains
 
     if ( IO_ctrl0 == 3 ) then
 
-       write(cmyrank,'(i5.5)') myrank
+       if ( all(pinfo0%np==1) ) then
+          write(cmyrank,'(i5.5)') 0
+          IO_ctrl0 = 0
+       else
+          write(cmyrank,'(i5.5)') myrank
+       end if
+
        file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
 
        if ( myrank == 0 ) close(3)
@@ -518,6 +533,8 @@ contains
 #else
     call mpi_bcast( unk,size(unk),RSDFT_MPI_COMPLEX16,0,comm_fkmb,ierr )
 #endif
+
+    end if ! read_wf_general/read_wf_simple
 
     call watchb( ttmp, tt, barrier='on' )
 

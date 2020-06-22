@@ -4,7 +4,7 @@ MODULE io_ctrl_parameters
 
   implicit none
 
-  integer :: IO_ctrl=0
+  integer :: IO_ctrl=3
   integer :: IC=0
   integer :: OC=3
   integer :: OC2=100

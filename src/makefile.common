@@ -142,6 +142,7 @@ MODS1 = \
        ps_nloc_hgh_module.o\
        ewald_module.o\
        ps_prepNzqr_g_module.o\
+       io_read_wf_general_module.o\
        io_read_wf_simple_module.o\
        band_unfold_module.o\
        rhonks_g_module.o\
