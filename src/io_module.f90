@@ -1,4 +1,4 @@
-MODULE io_module
+module io_module
 
   use parallel_module
   use rgrid_module, only: Ngrid,Igrid
@@ -8,8 +8,8 @@ MODULE io_module
 
   use io1_module, only: read_data_io1
   use io2_module
-  use io_read_module
-  use io_write_module
+  use io_read_wf_simple_module, only: read_wf_simple
+  use io_write_wf_simple_module, only: write_wf_simple
   use rsdft_mpi_module
 
   use density_module, only: rho
@@ -21,18 +21,19 @@ MODULE io_module
   use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
   use grid_module, only: construct_map_1d_to_3d_grid
   use fermi_module, only: efermi
-  use io_ctrl_parameters
+  use io_ctrl_parameters, only: IC, OC, OC2, IO_ctrl, MBwr1, MBwr2, lat_new, lat_old &
+                              , icount, flag_overwrite, read_io_ctrl_parameters
   use watch_module
   use rsdft_mpi_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: read_io
-  PUBLIC :: write_data
-  PUBLIC :: read_data
-  PUBLIC :: GetParam_IO
-  PUBLIC :: Init_IO
+  private
+  public :: read_io
+  public :: write_data
+  public :: read_data
+  public :: GetParam_IO
+  public :: Init_IO
 
   character(30) :: file_wf0   ="wf.dat1"
   character(30) :: file_vrho0 ="vrho.dat1"
@@ -44,20 +45,20 @@ MODULE io_module
   character(64),parameter :: version="version3.0, comment_length=64"
   character(64) :: comment
 
-CONTAINS
+contains
 
 
-  SUBROUTINE read_io
+  subroutine read_io
     implicit none
     call read_io_ctrl_parameters
-  END SUBROUTINE read_io
+  end subroutine read_io
 
 
-  SUBROUTINE write_data( disp_switch, flag, ctrl_wr, suffix )
+  subroutine write_data( disp_switch, flag, ctrl_wr, suffix )
     implicit none
-    logical,intent(IN) :: flag, disp_switch
-    character(*),optional,intent(IN) :: ctrl_wr
-    character(*),optional,intent(IN) :: suffix
+    logical,intent(in) :: flag, disp_switch
+    character(*),optional,intent(in) :: ctrl_wr
+    character(*),optional,intent(in) :: suffix
     integer :: i,j,k,n,n1,n2,ierr,i1,i2,i3,j1,j2,j3,isym,ir,ie,id,i0
     integer :: a1,a2,a3,b1,b2,b3,ML0,irank,s,lt(3),jd
     integer :: istatus(MPI_STATUS_SIZE,123)
@@ -144,7 +145,7 @@ CONTAINS
                   i3<=s .and. s<=j3 ) exit
           end do
           if ( irank>=nprocs ) then
-             write(*,*) "ERROR(read_data)",myrank
+             write(*,*) "ERROR(write_data)",myrank
              stop
           end if
 
@@ -242,7 +243,7 @@ CONTAINS
     if ( ( OC ==  1 .or. OC ==  3 .or. OC ==  4 .or. OC ==  5 .or. &
            OC == 11 .or. OC == 13 ) .and. flag_wr_wf ) then
 
-       call simple_wf_io_write &
+       call write_wf_simple &
             ( file_wf1, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch )
 
     end if
@@ -257,19 +258,16 @@ CONTAINS
     call write_border( 0, " write_data(end)" )
 
     return
-  END SUBROUTINE write_data
+  end subroutine write_data
 
 !--------1---------2---------3---------4---------5---------6---------7--
-!1:wf, 2:vrho, 3:wf&vrho, 4:wf(Real->Comp), 5:wf(Real->Comp)&vrho
 
-  SUBROUTINE read_data(disp_switch)
+  subroutine read_data(disp_switch)
     implicit none
-    logical,intent(IN) :: disp_switch
+    logical,intent(in) :: disp_switch
     integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
     integer :: ML1_tmp,ML2_tmp,ML3_tmp,ierr,i1,i2,i3,j1,j2,j3,s,i0
     integer :: ML1,ML2,ML3,mx,my,mz,itmp(7)
-!    integer,allocatable :: LL_tmp(:,:)
-!    integer,allocatable :: LL2(:,:)
     real(8) :: fs,mem,memax,ct0,et0,ct1,et1
     real(8),allocatable :: rtmp(:),rtmp3(:,:,:)
     character(len=64) :: cbuf
@@ -289,16 +287,14 @@ CONTAINS
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-!    allocate( LL_tmp(3,ML) ) ; LL_tmp=0
     allocate( lat_old(3,ML) ) ; lat_old=0
 
-!    call construct_gridmap_sub( LL2 )
     call construct_gridmap_sub( lat_new )
 
 !
 ! --- Read VRHO ---
 !
-    if ( IC==2 .or. IC==3 .or. IC==13 ) then
+    if ( IC==2 .or. IC==3 .or. IC==4 .or. IC==5 .or. IC==12 .or. IC==13 ) then
 
        if ( myrank==0 ) then
           open(80,file=file_vrho2,form='unformatted')
@@ -326,7 +322,7 @@ CONTAINS
 
        if ( ML_tmp/=ML ) then
           write(*,*) "ML,ML_tmp =",ML,ML_tmp
-          stop
+          call stop_program("stop@read_data(1)")
        end if
        if ( ML1_tmp/=ML1 .or. ML2_tmp/=ML2 .or. ML3_tmp/=ML3 ) then
           if (DISP_SWITCH) then
@@ -334,7 +330,7 @@ CONTAINS
                   & ML1_tmp,ML2_tmp,ML3_tmp
              write(*,*) "ML1,ML2,ML3 =",ML1,ML2,ML3
           end if
-          stop
+          call stop_program("stop@read_data(2)")
        end if
 
        if ( myrank==0 ) then
@@ -359,7 +355,6 @@ CONTAINS
           if (DISP_SWITCH) then
              write(*,*) "LL and lat_old is different"
           end if
-!          if ( IO_ctrl /= 0 ) stop
        end if
 
        if ( SYStype == 0 ) then
@@ -453,13 +448,13 @@ CONTAINS
           write(*,*) "read from ",file_vrho2
        end if
 
-    end if ! IC==2,3,13
+    end if ! IC = 2,3, 4,5, 12,13
 
 !
 ! --- Read WF ---
 !
 
-    if ( IC == 2 ) return
+    if ( IC == 2 .or. IC == 4 .or. IC == 12 ) return
 
     if ( IO_ctrl == 2 .or. IO_ctrl == 3 ) then
        IO_ctrl=3
@@ -468,14 +463,12 @@ CONTAINS
     end if
 
     select case( IO_ctrl )
-    case( 0 )
-       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
+    case( 0, 3 )
+       call read_wf_simple( file_wf2, SYStype, IO_ctrl, disp_switch )
     case( 1 )
        call read_data_io1( file_wf2, SYStype )
     case( 2 )
        call read_data_io2
-    case( 3 )
-       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch )
     end select
 
     call result_timer( "read_data", tt )
@@ -483,7 +476,7 @@ CONTAINS
 
     return
 
-  END SUBROUTINE read_data
+  end subroutine read_data
 
 
   FUNCTION GetParam_IO(i)
@@ -516,9 +509,9 @@ CONTAINS
   END SUBROUTINE Init_IO
 
 
-  SUBROUTINE construct_gridmap_sub( LL2 )
+  subroutine construct_gridmap_sub( LL2 )
     implicit none
-    integer,allocatable,intent(INOUT) :: LL2(:,:)
+    integer,allocatable,intent(inout) :: LL2(:,:)
     integer :: ierr
     include 'mpif.h'
 
@@ -536,7 +529,7 @@ CONTAINS
 
     end if
 
-  END SUBROUTINE construct_gridmap_sub
+  end subroutine construct_gridmap_sub
 
 
-END MODULE io_module
+end module io_module

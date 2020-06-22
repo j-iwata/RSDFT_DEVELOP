@@ -1,4 +1,4 @@
-MODULE io_write_module
+module io_write_wf_simple_module
 
   use parallel_module
   use rgrid_mol_module, only: LL
@@ -8,24 +8,25 @@ MODULE io_write_module
   use bb_module
   use bz_module, only: kbb, MMBZ
   use rsdft_mpi_module
+  use watch_module, only: watchb
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: simple_wf_io_write
+  private
+  public :: write_wf_simple
 
-CONTAINS
+contains
 
 
-  SUBROUTINE simple_wf_io_write &
+  subroutine write_wf_simple &
        ( file_wf, IO_ctrl, OC, SYStype, MBwr1, MBwr2, disp_switch &
        , wf_in, MB_in, MB_0_in, MB_1_in )
 
     implicit none
-    character(*),intent(IN) :: file_wf
-    integer,intent(IN) :: IO_ctrl, OC, SYStype
-    integer,intent(INOUT) :: MBwr1,MBwr2
-    logical,intent(IN) :: disp_switch
+    character(*),intent(in) :: file_wf
+    integer,intent(in) :: IO_ctrl, OC, SYStype
+    integer,intent(inout) :: MBwr1,MBwr2
+    logical,intent(in) :: disp_switch
 !#ifdef _DRSDFT_
     real(8),optional,intent(in) :: wf_in(:,:,:,:)
 !#else
@@ -58,9 +59,15 @@ CONTAINS
     integer,parameter :: TYPE_WF=0
 #endif
     type(para) :: pinfo
+    real(8) :: ttmp(2),tt(2)
 
-    call write_border( 1, " simple_wf_io_write(start)" )
-    if ( DISP_SWITCH ) write(*,*) "OC =",OC
+    call write_border( 0, " write_wf_simple(start)" )
+    if ( DISP_SWITCH ) then
+       write(*,*) "OC =",OC
+       write(*,*) "IOCTRL =",IO_ctrl
+    end if
+
+    call watchb( ttmp, barrier='on' ); tt=0.0d0
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -271,14 +278,17 @@ CONTAINS
 
     deallocate( LL2 )
 
+    call watchb( ttmp, tt, barrier='on' )
+
     if ( DISP_SWITCH ) then
        write(*,*) "write to ",file_wf
        write(*,*) "MBwr1,MBwr2 =",MBwr1,MBwr2
+       write(*,*) "time(write_wf_simple)=",tt
     end if
 
-    call write_border( 1, " simple_wf_io_write(end)" )
+    call write_border( 0, " write_wf_simple(end)" )
 
-  END SUBROUTINE simple_wf_io_write
+  end subroutine write_wf_simple
 
 
-END MODULE io_write_module
+end module io_write_wf_simple_module

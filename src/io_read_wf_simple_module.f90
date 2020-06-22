@@ -1,26 +1,27 @@
-MODULE io_read_module
+module io_read_wf_simple_module
 
   use parallel_module
   use wf_module
   use rgrid_module
   use rgrid_mol_module, only: LL
   use rsdft_mpi_module
+  use watch_module, only: watchb
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: simple_wf_io_read
+  private
+  public :: read_wf_simple
 
-CONTAINS
+contains
 
-  SUBROUTINE simple_wf_io_read( file_wf2, SYStype, IO_ctrl, DISP_SWITCH &
+  subroutine read_wf_simple( file_wf2, SYStype, IO_ctrl, DISP_SWITCH &
        , b, wf_out, occ_out, kbb_out )
 
     implicit none
 
-    character(*),intent(IN) :: file_wf2
-    integer,intent(IN) :: SYStype, IO_ctrl
-    logical,intent(IN) :: DISP_SWITCH
+    character(*),intent(in) :: file_wf2
+    integer,intent(in) :: SYStype, IO_ctrl
+    logical,intent(in) :: DISP_SWITCH
     type(wfrange),optional,intent(INOUT) :: b
 #ifdef _DRSDFT_
     real(8),allocatable,optional,intent(INOUT) :: wf_out(:,:,:,:)
@@ -56,8 +57,11 @@ CONTAINS
     real(8),allocatable :: dtmp(:)
     real(4),allocatable :: dtmpSP(:)
     type(para) :: pinfo0, pinfo1
+    real(8) :: ttmp(2),tt(2)
 
-    call write_border( 0, " simple_wf_io_read(start)" )
+    call write_border( 0, " read_wf_simple(start)" )
+
+    call watchb( ttmp, barrier='on' ); tt=0.0d0
 
 ! ---
 
@@ -171,7 +175,7 @@ CONTAINS
        end if
     end if
     if ( ML_tmp /= ML .or. ML1_tmp /= ML1 .or. &
-         ML2_tmp /= ML2 .or. ML3_tmp /= ML3 ) stop "stop@simple_wf_io_read"
+         ML2_tmp /= ML2 .or. ML3_tmp /= ML3 ) call stop_program("stop@read_wf_simple")
 
     if ( myrank == 0 ) then
        read(3) LL_tmp(1:3,1:ML)
@@ -286,12 +290,12 @@ CONTAINS
 
     end if
 
-    if ( IO_ctrl == 3 ) then
-
-       if ( myrank == 0 ) close(3)
+    if ( IO_ctrl0 == 3 ) then
 
        write(cmyrank,'(i5.5)') myrank
        file_wf_split = trim(file_wf2)//"."//trim(adjustl(cmyrank))
+
+       if ( myrank == 0 ) close(3)
 
        open(3,file=file_wf_split,form="unformatted")
 
@@ -315,7 +319,7 @@ CONTAINS
     do k=1,MBZ_tmp
     do n=MB1_tmp,MB2_tmp
 
-       if ( IO_ctrl == 0 ) then
+       if ( IO_ctrl0 == 0 ) then
 
           call chk_rank_relevance( n,k,s, irank, flag_related )
 
@@ -377,7 +381,7 @@ CONTAINS
              end if
           end if
 
-       else if ( IO_ctrl == 3 ) then
+       else if ( IO_ctrl0 == 3 ) then
 
           call get_corresponding_rank( myrank_g, n,k,s, pinfo1, irank )
           call get_corresponding_rank( myrank_g, n,k,s, pinfo0, jrank )
@@ -499,7 +503,7 @@ CONTAINS
     end do ! k
     end do ! s
 
-    if ( IO_ctrl == 0 .and. myrank == 0 .or. IO_ctrl == 3 ) close(3)
+    if ( IO_ctrl0 == 0 .and. myrank == 0 .or. IO_ctrl0 == 3 ) close(3)
 
     if ( allocated(dtmpSP) ) deallocate( dtmpSP )
     if ( allocated(dtmp) ) deallocate( dtmp )
@@ -515,15 +519,18 @@ CONTAINS
     call mpi_bcast( unk,size(unk),RSDFT_MPI_COMPLEX16,0,comm_fkmb,ierr )
 #endif
 
+    call watchb( ttmp, tt, barrier='on' )
+
     if ( DISP_SWITCH ) then
        write(*,*) "read from ",file_wf2
+       write(*,*) "time(read_wf_simple)=",tt
     end if
 
-    call write_border( 0, " simple_wf_io_read(end)" )
+    call write_border( 0, " read_wf_simple(end)" )
 
     return
 
-  END SUBROUTINE simple_wf_io_read
+  end subroutine read_wf_simple
 
   SUBROUTINE chk_rank_relevance( n,k,s, irank, flag_related )
     implicit none
@@ -586,4 +593,4 @@ CONTAINS
     end do loop
   END SUBROUTINE get_corresponding_rank
 
-END MODULE io_read_module
+end module io_read_wf_simple_module

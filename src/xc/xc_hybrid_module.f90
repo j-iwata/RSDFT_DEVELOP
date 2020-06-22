@@ -2,7 +2,7 @@ MODULE xc_hybrid_module
 
   use io_tools_module
   use wf_module, only: wfrange
-  use io_read_module
+  use io_read_wf_simple_module
 
   implicit none
 
@@ -221,7 +221,7 @@ CONTAINS
        b%MS0 = MSP_0
        b%MS1 = MSP_1
 
-       call simple_wf_io_read( file_wf2, SYStype, IO_ctrl, disp_switch &
+       call read_wf_simple( file_wf2, SYStype, IO_ctrl, disp_switch &
             , b, unk_hf, occ_hf, kbb_hf )
 
        FKMB   = b%MB

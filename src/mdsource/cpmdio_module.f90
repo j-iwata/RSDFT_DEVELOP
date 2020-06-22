@@ -6,7 +6,7 @@ MODULE cpmdio_module
   use rsdft_mpi_module
   use io1_module, only: read_data_io1
   use io2_module
-  use io_write_module, only: simple_wf_io_write
+  use io_write_wf_simple_module, only: write_wf_simple
   use rgrid_module, only: Igrid,Ngrid
 
   implicit none
@@ -45,7 +45,7 @@ CONTAINS
     case( 1 )
        i=1
        if ( OC == 0 ) OC=3
-       call simple_wf_io_write( "restart", IO_ctrl_w, OC, SYStype &
+       call write_wf_simple( "restart", IO_ctrl_w, OC, SYStype &
             , i, MBC, disp_sw, psi_v(:,MB_0_CPMD:MB_1_CPMD,:,:) &
             , MBC, MB_0_CPMD, MB_1_CPMD )
     case( 3 )
