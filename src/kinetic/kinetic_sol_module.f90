@@ -46,6 +46,7 @@ CONTAINS
     integer,allocatable :: ic(:)
     integer :: a1b_omp,b1b_omp,a2b_omp,b2b_omp,a3b_omp,b3b_omp,n1_omp,n2_omp
     integer :: ib1_omp,ib2_omp,nb_omp
+    logical :: disp
 
     !call watchb_omp( ttmp )
 !!$OMP master
@@ -80,32 +81,31 @@ CONTAINS
     !end if
 
     if ( flag_clap_setval ) then
-       if ( flag_clap_setval ) then
-          write(*,*) "flag_clap=",flag_clap
-          if ( Md == 4 .or. Md == 6 ) then
-             clap11=coef_lap(1,1)
-             clap21=coef_lap(2,1)
-             clap31=coef_lap(3,1)
-             clap12=coef_lap(1,2)
-             clap22=coef_lap(2,2)
-             clap32=coef_lap(3,2)
-             clap13=coef_lap(1,3)
-             clap23=coef_lap(2,3)
-             clap33=coef_lap(3,3)
-             clap14=coef_lap(1,4)
-             clap24=coef_lap(2,4)
-             clap34=coef_lap(3,4)
-          end if
-          if ( Md == 6 ) then
-             clap15=coef_lap(1,5)
-             clap25=coef_lap(2,5)
-             clap35=coef_lap(3,5)
-             clap16=coef_lap(1,6)
-             clap26=coef_lap(2,6)
-             clap36=coef_lap(3,6)
-          end if
-          flag_clap_setval=.false.
+       call check_disp_switch( disp, 0 )
+       if ( disp ) write(*,*) "flag_clap=",flag_clap
+       if ( Md == 4 .or. Md == 6 ) then
+          clap11=coef_lap(1,1)
+          clap21=coef_lap(2,1)
+          clap31=coef_lap(3,1)
+          clap12=coef_lap(1,2)
+          clap22=coef_lap(2,2)
+          clap32=coef_lap(3,2)
+          clap13=coef_lap(1,3)
+          clap23=coef_lap(2,3)
+          clap33=coef_lap(3,3)
+          clap14=coef_lap(1,4)
+          clap24=coef_lap(2,4)
+          clap34=coef_lap(3,4)
        end if
+       if ( Md == 6 ) then
+          clap15=coef_lap(1,5)
+          clap25=coef_lap(2,5)
+          clap35=coef_lap(3,5)
+          clap16=coef_lap(1,6)
+          clap26=coef_lap(2,6)
+          clap36=coef_lap(3,6)
+       end if
+       flag_clap_setval=.false.
     end if
 
 !!$OMP parallel private(a3b_omp,b3b_omp,a2b_omp,b2b_omp,a1b_omp,b1b_omp &

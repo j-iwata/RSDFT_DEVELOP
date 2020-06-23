@@ -1,84 +1,89 @@
-MODULE cpmdio_module
+module cpmdio_module
 
-  use cpmd_variables
-  use wf_module, only: unk
+  use cpmd_variables, only: psi_v,MB_0_CPMD,MB_1_CPMD,MBZ_0,MBZ_1,ircnt,idisp,MSP_0,MSP_1,myrank &
+                           ,ir_grid,id_grid,zero,comm_grid
+  use wf_module, only: unk, occ
   use io_tools_module
   use rsdft_mpi_module
   use io1_module, only: read_data_io1
   use io2_module
-  use io_write_module, only: simple_wf_io_write
+  use io_write_wf_simple_module, only: write_wf_simple
   use rgrid_module, only: Igrid,Ngrid
+  use parallel_module, only: node_partition
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: write_data_cpmdio
-  PUBLIC :: read_data_cpmdio
+  private
+  public :: write_data_cpmdio
+  public :: read_data_cpmdio
+  public :: read_data_cpmdio_0
 
   integer :: IO_ctrl_r=0
   integer :: IO_ctrl_w=0
   integer :: OC=0
   logical :: flag_init_r=.true.
   logical :: flag_init_w=.true.
-  integer :: node_partition_old(3)
+  integer :: node_partition_old(7)
 
-CONTAINS
+contains
 
 
-  SUBROUTINE write_data_cpmdio
+  subroutine write_data_cpmdio
     implicit none
     logical :: disp_sw
-    integer :: i
-    disp_sw=(myrank==0)
-    if ( flag_init_w ) then
-       if ( ctrl_cpmdio < 100 ) then
-          IO_ctrl_w = ctrl_cpmdio
-       else
-          call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_w )
-       end if
-       call IOTools_readIntegerKeyword( "OC", OC )
-       flag_init_w=.false.
+    integer :: i1,i2,i3
+
+    call IOTools_readIntegerKeyword( "OC", OC )
+    if ( OC <= 0 ) return
+
+    if ( myrank == 0 ) then
+       open(1,file='restart_.dat')
+       write(1,*) size(occ,1),size(occ,2),size(occ,3)
+       do i3=1,size(occ,3)
+       do i2=1,size(occ,2)
+       do i1=1,size(occ,1)
+          write(1,*) i1,i2,i3,occ(i1,i2,i3)
+       end do
+       end do
+       end do
+       write(1,'(1x,8i5)') node_partition(:)
+       close(1)
     end if
-    select case( IO_ctrl_w )
-    case( 0 )
-       call write_data_cpmd_k_seri
-    case( 1 )
-       i=1
-       if ( OC == 0 ) OC=3
-       call simple_wf_io_write( "restart", IO_ctrl_w, OC, SYStype &
-            , i, MBC, disp_sw, psi_v(:,MB_0_CPMD:MB_1_CPMD,:,:) &
-            , MBC, MB_0_CPMD, MB_1_CPMD )
-    case( 3 )
-       call write_data_cpmd_k_para
-    end select
-  END SUBROUTINE write_data_cpmdio
 
+    call write_data_cpmd_k_para
 
-  SUBROUTINE read_data_cpmdio
+  end subroutine write_data_cpmdio
+
+  subroutine read_data_cpmdio_0
     implicit none
-    if ( flag_init_r ) then
-       if ( ctrl_cpmdio_r < 100 ) then
-          IO_ctrl_r = ctrl_cpmdio_r
-       else
-          call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl_r )
-       end if
-       node_partition_old=1
-       call IOTools_readIntegerKeyword( "OLD_PROCS", node_partition_old )
-       flag_init_r=.false.
+    integer :: ierr,n1,n2,n3,i1,i2,i3,j1,j2,j3
+    include 'mpif.h'
+    if ( myrank == 0 ) then
+       occ=0.0d0
+       open(1,file='restart_.dat',status='old')
+       read(1,*) n1,n2,n3
+       do i3=1,n3
+       do i2=1,n2
+       do i1=1,n1
+          read(1,*) j1,j2,j3,occ(i1,i2,i3)
+       end do
+       end do
+       end do
+       read(1,*) node_partition_old(:)
+       close(1)
     end if
-    select case( IO_ctrl_r )
-    case( 0 )
-       call read_data_cpmd_k_seri
-    case( 1 )
-       call read_data_io1( "restart", SYStype &
-            ,wf_out=psi_v(:,MB_0_CPMD:MB_1_CPMD,:,:) &
-            ,MB_in=MBC, MB_0_in=MB_0_CPMD, MB_1_in=MB_1_CPMD )
-    case( 3 )
+    call MPI_Bcast( occ,size(occ),MPI_REAL8,0,MPI_COMM_WORLD,ierr )
+    call MPI_Bcast( node_partition_old,size(node_partition_old),MPI_INTEGER,0,MPI_COMM_WORLD,ierr )
+  end subroutine read_data_cpmdio_0
+
+  subroutine read_data_cpmdio
+    implicit none
+    if ( all(node_partition==node_partition_old) ) then
        call read_data_cpmd_k_para
-    case( 4 )
+    else
        call read_data_cpmd_k_para_tmp
-    end select
-  END SUBROUTINE read_data_cpmdio
+    end if
+  end subroutine read_data_cpmdio
 
 !-------------------------------------------------------------
 
@@ -125,20 +130,18 @@ CONTAINS
   END SUBROUTINE write_data_cpmd_k_seri
 
 
-  SUBROUTINE write_data_cpmd_k_para
+  subroutine write_data_cpmd_k_para
     implicit none
-    integer :: n1,n2,ML0,n,k,i,ispin
+    integer :: n1,n2,ML0,n,k,i,ispin,i1,i2,i3
     character(len=64) :: filename
 
     write(filename,"('restart_',i5.5,'.dat')") myrank
 
     open(1,file=filename,form="unformatted")
+
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
     ML0 = ircnt(myrank)
-
-!      write(*,*) "MSP_0,MSP_1", MSP_0,MSP_1
-!      write(*,*) "MBZ_0,MBZ_1",MBZ_0,MBZ_1
 
     do ispin=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
@@ -162,7 +165,7 @@ CONTAINS
 
     close(1)
     return
-  END SUBROUTINE write_data_cpmd_k_para
+  end subroutine write_data_cpmd_k_para
 
 !-------------------------------------------------------------
 
@@ -171,6 +174,7 @@ CONTAINS
     implicit none
     integer :: n1,n2,nn,s,k,n,ierr
     real(8),allocatable :: utmp(:)
+    include 'mpif.h'
 
     n1=idisp(myrank)+1
     n2=idisp(myrank)+ircnt(myrank)
@@ -207,23 +211,24 @@ CONTAINS
   END SUBROUTINE read_data_cpmd_k_seri
 
 
-  SUBROUTINE read_data_cpmd_k_para
+  subroutine read_data_cpmd_k_para
     implicit none
     integer :: n1,n2,ML0,n,k,i,ispin,ierr
     character(len=64) :: filename
 
-    call read_io2( SYStype, ierr )
-    if ( ierr == 0 ) then
-#ifdef _DRSDFT_
-       call read_data2_io2 &
-            ( "restart_",".dat", unk, psi_v, MB_0_CPMD, MB_1_CPMD )
-#endif
-       return
-    end if
+!    call read_io2( SYStype, ierr )
+!    if ( ierr == 0 ) then
+!#ifdef _DRSDFT_
+!       call read_data2_io2 &
+!            ( "restart_",".dat", unk, psi_v, MB_0_CPMD, MB_1_CPMD )
+!#endif
+!       return
+!    end if
 
     write(filename,"('restart_',i5.5,'.dat')") myrank
 
     open(1,file=filename,form="unformatted")
+
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
     ML0 = ircnt(myrank)
@@ -250,10 +255,10 @@ CONTAINS
 
     close(1)
     return
-  END SUBROUTINE read_data_cpmd_k_para
+  end subroutine read_data_cpmd_k_para
 
 
-  SUBROUTINE read_data_cpmd_k_para_tmp
+  subroutine read_data_cpmd_k_para_tmp
     implicit none
     integer :: n1,n2,n3,ML0_old(3),n,k,i,j,ispin,ierr
     integer :: i1,i2,i3
@@ -277,11 +282,11 @@ CONTAINS
     do i1=0,node_partition_old(1)-1
        irank_old=irank_old+1
        Igrid_old(1,1,irank_old)=i1*ML0_old(1)
-       Igrid_old(2,1,irank_old)=(i1+1)*ML0_old(1)
+       Igrid_old(2,1,irank_old)=(i1+1)*ML0_old(1)-1
        Igrid_old(1,2,irank_old)=i2*ML0_old(2)
-       Igrid_old(2,2,irank_old)=(i2+1)*ML0_old(2)
+       Igrid_old(2,2,irank_old)=(i2+1)*ML0_old(2)-1
        Igrid_old(1,3,irank_old)=i3*ML0_old(3)
-       Igrid_old(2,3,irank_old)=(i3+1)*ML0_old(3)
+       Igrid_old(2,3,irank_old)=(i3+1)*ML0_old(3)-1
     end do
     end do
     end do
@@ -362,7 +367,7 @@ CONTAINS
     deallocate( Igrid_old )
 
     return
-  END SUBROUTINE read_data_cpmd_k_para_tmp
+  end subroutine read_data_cpmd_k_para_tmp
 
 
-END MODULE cpmdio_module
+end module cpmdio_module
