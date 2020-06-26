@@ -105,6 +105,7 @@ MODS1 = \
        rgrid_sol_module.o\
        var_ps_member.o\
        ps_gth_module.o\
+       ps_read_adpack_module.o\
        ps_read_psp8_module.o\
        ps_read_upf_module.o\
        ps_read_yb_module.o\
@@ -141,12 +142,13 @@ MODS1 = \
        ps_nloc_hgh_module.o\
        ewald_module.o\
        ps_prepNzqr_g_module.o\
-       io_read_module.o\
+       io_read_wf_general_module.o\
+       io_read_wf_simple_module.o\
        band_unfold_module.o\
        rhonks_g_module.o\
        ps_nloc_mr_module.o\
        ps_spinorbit_module.o\
-       io_write_module.o\
+       io_write_wf_simple_module.o\
        ps_nloc3_gth_module.o\
        ps_nloc3_module.o\
        inner_product_module.o\

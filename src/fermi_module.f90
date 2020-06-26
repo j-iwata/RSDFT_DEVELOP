@@ -34,7 +34,7 @@ contains
     isetocc=0
     setocc=0.0d0
     rtmp=0.0d0
-    mp_version=0
+    mp_version=-1
     call IOTools_readReal8Keyword( "EKBT", ekbt )
     call IOTools_readIntegerKeyword( "KINTEG", kinteg )
     call IOTools_readIntegerKeyword( "MPVER", mp_version )

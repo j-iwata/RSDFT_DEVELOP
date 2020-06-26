@@ -36,7 +36,7 @@ SUBROUTINE bomd
   real(8) :: fke,Ebath_ion,Ebath_ele,Ebath
   real(8) :: ctime0,ctime1,etime0,etime1
   real(8) :: ctime_cpmd(0:11),etime_cpmd(0:11)
-  real(8),allocatable :: mu(:)
+  real(8),allocatable :: mu(:),occ_backup(:,:,:)
   logical :: ltime,flag_etlimit
   integer,parameter :: unit_trjxyz = 90
   logical,external :: exit_program
@@ -89,10 +89,17 @@ SUBROUTINE bomd
      end if
   end if
 
-  if ( lbathnew ) then
-     if ( disp_switch ) write(*,*) "start NVT with new Nose-Hoover"
-  else
-     if ( disp_switch ) write(*,*) "start NVE cpmd"
+  if ( disp_switch ) then
+     if ( .not.(lbathnew.or.lbere.or.lscale.or.lbathnewe.or.lscaleele) ) then
+        write(*,*) "start NVE cpmd"
+     else
+        write(*,*) "Thermostats"
+        if ( lbathnew ) write(*,*) "(Ion) Nose-Hoover-Chain"
+        if ( lbere    ) write(*,*) "(Ion) Berendsen's Thermostat"
+        if ( lscale   ) write(*,*) "(Ion) Velocity Scaling"
+        if ( lbathnewe ) write(*,*) "(Electron) Nose-Hoover-Chain"
+        if ( lscaleele ) write(*,*) "(Electron) Velocity Scaling"
+     end if
   end if
 
 ! --- setup variables
@@ -130,15 +137,25 @@ SUBROUTINE bomd
   fke = 0.0d0
 
   if ( lcpmd ) then
-     call active_band
+     if ( inivel ) then
+        call active_band
+        call alloc_cpmd
+     else
+        call read_data_cpmdio_0
+        call active_band
+        call alloc_cpmd
+        call read_data_cpmdio
+     end if
      MB_0 = MB_0_CPMD
      MB_1 = MB_1_CPMD
      ib1  = MB_0_CPMD
      ib2  = MB_1_CPMD
-     call alloc_cpmd
-     if ( .not.inivel ) call read_data_cpmdio
      if ( lquench ) then
+        allocate( occ_backup(size(occ,1),size(occ,2),size(occ,3)) )
+        occ_backup=occ
         call getforce
+        occ=occ_backup
+        deallocate( occ_backup )
         psi_v=0.0d0
      else
         call getforce_cpmd( ltime )
