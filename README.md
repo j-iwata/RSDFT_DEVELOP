@@ -29,8 +29,8 @@ Please see *samples_for_supercomputers/ITO_KYUSHU-U/* .
 
 
 
-## Fugaku (RIKEN)
+## FUGAKU (RIKEN)
 
 
 
-## Furou (Nagoya university)
+## FURO (Nagoya university)
