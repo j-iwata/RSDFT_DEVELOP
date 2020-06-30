@@ -2,8 +2,10 @@
 
 ## ITO (kyushu-u)
 
-### Instlation
+### Compile
+double-complex version of RSDFT
 ```
+module load intel fftw
 cd RSDFT/src
 cp make.inc.ITO.complex16 make.inc
 make
