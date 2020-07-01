@@ -1,0 +1,15 @@
+ set nokey
+ set xrange[0: 1.672934557312628 ]
+ set title 'spin 1 '
+ plot "fort.2001" u 1:  2 w lp \
+     ,"fort.2001" u 1:  3 w lp \
+     ,"fort.2001" u 1:  4 w lp \
+     ,"fort.2001" u 1:  5 w lp \
+     ,"fort.2001" u 1:  6 w lp \
+     ,"fort.2001" u 1:  7 w lp \
+     ,"fort.2001" u 1:  8 w lp \
+     ,"fort.2001" u 1:  9 w lp \
+     ,"fort.2001" u 1: 10 w lp \
+     ,"fort.2001" u 1: 11 w lp \
+     ,"fort.2001" u 1: 12 w lp \
+     ,"fort.2001" u 1: 13 w lp \
