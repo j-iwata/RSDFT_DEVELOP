@@ -33,4 +33,25 @@ Please see *samples_for_supercomputers/ITO_KYUSHU-U/* .
 
 
 
-## FURO (Nagoya university)
+## FLOW-FX (Nagoya university)
+
+The complex16 version of *rsdft.x* can be compiled as follows:
+
+```
+module load fftw
+cd RSDFT/src
+cp make.inc.FLOW-FX.complex16 make.inc
+make
+```
+
+and the real8 version is
+
+```
+module load fftw
+cd RSDFT/src
+cp make.inc.FLOW-FX.real8 make.inc
+make
+```
+
+### Samples
+Please see *samples_for_supercomputers/FLOW-FX_NAGOYA-U/* .
