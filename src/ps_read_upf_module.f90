@@ -303,7 +303,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: g
     type(ps1d),intent(INOUT) :: psp
-    integer,parameter :: max_loop=1000000, max_array_size = 8
+    integer,parameter :: max_loop=1000000, max_array_size = 16
     integer :: loop,i,j,k,l,ir,ic,nr
     integer,allocatable :: lo(:),no(:)
     character(100) :: cbuf, ckey
