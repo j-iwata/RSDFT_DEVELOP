@@ -303,7 +303,7 @@ CONTAINS
     implicit none
     integer,intent(IN) :: g
     type(ps1d),intent(INOUT) :: psp
-    integer,parameter :: max_loop=1000000, max_array_size = 8
+    integer,parameter :: max_loop=1000000, max_array_size = 16
     integer :: loop,i,j,k,l,ir,ic,nr
     integer,allocatable :: lo(:),no(:)
     character(100) :: cbuf, ckey
@@ -603,7 +603,11 @@ CONTAINS
           psp%inorm(j)=1
           if ( psp%anorm(j) < 0.0d0 ) psp%inorm(j)=-1
           tmp = sqrt( abs( psp%anorm(j) ) )
+          if(lo(j)==0)then
           psp%viod(:,j) = sqrt(0.5d0)*psp%viod(:,j)*tmp
+          else
+          psp%viod(:,j) = 0.5d0*psp%viod(:,j)*tmp
+          end if
        end do
     else !------> multi reference
        psp%Dij(1:norb,1:norb) = Dij(1:norb,1:norb)

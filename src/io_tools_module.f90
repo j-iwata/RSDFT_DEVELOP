@@ -249,9 +249,9 @@ CONTAINS
              backspace(unit)
              read(unit,*) cbuf,variables(:)
              if ( any(abs(variables) < 1.d-2 .or. abs(variables) > 1.d3) ) then
-                write(*,'(1x,A10," : ",3ES15.7)') keyword,variables(:)
+                write(*,'(1x,A10," : ",10(3ES15.7,/))') keyword,variables(:)
              else
-                write(*,'(1x,A10," : ",3F15.10)') keyword,variables(:)
+                write(*,'(1x,A10," : ",10(3F15.10,/))') keyword,variables(:)
              end if
              exit
           end if

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+#PJM -L rscunit=fx
+
+#PJM -L rscgrp=fx-debug
+##PJM -L "rscgrp=fx-extra"
+##PJM -L "rscgrp=fx-small"
+##PJM -L "rscgrp=fx-midlle"
+##PJM -L "rscgrp=fx-large"
+##PJM -L "rscgrp=fx-xlarge"
+##PJM -L "rscgrp=fx-middle2"
+
+#PJM -L node=9
+#PJM --mpi proc=36
+#PJM -L elapse=00:10:00
+
+##PJM --mail-list your@mail-address.jp
+##PJM --mail-list iwata.jun-ichi@advancesoft.jp
+##PJM -m b
+##PJM -m e
+##PJM -m r
+
+export OMP_NUM_THREADS=12
+
+export LD_LIBRARY_PATH=/home/center/opt/spack/aarch64/fj/4.1.0/fftw/3.3.8/rtd/lib:$LD_LIBRARY_PATH
+#export F_UFMTENDIAN="little;big:87"
+
+LD='./rsdft.x'
+mpiexec ${LD}
+
+./aa2cif < fort.197
