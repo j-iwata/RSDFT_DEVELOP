@@ -16,7 +16,7 @@ MODULE force_ps_nloc2
                                ,MJJ,MJJ_MAP,JJ_MAP,JJP,MMJJ,uVk
   use rgrid_module
   use array_bound_module
-  use parallel_module, only: MB_d, disp_switch_parallel, comm_grid
+  use parallel_module, only: MB_d_nl, disp_switch_parallel, comm_grid
   use localpot_module, only: Vloc
   use para_rgrid_comm, only: do3StepComm_F
   use force_sub_module
@@ -284,9 +284,9 @@ CONTAINS
     if ( nzlma > 0 ) then
        do s=MSP_0,MSP_1
        do k=MBZ_0,MBZ_1
-       do n=MB_0,MB_1,MB_d
+       do n=MB_0,MB_1,MB_d_nl
           ib1=n
-          ib2=min(ib1+MB_d-1,MB_1)
+          ib2=min(ib1+MB_d_nl-1,MB_1)
           if ( occ(n,k,s) < 1.d-10 ) cycle
           call do3StepComm_F(nrlma_xyz,num_2_rank,sendmap,recvmap &
                ,lma_nsend,sbufnl,rbufnl,nzlma,ib1,ib2,wtmp5(0,1,ib1,k,s))

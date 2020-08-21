@@ -1,7 +1,7 @@
 MODULE xc_ggapbe96_2_module
 
   use gradient_module
-  use grid_module, only: grid, get_map_3d_to_1d_grid
+  use grid_module, only: grid
   use xc_variables, only: xcpot, xcene
   use fd_module, only: fd, construct_nabla_fd
   use lattice_module, only: lattice, get_aa_lattice, get_reciprocal_lattice
@@ -25,8 +25,7 @@ MODULE xc_ggapbe96_2_module
   real(QP),allocatable :: vx(:,:),vc(:,:)
   real(QP) :: Ex,Ec
   real(QP) :: b(3,3)
-  integer,allocatable :: LLL(:,:,:)
-  integer :: Md, ML1,ML2,ML3
+  integer :: Md
   integer :: SYStype=0
 
   real(8) :: mu=0.21951d0
@@ -74,12 +73,6 @@ CONTAINS
     b(1:3,2)=aa%Length(2)*bb%LatticeVector(1:3,2)/( 2*Pi*rgrid%spacing(2) )
     b(1:3,3)=aa%Length(3)*bb%LatticeVector(1:3,3)/( 2*Pi*rgrid%spacing(3) )
 
-    ML1 = rgrid%g3%x%size_global
-    ML2 = rgrid%g3%y%size_global
-    ML3 = rgrid%g3%z%size_global
-
-    call get_map_3d_to_1d_grid( rgrid, LLL )
-
 ! ---
 
     m1 = pot%xc%g_range%head
@@ -116,7 +109,7 @@ CONTAINS
 
     deallocate( vc )
     deallocate( vx )
-    deallocate( LLL )
+
     call destruct_gradient16( grad16 )
 
   END SUBROUTINE calc_GGAPBE96_2

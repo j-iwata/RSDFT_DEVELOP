@@ -3,10 +3,11 @@ module force_ps_nloc2_module
   use array_bound_module, only: MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1,ML_0
   use ps_nloc2_variables, only: nzlma, MMJJ, mmap, lmap, amap &
        , iorbmap, JJ_MAP, MJJ_MAP, JJP, MJJ, uVk, nrlma_xyz, iuV, lma_nsend &
-       , num_2_rank, recvmap, sendmap, sbufnl, rbufnl, Mlma, TYPE_MAIN, zero
+       , num_2_rank, recvmap, sendmap, sbufnl, rbufnl, Mlma, TYPE_MAIN, zero &
+       , backup_uVunk_ps_nloc2, flag_backup_uVunk_ps_nloc2
   use var_ps_member, only: ps_type, norb, lo, rad1, dviod, ippform, NRps
   use pseudopot_module, only: pselect
-  use parallel_module, only: MB_d, comm_grid, myrank
+  use parallel_module, only: MB_d_nl, comm_grid, myrank
   use atom_module, only: aa_atom, ki_atom, Natom, Nelement
   use aa_module, only: aa
   use force_sub_sub_module, only: gaunt, construct_gaunt_coef_l1
@@ -145,7 +146,7 @@ contains
     call watchb( ttmp, tttt(:,3) )
 
     allocate( wtmp5(0:3,nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-    allocate( vtmp2(0:3,nzlma,MB_d) )
+    allocate( vtmp2(0:3,nzlma,MB_d_nl) )
     allocate( a_rank(Natom) )
     allocate( duVdR(3,MMJJ,nzlma) )
 
@@ -366,8 +367,8 @@ contains
     do k=MBZ_0,MBZ_1
 !$OMP do schedule(dynamic) private( c,i,d1,d2,d3,kr,ztmp,i1,i2,i3 )
     do n=MB_0,MB_1
-       if ( occ(n,k,s) == 0.d0 ) cycle
-       c=-2.d0*occ(n,k,s)*dV*dV
+       if ( occ(n,k,s) == 0.0d0 ) cycle
+       c=-2.0d0*occ(n,k,s)*dV*dV
        do lma=1,nzlma
 !          if ( MJJ_MAP(lma) == MJJ(lma) ) then
 !#ifdef _DRSDFT_
@@ -467,10 +468,10 @@ contains
 !$OMP single
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-    do n=MB_0,MB_1,MB_d
+    do n=MB_0,MB_1,MB_d_nl
 
        ib1=n
-       ib2=min(ib1+MB_d-1,MB_1)
+       ib2=min(ib1+MB_d_nl-1,MB_1)
        nnn=ib2-ib1+1
 
        if ( occ(n,k,s) == 0.d0 ) cycle
@@ -549,6 +550,25 @@ contains
 
     allocate( work2(3,Natom) )
 !$OMP end single
+
+! ---
+
+    if ( flag_backup_uVunk_ps_nloc2 ) then
+       do s=MSP_0,MSP_1
+       do k=MBZ_0,MBZ_1
+!$OMP do schedule(dynamic) private( n,c )
+       do n=MB_0 ,MB_1
+          if ( occ(n,k,s) == 0.0d0 ) cycle
+          c=1.0d0/(-2.0d0*occ(n,k,s)*dV)
+          wtmp5(0,:,n,k,s)=c*wtmp5(0,:,n,k,s)
+       end do
+!$OMP end do
+       end do
+       end do
+       call backup_uVunk_ps_nloc2( wtmp5 )
+    end if
+
+! ---
 
 !$omp master
     call watchb( ttmp, tttt(:,11) )
