@@ -1,0 +1,16 @@
+1) Run RSDFT
+
+$ qsub runsh
+
+
+
+2) Compile utility/band2gp.f90
+
+
+
+3) Convert the band data to the plot data
+
+$ ./band2gp
+$ gnuplot
+gnuplot> load 'plot_band'
+

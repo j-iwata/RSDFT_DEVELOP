@@ -85,7 +85,7 @@ CONTAINS
     character(*),optional,intent(IN)  :: outer_loop_info
     real(8),optional,intent(OUT) :: Etot_out
     real(8),allocatable :: v(:,:,:)
-    real(8) :: tol_force
+    real(8) :: tol_force,tmp
     real(8) :: Etot, Ehwf, diff_etot
     real(8) :: Ntot(4), sqerr_out(4), t_out(2,14), t_ini(2), t_tmp(2)
     integer :: iter,s,k,n,m,ierr,idiag,i,j,Diter
@@ -458,7 +458,12 @@ CONTAINS
 
 ! ---
 
-       call write_esp_wf
+       do n=1,Nband
+          tmp = sum( occ(1:n,:,:) )
+          if ( abs(tmp-Nelectron) < 1.d-8 ) exit
+       end do
+
+       call write_esp_wf( index_vbm=n )
        call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
        if ( myrank == 0 ) call write_eigenvalues( eval )
 

@@ -917,7 +917,7 @@ CONTAINS
 
     call watcha( timer_counter )
 
-    call allocate_ps_nloc2(MB_d)
+    call allocate_ps_nloc2(MB_d_nl)
 
     if ( allocated(JJP) ) then
        deallocate( JJP )
@@ -1411,7 +1411,7 @@ CONTAINS
     call watchb( ttmp, tttt(:,3) )
 
     allocate( wtmp5(0:3,nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-    allocate( vtmp2(0:3,nzlma,MB_d) )
+    allocate( vtmp2(0:3,nzlma,MB_d_nl) )
     allocate( a_rank(Natom) )
     allocate( duVdR(3,MMJJ,nzlma) )
 
@@ -1724,10 +1724,10 @@ CONTAINS
     call watchb( ttmp )
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
-    do n=MB_0,MB_1,MB_d
+    do n=MB_0,MB_1,MB_d_nl
 
        ib1=n
-       ib2=min(ib1+MB_d-1,MB_1)
+       ib2=min(ib1+MB_d_nl-1,MB_1)
        nnn=ib2-ib1+1
 
        if ( occ(n,k,s) == 0.d0 ) cycle
@@ -2533,7 +2533,7 @@ CONTAINS
        nrlma_xyz(i+1)=n
     end do
 
-    call allocate_ps_nloc2(MB_d)
+    call allocate_ps_nloc2(MB_d_nl)
 
     if ( allocated(JJP) ) then
        deallocate( JJP )

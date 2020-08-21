@@ -1,0 +1,41 @@
+#!/bin/bash
+#PJM -L "rscunit=ito-a"
+##PJM -L "rscgrp=ito-m"
+##PJM -L "rscgrp=ito-l"
+##PJM -L "rscgrp=ito-xl-dbg"
+##PJM -L "rscgrp=ito-l-dbg"
+##PJM -L "rscgrp=ito-m-dbg"
+#PJM -L "rscgrp=ito-s-dbg"
+##PJM -L "vnode=48"
+##PJM -L "vnode=12"
+##PJM -L "vnode=4"
+#PJM -L "vnode=1"
+#PJM -L "vnode-core=36"
+#PJM -L "elapse=00:10:00"
+##PJM --mail-list your@mail-address.jp
+##PJM -m b
+##PJM -m e
+##PJM -m r
+##PJM -S
+#PJM -s
+
+module load intel fftw/3.3.8_intel
+
+NUM_NODES=${PJM_VNODES}
+NUM_CORES=36
+#NUM_PROCS=1728
+#NUM_PROCS=432
+#NUM_PROCS=144
+NUM_PROCS=32
+
+export I_MPI_PERHOST=$NUM_CORES
+export I_MPI_FABRICS=shm:ofa
+export I_MPI_HYDRA_BOOTSTRAP=rsh
+export I_MPI_HYDRA_BOOTSTRAP_EXEC=/bin/pjrsh
+export I_MPI_HYDRA_HOST_FILE=${PJM_O_NODEINF}
+
+#export F_UFMTENDIAN="little;big:87"
+
+LD='./rsdft.x'
+mpiexec.hydra -n $NUM_PROCS ${LD}
+

@@ -1,7 +1,6 @@
-MODULE libxc_module
+module libxc_module
 
 #ifdef _LIBXC_
-  use xc_f90_types_m
   use xc_f90_lib_m
 #endif
   use io_tools_module
@@ -13,36 +12,36 @@ MODULE libxc_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_libxc
-  PUBLIC :: finalize_libxc
-  PUBLIC :: calc_libxc
-  PUBLIC :: calc_fxc_libxc
+  private
+  public :: init_libxc
+  public :: finalize_libxc
+  public :: calc_libxc
+  public :: calc_fxc_libxc
 
   character(len=256) :: func_string(2)
   integer :: func_id(2)
   integer :: num_func
 #ifdef _LIBXC_
-  type(xc_f90_pointer_t) :: xc_func(2)
-  type(xc_f90_pointer_t) :: xc_info(2)
+  type(xc_f90_func_t) :: xc_func(2)
+  type(xc_f90_func_info_t) :: xc_info(2)
 #endif
   logical :: flag_init = .false.
 
-CONTAINS
+contains
 
 #ifdef _LIBXC_
-  SUBROUTINE read_libxc
+  subroutine read_libxc
     implicit none
     call IOTools_readStringKeyword( "LIBXC", func_string )
     func_id(1) = xc_f90_functional_get_number( func_string(1) )
     func_id(2) = xc_f90_functional_get_number( func_string(2) )
-  END SUBROUTINE read_libxc
+  end subroutine read_libxc
 #endif
 
-  SUBROUTINE init_libxc( spin )
+  subroutine init_libxc( spin )
 
     implicit none
-    integer,intent(IN) :: spin
+    integer,intent(in) :: spin
     character(len=120) :: s1, s2
     logical :: disp_sw
     integer :: i, j
@@ -69,14 +68,16 @@ CONTAINS
     do i=1,num_func
 
        if ( spin == 2 ) then
-          call xc_f90_func_init(xc_func(i),xc_info(i),func_id(i),XC_POLARIZED)
+          call xc_f90_func_init(xc_func(i),func_id(i),XC_POLARIZED)
        else
-          call xc_f90_func_init(xc_func(i),xc_info(i),func_id(i),XC_UNPOLARIZED)
+          call xc_f90_func_init(xc_func(i),func_id(i),XC_UNPOLARIZED)
        end if
+
+       xc_info(i) = xc_f90_func_get_info(xc_func(i))
 
        if ( disp_sw ) then
 
-          select case( xc_f90_info_kind(xc_info(i)) )
+          select case( xc_f90_func_info_get_kind(xc_info(i)) )
           case( XC_EXCHANGE )
              write(*,'(a)') "Exchange"
           case( XC_CORRELATION )
@@ -87,20 +88,20 @@ CONTAINS
              write(*,'(a)') "Kinetic"
           end select
 
-          call xc_f90_info_name( xc_info(i), s1 )
+          s1 = xc_f90_func_info_get_name( xc_info(i) )
 
-          select case( xc_f90_info_family(xc_info(i)) )
+          select case( xc_f90_func_info_get_family(xc_info(i)) )
           case( XC_FAMILY_LDA )
              write(s2,'(a)') "LDA"
           case( XC_FAMILY_GGA )
              write(s2,'(a)') "GGA"
-             if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
+             !if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
           case( XC_FAMILY_HYB_GGA )
              write(s2,'(a)') "Hybrid GGA"
              !call xc_f90_hyb_gga_xc_hse_set_par( xc_func(i), 0.25d0, 0.11d0 )
-             call xc_f90_hyb_exx_coef( xc_func(i), coef )
-             write(*,*) "Ratio of EXX =",coef
-             if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
+             !call xc_f90_hyb_exx_coef( xc_func(i), coef )
+             !write(*,*) "Ratio of EXX =",coef
+             !if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
           case( XC_FAMILY_MGGA )
              write(s2,'(a)') "MGGA"
           case( XC_FAMILY_HYB_MGGA )
@@ -112,10 +113,10 @@ CONTAINS
           write(*,'(4a)') trim(s1), ' (', trim(s2), ')'
 
           j=0
-          call xc_f90_info_refs( xc_info(i), j, s1 )
+          s1 = xc_f90_func_reference_get_ref( xc_f90_func_info_get_references(xc_info(i),j) )
           do while( j >= 0 )
              write(*,'(a,i1,2a)') "[", j, "] ", trim(s1)
-             call xc_f90_info_refs( xc_info(i), j, s1 )
+             s1 = xc_f90_func_reference_get_ref( xc_f90_func_info_get_references(xc_info(i),j) )
           end do
 
        end if
@@ -124,10 +125,10 @@ CONTAINS
 
     call write_border( 0, " init_libxc(end)" )
 #endif
-  END SUBROUTINE init_libxc
+  end subroutine init_libxc
 
 
-  SUBROUTINE finalize_libxc
+  subroutine finalize_libxc
     implicit none
     integer :: i
 #ifdef _LIBXC_
@@ -135,13 +136,13 @@ CONTAINS
        call xc_f90_func_end( xc_func(i) )
     end do
 #endif
-  END SUBROUTINE finalize_libxc
+  end subroutine finalize_libxc
 
 
-  SUBROUTINE calc_libxc( rgrid, density, ene, pot )
+  subroutine calc_libxc( rgrid, density, ene, pot )
     implicit none
-    type( grid ),intent(IN) :: rgrid
-    type( GSArray ),intent(IN) :: density
+    type( grid ),intent(in) :: rgrid
+    type( GSArray ),intent(in) :: density
     type( xcene ),optional :: ene
     type( xcpot ),optional :: pot
     integer :: m,n,nn,s
@@ -225,43 +226,57 @@ CONTAINS
 
     call write_border( 1, " calc_libxc(end)" )
 #endif
-  END SUBROUTINE calc_libxc
+  end subroutine calc_libxc
 
 #ifdef _LIBXC_
-  SUBROUTINE calc_libxc_a( i, rho, exc, vxc, rgrid, density )
+  subroutine calc_libxc_a( i, rho, exc, vxc, rgrid, density )
     implicit none
-    integer,intent(IN)  :: i
-    real(8),intent(IN)  :: rho(:,:)
-    real(8),intent(OUT) :: exc(:), vxc(:,:)
-    type(grid),intent(IN) :: rgrid
-    type(GSArray),intent(IN) :: density
+    integer,intent(in)  :: i
+    real(8),intent(in)  :: rho(:,:)
+    real(8),intent(out) :: exc(:), vxc(:,:)
+    type(grid),intent(in) :: rgrid
+    type(GSArray),intent(in) :: density
     real(8),allocatable :: vrho(:,:)
     real(8),allocatable :: sigma(:,:)
     real(8),allocatable :: vsigma(:,:)
-    real(8),allocatable :: a(:,:), b(:,:)
-    integer :: np,ns,j
+    !real(8),allocatable :: a(:,:), b(:,:)
+    real(8),allocatable :: a(:), b(:)
+    integer(8) :: np
+    integer :: ns,j,s
     type(gradient) :: grad
 
     np = size( rho, 1 )
     ns = size( rho, 2 )
 
-    allocate( a(ns,np) ) ; a=0.0d0
-
-    do j=1,np
-       a( 1,j) = rho(j, 1)
-       a(ns,j) = rho(j,ns)
+    !allocate( a(ns,np) ) ; a=0.0d0
+    !do j=1,np
+    !   a( 1,j) = rho(j, 1)
+    !   a(ns,j) = rho(j,ns)
+    !end do
+    allocate( a(ns*np) ); a=0.0d0
+    do s=1,ns
+       do j=1,np
+          a(j+np*(s-1)) = rho(j, s)
+       end do
     end do
 
-    select case( xc_f90_info_family(xc_info(i)) )
+    select case( xc_f90_func_info_get_family(xc_info(i)) )
     case( XC_FAMILY_LDA )
 
-       allocate( b(ns,np) ) ; b=0.0d0
+       !allocate( b(ns,np) ) ; b=0.0d0
+       allocate( b(ns*np) ) ; b=0.0d0
 
-       call xc_f90_lda_exc_vxc( xc_func(i), np, a(1,1), exc(1), b(1,1) )
+       !call xc_f90_lda_exc_vxc( xc_func(i), np, a(1,1), exc(1), b(1,1) )
+       call xc_f90_lda_exc_vxc( xc_func(i), np, a, exc, b )
 
-       do j=1,np
-          vxc(j, 1) = b( 1,j)
-          vxc(j,ns) = b(ns,j)
+       !do j=1,np
+       !   vxc(j, 1) = b( 1,j)
+       !   vxc(j,ns) = b(ns,j)
+       !end do
+       do s=1,ns
+          do j=1,np
+             vxc(j,s) = b(j+np*(s-1))
+          end do
        end do
 
        deallocate( b )
@@ -276,8 +291,10 @@ CONTAINS
 
        sigma(1,:) = grad%gg(:)
 
-       call xc_f90_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
-                                exc(1), vrho(1,1), vsigma(1,1) )
+       !call xc_f90_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
+       !                         exc(1), vrho(1,1), vsigma(1,1) )
+       call xc_f90_gga_exc_vxc( xc_func(i), np, a, sigma, &
+                                exc, vrho, vsigma )
 
        call calc_gga_pot( rgrid, vrho, vsigma, grad%gx, grad%gy, grad%gz, vxc )
 
@@ -293,8 +310,10 @@ CONTAINS
 
        call construct_gradient( rgrid, density, grad )
 
-       call xc_f90_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
-                                exc(1), vrho(1,1), vsigma(1,1) )
+       !call xc_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
+       !                         exc(1), vrho(1,1), vsigma(1,1) )
+       call xc_f90_gga_exc_vxc( xc_func(i), np, a, sigma, &
+                                exc, vrho, vsigma )
 
        call calc_gga_pot( rgrid, vrho, vsigma, grad%gx, grad%gy, grad%gz, vxc )
 
@@ -302,22 +321,26 @@ CONTAINS
        deallocate( vsigma )
        deallocate( sigma  )
 
-    case( XC_FAMILY_MGGA )
-    case( XC_FAMILY_HYB_MGGA )
-    case( XC_FAMILY_LCA )
+    case( XC_FAMILY_MGGA ); goto 900
+    case( XC_FAMILY_HYB_MGGA ); goto 900
+    case( XC_FAMILY_LCA ); goto 900
     end select
 
     deallocate( a )
 
-  END SUBROUTINE calc_libxc_a
+    return
+
+900 call stop_program("stop@calc_libxc_a")
+
+  end subroutine calc_libxc_a
 
 
-  SUBROUTINE calc_gga_pot( rgrid, vrho, vsigma, gx, gy, gz, vxc )
+  subroutine calc_gga_pot( rgrid, vrho, vsigma, gx, gy, gz, vxc )
     implicit none
-    type(grid),intent(IN) :: rgrid
-    real(8),intent(IN)  :: vrho(:,:), vsigma(:,:)
-    real(8),intent(IN)  :: gx(:), gy(:), gz(:)
-    real(8),intent(OUT) :: vxc(:,:)
+    type(grid),intent(in) :: rgrid
+    real(8),intent(in)  :: vrho(:,:), vsigma(:,:)
+    real(8),intent(in)  :: gx(:), gy(:), gz(:)
+    real(8),intent(out) :: vxc(:,:)
     real(8),allocatable :: f(:),g(:),h(:)
     integer :: m,n,i
 
@@ -348,16 +371,17 @@ CONTAINS
 
     deallocate( h, g, f )
 
-  END SUBROUTINE calc_gga_pot
+  end subroutine calc_gga_pot
 #endif
 
 
-  SUBROUTINE calc_fxc_libxc( rho, fxc )
+  subroutine calc_fxc_libxc( rho, fxc )
     implicit none
-    real(8),intent(IN)  :: rho(:,:)
-    real(8),intent(OUT) :: fxc(:,:)
+    real(8),intent(in)  :: rho(:,:)
+    real(8),intent(out) :: fxc(:,:)
     real(8),allocatable :: a(:,:), b(:,:)
-    integer :: np,ns,i,j,s
+    integer :: np4,ns,i,j,s
+    integer(8) :: np
 
     fxc=0.0d0
 
@@ -377,7 +401,7 @@ CONTAINS
 
     do i=1,num_func
 
-       select case( xc_f90_info_family(xc_info(i)) )
+       select case( xc_f90_func_info_get_family(xc_info(i)) )
        case( XC_FAMILY_LDA )
 
           call xc_f90_lda_fxc( xc_func(i), np, a(1,1), b(1,1) )
@@ -400,7 +424,7 @@ CONTAINS
     deallocate( a )
 
 #endif
-  END SUBROUTINE calc_fxc_libxc
+  end subroutine calc_fxc_libxc
 
 
-END MODULE libxc_module
+end module libxc_module

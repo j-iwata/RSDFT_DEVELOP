@@ -16,12 +16,13 @@ MODULE parallel_module
            ,np_band,np_spin,np_bzsm,np_grid &
            ,id_class,ircnt,idisp,ir_spin,id_spin &
            ,ir_band,id_band,ir_grid,id_grid,ir_bzsm,id_bzsm &
-           ,pinfo_grid,MB_d &
+           ,pinfo_grid,MB_d,MB_d_nl &
            ,read_parallel,init_parallel &
            ,start_mpi_parallel,end_mpi_parallel &
            ,disp_switch_parallel
   PUBLIC :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
   public :: get_range_parallel
+  public :: construct_id_ir_parallel
 
 #ifdef _NO_MPI_COMPLEX16_
   integer,parameter,public :: RSDFT_MPI_COMPLEX16 = MPI_DOUBLE_COMPLEX
@@ -38,7 +39,7 @@ MODULE parallel_module
   integer :: comm_band, myrank_b, nprocs_b, np_band
   integer :: comm_bzsm, myrank_k, nprocs_k, np_bzsm
   integer :: comm_fkmb, myrank_f, nprocs_f, np_fkmb
-  integer :: MB_d
+  integer :: MB_d, MB_d_nl
   integer,allocatable :: id_class(:,:),ircnt(:),idisp(:)
   integer,allocatable :: ir_grid(:),id_grid(:)
   integer,allocatable :: ir_band(:),id_band(:)
@@ -126,6 +127,7 @@ CONTAINS
     character(5) :: cbuf,ckey
     node_partition(:)=1
     MB_d = 0
+    MB_d_nl = 0
     if ( rank == 0 ) then
        rewind unit
        do i=1,10000
@@ -136,12 +138,14 @@ CONTAINS
              read(unit,*) cbuf,node_partition(1:max_parallel)
           else if ( ckey(1:3) == "MBD" ) then
              backspace(unit)
-             read(unit,*) cbuf,MB_d
+             read(unit,*) cbuf,MB_d,MB_d_nl
           end if
        end do
 999    continue
        write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
-       write(*,*) "MB_d=",MB_d
+       write(*,*) "MB_d   =",MB_d
+       if ( MB_d_nl == 0 ) MB_d_nl=MB_d
+       write(*,*) "MB_d_nl=",MB_d_nl
     end if
     call send_parallel(0)
   END SUBROUTINE read_parallel
@@ -167,6 +171,7 @@ CONTAINS
     integer :: ierr
     call mpi_bcast(node_partition,max_parallel,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
     call mpi_bcast(MB_d,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(MB_d_nl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_parallel
 
 
@@ -544,6 +549,9 @@ CONTAINS
     n = min( MB_d,ir_band(id_class(myrank,4)) )
     MB_d = max( n,1 )
 
+    n = min( MB_d_nl,ir_band(id_class(myrank,4)) )
+    MB_d_nl = max( n,1 )
+
 ! ---
 
     allocate( idisp(0:nprocs-1) ) ; idisp=-1
@@ -573,6 +581,33 @@ CONTAINS
        n2=n1+ir_spin(myrank_s)-1
     end select
   end subroutine get_range_parallel
+
+
+  subroutine construct_id_ir_parallel( id, ir, nn, comm_in, n0, n1 )
+    implicit none
+    integer,allocatable,intent(inout) :: id(:), ir(:)
+    integer,intent(in) :: nn
+    integer,optional,intent(in) :: comm_in
+    integer,optional,intent(out) :: n0, n1
+    integer :: np, ierr, i, j, comm, irank
+    comm=MPI_COMM_WORLD
+    if ( present(comm_in) ) comm=comm_in
+    call MPI_Comm_size( comm, np, ierr )
+    allocate( id(0:np-1) ); id=0
+    allocate( ir(0:np-1) ); ir=0
+    do i=0,nn-1
+       j=mod( i, np )
+       ir(j)=ir(j)+1
+    end do
+    do j=0,np-1
+       id(j) = sum( ir(0:j) ) - ir(j)
+    end do
+    if ( present(n0) .or. present(n1) ) then
+       call MPI_Comm_rank( comm, irank, ierr )
+       if ( present(n0) ) n0=id(irank)+1
+       if ( present(n1) ) n1=id(irank)+ir(irank)
+    end if
+  end subroutine construct_id_ir_parallel
 
 
 END MODULE parallel_module

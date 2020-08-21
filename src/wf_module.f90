@@ -384,13 +384,22 @@ CONTAINS
   END SUBROUTINE deallocate_work_wf
 
 
-  SUBROUTINE write_esp_wf( full_info )
+  subroutine write_esp_wf( full_info, index_vbm )
     implicit none
-    logical,optional,intent(IN) :: full_info
+    logical,optional,intent(in) :: full_info
+    integer,optional,intent(in) :: index_vbm
     integer :: k,n,s,i,n1,n2,nn,fi(2)
-    real(8) :: f(6)
+    real(8) :: f(6),evbm,ecbm
     character(57) :: header_string, format_string
     call check_disp_length( i, 0 ) ; if ( i < 1 ) return
+
+    evbm=maxval( esp(1:index_vbm,:,:) )
+    ecbm=minval( esp(index_vbm+1:,:,:) )
+    f(1)=ecbm-evbm
+    f(2)=(ecbm-evbm)*27.2116d0
+    format_string='(/,1x,"index_vbm, Band gap(ht,eV) :",i6,2f15.5)'
+    call write_int_and_real( format_string,1,(/index_vbm/),2,f ) 
+
     write(header_string,'(a4,a6,a20,2a13,1x)') &
          "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
     call write_string( "" )

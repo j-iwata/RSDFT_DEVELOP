@@ -1,0 +1,11 @@
+1) cd complex16/ or real8/
+
+2) Run RSDFT
+$ qsub runsh
+
+3) Compile utility/aa2cif.f90
+
+4) Generate a cif format file (atomic_coordinates.cif) from fort.197 (optimized structure)
+$ ./aa2cif < fort.197
+
+5) You can visualize the structure with some viewer (e.g. VESTA)

@@ -92,7 +92,7 @@ CONTAINS
     ncycl     = 0
     most      = 6
     nrfr      = 5
-    diter_opt = 50
+    diter_opt = Diter_scf
     okatom    = 0.5d0
     eeps      = 1.d-10
     feps      = 5.d-4
@@ -105,13 +105,13 @@ CONTAINS
           call convert_capital(cbuf,ckey)
           if ( ckey(1:8) == "ATOMOPT1" ) then
              backspace(unit)
-             read(unit,*) cbuf,ncycl,most,nrfr
+             read(unit,*) cbuf, ncycl, feps
           else if ( ckey(1:8) == "ATOMOPT2" ) then
              backspace(unit)
-             read(unit,*) cbuf,okatom,eeps,feps,decr
+             read(unit,*) cbuf, most, nrfr, diter_opt
           else if ( ckey(1:8) == "ATOMOPT3" ) then
              backspace(unit)
-             read(unit,*) cbuf,diter_opt
+             read(unit,*) cbuf, okatom, decr, eeps
           else if ( ckey(1:8) == "STRLOG" ) then
              backspace(unit)
              read(unit,*) cbuf,strlog

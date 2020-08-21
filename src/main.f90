@@ -52,7 +52,7 @@ PROGRAM Real_Space_DFT
   use test_rtsol_module
   use ps_getDij_module, only: getDij
   use ps_init_module, only: ps_init
-  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword
+  use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword, IOTools_findKeyword
   use lattice_module
   use ffte_sub_module, only: init_ffte_sub
   use fftw_module
@@ -84,6 +84,7 @@ PROGRAM Real_Space_DFT
   type(grid_info) :: rgrid
   logical,parameter :: recalc_esp=.true.
   logical :: flag_read_ncol=.false., DISP_SWITCH
+  logical :: skip_read_data=.false.
   real(8) :: Etot, Ehwf
   integer :: info_level=1
   character(32) :: lattice_index
@@ -430,7 +431,9 @@ PROGRAM Real_Space_DFT
 
 ! --- Read previous w.f. , density , potentials ---
 
-  call read_data(disp_switch)
+  call IOTools_findKeyword( "SKIP_READ_DATA", skip_read_data, flag_bcast=.true. )
+
+  if ( .not.skip_read_data ) call read_data(disp_switch)
 
   call io_read_noncollinear( myrank, flag_read_ncol )
 
@@ -549,6 +552,11 @@ PROGRAM Real_Space_DFT
         call calc_total_energy( recalc_esp, Etot, unit_in=6 )
      else
         if ( SYStype == 0 ) then
+           !if ( flag_noncollinear ) then
+           !   call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+           !else
+           !   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+           !end if
            call bomd
         else
            write(*,*) "MD for SYStype/=0 is not avaiable"

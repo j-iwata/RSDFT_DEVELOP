@@ -116,30 +116,30 @@ contains
 
     call watchb( ttmp, ttt(:,3), barrier='on' )
     if ( myrank == 0 ) then
-       write(*,*) "MB_d / MB =",MB_d, " / ",MB
+       write(*,*) "MB_d_nl / MB =",MB_d_nl, " / ",MB
        write(*,*) "time(nloc)=",ttt(:,3)
     end if
 
-    MBD_org = MB_d
+    MBD_org = MB_d_nl
 
-    MB_d = 1
+    MB_d_nl = 1
 
     do ii=0,10
 
-    if ( (ii>0.and.MB_d>=MB) .or. MB_d>MBD_org ) then
+    if ( (ii>0.and.MB_d_nl>=MB) .or. MB_d_nl>MBD_org ) then
        exit
     else if ( ii == 0 ) then
-       MB_d=1
-    else if ( mod(MB,MB_d*2) == 0 ) then
-       MB_d=MB_d*2
-    else if ( mod(MB,MB_d*3) == 0 ) then
-       MB_d=MB_d*3
-    else if ( mod(MB,MB_d*5) == 0 ) then
-       MB_d=MB_d*5
-    else if ( mod(MB,MB_d*7) == 0 ) then
-       MB_d=MB_d*7
-    else if ( MB_d >= MB ) then
-       MB_d=MB
+       MB_d_nl=1
+    else if ( mod(MB,MB_d_nl*2) == 0 ) then
+       MB_d_nl=MB_d_nl*2
+    else if ( mod(MB,MB_d_nl*3) == 0 ) then
+       MB_d_nl=MB_d_nl*3
+    else if ( mod(MB,MB_d_nl*5) == 0 ) then
+       MB_d_nl=MB_d_nl*5
+    else if ( mod(MB,MB_d_nl*7) == 0 ) then
+       MB_d_nl=MB_d_nl*7
+    else if ( MB_d_nl >= MB ) then
+       MB_d_nl=MB
     end if
 
     ttt(:,3)=0.0d0
@@ -151,11 +151,13 @@ contains
     call watchb( ttmp, ttt(:,3), barrier='on' )
 
     if ( myrank == 0 ) then
-       write(*,*) "MB_d / MB =",MB_d, " / ",MB
+       write(*,*) "MB_d_nl / MB =",MB_d_nl, " / ",MB
        write(*,*) "time(nloc)=",ttt(:,3)
     end if
 
     end do ! ii
+
+    call watchb( ttmp, barrier='on' )
 
     forcet(:,:)=forcet(:,:)+force(:,:)
 
@@ -168,7 +170,7 @@ contains
        end do
     end if
 
-    MB_d = MBD_org
+    MB_d_nl = MBD_org
 
 ! ---
 

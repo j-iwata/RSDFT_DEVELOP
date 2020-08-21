@@ -1,0 +1,12 @@
+1) Run RSDFT
+
+$ pjsub runsh
+
+After rsdft run, 'band2gp' is executed in the 'runsh'.
+
+
+3) plotting the band
+
+$ gnuplot
+gnuplot> load 'plot_band'
+
