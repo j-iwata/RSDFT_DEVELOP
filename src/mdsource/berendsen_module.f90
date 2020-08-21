@@ -19,13 +19,16 @@ CONTAINS
     real(8),intent(IN) :: temp, dt
     real(8),parameter :: thresh=1.d-6 ! don't scale if we are too "cold"
     real(8),parameter :: taubp =2.0d0 ! time constant
-    real(8) :: temp_now,c
+    real(8) :: temp_now,c,taubp2
 
     call calc_temp( Velocity, temp_now )
 
     if ( (temp_now/temp) > thresh ) then
 
-       c = sqrt( 1.0d0 + dt/taubp*(temp/temp_now-1.0d0) )
+       !taubp2 = taubp
+       taubp2 = dt/0.0025d0
+
+       c = sqrt( 1.0d0 + dt/taubp2*(temp/temp_now-1.0d0) )
 
        Velocity(:,:) = Velocity(:,:)*c
 
