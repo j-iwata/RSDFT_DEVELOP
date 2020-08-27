@@ -21,7 +21,7 @@ SUBROUTINE convert_to_capital( CKEY )
 
   implicit none
 
-  character(*),intent(OUT) :: CKEY
+  character(*),intent(INOUT) :: CKEY
   integer :: j,k,n
 
   n=len_trim(CKEY)
