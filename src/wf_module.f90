@@ -393,12 +393,14 @@ CONTAINS
     character(57) :: header_string, format_string
     call check_disp_length( i, 0 ) ; if ( i < 1 ) return
 
-    evbm=maxval( esp(1:index_vbm,:,:) )
-    ecbm=minval( esp(index_vbm+1:,:,:) )
-    f(1)=ecbm-evbm
-    f(2)=(ecbm-evbm)*27.2116d0
-    format_string='(/,1x,"index_vbm, Band gap(ht,eV) :",i6,2f15.5)'
-    call write_int_and_real( format_string,1,(/index_vbm/),2,f ) 
+    if( present(index_vbm) )then
+       evbm=maxval( esp(1:index_vbm,:,:) )
+       ecbm=minval( esp(index_vbm+1:,:,:) )
+       f(1)=ecbm-evbm
+       f(2)=(ecbm-evbm)*27.2116d0
+       format_string='(/,1x,"index_vbm, Band gap(ht,eV) :",i6,2f15.5)'
+       call write_int_and_real( format_string,1,(/index_vbm/),2,f ) 
+    end if
 
     write(header_string,'(a4,a6,a20,2a13,1x)') &
          "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
