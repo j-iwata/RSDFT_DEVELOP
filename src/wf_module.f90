@@ -399,7 +399,8 @@ CONTAINS
        f(1)=ecbm-evbm
        f(2)=(ecbm-evbm)*27.2116d0
        format_string='(/,1x,"index_vbm, Band gap(ht,eV) :",i6,2f15.5)'
-       call write_int_and_real( format_string,1,(/index_vbm/),2,f ) 
+       fi(1)=index_vbm
+       call write_int_and_real( format_string,1,fi(1:1),2,f ) 
     end if
 
     write(header_string,'(a4,a6,a20,2a13,1x)') &
