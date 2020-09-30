@@ -203,7 +203,9 @@ PROGRAM Real_Space_DFT
 
 ! --- count the total # of electrons & check # of bands ---
 
-  call count_electron
+  call read_electron
+
+  call count_electron( Zps, ki_atom )
 
   call check_Nband_electron
 
@@ -376,7 +378,6 @@ PROGRAM Real_Space_DFT
      write(*,*) "Nspin =",Nspin
      write(*,*) "Nbzsm =",Nbzsm,MBZ
      write(*,*) "Nelectron =",Nelectron
-     write(*,*) "Next_electron =",Next_electron
      write(*,*) "Ndspin,Nfixed =",Ndspin,Nfixed
      write(*,*) "Zps   =",Zps(1:Nelement)
      write(*,*) "sum(occ)=",sum(occ),count(occ(:,1,1)/=0.0d0)

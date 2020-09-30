@@ -1,128 +1,131 @@
-MODULE electron_module
+module electron_module
 
-  use atom_module, only: Natom,Nelement,ki_atom
-  use pseudopot_module, only: Zps
-  use bz_module, only: Nbzsm,weight_bz
+  use io_tools_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: Nband,Nspin,Nelectron,Next_electron &
-           ,Ndspin,Nfixed &
-           ,read_electron,count_electron &
-           ,Nelectron_spin, dspin
-  PUBLIC :: check_Nband_electron
+  private
+  integer,public :: Nband
+  real(8),public :: Nelectron
+  integer,public :: Nspin
+  real(8),public :: Nelectron_spin(2)
+  real(8),public :: Ndspin
+  integer,public :: Nfixed
 
-  integer :: Nband, Nspin, Nfixed
-  real(8) :: Nelectron,Next_electron,Ndspin
-  integer :: MB_0,MB_1,MSP_0,MSP_1
+  public :: read_electron
+  public :: count_electron
+  public :: check_Nband_electron
+  public :: get_atomic_site_spin_diff_electron
 
   integer,parameter :: unit_sc=980
-  real(8) :: Nelectron_spin(2)
-  real(8),allocatable :: dspin(:)
+  real(8),allocatable :: dspin(:,:)
+  real(8) :: Next_electron
 
-CONTAINS
+contains
 
-  SUBROUTINE read_electron(rank,unit)
+  subroutine read_electron
     implicit none
-    integer,intent(IN) :: rank,unit
     integer :: i
     character(6) :: cbuf,ckey
+    logical :: disp
+    call write_border( 0, " read_electron(start)" )
+    call check_disp_switch( disp, 0 )
     Nband=0
     Nspin=1
     Nfixed=0
-    Ndspin=0
-    Next_electron=0.d0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "NBAND" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nband
-          else if ( ckey(1:5) == "NSPIN" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nspin
-          else if ( ckey(1:6) == "NDSPIN" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Ndspin
-          else if ( ckey(1:6) == "NFIXED" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Nfixed
-          else if ( ckey(1:6) == "NEXTE" ) then
-             backspace(unit)
-             read(unit,*) cbuf,Next_electron
-          end if
-       end do
-999    continue
-       write(*,*) "Nband=",Nband
-       write(*,*) "Nspin=",Nspin
-       write(*,*) "Ndspin=",Ndspin
-       write(*,*) "Nfixed=",Nfixed
-       write(*,*) "Next_electron=",Next_electron
-       if ( Nspin == 1 .and. Ndspin /= 0.d0 ) then
-          Ndspin=0.d0
-          write(*,*) "Ndspin is replaced to 0.0: Ndspin=",Ndspin
-       end if
+    Ndspin=0.0d0
+    Next_electron=0.0d0
+    call IOTools_readIntegerKeyword('NBAND' ,Nband)
+    call IOTools_readIntegerKeyword('NSPIN' ,Nspin)
+    call IOTools_readIntegerKeyword('NFIXED',Nfixed)
+    call IOTools_readReal8Keyword('NDSPIN',Ndspin)
+    call IOTools_readReal8Keyword('NEXTE' ,Next_electron)
+    if( disp )then
+      write(*,*) "# of Bnads: Nband=",Nband
+      write(*,*) "# of spin degeree of freedom: Nspin=",Nspin
+      write(*,*) "Absolute # of spin difference: Ndspin=",Ndspin
+      write(*,*) "(Spin configuration is read from fort.980 if Ndspin is negative)"
+      write(*,*) "# of iteration steps keeping Ndspin: Nfixed=",Nfixed
+      write(*,*) "Extra # of electrons: Next_electron=",Next_electron
     end if
-    call send_electron(0)
-    if ( Ndspin < 0.0d0 ) then
-       allocate( dspin(Natom) ) ; dspin=0.0d0
-       call Read_SpinConf(rank)
+    if ( Nspin == 1 .and. Ndspin /= 0.0d0 ) then
+      Ndspin=0.0d0
+      if ( disp ) write(*,*) "Ndspin is replaced to 0.0: Ndspin=",Ndspin
     end if
-  END SUBROUTINE read_electron
+    if ( Ndspin < 0.0d0 ) call Read_SpinConf( dspin )
+    call write_border( 0, " read_electron(end)" )
+  end subroutine read_electron
 
 
-  SUBROUTINE Read_SpinConf(rank)
+  subroutine Read_SpinConf( dspin )
     implicit none
-    integer,intent(IN) :: rank
-    integer :: i1,i2,i,ierr
+    real(8),allocatable,intent(inout) :: dspin(:,:)
+    integer :: ndat,i1,i2,i,ierr,myrank
     real(8) :: diff_ele
     include 'mpif.h'
-    if ( rank == 0 ) then
-       rewind unit_sc
-       do i=1,Natom
-          read(unit_sc,*,END=90) i1,i2,diff_ele
-          dspin(i1:i2)=diff_ele
-       end do
-90     continue
+    call write_border( 0, " Read_SpinConf(start)" )
+    call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
+    if ( myrank == 0 ) then
+      rewind unit_sc
+      ndat=0
+      do
+        read(unit_sc,*,END=90) i1,i2,diff_ele
+        ndat = ndat + 1
+      end do
+90    continue
     end if
-    call MPI_BCAST(dspin,Natom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    Ndspin=sum(dspin)
-    if ( rank == 0 ) write(*,*) "Ndspin is replaced: Ndspin=",Ndspin
-  END SUBROUTINE Read_SpinConf
+    call MPI_BCAST(ndat,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)      
+    allocate( dspin(3,ndat) ); dspin=0.0d0
+    if ( myrank == 0 ) then
+      rewind unit_sc
+      do i = 1, ndat
+        read(unit_sc,*) dspin(1:3,i)
+      end do
+    end if
+    call MPI_BCAST(dspin,size(dspin),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    Ndspin=sum( dspin(3,:) )
+    if ( myrank == 0 ) write(*,*) "Ndspin is replaced: Ndspin=",Ndspin
+    call write_border( 0, " Read_SpinConf(end)" )
+  end subroutine Read_SpinConf
 
 
-  SUBROUTINE send_electron(rank)
+  subroutine get_atomic_site_spin_diff_electron( d, iatom )
     implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    include 'mpif.h'
-    call mpi_bcast(Nband,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Nspin,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Next_electron,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Ndspin,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(Nfixed,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_electron
+    real(8),intent(out) :: d
+    integer,intent(in)  :: iatom
+    integer :: i, i1, i2
+    d=0.0d0
+    if ( Nspin == 1 .or. Ndspin == 0.0d0 .or. .not.allocated(dspin) ) return
+    do i = 1, size(dspin,2)
+      i1 = nint( dspin(1,i) )
+      i2 = nint( dspin(2,i) )
+      if ( i1 <= iatom .and. iatom <= i2 ) then
+        d = dspin(3,i)
+        return
+      end if
+    end do
+  end subroutine get_atomic_site_spin_diff_electron
 
 
-  SUBROUTINE count_electron
+  subroutine count_electron( Zps, element_id )
     implicit none
-    integer :: i
+    real(8),intent(in) :: Zps(:)
+    integer,intent(in) :: element_id(:)
+    integer :: iatom,natom
     call write_border( 0, " count_electron(start)" )
-    Nelectron=0.0d0
-    do i=1,Natom
-       Nelectron = Nelectron + Zps(ki_atom(i))
+    natom=size(element_id)
+    Nelectron = 0.0d0
+    do iatom = 1, natom
+       Nelectron = Nelectron + Zps( element_id(iatom) )
     end do
     Nelectron = Nelectron + Next_electron
     Nelectron_spin(1) = 0.5d0*Nelectron + 0.5d0*Ndspin
     Nelectron_spin(2) = 0.5d0*Nelectron - 0.5d0*Ndspin
     call write_border( 0, " count_electron(end)" )
-  END SUBROUTINE count_electron
+  end subroutine count_electron
 
 
-  SUBROUTINE check_Nband_electron
+  subroutine check_Nband_electron
     implicit none
     real(8),parameter :: factor=1.5d0
     character(30) :: mesg
@@ -134,7 +137,7 @@ CONTAINS
        call write_string( mesg )
     end if
     call write_border( 0, " check_Nband_electron(end)" )
-  END SUBROUTINE check_Nband_electron
+  end subroutine check_Nband_electron
 
 
-END MODULE electron_module
+end module electron_module

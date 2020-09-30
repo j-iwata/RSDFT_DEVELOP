@@ -5,7 +5,8 @@ MODULE ps_initrho_module
   use atom_module, only: Natom,Nelement, ki_atom,aa_atom
   use strfac_module, only: SGK
   use pseudopot_module, only: Mr,rad,rab,cdd,Zps,cdd_coef
-  use electron_module, only: Nspin, dspin, Nelectron, Nelectron_spin
+  use electron_module, only: Nspin, Nelectron, Nelectron_spin &
+                            ,get_atomic_site_spin_diff_electron
   use parallel_module
   use aa_module
   use fft_module
@@ -436,12 +437,15 @@ CONTAINS
   END SUBROUTINE get_nearest_index
 
 
-  SUBROUTINE construct_ps_initrho_r_spin( rho )
+  subroutine construct_ps_initrho_r_spin( rho )
     implicit none
-    real(8),intent(OUT) :: rho(:,:)
+    real(8),intent(out) :: rho(:,:)
     integer :: iatm,ielm,i,i1,i2,i3,j1,j2,j3,m_grid,m_spin,ierr,s
     real(8) :: c(2),a1,a2,a3,x,y,z,r1,r2,r3,c1,c2,c3,pi4,rr,zi,d
     real(8),allocatable :: rho_tmp(:)
+    logical :: use_initial_spin_conf
+
+    use_initial_spin_conf = .false.
 
     c1   = 1.0d0/Ngrid(1)
     c2   = 1.0d0/Ngrid(2)
@@ -462,9 +466,12 @@ CONTAINS
 
        ielm=ki_atom(iatm)
 
-       if ( allocated(dspin) ) then
-          c(1) = 0.5d0*( Zps(ielm) + dspin(iatm) )/Zps(ielm)
-          c(2) = 0.5d0*( Zps(ielm) - dspin(iatm) )/Zps(ielm)
+       c(1:2)=0.0d0
+       call get_atomic_site_spin_diff_electron( d, iatm )
+       if ( d /= 0.0d0 ) then       
+         c(1) = 0.5d0*( Zps(ielm) + d )/Zps(ielm)
+         c(2) = 0.5d0*( Zps(ielm) - d )/Zps(ielm)
+         use_initial_spin_conf = .true.
        end if
 
        zi=zi+Zps(ielm)
@@ -493,7 +500,7 @@ CONTAINS
                 call use_interpolation( sqrt(rr),rad(:,ielm),cdd(:,ielm),d )
              end if
              rho_tmp(i) = rho_tmp(i) + d
-             if ( allocated(dspin) ) then
+             if ( any(c/=0.0d0) ) then
                 do s=1,Nspin
                    rho(i,s) = rho(i,s) + c(s)*d
                 end do
@@ -507,7 +514,7 @@ CONTAINS
 
     end do ! iatm
 
-    if ( .not.allocated(dspin) ) then
+    if ( .not.use_initial_spin_conf ) then
        d=1.0d0/Nspin
        do s=1,Nspin
           rho(:,s) = d*rho_tmp(:)
@@ -516,7 +523,7 @@ CONTAINS
 
     deallocate( rho_tmp )
 
-  END SUBROUTINE construct_ps_initrho_r_spin
+  end subroutine construct_ps_initrho_r_spin
 
 
   SUBROUTINE normalize_initrho( N, rho )

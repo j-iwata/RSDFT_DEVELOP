@@ -11,7 +11,6 @@ MODULE parameters_module
   use parallel_module, only: myrank, read_parallel
   use bz_module
   use scalapack_module
-  use electron_module
   use ps_nloc2_init_module
   use gram_schmidt_t_module
   use cg_module
@@ -43,8 +42,6 @@ CONTAINS
     call read_bz
 
     call read_scalapack
-
-    call read_electron(myrank,unit)
 
     call read_ps_initrho
 
