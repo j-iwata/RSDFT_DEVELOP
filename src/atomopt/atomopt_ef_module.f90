@@ -1,4 +1,4 @@
-module atomopt_rf_module
+module atomopt_ef_module
 
   use lattice_module
   use atom_module, only: atom, construct_atom, aa_atom &
@@ -21,7 +21,7 @@ module atomopt_rf_module
   implicit none
 
   private
-  public :: atomopt_rf
+  public :: atomopt_ef
 
   logical :: disp_sw, disp_scf
   integer :: SYStype
@@ -30,29 +30,32 @@ module atomopt_rf_module
 contains
 
 
-  subroutine atomopt_rf( SYStype_in, fmax_tol, NiterSCF_in )
+  subroutine atomopt_ef( SYStype_in, fmax_tol, ncycle, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
+    integer,intent(in) :: ncycle
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa, bb
-    integer,parameter :: max_loop=50, np=20
+    integer :: max_loop
     integer :: ishape(1), ishape2(2), i1,i2, LWORK=0
     integer :: n,il,iu,m,a,ierr,loop,i,j,icount,ip
     integer,allocatable :: iwork(:),ifail(:)
     real(8) :: etot0, etot, fmax
-    real(8) :: dxdg,dxHdx,c1,c2
+    real(8) :: dxdg,dxHdx,c1,c2,dmax,dtmp
     real(8) :: vl,vu,tol,alpha
     real(8) :: aa_inv(3,3),da(3),da_tmp(3)
     real(8),parameter :: one=1.0d0, zero=0.0d0
     real(8),allocatable :: g(:),x(:),Hessian(:,:),Htmp(:,:)
+    real(8),allocatable :: Vtmp(:,:),Wtmp(:,:)
     real(8),allocatable :: history(:,:),g0(:),x0(:),d(:)
     real(8),allocatable :: dx(:),dg(:),Hdx(:)
     real(8),allocatable :: w(:),z(:,:),work(:)
+    real(8),parameter :: eig_threshold=0.02d0
 
-    call write_border( 0, "atomopt_rf(start)" )
+    call write_border( 0, "atomopt_ef(start)" )
     call check_disp_switch( disp_sw, 0 )
     disp_scf = disp_sw
     call check_disp_length( i, 0 )
@@ -66,6 +69,8 @@ contains
     SYStype = SYStype_in
 
     NiterSCF = 50 ; if ( present(NiterSCF_in) ) NiterSCF=NiterSCF_in
+
+    max_loop = ncycle
 
 ! ---
 
@@ -99,7 +104,9 @@ contains
     allocate( g0(n) ) ; g0=0.0d0
     allocate( x0(n) ) ; x0=0.0d0
     allocate( Hessian(n,n) ) ; Hessian=0.0d0
-    allocate( Htmp(n+1,n+1) ) ; Htmp=0.0d0
+    allocate( Htmp(n,n) ) ; Htmp=0.0d0
+    allocate( Vtmp(n,n) ) ; Vtmp=0.0d0
+    allocate( Wtmp(n,n) ) ; Wtmp=0.0d0
     allocate( Hdx(n)    ) ; Hdx=0.0d0
     allocate( dx(n)     ) ; dx=0.0d0
     allocate( dg(n)     ) ; dg=0.0d0
@@ -107,35 +114,30 @@ contains
     ishape(1) = n
     ishape2(1:2) = (/ 3, ion%natom /)
 
-    allocate( history(0:max_loop*np,3) ) ; history=0.0d0
+    allocate( history(0:max_loop,4) ) ; history=0.0d0
 
     history(0,1) = etot
     history(0,2) = fmax
     history(0,3) = ierr
 
-! --- for LAPACK
+! --- LAPACK
 
-    tol=1.d-10
-    vl=0.0d0
-    vu=0.0d0
-    il=1
-    iu=1
-    m=iu-il+1
-    allocate( w(n+1)         ) ; w=0.0d0
-    allocate( z(n+1,m)       ) ; z=0.0d0
-    allocate( work(8*(n+1))  ) ; work=0.0d0
-    allocate( iwork(5*(n+1)) ) ; iwork=0
-    allocate( ifail(n+1)     ) ; ifail=0
-
-! ---
-
-    alpha = 1.0d0
+    if ( LWORK == 0 ) then
+      allocate( w(n) ); w=0.0d0
+      allocate( work(1) )
+      call dsyev('V','U',n+1,Htmp,n+1,w,work,-1,ierr)
+      LWORK=nint( work(1) )
+      deallocate( work )
+      allocate( work(LWORK) ); work=0.0d0
+    end if
 
     icount = 0
 
     do loop=1,max_loop
 
       if ( disp_sw ) write(*,'(a60," ICY=",i4)') repeat("-",60),loop
+
+      alpha = 1.0d0
 
       if ( loop == 1 ) then
 
@@ -151,27 +153,6 @@ contains
         x0(:) = x(:)
         g0(:) = g(:)
 
-        do a=1,ion%natom
-          i2 = a*3
-          i1 = i2 - 3 + 1 
-          da = matmul( aa_inv, d(i1:i2) )
-          do i=1,3
-            da_tmp(1) = abs(da(i))
-            da_tmp(2) = abs(da(i)+1.0d0)
-            da_tmp(3) = abs(da(i)-1.0d0)
-            j = minloc( da_tmp, 1 )
-            select case(j)
-            case(1)
-            case(2); da(i)=da(i)+1.0d0
-            case(3); da(i)=da(i)-1.0d0
-            end select
-          end do
-          d(i1:i2) = matmul( aa%LatticeVector, da )
-        end do
-
-        x(:) = x0(:) + alpha*d(:)
-        ion%xyz(:,:) = reshape( x, ishape2 )
-
       else
 
         dx(:) = x(:) - x0(:)
@@ -179,86 +160,112 @@ contains
 
         dxdg = sum( dx*dg )
         if ( disp_sw ) write(*,*) "dxdg=",dxdg
-        !if ( dxdg < 0.0d0 ) then
-        !   ion%xyz(:,:)   = reshape( x0, ishape2 )
-        !   ion%force(:,:) = reshape( -g0, ishape2 )
-        !   exit
-        !end if
-        call dgemv( 'N', n, n, one, Hessian, n, dx, 1, zero, Hdx, 1 )
-        dxHdx = sum( dx*Hdx )
-        c1 = 1.0d0/dxdg
-        c2 = 1.0d0/dxHdx
-        do j=1,n
-        do i=1,n
-          Hessian(i,j) = Hessian(i,j) + dg(i)*dg(j)*c1 - Hdx(i)*Hdx(j)*c2
-        end do
-        end do
 
-        Htmp=0.0d0
-        Htmp(1:n,1:n) = Hessian(:,:)
-        Htmp(1:n,n+1) = g(:)
-        Htmp(n+1,1:n) = g(:)
+        if ( dxdg <= 0.0d0 ) then
 
-!---
-        if ( LWORK == 0 ) then
-          call dsyevx('V','I','U',n+1,Htmp,n+1,vl,vu,il,iu,tol,m,w,z,n+1 &
-               ,work,-1,iwork,ifail,ierr)
-          LWORK=nint(work(1))
-          deallocate( work )
-          allocate( work(LWORK) ); work=0.0d0
-        end if
-        call dsyevx('V','I','U',n+1,Htmp,n+1,vl,vu,il,iu,tol,m,w,z,n+1 &
-                    ,work,size(work),iwork,ifail,ierr)
-        d(:) = z(1:n,1)/z(n+1,1)
-!---
-!        if ( LWORK == 0 ) then
-!          call dsyev('V','U',n+1,Htmp,n+1,w,work,-1,ierr)
-!          LWORK=nint( work(1) )
-!          deallocate( work )
-!          allocate( work(LWORK) ); work=0.0d0
-!        end if
-!        call dsyev('V','U',n+1,Htmp,n+1,w,work,size(work),ierr)
-!        d(:) = Htmp(1:n,1)/Htmp(n+1,1)
-!---
+          d(:)  = -g(:)
+          x0(:) = x(:)
+          g0(:) = g(:)
 
-        x0(:) = x(:)
-        g0(:) = g(:)
-
-        do a=1,ion%natom
-          i2 = a*3
-          i1 = i2 - 3 + 1 
-          da = matmul( aa_inv, d(i1:i2) )
-          do i=1,3
-            da_tmp(1) = abs(da(i))
-            da_tmp(2) = abs(da(i)+1.0d0)
-            da_tmp(3) = abs(da(i)-1.0d0)
-            j = minloc( da_tmp, 1 )
-            select case(j)
-            case(1)
-            case(2); da(i)=da(i)+1.0d0
-            case(3); da(i)=da(i)-1.0d0
-            end select
+          Hessian=0.0d0
+          do i=1,size(Hessian,1)
+            Hessian(i,i)=1.0d0
           end do
-          d(i1:i2) = matmul( aa%LatticeVector, da )
-        end do
 
-        x(:) = x0(:) + d(:)
-        ion%xyz(:,:) = reshape( x, ishape2 )
+        else
+
+          call dgemv( 'N', n, n, one, Hessian, n, dx, 1, zero, Hdx, 1 )
+          dxHdx = sum( dx*Hdx )
+          c1 = 1.0d0/dxdg
+          c2 = 1.0d0/dxHdx
+          do j=1,n
+          do i=1,n
+            Hessian(i,j) = Hessian(i,j) + dg(i)*dg(j)*c1 - Hdx(i)*Hdx(j)*c2
+          end do
+          end do
+
+          Htmp(:,:) = Hessian(:,:)
+          call dsyev('V','U',n,Htmp,n,w,work,size(work),ierr)
+
+          do i=1,n
+            if ( w(i) < eig_threshold ) then
+              write(*,*) "i,w(i)",i,w(i),"  ---> replaced to",eig_threshold
+              w(i) = eig_threshold
+            else
+              exit
+            end if
+          end do
+
+          Vtmp=0.0d0
+          do i=1,n
+            Vtmp(i,i)=1.0d0/w(i)
+          end do
+          Vtmp=matmul( Vtmp,transpose(Htmp) )
+          Vtmp=matmul( Htmp,Vtmp )
+
+          Wtmp=matmul( Vtmp, Hessian )
+          write(*,*) "1sum(Wtmp**2)",sum(Wtmp**2)
+          Wtmp=matmul( Hessian, Vtmp )
+          write(*,*) "2sum(Wtmp**2)",sum(Wtmp**2)
+
+          x0(:) = x(:)
+          g0(:) = g(:)
+        
+          call DGEMV('N',n,n,-1.0d0,Vtmp,n,g(:),1,0.0d0,d,1)
+
+        end if
 
       end if
+
+      do a=1,ion%natom
+        i2 = a*3
+        i1 = i2 - 3 + 1 
+        da = matmul( aa_inv, d(i1:i2) )
+        do i=1,3
+          da_tmp(1) = abs(da(i))
+          da_tmp(2) = abs(da(i)+1.0d0)
+          da_tmp(3) = abs(da(i)-1.0d0)
+          j = minloc( da_tmp, 1 )
+          select case(j)
+          case(1)
+          case(2); da(i)=da(i)+1.0d0
+          case(3); da(i)=da(i)-1.0d0
+          end select
+        end do
+        d(i1:i2) = matmul( aa%LatticeVector, da )
+      end do
+
 
 ! ---
-      aa_atom(:,:) = matmul( aa_inv, ion%xyz )
-      call shift_aa_coordinates_atom( aa_atom )
+
       if ( disp_sw ) then
         write(*,*) "Next trial configuration"
-        do a=1,ion%natom
-          i2 = 3*a
-          i1 = i2 - 3 + 1
-          write(*,'(i2,2x,3f10.5,2x,3es14.5,2x,es14.5)') &
-               a,aa_atom(:,a),ion%xyz(:,a),sqrt(sum(d(i1:i2)**2))*alpha
-        end do
       end if
+      dmax=0.0d0
+      do a=1,ion%natom
+        i2 = 3*a
+        i1 = i2 - 3 + 1
+        dtmp = sqrt(sum(d(i1:i2)**2))*alpha
+        if ( disp_sw ) then
+          write(*,'(i2,2x,3f10.5,2x,3es14.5,2x,es14.5)') &
+               a,aa_atom(:,a),ion%xyz(:,a),dtmp
+        end if
+        dmax=max(dmax,dtmp)
+      end do
+      if ( disp_sw ) then
+        write(*,*) "Maximum displacement(bohr):",dmax
+      end if
+
+      if ( dmax > 2.0d0 ) then
+        alpha=alpha/dmax
+      end if
+
+      x(:) = x0(:) + alpha*d(:)
+
+      ion%xyz(:,:) = reshape( x, ishape2 )
+
+      aa_atom(:,:) = matmul( aa_inv, ion%xyz )
+      call shift_aa_coordinates_atom( aa_atom )        
           
       call write_coordinates_atom( 97, 3 )
 
@@ -269,11 +276,12 @@ contains
       history(icount,1) = etot
       history(icount,2) = fmax
       history(icount,3) = ierr
+      history(icount,4) = alpha
 
       if ( disp_sw ) then
         do i=0,icount
-          write(*,'(1x,i4,f20.10,es14.5,i4)') &
-               i, (history(i,j),j=1,2), nint(history(i,3))
+          write(*,'(1x,i4,f20.10,es14.5,i4,es14.5)') &
+               i, (history(i,j),j=1,2), nint(history(i,3)),history(i,4)
         end do
       end if
 
@@ -291,12 +299,12 @@ contains
     end if
 
 999 call check_disp_switch( disp_sw, 1 )
-    call write_border( 0, "atomopt_rf(end)" )
+    call write_border( 0, "atomopt_ef(end)" )
 
-    deallocate( ifail )
-    deallocate( iwork )
+!    deallocate( ifail )
+!    deallocate( iwork )
     deallocate( work )
-    deallocate( z )
+!    deallocate( z )
     deallocate( w )
     deallocate( history )
     deallocate( dg )
@@ -309,7 +317,7 @@ contains
     deallocate( x )
     deallocate( g )
 
-  end subroutine atomopt_rf
+  end subroutine atomopt_ef
 
 
   subroutine scf( etot, ierr_out )
@@ -351,4 +359,4 @@ contains
   end subroutine scf
 
 
-end module atomopt_rf_module
+end module atomopt_ef_module

@@ -1,4 +1,4 @@
-MODULE atomopt_bfgs_module
+module atomopt_bfgs_module
 
   use lattice_module
   use atom_module, only: atom, construct_atom, aa_atom &
@@ -17,36 +17,53 @@ MODULE atomopt_bfgs_module
   use ps_nloc2_module
   use ps_nloc_mr_module
   use scf_module
+  use watch_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: atomopt_bfgs
+  private
+  public :: atomopt_bfgs
 
   integer :: SYStype
   logical :: disp_sw, disp_scf
   integer :: NiterSCF
 
-CONTAINS
+contains
 
 
-  SUBROUTINE atomopt_bfgs( SYStype_in, fmax_tol, NiterSCF_in )
+  subroutine atomopt_bfgs( SYStype_in, fmax_tol, ncycle, NiterSCF_in )
 
     implicit none
-    integer,intent(IN) :: SYStype_in
-    real(8),intent(IN) :: fmax_tol
-    integer,optional,intent(IN) :: NiterSCF_in
+    integer,intent(in) :: SYStype_in
+    real(8),intent(in) :: fmax_tol
+    integer,intent(in) :: ncycle
+    integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa
-    integer,parameter :: max_loop=5
-    integer :: np
-    integer :: a, ierr, ip, jp, loop,i,j, icount
-    real(8) :: etot, fmax
-    real(8) :: dxdg,dgHdg,dxg,dgHg
-    real(8) :: aa_inv(3,3)
-    real(8),allocatable :: g(:,:,:),x(:,:,:),Hg(:,:,:),Hdg(:,:,:)
-    real(8),allocatable :: history(:,:)
-    real(8),allocatable :: dx(:,:),dg(:,:)
+    integer,parameter :: max_loop_default=5
+    integer :: np, max_loop,max_loop_linmin=5
+    integer :: i1,i2,j1,j2,i,j,n,loop_linmin
+    integer :: a, ierr, ip, jp, loop, icount
+    real(8) :: etot, fmax, tmp
+    real(8) :: dxdg,dgHdg,dxg,dgHg,c,alpha,rdg
+    real(8) :: aa_inv(3,3), da(3), da_tmp(3)
+    real(8),allocatable :: g(:,:,:),x(:,:,:),Hg(:,:,:),Hdg(:,:)
+    real(8),allocatable :: history(:,:),r(:,:)
+    real(8),allocatable :: dx(:,:),dg(:,:),d(:,:)
+    real(8),allocatable :: H(:,:), V(:,:), VT(:,:),W(:,:)
+    real(8),allocatable :: HSR1(:,:)
+    real(8),allocatable :: foraa(:,:)
+
+    integer :: imax
+    real(8) :: dd,dmax
+    real(8) :: tt_start(2),tt(2,0:10)
+    logical :: use_xyz=.true., flag_check(2)
+    real(8) :: Armijo, Wolfe2
+    real(8) :: delta, sigma
+    real(8),allocatable :: backup_force(:,:)
+    real(8) :: backup_data(4)
+
+    tt=0.0d0; call watchb( tt_start ); tt(:,0)=tt_start
 
     call write_border( 0, "atomopt_bfgs(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -63,6 +80,8 @@ CONTAINS
 
     NiterSCF = 50 ; if ( present(NiterSCF_in) ) NiterSCF=NiterSCF_in
 
+    max_loop = ncycle
+
 ! ---
 
     call get_aa_lattice( aa )
@@ -75,110 +94,333 @@ CONTAINS
     end do
 
     if ( disp_sw ) then
-       write(*,*) "Initial configuration"
+       write(*,*) "Initial configuration(in reduced coordinates)"
        do a=1,ion%natom
           write(*,'(1x,3f20.15)') ion%aaa(1:3,a)
        end do
     end if
 
     call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+
     call calc_force( ion%natom, ion%force, fmax )
 
     if ( fmax <= fmax_tol ) goto 900
 
+    allocate( foraa(3,ion%natom) ); foraa=0.0d0
+
+    foraa = matmul( transpose(aa_inv), ion%force )
+
 ! ---
 
-    np = 20
+    np = 1
     allocate( g(3,ion%natom,0:np)  ) ; g=0.0d0
     allocate( x(3,ion%natom,0:np)  ) ; x=0.0d0
     allocate( Hg(3,ion%natom,0:np) ) ; Hg=0.0d0
-    allocate( Hdg(3,ion%natom,np)  ) ; Hdg=0.0d0
+    allocate( Hdg(3,ion%natom) ) ; Hdg=0.0d0
     allocate( dx(3,ion%natom) ) ; dx=0.0d0
     allocate( dg(3,ion%natom) ) ; dg=0.0d0
+    allocate( d(3,ion%natom) ) ; d=0.0d0
+    allocate( r(3,ion%natom) ) ; r=0.0d0
 
-    allocate( history(0:max_loop*np,3) ) ; history=0.0d0
+    allocate( backup_force(3,ion%natom) ); backup_force=0.0d0
+
+    allocate( history(0:max_loop+1,6) ) ; history=0.0d0
 
     history(0,1) = etot
     history(0,2) = fmax
     history(0,3) = ierr
 
+    n = 3*ion%natom
+    allocate( H(n,n)  ); H=0.0d0
+    allocate( V(n,n)  ); V=0.0d0
+    allocate( VT(n,n) ); VT=0.0d0
+    allocate( W(n,n)  ); W=0.0d0
+    allocate( HSR1(n,n) ); HSR1=0.0d0
+
+    do i=1,size(H,1)
+      H(i,i) = 1.0d0
+    end do
+    do i=1,size(HSR1,1)
+      HSR1(i,i) = 1.0d0
+    end do
+
 ! ---
 
     icount=0
 
-    do loop=1,max_loop
+    if ( use_xyz ) then
+      x(:,:,0) = ion%xyz(:,:)
+      g(:,:,0) =-ion%force(:,:)
+    else
+      x(:,:,0) = ion%aaa(:,:)
+      g(:,:,0) =-foraa(:,:)
+    end if
 
-       x(:,:,0)  = ion%xyz(:,:)
-       g(:,:,0)  =-ion%force(:,:)
-       Hg(:,:,0) = g(:,:,0)
+    do loop = 1, max_loop
 
-       do ip=1,np
+      if ( disp_sw ) write(*,'(a50," loop",i2)') repeat("-",50),loop
 
-          if ( disp_sw ) write(*,'(a60," ICY=",2i4)') repeat("-",60),loop,ip
+      call watchb( tt(:,0) )
 
-          ion%xyz(:,:) = x(:,:,ip-1) - Hg(:,:,ip-1)
+      if ( loop == 1 ) then
 
-          if ( disp_sw ) then
-             do a=1,ion%natom
-                write(*,*) a, sqrt(sum(Hg(:,a,ip-1)**2))
-             end do
-          end if
+        x(:,:,1) = x(:,:,0)
+        g(:,:,1) = g(:,:,0)
+        d(:,:)   =-g(:,:,0)
 
-          aa_atom(:,:) = matmul( aa_inv, ion%xyz )
-          call shift_aa_coordinates_atom( aa_atom )
+      else
 
-          if ( disp_sw ) then
-             write(*,*) "Next trial configuration"
-             do a=1,ion%natom
-!                write(*,'(1x,3f20.15)') aa_atom(1:3,a)
-                write(*,*) aa_atom(1:3,a)
-             end do
-          end if
+        dx(:,:) = x(:,:,1) - x(:,:,0)
+        dg(:,:) = g(:,:,1) - g(:,:,0)
 
-          call write_coordinates_atom( 97, 3 )
+        dxdg = sum( dx(:,:)*dg(:,:) )
+        c = 1.0d0/dxdg
 
-          call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
-          call calc_force( ion%natom, ion%force, fmax )
+        n=3*ion%natom
+        call DGEMV('N',n,n,1.0d0,H,n,dg(:,:),1,0.0d0,Hdg,1)
+        dgHdg = sum(dg*Hdg)
 
-          if ( fmax <= fmax_tol ) goto 900
-
-          icount = icount + 1
-          history(icount,1) = etot
-          history(icount,2) = fmax
-          history(icount,3) = ierr
-
-          if ( ierr == -2 ) then
-             ion%xyz(:,:)   =  x(:,:,ip-1)
-             ion%force(:,:) = -g(:,:,ip-1)
-             exit
-          end if
-
-          if ( disp_sw ) then
-             do i=0,icount
-                write(*,'(1x,i4,f20.10,es14.5,i4)') &
-                     i, (history(i,j),j=1,2), nint(history(i,3))
-             end do
-          end if
-
-          x(:,:,ip) = ion%xyz(:,:)
-          g(:,:,ip) =-ion%force(:,:)
-
-          Hg(:,:,ip) = g(:,:,ip)
-          if ( ip == 1 ) Hdg(:,:,1) = Hg(:,:,1) - Hg(:,:,0)
-          do jp=1,ip
-             dx(:,:) = x(:,:,jp) - x(:,:,jp-1)
-             dg(:,:) = g(:,:,jp) - g(:,:,jp-1)
-             dxdg = sum( dx*dg )
-             if ( disp_sw ) write(*,*) jp,dxdg
-             dgHdg = sum( dg(:,:)*Hdg(:,:,jp) )
-             dxg = sum( dx(:,:)*g(:,:,ip) )
-             dgHg = sum( dg(:,:)*Hg(:,:,ip) )
-             Hg(:,:,ip) = Hg(:,:,ip) + ( dxdg+dgHdg )/dxdg**2*dxg*dx(:,:) &
-                  - ( Hdg(:,:,ip)*dxg + dx(:,:)*dgHg )/dxdg
-             if ( jp == ip-1 ) Hdg(:,:,ip) = Hg(:,:,ip) - Hg(:,:,ip-1)
+        j=0
+        do j2=1,ion%natom
+        do j1=1,3
+          j=j+1
+          i=0
+          do i2=1,ion%natom
+          do i1=1,3
+            i=i+1
+            H(i,j) = H(i,j) - ( Hdg(i1,i2)*dx(j1,j2) + dx(i1,i2)*Hdg(j1,j2) )*c &
+                 + ( 1.0d0 + dgHdg*c )*dx(i1,i2)*dx(j1,j2)*c
           end do
+          end do
+        end do
+        end do
 
-       end do ! ip
+#ifdef test
+        j=0
+        do j2=1,ion%natom
+        do j1=1,3
+          j=j+1
+          i=0
+          do i2=1,ion%natom
+          do i1=1,3
+            i=i+1
+            V(i,j) = -dg(i1,i2)*dx(j1,j2)*c
+          end do
+          end do
+        end do
+        end do
+        do i=1,size(V,1)
+          V(i,i) = V(i,i) + 1.0d0
+        end do
+        VT = transpose( V )
+        W = matmul( VT, H )
+        H = matmul( W , V )
+        j=0
+        do j2=1,ion%natom
+        do j1=1,3
+          j=j+1
+          i=0
+          do i2=1,ion%natom
+          do i1=1,3
+            i=i+1
+            H(i,j) = H(i,j) + dx(i1,i2)*dx(j1,j2)*c
+          end do
+          end do
+        end do
+        end do
+#endif
+
+! ---
+        n=3*ion%natom
+        call DGEMV('N',n,n,1.0d0,HSR1,n,dg(:,:),1,0.0d0,Hdg,1)
+        r(:,:) = dx(:,:) - Hdg(:,:)
+        rdg = sum(r*dg)
+        c = 1.0d0/rdg
+        j=0
+        do j2=1,ion%natom
+        do j1=1,3
+          j=j+1
+          i=0
+          do i2=1,ion%natom
+          do i1=1,3
+            i=i+1
+            HSR1(i,j) = HSR1(i,j) + r(i1,i2)*r(j1,j2)*c
+          end do
+          end do
+        end do
+        end do
+! ---
+
+        n=3*ion%natom
+        call DGEMV('N',n,n,-1.0d0,H,n,g(:,:,1),1,0.0d0,d,1)
+!        call DGEMV('N',n,n,-1.0d0,HSR1,n,g(:,:,1),1,0.0d0,d,1)
+
+        !dmax=0.0d0
+        !do i=1,ion%natom
+        !  dd = sum( d(:,i)**2 )*alpha**2
+        !  if ( dmax < dd ) then
+        !    dmax = dd
+        !    imax = i
+        !  end if
+        !end do
+
+        c = sum(g(:,:,1)*d)
+        if ( c > 0.0d0 ) then
+          write(*,*) "------------------ Steepest Decent"
+          d(:,:)=-g(:,:,1)
+          H=0.0d0
+          do i=1,size(H,1)
+            H(i,i) = 1.0d0
+          end do
+          HSR1=0.0d0
+          do i=1,size(HSR1,1)
+            HSR1(i,i) = 1.0d0
+          end do
+        end if
+
+      end if
+
+      do a=1,ion%natom
+        if ( use_xyz ) then
+          da = matmul( aa_inv, d(:,a) )
+        else
+          da = d(:,a)
+        end if
+        do i=1,3
+          da_tmp(1) = abs(da(i))
+          da_tmp(2) = abs(da(i)+1.0d0)
+          da_tmp(3) = abs(da(i)-1.0d0)
+          j = minloc( da_tmp, 1 )
+          select case(j)
+          case(1)
+          case(2); da(i)=da(i)+1.0d0
+          case(3); da(i)=da(i)-1.0d0
+          end select
+        end do
+        if ( use_xyz ) then
+          d(:,a) = matmul( aa%LatticeVector, da )
+        else
+          d(:,a) = da(:)
+        end if
+      end do
+
+      call watchb( tt(:,0), tt(:,1) )
+
+      backup_data=0.0d0
+      alpha=1.0d0
+      do loop_linmin = 0, 0 !max_loop_linmin !------------ Line Mimization
+
+        if ( disp_sw ) write(*,'(a30," loop_linmin",i2)') repeat("-",30),loop_linmin
+
+        call watchb( tt(:,0) )
+
+        if ( loop_linmin > 0 ) then
+          alpha=alpha*0.5d0
+        end if
+      
+        if ( use_xyz ) then
+          ion%xyz = x(:,:,1) + alpha*d(:,:)
+          aa_atom(:,:) = matmul( aa_inv, ion%xyz )
+        else
+          ion%aaa(:,:) = x(:,:,1) + alpha*d(:,:)
+          aa_atom(:,:) = x(:,:,1) + alpha*d(:,:)
+          ion%xyz = matmul( aa%LatticeVector, aa_atom )
+        end if
+
+        call shift_aa_coordinates_atom( aa_atom )
+        if ( disp_sw ) then
+          write(*,*) "Next trial configuration"
+          do a=1,ion%natom
+            write(*,'(i2,2x,3f10.5,2x,3f10.5,2x,f10.5)') &
+                 a,aa_atom(:,a),ion%xyz(:,a),sqrt(sum(d(:,a)**2))*alpha
+          end do
+        end if
+        call write_coordinates_atom( 97, 3 )
+
+        call watchb( tt(:,0), tt(:,2) )
+
+        call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+        call calc_force( ion%natom, ion%force, fmax )
+        foraa = matmul( transpose(aa_inv), ion%force )
+
+        delta = 1.0d-4
+        sigma = 0.99d0
+        c = sum(g(:,:,1)*d(:,:))
+        write(*,*) etot,fmax,alpha
+        !write(*,*) "linmin,alpha=",loop_linmin,alpha
+        !write(*,*) etot,history(icount,1)
+        !write(*,*) fmax,history(icount,2)
+        !write(*,*) "sum(g*d)",c
+        !write(*,*) "Check Armijo condition",etot,"<=?",history(icount,1)+delta*alpha*c
+        !write(*,*) "Check Wolfe2 condition",-sum(ion%force*d),">=?",sigma*c
+        !write(*,*) "Check WolfeS condition",abs(sum(ion%force*d)),"<=?",sigma*abs(c)
+        !write(*,*) "delta, sigma",delta,sigma
+
+        flag_check(:)=.false.
+        tmp = history(icount,1)+delta*alpha*c
+        if ( etot <= tmp ) flag_check(1)=.true.
+        tmp = abs(sum(ion%force*d))
+        if ( tmp <= sigma*abs(c) ) flag_check(2)=.true.
+
+        call watchb( tt(:,0), tt(:,3) )
+
+        if ( all(flag_check) ) then
+          exit
+        else
+          exit
+          if ( all(backup_data==0.0) .or. etot < backup_data(1) ) then
+            backup_data = (/ etot, fmax, dble(ierr), alpha /)
+            backup_force = ion%force
+          end if
+        end if
+
+        if ( loop_linmin > 0 .and. flag_check(1) ) exit
+
+      end do !loop_linmin
+
+      if ( loop_linmin > max_loop_linmin ) then
+        etot = backup_data(1)
+        fmax = backup_data(2)
+        ierr = nint(backup_data(3))
+        alpha = backup_data(4)
+        ion%force = backup_force
+      end if
+
+      call watchb( tt(:,0) )
+
+      x(:,:,0) = x(:,:,1)
+      g(:,:,0) = g(:,:,1)
+      if ( use_xyz ) then
+        x(:,:,1) = ion%xyz(:,:)
+        g(:,:,1) =-ion%force(:,:)
+      else
+!       x(:,:,1) = aa_atom(:,:)
+        x(:,:,1) = ion%aaa(:,:)
+        g(:,:,1) =-foraa(:,:)
+      end if
+
+      icount = icount + 1
+      history(icount,1) = etot
+      history(icount,2) = fmax
+      history(icount,3) = ierr
+      c=sum(d*g(:,:,0))
+      history(icount,4) = c
+      history(icount,5) = alpha !(etot-history(icount-1,1))/(alpha*c)
+      history(icount,6) = loop_linmin !sum(g(:,:,1)*d)/c
+
+      call watchb( tt(:,0), tt(:,4) )
+
+      if ( disp_sw ) then
+        write(*,'(a7,2x,a15,a14,a5,2a14)') "History","Etot","Fmax","iter" &
+                                          ,"(d,g)","alpha"
+        do i=0,icount
+          write(*,'(i4,5x,es15.8,es14.5,i5,3es14.5)') &
+               i, (history(i,j),j=1,2), nint(history(i,3)),(history(i,j),j=4,5)
+        end do
+        write(*,'("etime:",4f10.5)') tt(2,1),tt(2,2),tt(2,3),tt(2,3)
+      end if
+
+      if ( fmax <= fmax_tol ) goto 900
 
     end do ! loop    
 
@@ -202,13 +444,15 @@ CONTAINS
        deallocate( g )
     end if
 
-  END SUBROUTINE atomopt_bfgs
+    call stop_program('')
+
+  end subroutine atomopt_bfgs
 
 
-  SUBROUTINE scf( etot, ierr_out )
+  subroutine scf( etot, ierr_out )
     implicit none
-    real(8),intent(OUT) :: etot
-    integer,intent(OUT) :: ierr_out
+    real(8),intent(out) :: etot
+    integer,intent(out) :: ierr_out
 
     select case(SYStype)
     case default
@@ -241,7 +485,7 @@ CONTAINS
 
     call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 
-  END SUBROUTINE scf
+  end subroutine scf
 
 
-END MODULE atomopt_bfgs_module
+end module atomopt_bfgs_module

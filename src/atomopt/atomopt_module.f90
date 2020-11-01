@@ -34,6 +34,7 @@ MODULE atomopt_module
   use lattice_module, only: lattice, backup_aa_lattice, construct_lattice
   use aa_module, only: init_aa
   !--- end MIZUHO-IR for cellopt
+  use atomopt_ef_module
   use atomopt_rf_module
   use atomopt_bfgs_module
   use atomopt_diis_module
@@ -74,9 +75,11 @@ CONTAINS
     case( 4 )
        call atomopt_diis( SYStype, feps, diter_opt )
     case( 5 )
-       call atomopt_bfgs( SYStype, feps, diter_opt )
+       call atomopt_bfgs( SYStype, feps, ncycl, diter_opt )
     case( 6 )
        call atomopt_rf( SYStype, feps, diter_opt )
+    case( 7 )
+       call atomopt_ef( SYStype, feps, ncycl, diter_opt )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
        call stop_program("atomopt")

@@ -128,8 +128,6 @@ CONTAINS
        call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
        call calc_force( ion%natom, ion%force, fmax )
 
-       if ( fmax <= fmax_tol ) goto 900
-
        history(loop,1) = etot
        history(loop,2) = fmax
        history(loop,3) = ierr
@@ -140,6 +138,8 @@ CONTAINS
                   i, (history(i,j),j=1,2), nint(history(i,3))
           end do
        end if
+
+       if ( fmax <= fmax_tol ) goto 900
 
        ip = ip + 1
        if ( ip > np ) then
