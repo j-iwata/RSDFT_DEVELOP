@@ -1,4 +1,4 @@
-MODULE atomopt_diis_module
+module atomopt_diis_module
 
   use lattice_module
   use atom_module, only: atom, construct_atom, aa_atom, write_coordinates_atom
@@ -19,23 +19,24 @@ MODULE atomopt_diis_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: atomopt_diis
+  private
+  public :: atomopt_diis
+  public :: calc_coef_diis
 
   logical :: disp_sw
   integer :: SYStype
   real(8) :: beta=0.5d0
   integer :: NiterSCF
 
-CONTAINS
+contains
 
 
-  SUBROUTINE atomopt_diis( SYStype_in, fmax_tol, NiterSCF_in )
+  subroutine atomopt_diis( SYStype_in, fmax_tol, NiterSCF_in )
 
     implicit none
-    integer,intent(IN) :: SYStype_in
-    real(8),intent(IN) :: fmax_tol
-    integer,optional,intent(IN) :: NiterSCF_in
+    integer,intent(in) :: SYStype_in
+    real(8),intent(in) :: fmax_tol
+    integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa
     integer,parameter :: max_loop=50
@@ -108,7 +109,7 @@ CONTAINS
        !beta = 1.d-2/fmax
 
        if ( ip > 0 ) then
-          call diis( size(g(:,:,0)), ip+1, g, x, ion%xyz )
+          call diis_private( size(g(:,:,0)), ip+1, g, x, ion%xyz )
        else
           ion%xyz(:,:) = x(:,:,ip) + beta*g(:,:,ip)
        end if
@@ -169,14 +170,14 @@ CONTAINS
     if ( allocated(x) ) deallocate( x )
     if ( allocated(g) ) deallocate( g )
 
-  END SUBROUTINE atomopt_diis
+  end subroutine atomopt_diis
 
 
-  SUBROUTINE diis( m,n,g,x,xout )
+  subroutine diis_private( m,n,g,x,xout )
     implicit none
-    integer,intent(IN)  :: m,n
-    real(8),intent(IN)  :: g(m,n),x(m,n)
-    real(8),intent(OUT) :: xout(m)
+    integer,intent(in)  :: m,n
+    real(8),intent(in)  :: g(m,n),x(m,n)
+    real(8),intent(out) :: xout(m)
     real(8),allocatable :: gg(:,:),xx(:)
     integer,allocatable :: ipiv(:)
     integer :: info,i,j
@@ -203,13 +204,47 @@ CONTAINS
     deallocate( xx   )
     deallocate( gg   )
 
-  END SUBROUTINE diis
+  end subroutine diis_private
 
 
-  SUBROUTINE scf( etot, ierr_out )
+  subroutine calc_coef_diis( coef, f )
     implicit none
-    real(8),intent(OUT) :: etot
-    integer,intent(OUT) :: ierr_out
+    real(8),intent(out) :: coef(:)
+    real(8),intent(in)  :: f(:,:)
+    real(8),allocatable :: A(:,:),x(:)
+    integer,allocatable :: ipiv(:)
+    integer :: info,i,j,n
+
+    n = size( f, 2 )
+    allocate( A(n+1,n+1) ); A=0.0d0
+    allocate( x(n+1)     ); x=0.0d0
+    allocate( ipiv(n+1)  ); ipiv=0
+
+    do j=1,n
+       do i=1,n
+          A(i,j) = sum( f(:,i)*f(:,j) )
+       end do
+    end do
+
+    A(1:n,n+1) = 1.0d0
+    A(n+1,1:n) = 1.0d0
+    x(n+1) = 1.0d0
+
+    call DGESV( n+1, 1, A, n+1, ipiv, x, n+1, info )
+
+    coef(:) = x(1:n)
+
+    deallocate( ipiv )
+    deallocate( x )
+    deallocate( A )
+
+  end subroutine calc_coef_diis
+
+
+  subroutine scf( etot, ierr_out )
+    implicit none
+    real(8),intent(out) :: etot
+    integer,intent(out) :: ierr_out
 
     select case(SYStype)
     case default
@@ -242,7 +277,7 @@ CONTAINS
 
     call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 
-  END SUBROUTINE scf
+  end subroutine scf
 
 
-END MODULE atomopt_diis_module
+end module atomopt_diis_module

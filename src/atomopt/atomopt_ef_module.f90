@@ -4,7 +4,6 @@ module atomopt_ef_module
   use atom_module, only: atom, construct_atom, aa_atom &
                         ,write_coordinates_atom, shift_aa_coordinates_atom
   use force_module
-
   use pseudopot_module, only: pselect
   use eion_module
   use ps_local_module
@@ -17,6 +16,9 @@ module atomopt_ef_module
   use ps_nloc2_module
   use ps_nloc_mr_module
   use scf_module
+  use atomopt_diis_module, only: calc_coef_diis
+  use atomopt_io_module, only: flag_continue_atomopt &
+                             , read_atomopt_io, write_atomopt_io
 
   implicit none
 
@@ -30,22 +32,23 @@ module atomopt_ef_module
 contains
 
 
-  subroutine atomopt_ef( SYStype_in, fmax_tol, ncycle, NiterSCF_in )
+  subroutine atomopt_ef( SYStype_in, fmax_tol, ncycle, okstep_in, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
     integer,intent(in) :: ncycle
+    real(8),intent(in) :: okstep_in
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa, bb
     integer :: max_loop
     integer :: ishape(1), ishape2(2), i1,i2, LWORK=0
-    integer :: n,il,iu,m,a,ierr,loop,i,j,icount,ip
+    integer :: n,il,iu,m,a,ierr,loop,i,j,ip,loop_start
     integer,allocatable :: iwork(:),ifail(:)
     real(8) :: etot0, etot, fmax
     real(8) :: dxdg,dxHdx,c1,c2,dmax,dtmp
-    real(8) :: vl,vu,tol,alpha
+    real(8) :: vl,vu,tol,alpha,okstep
     real(8) :: aa_inv(3,3),da(3),da_tmp(3)
     real(8),parameter :: one=1.0d0, zero=0.0d0
     real(8),allocatable :: g(:),x(:),Hessian(:,:),Htmp(:,:)
@@ -54,6 +57,11 @@ contains
     real(8),allocatable :: dx(:),dg(:),Hdx(:)
     real(8),allocatable :: w(:),z(:,:),work(:)
     real(8),parameter :: eig_threshold=0.02d0
+
+    integer :: ndiis, mdiis
+    real(8),allocatable :: xdiis(:,:), ediis(:,:), coef_diis(:)
+    real(8),allocatable :: xtmp(:),etmp(:),gtmp(:),gdiis(:,:)
+    logical :: flag_diis=.false.
 
     call write_border( 0, "atomopt_ef(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -72,6 +80,10 @@ contains
 
     max_loop = ncycle
 
+    loop_start = 1
+
+    okstep = okstep_in
+
 ! ---
 
     call get_aa_lattice( aa )
@@ -83,17 +95,24 @@ contains
        ion%xyz(1:3,a) = matmul( aa%LatticeVector(1:3,1:3), ion%aaa(1:3,a) )
     end do
 
-    if ( disp_sw ) then
-       write(*,*) "Initial configuration"
-       do a=1,ion%natom
+    if ( .not.flag_continue_atomopt() ) then
+
+      if ( disp_sw ) then
+        write(*,*) "Initial configuration"
+        do a=1,ion%natom
           write(*,'(1x,3f20.15)') ion%aaa(1:3,a)
-       end do
-    end if
+        end do
+      end if
 
-    call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
-    call calc_force( ion%natom, ion%force, fmax )
+      call scf( etot, ierr )
+      if ( ierr < 0 ) then
+        goto 999
+      end if
+      call calc_force( ion%natom, ion%force, fmax )
 
-    if ( fmax <= fmax_tol ) goto 900
+      if ( fmax <= fmax_tol ) goto 900
+
+   end if
 
 ! ---
 
@@ -106,7 +125,6 @@ contains
     allocate( Hessian(n,n) ) ; Hessian=0.0d0
     allocate( Htmp(n,n) ) ; Htmp=0.0d0
     allocate( Vtmp(n,n) ) ; Vtmp=0.0d0
-    allocate( Wtmp(n,n) ) ; Wtmp=0.0d0
     allocate( Hdx(n)    ) ; Hdx=0.0d0
     allocate( dx(n)     ) ; dx=0.0d0
     allocate( dg(n)     ) ; dg=0.0d0
@@ -114,11 +132,36 @@ contains
     ishape(1) = n
     ishape2(1:2) = (/ 3, ion%natom /)
 
-    allocate( history(0:max_loop,4) ) ; history=0.0d0
+    allocate( history(4,0:max_loop) ) ; history=0.0d0
 
-    history(0,1) = etot
-    history(0,2) = fmax
-    history(0,3) = ierr
+    if ( flag_continue_atomopt() ) then
+
+      call read_atomopt_io( &
+           loop_start, &
+           history, &
+           x, x0, g, g0, &
+           Hessian )
+
+    else
+
+      history(1,0) = etot
+      history(2,0) = fmax
+      history(3,0) = ierr
+      history(4,0) = 0.0d0
+
+    end if
+
+!! --- DIIS
+!
+!    ndiis = 10
+!    mdiis = 0
+!    allocate( xdiis(n,ndiis)   ); xdiis=0.0d0
+!    allocate( ediis(n,ndiis)   ); ediis=0.0d0
+!    allocate( gdiis(n,ndiis)   ); gdiis=0.0d0
+!    allocate( coef_diis(ndiis) ); coef_diis=0.0d0
+!    allocate( xtmp(n) ); xtmp=0.0d0
+!    allocate( etmp(n) ); etmp=0.0d0
+!    allocate( gtmp(n) ); gtmp=0.0d0
 
 ! --- LAPACK
 
@@ -131,13 +174,21 @@ contains
       allocate( work(LWORK) ); work=0.0d0
     end if
 
-    icount = 0
+! ----------------------------------- loop
 
-    do loop=1,max_loop
+    do loop = loop_start, max_loop
 
-      if ( disp_sw ) write(*,'(a60," ICY=",i4)') repeat("-",60),loop
+      if ( disp_sw ) write(*,'(a60," loop=",i4)') repeat("-",60),loop
 
       alpha = 1.0d0
+      flag_diis = .false.
+
+! ---
+
+      call write_coordinates_atom( 197, 3 )
+      call write_atomopt_io( loop, history(:,0:loop-1), &
+                             x, x0, g, g0, Hessian )
+! ---
 
       if ( loop == 1 ) then
 
@@ -150,9 +201,6 @@ contains
         g(:) = reshape(-ion%force(:,:), ishape )
         d(:) = -g(:)
 
-        x0(:) = x(:)
-        g0(:) = g(:)
-
       else
 
         dx(:) = x(:) - x0(:)
@@ -163,7 +211,9 @@ contains
 
         if ( dxdg <= 0.0d0 ) then
 
-          d(:)  = -g(:)
+          if ( disp_sw ) write(*,*) "Steepest descent (Restart EF-opt process)"
+
+          d(:)  =-g(:)
           x0(:) = x(:)
           g0(:) = g(:)
 
@@ -189,7 +239,7 @@ contains
 
           do i=1,n
             if ( w(i) < eig_threshold ) then
-              write(*,*) "i,w(i)",i,w(i),"  ---> replaced to",eig_threshold
+              if ( disp_sw ) write(*,*) "i,w(i)",i,w(i),"  ---> replaced to",eig_threshold
               w(i) = eig_threshold
             else
               exit
@@ -203,19 +253,53 @@ contains
           Vtmp=matmul( Vtmp,transpose(Htmp) )
           Vtmp=matmul( Htmp,Vtmp )
 
-          Wtmp=matmul( Vtmp, Hessian )
-          write(*,*) "1sum(Wtmp**2)",sum(Wtmp**2)
-          Wtmp=matmul( Hessian, Vtmp )
-          write(*,*) "2sum(Wtmp**2)",sum(Wtmp**2)
+!! --- DIIS
+!
+!          mdiis = min( mdiis+1, ndiis )
+!          do i=mdiis,2,-1
+!            xdiis(:,i) = xdiis(:,i-1)
+!            ediis(:,i) = ediis(:,i-1)
+!            gdiis(:,i) = gdiis(:,i-1)
+!          end do
+!          xdiis(:,1) = x(:)
+!          ediis(:,1) = x(:)-x0(:)
+!          gdiis(:,1) = g(:)
+!          if ( mdiis > 1 .or. mdiis == ndiis ) then
+!            call calc_coef_diis( coef_diis(1:mdiis), ediis(:,1:mdiis) )
+!            xtmp = matmul( xdiis(:,1:mdiis), coef_diis(1:mdiis) )
+!            write(*,*) "|x-xdiis_out|",sum((x-d)**2)
+!            etmp = matmul( ediis(:,1:mdiis), coef_diis(1:mdiis) )
+!            write(*,*) "sum(ediis_out**2)",sum(etmp**2)
+!            gtmp = matmul( gdiis(:,1:mdiis), coef_diis(1:mdiis) )
+!            write(*,*) "sum(gdiis_out**2)",sum(gtmp**2)
+!            flag_diis = .true.
+!          end if
+!          dmax=0.0d0
+!          do a=1,ion%natom
+!            i2 = 3*a
+!            i1 = i2 - 3 + 1
+!            dtmp = sqrt(sum((xtmp(i1:i2)-x0(i1:i2))**2))
+!            dmax = max(dmax,dtmp)
+!          end do
+!          write(*,*) "Maximum displacement(DIIS)",dmax
 
-          x0(:) = x(:)
-          g0(:) = g(:)
-        
           call DGEMV('N',n,n,-1.0d0,Vtmp,n,g(:),1,0.0d0,d,1)
+!          if ( flag_diis ) then
+!            call DGEMV('N',n,n,-1.0d0,Vtmp,n,gtmp(:),1,0.0d0,d,1)
+!          else
+!            call DGEMV('N',n,n,-1.0d0,Vtmp,n,g(:),1,0.0d0,d,1)
+!          end if
 
         end if
 
       end if
+
+! ---
+
+      x0(:) = x(:)
+      g0(:) = g(:)
+
+! ---
 
       do a=1,ion%natom
         i2 = a*3
@@ -235,6 +319,42 @@ contains
         d(i1:i2) = matmul( aa%LatticeVector, da )
       end do
 
+! ---
+
+      dmax=0.0d0
+      do a=1,ion%natom
+        i2 = 3*a
+        i1 = i2 - 3 + 1
+        dtmp = sqrt(sum(d(i1:i2)**2))*alpha
+        dmax = max(dmax,dtmp)
+      end do
+      if ( disp_sw ) then
+        write(*,*) "Maximum displacement(bohr):",dmax
+      end if
+      if ( dmax > okstep ) then
+        alpha=alpha*okstep/dmax
+        if ( disp_sw ) then
+          write(*,*) "Maxmimum displacement is limited to",okstep
+          write(*,*) "alpha is changed: alpha=",alpha
+        end if
+      end if
+
+! ---
+
+      x(:) = x0(:) + alpha*d(:)
+
+!      if ( flag_diis ) then
+!        x(:) = xtmp(:) + alpha*d(:)
+!      else
+!        x(:) = x0(:) + alpha*d(:)
+!      end if
+
+! ---
+
+      ion%xyz(:,:) = reshape( x, ishape2 )
+
+      aa_atom(:,:) = matmul( aa_inv, ion%xyz )
+      call shift_aa_coordinates_atom( aa_atom )        
 
 ! ---
 
@@ -256,32 +376,21 @@ contains
         write(*,*) "Maximum displacement(bohr):",dmax
       end if
 
-      if ( dmax > 2.0d0 ) then
-        alpha=alpha/dmax
-      end if
-
-      x(:) = x0(:) + alpha*d(:)
-
-      ion%xyz(:,:) = reshape( x, ishape2 )
-
-      aa_atom(:,:) = matmul( aa_inv, ion%xyz )
-      call shift_aa_coordinates_atom( aa_atom )        
-          
       call write_coordinates_atom( 97, 3 )
 
-      call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+      call scf( etot, ierr )
+      if ( ierr < -1 ) goto 999
       call calc_force( ion%natom, ion%force, fmax )
 
-      icount = icount + 1
-      history(icount,1) = etot
-      history(icount,2) = fmax
-      history(icount,3) = ierr
-      history(icount,4) = alpha
+      history(1,loop) = etot
+      history(2,loop) = fmax
+      history(3,loop) = ierr
+      history(4,loop) = alpha
 
       if ( disp_sw ) then
-        do i=0,icount
+        do i=0,loop
           write(*,'(1x,i4,f20.10,es14.5,i4,es14.5)') &
-               i, (history(i,j),j=1,2), nint(history(i,3)),history(i,4)
+               i, history(1:2,i), nint(history(3,i)),history(4,i)
         end do
       end if
 
@@ -301,10 +410,7 @@ contains
 999 call check_disp_switch( disp_sw, 1 )
     call write_border( 0, "atomopt_ef(end)" )
 
-!    deallocate( ifail )
-!    deallocate( iwork )
     deallocate( work )
-!    deallocate( z )
     deallocate( w )
     deallocate( history )
     deallocate( dg )
