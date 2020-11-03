@@ -31,12 +31,13 @@ module atomopt_bfgs_module
 contains
 
 
-  subroutine atomopt_bfgs( SYStype_in, fmax_tol, ncycle, NiterSCF_in )
+  subroutine atomopt_bfgs( SYStype_in, fmax_tol, ncycle, okstep_in, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
     integer,intent(in) :: ncycle
+    real(8),intent(in) :: okstep_in
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa
@@ -44,7 +45,7 @@ contains
     integer :: np, max_loop,max_loop_linmin=5
     integer :: i1,i2,j1,j2,i,j,n,loop_linmin
     integer :: a, ierr, ip, jp, loop, icount
-    real(8) :: etot, fmax, tmp
+    real(8) :: etot, fmax, tmp, okstep
     real(8) :: dxdg,dgHdg,dxg,dgHg,c,alpha,rdg
     real(8) :: aa_inv(3,3), da(3), da_tmp(3)
     real(8),allocatable :: g(:,:,:),x(:,:,:),Hg(:,:,:),Hdg(:,:)
@@ -81,6 +82,8 @@ contains
     NiterSCF = 50 ; if ( present(NiterSCF_in) ) NiterSCF=NiterSCF_in
 
     max_loop = ncycle
+
+    okstep = okstep_in
 
 ! ---
 

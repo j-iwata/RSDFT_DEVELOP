@@ -31,18 +31,20 @@ module atomopt_diis_module
 contains
 
 
-  subroutine atomopt_diis( SYStype_in, fmax_tol, NiterSCF_in )
+  subroutine atomopt_diis( SYStype_in, fmax_tol, ncycle, okstep_in, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
+    integer,intent(in) :: ncycle
+    real(8),intent(in) :: okstep_in
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa
-    integer,parameter :: max_loop=50
+    integer :: max_loop
     integer :: np
     integer :: a, ierr, ip, jp, loop,i,j
-    real(8) :: etot0, etot, fmax, tmp
+    real(8) :: etot0, etot, fmax, tmp, okstep
     real(8) :: aa_inv(3,3)
     real(8),allocatable :: g(:,:,:),x(:,:,:)
     real(8),allocatable :: history(:,:)
@@ -56,6 +58,10 @@ contains
     SYStype = SYStype_in
 
     NiterSCF = 50 ; if ( present(NiterSCF_in) ) NiterSCF=NiterSCF_in
+
+    max_loop = ncycle
+
+    okstep = okstep_in
 
 ! ---
 
@@ -82,7 +88,7 @@ contains
 
 ! ---
 
-    np = 3
+    np = 20
     allocate( g(3,ion%natom,0:np) ) ; g=0.0d0
     allocate( x(3,ion%natom,0:np) ) ; x=0.0d0
 

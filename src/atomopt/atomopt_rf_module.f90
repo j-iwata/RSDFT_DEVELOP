@@ -30,19 +30,22 @@ module atomopt_rf_module
 contains
 
 
-  subroutine atomopt_rf( SYStype_in, fmax_tol, NiterSCF_in )
+  subroutine atomopt_rf( SYStype_in, fmax_tol, ncycle, okstep_in, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
+    integer,intent(in) :: ncycle
+    real(8),intent(in) :: okstep_in
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa, bb
-    integer,parameter :: max_loop=50, np=20
+    integer,parameter :: np=20
     integer :: ishape(1), ishape2(2), i1,i2, LWORK=0
     integer :: n,il,iu,m,a,ierr,loop,i,j,icount,ip
+    integer :: max_loop
     integer,allocatable :: iwork(:),ifail(:)
-    real(8) :: etot0, etot, fmax
+    real(8) :: etot0, etot, fmax, okstep
     real(8) :: dxdg,dxHdx,c1,c2
     real(8) :: vl,vu,tol,alpha
     real(8) :: aa_inv(3,3),da(3),da_tmp(3)
@@ -66,6 +69,10 @@ contains
     SYStype = SYStype_in
 
     NiterSCF = 50 ; if ( present(NiterSCF_in) ) NiterSCF=NiterSCF_in
+
+    max_loop = ncycle
+
+    okstep = okstep_in
 
 ! ---
 
