@@ -84,6 +84,8 @@ contains
 
     okstep = okstep_in
 
+    ndiis = 0
+
 ! ---
 
     call get_aa_lattice( aa )
@@ -132,7 +134,7 @@ contains
     ishape(1) = n
     ishape2(1:2) = (/ 3, ion%natom /)
 
-    allocate( history(4,0:max_loop) ) ; history=0.0d0
+    allocate( history(5,0:max_loop) ) ; history=0.0d0
 
     if ( flag_continue_atomopt() ) then
 
@@ -146,22 +148,23 @@ contains
 
       history(1,0) = etot
       history(2,0) = fmax
-      history(3,0) = ierr
-      history(4,0) = 0.0d0
+      history(3,0) = ierr ; if (ierr == -2) history(3,0)=NiterSCF
+      history(4,0) = sum( history(3,0:0) )
+      history(5,0) = 0.0d0
 
     end if
 
-!! --- DIIS
-!
-!    ndiis = 10
-!    mdiis = 0
-!    allocate( xdiis(n,ndiis)   ); xdiis=0.0d0
-!    allocate( ediis(n,ndiis)   ); ediis=0.0d0
-!    allocate( gdiis(n,ndiis)   ); gdiis=0.0d0
-!    allocate( coef_diis(ndiis) ); coef_diis=0.0d0
-!    allocate( xtmp(n) ); xtmp=0.0d0
-!    allocate( etmp(n) ); etmp=0.0d0
-!    allocate( gtmp(n) ); gtmp=0.0d0
+! --- DIIS
+
+    if ( ndiis > 0 ) then
+      allocate( xdiis(n,ndiis)   ); xdiis=0.0d0
+      allocate( ediis(n,ndiis)   ); ediis=0.0d0
+      allocate( gdiis(n,ndiis)   ); gdiis=0.0d0
+      allocate( coef_diis(ndiis) ); coef_diis=0.0d0
+      allocate( xtmp(n) ); xtmp=0.0d0
+      allocate( etmp(n) ); etmp=0.0d0
+      allocate( gtmp(n) ); gtmp=0.0d0
+    end if
 
 ! --- LAPACK
 
@@ -253,42 +256,40 @@ contains
           Vtmp=matmul( Vtmp,transpose(Htmp) )
           Vtmp=matmul( Htmp,Vtmp )
 
-!! --- DIIS
-!
-!          mdiis = min( mdiis+1, ndiis )
-!          do i=mdiis,2,-1
-!            xdiis(:,i) = xdiis(:,i-1)
-!            ediis(:,i) = ediis(:,i-1)
-!            gdiis(:,i) = gdiis(:,i-1)
-!          end do
-!          xdiis(:,1) = x(:)
-!          ediis(:,1) = x(:)-x0(:)
-!          gdiis(:,1) = g(:)
-!          if ( mdiis > 1 .or. mdiis == ndiis ) then
-!            call calc_coef_diis( coef_diis(1:mdiis), ediis(:,1:mdiis) )
-!            xtmp = matmul( xdiis(:,1:mdiis), coef_diis(1:mdiis) )
-!            write(*,*) "|x-xdiis_out|",sum((x-d)**2)
-!            etmp = matmul( ediis(:,1:mdiis), coef_diis(1:mdiis) )
-!            write(*,*) "sum(ediis_out**2)",sum(etmp**2)
-!            gtmp = matmul( gdiis(:,1:mdiis), coef_diis(1:mdiis) )
-!            write(*,*) "sum(gdiis_out**2)",sum(gtmp**2)
-!            flag_diis = .true.
-!          end if
-!          dmax=0.0d0
-!          do a=1,ion%natom
-!            i2 = 3*a
-!            i1 = i2 - 3 + 1
-!            dtmp = sqrt(sum((xtmp(i1:i2)-x0(i1:i2))**2))
-!            dmax = max(dmax,dtmp)
-!          end do
-!          write(*,*) "Maximum displacement(DIIS)",dmax
+! --- DIIS
 
-          call DGEMV('N',n,n,-1.0d0,Vtmp,n,g(:),1,0.0d0,d,1)
-!          if ( flag_diis ) then
-!            call DGEMV('N',n,n,-1.0d0,Vtmp,n,gtmp(:),1,0.0d0,d,1)
-!          else
-!            call DGEMV('N',n,n,-1.0d0,Vtmp,n,g(:),1,0.0d0,d,1)
-!          end if
+          if ( ndiis > 0 ) then
+            mdiis = min( mdiis+1, ndiis )
+            do i=mdiis,2,-1
+              xdiis(:,i) = xdiis(:,i-1)
+              ediis(:,i) = ediis(:,i-1)
+              gdiis(:,i) = gdiis(:,i-1)
+            end do
+            xdiis(:,1) = x(:)
+            ediis(:,1) = x(:)-x0(:)
+            gdiis(:,1) = g(:)
+            if ( mdiis > 1 .or. mdiis == ndiis ) then
+              call calc_coef_diis( coef_diis(1:mdiis), ediis(:,1:mdiis) )
+              xtmp = matmul( xdiis(:,1:mdiis), coef_diis(1:mdiis) )
+              etmp = matmul( ediis(:,1:mdiis), coef_diis(1:mdiis) )
+              gtmp = matmul( gdiis(:,1:mdiis), coef_diis(1:mdiis) )
+              flag_diis = .true.
+            end if
+            !dmax=0.0d0
+            !do a=1,ion%natom
+            !  i2 = 3*a
+            !  i1 = i2 - 3 + 1
+            !  dtmp = sqrt(sum((xtmp(i1:i2)-x0(i1:i2))**2))
+            !  dmax = max(dmax,dtmp)
+            !end do
+            !write(*,*) "Maximum displacement(DIIS)",dmax
+          end if
+
+          if ( flag_diis ) then
+            call DGEMV('N',n,n,-1.0d0,Vtmp,n,gtmp(:),1,0.0d0,d,1)
+          else
+            call DGEMV('N',n,n,-1.0d0,Vtmp,n,g(:),1,0.0d0,d,1)
+          end if
 
         end if
 
@@ -341,13 +342,11 @@ contains
 
 ! ---
 
-      x(:) = x0(:) + alpha*d(:)
-
-!      if ( flag_diis ) then
-!        x(:) = xtmp(:) + alpha*d(:)
-!      else
-!        x(:) = x0(:) + alpha*d(:)
-!      end if
+      if ( flag_diis ) then
+        x(:) = xtmp(:) + alpha*d(:)
+      else
+        x(:) = x0(:) + alpha*d(:)
+      end if
 
 ! ---
 
@@ -367,7 +366,7 @@ contains
         i1 = i2 - 3 + 1
         dtmp = sqrt(sum(d(i1:i2)**2))*alpha
         if ( disp_sw ) then
-          write(*,'(i2,2x,3f10.5,2x,3es14.5,2x,es14.5)') &
+          write(*,'(i4,2x,3f10.5,2x,3es14.5,2x,es14.5)') &
                a,aa_atom(:,a),ion%xyz(:,a),dtmp
         end if
         dmax=max(dmax,dtmp)
@@ -384,13 +383,14 @@ contains
 
       history(1,loop) = etot
       history(2,loop) = fmax
-      history(3,loop) = ierr
-      history(4,loop) = alpha
+      history(3,loop) = ierr ; if( ierr == -2) history(3,loop)=NiterSCF
+      history(4,loop) = sum( history(3,0:loop) )
+      history(5,loop) = alpha
 
       if ( disp_sw ) then
         do i=0,loop
-          write(*,'(1x,i4,f20.10,es14.5,i4,es14.5)') &
-               i, history(1:2,i), nint(history(3,i)),history(4,i)
+          write(*,'(1x,i4,f20.10,es14.5,i4,i6,es14.5)') &
+               i, history(1:2,i), nint(history(3:4,i)),history(5,i)
         end do
       end if
 
