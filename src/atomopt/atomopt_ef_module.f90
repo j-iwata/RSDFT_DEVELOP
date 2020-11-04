@@ -108,10 +108,7 @@ contains
         end do
       end if
 
-      call scf( etot, ierr )
-      if ( ierr < 0 ) then
-        goto 999
-      end if
+      call scf( etot, ierr ); if ( ierr  == -1 ) goto 999
       call calc_force( ion%natom, ion%force, fmax )
 
       if ( fmax <= fmax_tol ) goto 900
@@ -379,8 +376,7 @@ contains
 
       call write_coordinates_atom( 97, 3 )
 
-      call scf( etot, ierr )
-      if ( ierr < -1 ) goto 999
+      call scf( etot, ierr ); if ( ierr == -1 ) goto 999
       call calc_force( ion%natom, ion%force, fmax )
 
       history(1,loop) = etot

@@ -18,6 +18,7 @@ module atomopt_bfgs_module
   use ps_nloc_mr_module
   use scf_module
   use watch_module
+  use atomopt_io_module, only: flag_continue_atomopt, read_bfgs_atomopt_io, write_bfgs_atomopt_io
 
   implicit none
 
@@ -43,7 +44,7 @@ contains
     type(lattice) :: aa
     integer,parameter :: max_loop_default=5
     integer :: np, max_loop,max_loop_linmin=5
-    integer :: i1,i2,j1,j2,i,j,n,loop_linmin
+    integer :: i1,i2,j1,j2,i,j,n,loop_linmin,loop_start
     integer :: a, ierr, ip, jp, loop, icount
     real(8) :: etot, fmax, tmp, okstep
     real(8) :: dxdg,dgHdg,dxg,dgHg,c,alpha,rdg
@@ -56,7 +57,7 @@ contains
     real(8),allocatable :: foraa(:,:)
 
     integer :: imax
-    real(8) :: dd,dmax
+    real(8) :: dd,dmax,dtmp
     real(8) :: tt_start(2),tt(2,0:10)
     logical :: use_xyz=.true., flag_check(2)
     real(8) :: Armijo, Wolfe2
@@ -83,6 +84,8 @@ contains
 
     max_loop = ncycle
 
+    loop_start = 1
+
     okstep = okstep_in
 
 ! ---
@@ -96,22 +99,25 @@ contains
        ion%xyz(1:3,a) = matmul( aa%LatticeVector(1:3,1:3), ion%aaa(1:3,a) )
     end do
 
-    if ( disp_sw ) then
-       write(*,*) "Initial configuration(in reduced coordinates)"
-       do a=1,ion%natom
+    if ( .not.flag_continue_atomopt() ) then
+
+      if ( disp_sw ) then
+        write(*,*) "Initial configuration(in reduced coordinates)"
+        do a=1,ion%natom
           write(*,'(1x,3f20.15)') ion%aaa(1:3,a)
-       end do
+        end do
+      end if
+
+      call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+
+      call calc_force( ion%natom, ion%force, fmax )
+
+      if ( fmax <= fmax_tol ) goto 900
+
+      !allocate( foraa(3,ion%natom) ); foraa=0.0d0
+      !foraa = matmul( transpose(aa_inv), ion%force )
+
     end if
-
-    call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
-
-    call calc_force( ion%natom, ion%force, fmax )
-
-    if ( fmax <= fmax_tol ) goto 900
-
-    allocate( foraa(3,ion%natom) ); foraa=0.0d0
-
-    foraa = matmul( transpose(aa_inv), ion%force )
 
 ! ---
 
@@ -127,43 +133,59 @@ contains
 
     allocate( backup_force(3,ion%natom) ); backup_force=0.0d0
 
-    allocate( history(0:max_loop+1,6) ) ; history=0.0d0
+    allocate( history(7,0:max_loop+1) ) ; history=0.0d0
 
-    history(0,1) = etot
-    history(0,2) = fmax
-    history(0,3) = ierr
+    if ( flag_continue_atomopt() ) then
+
+      call read_bfgs_atomopt_io( &
+           loop_start, &
+           history, &
+           x(:,:,1), x(:,:,0), g(:,:,1), g(:,:,0), &
+           H )
+
+    else
+
+      history(1,0) = etot
+      history(2,0) = fmax
+      history(3,0) = ierr ; if ( ierr == -2 ) history(3,0)=NiterSCF
+      history(4,0) = sum(history(3,0:0))
+      history(5:,0) = 0.0d0
+
+    end if
 
     n = 3*ion%natom
     allocate( H(n,n)  ); H=0.0d0
-    allocate( V(n,n)  ); V=0.0d0
-    allocate( VT(n,n) ); VT=0.0d0
-    allocate( W(n,n)  ); W=0.0d0
-    allocate( HSR1(n,n) ); HSR1=0.0d0
+    !allocate( V(n,n)  ); V=0.0d0
+    !allocate( VT(n,n) ); VT=0.0d0
+    !allocate( W(n,n)  ); W=0.0d0
+    !allocate( HSR1(n,n) ); HSR1=0.0d0
 
     do i=1,size(H,1)
       H(i,i) = 1.0d0
     end do
-    do i=1,size(HSR1,1)
-      HSR1(i,i) = 1.0d0
-    end do
+    !do i=1,size(HSR1,1)
+    !  HSR1(i,i) = 1.0d0
+    !end do
 
 ! ---
-
-    icount=0
 
     if ( use_xyz ) then
       x(:,:,0) = ion%xyz(:,:)
       g(:,:,0) =-ion%force(:,:)
     else
-      x(:,:,0) = ion%aaa(:,:)
-      g(:,:,0) =-foraa(:,:)
+      !x(:,:,0) = ion%aaa(:,:)
+      !g(:,:,0) =-foraa(:,:)
     end if
 
-    do loop = 1, max_loop
+    do loop = loop_start, max_loop
 
       if ( disp_sw ) write(*,'(a50," loop",i2)') repeat("-",50),loop
 
       call watchb( tt(:,0) )
+
+      call write_coordinates_atom( 197, 3 )
+      call write_bfgs_atomopt_io( loop, history(:,0:loop-1), &
+           x(:,:,1), x(:,:,0), g(:,:,1), g(:,:,0), H )
 
       if ( loop == 1 ) then
 
@@ -198,60 +220,58 @@ contains
         end do
         end do
 
-#ifdef test
-        j=0
-        do j2=1,ion%natom
-        do j1=1,3
-          j=j+1
-          i=0
-          do i2=1,ion%natom
-          do i1=1,3
-            i=i+1
-            V(i,j) = -dg(i1,i2)*dx(j1,j2)*c
-          end do
-          end do
-        end do
-        end do
-        do i=1,size(V,1)
-          V(i,i) = V(i,i) + 1.0d0
-        end do
-        VT = transpose( V )
-        W = matmul( VT, H )
-        H = matmul( W , V )
-        j=0
-        do j2=1,ion%natom
-        do j1=1,3
-          j=j+1
-          i=0
-          do i2=1,ion%natom
-          do i1=1,3
-            i=i+1
-            H(i,j) = H(i,j) + dx(i1,i2)*dx(j1,j2)*c
-          end do
-          end do
-        end do
-        end do
-#endif
+!        j=0
+!        do j2=1,ion%natom
+!        do j1=1,3
+!          j=j+1
+!          i=0
+!          do i2=1,ion%natom
+!          do i1=1,3
+!            i=i+1
+!            V(i,j) = -dg(i1,i2)*dx(j1,j2)*c
+!          end do
+!          end do
+!        end do
+!        end do
+!        do i=1,size(V,1)
+!          V(i,i) = V(i,i) + 1.0d0
+!        end do
+!        VT = transpose( V )
+!        W = matmul( VT, H )
+!        H = matmul( W , V )
+!        j=0
+!        do j2=1,ion%natom
+!        do j1=1,3
+!          j=j+1
+!          i=0
+!          do i2=1,ion%natom
+!          do i1=1,3
+!            i=i+1
+!            H(i,j) = H(i,j) + dx(i1,i2)*dx(j1,j2)*c
+!          end do
+!          end do
+!        end do
+!        end do
 
 ! ---
-        n=3*ion%natom
-        call DGEMV('N',n,n,1.0d0,HSR1,n,dg(:,:),1,0.0d0,Hdg,1)
-        r(:,:) = dx(:,:) - Hdg(:,:)
-        rdg = sum(r*dg)
-        c = 1.0d0/rdg
-        j=0
-        do j2=1,ion%natom
-        do j1=1,3
-          j=j+1
-          i=0
-          do i2=1,ion%natom
-          do i1=1,3
-            i=i+1
-            HSR1(i,j) = HSR1(i,j) + r(i1,i2)*r(j1,j2)*c
-          end do
-          end do
-        end do
-        end do
+!        n=3*ion%natom
+!        call DGEMV('N',n,n,1.0d0,HSR1,n,dg(:,:),1,0.0d0,Hdg,1)
+!        r(:,:) = dx(:,:) - Hdg(:,:)
+!        rdg = sum(r*dg)
+!        c = 1.0d0/rdg
+!        j=0
+!        do j2=1,ion%natom
+!        do j1=1,3
+!          j=j+1
+!          i=0
+!          do i2=1,ion%natom
+!          do i1=1,3
+!            i=i+1
+!            HSR1(i,j) = HSR1(i,j) + r(i1,i2)*r(j1,j2)*c
+!          end do
+!          end do
+!        end do
+!        end do
 ! ---
 
         n=3*ion%natom
@@ -275,10 +295,10 @@ contains
           do i=1,size(H,1)
             H(i,i) = 1.0d0
           end do
-          HSR1=0.0d0
-          do i=1,size(HSR1,1)
-            HSR1(i,i) = 1.0d0
-          end do
+!          HSR1=0.0d0
+!          do i=1,size(HSR1,1)
+!            HSR1(i,i) = 1.0d0
+!          end do
         end if
 
       end if
@@ -320,6 +340,22 @@ contains
         if ( loop_linmin > 0 ) then
           alpha=alpha*0.5d0
         end if
+
+        dmax=0.0d0
+        do a=1,ion%natom
+          dtmp = sqrt(sum(d(:,a)**2))*alpha
+          dmax = max(dmax,dtmp)
+        end do
+        if ( disp_sw ) then
+          write(*,*) "Maximum displacement(bohr):",dmax
+        end if
+        if ( dmax > okstep ) then
+          alpha=alpha*okstep/dmax
+          if ( disp_sw ) then
+            write(*,*) "Maxmimum displacement is limited to",okstep
+            write(*,*) "alpha is changed: alpha=",alpha
+          end if
+        end if
       
         if ( use_xyz ) then
           ion%xyz = x(:,:,1) + alpha*d(:,:)
@@ -344,12 +380,12 @@ contains
 
         call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
         call calc_force( ion%natom, ion%force, fmax )
-        foraa = matmul( transpose(aa_inv), ion%force )
+        !foraa = matmul( transpose(aa_inv), ion%force )
 
         delta = 1.0d-4
         sigma = 0.99d0
         c = sum(g(:,:,1)*d(:,:))
-        write(*,*) etot,fmax,alpha
+        !write(*,*) etot,fmax,alpha
         !write(*,*) "linmin,alpha=",loop_linmin,alpha
         !write(*,*) etot,history(icount,1)
         !write(*,*) fmax,history(icount,2)
@@ -360,7 +396,7 @@ contains
         !write(*,*) "delta, sigma",delta,sigma
 
         flag_check(:)=.false.
-        tmp = history(icount,1)+delta*alpha*c
+        tmp = history(1,loop)+delta*alpha*c
         if ( etot <= tmp ) flag_check(1)=.true.
         tmp = abs(sum(ion%force*d))
         if ( tmp <= sigma*abs(c) ) flag_check(2)=.true.
@@ -398,27 +434,27 @@ contains
         g(:,:,1) =-ion%force(:,:)
       else
 !       x(:,:,1) = aa_atom(:,:)
-        x(:,:,1) = ion%aaa(:,:)
-        g(:,:,1) =-foraa(:,:)
+        !x(:,:,1) = ion%aaa(:,:)
+        !g(:,:,1) =-foraa(:,:)
       end if
 
-      icount = icount + 1
-      history(icount,1) = etot
-      history(icount,2) = fmax
-      history(icount,3) = ierr
+      history(1,loop) = etot
+      history(2,loop) = fmax
+      history(3,loop) = ierr ; if ( ierr == -2 ) history(3,loop)=NiterSCF
+      history(4,loop) = sum(history(3,0:loop))
       c=sum(d*g(:,:,0))
-      history(icount,4) = c
-      history(icount,5) = alpha !(etot-history(icount-1,1))/(alpha*c)
-      history(icount,6) = loop_linmin !sum(g(:,:,1)*d)/c
+      history(5,loop) = c
+      history(6,loop) = alpha !(etot-history(loop-1,1))/(alpha*c)
+      history(7,loop) = loop_linmin !sum(g(:,:,1)*d)/c
 
       call watchb( tt(:,0), tt(:,4) )
 
       if ( disp_sw ) then
-        write(*,'(a7,2x,a15,a14,a5,2a14)') "History","Etot","Fmax","iter" &
-                                          ,"(d,g)","alpha"
-        do i=0,icount
-          write(*,'(i4,5x,es15.8,es14.5,i5,3es14.5)') &
-               i, (history(i,j),j=1,2), nint(history(i,3)),(history(i,j),j=4,5)
+        write(*,'(a7,2x,a15,a14,2a5,2a14,1x,a6)') "History","Etot","Fmax","iter","iter" &
+                                          ,"(d,g)","alpha","linmin"
+        do i=0,loop
+          write(*,'(i4,5x,es15.8,es14.5,i4,i6,2es14.5,1x,i6)') &
+               i, history(1:2,i), nint(history(3:4,i)),history(5:6,i),nint(history(7,i))
         end do
         write(*,'("etime:",4f10.5)') tt(2,1),tt(2,2),tt(2,3),tt(2,3)
       end if
@@ -446,8 +482,6 @@ contains
        deallocate( x )
        deallocate( g )
     end if
-
-    call stop_program('')
 
   end subroutine atomopt_bfgs
 

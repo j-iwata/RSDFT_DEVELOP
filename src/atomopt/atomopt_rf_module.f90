@@ -17,6 +17,7 @@ module atomopt_rf_module
   use ps_nloc2_module
   use ps_nloc_mr_module
   use scf_module
+  use atomopt_io_module, only: flag_continue_atomopt, write_atomopt_io, read_atomopt_io
 
   implicit none
 
@@ -47,13 +48,14 @@ contains
     integer,allocatable :: iwork(:),ifail(:)
     real(8) :: etot0, etot, fmax, okstep
     real(8) :: dxdg,dxHdx,c1,c2
-    real(8) :: vl,vu,tol,alpha
+    real(8) :: vl,vu,tol,alpha,dmax,dtmp
     real(8) :: aa_inv(3,3),da(3),da_tmp(3)
     real(8),parameter :: one=1.0d0, zero=0.0d0
     real(8),allocatable :: g(:),x(:),Hessian(:,:),Htmp(:,:)
     real(8),allocatable :: history(:,:),g0(:),x0(:),d(:)
     real(8),allocatable :: dx(:),dg(:),Hdx(:)
     real(8),allocatable :: w(:),z(:,:),work(:)
+    integer :: loop_start
 
     call write_border( 0, "atomopt_rf(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -72,6 +74,8 @@ contains
 
     max_loop = ncycle
 
+    loop_start = 1
+
     okstep = okstep_in
 
 ! ---
@@ -85,17 +89,21 @@ contains
        ion%xyz(1:3,a) = matmul( aa%LatticeVector(1:3,1:3), ion%aaa(1:3,a) )
     end do
 
-    if ( disp_sw ) then
-       write(*,*) "Initial configuration"
-       do a=1,ion%natom
+    if ( .not.flag_continue_atomopt() ) then
+
+      if ( disp_sw ) then
+        write(*,*) "Initial configuration"
+        do a=1,ion%natom
           write(*,'(1x,3f20.15)') ion%aaa(1:3,a)
-       end do
+        end do
+      end if
+
+      call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
+      call calc_force( ion%natom, ion%force, fmax )
+
+      if ( fmax <= fmax_tol ) goto 900
+
     end if
-
-    call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
-    call calc_force( ion%natom, ion%force, fmax )
-
-    if ( fmax <= fmax_tol ) goto 900
 
 ! ---
 
@@ -114,11 +122,25 @@ contains
     ishape(1) = n
     ishape2(1:2) = (/ 3, ion%natom /)
 
-    allocate( history(0:max_loop*np,3) ) ; history=0.0d0
+    allocate( history(5,0:max_loop*np) ) ; history=0.0d0
 
-    history(0,1) = etot
-    history(0,2) = fmax
-    history(0,3) = ierr
+    if ( flag_continue_atomopt() ) then
+
+      call read_atomopt_io( &
+           loop_start, &
+           history, &
+           x, x0, g, g0, &
+           Hessian )
+
+    else
+
+      history(1,0) = etot
+      history(2,0) = fmax
+      history(3,0) = ierr ; if ( ierr == -2 ) history(3,0)=NiterSCF
+      history(4,0) = sum( history(3,0:0) )
+      history(5,0) = 0.0d0
+
+    end if
 
 ! --- for LAPACK
 
@@ -136,13 +158,14 @@ contains
 
 ! ---
 
-    alpha = 1.0d0
+    do loop = loop_start, max_loop
 
-    icount = 0
+      if ( disp_sw ) write(*,'(a60," loop=",i4)') repeat("-",60),loop
 
-    do loop=1,max_loop
+      alpha = 1.0d0
 
-      if ( disp_sw ) write(*,'(a60," ICY=",i4)') repeat("-",60),loop
+      call write_coordinates_atom( 197, 3 )
+      call write_atomopt_io( loop,history(:,0:loop-1),x,x0,g,g0,Hessian )
 
       if ( loop == 1 ) then
 
@@ -176,6 +199,24 @@ contains
           d(i1:i2) = matmul( aa%LatticeVector, da )
         end do
 
+        dmax=0.0d0
+        do a=1,ion%natom
+          i2 = 3*a
+          i1 = i2 - 3 + 1
+          dtmp = sqrt(sum(d(i1:i2)**2))*alpha
+          dmax = max(dmax,dtmp)
+        end do
+        if ( disp_sw ) then
+          write(*,*) "Maximum displacement(bohr):",dmax
+        end if
+        if ( dmax > okstep ) then
+          alpha=alpha*okstep/dmax
+          if ( disp_sw ) then
+            write(*,*) "Maxmimum displacement is limited to",okstep
+            write(*,*) "alpha is changed: alpha=",alpha
+          end if
+        end if
+
         x(:) = x0(:) + alpha*d(:)
         ion%xyz(:,:) = reshape( x, ishape2 )
 
@@ -186,47 +227,58 @@ contains
 
         dxdg = sum( dx*dg )
         if ( disp_sw ) write(*,*) "dxdg=",dxdg
-        !if ( dxdg < 0.0d0 ) then
-        !   ion%xyz(:,:)   = reshape( x0, ishape2 )
-        !   ion%force(:,:) = reshape( -g0, ishape2 )
-        !   exit
-        !end if
-        call dgemv( 'N', n, n, one, Hessian, n, dx, 1, zero, Hdx, 1 )
-        dxHdx = sum( dx*Hdx )
-        c1 = 1.0d0/dxdg
-        c2 = 1.0d0/dxHdx
-        do j=1,n
-        do i=1,n
-          Hessian(i,j) = Hessian(i,j) + dg(i)*dg(j)*c1 - Hdx(i)*Hdx(j)*c2
-        end do
-        end do
 
-        Htmp=0.0d0
-        Htmp(1:n,1:n) = Hessian(:,:)
-        Htmp(1:n,n+1) = g(:)
-        Htmp(n+1,1:n) = g(:)
+        if ( dxdg < 0.0d0 ) then
+
+          if ( disp_sw ) write(*,*) "Steepest Descent"
+
+          d(:) = -g(:)
+
+          Hessian = 0.0d0
+          do i = 1, size(Hessian,1)
+            Hessian(i,i) = 1.0d0
+          end do
+
+        else
+
+          call dgemv( 'N', n, n, one, Hessian, n, dx, 1, zero, Hdx, 1 )
+          dxHdx = sum( dx*Hdx )
+          c1 = 1.0d0/dxdg
+          c2 = 1.0d0/dxHdx
+          do j=1,n
+          do i=1,n
+            Hessian(i,j) = Hessian(i,j) + dg(i)*dg(j)*c1 - Hdx(i)*Hdx(j)*c2
+          end do
+          end do
+
+          Htmp=0.0d0
+          Htmp(1:n,1:n) = Hessian(:,:)
+          Htmp(1:n,n+1) = g(:)
+          Htmp(n+1,1:n) = g(:)
 
 !---
-        if ( LWORK == 0 ) then
+          if ( LWORK == 0 ) then
+            call dsyevx('V','I','U',n+1,Htmp,n+1,vl,vu,il,iu,tol,m,w,z,n+1 &
+                 ,work,-1,iwork,ifail,ierr)
+            LWORK=nint(work(1))
+            deallocate( work )
+            allocate( work(LWORK) ); work=0.0d0
+          end if
           call dsyevx('V','I','U',n+1,Htmp,n+1,vl,vu,il,iu,tol,m,w,z,n+1 &
-               ,work,-1,iwork,ifail,ierr)
-          LWORK=nint(work(1))
-          deallocate( work )
-          allocate( work(LWORK) ); work=0.0d0
+               ,work,size(work),iwork,ifail,ierr)
+          d(:) = z(1:n,1)/z(n+1,1)
+!---
+!          if ( LWORK == 0 ) then
+!            call dsyev('V','U',n+1,Htmp,n+1,w,work,-1,ierr)
+!            LWORK=nint( work(1) )
+!            deallocate( work )
+!            allocate( work(LWORK) ); work=0.0d0
+!          end if
+!          call dsyev('V','U',n+1,Htmp,n+1,w,work,size(work),ierr)
+!          d(:) = Htmp(1:n,1)/Htmp(n+1,1)
+!---
+
         end if
-        call dsyevx('V','I','U',n+1,Htmp,n+1,vl,vu,il,iu,tol,m,w,z,n+1 &
-                    ,work,size(work),iwork,ifail,ierr)
-        d(:) = z(1:n,1)/z(n+1,1)
-!---
-!        if ( LWORK == 0 ) then
-!          call dsyev('V','U',n+1,Htmp,n+1,w,work,-1,ierr)
-!          LWORK=nint( work(1) )
-!          deallocate( work )
-!          allocate( work(LWORK) ); work=0.0d0
-!        end if
-!        call dsyev('V','U',n+1,Htmp,n+1,w,work,size(work),ierr)
-!        d(:) = Htmp(1:n,1)/Htmp(n+1,1)
-!---
 
         x0(:) = x(:)
         g0(:) = g(:)
@@ -249,7 +301,25 @@ contains
           d(i1:i2) = matmul( aa%LatticeVector, da )
         end do
 
-        x(:) = x0(:) + d(:)
+        dmax=0.0d0
+        do a=1,ion%natom
+          i2 = 3*a
+          i1 = i2 - 3 + 1
+          dtmp = sqrt(sum(d(i1:i2)**2))*alpha
+          dmax = max(dmax,dtmp)
+        end do
+        if ( disp_sw ) then
+          write(*,*) "Maximum displacement(bohr):",dmax
+        end if
+        if ( dmax > okstep ) then
+          alpha=alpha*okstep/dmax
+          if ( disp_sw ) then
+            write(*,*) "Maxmimum displacement is limited to",okstep
+            write(*,*) "alpha is changed: alpha=",alpha
+          end if
+        end if
+
+        x(:) = x0(:) + alpha*d(:)
         ion%xyz(:,:) = reshape( x, ishape2 )
 
       end if
@@ -272,15 +342,16 @@ contains
       call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
       call calc_force( ion%natom, ion%force, fmax )
 
-      icount = icount + 1
-      history(icount,1) = etot
-      history(icount,2) = fmax
-      history(icount,3) = ierr
+      history(1,loop) = etot
+      history(2,loop) = fmax
+      history(3,loop) = ierr ; if ( ierr == -2 ) ierr=NiterSCF
+      history(4,loop) = sum( history(3,0:loop) )
+      history(5,loop) = alpha
 
       if ( disp_sw ) then
-        do i=0,icount
-          write(*,'(1x,i4,f20.10,es14.5,i4)') &
-               i, (history(i,j),j=1,2), nint(history(i,3))
+        do i=0,loop
+          write(*,'(1x,i4,f20.10,es14.5,i4,i6,f10.5)') &
+               i, history(1:2,i), nint(history(3:4,i)),history(5,i)
         end do
       end if
 
