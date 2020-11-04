@@ -85,6 +85,8 @@ contains
     okstep = okstep_in
 
     ndiis = 0
+    if ( disp_sw .and. ndiis > 0 ) write(*,*) "DIIS is used: ndiis=",ndiis
+    mdiis = 0
 
 ! ---
 

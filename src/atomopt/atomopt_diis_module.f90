@@ -72,6 +72,7 @@ contains
     okstep = okstep_in
 
     do_rho_diis = .false.
+    if (disp_sw.and.do_rho_diis) write(*,*) "rho_diis on"
 
 ! ---
 
@@ -117,12 +118,12 @@ contains
       if ( do_rho_diis ) then
         call read_diis_atomopt_io( &
              loop_start, &
-             history(:,0:loop_start-1), &
+             history(:,:), &
              ip, x, g, rho_diis )
       else
         call read_diis_atomopt_io( &
              loop_start, &
-             history(:,0:loop_start-1), &
+             history(:,:), &
              ip, x, g )
       end if
 

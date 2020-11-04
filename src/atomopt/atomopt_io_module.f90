@@ -84,7 +84,7 @@ contains
     read(u) history(:,0:loop_start-1)
     read(u) ip
     jp = ubound(x,3)
-    if ( jp /= ip ) kp=min(ip,jp)
+    kp = min(ip,jp)
     read(u) x(:,:,0:kp)
     read(u) g(:,:,0:kp)
     if ( present(rho) ) read(u) rho(:,:,0:kp)
