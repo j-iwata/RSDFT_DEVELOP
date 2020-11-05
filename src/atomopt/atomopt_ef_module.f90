@@ -32,23 +32,25 @@ module atomopt_ef_module
 contains
 
 
-  subroutine atomopt_ef( SYStype_in, fmax_tol, ncycle, okstep_in, NiterSCF_in )
+  subroutine atomopt_ef( SYStype_in, fmax_tol, ncycle, okstep_in, max_linmin_in, max_alpha_in, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
     integer,intent(in) :: ncycle
     real(8),intent(in) :: okstep_in
+    integer,intent(in) :: max_linmin_in
+    real(8),intent(in) :: max_alpha_in
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa, bb
-    integer :: max_loop
+    integer :: max_loop, max_linmin, linmin
     integer :: ishape(1), ishape2(2), i1,i2, LWORK=0
     integer :: n,il,iu,m,a,ierr,loop,i,j,ip,loop_start
     integer,allocatable :: iwork(:),ifail(:)
     real(8) :: etot0, etot, fmax
-    real(8) :: dxdg,dxHdx,c1,c2,dmax,dtmp
-    real(8) :: vl,vu,tol,alpha,okstep
+    real(8) :: dxdg,dxHdx,c1,c2,c,dmax,dtmp
+    real(8) :: vl,vu,tol,alpha,okstep,max_alpha
     real(8) :: aa_inv(3,3),da(3),da_tmp(3)
     real(8),parameter :: one=1.0d0, zero=0.0d0
     real(8),allocatable :: g(:),x(:),Hessian(:,:),Htmp(:,:)
@@ -56,12 +58,15 @@ contains
     real(8),allocatable :: history(:,:),g0(:),x0(:),d(:)
     real(8),allocatable :: dx(:),dg(:),Hdx(:)
     real(8),allocatable :: w(:),z(:,:),work(:)
+    real(8),allocatable :: info_linmin(:), xyzf_linmin(:,:,:)
     real(8),parameter :: eig_threshold=0.02d0
 
     integer :: ndiis, mdiis
     real(8),allocatable :: xdiis(:,:), ediis(:,:), coef_diis(:)
     real(8),allocatable :: xtmp(:),etmp(:),gtmp(:),gdiis(:,:)
     logical :: flag_diis=.false.
+    logical :: flag_sd=.true. 
+    real(8) :: alpha1,alpha2,alpha3,alpha4,etot1,etot2,etot3,etot4
 
     call write_border( 0, "atomopt_ef(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -87,6 +92,10 @@ contains
     ndiis = 0
     if ( disp_sw .and. ndiis > 0 ) write(*,*) "DIIS is used: ndiis=",ndiis
     mdiis = 0
+
+    max_linmin = max_linmin_in
+
+    max_alpha = max_alpha_in
 
 ! ---
 
@@ -133,7 +142,10 @@ contains
     ishape(1) = n
     ishape2(1:2) = (/ 3, ion%natom /)
 
-    allocate( history(5,0:max_loop) ) ; history=0.0d0
+    allocate( history(6,0:max_loop) ) ; history=0.0d0
+
+    allocate( info_linmin(size(history,1)) ); info_linmin=0.0d0
+    allocate( xyzf_linmin(3,ion%natom,2) ); xyzf_linmin=0.0d0
 
     if ( flag_continue_atomopt() ) then
 
@@ -149,7 +161,7 @@ contains
       history(2,0) = fmax
       history(3,0) = ierr ; if (ierr == -2) history(3,0)=NiterSCF
       history(4,0) = sum( history(3,0:0) )
-      history(5,0) = 0.0d0
+      history(5:,0) = 0.0d0
 
     end if
 
@@ -194,6 +206,8 @@ contains
 
       if ( loop == 1 ) then
 
+        flag_sd = .true.
+
         Hessian=0.0d0
         do i=1,n
           Hessian(i,i) = one
@@ -215,6 +229,8 @@ contains
 
           if ( disp_sw ) write(*,*) "Steepest descent (Restart EF-opt process)"
 
+          flag_sd = .true.
+
           d(:)  =-g(:)
           x0(:) = x(:)
           g0(:) = g(:)
@@ -225,6 +241,8 @@ contains
           end do
 
         else
+
+          flag_sd = .false.
 
           call dgemv( 'N', n, n, one, Hessian, n, dx, 1, zero, Hdx, 1 )
           dxHdx = sum( dx*Hdx )
@@ -321,79 +339,172 @@ contains
 
 ! ---
 
-      dmax=0.0d0
-      do a=1,ion%natom
-        i2 = 3*a
-        i1 = i2 - 3 + 1
-        dtmp = sqrt(sum(d(i1:i2)**2))*alpha
-        dmax = max(dmax,dtmp)
-      end do
-      if ( disp_sw ) then
-        write(*,*) "Maximum displacement(bohr):",dmax
-      end if
-      if ( dmax > okstep ) then
-        alpha=alpha*okstep/dmax
-        if ( disp_sw ) then
-          write(*,*) "Maxmimum displacement is limited to",okstep
-          write(*,*) "alpha is changed: alpha=",alpha
+      info_linmin=1.0d100
+      xyzf_linmin=0.0d0
+      alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
+      etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
+
+      do linmin = 1, max_linmin !---------- Line Minimization
+
+        select case(linmin)
+        case( 1 )
+          alpha  = 1.0d0
+          alpha1 = alpha
+        case(2)
+          alpha  = (max_alpha-1.0d0)*0.3d0
+          alpha2 = alpha
+        case(3)
+          alpha  = max_alpha
+          alpha3 = alpha
+        case(4)
+          if ( etot1 >= etot2 .and. etot2 <= etot3 ) then
+            alpha  = alpha1 + (alpha3-alpha2)
+            alpha4 = alpha
+         else if ( etot1 <= etot2 .and. etot1 <= etot3 ) then
+            alpha = alpha1*0.3d0
+            alpha4=alpha1 ; etot4=etot1
+            alpha1=alpha  ; etot1=0.0d0 
+          else if ( etot3 <= etot2 .and. etot3 <= etot1 ) then
+            alpha = alpha3*1.7d0
+            alpha4=alpha3; etot4=etot3
+            alpha3=alpha ; etot3=0.0d0
+          else
+            write(*,'("alpha1,apha2,alpha3,alpha4",4f10.5)') alpha1,alpha2,alpha3,alpha4
+            write(*,'("etot1,apha2,etot3,etot4",4f10.5)') etot1,etot2,etot3,etot4
+            call stop_program('zzz')
+          end if
+        case(5:)
+          
+        end select
+
+        dmax=0.0d0
+        do a=1,ion%natom
+          i2 = 3*a
+          i1 = i2 - 3 + 1
+          dtmp = sqrt(sum(d(i1:i2)**2))*alpha
+          dmax = max(dmax,dtmp)
+        end do
+        !if ( disp_sw ) then
+        !  write(*,*) "Maximum displacement(bohr):",dmax
+        !end if
+        if ( dmax > okstep ) then
+          alpha=alpha*okstep/dmax
+          !if ( disp_sw ) then
+          !  write(*,*) "Maxmimum displacement is limited to",okstep
+          !  write(*,*) "alpha is changed: alpha=",alpha
+          !end if
         end if
-      end if
 
 ! ---
 
-      if ( flag_diis ) then
-        x(:) = xtmp(:) + alpha*d(:)
-      else
-        x(:) = x0(:) + alpha*d(:)
-      end if
-
-! ---
-
-      ion%xyz(:,:) = reshape( x, ishape2 )
-
-      aa_atom(:,:) = matmul( aa_inv, ion%xyz )
-      call shift_aa_coordinates_atom( aa_atom )        
-
-! ---
-
-      if ( disp_sw ) then
-        write(*,*) "Next trial configuration"
-      end if
-      dmax=0.0d0
-      do a=1,ion%natom
-        i2 = 3*a
-        i1 = i2 - 3 + 1
-        dtmp = sqrt(sum(d(i1:i2)**2))*alpha
-        if ( disp_sw ) then
-          write(*,'(i4,2x,3f10.5,2x,3es14.5,2x,es14.5)') &
-               a,aa_atom(:,a),ion%xyz(:,a),dtmp
+        if ( flag_diis ) then
+          do a=1,ion%natom
+            i2 = 3*a
+            i1 = i2 - 3 + 1
+            ion%xyz(:,a) = xtmp(i1:i2) + alpha*d(i1:i2)
+          end do
+        else
+          do a=1,ion%natom
+            i2 = 3*a
+            i1 = i2 - 3 + 1
+            ion%xyz(:,a) = x0(i1:i2) + alpha*d(i1:i2)
+          end do
         end if
-        dmax=max(dmax,dtmp)
-      end do
-      if ( disp_sw ) then
-        write(*,*) "Maximum displacement(bohr):",dmax
-      end if
 
-      call write_coordinates_atom( 97, 3 )
+! ---
 
-      call scf( etot, ierr ); if ( ierr == -1 ) goto 999
-      call calc_force( ion%natom, ion%force, fmax )
+        aa_atom(:,:) = matmul( aa_inv, ion%xyz )
+        call shift_aa_coordinates_atom( aa_atom )        
 
-      history(1,loop) = etot
-      history(2,loop) = fmax
-      history(3,loop) = ierr ; if( ierr == -2) history(3,loop)=NiterSCF
-      history(4,loop) = sum( history(3,0:loop) )
-      history(5,loop) = alpha
+! ---
+
+        !if ( disp_sw ) then
+        !  write(*,*) "Next trial configuration"
+        !end if
+        dmax=0.0d0
+        do a=1,ion%natom
+          i2 = 3*a
+          i1 = i2 - 3 + 1
+          dtmp = sqrt(sum(d(i1:i2)**2))*alpha
+          !if ( disp_sw ) then
+          !  write(*,'(i4,2x,3f10.5,2x,3es14.5,2x,es14.5)') &
+          !       a,aa_atom(:,a),ion%xyz(:,a),dtmp
+          !end if
+          dmax=max(dmax,dtmp)
+        end do
+        !if ( disp_sw ) then
+        !  write(*,*) "Maximum displacement(bohr):",dmax
+        !end if
+
+        call write_coordinates_atom( 97, 3 )
+
+        call scf( etot, ierr ); if ( ierr == -1 ) goto 999
+        call calc_force( ion%natom, ion%force, fmax )
+
+        history(1,loop) = etot
+        history(2,loop) = fmax
+        history(3,loop) = ierr ; if( ierr == -2) history(3,loop)=NiterSCF
+        history(4,loop) = sum( history(3,0:loop) )
+        history(5,loop) = alpha
+        c=0.0d0
+        do a=1,ion%natom
+          i2=3*a
+          i1=i2-3+1
+          c = c - sum(d(i1:i1)*ion%force(:,a))
+        end do
+        history(6,loop) = c
+
+        if ( disp_sw ) then
+          do i=loop,loop
+            write(*,'("linmin ",i4,f20.10,es14.5,i4,i6,2es14.5)') &
+                 i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
+          end do
+        end if
+
+        if ( etot < info_linmin(1) ) then
+          info_linmin(1:6) = history(1:6,loop)
+          xyzf_linmin(:,:,1) = ion%xyz
+          xyzf_linmin(:,:,2) = ion%force
+        end if
+
+        select case(linmin)
+        case(1); etot1=etot
+        case(2); etot2=etot
+        case(3); etot3=etot
+        end select
+
+        if ( linmin >= 4 ) then
+          if ( etot1 == 0.0d0 ) then
+            etot1=etot
+          else if ( etot3 == 0.0d0 ) then
+            etot3=etot
+          else if ( etot4 == 0.0d0 ) then
+            etot4=etot
+          end if
+        end if
+
+        !write(*,'("alpha1,alpha2,alpha3,alpha4",4f12.7)') alpha1,alpha2,alpha3,alpha4
+        !write(*,'("etot1 ,etot2 ,etot3 ,etot4 ",4f12.7)') etot1,etot2,etot3,etot4
+
+        if ( .not.flag_sd .or. fmax <= fmax_tol ) exit
+
+      end do !linmin
+
+      history(:,loop) = info_linmin(:)
+      fmax = info_linmin(2)
+      ion%xyz = xyzf_linmin(:,:,1)
+      ion%force = xyzf_linmin(:,:,2)
 
       if ( disp_sw ) then
         do i=0,loop
-          write(*,'(1x,i4,f20.10,es14.5,i4,i6,es14.5)') &
-               i, history(1:2,i), nint(history(3:4,i)),history(5,i)
+          write(*,'("History",i4,f20.10,es14.5,i4,i6,2es14.5)') &
+               i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
         end do
       end if
 
-      if ( fmax <= fmax_tol ) goto 900
+      if ( fmax <= fmax_tol ) exit
 
+      x(:) =  reshape( ion%xyz(:,:)  , ishape )
       g(:) = -reshape( ion%force(:,:), ishape )
 
     end do ! loop

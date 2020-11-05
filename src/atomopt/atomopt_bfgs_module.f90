@@ -32,21 +32,23 @@ module atomopt_bfgs_module
 contains
 
 
-  subroutine atomopt_bfgs( SYStype_in, fmax_tol, ncycle, okstep_in, NiterSCF_in )
+  subroutine atomopt_bfgs( SYStype_in, fmax_tol, ncycle, okstep_in, max_linmin_in, max_alpha_in, NiterSCF_in )
 
     implicit none
     integer,intent(in) :: SYStype_in
     real(8),intent(in) :: fmax_tol
     integer,intent(in) :: ncycle
     real(8),intent(in) :: okstep_in
+    integer,intent(in) :: max_linmin_in
+    real(8),intent(in) :: max_alpha_in
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa
     integer,parameter :: max_loop_default=5
     integer :: np, max_loop,max_loop_linmin=5
     integer :: i1,i2,j1,j2,i,j,n,loop_linmin,loop_start
-    integer :: a, ierr, ip, jp, loop, icount
-    real(8) :: etot, fmax, tmp, okstep
+    integer :: a, ierr, ip, jp, loop, icount,max_linmin
+    real(8) :: etot, fmax, tmp, okstep, max_alpha
     real(8) :: dxdg,dgHdg,dxg,dgHg,c,alpha,rdg
     real(8) :: aa_inv(3,3), da(3), da_tmp(3)
     real(8),allocatable :: g(:,:,:),x(:,:,:),Hg(:,:,:),Hdg(:,:)
@@ -62,8 +64,10 @@ contains
     logical :: use_xyz=.true., flag_check(2)
     real(8) :: Armijo, Wolfe2
     real(8) :: delta, sigma
-    real(8),allocatable :: backup_force(:,:)
-    real(8) :: backup_data(4)
+    real(8),allocatable :: xyzf_linmin(:,:,:)
+    real(8),allocatable :: info_linmin(:)
+    real(8) :: alpha1,alpha2,alpha3,alpha4
+    real(8) :: etot1,etot2,etot3,etot4
 
     tt=0.0d0; call watchb( tt_start ); tt(:,0)=tt_start
 
@@ -87,6 +91,10 @@ contains
     loop_start = 1
 
     okstep = okstep_in
+
+    max_linmin = max_linmin_in
+
+    max_alpha = max_alpha_in
 
 ! ---
 
@@ -131,9 +139,10 @@ contains
     allocate( d(3,ion%natom) ) ; d=0.0d0
     allocate( r(3,ion%natom) ) ; r=0.0d0
 
-    allocate( backup_force(3,ion%natom) ); backup_force=0.0d0
-
     allocate( history(7,0:max_loop+1) ) ; history=0.0d0
+
+    allocate( xyzf_linmin(3,ion%natom,2) ); xyzf_linmin=0.0d0
+    allocate( info_linmin(size(history,1)) ); info_linmin=0.0d0
 
     if ( flag_continue_atomopt() ) then
 
@@ -329,32 +338,62 @@ contains
 
       call watchb( tt(:,0), tt(:,1) )
 
-      backup_data=0.0d0
-      alpha=1.0d0
-      do loop_linmin = 0, 0 !max_loop_linmin !------------ Line Mimization
+      info_linmin=1.0d100
+      xyzf_linmin=0.0d0
+      alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
+      etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
+
+      do loop_linmin = 1, max_linmin !------------ Line-Mimization loop (start)
 
         if ( disp_sw ) write(*,'(a30," loop_linmin",i2)') repeat("-",30),loop_linmin
 
         call watchb( tt(:,0) )
 
-        if ( loop_linmin > 0 ) then
-          alpha=alpha*0.5d0
-        end if
+        select case(loop_linmin)
+        case( 1 )
+          alpha  = 1.0d0
+          alpha1 = alpha
+        case(2)
+          alpha  = (max_alpha-1.0d0)*0.3d0
+          alpha2 = alpha
+        case(3)
+          alpha  = max_alpha
+          alpha3 = alpha
+        case(4)
+          if ( etot1 >= etot2 .and. etot2 <= etot3 ) then
+            alpha  = alpha1 + (alpha3-alpha2)
+            alpha4 = alpha
+         else if ( etot1 <= etot2 .and. etot1 <= etot3 ) then
+            alpha = alpha1*0.3d0
+            alpha4=alpha1 ; etot4=etot1
+            alpha1=alpha  ; etot1=0.0d0 
+          else if ( etot3 <= etot2 .and. etot3 <= etot1 ) then
+            alpha = alpha3*1.7d0
+            alpha4=alpha3; etot4=etot3
+            alpha3=alpha ; etot3=0.0d0
+          else
+            write(*,'("alpha1,apha2,alpha3,alpha4",4f10.5)') alpha1,alpha2,alpha3,alpha4
+            write(*,'("etot1,apha2,etot3,etot4",4f10.5)') etot1,etot2,etot3,etot4
+            call stop_program('zzz')
+          end if
+        case(5:)
+          
+        end select
 
         dmax=0.0d0
         do a=1,ion%natom
           dtmp = sqrt(sum(d(:,a)**2))*alpha
           dmax = max(dmax,dtmp)
         end do
-        if ( disp_sw ) then
-          write(*,*) "Maximum displacement(bohr):",dmax
-        end if
+        !if ( disp_sw ) then
+        !  write(*,*) "Maximum displacement(bohr):",dmax
+        !end if
         if ( dmax > okstep ) then
           alpha=alpha*okstep/dmax
-          if ( disp_sw ) then
-            write(*,*) "Maxmimum displacement is limited to",okstep
-            write(*,*) "alpha is changed: alpha=",alpha
-          end if
+          !if ( disp_sw ) then
+          !  write(*,*) "Maxmimum displacement is limited to",okstep
+          !  write(*,*) "alpha is changed: alpha=",alpha
+          !end if
         end if
       
         if ( use_xyz ) then
@@ -367,13 +406,13 @@ contains
         end if
 
         call shift_aa_coordinates_atom( aa_atom )
-        if ( disp_sw ) then
-          write(*,*) "Next trial configuration"
-          do a=1,ion%natom
-            write(*,'(i2,2x,3f10.5,2x,3f10.5,2x,f10.5)') &
-                 a,aa_atom(:,a),ion%xyz(:,a),sqrt(sum(d(:,a)**2))*alpha
-          end do
-        end if
+        !if ( disp_sw ) then
+        !  write(*,*) "Next trial configuration"
+        !  do a=1,ion%natom
+        !    write(*,'(i2,2x,3f10.5,2x,3f10.5,2x,f10.5)') &
+        !         a,aa_atom(:,a),ion%xyz(:,a),sqrt(sum(d(:,a)**2))*alpha
+        !  end do
+        !end if
         call write_coordinates_atom( 97, 3 )
 
         call watchb( tt(:,0), tt(:,2) )
@@ -382,9 +421,29 @@ contains
         call calc_force( ion%natom, ion%force, fmax )
         !foraa = matmul( transpose(aa_inv), ion%force )
 
-        delta = 1.0d-4
-        sigma = 0.99d0
-        c = sum(g(:,:,1)*d(:,:))
+        history(1,loop) = etot
+        history(2,loop) = fmax
+        history(3,loop) = ierr ; if ( ierr == -2 ) history(3,loop)=NiterSCF
+        history(4,loop) = sum(history(3,0:loop))
+        c=sum(d*g(:,:,0))
+        history(5,loop) = c
+        history(6,loop) = alpha
+        history(7,loop) = loop_linmin
+        do i=loop,loop
+          write(*,'("linmin",i4,5x,es15.8,es14.5,i4,i6,2es14.5,1x,i6)') &
+               i, history(1:2,i), nint(history(3:4,i)),history(5:6,i),nint(history(7,i))
+        end do
+        write(*,'("etime:",4f10.5)') tt(2,1),tt(2,2),tt(2,3),tt(2,3)
+
+        if ( etot < info_linmin(1) ) then
+          info_linmin = history(:,loop)
+          xyzf_linmin(:,:,1) = ion%xyz(:,:)
+          xyzf_linmin(:,:,2) = ion%force(:,:)
+        end if
+
+        !delta = 1.0d-4
+        !sigma = 0.99d0
+        !c = sum(g(:,:,1)*d(:,:))
         !write(*,*) etot,fmax,alpha
         !write(*,*) "linmin,alpha=",loop_linmin,alpha
         !write(*,*) etot,history(icount,1)
@@ -394,36 +453,38 @@ contains
         !write(*,*) "Check Wolfe2 condition",-sum(ion%force*d),">=?",sigma*c
         !write(*,*) "Check WolfeS condition",abs(sum(ion%force*d)),"<=?",sigma*abs(c)
         !write(*,*) "delta, sigma",delta,sigma
-
-        flag_check(:)=.false.
-        tmp = history(1,loop)+delta*alpha*c
-        if ( etot <= tmp ) flag_check(1)=.true.
-        tmp = abs(sum(ion%force*d))
-        if ( tmp <= sigma*abs(c) ) flag_check(2)=.true.
+        !flag_check(:)=.false.
+        !tmp = history(1,loop)+delta*alpha*c
+        !if ( etot <= tmp ) flag_check(1)=.true.
+        !tmp = abs(sum(ion%force*d))
+        !if ( tmp <= sigma*abs(c) ) flag_check(2)=.true.
 
         call watchb( tt(:,0), tt(:,3) )
 
-        if ( all(flag_check) ) then
-          exit
-        else
-          exit
-          if ( all(backup_data==0.0) .or. etot < backup_data(1) ) then
-            backup_data = (/ etot, fmax, dble(ierr), alpha /)
-            backup_force = ion%force
+        select case(loop_linmin)
+        case(1); etot1=etot
+        case(2); etot2=etot
+        case(3); etot3=etot
+        end select
+
+        if ( loop_linmin >= 4 ) then
+          if ( etot1 == 0.0d0 ) then
+            etot1=etot
+          else if ( etot3 == 0.0d0 ) then
+            etot3=etot
+          else if ( etot4 == 0.0d0 ) then
+            etot4=etot
           end if
         end if
 
-        if ( loop_linmin > 0 .and. flag_check(1) ) exit
+        !write(*,'("alpha1,alpha2,alpha3,alpha4",4f12.7)') alpha1,alpha2,alpha3,alpha4
+        !write(*,'("etot1 ,etot2 ,etot3 ,etot4 ",4f12.7)') etot1,etot2,etot3,etot4
 
       end do !loop_linmin
 
-      if ( loop_linmin > max_loop_linmin ) then
-        etot = backup_data(1)
-        fmax = backup_data(2)
-        ierr = nint(backup_data(3))
-        alpha = backup_data(4)
-        ion%force = backup_force
-      end if
+      history(1:7,loop) = info_linmin(1:7)
+      ion%xyz   = xyzf_linmin(:,:,1)
+      ion%force = xyzf_linmin(:,:,2)
 
       call watchb( tt(:,0) )
 
@@ -438,14 +499,14 @@ contains
         !g(:,:,1) =-foraa(:,:)
       end if
 
-      history(1,loop) = etot
-      history(2,loop) = fmax
-      history(3,loop) = ierr ; if ( ierr == -2 ) history(3,loop)=NiterSCF
-      history(4,loop) = sum(history(3,0:loop))
-      c=sum(d*g(:,:,0))
-      history(5,loop) = c
-      history(6,loop) = alpha !(etot-history(loop-1,1))/(alpha*c)
-      history(7,loop) = loop_linmin !sum(g(:,:,1)*d)/c
+      !history(1,loop) = etot
+      !history(2,loop) = fmax
+      !history(3,loop) = ierr ; if ( ierr == -2 ) history(3,loop)=NiterSCF
+      !history(4,loop) = sum(history(3,0:loop))
+      !c=sum(d*g(:,:,0))
+      !history(5,loop) = c
+      !history(6,loop) = alpha !(etot-history(loop-1,1))/(alpha*c)
+      !history(7,loop) = loop_linmin !sum(g(:,:,1)*d)/c
 
       call watchb( tt(:,0), tt(:,4) )
 

@@ -75,13 +75,13 @@ CONTAINS
     case( 1, 2 )
        call atomopt_cg( iswitch_opt, iswitch_latopt )
     case( 4 )
-       call atomopt_diis( SYStype, feps, ncycl, okatom, diter_opt )
+       call atomopt_diis( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case( 5 )
-       call atomopt_bfgs( SYStype, feps, ncycl, okatom, diter_opt )
+       call atomopt_bfgs( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case( 6 )
-       call atomopt_rf( SYStype, feps, ncycl, okatom, diter_opt )
+       call atomopt_rf( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case( 7 )
-       call atomopt_ef( SYStype, feps, ncycl, okatom, diter_opt )
+       call atomopt_ef( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
        call stop_program("atomopt")
