@@ -2,7 +2,8 @@ module atomopt_ef_module
 
   use lattice_module
   use atom_module, only: atom, construct_atom, aa_atom &
-                        ,write_coordinates_atom, shift_aa_coordinates_atom
+                        ,write_coordinates_atom, shift_aa_coordinates_atom &
+                        ,write_xyz_atom
   use force_module
   use pseudopot_module, only: pselect
   use eion_module
@@ -64,9 +65,9 @@ contains
     integer :: ndiis, mdiis
     real(8),allocatable :: xdiis(:,:), ediis(:,:), coef_diis(:)
     real(8),allocatable :: xtmp(:),etmp(:),gtmp(:),gdiis(:,:)
-    logical :: flag_diis=.false.
-    logical :: flag_sd=.true. 
+    logical :: flag_diis, flag_sd , flag_forced_sd
     real(8) :: alpha1,alpha2,alpha3,alpha4,etot1,etot2,etot3,etot4
+    character(40) :: msg
 
     call write_border( 0, "atomopt_ef(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -196,6 +197,8 @@ contains
 
       alpha = 1.0d0
       flag_diis = .false.
+      flag_sd = .false.
+      flag_forced_sd = .false.
 
 ! ---
 
@@ -225,11 +228,61 @@ contains
         dxdg = sum( dx*dg )
         if ( disp_sw ) write(*,*) "dxdg=",dxdg
 
-        if ( dxdg <= 0.0d0 ) then
+! ---
+
+        if ( .false. ) then
+        !if ( loop >= 3 ) then
+          etot1 = history(1,loop-1)
+          etot2 = history(1,loop-2)
+          etot3 = history(1,loop-3)
+          if ( etot1 > etot2 .and. etot2 > etot3 ) then
+            if ( disp_sw ) write(*,*) "Climbing PES (SD is applied)"
+            flag_forced_sd = .true.
+          end if
+          open(297,file='trajectory_ef.xyz',status='old')
+          do j=1,loop-4
+            read(297,*)
+            read(297,*)
+            do i=1,size(ion%xyz,2)
+              read(297,*)
+            end do
+            read(297,*)
+            do i=1,size(ion%xyz,2)
+              read(297,*)
+            end do
+          end do
+          read(297,*) n
+          read(297,*) msg
+          if ( disp_sw ) then
+            write(*,*) "label, natom=",msg, n
+            write(*,*) "etot(loop-3)=",history(1,loop-3)
+            write(*,*) "etot(loop-2)=",etot2
+            write(*,*) "etot(loop-1)=",etot1
+          end if
+          do i=1,size(ion%xyz,2)
+            read(297,*) ion%xyz(:,i)
+          end do
+          read(297,*)
+          do i=1,size(ion%force,2)
+            read(297,*) ion%force(:,i)
+          end do
+          close(297)
+          do i=1,size(ion%xyz,2)
+            i2 = 3*i
+            i1 = i2 - 3 + 1
+            x(i1:i2) = ion%xyz(:,i)
+            g(i1:i2) =-ion%force(:,i)
+          end do
+        end if
+
+! ---
+
+        if ( dxdg <= 0.0d0 .or. flag_forced_sd ) then
 
           if ( disp_sw ) write(*,*) "Steepest descent (Restart EF-opt process)"
 
           flag_sd = .true.
+          flag_forced_sd = .false.
 
           d(:)  =-g(:)
           x0(:) = x(:)
@@ -441,18 +494,21 @@ contains
         call scf( etot, ierr ); if ( ierr == -1 ) goto 999
         call calc_force( ion%natom, ion%force, fmax )
 
+        write(msg,*) loop, etot
+        call write_trajectory( ion%xyz, ion%force, msg )
+
         history(1,loop) = etot
         history(2,loop) = fmax
-        history(3,loop) = ierr ; if( ierr == -2) history(3,loop)=NiterSCF
+        history(3,loop) = ierr ; if (ierr == -2) history(3,loop)=NiterSCF
         history(4,loop) = sum( history(3,0:loop) )
         history(5,loop) = alpha
-        c=0.0d0
-        do a=1,ion%natom
-          i2=3*a
-          i1=i2-3+1
-          c = c - sum(d(i1:i1)*ion%force(:,a))
-        end do
-        history(6,loop) = c
+!        c=0.0d0
+!        do a=1,ion%natom
+!          i2=3*a
+!          i1=i2-3+1
+!          c = c - sum(d(i1:i1)*ion%force(:,a))
+!        end do
+        history(6,loop) = sum(d*g)
 
         if ( disp_sw ) then
           do i=loop,loop
@@ -572,6 +628,32 @@ contains
     call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 
   end subroutine scf
+
+
+  subroutine write_trajectory( xyz, force, msg )
+    implicit none
+    real(8),intent(in) :: xyz(:,:), force(:,:)
+    character(*),intent(in) :: msg
+    integer,parameter :: u=297
+    integer :: i, myrank
+    include 'mpif.h'
+    call MPI_Comm_rank(MPI_COMM_WORLD,myrank,i)
+    if ( myrank == 0 ) then
+      !
+      open(u,file='trajectory_ef.xyz',position='append')
+      call write_xyz_atom( u, xyz, "xyz_id_etot :"//msg )
+      close(u)
+      !
+      open(u,file='trajectory_ef.force',position='append')
+      write(u,*) size(force,2)
+      write(u,*) "force_id_etot:",msg
+      do i=1,size(force,2)
+        write(u,*) force(:,i)
+      end do
+      close(u)
+      !
+    end if
+  end subroutine write_trajectory
 
 
 end module atomopt_ef_module
