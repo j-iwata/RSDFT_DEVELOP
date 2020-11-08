@@ -65,9 +65,13 @@ contains
     integer :: ndiis, mdiis
     real(8),allocatable :: xdiis(:,:), ediis(:,:), coef_diis(:)
     real(8),allocatable :: xtmp(:),etmp(:),gtmp(:),gdiis(:,:)
-    logical :: flag_diis, flag_sd , flag_forced_sd
-    real(8) :: alpha1,alpha2,alpha3,alpha4,etot1,etot2,etot3,etot4
+    logical :: flag_diis, flag_sd , flag_forced_sd, flag_3pts
+    logical :: flag_exit
+    real(8) :: alpha0,alpha1,alpha2,alpha3,alpha4
+    real(8) :: etot1,etot2,etot3,etot4
     character(40) :: msg
+    real(8) :: factor, tau, fmax_min, etot_min
+    integer :: icount, istep_golden_search
 
     call write_border( 0, "atomopt_ef(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -392,43 +396,118 @@ contains
 
 ! ---
 
+      tau = ( sqrt(5.0d0) - 1.0d0 )*0.5d0
+
       info_linmin=1.0d100
       xyzf_linmin=0.0d0
       alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
       etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
+      flag_3pts = .false.
+      flag_exit = .false.
+      istep_golden_search=0
 
-      do linmin = 1, max_linmin !---------- Line Minimization
+      do linmin = 1, max_linmin+1 !---------- Line Minimization
 
-        select case(linmin)
-        case( 1 )
-          alpha  = 1.0d0
-          alpha1 = alpha
-        case(2)
-          alpha  = (max_alpha-1.0d0)*0.3d0
-          alpha2 = alpha
-        case(3)
-          alpha  = max_alpha
-          alpha3 = alpha
-        case(4)
-          if ( etot1 >= etot2 .and. etot2 <= etot3 ) then
-            alpha  = alpha1 + (alpha3-alpha2)
-            alpha4 = alpha
-         else if ( etot1 <= etot2 .and. etot1 <= etot3 ) then
-            alpha = alpha1*0.3d0
-            alpha4=alpha1 ; etot4=etot1
-            alpha1=alpha  ; etot1=0.0d0 
-          else if ( etot3 <= etot2 .and. etot3 <= etot1 ) then
-            alpha = alpha3*1.7d0
-            alpha4=alpha3; etot4=etot3
-            alpha3=alpha ; etot3=0.0d0
-          else
-            write(*,'("alpha1,apha2,alpha3,alpha4",4f10.5)') alpha1,alpha2,alpha3,alpha4
-            write(*,'("etot1,apha2,etot3,etot4",4f10.5)') etot1,etot2,etot3,etot4
-            call stop_program('zzz')
+        if ( .not.flag_3pts ) then
+
+          if ( linmin == 1 ) then
+            alpha1 = 0.0d0
+            etot1  = etot
+            alpha  = 1.0d0
+          else if ( linmin == 2 ) then
+            if ( etot1 < etot ) then
+              factor = 0.3d0
+              alpha3 = alpha
+              etot3  = etot
+              alpha  = alpha*factor
+            else if ( etot1 >= etot ) then
+              factor = 2.7d0
+              alpha2 = alpha
+              etot2  = etot
+              alpha  = alpha*factor
+            end if
+          else if ( linmin >= 3 ) then
+            if ( factor == 0.3d0 ) then
+              if ( etot1 > etot ) then
+                flag_3pts = .true.
+                alpha1 = alpha1; etot1 = etot1
+                alpha4 = alpha3; etot4 = etot3
+                alpha2 = 0.0d0 ; etot2 = 0.0d0
+                alpha3 = 0.0d0 ; etot3 = 0.0d0
+              else
+                alpha3 = alpha
+                etot3  = etot
+                alpha  = alpha*factor
+              end if
+            else if ( factor == 2.7d0 ) then
+              if ( etot2 < etot ) then
+                flag_3pts = .true.
+                alpha1 = alpha1 ; etot1 = etot1
+                alpha4 = alpha  ; etot4 = etot
+                alpha2 = 0.0d0  ; etot2 = 0.0d0
+                alpha3 = 0.0d0  ; etot3 = 0.0d0
+              else
+                alpha1 = alpha2
+                etot1  = etot2
+                alpha2 = alpha
+                etot2  = etot
+                alpha  = alpha*factor
+              end if
+            end if
           end if
-        case(5:)
-          
-        end select
+
+        end if !.not.flag_3pts
+
+        if ( flag_3pts ) then
+
+          select case( istep_golden_search )
+          case( 0 )
+            alpha = alpha4 - tau*(alpha4-alpha1)
+            istep_golden_search = istep_golden_search + 1
+          case( 1 )
+            alpha2 = alpha
+            etot2  = etot
+            alpha  = alpha1 + tau*(alpha4-alpha1)
+            istep_golden_search = istep_golden_search + 1
+          case( 2: )
+            if ( alpha3 == 0.0d0 .and. etot3 == 0.0d0 ) then
+              alpha3 = alpha
+              etot3  = etot
+            else
+              alpha2 = alpha
+              etot2  = etot
+            end if
+            if ( etot1 >= etot2 .and. etot2 <= etot3 ) then
+              alpha4 = alpha3
+              etot4  = etot3
+              alpha3 = alpha2
+              etot3  = etot2
+              alpha2 = 0.0d0
+              etot2  = 0.0d0
+              alpha  = alpha4 - tau*(alpha4-alpha1)
+            else if ( etot2 >= etot3 .and. etot3 <= etot4 ) then
+              alpha1 = alpha2
+              etot1  = etot2
+              alpha2 = alpha3
+              etot2  = etot3
+              alpha3 = 0.0d0
+              etot3  = 0.0d0
+              alpha  = alpha1 + tau*(alpha4-alpha1)
+            end if
+            istep_golden_search = istep_golden_search + 1
+          end select
+
+        end if !flag_3pts
+
+        if ( flag_sd .and. disp_sw ) then
+          write(*,'(a10,"linmin=",i4)') repeat("-",10),linmin-1
+          write(*,*) alpha1,etot1
+          write(*,*) alpha2,etot2
+          write(*,*) alpha3,etot3
+          if ( flag_3pts ) write(*,*) alpha4,etot4
+        end if
+
+        if ( flag_exit .or. linmin==max_linmin ) exit
 
         dmax=0.0d0
         do a=1,ion%natom
@@ -499,22 +578,34 @@ contains
 
         history(1,loop) = etot
         history(2,loop) = fmax
-        history(3,loop) = ierr ; if (ierr == -2) history(3,loop)=NiterSCF
+        icount=ierr
+        if ( ierr == -1 ) then
+          icount=0
+        else if ( ierr == -2 ) then
+          icount=NiterSCF
+        end if
+        history(3,loop) = history(3,loop) + icount
         history(4,loop) = sum( history(3,0:loop) )
         history(5,loop) = alpha
-!        c=0.0d0
-!        do a=1,ion%natom
-!          i2=3*a
-!          i1=i2-3+1
-!          c = c - sum(d(i1:i1)*ion%force(:,a))
-!        end do
         history(6,loop) = sum(d*g)
 
-        if ( disp_sw ) then
-          do i=loop,loop
-            write(*,'("linmin ",i4,f20.10,es14.5,i4,i6,2es14.5)') &
-                 i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
-          end do
+        !if ( disp_sw ) then
+        !  do i=loop,loop
+        !    write(*,'("linmin ",i4,f20.10,es14.5,i4,i6,2es14.5)') &
+        !         i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
+        !  end do
+        !end if
+
+        flag_exit=.false.
+        etot_min = info_linmin(1)
+        fmax_min = info_linmin(2)
+        if ( abs(etot-etot_min) < 1.d-7 ) then
+          if ( disp_sw ) write(*,'("conv(etot)",3g20.10)') etot_min, etot, etot-etot_min
+          flag_exit = .true.
+        end if
+        if ( abs(fmax-fmax_min) < fmax_tol ) then
+          if ( disp_sw ) write(*,'("conv(fmax)",3g20.10)') fmax_min, fmax, fmax-fmax_min
+          flag_exit=.true.
         end if
 
         if ( etot < info_linmin(1) ) then
@@ -523,26 +614,7 @@ contains
           xyzf_linmin(:,:,2) = ion%force
         end if
 
-        select case(linmin)
-        case(1); etot1=etot
-        case(2); etot2=etot
-        case(3); etot3=etot
-        end select
-
-        if ( linmin >= 4 ) then
-          if ( etot1 == 0.0d0 ) then
-            etot1=etot
-          else if ( etot3 == 0.0d0 ) then
-            etot3=etot
-          else if ( etot4 == 0.0d0 ) then
-            etot4=etot
-          end if
-        end if
-
-        !write(*,'("alpha1,alpha2,alpha3,alpha4",4f12.7)') alpha1,alpha2,alpha3,alpha4
-        !write(*,'("etot1 ,etot2 ,etot3 ,etot4 ",4f12.7)') etot1,etot2,etot3,etot4
-
-        if ( .not.flag_sd .or. fmax <= fmax_tol ) exit
+        if ( .not.flag_sd .or. fmax <= fmax_tol ) flag_exit=.true.
 
       end do !linmin
 
