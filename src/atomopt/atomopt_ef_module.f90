@@ -22,6 +22,8 @@ module atomopt_ef_module
                              , read_atomopt_io, write_atomopt_io
   use density_module, only: rho, normalize_density
   use ps_initrho_module, only: construct_ps_initrho
+  use hartree_module, only: calc_hartree
+  use xc_module, only: calc_xc
 
   implicit none
 
@@ -629,6 +631,8 @@ end do
               rho=0.0d0
             end where
             call normalize_density( rho )
+            call calc_hartree(lbound(rho,1),ubound(rho,1),size(rho,2),rho)
+            call calc_xc
           end if
         end if
 
