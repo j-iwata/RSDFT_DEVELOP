@@ -54,13 +54,15 @@ contains
   end subroutine read_ps_initrho
 
 
-  SUBROUTINE construct_ps_initrho( rho )
+  subroutine construct_ps_initrho( rho )
     implicit none
     real(8),intent(OUT) :: rho(:,:)
     integer :: s
     real(8) :: tt(2),to(2)
+    logical :: disp_switch
 
     call write_border( 0, " construct_ps_initrho(start)" )
+    call check_disp_switch( disp_switch, 0 )
     call watchb( tt )
     to=0.0d0
 
@@ -74,7 +76,7 @@ contains
 
 ! ---
 
-    if ( disp_switch_parallel ) then
+    if ( disp_switch ) then
        write(*,*) "iswitch_initrho =",iswitch_initrho
        write(*,*) "analytic        =",analytic
     end if
@@ -117,12 +119,12 @@ contains
 ! ---
 
     call watchb( tt, to )
-    if ( disp_switch_parallel ) then
+    if ( disp_switch ) then
        write(*,'(1x,"time(construct_ps_initrho)=",2f10.3)') to(1),to(2)
     end if
     call write_border( 0, " construct_ps_initrho(end)" )
 
-  END SUBROUTINE construct_ps_initrho
+  end subroutine construct_ps_initrho
 
 
   SUBROUTINE init_ps_initrho_g
@@ -223,6 +225,9 @@ contains
     real(8) :: c,c0
     real(8),allocatable :: rho_tmp(:,:),nelectron_ik(:)
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:),vg(:)
+    logical :: disp_switch
+
+    call check_disp_switch( disp_switch, 0 )
 
     call init_ps_initrho_g
 
@@ -283,7 +288,7 @@ contains
 
        if ( minval(rho_tmp(:,ik)) < 0.0d0 ) then
 
-          write(*,*) "WARNING: rho is negative at some points" &
+         if ( disp_switch ) write(*,*) "WARNING: rho is negative at some points" &
                ,minval(rho_tmp(:,ik))
 
           !rho_tmp(:,ik)=abs( rho_tmp(:,ik) )
@@ -553,8 +558,10 @@ contains
     real(8),intent(IN) :: rho(:,:)
     integer :: m_spin,s,ierr
     real(8) :: a0,b0,c0,a,b,c
+    logical :: disp_switch
+    call check_disp_switch( disp_switch, 0 )
     m_spin=size( rho, 2 )
-    if ( disp_switch_parallel ) then
+    if ( disp_switch ) then
        write(*,'(1x,a12,3a20)') "Nelectron","sum","min","max"
     end if
     do s=1,m_spin
@@ -564,7 +571,7 @@ contains
        call MPI_ALLREDUCE(a0,a,1,MPI_REAL8,MPI_SUM,comm_grid,ierr)
        call MPI_ALLREDUCE(b0,b,1,MPI_REAL8,MPI_MIN,comm_grid,ierr)
        call MPI_ALLREDUCE(c0,c,1,MPI_REAL8,MPI_MAX,comm_grid,ierr)
-       if ( disp_switch_parallel ) then
+       if ( disp_switch ) then
           if ( m_spin == 1 ) then
              write(*,'(1x,f12.5,2x,3f20.10)') Nelectron,a,b,c
           else if ( m_spin == 2 ) then
@@ -744,10 +751,13 @@ contains
     complex(8),allocatable :: zwork0(:,:,:),zwork1(:,:,:)
     complex(8),allocatable :: structure_factor(:,:)
     real(8) :: a1,a2,a3,pi2,GR,c
+    logical :: disp_switch
 
-    call init_ps_initrho_g_2
+    if ( .not.allocated(cddg) ) call init_ps_initrho_g_2
 
     if ( .not. flag_initrho_0 ) return
+
+    call check_disp_switch( disp_switch, 0 )
 
     rho(:,:)=0.0d0
 
@@ -852,7 +862,7 @@ contains
 
       c = sum( rho_tmp(:,ik) )*dV
       call rsdft_allreduce_sum( c, comm_grid )
-      if ( disp_switch_parallel ) then
+      if ( disp_switch ) then
         write(*,*) "sum(rho_ini(:,ik)),nelectron_ik(ik)",c,nelectron_ik(ik)
       end if
 

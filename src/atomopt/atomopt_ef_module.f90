@@ -17,9 +17,11 @@ module atomopt_ef_module
   use ps_nloc2_module
   use ps_nloc_mr_module
   use scf_module
-  use atomopt_diis_module, only: calc_coef_diis
+  use atomopt_diis_module, only: calc_coef_diis, calc_coef_diis_b
   use atomopt_io_module, only: flag_continue_atomopt &
                              , read_atomopt_io, write_atomopt_io
+  use density_module, only: rho, normalize_density
+  use ps_initrho_module, only: construct_ps_initrho
 
   implicit none
 
@@ -45,7 +47,7 @@ contains
     integer,optional,intent(in) :: NiterSCF_in
     type(atom) :: ion
     type(lattice) :: aa, bb
-    integer :: max_loop, max_linmin, linmin
+    integer :: max_loop, max_linmin, linmin, linmin_start
     integer :: ishape(1), ishape2(2), i1,i2, LWORK=0
     integer :: n,il,iu,m,a,ierr,loop,i,j,ip,loop_start
     integer,allocatable :: iwork(:),ifail(:)
@@ -62,16 +64,22 @@ contains
     real(8),allocatable :: info_linmin(:), xyzf_linmin(:,:,:)
     real(8),parameter :: eig_threshold=0.02d0
 
-    integer :: ndiis, mdiis
+    integer :: ndiis, mdiis, nrhodiis, mrhodiis
     real(8),allocatable :: xdiis(:,:), ediis(:,:), coef_diis(:)
     real(8),allocatable :: xtmp(:),etmp(:),gtmp(:),gdiis(:,:)
+    real(8),allocatable :: rhodiis(:,:,:)
+    real(8),allocatable :: rho_ini(:,:), rho_ini_old(:,:)
     logical :: flag_diis, flag_sd , flag_forced_sd, flag_3pts
-    logical :: flag_exit
+    logical :: flag_exit, flag_check_linmin_continue
     real(8) :: alpha0,alpha1,alpha2,alpha3,alpha4
     real(8) :: etot1,etot2,etot3,etot4
     character(40) :: msg
     real(8) :: factor, tau, fmax_min, etot_min
     integer :: icount, istep_golden_search
+    integer :: myrank
+    include 'mpif.h'
+
+    call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
 
     call write_border( 0, "atomopt_ef(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -98,9 +106,17 @@ contains
     if ( disp_sw .and. ndiis > 0 ) write(*,*) "DIIS is used: ndiis=",ndiis
     mdiis = 0
 
+    nrhodiis = nint(max_alpha_in)
+    mrhodiis = 0
+    if ( disp_sw ) write(*,*) "nrhodiis=",nrhodiis
+
     max_linmin = max_linmin_in
 
-    max_alpha = max_alpha_in
+    max_alpha = 0.0d0 !max_alpha_in
+
+    linmin_start = 1
+
+    flag_check_linmin_continue = .false.
 
 ! ---
 
@@ -160,6 +176,8 @@ contains
            x, x0, g, g0, &
            Hessian )
 
+      flag_check_linmin_continue = .true.
+
     else
 
       history(1,0) = etot
@@ -182,6 +200,22 @@ contains
       allocate( gtmp(n) ); gtmp=0.0d0
     end if
 
+    if ( nrhodiis > 0 ) then
+      allocate( xdiis(n,nrhodiis) ); xdiis=0.0d0
+      allocate( coef_diis(nrhodiis) ); coef_diis=0.0d0
+      allocate( rhodiis(size(rho,1),size(rho,2),nrhodiis) ); rhodiis=0.0d0
+      allocate( rho_ini(size(rho,1),size(rho,2)) ); rho_ini=0.0d0
+      allocate( rho_ini_old(size(rho,1),size(rho,2)) ); rho_ini_old=0.0d0
+    end if
+
+    !if ( nrhodiis > 0 ) then
+    !  if ( .not.flag_continue_atomopt() ) then
+    !    xdiis(:,1)=reshape( ion%xyz, ishape )
+    !    rhodiis(:,:,1)=rho(:,:)
+    !    mrhodiis=1
+    !  end if
+    !end if
+
 ! --- LAPACK
 
     if ( LWORK == 0 ) then
@@ -195,6 +229,7 @@ contains
 
 ! ----------------------------------- loop
 
+
     do loop = loop_start, max_loop
 
       if ( disp_sw ) write(*,'(a60," loop=",i4)') repeat("-",60),loop
@@ -203,6 +238,7 @@ contains
       flag_diis = .false.
       flag_sd = .false.
       flag_forced_sd = .false.
+      linmin_start = 1
 
 ! ---
 
@@ -398,15 +434,27 @@ contains
 
       tau = ( sqrt(5.0d0) - 1.0d0 )*0.5d0
 
-      info_linmin=1.0d100
-      xyzf_linmin=0.0d0
-      alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
-      etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
-      flag_3pts = .false.
-      flag_exit = .false.
-      istep_golden_search=0
+      if ( flag_check_linmin_continue ) then
+        call read_linmin_ef( linmin_start )
+        flag_check_linmin_continue=.false.
+        if ( disp_sw ) write(*,*) "linmin_start=",linmin_start
+      end if
 
-      do linmin = 1, max_linmin+1 !---------- Line Minimization
+      if ( linmin_start == 1 ) then
+        info_linmin=1.0d100
+        xyzf_linmin=0.0d0
+        alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
+        etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
+        flag_3pts = .false.
+        flag_exit = .false.
+        istep_golden_search=0
+      else
+        call read_linmin_ef
+      end if
+
+      do linmin = linmin_start, max_linmin+1 !---------- Line Minimization
+
+        if ( myrank == 0 ) call write_linmin_ef( linmin )
 
         if ( .not.flag_3pts ) then
 
@@ -545,6 +593,47 @@ contains
 
 ! ---
 
+        if ( nrhodiis > 0 ) then
+          mrhodiis = mrhodiis + 1
+          if ( mrhodiis > nrhodiis ) then
+            mrhodiis = nrhodiis
+            do i = 1, nrhodiis-1
+              xdiis(:,i)=xdiis(:,i+1)
+              rhodiis(:,:,i)=rhodiis(:,:,i+1)
+            end do
+          end if
+
+          xdiis(:,mrhodiis)=reshape(ion%xyz,ishape)
+do i=1,mrhodiis
+if(disp_sw)write(*,*) i,sum(xdiis(:,i)**2),sum(rhodiis(:,:,i)**2)
+end do
+          if ( mrhodiis >= 3 ) then
+
+            aa_atom(:,:) = matmul( aa_inv, ion%xyz )
+            call construct_ps_initrho( rho_ini )
+
+            call calc_coef_diis_b( coef_diis(1:mrhodiis-1), xdiis(:,1:mrhodiis) )
+
+            rho=0.0d0
+            do i=1,mrhodiis-1
+              do a=1,ion%natom
+                i2=3*a
+                i1=i2-2
+                aa_atom(:,a) = matmul( aa_inv, xdiis(i1:i2,i) )
+              end do
+              call construct_ps_initrho( rho_ini_old )
+              rho(:,:) = rho(:,:) + coef_diis(i)*(rhodiis(:,:,i)-rho_ini_old(:,:))
+            end do
+            rho(:,:) = rho(:,:) + rho_ini(:,:)
+            where( rho < 0.0d0 )
+              rho=0.0d0
+            end where
+            call normalize_density( rho )
+          end if
+        end if
+
+! ---
+
         aa_atom(:,:) = matmul( aa_inv, ion%xyz )
         call shift_aa_coordinates_atom( aa_atom )        
 
@@ -576,6 +665,8 @@ contains
         write(msg,*) loop, etot
         call write_trajectory( ion%xyz, ion%force, msg )
 
+        if ( nrhodiis > 0 ) rhodiis(:,:,mrhodiis)=rho(:,:)
+
         history(1,loop) = etot
         history(2,loop) = fmax
         icount=ierr
@@ -589,12 +680,14 @@ contains
         history(5,loop) = alpha
         history(6,loop) = sum(d*g)
 
-        !if ( disp_sw ) then
-        !  do i=loop,loop
-        !    write(*,'("linmin ",i4,f20.10,es14.5,i4,i6,2es14.5)') &
-        !         i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
-        !  end do
-        !end if
+        if ( disp_sw ) then
+          do i=loop,loop
+            write(*,'("linmin ",i4,f20.10,es14.5,i4,i6,2es14.5)') &
+                 i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
+          end do
+        end if
+
+! ---
 
         flag_exit=.false.
         etot_min = info_linmin(1)
@@ -647,6 +740,9 @@ contains
 999 call check_disp_switch( disp_sw, 1 )
     call write_border( 0, "atomopt_ef(end)" )
 
+    if ( allocated(xdiis) ) deallocate(xdiis)
+    if ( allocated(coef_diis) ) deallocate(coef_diis)
+    if ( allocated(rhodiis) ) deallocate(rhodiis)
     deallocate( work )
     deallocate( w )
     deallocate( history )
@@ -659,6 +755,54 @@ contains
     deallocate( g0 )
     deallocate( x )
     deallocate( g )
+
+  contains
+
+    subroutine write_linmin_ef(linmin)
+      implicit none
+      integer,intent(in) :: linmin
+      integer,parameter :: u=298
+      open(u,file='linmin_ef.dat',form='unformatted')
+      write(u) linmin
+      write(u) info_linmin
+      write(u) xyzf_linmin
+      write(u) alpha1,alpha2,alpha3,alpha4,alpha
+      write(u) etot1,etot2,etot3,etot4,etot
+      write(u) factor
+      write(u) flag_3pts
+      write(u) flag_exit
+      write(u) istep_golden_search
+      write(u) flag_sd
+      close(u)
+    end subroutine write_linmin_ef
+
+    subroutine read_linmin_ef( linmin_start )
+      implicit none
+      integer,optional,intent(inout) :: linmin_start
+      integer,parameter :: u=298
+      integer :: linmin
+      logical :: flag
+      inquire( FILE='linmin_ef.dat', EXIST=flag )
+      if ( .not.flag ) return
+      if ( present(linmin_start) ) then
+        open(u,file='linmin_ef.dat',form='unformatted')
+        read(u) linmin_start
+        close(u)
+        return
+      end if
+      open(u,file='linmin_ef.dat',form='unformatted')
+      read(u) linmin
+      read(u) info_linmin
+      read(u) xyzf_linmin
+      read(u) alpha1,alpha2,alpha3,alpha4,alpha
+      read(u) etot1,etot2,etot3,etot4,etot
+      read(u) factor
+      read(u) flag_3pts
+      read(u) flag_exit
+      read(u) istep_golden_search
+      read(u) flag_sd
+      close(u)
+    end subroutine read_linmin_ef
 
   end subroutine atomopt_ef
 

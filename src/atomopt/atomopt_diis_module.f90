@@ -25,6 +25,7 @@ module atomopt_diis_module
   private
   public :: atomopt_diis
   public :: calc_coef_diis
+  public :: calc_coef_diis_b
 
   logical :: disp_sw
   integer :: SYStype
@@ -427,6 +428,43 @@ contains
     deallocate( A )
 
   end subroutine calc_coef_diis
+
+
+  subroutine calc_coef_diis_b( coef, f )
+    implicit none
+    real(8),intent(out) :: coef(:)
+    real(8),intent(in)  :: f(:,:)
+    real(8),allocatable :: A(:,:),x(:)
+    integer,allocatable :: ipiv(:)
+    integer :: info,i,j,n
+
+    n = size( coef )
+    allocate( A(n+1,n+1) ); A=0.0d0
+    allocate( x(n+1)     ); x=0.0d0
+    allocate( ipiv(n+1)  ); ipiv=0
+
+    do j=1,n
+       do i=1,n
+          A(i,j) = sum( f(:,i)*f(:,j) )
+       end do
+    end do
+
+    A(1:n,n+1) = 1.0d0
+    A(n+1,1:n) = 1.0d0
+    do i=1,n
+      x(i) = sum( f(:,i)*f(:,n+1) )
+    end do
+    x(n+1) = 1.0d0
+
+    call DGESV( n+1, 1, A, n+1, ipiv, x, n+1, info )
+
+    coef(:) = x(1:n)
+
+    deallocate( ipiv )
+    deallocate( x )
+    deallocate( A )
+
+  end subroutine calc_coef_diis_b
 
 
   subroutine scf( etot, ierr_out )
