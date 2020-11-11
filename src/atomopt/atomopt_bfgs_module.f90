@@ -2,7 +2,8 @@ module atomopt_bfgs_module
 
   use lattice_module
   use atom_module, only: atom, construct_atom, aa_atom &
-                        ,write_coordinates_atom, shift_aa_coordinates_atom
+                        ,write_coordinates_atom, shift_aa_coordinates_atom &
+                        ,write_xyz_atom
   use force_module
 
   use pseudopot_module, only: pselect
@@ -45,9 +46,10 @@ contains
     type(atom) :: ion
     type(lattice) :: aa
     integer,parameter :: max_loop_default=5
-    integer :: np, max_loop,max_loop_linmin=5
-    integer :: i1,i2,j1,j2,i,j,n,loop_linmin,loop_start
+    integer :: np, max_loop,max_loop_linmin, linmin_start
+    integer :: i1,i2,j1,j2,i,j,n,linmin,loop_start
     integer :: a, ierr, ip, jp, loop, icount,max_linmin
+    integer :: istep_golden_search
     real(8) :: etot, fmax, tmp, okstep, max_alpha
     real(8) :: dxdg,dgHdg,dxg,dgHg,c,alpha,rdg
     real(8) :: aa_inv(3,3), da(3), da_tmp(3)
@@ -58,18 +60,25 @@ contains
     real(8),allocatable :: HSR1(:,:)
     real(8),allocatable :: foraa(:,:)
 
-    integer :: imax
-    real(8) :: dd,dmax,dtmp
+    integer :: imax, myrank
+    real(8) :: dd,dmax,dtmp,tau,factor
     real(8) :: tt_start(2),tt(2,0:10)
-    logical :: use_xyz=.true., flag_check(2)
+    logical :: flag_check(2)
+    logical :: flag_3pts, flag_check_linmin_continue
+    logical :: flag_exit, flag_sd
     real(8) :: Armijo, Wolfe2
     real(8) :: delta, sigma
     real(8),allocatable :: xyzf_linmin(:,:,:)
     real(8),allocatable :: info_linmin(:)
     real(8) :: alpha1,alpha2,alpha3,alpha4
     real(8) :: etot1,etot2,etot3,etot4
+    real(8) :: etot_min, fmax_min
+    include 'mpif.h'
+    character(40) :: msg
 
     tt=0.0d0; call watchb( tt_start ); tt(:,0)=tt_start
+
+    call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
 
     call write_border( 0, "atomopt_bfgs(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -96,6 +105,10 @@ contains
 
     max_alpha = max_alpha_in
 
+    linmin_start = 1
+
+    flag_check_linmin_continue = .false.
+
 ! ---
 
     call get_aa_lattice( aa )
@@ -109,12 +122,12 @@ contains
 
     if ( .not.flag_continue_atomopt() ) then
 
-      if ( disp_sw ) then
-        write(*,*) "Initial configuration(in reduced coordinates)"
-        do a=1,ion%natom
-          write(*,'(1x,3f20.15)') ion%aaa(1:3,a)
-        end do
-      end if
+      !if ( disp_sw ) then
+      !  write(*,*) "Initial configuration(in reduced coordinates)"
+      !  do a=1,ion%natom
+      !    write(*,'(1x,3f20.15)') ion%aaa(1:3,a)
+      !  end do
+      !end if
 
       call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
 
@@ -152,6 +165,8 @@ contains
            x(:,:,1), x(:,:,0), g(:,:,1), g(:,:,0), &
            H )
 
+      flag_check_linmin_continue = .true.
+
     else
 
       history(1,0) = etot
@@ -178,13 +193,8 @@ contains
 
 ! ---
 
-    if ( use_xyz ) then
-      x(:,:,0) = ion%xyz(:,:)
-      g(:,:,0) =-ion%force(:,:)
-    else
-      !x(:,:,0) = ion%aaa(:,:)
-      !g(:,:,0) =-foraa(:,:)
-    end if
+    x(:,:,0) = ion%xyz(:,:)
+    g(:,:,0) =-ion%force(:,:)
 
     do loop = loop_start, max_loop
 
@@ -192,17 +202,28 @@ contains
 
       call watchb( tt(:,0) )
 
+! ---
+
+      flag_sd = .false.
+      linmin_start = 1
+
+! ---
+
       call write_coordinates_atom( 197, 3 )
       call write_bfgs_atomopt_io( loop, history(:,0:loop-1), &
            x(:,:,1), x(:,:,0), g(:,:,1), g(:,:,0), H )
 
       if ( loop == 1 ) then
 
+        flag_sd = .true.
+
         x(:,:,1) = x(:,:,0)
         g(:,:,1) = g(:,:,0)
         d(:,:)   =-g(:,:,0)
 
       else
+
+        flag_sd = .false.
 
         dx(:,:) = x(:,:,1) - x(:,:,0)
         dg(:,:) = g(:,:,1) - g(:,:,0)
@@ -298,7 +319,8 @@ contains
 
         c = sum(g(:,:,1)*d)
         if ( c > 0.0d0 ) then
-          write(*,*) "------------------ Steepest Decent"
+          if ( disp_sw ) write(*,*) "------------------ Steepest Decent"
+          flag_sd = .true.
           d(:,:)=-g(:,:,1)
           H=0.0d0
           do i=1,size(H,1)
@@ -310,14 +332,10 @@ contains
 !          end do
         end if
 
-      end if
+      end if !(loop/=1)
 
       do a=1,ion%natom
-        if ( use_xyz ) then
-          da = matmul( aa_inv, d(:,a) )
-        else
-          da = d(:,a)
-        end if
+        da = matmul( aa_inv, d(:,a) )
         do i=1,3
           da_tmp(1) = abs(da(i))
           da_tmp(2) = abs(da(i)+1.0d0)
@@ -329,56 +347,146 @@ contains
           case(3); da(i)=da(i)-1.0d0
           end select
         end do
-        if ( use_xyz ) then
-          d(:,a) = matmul( aa%LatticeVector, da )
-        else
-          d(:,a) = da(:)
-        end if
+        d(:,a) = matmul( aa%LatticeVector, da )
       end do
 
       call watchb( tt(:,0), tt(:,1) )
 
-      info_linmin=1.0d100
-      xyzf_linmin=0.0d0
-      alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
-      etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
+! ---
 
-      do loop_linmin = 1, max_linmin !------------ Line-Mimization loop (start)
+      tau = ( sqrt(5.0d0) - 1.0d0 )*0.5d0
 
-        if ( disp_sw ) write(*,'(a30," loop_linmin",i2)') repeat("-",30),loop_linmin
+      if ( flag_check_linmin_continue ) then
+        call read_linmin_bfgs( linmin_start )
+        flag_check_linmin_continue=.false.
+        if ( disp_sw ) write(*,*) "linmin_start=",linmin_start
+      end if
+
+      if ( linmin_start == 1 ) then
+        info_linmin=1.0d100
+        xyzf_linmin=0.0d0
+        alpha1=0.0d0; alpha2=0.0d0; alpha3=0.0d0; alpha4=0.0d0
+        etot1 =0.0d0; etot2 =0.0d0; etot3 =0.0d0; etot4 =0.0d0
+        flag_3pts = .false.
+        flag_exit = .false.
+        istep_golden_search=0
+      else
+        call read_linmin_bfgs
+      end if
+
+      do linmin = linmin_start, max_linmin+1 !------------ Line-Mimization loop (start)
+
+        if ( disp_sw ) write(*,'(a30," linmin",i2)') repeat("-",30),linmin
 
         call watchb( tt(:,0) )
 
-        select case(loop_linmin)
-        case( 1 )
-          alpha  = 1.0d0
-          alpha1 = alpha
-        case(2)
-          alpha  = (max_alpha-1.0d0)*0.3d0
-          alpha2 = alpha
-        case(3)
-          alpha  = max_alpha
-          alpha3 = alpha
-        case(4)
-          if ( etot1 >= etot2 .and. etot2 <= etot3 ) then
-            alpha  = alpha1 + (alpha3-alpha2)
-            alpha4 = alpha
-         else if ( etot1 <= etot2 .and. etot1 <= etot3 ) then
-            alpha = alpha1*0.3d0
-            alpha4=alpha1 ; etot4=etot1
-            alpha1=alpha  ; etot1=0.0d0 
-          else if ( etot3 <= etot2 .and. etot3 <= etot1 ) then
-            alpha = alpha3*1.7d0
-            alpha4=alpha3; etot4=etot3
-            alpha3=alpha ; etot3=0.0d0
-          else
-            write(*,'("alpha1,apha2,alpha3,alpha4",4f10.5)') alpha1,alpha2,alpha3,alpha4
-            write(*,'("etot1,apha2,etot3,etot4",4f10.5)') etot1,etot2,etot3,etot4
-            call stop_program('zzz')
+        if ( myrank == 0 ) call write_linmin_bfgs( linmin )
+
+        if ( .not.flag_3pts ) then
+
+          if ( linmin == 1 ) then
+            alpha1 = 0.0d0
+            etot1  = etot
+            alpha  = 1.0d0
+          else if ( linmin == 2 ) then
+            if ( etot1 < etot ) then
+              factor = 0.3d0
+              alpha3 = alpha
+              etot3  = etot
+              alpha  = alpha*factor
+            else if ( etot1 >= etot ) then
+              factor = 2.7d0
+              alpha2 = alpha
+              etot2  = etot
+              alpha  = alpha*factor
+            end if
+          else if ( linmin >= 3 ) then
+            if ( factor == 0.3d0 ) then
+              if ( etot1 > etot ) then
+                flag_3pts = .true.
+                alpha1 = alpha1; etot1 = etot1
+                alpha4 = alpha3; etot4 = etot3
+                alpha2 = 0.0d0 ; etot2 = 0.0d0
+                alpha3 = 0.0d0 ; etot3 = 0.0d0
+              else
+                alpha3 = alpha
+                etot3  = etot
+                alpha  = alpha*factor
+              end if
+            else if ( factor == 2.7d0 ) then
+              if ( etot2 < etot ) then
+                flag_3pts = .true.
+                alpha1 = alpha1 ; etot1 = etot1
+                alpha4 = alpha  ; etot4 = etot
+                alpha2 = 0.0d0  ; etot2 = 0.0d0
+                alpha3 = 0.0d0  ; etot3 = 0.0d0
+              else
+                alpha1 = alpha2
+                etot1  = etot2
+                alpha2 = alpha
+                etot2  = etot
+                alpha  = alpha*factor
+              end if
+            end if
           end if
-        case(5:)
-          
-        end select
+
+        end if !.not.flag_3pts
+
+        if ( flag_3pts ) then
+
+          select case( istep_golden_search )
+          case( 0 )
+            alpha = alpha4 - tau*(alpha4-alpha1)
+            istep_golden_search = istep_golden_search + 1
+          case( 1 )
+            alpha2 = alpha
+            etot2  = etot
+            alpha  = alpha1 + tau*(alpha4-alpha1)
+            istep_golden_search = istep_golden_search + 1
+          case( 2: )
+            if ( alpha3 == 0.0d0 .and. etot3 == 0.0d0 ) then
+              alpha3 = alpha
+              etot3  = etot
+            else
+              alpha2 = alpha
+              etot2  = etot
+            end if
+            if ( etot1 >= etot2 .and. etot2 <= etot3 ) then
+              alpha4 = alpha3
+              etot4  = etot3
+              alpha3 = alpha2
+              etot3  = etot2
+              alpha2 = 0.0d0
+              etot2  = 0.0d0
+              alpha  = alpha4 - tau*(alpha4-alpha1)
+            else if ( etot2 >= etot3 .and. etot3 <= etot4 ) then
+              alpha1 = alpha2
+              etot1  = etot2
+              alpha2 = alpha3
+              etot2  = etot3
+              alpha3 = 0.0d0
+              etot3  = 0.0d0
+              alpha  = alpha1 + tau*(alpha4-alpha1)
+            end if
+            istep_golden_search = istep_golden_search + 1
+          end select
+
+        end if !flag_3pts
+
+        if ( disp_sw ) then
+          write(*,'(a10,"linmin=",i4," (3pts:",l1,")")') repeat("-",10),linmin-1,flag_3pts
+          write(*,*) alpha1,etot1
+          write(*,*) alpha2,etot2
+          write(*,*) alpha3,etot3
+          if ( flag_3pts ) write(*,*) alpha4,etot4
+        end if
+
+        !if ( flag_3pts .and. istep_golden_search == 0 ) then
+        !  alpha2=0.0d0; etot2=0.0d0
+        !  alpha3=0.0d0; etot3=0.0d0
+        !end if
+
+        if ( flag_exit .or. linmin==max_linmin+1 ) exit
 
         dmax=0.0d0
         do a=1,ion%natom
@@ -396,14 +504,8 @@ contains
           !end if
         end if
       
-        if ( use_xyz ) then
-          ion%xyz = x(:,:,1) + alpha*d(:,:)
-          aa_atom(:,:) = matmul( aa_inv, ion%xyz )
-        else
-          ion%aaa(:,:) = x(:,:,1) + alpha*d(:,:)
-          aa_atom(:,:) = x(:,:,1) + alpha*d(:,:)
-          ion%xyz = matmul( aa%LatticeVector, aa_atom )
-        end if
+        ion%xyz = x(:,:,1) + alpha*d(:,:)
+        aa_atom(:,:) = matmul( aa_inv, ion%xyz )
 
         call shift_aa_coordinates_atom( aa_atom )
         !if ( disp_sw ) then
@@ -419,21 +521,43 @@ contains
 
         call scf( etot, ierr ) ; if ( ierr == -1 ) goto 999
         call calc_force( ion%natom, ion%force, fmax )
-        !foraa = matmul( transpose(aa_inv), ion%force )
+    
+        write(msg,*) loop, etot
+        call write_trajectory( ion%xyz, ion%force, msg )
 
         history(1,loop) = etot
         history(2,loop) = fmax
-        history(3,loop) = ierr ; if ( ierr == -2 ) history(3,loop)=NiterSCF
+        icount = ierr
+        if ( ierr == -1 ) then
+          icount = 0
+        else if ( ierr == -2 ) then
+          icount=NiterSCF
+        end if
+        history(3,loop) = history(3,loop) + icount
         history(4,loop) = sum(history(3,0:loop))
         c=sum(d*g(:,:,0))
         history(5,loop) = c
         history(6,loop) = alpha
-        history(7,loop) = loop_linmin
-        do i=loop,loop
-          write(*,'("linmin",i4,5x,es15.8,es14.5,i4,i6,2es14.5,1x,i6)') &
-               i, history(1:2,i), nint(history(3:4,i)),history(5:6,i),nint(history(7,i))
-        end do
-        write(*,'("etime:",4f10.5)') tt(2,1),tt(2,2),tt(2,3),tt(2,3)
+        history(7,loop) = linmin
+        if ( disp_sw ) then
+          do i=loop,loop
+            write(*,'("linmin",i4,5x,es15.8,es14.5,i4,i6,2es14.5,1x,i6)') &
+                 i, history(1:2,i), icount, nint(history(4,i)),history(5:6,i),nint(history(7,i))
+          end do
+          write(*,'("etime:",4f10.5)') tt(2,1),tt(2,2),tt(2,3),tt(2,3)
+        end if
+
+        flag_exit=.false.
+        etot_min = info_linmin(1)
+        fmax_min = info_linmin(2)
+        if ( abs(etot-etot_min) < 1.d-7 ) then
+          if ( disp_sw ) write(*,'("conv(etot)",3g20.10)') etot_min, etot, etot-etot_min
+          flag_exit = .true.
+        end if
+        if ( abs(fmax-fmax_min) < fmax_tol ) then
+          if ( disp_sw ) write(*,'("conv(fmax)",3g20.10)') fmax_min, fmax, fmax-fmax_min
+          flag_exit=.true.
+        end if
 
         if ( etot < info_linmin(1) ) then
           info_linmin = history(:,loop)
@@ -459,68 +583,39 @@ contains
         !tmp = abs(sum(ion%force*d))
         !if ( tmp <= sigma*abs(c) ) flag_check(2)=.true.
 
+        if ( fmax <= fmax_tol ) flag_exit=.true.
+
         call watchb( tt(:,0), tt(:,3) )
 
-        select case(loop_linmin)
-        case(1); etot1=etot
-        case(2); etot2=etot
-        case(3); etot3=etot
-        end select
+      end do !linmin
 
-        if ( loop_linmin >= 4 ) then
-          if ( etot1 == 0.0d0 ) then
-            etot1=etot
-          else if ( etot3 == 0.0d0 ) then
-            etot3=etot
-          else if ( etot4 == 0.0d0 ) then
-            etot4=etot
-          end if
-        end if
-
-        !write(*,'("alpha1,alpha2,alpha3,alpha4",4f12.7)') alpha1,alpha2,alpha3,alpha4
-        !write(*,'("etot1 ,etot2 ,etot3 ,etot4 ",4f12.7)') etot1,etot2,etot3,etot4
-
-      end do !loop_linmin
-
-      history(1:7,loop) = info_linmin(1:7)
-      ion%xyz   = xyzf_linmin(:,:,1)
+      history(:,loop) = info_linmin(:)
+      fmax = info_linmin(2)
+      ion%xyz = xyzf_linmin(:,:,1)
       ion%force = xyzf_linmin(:,:,2)
 
       call watchb( tt(:,0) )
 
       x(:,:,0) = x(:,:,1)
       g(:,:,0) = g(:,:,1)
-      if ( use_xyz ) then
-        x(:,:,1) = ion%xyz(:,:)
-        g(:,:,1) =-ion%force(:,:)
-      else
-!       x(:,:,1) = aa_atom(:,:)
-        !x(:,:,1) = ion%aaa(:,:)
-        !g(:,:,1) =-foraa(:,:)
-      end if
-
-      !history(1,loop) = etot
-      !history(2,loop) = fmax
-      !history(3,loop) = ierr ; if ( ierr == -2 ) history(3,loop)=NiterSCF
-      !history(4,loop) = sum(history(3,0:loop))
-      !c=sum(d*g(:,:,0))
-      !history(5,loop) = c
-      !history(6,loop) = alpha !(etot-history(loop-1,1))/(alpha*c)
-      !history(7,loop) = loop_linmin !sum(g(:,:,1)*d)/c
+      x(:,:,1) = ion%xyz(:,:)
+      g(:,:,1) =-ion%force(:,:)
 
       call watchb( tt(:,0), tt(:,4) )
 
       if ( disp_sw ) then
-        write(*,'(a7,2x,a15,a14,2a5,2a14,1x,a6)') "History","Etot","Fmax","iter","iter" &
+        write(*,'(a7,2x,a15,a14,2a6,2a14,1x,a6)') "History","Etot","Fmax","iter","iter" &
                                           ,"(d,g)","alpha","linmin"
         do i=0,loop
-          write(*,'(i4,5x,es15.8,es14.5,i4,i6,2es14.5,1x,i6)') &
+          write(*,'(i4,5x,es15.8,es14.5,2i6,2es14.5,1x,i6)') &
                i, history(1:2,i), nint(history(3:4,i)),history(5:6,i),nint(history(7,i))
         end do
         write(*,'("etime:",4f10.5)') tt(2,1),tt(2,2),tt(2,3),tt(2,3)
       end if
 
-      if ( fmax <= fmax_tol ) goto 900
+      linmin_start = 1
+
+      if ( fmax <= fmax_tol ) exit
 
     end do ! loop    
 
@@ -543,6 +638,19 @@ contains
        deallocate( x )
        deallocate( g )
     end if
+
+  contains
+
+    subroutine write_linmin_bfgs( linmin )
+      implicit none
+      integer,intent(in) :: linmin
+    end subroutine write_linmin_bfgs
+
+    subroutine read_linmin_bfgs( linmin )
+      implicit none
+      integer,optional,intent(out) :: linmin
+      if ( present(linmin) ) linmin=0
+    end subroutine read_linmin_bfgs
 
   end subroutine atomopt_bfgs
 
@@ -584,6 +692,32 @@ contains
     call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 
   end subroutine scf
+
+
+  subroutine write_trajectory( xyz, force, msg )
+    implicit none
+    real(8),intent(in) :: xyz(:,:), force(:,:)
+    character(*),intent(in) :: msg
+    integer,parameter :: u=297
+    integer :: i, myrank
+    include 'mpif.h'
+    call MPI_Comm_rank(MPI_COMM_WORLD,myrank,i)
+    if ( myrank == 0 ) then
+      !
+      open(u,file='trajectory_bfgs.xyz',position='append')
+      call write_xyz_atom( u, xyz, "xyz_id_etot :"//msg )
+      close(u)
+      !
+      open(u,file='trajectory_bfgs.force',position='append')
+      write(u,*) size(force,2)
+      write(u,*) "force_id_etot:",msg
+      do i=1,size(force,2)
+        write(u,*) force(:,i)
+      end do
+      close(u)
+      !
+    end if
+  end subroutine write_trajectory
 
 
 end module atomopt_bfgs_module

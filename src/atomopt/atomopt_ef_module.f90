@@ -687,7 +687,7 @@ end do
         if ( disp_sw ) then
           do i=loop,loop
             write(*,'("linmin ",i4,f20.10,es14.5,i4,i6,2es14.5)') &
-                 i, history(1:2,i), nint(history(3:4,i)),history(5:6,i)
+                 i, history(1:2,i), icount, nint(history(4,i)),history(5:6,i)
           end do
         end if
 
@@ -731,6 +731,8 @@ end do
 
       x(:) =  reshape( ion%xyz(:,:)  , ishape )
       g(:) = -reshape( ion%force(:,:), ishape )
+
+      linmin_start = 1
 
     end do ! loop
 
