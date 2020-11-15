@@ -471,7 +471,7 @@ contains
               etot3  = etot
               alpha  = alpha*factor
             else if ( etot1 >= etot ) then
-              factor = 2.7d0
+              factor = 1.7d0
               alpha2 = alpha
               etot2  = etot
               alpha  = alpha*factor
@@ -489,7 +489,7 @@ contains
                 etot3  = etot
                 alpha  = alpha*factor
               end if
-            else if ( factor == 2.7d0 ) then
+            else if ( factor == 1.7d0 ) then
               if ( etot2 < etot ) then
                 flag_3pts = .true.
                 alpha1 = alpha1 ; etot1 = etot1
