@@ -20,6 +20,7 @@ module atomopt_bfgs_module
   use scf_module
   use watch_module
   use atomopt_io_module, only: flag_continue_atomopt, read_bfgs_atomopt_io, write_bfgs_atomopt_io
+  use efield_module, only: sawtooth_efield
 
   implicit none
 
@@ -688,6 +689,8 @@ contains
        call prep_ps_nloc2_mol
 
     end select
+
+    call sawtooth_efield( Vion )
 
     call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 

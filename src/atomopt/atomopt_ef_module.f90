@@ -24,6 +24,7 @@ module atomopt_ef_module
   use ps_initrho_module, only: construct_ps_initrho
   use hartree_module, only: calc_hartree
   use xc_module, only: calc_xc
+  use efield_module, only: sawtooth_efield
 
   implicit none
 
@@ -846,6 +847,8 @@ end do
        call prep_ps_nloc2_mol
 
     end select
+
+    call sawtooth_efield( Vion )
 
     call calc_scf( ierr_out, NiterSCF, Etot_out=etot )
 
