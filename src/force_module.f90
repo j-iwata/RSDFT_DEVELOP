@@ -2,6 +2,8 @@ MODULE force_module
 
   use parallel_module, only: disp_switch_parallel
   use atom_module, only: aa_atom, ki_atom, md_atom, Natom
+  use pseudopot_module, only: Zps
+  use efield_module, only: force_sawtooth_efield
   use symmetry_module, only: sym_force
   use force_sol_module
   use force_mol_module
@@ -98,6 +100,10 @@ CONTAINS
     case( 1 )
        call calc_force_mol( MI, force )
     end select
+
+! --- correction term ---
+
+    call force_sawtooth_efield( force, ki_atom, Zps )
 
 ! --- correction term ---
 

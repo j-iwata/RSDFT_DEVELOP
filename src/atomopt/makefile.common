@@ -1,4 +1,6 @@
-OBJS = atomopt_bfgs_module.o\
+OBJS = atomopt_io_module.o \
        atomopt_diis_module.o\
+       atomopt_bfgs_module.o\
        atomopt_rf_module.o\
+       atomopt_ef_module.o\
        atomopt_module.o\

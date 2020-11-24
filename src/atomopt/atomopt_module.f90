@@ -34,9 +34,11 @@ MODULE atomopt_module
   use lattice_module, only: lattice, backup_aa_lattice, construct_lattice
   use aa_module, only: init_aa
   !--- end MIZUHO-IR for cellopt
+  use atomopt_ef_module
   use atomopt_rf_module
   use atomopt_bfgs_module
   use atomopt_diis_module
+  use atomopt_io_module, only: flag_continue_atomopt
 
   implicit none
 
@@ -47,6 +49,7 @@ MODULE atomopt_module
 
   integer :: ncycl,most,nrfr
   real(8) :: okatom,eeps,feps,decr
+  logical :: flag_continue
 
   logical :: disp_switch_loc
   integer :: diter_opt
@@ -72,11 +75,13 @@ CONTAINS
     case( 1, 2 )
        call atomopt_cg( iswitch_opt, iswitch_latopt )
     case( 4 )
-       call atomopt_diis( SYStype, feps, diter_opt )
+       call atomopt_diis( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case( 5 )
-       call atomopt_bfgs( SYStype, feps, diter_opt )
+       call atomopt_bfgs( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case( 6 )
-       call atomopt_rf( SYStype, feps, diter_opt )
+       call atomopt_rf( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
+    case( 7 )
+       call atomopt_ef( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
        call stop_program("atomopt")
@@ -89,6 +94,7 @@ CONTAINS
     integer,intent(IN) :: rank,unit
     integer :: i
     character(8) :: cbuf,ckey
+    logical :: ldummy
     ncycl     = 0
     most      = 6
     nrfr      = 5
@@ -97,6 +103,7 @@ CONTAINS
     eeps      = 1.d-10
     feps      = 5.d-4
     decr      = 1.d-1
+    flag_continue = .false.
 
     if ( rank == 0 ) then
        rewind unit
@@ -105,7 +112,7 @@ CONTAINS
           call convert_capital(cbuf,ckey)
           if ( ckey(1:8) == "ATOMOPT1" ) then
              backspace(unit)
-             read(unit,*) cbuf, ncycl, feps
+             read(unit,*) cbuf, ncycl, feps, flag_continue
           else if ( ckey(1:8) == "ATOMOPT2" ) then
              backspace(unit)
              read(unit,*) cbuf, most, nrfr, diter_opt
@@ -131,8 +138,16 @@ CONTAINS
        end if
        write(*,*) "strlog            =",strlog
        write(*,*) "forcelog          =",forcelog
+       write(*,*) "flag_continue     =",flag_continue
     end if
     call send_atomopt
+    ldummy = flag_continue_atomopt( flag_continue )
+    if ( rank == 0 ) then
+      write(*,*) "Value of flag_continue_atomopt=",ldummy
+      if ( ldummy ) then
+        write(*,*) "Atomopt is continued with adta in wopt.dat"
+      end if
+    end if
   END SUBROUTINE read_atomopt
 
 
@@ -149,6 +164,7 @@ CONTAINS
     call mpi_bcast(diter_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(strlog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
     call mpi_bcast(forcelog,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(flag_continue,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
   END SUBROUTINE send_atomopt
 
 

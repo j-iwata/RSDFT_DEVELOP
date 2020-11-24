@@ -2,6 +2,7 @@ OBJS = convert_capital.o\
        write_info.o\
        stop_program.o\
        get_atomic_number.o\
+       get_element_name.o\
        exit_program.o\
        dotp.o\
        mpi_sub.o\

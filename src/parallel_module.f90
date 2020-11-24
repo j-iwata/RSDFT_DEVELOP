@@ -1,4 +1,4 @@
-MODULE parallel_module
+module parallel_module
 
   implicit none
 
@@ -23,6 +23,10 @@ MODULE parallel_module
   PUBLIC :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
   public :: get_range_parallel
   public :: construct_id_ir_parallel
+  public :: get_ParaInfo
+  public :: load_div_parallel
+
+  private :: construct_ParaInfo
 
 #ifdef _NO_MPI_COMPLEX16_
   integer,parameter,public :: RSDFT_MPI_COMPLEX16 = MPI_DOUBLE_COMPLEX
@@ -39,6 +43,7 @@ MODULE parallel_module
   integer :: comm_band, myrank_b, nprocs_b, np_band
   integer :: comm_bzsm, myrank_k, nprocs_k, np_bzsm
   integer :: comm_fkmb, myrank_f, nprocs_f, np_fkmb
+  integer :: comm_bks
   integer :: MB_d, MB_d_nl
   integer,allocatable :: id_class(:,:),ircnt(:),idisp(:)
   integer,allocatable :: ir_grid(:),id_grid(:)
@@ -50,20 +55,30 @@ MODULE parallel_module
   logical :: disp_switch_parallel=.false.
 
   type dr
-     integer :: np
-     integer,allocatable :: id(:)
-     integer,allocatable :: ir(:)
+    integer :: np
+    integer,allocatable :: id(:)
+    integer,allocatable :: ir(:)
   end type dr
 
   type para
-     integer  :: np(0:7)
-     type(dr) :: grid
-     type(dr) :: band
-     type(dr) :: bzsm
-     type(dr) :: spin
+    integer  :: np(0:7)
+    type(dr) :: grid
+    type(dr) :: band
+    type(dr) :: bzsm
+    type(dr) :: spin
   end type para
 
-CONTAINS
+  type pinfo
+    integer :: comm
+    integer :: myrank
+    integer :: nprocs
+    integer,allocatable :: ir(:)
+    integer,allocatable :: id(:)
+  end type pinfo
+
+  type(pinfo),private :: ParaInfo(6)
+
+contains
 
 
   SUBROUTINE get_np_parallel( np )
@@ -182,7 +197,7 @@ CONTAINS
     integer :: istatus(MPI_STATUS_SIZE,123)
     integer :: ip,fp,nc,ns,a1,a2,a3,a4,a5,a6,a7,b1,b2,b3,b4,b5,b6
     integer :: i1,i2,i3,i4,ib,j0,j1,j2,j3,m0,m1,m2,m3,i,j,k,id,ie,ir
-    integer :: ML1,ML2,ML3,np1,np2,np3,MLI(2,3)
+    integer :: ML1,ML2,ML3,np1,np2,np3,MLI(2,3),icolor
     integer,allocatable :: mtmp(:),ntmp(:,:),ireq(:)
     integer,allocatable :: map_grid_2_pinfo(:,:,:,:)
 
@@ -530,6 +545,12 @@ CONTAINS
     call mpi_comm_rank(comm_fkmb,myrank_f,ierr)
     call mpi_comm_size(comm_fkmb,nprocs_f,ierr)
 
+! ---
+
+    icolor = myrank_g
+    call MPI_Comm_split( MPI_COMM_WORLD, icolor, myrank, comm_bks, ierr )
+    call construct_ParaInfo( ParaInfo(6), comm_bks )
+
     if ( disp_switch_parallel ) then
        write(*,*) "comm_world, nprocs   =",MPI_COMM_WORLD,nprocs
        write(*,*) "comm_grid,  nprocs_g =",comm_grid,nprocs_g
@@ -610,4 +631,57 @@ CONTAINS
   end subroutine construct_id_ir_parallel
 
 
-END MODULE parallel_module
+  subroutine construct_ParaInfo( pi, comm )
+    implicit none
+    type(pinfo),intent(inout) :: pi
+    integer,intent(in) :: comm
+    integer :: ierr
+    call MPI_Comm_rank( comm, pi%myrank, ierr )
+    call MPI_Comm_size( comm, pi%nprocs, ierr )
+    allocate( pi%ir(0:nprocs-1) ); pi%ir=0
+    allocate( pi%id(0:nprocs-1) ); pi%id=0
+  end subroutine construct_ParaInfo
+
+
+  subroutine get_ParaInfo( pi, indx )
+    implicit none
+    type(pinfo),intent(inout) :: pi
+    character(*) :: indx
+    integer :: np
+    select case( indx )
+    case( 'bks','BKS' )
+      np = ParaInfo(6)%nprocs
+      if ( .not.allocated(pi%ir) ) then
+        allocate( pi%ir(0:np-1) ); pi%ir=0
+      end if
+      if ( .not.allocated(pi%id) ) then
+        allocate( pi%id(0:np-1) ); pi%id=0
+      end if
+      pi = ParaInfo(6)
+    case default
+      write(*,*) "indx=",indx," is not implemented yet"
+      call stop_program('@get_ParaInfo')
+    end select
+  end subroutine get_ParaInfo
+
+
+  subroutine load_div_parallel( ir, id, ndat )
+    implicit none
+    integer,intent(out) :: ir(0:),id(0:)
+    integer,intent(in) :: ndat
+    integer :: np, nres, i, j
+    np=size(ir)
+    ir=ndat/np
+    nres = ndat - sum(ir)
+    do i = 1, nres
+      j = mod(i-1,np)
+      ir(j) = ir(j) + 1
+    end do
+    id=0
+    do i=0,np-1
+      id(i) = sum( ir(0:i) ) - ir(i)
+    end do
+  end subroutine load_div_parallel
+
+
+end module parallel_module
