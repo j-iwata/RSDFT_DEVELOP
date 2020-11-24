@@ -71,8 +71,8 @@ MODULE cpmd_variables
   real(8),allocatable :: enc(:,:),ens(:,:)
   real(8),allocatable :: Ake(:),Cks(:),Ckc(:)
 !_common
-  real(8) :: vw(4),pmass(36)
-  character*2  :: batm(36)
+  real(8) :: vw(4),pmass(41)
+  character*2  :: batm(41)
   data pmass/1.00794d0,4.003d0,6.941d0,9.012d0,10.81d0,&
        12.00d0,14.01d0,16.00d0,19.00d0,20.18d0,&
        22.99d0,24.31d0,26.98d0,28.0855d0,30.97d0,&
@@ -80,7 +80,8 @@ MODULE cpmd_variables
        44.96d0,47.87d0,50.94d0,52.00d0,54.94d0,&
        55.84d0,58.93d0,58.69d0,63.55d0,65.39d0,&
        69.72d0,72.61d0,74.92d0,78.96d0,79.90d0,&
-       83.80d0/
+       83.80d0,85.45d0,87.62d0,88.91d0,91.22d0,&
+       92.91d0/
 !_atom
   data batm/'H' ,'He','Li','Be','B' ,&
        'C' ,'N' ,'O' ,'F' ,'Ne',&
@@ -89,7 +90,8 @@ MODULE cpmd_variables
        'Sc','Ti','V' ,'Cr','Mn',&
        'Fe','Co','Ni','Cu','Zn',&
        'Ga','Ge','As','Se','Br',&
-       'Kr'/
+       'Kr','Rb','Sr','Y' ,'Zr',&
+       'Nb'/
 !_control
   logical :: inivel,lcpmd,lbath,lmeta
 !_end

@@ -1,4 +1,4 @@
-MODULE atom_module
+module atom_module
 
   use lattice_module, only: lattice, read_lattice, get_inverse_lattice &
                            ,get_aa_lattice
@@ -6,15 +6,16 @@ MODULE atom_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: atom
-  PUBLIC :: construct_atom
-  PUBLIC :: write_info_atom
-  PUBLIC :: read_atom
-  PUBLIC :: convert_to_aa_coordinates_atom
-  PUBLIC :: convert_to_xyz_coordinates_atom
-  PUBLIC :: write_coordinates_atom
-  PUBLIC :: shift_aa_coordinates_atom
+  private
+  public :: atom
+  public :: construct_atom
+  public :: write_info_atom
+  public :: read_atom
+  public :: convert_to_aa_coordinates_atom
+  public :: convert_to_xyz_coordinates_atom
+  public :: write_coordinates_atom
+  public :: shift_aa_coordinates_atom
+  public :: write_xyz_atom
 
   integer,parameter :: DP=kind(0.0d0)
 
@@ -396,4 +397,19 @@ CONTAINS
   END SUBROUTINE write_coordinates_atom
 
 
-END MODULE atom_module
+  subroutine write_xyz_atom( unit, xyz, comment )
+    implicit none
+    integer,intent(in) :: unit
+    real(8),intent(in) :: xyz(:,:)
+    character(*),intent(in) :: comment
+    integer :: i
+    character(2),external :: get_element_name
+    write(unit,*) size(xyz,2)
+    write(unit,*) trim(comment)
+    do i=1,size(xyz,2)
+      write(unit,'(a2,2x,3g24.15)') get_element_name(zn_atom(ki_atom(i))), xyz(:,i)
+    end do
+  end subroutine write_xyz_atom
+
+
+end module atom_module
