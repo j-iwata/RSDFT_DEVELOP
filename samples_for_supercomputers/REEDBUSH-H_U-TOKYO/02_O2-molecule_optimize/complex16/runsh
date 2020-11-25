@@ -1,0 +1,17 @@
+#!/bin/sh
+#PBS -q h-debug
+##PBS -q h-short
+##PBS -q h-small
+#PBS -l select=1:mpiprocs=36:ompthreads=1
+##PBS -l select=2:mpiprocs=36:ompthreads=1
+##PBS -l select=4:mpiprocs=36:ompthreads=1
+#PBS -W group_list=hp150273h
+#PBS -l walltime=00:30:00
+##PBS -l walltime=10:00:00
+cd $PBS_O_WORKDIR
+. /etc/profile.d/modules.sh
+module load intel intel-mpi
+
+mpirun -np 36 ./rsdft.x > a.log
+
+./aa2cif < fort.197
