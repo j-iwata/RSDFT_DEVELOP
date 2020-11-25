@@ -14,7 +14,7 @@ please change as follows
 ```
 ATOMOPT1  50  5.d-4  .f.        / ncycle  feps  continue_flag
 ATOMOPT2  6  5  100             / most  nrfr  diter_opt
-ATOMOPT3  0.5d0  1.d-1  1.d-10  / 
+ATOMOPT3  0.5d0  1.d-1  1.d-10  / okatom  decr  eeps
 ```
 
 If you use CG optimization (*SWOPT=1* or *2*), *continue_flag* is not used.
