@@ -1,0 +1,8 @@
+AX  18.89726878              / ax
+A1  1.00  0.00  0.00         / aa(1:3,1)
+A2  0.00  1.00  0.00         / aa(1:3,2)
+A3  0.00  0.00  1.00         / aa(1:3,3)
+AA                           /
+1  2  8                      / Nelem, Natom, Zatom(1:Nelem)
+1  0.00    0.00   -0.06  1   / elemID(1), red_coords(1:3,1), constraintID(1)
+1  0.00    0.00    0.06  1   / elemID(2), red_coords(1:3,2), constraintID(2)
