@@ -17,16 +17,17 @@ ATOMOPT2  6  5  100             / most  nrfr  diter_opt
 ATOMOPT3  0.5d0  1.d-1  1.d-10  / diter_opt
 ```
 
-If you use CG optimization (*SWOPT = 1* or *2*), *continue_flag* is omitted.
+If you use CG optimization (*SWOPT=1* or *2*), *continue_flag* is not used.
 
-You can also omit the other aprameters, for example,
+You can also omit the other parameters. A minimal example is,
 
 ```
 ATOMOPT1  50  5.d-4  / ncycle  feps
 ```
 
-and in this case the omitted parameters are set by default values.
+In this case the omitted parameters are set by default values.
  
+
 
 ## ITO (Kyusyu university)
 
