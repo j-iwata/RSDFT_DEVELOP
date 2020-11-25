@@ -1,6 +1,10 @@
 # RS-CPMD
 
+RS-CPMD and RSDFT (https://github.com/j-iwata/RSDFT_DEVELOP/tree/RSDFT) is unified. If you want to perform CPMD calculations with the latest code, please use RSDFT compiled in real8 mode.
+
+
 Only Gamma-point sampling mode is available for CPMD calculations.
+
 
 ## Installation
 Download or clone the branch RSCPMD, and type the following commands
