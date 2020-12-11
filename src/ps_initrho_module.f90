@@ -781,7 +781,7 @@ contains
     ML3_0 = Igrid(1,3) ; ML3_1 = Igrid(2,3)
 
     NML1  = ML1_1-ML1_0+1
-    NML12 = NML1*(ML1_1-ML1_0+1)
+    NML12 = NML1*(ML2_1-ML2_0+1)
 
     m_spin=size( rho, 2 )
 
