@@ -607,9 +607,7 @@ contains
           end if
 
           xdiis(:,mrhodiis)=reshape(ion%xyz,ishape)
-do i=1,mrhodiis
-if(disp_sw)write(*,*) i,sum(xdiis(:,i)**2),sum(rhodiis(:,:,i)**2)
-end do
+
           if ( mrhodiis >= 3 ) then
 
             aa_atom(:,:) = matmul( aa_inv, ion%xyz )
