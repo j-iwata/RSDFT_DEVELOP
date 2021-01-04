@@ -72,7 +72,7 @@ PROGRAM Real_Space_DFT
 !  use bcast_module, only: test_bcast
 !  use rsdft_sendrecv_module, only: test_sendrecv
 !  use vector_tools_module, only: set_vinfo_vector_tools
-!  use sl_tools_module, only: backup_param_sl_tools
+  use sl_tools_module, only: prep_param_sl
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -242,7 +242,6 @@ PROGRAM Real_Space_DFT
 !  goto 900
 
   call init_scalapack( Nband )
-!  call backup_param_sl_tools( NPROW, NPCOL, MBSIZE, NBSIZE )
 
   call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
 
@@ -351,6 +350,8 @@ PROGRAM Real_Space_DFT
 ! --- Initialization of subspace diagonalization ---
 
   call init_subspace_diag( Nband )
+
+  call prep_param_sl( Nband, np_grid, np_band )
 
 ! --- Initial wave functions ---
 
