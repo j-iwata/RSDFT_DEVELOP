@@ -274,7 +274,7 @@ contains
     if ( disp_switch_parallel ) then
        write(*,'(1x,5a5)') "irank","grid","band","bz","spin"
        do i=0,nprocs-1
-          write(*,'(1x,6(2x,i3))') i,id_class(i,0),id_class(i,4:7)
+          write(*,'(1x,6(2x,i3))') i,id_class(i,0),(id_class(i,j),j=4,7)
        end do
     end if
 

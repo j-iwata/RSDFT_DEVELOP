@@ -436,13 +436,16 @@ CONTAINS
 
                 do k=1,max_loop
 
-                   call get_num_from_string( cbuf, "angular_momentum=", ltmp )
+                   l=index( cbuf, "angular_momentum=" )
+                   if ( l /= 0 ) then
+                     call get_num_from_string( cbuf, "angular_momentum=", ltmp )
+                     j=j+1
+                     lo(j)=ltmp
+                   end if
 
                    l=index( cbuf, ">" )
                    if ( l /= 0 ) then
-                      j=j+1
                       read(g,*) viod(1:nrr,j)
-                      lo(j)=ltmp
                       no(lo(j)) = no(lo(j)) + 1
                       exit
                    end if

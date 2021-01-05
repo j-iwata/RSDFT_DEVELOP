@@ -146,6 +146,7 @@ CONTAINS
     real(8),intent(IN) :: a(3,3)
     character(*),optional,intent(OUT) :: indx
     real(8) :: al(3), theta23, theta31, theta12, cos23, cos31, cos12
+    real(8) :: cosines(3)
     logical :: disp
     al(1) = sqrt( sum(a(:,1)**2) )
     al(2) = sqrt( sum(a(:,2)**2) )
@@ -166,9 +167,10 @@ CONTAINS
     end if
     if ( present(indx) ) then
        indx=""
-       call check_cubic( al, (/cos23,cos31,cos12/), indx )
-       call check_hexagonal( al, (/cos23,cos31,cos12/), indx )
-       call check_fcc( al, (/cos23,cos31,cos12/), indx )
+       cosines=(/cos23,cos31,cos12/)
+       call check_cubic( al, cosines, indx )
+       call check_hexagonal( al, cosines, indx )
+       call check_fcc( al, cosines, indx )
     end if
   END SUBROUTINE check_lattice
 

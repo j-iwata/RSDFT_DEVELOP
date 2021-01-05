@@ -168,6 +168,9 @@ contains
     mgs = n/npr
     mbs = n/npc
 
+    if ( mgs*npr < n ) mgs=mgs+1
+    if ( mbs*npc < n ) mbs=mbs+1
+
     call descinit( sl%descb,n,n,mgs,mbs,0,0,sl%icontxt_b,mgs,ierr )
 
     deallocate( usermap )
