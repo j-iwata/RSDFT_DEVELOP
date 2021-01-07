@@ -143,7 +143,12 @@ CONTAINS
     rgrid%spacing(1:3) = Hgrid(1:3)
     rgrid%dV = dV
     rgrid%lattice(1:3,1:3) = lattice_vector(1:3,1:3)
-    call GetGridSize_RgridMol( Rsize_out=rgrid%Rsize, Zsize_out=rgrid%Zsize )
+    if ( SYStype == 1 ) then
+      call GetGridSize_RgridMol( Rsize_out=rgrid%Rsize, Zsize_out=rgrid%Zsize )
+    else
+      rgrid%Rsize=0.0d0
+      rgrid%Zsize=0.0d0
+    end if
     rgrid%comm = comm_grid
     rgrid%Norder_FD = Md
   END SUBROUTINE set_grid_info_rgrid
