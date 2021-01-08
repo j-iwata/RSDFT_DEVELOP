@@ -51,20 +51,21 @@ CONTAINS
   END SUBROUTINE op_nonlocal
 
 
-  SUBROUTINE calc_force_nonlocal( MI, force )
+  subroutine calc_force_nonlocal( force )
     implicit none
-    integer,intent(IN) :: MI
-    real(8),intent(OUT) :: force(3,MI)
+    real(8),intent(out) :: force(:,:)
+    integer :: MI
+    MI=size(force,2)
     select case( pselect )
     case( 2 )
        !call calc_force_ps_nloc2( MI, force )
-       call calc_force_ps_nloc2_hp( MI, force )
+       call calc_force_ps_nloc2_hp( force )
     case( 3 )
        call calc_force_ps_nloc3( MI, force )
     case( 102 )
        call stop_program("stop@force_nonlocal(2)")
     end select
-  END SUBROUTINE calc_force_nonlocal
+  end subroutine calc_force_nonlocal
 
 
   SUBROUTINE update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )

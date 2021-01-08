@@ -6,7 +6,7 @@ module test_force_module
 
   use force_local_sol_module, only: calc_force_local_sol
   use force_ewald_module
-  use nonlocal_module
+  use nonlocal_module, only: calc_force_nonlocal
   use ps_pcc_force_module, only: calc_ps_pcc_force
   use ps_pcc_module, only: flag_pcc_0
 
@@ -112,7 +112,7 @@ contains
 
     call watchb( ttmp, barrier='on' )
 
-    call calc_force_nonlocal(Natom,force)
+    call calc_force_nonlocal( force )
 
     call watchb( ttmp, ttt(:,3), barrier='on' )
     if ( myrank == 0 ) then
@@ -146,7 +146,7 @@ contains
 
     call watchb( ttmp, barrier='on' )
 
-    call calc_force_nonlocal(Natom,force)
+    call calc_force_nonlocal( force )
 
     call watchb( ttmp, ttt(:,3), barrier='on' )
 

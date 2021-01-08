@@ -46,7 +46,7 @@ CONTAINS
 
 !    call watch(ctt(1),ett(1))
 
-    call calc_force_nonlocal( MI, work )
+    call calc_force_nonlocal( work )
     force = force + work
 
 !    call watch(ctt(2),ett(2))

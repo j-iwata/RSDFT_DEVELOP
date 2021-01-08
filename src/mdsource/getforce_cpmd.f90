@@ -115,7 +115,7 @@ SUBROUTINE getforce_cpmd( ltime )
   !call calc_force(Natom,Force)
   allocate( work2(3,Natom) ); work2=0.0d0
   !call watchb( ttmp, barrier='on' ); ttt=0.0d0
-  call calc_force_nonlocal( Natom, work2 )
+  call calc_force_nonlocal( work2 )
   !call watchb( ttmp, ttt(:,1), barrier='on' )
   Force=Force+work2
   !call watchb( ttmp, barrier='on' )
