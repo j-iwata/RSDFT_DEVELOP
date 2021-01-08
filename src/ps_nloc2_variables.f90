@@ -6,7 +6,7 @@ MODULE ps_nloc2_variables
   integer,allocatable :: JJ_MAP(:,:,:),MJJ_MAP(:),MJJ(:)
   integer :: MMJJ,MAXMJJ,nrlma_xyz(6)
   real(8),allocatable :: uV(:,:)
-  integer,allocatable :: amap(:),lmap(:),mmap(:),iorbmap(:)
+  integer,allocatable :: amap(:),lmap(:),mmap(:),iorbmap(:),iamap(:)
   integer,allocatable :: lma_nsend(:),iuV(:),nl_rank_map(:)
   integer,allocatable :: num_2_rank(:,:)
   integer,allocatable :: sendmap(:,:),recvmap(:,:)
@@ -14,12 +14,14 @@ MODULE ps_nloc2_variables
   integer :: nl_max_send
 #ifdef _DRSDFT_
   real(8),allocatable :: uVk(:,:,:),sbufnl(:,:),rbufnl(:,:)
+  real(8),allocatable :: sbufnl1(:),rbufnl1(:)
   real(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   real(8),parameter :: zero=0.d0
   integer,parameter :: TYPE_MAIN=MPI_REAL8
 #else
   complex(8),allocatable :: uVk(:,:,:),sbufnl(:,:),rbufnl(:,:)
+  complex(8),allocatable :: sbufnl1(:),rbufnl1(:)
   complex(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
@@ -52,20 +54,30 @@ MODULE ps_nloc2_variables
 
 CONTAINS
 
-  SUBROUTINE allocate_ps_nloc2(MB_d)
-    integer,intent(IN) :: MB_d
-    integer :: n
-    n=maxval( lma_nsend )*10*MB_d ! MIZUHO-IR for stress
-!!$    n=maxval( lma_nsend )*4*MB_d
-    if ( allocated(rbufnl) ) deallocate(rbufnl)
-    if ( allocated(sbufnl) ) deallocate(sbufnl)
-    if ( allocated(uVunk)  ) deallocate(uVunk)
-    if ( allocated(uVunk0) ) deallocate(uVunk0)
-    allocate( sbufnl(n,0:nprocs_g-1) ) ; sbufnl=zero
-    allocate( rbufnl(n,0:nprocs_g-1) ) ; rbufnl=zero
+  subroutine allocate_ps_nloc2( MB_d, itype_nl_sendrecv )
+    integer,intent(in) :: MB_d
+    integer,optional,intent(in) :: itype_nl_sendrecv
+    integer :: n, itype
+    n=maxval( lma_nsend )*4*MB_d
+    if ( allocated(rbufnl)  ) deallocate(rbufnl)
+    if ( allocated(sbufnl)  ) deallocate(sbufnl)
+    if ( allocated(rbufnl1) ) deallocate(rbufnl1)
+    if ( allocated(sbufnl1) ) deallocate(sbufnl1)
+    if ( allocated(uVunk)   ) deallocate(uVunk)
+    if ( allocated(uVunk0)  ) deallocate(uVunk0)
+    itype=0
+    if ( present(itype_nl_sendrecv) ) itype=itype_nl_sendrecv
+    select case( itype )
+    case default
+      allocate( sbufnl(n,0:nprocs_g-1) ) ; sbufnl=zero
+      allocate( rbufnl(n,0:nprocs_g-1) ) ; rbufnl=zero
+    case( 1 )
+      allocate( rbufnl1(n) ) ; rbufnl1=zero
+      allocate( sbufnl1(n) ) ; sbufnl1=zero
+    end select
     allocate( uVunk(nzlma,MB_d)  ) ; uVunk=zero
     allocate( uVunk0(nzlma,MB_d) ) ; uVunk0=zero
-  END SUBROUTINE allocate_ps_nloc2
+  end subroutine allocate_ps_nloc2
 
   SUBROUTINE checkMapsBeforeForce(myrank)
     implicit none

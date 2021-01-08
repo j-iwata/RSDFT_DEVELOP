@@ -1,4 +1,4 @@
-MODULE ps_nloc2_module
+module ps_nloc2_module
 
   use aa_module
   use atom_module
@@ -31,10 +31,12 @@ MODULE ps_nloc2_module
   implicit none
 
   private
-  public :: prep_ps_nloc2 &
-           ,calc_force_ps_nloc2 &
-           ,allocate_ps_nloc2,prep_uvk_ps_nloc2,prep_rvk_ps_nloc2 &
-           ,prep_ps_nloc2_esm
+  public :: prep_ps_nloc2
+  public :: calc_force_ps_nloc2
+  public :: allocate_ps_nloc2
+  public :: prep_uvk_ps_nloc2
+  public :: prep_rvk_ps_nloc2
+  public :: prep_ps_nloc2_esm
   public :: prepMapsTmp
   public :: construct_lma_map_ps_nloc2
 
@@ -52,34 +54,36 @@ MODULE ps_nloc2_module
      MODULE PROCEDURE d_sort_index_sub, z_sort_index_sub
   END INTERFACE
 
-CONTAINS
+contains
 
 
-  SUBROUTINE prep_ps_nloc2
+  subroutine prep_ps_nloc2
     implicit none
-    complex(8) :: ztmp0
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
-    logical,allocatable :: isInThisNode(:,:)
     integer,allocatable :: icheck_tmp4(:,:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:),ireq(:)
     integer,allocatable :: lma_nsend_tmp(:),maps_tmp(:,:),itmp1(:)
-    integer,allocatable :: irad(:,:),nl_rank_map_tmp(:),itmp3(:,:)
+    integer,allocatable :: nl_rank_map_tmp(:),itmp3(:,:)
     integer,allocatable :: itmp2(:),LLp(:,:)
-    integer,allocatable :: jtmp3(:,:,:),mtmp3(:),istatus(:,:)
-    integer :: a,i,j,k,L,m,n,mm1,mm2,mm3,m1,m2,ML0,k1,k2,k3
-    integer :: i1,i2,i3,j1,j2,j3,ik,ir,m0,iorb,mm,ierr,ir0,ir1,irlma
-    integer :: ic1,ic2,ic3,id1,id2,id3,ii1,ii2,ii3,iii1,iii2,iii3
-    integer :: Nintp_0,nzlma_0,M_irad,NRc,MMJJ_0,lma,lma0,i1_0,i2_0,i3_0
-    integer :: nreq,ibuf(3,3),irank
+    integer,allocatable :: istatus(:,:)
+    integer :: a,i,j,k,L,m,n,mm1,mm2,mm3,m1,m2,k1,k2,k3
+    integer :: i1,i2,i3,j1,j2,j3,ik,ir,iorb,mm,ierr,ir0,ir1,irlma
+    integer :: ic1,ic2,ic3,id1,id2,id3
+    integer :: nzlma_0,NRc,MMJJ_0,lma,lma0,i1_0,i2_0,i3_0
+    integer :: nreq
     real(8),parameter :: ep=1.d-8
-    real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
-    real(8) :: tmp,tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
+    real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2
+    real(8) :: c1,c2,c3,a1,a2,a3,maxerr,err0,err
+    real(8) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(8),allocatable :: work(:)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3,timer_counter
     integer :: np1,np2,np3,nrlma
-    logical,allocatable :: lcheck_tmp1(:,:), lcheck_tmp2(:,:)
+    logical,allocatable :: lcheck_tmp1(:,:), lcheck_tmp2(:,:), ltmp(:)
     logical :: disp_sw
+    integer :: num_local_atom, max_num_local_atom
+    integer,allocatable :: lst_local_atom(:)
+    integer :: ia
 
     call write_border( 0, " prep_ps_nloc2(start)" )
     call check_disp_switch( disp_sw, 0 )
@@ -174,18 +178,105 @@ CONTAINS
 
     MMJJ_0 = M_grid_ion
 
+! ---
+
+    c1 = 1.0d0/dble(ML1)
+    c2 = 1.0d0/dble(ML2)
+    c3 = 1.0d0/dble(ML3)
+
+    xmin= 1.0d100
+    xmax=-1.0d100
+    ymin= 1.0d100
+    ymax=-1.0d100
+    zmin= 1.0d100
+    zmax=-1.0d100
+    do i3=a3b,b3b
+    do i2=a2b,b2b
+    do i1=a1b,b1b
+      d1=i1*c1
+      d2=i2*c2
+      d3=i3*c3
+      x=aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3
+      y=aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3
+      z=aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3
+      xmin=min(x,xmin)
+      xmax=max(x,xmax)
+      ymin=min(y,ymin)
+      ymax=max(y,ymax)
+      zmin=min(z,zmin)
+      zmax=max(z,zmax)
+    end do
+    end do
+    end do
+
+    xmin = xmin - r
+    xmax = xmax + r
+    ymin = ymin - r
+    ymax = ymax + r
+    zmin = zmin - r
+    zmax = zmax + r
+
+    allocate( itmp1(Natom) ); itmp1=0
+
+    n = 0
+    loop_a: do a = 1, Natom
+      do i3 = -1, 1
+      do i2 = -1, 1
+      do i1 = -1, 1
+        a1 = aa_atom(1,a) + i1
+        a2 = aa_atom(2,a) + i2
+        a3 = aa_atom(3,a) + i3
+        Rx = aa(1,1)*a1 + aa(1,2)*a2 + aa(1,3)*a3
+        Ry = aa(2,1)*a1 + aa(2,2)*a2 + aa(2,3)*a3
+        Rz = aa(3,1)*a1 + aa(3,2)*a2 + aa(3,3)*a3
+        if ( xmin <= Rx .and. Rx <= xmax .and. &
+             ymin <= Ry .and. Ry <= ymax .and. &
+             zmin <= Rz .and. Rz <= zmax ) then
+          n = n + 1
+          itmp1(n)=a
+          cycle loop_a
+        end if
+      end do
+      end do
+      end do
+    end do loop_a
+
+    call MPI_Allreduce(n,m1,1,MPI_INTEGER,MPI_SUM,comm_grid,ierr)
+    call MPI_Allreduce(n,m2,1,MPI_INTEGER,MPI_MAX,comm_grid,ierr)
+
+    !write(*,'(i4,2x,3(2f12.5,2x),3i6)') myrank,xmin,xmax,ymin,ymax,zmin,zmax,n,m1,m2
+
+    if ( any(ippform==4) ) then
+      max_num_local_atom = Natom
+      num_local_atom = Natom
+    else
+      max_num_local_atom = m2
+      num_local_atom = n
+     !max_num_local_atom = Natom
+     !num_local_atom = Natom
+    end if
+
+    if ( allocated(lst_local_atom) ) deallocate(lst_local_atom)
+    allocate( lst_local_atom(max_num_local_atom) ); lst_local_atom=0
+
+    do i = 1, num_local_atom
+      lst_local_atom(i) = itmp1(i)
+    end do
+
+    deallocate( itmp1 )
+
+! ---
+
+    !if ( allocated(icheck_tmp3) ) deallocate(icheck_tmp3)
+    !if ( allocated(JJ_tmp)      ) deallocate(JJ_tmp)
+    !if ( allocated(MJJ_tmp)     ) deallocate(MJJ_tmp)
+    !if ( allocated(uV_tmp)      ) deallocate(uV_tmp)
     L=maxval(lo)
     n=maxval(norb)
-    if ( .not.allocated(icheck_tmp3) ) then
-!    if( allocated(icheck_tmp3) ) deallocate(icheck_tmp3) ! MIZUHO-IR for cellopt
-!    if( allocated(JJ_tmp) ) deallocate(JJ_tmp) ! MIZUHO-IR for cellopt
-!    if( allocated(MJJ_tmp) ) deallocate(MJJ_tmp) ! MIZUHO-IR for cellopt
-!    if( allocated(uV_tmp) ) deallocate(uV_tmp) ! MIZUHO-IR for cellopt
-       allocate( icheck_tmp3(Natom,n,2*L+1) ); icheck_tmp3=0
-       allocate( JJ_tmp(6,MMJJ_0,n,Natom)   ); JJ_tmp=0
-       allocate( MJJ_tmp(n,Natom)           ); MJJ_tmp=0
-       allocate( uV_tmp(MMJJ_0,n,Natom)     ); uV_tmp=0.0d0
-    end if
+    allocate( icheck_tmp3(max_num_local_atom,n,2*L+1) ); icheck_tmp3=0
+    allocate( JJ_tmp(6,MMJJ_0,n,max_num_local_atom)   ); JJ_tmp=0
+    allocate( MJJ_tmp(n,max_num_local_atom)           ); MJJ_tmp=0
+    allocate( uV_tmp(MMJJ_0,n,max_num_local_atom)     ); uV_tmp=0.0d0
 
     call watcha( timer_counter )
 
@@ -239,8 +330,10 @@ CONTAINS
 !$OMP parallel do schedule(dynamic) firstprivate( maxerr ) &
 !$OMP    private( Rx,Ry,Rz,ic1,ic2,ic3,ik,iorb,Rps2,NRc,L,j,i,i1,i2,i3 &
 !$OMP            ,id1,id2,id3,k1,k2,k3,i1_0,i2_0,i3_0,d1,d2,d3,x,y,z,r2,r &
-!$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err,ir1 )
-    do a=1,Natom
+!$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err,ir1,a )
+    do ia=1,num_local_atom
+
+       a = lst_local_atom(ia)
 
 ! Rx,Ry,Rz : atom position in real grid
        Rx = aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
@@ -361,13 +454,13 @@ CONTAINS
 ! with i1_0,i2_0,i3_0 k1,k2,k3
 !                if (abs(v0) < 1.d-10 ) cycle 
                 j=j+1
-                JJ_tmp(1,j,iorb,a) = i1_0
-                JJ_tmp(2,j,iorb,a) = i2_0
-                JJ_tmp(3,j,iorb,a) = i3_0
-                JJ_tmp(4,j,iorb,a) = k1
-                JJ_tmp(5,j,iorb,a) = k2
-                JJ_tmp(6,j,iorb,a) = k3
-                uV_tmp(j,iorb,a)   = v0
+                JJ_tmp(1,j,iorb,ia) = i1_0
+                JJ_tmp(2,j,iorb,ia) = i2_0
+                JJ_tmp(3,j,iorb,ia) = i3_0
+                JJ_tmp(4,j,iorb,ia) = k1
+                JJ_tmp(5,j,iorb,ia) = k2
+                JJ_tmp(6,j,iorb,ia) = k3
+                uV_tmp(j,iorb,ia)   = v0
 
              end if
 
@@ -376,10 +469,10 @@ CONTAINS
 !==================================================for minimal box
 ! if there is not point in this node, j==0
 
-          MJJ_tmp(iorb,a)=j
+          MJJ_tmp(iorb,ia)=j
 
        end do ! iorb
-    end do ! a
+    end do ! ia
 !$OMP end parallel do
 
 #ifndef _SPLINE_
@@ -388,17 +481,26 @@ CONTAINS
 
     end if ! ippform
 
+! ---
+
+    allocate( itmp1(Natom) ); itmp1=0
+    do ia=1,num_local_atom
+      itmp1(lst_local_atom(ia))=ia
+    end do
+
     lma=0
     do a=1,Natom
+       ia=itmp1(a)
+       if ( ia == 0 ) cycle
        ik=ki_atom(a)
        do iorb=1,norb(ik)
-          j=MJJ_tmp(iorb,a)
+          j=MJJ_tmp(iorb,ia)
           if ( j > 0 ) then
              L=lo(iorb,ik)
              nzlma=nzlma+2*L+1
              do m=1,2*L+1
                 lma=lma+1
-                icheck_tmp3(a,iorb,m)=lma
+                icheck_tmp3(ia,iorb,m)=lma
              end do
           end if
        end do
@@ -409,10 +511,12 @@ CONTAINS
     allocate( lcheck_tmp2(0:np_grid-1,Mlma) ) ; lcheck_tmp2(:,:)=.false.
     lma=0
     do a=1,Natom
+       ia=itmp1(a)
        ik=ki_atom(a)
        do iorb=1,norb(ik)
           L=lo(iorb,ik)
-          j=MJJ_tmp(iorb,a)
+          j=0
+          if ( ia /= 0 ) j=MJJ_tmp(iorb,ia)
           do m=1,2*L+1
              lma=lma+1
              if ( j > 0 ) then
@@ -456,6 +560,7 @@ CONTAINS
     nrlma=0
     lma=0
     do a=1,Natom
+       ia=itmp1(a)
        ik=ki_atom(a)
     do iorb=1,norb(ik)
        L=lo(iorb,ik)
@@ -466,13 +571,13 @@ CONTAINS
        do n=0,np_grid-1
           if ( lcheck_tmp1(n,lma) ) icheck_tmp1(n) = 1
        end do
-       icheck_tmp1(myrank_g) = icheck_tmp3(a,iorb,m+L+1)
+       if ( ia /= 0 ) icheck_tmp1(myrank_g) = icheck_tmp3(ia,iorb,m+L+1)
 
        itmp(:,:)=0
        n=-1
-       do i3=1,node_partition(3)
-       do i2=1,node_partition(2)
-       do i1=1,node_partition(1)
+       do i3=1,np3
+       do i2=1,np2
+       do i1=1,np1
           n=n+1
           if ( icheck_tmp1(n) == 0 ) cycle
           itmp(i1,1) = i1
@@ -612,6 +717,7 @@ CONTAINS
     deallocate( icheck_tmp2 )
     deallocate( icheck_tmp1 )
     deallocate( lcheck_tmp1 )
+    deallocate( icheck_tmp3 )
 
     if ( allocated(uV) ) then
        deallocate( uV )
@@ -619,6 +725,7 @@ CONTAINS
        deallocate( MJJ_MAP )
        deallocate( MJJ )
        deallocate( iuV )
+       deallocate( iamap )
        deallocate( amap )
        deallocate( lmap )
        deallocate( mmap )
@@ -630,6 +737,7 @@ CONTAINS
     allocate( MJJ_MAP(nzlma)       ) ; MJJ_MAP=0
     allocate( MJJ(nzlma)           ) ; MJJ=0
     allocate( iuV(nzlma)           ) ; iuV=0
+    allocate( iamap(nzlma)         ) ; iamap=0
     allocate( amap(nzlma)          ) ; amap=0
     allocate( lmap(nzlma)          ) ; lmap=0
     allocate( mmap(nzlma)          ) ; mmap=0
@@ -649,46 +757,49 @@ CONTAINS
        lmap(lma)    = maps_tmp(lma,4)
        mmap(lma)    = maps_tmp(lma,5)
        iorbmap(lma) = maps_tmp(lma,6)
+       iamap(lma)   = itmp1(amap(lma))
     end do
 
     c1=1.d0/ML1
     c2=1.d0/ML2
     c3=1.d0/ML3
 
-!$OMP parallel do private( a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
+!$OMP parallel do private( ia,a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
     do lma=1,nzlma
        if ( maps_tmp(lma,1) == 0 ) cycle
+       ia   = iamap(lma)
        a    = amap(lma)
        l    = lmap(lma)
        m    = mmap(lma)
        iorb = iorbmap(lma)
-       MJJ_MAP(lma) = MJJ_tmp(iorb,a)
+       MJJ_MAP(lma) = MJJ_tmp(iorb,ia)
        Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
        Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
        Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
        do j=1,MJJ_MAP(lma)
-          i1=JJ_tmp(1,j,iorb,a)
-          i2=JJ_tmp(2,j,iorb,a)
-          i3=JJ_tmp(3,j,iorb,a)
-          k1=JJ_tmp(4,j,iorb,a)
-          k2=JJ_tmp(5,j,iorb,a)
-          k3=JJ_tmp(6,j,iorb,a)
+          i1=JJ_tmp(1,j,iorb,ia)
+          i2=JJ_tmp(2,j,iorb,ia)
+          i3=JJ_tmp(3,j,iorb,ia)
+          k1=JJ_tmp(4,j,iorb,ia)
+          k2=JJ_tmp(5,j,iorb,ia)
+          k3=JJ_tmp(6,j,iorb,ia)
           d1=c1*i1+k1
           d2=c2*i2+k2
           d3=c3*i3+k3
           x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
           y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
           z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-          uV(j,lma) = uV_tmp(j,iorb,a)*Ylm(x,y,z,l,m)
-          JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,a)
+          uV(j,lma) = uV_tmp(j,iorb,ia)*Ylm(x,y,z,l,m)
+          JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,ia)
        end do ! j
     end do ! lma
 !$OMP end parallel do
 
-!    deallocate( MJJ_tmp )
-!    deallocate( JJ_tmp )
-!    deallocate( uV_tmp )
+    deallocate( MJJ_tmp )
+    deallocate( JJ_tmp )
+    deallocate( uV_tmp )
     deallocate( maps_tmp )
+    deallocate( itmp1 )
 
     call watcha( timer_counter )
 
@@ -917,7 +1028,7 @@ CONTAINS
 
     call watcha( timer_counter )
 
-    call allocate_ps_nloc2(MB_d_nl)
+    call allocate_ps_nloc2( MB_d_nl, itype_nl_sendrecv=1 )
 
     if ( allocated(JJP) ) then
        deallocate( JJP )
@@ -944,7 +1055,7 @@ CONTAINS
 
     call write_border( 0, " prep_ps_nloc2(end)" )
 
-  END SUBROUTINE prep_ps_nloc2
+  end subroutine prep_ps_nloc2
 
 
   SUBROUTINE d_sort_index_sub( mj, jj, vj )
@@ -2533,7 +2644,7 @@ CONTAINS
        nrlma_xyz(i+1)=n
     end do
 
-    call allocate_ps_nloc2(MB_d_nl)
+    call allocate_ps_nloc2( MB_d_nl, itype_nl_sendrecv=1 )
 
     if ( allocated(JJP) ) then
        deallocate( JJP )
@@ -2648,4 +2759,4 @@ CONTAINS
   end subroutine construct_lma_map_ps_nloc2
 
 
-END MODULE ps_nloc2_module
+end module ps_nloc2_module

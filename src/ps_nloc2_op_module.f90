@@ -133,18 +133,18 @@ CONTAINS
   END SUBROUTINE init_op_ps_nloc2_hp
 
 
-  SUBROUTINE op_ps_nloc2_hp( tpsi, htpsi, k_in, s_in, ib1, ib2 )
+  subroutine op_ps_nloc2_hp( tpsi, htpsi, k_in, s_in, ib1, ib2 )
     implicit none
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(:,:)
-    real(8),intent(OUT) :: htpsi(:,:)
+    real(8),intent(in)  :: tpsi(:,:)
+    real(8),intent(out) :: htpsi(:,:)
     real(8) :: tmp_sum
 #else
-    complex(8),intent(IN)  :: tpsi(:,:)
-    complex(8),intent(OUT) :: htpsi(:,:)
+    complex(8),intent(in)  :: tpsi(:,:)
+    complex(8),intent(out) :: htpsi(:,:)
     complex(8) :: tmp_sum
 #endif
-    integer,optional,intent(IN) :: k_in, s_in, ib1, ib2
+    integer,optional,intent(in) :: k_in, s_in, ib1, ib2
     integer :: i,ib,i1,i2,i3,j,lma,m,ML0,n,nb,k,s,i0
     integer :: ierr,nreq
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
@@ -212,13 +212,16 @@ CONTAINS
                 i2=omplns1(irank,ompmyrank)-1+lma_nsend(irank)*(ib-1)
                 do i1=omplns1(irank,ompmyrank),omplns2(irank,ompmyrank)
                    i2=i2+1
-                   sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
+                   !sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
+                   sbufnl1(i2)=uVunk0(sendmap(i1,irank),ib)
                 end do
              end do
 !$omp barrier
 !$omp master
              nreq=nreq+1
-             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb &
+             !call MPI_Isend(sbufnl(1,irank),lma_nsend(irank)*nb &
+             !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Isend(sbufnl1,lma_nsend(irank)*nb &
                   ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
 !$omp end master
           end if
@@ -226,11 +229,13 @@ CONTAINS
 !$omp master
           if ( jrank >= 0 ) then
              nreq=nreq+1
-             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
+             !call MPI_Irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
+             !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Irecv(rbufnl1,lma_nsend(jrank)*nb &
                   ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
           end if
           !call watchb_omp( ttmp1, time_nlpp(1,5) )
-          call mpi_waitall(nreq,ireq,istatus,ierr)
+          call MPI_Waitall(nreq,ireq,istatus,ierr)
 !$omp end master
 !$omp barrier
           !call watchb_omp( ttmp1, time_nlpp(1,6) )
@@ -240,7 +245,8 @@ CONTAINS
                 do i1=omplns1(jrank,ompmyrank),omplns2(jrank,ompmyrank)
                    i2=i2+1
                    i3=recvmap(i1,jrank)
-                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,jrank)
+                   !uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,jrank)
+                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl1(i2)
                 end do
              end do
           end if
@@ -274,7 +280,7 @@ CONTAINS
 
     return 
       
-  END SUBROUTINE op_ps_nloc2_hp
+  end subroutine op_ps_nloc2_hp
 
 
   subroutine op_ps_nloc2_with_restore_uVunk( htpsi,k,s,ib1,ib2 )
@@ -308,16 +314,15 @@ CONTAINS
   end subroutine op_ps_nloc2_with_restore_uVunk
 
 
-  SUBROUTINE op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
-
+  subroutine op_ps_nloc2(k,tpsi,htpsi,n1,n2,ib1,ib2)
     implicit none
-    integer,intent(IN) :: k,n1,n2,ib1,ib2
+    integer,intent(in) :: k,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(n1:,ib1:)
-    real(8),intent(INOUT) :: htpsi(n1:,ib1:)
+    real(8),intent(in)    ::  tpsi(n1:,ib1:)
+    real(8),intent(inout) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN)  :: tpsi(n1:,ib1:)
-    complex(8),intent(INOUT) :: htpsi(n1:,ib1:)
+    complex(8),intent(in)    ::  tpsi(n1:,ib1:)
+    complex(8),intent(inout) :: htpsi(n1:,ib1:)
 #endif
     integer :: i,ib,j,jb,i1,i2,i3,m,lma,nb,ierr,nreq,lmani,lmanj
     integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512) 
@@ -384,13 +389,16 @@ CONTAINS
                 do ib=m_0,m_1
                 do i1=n_0,n_1
                    i2=i1+(ib-1)*lmani
-                   sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
+                   !sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
+                   sbufnl1(i2)=uVunk0(sendmap(i1,irank),ib)
                 end do
                 end do
 !$OMP barrier
 !$OMP master
                 nreq=nreq+1
-                call mpi_isend(sbufnl(1,irank),lmani*nb &
+                !call MPI_Isend(sbufnl(1,irank),lmani*nb &
+                !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+                call MPI_Isend(sbufnl1,lmani*nb &
                      ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
 !$OMP end master
              end if
@@ -398,10 +406,12 @@ CONTAINS
              if ( jrank >= 0 ) then
                 lmanj = lma_nsend(jrank)
                 nreq=nreq+1
-                call mpi_irecv(rbufnl(1,jrank),lmanj*nb &
+                !call MPI_Irecv(rbufnl(1,jrank),lmanj*nb &
+                !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+                call MPI_Irecv(rbufnl1,lmanj*nb &
                      ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
              end if
-             call mpi_waitall(nreq,ireq,istatus,ierr)
+             call MPI_Waitall(nreq,ireq,istatus,ierr)
 !$OMP end master
 !$OMP barrier
              if ( jrank >= 0 ) then
@@ -411,7 +421,8 @@ CONTAINS
                 do i1=n_0,n_1
                    i2=i1+(ib-1)*lmanj
                    i3=recvmap(i1,jrank)
-                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,jrank)
+                   !uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,jrank)
+                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl1(i2)
                 end do
                 end do
              end if
@@ -457,10 +468,9 @@ CONTAINS
 !$OMP barrier
     !call watchb_omp( ttmp, time_nlpp(1,3) )
 
-  END SUBROUTINE op_ps_nloc2
+  end subroutine op_ps_nloc2
 
   SUBROUTINE calc_range_omp( nb, nz, nb_0, nb_1, nz_0, nz_1 )
-
     implicit none
     integer,intent(IN)  :: nb, nz
     integer,intent(OUT) :: nb_0,nb_1,nz_0,nz_1
@@ -490,7 +500,6 @@ CONTAINS
 !    et1=omp_get_wtime()
 !    write(*,'(1x,8i4)') ip,mp,nb_0,nb_1,nz_0,nz_1
 !    write(*,*) "time=",et1-et0
-
   END SUBROUTINE calc_range_omp
 
   FUNCTION gcd(m0,n0)

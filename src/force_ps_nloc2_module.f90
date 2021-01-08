@@ -3,7 +3,7 @@ module force_ps_nloc2_module
   use array_bound_module, only: MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1,ML_0
   use ps_nloc2_variables, only: nzlma, MMJJ, mmap, lmap, amap &
        , iorbmap, JJ_MAP, MJJ_MAP, JJP, MJJ, uVk, nrlma_xyz, iuV, lma_nsend &
-       , num_2_rank, recvmap, sendmap, sbufnl, rbufnl, Mlma, TYPE_MAIN, zero &
+       , num_2_rank, recvmap, sendmap, sbufnl1, rbufnl1, Mlma, TYPE_MAIN, zero &
        , backup_uVunk_ps_nloc2, flag_backup_uVunk_ps_nloc2
   use var_ps_member, only: ps_type, norb, lo, rad1, dviod, ippform, NRps
   use pseudopot_module, only: pselect
@@ -23,18 +23,17 @@ module force_ps_nloc2_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: calc_force_ps_nloc2_hp
+  private
+  public :: calc_force_ps_nloc2_hp
 
   type(gaunt) :: yyy
   real(8),allocatable :: y2b(:,:,:)
 
 contains
 
-  subroutine calc_force_ps_nloc2_hp(MI,force2)
+  subroutine calc_force_ps_nloc2_hp( force2 )
     implicit none
-    integer,intent(IN) :: MI
-    real(8),intent(OUT) :: force2(3,MI)
+    real(8),intent(out) :: force2(:,:)
     integer :: i1,i2,i3
     integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq,ib,ib1,ib2,nnn
@@ -497,28 +496,35 @@ contains
                 do i2=1,lma_nsend(irank)
                 do i3=0,3
                    i1=i1+1
-                   sbufnl(i1,irank)=vtmp2(i3,sendmap(i2,irank),ib)
+                   !sbufnl(i1,irank)=vtmp2(i3,sendmap(i2,irank),ib)
+                   sbufnl1(i1)=vtmp2(i3,sendmap(i2,irank),ib)
                 end do
                 end do
                 end do
                 nreq=nreq+1
-                call mpi_isend(sbufnl(1,irank),4*lma_nsend(irank)*nnn &
+                !call MPI_Isend(sbufnl(1,irank),4*lma_nsend(irank)*nnn &
+                !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+                call MPI_Isend(sbufnl1,4*lma_nsend(irank)*nnn &
                      ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
              end if
              if( jrank >= 0 )then
                 nreq=nreq+1
-                call mpi_irecv(rbufnl(1,jrank),4*lma_nsend(jrank)*nnn &
+                !call mpi_irecv(rbufnl(1,jrank),4*lma_nsend(jrank)*nnn &
+                !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+                call MPI_Irecv(rbufnl1,4*lma_nsend(jrank)*nnn &
                      ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
              end if
-             call mpi_waitall(nreq,ireq,istatus,ierr)
+             call MPI_Waitall(nreq,ireq,istatus,ierr)
              if( jrank >= 0 )then
                 i1=0
                 do ib=ib1,ib2
                 do i2=1,lma_nsend(jrank)
                 do i3=0,3
                    i1=i1+1
+                   !wtmp5(i3,recvmap(i2,jrank),ib,k,s) &
+                   !     =wtmp5(i3,recvmap(i2,jrank),ib,k,s)+rbufnl(i1,jrank)
                    wtmp5(i3,recvmap(i2,jrank),ib,k,s) &
-                        =wtmp5(i3,recvmap(i2,jrank),ib,k,s)+rbufnl(i1,jrank)
+                        =wtmp5(i3,recvmap(i2,jrank),ib,k,s)+rbufnl1(i1)
                 end do
                 end do
                 end do
@@ -579,8 +585,7 @@ contains
 !$OMP end workshare
 
 !$OMP single
-    call mpi_allreduce(work2,force2,3*Natom &
-         ,mpi_real8,mpi_sum,mpi_comm_world,ierr)
+    call MPI_Allreduce(work2,force2,3*Natom,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
     deallocate( work2 )
     deallocate( a_rank )
     deallocate( vtmp2 )
