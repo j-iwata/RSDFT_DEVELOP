@@ -6,7 +6,7 @@ module subspace_sdsl_module
   use rgrid_variables, only: dV
   use parallel_module, only: comm_grid, comm_band, MB_d, id_band, ir_band, id_grid
   use hamiltonian_module, only: hamiltonian
-  use calc_overlap_sd_module, only: calc_overlap_sd, calc_overlap_sd_blk, nblk_ovlp, calc_overlap_sd_dsyr2k
+  use calc_overlap_sd_module, only: calc_overlap_sd
 
   implicit none
 
@@ -19,9 +19,13 @@ module subspace_sdsl_module
   integer :: LDR,LDC
   character(1) :: UPLO='L'
   integer :: myrnk_g, myrnk_b
+#ifdef _DRSDFT_
   real(8),allocatable :: Hsub(:,:)
   real(8),allocatable :: Vsub(:,:)
-
+#else
+  complex(8),allocatable :: Hsub(:,:)
+  complex(8),allocatable :: Vsub(:,:)
+#endif
   logical :: has_init_done  = .false.
   logical :: has_init1_done = .false.
   logical :: has_init2_done = .false.
@@ -32,10 +36,6 @@ module subspace_sdsl_module
   type(slinfo) :: sl
 
   integer,external :: NUMROC
-
-  interface subspace_sdsl
-     module procedure d_subspace_sdsl
-  end interface
 
   integer :: iparam_sdsl(2)=0
 
@@ -70,8 +70,8 @@ contains
 !    call IOTools_readStringKeyword( "UPLO", UPLO, unit )
 !    close( unit )
 
-    call IOTools_readIntegerKeyword( "SDPARAM", iparam_sdsl )
-    if ( iparam_sdsl(2) /= 0 ) nblk_ovlp=iparam_sdsl(2)
+!    call IOTools_readIntegerKeyword( "SDPARAM", iparam_sdsl )
+!    if ( iparam_sdsl(2) /= 0 ) nblk_ovlp=iparam_sdsl(2)
 
     if( sl%nprow==0 .or. sl%npcol==0 .or. sl%mbsize==0 .or. sl%nbsize==0 )then
        call restore_param_sl( sl )
@@ -189,18 +189,24 @@ contains
   end subroutine get_nband
 
 
-  subroutine d_subspace_sdsl( k, s, u, e )
+  subroutine subspace_sdsl( k, s, u, e )
     implicit none
     integer,intent(in) :: k,s
+#ifdef _DRSDFT_
     real(8),intent(inout)  :: u(:,:)
-    real(8),intent(inout)  :: e(:)
     real(8),allocatable :: H(:,:),utmp(:,:)
-    real(8),parameter :: zero=0.0d0, one=1.0d0
+    real(8),parameter :: zero=0.0d0
+#else
+    complex(8),intent(inout)  :: u(:,:)
+    complex(8),allocatable :: H(:,:),utmp(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
+#endif
+    real(8),intent(inout)  :: e(:)
     integer :: m,n,ierr,i,j,it,n0,n1
     integer,allocatable :: ipiv(:)
     integer :: ib0,ib1,ib2,ig1,ig2,jb1,jb2
 
-!    call write_border( 1, " d_subspace_sdsl(start)" )
+!    call write_border( 1, " subspace_sdsl(start)" )
 
 !    call timer( ttmp ); time(:,:)=0.0d0; it=0
 
@@ -211,8 +217,6 @@ contains
        call get_nband( nband )
        call init1_sdsl( nband )
        call init2_sdsl( nband )
-       !call init_overlap_bp( m, n, dV, comm_grid, comm_band )
-       !call init_dtrmm_bp( m, n, comm_grid, comm_band )
        has_init_done = .true.
     end if
 
@@ -238,10 +242,10 @@ contains
     select case( iparam_sdsl(1) )
     case( 0 )
        call calc_overlap_sd( u, utmp, dV, H )
-    case( 1 )
-       call calc_overlap_sd_blk( u, utmp, dV, H )
-    case( 2 )
-       call calc_overlap_sd_dsyr2k( u, utmp, dV, H )
+!    case( 1 )
+!       call calc_overlap_sd_blk( u, utmp, dV, H )
+!    case( 2 )
+!       call calc_overlap_sd_dsyr2k( u, utmp, dV, H )
 !    case default
 !       write(*,*) "iparam_sdsl(1)=",iparam_sdsl(1)," is not available"
     end select
@@ -291,9 +295,9 @@ contains
 
 !    call write_timer( time(:,0:it-1), it-1, tlabel(0:it-1) )
 
-!    call write_border( 1, " d_subspace_sdsl(end)" )
+!    call write_border( 1, " subspace_sdsl(end)" )
 
-  end subroutine d_subspace_sdsl
+  end subroutine subspace_sdsl
 
 
   subroutine check_lu( check, T )
@@ -335,26 +339,47 @@ contains
 
   subroutine solv_sub( Hsub, Vsub, e )
     implicit none
+#ifdef _DRSDFT_
     real(8),intent(inout) :: Hsub(:,:)
     real(8),intent(inout) :: Vsub(:,:)
+#else
+    complex(8),intent(inout) :: Hsub(:,:)
+    complex(8),intent(inout) :: Vsub(:,:)
+#endif
     real(8),intent(inout) :: e(:)
-    integer,save :: LRWORK=0
     integer,save :: LIWORK=0
-    integer :: itmp(1),ierr
+    integer,save :: LRWORK=0
+    integer,save :: LZWORK=0
     integer,allocatable :: iwork(:)
     real(8),allocatable :: rwork(:)
+    complex(8),allocatable :: zwork(:)
+    integer :: itmp(1),ierr
     real(8) :: rtmp(1)
+    complex(8) :: ztmp(1)
     if ( LRWORK == 0 ) then
        LIWORK = 7*nband + 8*sl%npcol + 2
+#ifdef _DRSDFT_
        call PDSYEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
                    ,sl%descz,rtmp,-1,itmp,LIWORK,ierr)
-       LRWORK = nint( rtmp(1) )*2
+#else
+       call PZHEEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
+                   ,sl%descz,ztmp,-1,rtmp,-1,itmp,-1,ierr)
+       LZWORK = nint( real(ztmp(1)) )
+#endif
+       LRWORK = nint( rtmp(1) )
        LIWORK = max( itmp(1), LIWORK )
     end if
     allocate( rwork(LRWORK) ); rwork=0.0d0
     allocate( iwork(LIWORK) ); iwork=0
+#ifdef _DRSDFT_
     call PDSYEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
                 ,sl%descz,rwork,LRWORK,iwork,LIWORK,ierr)
+#else
+    allocate( zwork(LZWORK) ); zwork=(0.0d0,0.0d0)
+    call PZHEEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
+                 ,sl%descz,zwork,LZWORK,rwork,LRWORK,iwork,LIWORK,ierr)
+    deallocate( zwork )
+#endif
     deallocate( iwork )
     deallocate( rwork )
   end subroutine solv_sub
@@ -362,16 +387,27 @@ contains
 
   subroutine rotv_sub( u, R )
     implicit none
+#ifdef _DRSDFT_
     real(8),intent(inout) :: u(:,:)
     real(8),intent(in) :: R(:,:)
     real(8),allocatable :: utmp(:,:)
     real(8),parameter :: zero=0.0d0, one=1.0d0
+#else
+    complex(8),intent(inout) :: u(:,:)
+    complex(8),intent(in) :: R(:,:)
+    complex(8),allocatable :: utmp(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0), one=(1.0d0,0.0d0)
+#endif
     integer :: m,n,nb
     m =size(u,1)
     n =size(u,2)
     nb=size(R,1)
     allocate( utmp(m,n) ); utmp=u
+#ifdef _DRSDFT_
     call DGEMM('N','N',m,n,nb,one,utmp,m,R,nb,zero,u,m)
+#else
+    call ZGEMM('N','N',m,n,nb,one,utmp,m,R,nb,zero,u,m)
+#endif
     deallocate( utmp )
   end subroutine rotv_sub
 

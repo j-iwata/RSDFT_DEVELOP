@@ -69,17 +69,17 @@ CONTAINS
       !   call gram_schmidt_u(n0,n1,k,s)
       case( 3 )
          call gram_schmidt_t3( unk(:,:,k,s), comm_grid, comm_band )
-#ifdef _DRSDFT_
       case( 4 )
       !   do i=1,4
       !      if ( iparam_gs(i) /= 0 ) iparam_gs_lusl(i)=iparam_gs(i)
       !   end do
          call gram_schmidt_lusl( unk(:,:,k,s) )
       case( 5 )
+#ifdef _DRSDFT_
          call gram_schmidt_luslbp( unk(:,:,k,s) )
 #else
-      case( 4,5 )
          write(*,*) "z_gram_schmidt_lusl is not implemented yet"
+         call stop_program('gram_schmidt')
 #endif
       end select
 

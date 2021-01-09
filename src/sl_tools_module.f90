@@ -1,5 +1,7 @@
 module sl_tools_module
 
+  use rsdft_mpi_module, only: rsdft_allreduce
+
   implicit none
 
   private
@@ -12,24 +14,22 @@ module sl_tools_module
   public :: prep_param_sl
   public :: restore_param_sl
 
-  complex(8),parameter :: zero=(0.0d0,0.0d0)
-
   type slinfo
-     integer :: myrow,  mycol
-     integer :: nprow,  npcol
-     integer :: mbsize, nbsize
-     integer,allocatable :: map_1to2(:,:)
-     integer,allocatable :: map_2to1(:,:)
-     integer :: icontxt_a, icontxt_b
-     integer :: desca(9), descb(9), descz(9)
+    integer :: myrow,  mycol
+    integer :: nprow,  npcol
+    integer :: mbsize, nbsize
+    integer,allocatable :: map_1to2(:,:)
+    integer,allocatable :: map_2to1(:,:)
+    integer :: icontxt_a, icontxt_b
+    integer :: desca(9), descb(9), descz(9)
   end type slinfo
 
   type(slinfo) :: sl_backup
 
   type blkinfo
-     integer :: iband(2), jband(2)
-     integer :: istor(2), jstor(2)
-     integer :: iproc, jproc
+    integer :: iband(2), jband(2)
+    integer :: istor(2), jstor(2)
+    integer :: iproc, jproc
   end type blkinfo
 
   type(blkinfo),allocatable :: blk_map(:,:)
@@ -38,19 +38,19 @@ module sl_tools_module
      MODULE PROCEDURE d_fill_matrix, z_fill_matrix
   END INTERFACE
 
-  INTERFACE gather_matrix
-     MODULE PROCEDURE d_gather_matrix, z_gather_matrix
-  END INTERFACE
+  interface gather_matrix
+    module procedure d_gather_matrix, z_gather_matrix
+  end interface
 
   INTERFACE gatherA_matrix
      MODULE PROCEDURE d_gatherA_matrix
   END INTERFACE
 
-  INTERFACE distribute_matrix
-     MODULE PROCEDURE d_distribute_matrix, z_distribute_matrix
-  END INTERFACE
+  interface distribute_matrix
+    module procedure d_distribute_matrix, z_distribute_matrix
+  end interface
 
-CONTAINS
+contains
 
 
   SUBROUTINE d_fill_matrix( h )
@@ -78,77 +78,76 @@ CONTAINS
   END SUBROUTINE z_fill_matrix
 
 
-  SUBROUTINE d_distribute_matrix( sl, H, Hsub )
+  subroutine d_distribute_matrix( sl, H, Hsub )
     implicit none
-    type(slinfo),intent(IN) :: sl
-    real(8),intent(IN) :: H(:,:)
-    real(8),intent(OUT) :: Hsub(:,:)
+    type(slinfo),intent(in) :: sl
+    real(8),intent(in)      :: H(:,:)
+    real(8),intent(out)     :: Hsub(:,:)
     integer :: m,n,i0,j0,i1,j1,ip,jp,is,js,i,j,ii,jj
     m = size( H, 1 )
     n = size( H, 2 )
     jp=-1
     js= 0
     do j0=1,n,sl%nbsize
-       j1=min(j0+sl%nbsize-1,n)
-       jj=j1-j0+1
-       jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
-       ip=-1
-       is= 0
-       do i0=1,m,sl%mbsize
-          i1=min(i0+sl%mbsize-1,m)
-          ii=i1-i0+1
-          ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
-          do j=1,jj
-          do i=1,ii
-             Hsub(is+i,js+j) = H(i0+i-1,j0+j-1)
-          end do
-          end do
-          is = is + ii
-       end do
-       js = js + jj
+      j1=min(j0+sl%nbsize-1,n)
+      jj=j1-j0+1
+      jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
+      ip=-1
+      is= 0
+      do i0=1,m,sl%mbsize
+        i1=min(i0+sl%mbsize-1,m)
+        ii=i1-i0+1
+        ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
+        do j=1,jj
+        do i=1,ii
+          Hsub(is+i,js+j) = H(i0+i-1,j0+j-1)
+        end do
+        end do
+        is = is + ii
+      end do
+      js = js + jj
     end do
-  END SUBROUTINE d_distribute_matrix
+  end subroutine d_distribute_matrix
 
-  SUBROUTINE z_distribute_matrix( sl, H, Hsub )
+  subroutine z_distribute_matrix( sl, H, Hsub )
     implicit none
-    type(slinfo),intent(IN) :: sl
-    complex(8),intent(IN) :: H(:,:)
-    complex(8),intent(OUT) :: Hsub(:,:)
+    type(slinfo),intent(in) :: sl
+    complex(8),intent(in)   :: H(:,:)
+    complex(8),intent(out)  :: Hsub(:,:)
     integer :: m,n,i0,j0,i1,j1,ip,jp,is,js,i,j,ii,jj
     m = size( H, 1 )
     n = size( H, 2 )
     jp=-1
     js= 0
     do j0=1,n,sl%nbsize
-       j1=min(j0+sl%nbsize-1,n)
-       jj=j1-j0+1
-       jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
-       ip=-1
-       is= 0
-       do i0=1,m,sl%mbsize
-          i1=min(i0+sl%mbsize-1,m)
-          ii=i1-i0+1
-          ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
-          do j=1,jj
-          do i=1,ii
-             Hsub(is+i,js+j) = H(i0+i-1,j0+j-1)
-          end do
-          end do
-          is = is + ii
-       end do
-       js = js + jj
+      j1=min(j0+sl%nbsize-1,n)
+      jj=j1-j0+1
+      jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
+      ip=-1
+      is= 0
+      do i0=1,m,sl%mbsize
+        i1=min(i0+sl%mbsize-1,m)
+        ii=i1-i0+1
+        ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
+        do j=1,jj
+        do i=1,ii
+          Hsub(is+i,js+j) = H(i0+i-1,j0+j-1)
+        end do
+        end do
+        is = is + ii
+      end do
+      js = js + jj
     end do
-  END SUBROUTINE z_distribute_matrix
+  end subroutine z_distribute_matrix
 
 
-  SUBROUTINE d_gather_matrix( sl, Hsub, H, icontxt )
+  subroutine d_gather_matrix( sl, Hsub, H, icontxt )
     implicit none
     type(slinfo) :: sl
-    real(8),intent(IN) :: Hsub(:,:)
-    real(8),intent(OUT) :: H(:,:)
-    integer,optional,intent(IN) :: icontxt
+    real(8),intent(in)  :: Hsub(:,:)
+    real(8),intent(out) :: H(:,:)
+    integer,optional,intent(in) :: icontxt
     integer :: m,n,i0,j0,i1,j1,ip,jp,is,js,i,j,ii,jj
-    include 'mpif.h'
 
     H(:,:) = 0.0d0
 
@@ -158,43 +157,42 @@ CONTAINS
     jp=-1
     js= 0
     do j0=1,n,sl%nbsize
-       j1=min(j0+sl%nbsize-1,n)
-       jj=j1-j0+1
-       jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
-       ip=-1
-       is= 0
-       do i0=1,m,sl%mbsize
-          i1=min(i0+sl%mbsize-1,m)
-          ii=i1-i0+1
-          ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
-          do j=1,jj
-          do i=1,ii
-             H(i0+i-1,j0+j-1) = Hsub(is+i,js+j)
-          end do
-          end do
-          is = is + ii
-       end do
-       js = js + jj
+      j1=min(j0+sl%nbsize-1,n)
+      jj=j1-j0+1
+      jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
+      ip=-1
+      is= 0
+      do i0=1,m,sl%mbsize
+        i1=min(i0+sl%mbsize-1,m)
+        ii=i1-i0+1
+        ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
+        do j=1,jj
+        do i=1,ii
+          H(i0+i-1,j0+j-1) = Hsub(is+i,js+j)
+        end do
+        end do
+        is = is + ii
+      end do
+      js = js + jj
     end do
 
     if ( present(icontxt) ) then
-       call dgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
+      call dgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
     else
-       call mpi_allreduce( mpi_in_place, H, size(H), mpi_real8 &
-            ,mpi_sum, mpi_comm_world, i )
+      call rsdft_allreduce( H )
     end if
 
   END SUBROUTINE d_gather_matrix
 
-  SUBROUTINE z_gather_matrix( sl, Hsub, H )
+  subroutine z_gather_matrix( sl, Hsub, H, icontxt )
     implicit none
     type(slinfo) :: sl
-    complex(8),intent(IN) :: Hsub(:,:)
-    complex(8),intent(OUT) :: H(:,:)
+    complex(8),intent(in) :: Hsub(:,:)
+    complex(8),intent(out) :: H(:,:)
+    integer,optional,intent(in) :: icontxt
     integer :: m,n,m0,n0,i0,j0,i1,j1,ip,jp,is,js,i,j,ii,jj
-    include 'mpif.h'
 
-    H(:,:) = zero
+    H(:,:) = (0.0d0,0.0d0)
 
     m  = size( H, 1 )
     n  = size( H, 2 )
@@ -202,29 +200,32 @@ CONTAINS
     jp=-1
     js= 0
     do j0=1,n,sl%nbsize
-       j1=min(j0+sl%nbsize-1,n)
-       jj=j1-j0+1
-       jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
-       ip=-1
-       is= 0
-       do i0=1,m,sl%mbsize
-          i1=min(i0+sl%mbsize-1,m)
-          ii=i1-i0+1
-          ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
-          do j=1,jj
-          do i=1,ii
-             H(i0+i-1,j0+j-1) = Hsub(is+i,js+j)
-          end do
-          end do
-          is = is + ii
-       end do
-       js = js + jj
+      j1=min(j0+sl%nbsize-1,n)
+      jj=j1-j0+1
+      jp=mod(jp+1,sl%npcol) ; if ( jp /= sl%mycol ) cycle
+      ip=-1
+      is= 0
+      do i0=1,m,sl%mbsize
+        i1=min(i0+sl%mbsize-1,m)
+        ii=i1-i0+1
+        ip=mod(ip+1,sl%nprow) ; if ( ip /= sl%myrow ) cycle
+        do j=1,jj
+        do i=1,ii
+          H(i0+i-1,j0+j-1) = Hsub(is+i,js+j)
+        end do
+        end do
+        is = is + ii
+      end do
+      js = js + jj
     end do
 
-    call mpi_allreduce( mpi_in_place, H, size(H), mpi_complex16 &
-         ,mpi_sum, mpi_comm_world, i )
+    if ( present(icontxt) ) then
+      call zgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
+    else
+      call rsdft_allreduce( H )
+    end if
+  end subroutine z_gather_matrix
 
-  END SUBROUTINE z_gather_matrix
 
   SUBROUTINE d_gatherA_matrix( sl, Hsub, H, icontxt )
     implicit none

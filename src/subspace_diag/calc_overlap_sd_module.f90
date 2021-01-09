@@ -1,7 +1,7 @@
 module calc_overlap_sd_module
 
   use parallel_module, only: comm_grid
-  use rsdft_mpi_module, only: rsdft_allreduce_sum
+  use rsdft_mpi_module, only: rsdft_allreduce
 !  use transpose_module, only: rsdft_transpose
 !  use watch_module
 
@@ -9,29 +9,33 @@ module calc_overlap_sd_module
 
   private
   public :: calc_overlap_sd
-  public :: calc_overlap_sd_blk
-  public :: calc_overlap_sd_dsyr2k
+  !public :: calc_overlap_sd_blk
+  !public :: calc_overlap_sd_dsyr2k
 
   integer :: nblk0
   integer :: nblk1
-  real(8),parameter :: alpha=1.0d0, beta=0.0d0
+  !real(8),parameter :: alpha=1.0d0, beta=0.0d0
 
-  integer,public :: nblk_ovlp=2
+  integer :: nblk_ovlp=2
+  !integer,public :: nblk_ovlp=2
+
+  interface calc_overlap_sd
+    module procedure d_calc_overlap_sd, z_calc_overlap_sd
+  end interface
 
 contains
 
-  subroutine calc_overlap_sd( a,b,dv,c )
+  subroutine d_calc_overlap_sd( a,b,dv,c )
     implicit none
     real(8),intent(in)    :: a(:,:),b(:,:)
     real(8),intent(in)    :: dv
     real(8),intent(inout) :: c(:,:)
-    integer :: nme,i,j,k,ierr
+    integer :: nme,i,j,k,m,n,ierr
     real(8),allocatable :: s(:)
     real(8),save,allocatable :: c_tmp(:,:), u(:,:)
     real(8) :: ttmp(2),tttt(2,5)
-    integer :: m, n
 
-    call write_border( 1, "calc_overlap_sd(start)" )
+    call write_border( 1, "d_calc_overlap_sd(start)" )
     !call watchb( ttmp, barrier="on" ); tttt=0.0d0
 
     m = size( a, 1 )
@@ -40,7 +44,7 @@ contains
     nblk0 = n
     nblk1 = nblk_ovlp; if ( nblk1 < 0 ) nblk1=n
 
-    call calc_overlap_sd_sub(nblk0,a,b,c)
+    call d_calc_overlap_sd_sub(nblk0,a,b,c)
 
     !call watchb( ttmp, tttt(:,1), barrier="on" )
 
@@ -56,7 +60,7 @@ contains
 
     !call watchb( ttmp, tttt(:,2), barrier="on" )
 
-    call rsdft_allreduce_sum( s, comm_grid )
+    call rsdft_allreduce( s, comm_grid )
 
     !call watchb( ttmp, tttt(:,3), barrier="on" )
 
@@ -126,16 +130,16 @@ contains
 
     !call write_border( 1, "calc_overlap_sd(end)" )
 
-  end subroutine calc_overlap_sd
+  end subroutine d_calc_overlap_sd
 
-  recursive subroutine calc_overlap_sd_sub(nblk,a,b,c)
+  recursive subroutine d_calc_overlap_sd_sub(nblk,a,b,c)
     implicit none
     integer,intent(in)  :: nblk
     real(8),intent(in)  :: a(:,:),b(:,:)
     real(8),intent(out) :: c(:,:)
-    integer :: i,j,i0,i1,j0,j1,ni,nj,nblkh
-    integer :: m,n
+    integer :: i,j,i0,i1,j0,j1,ni,nj,m,n,nblkh
     real(8),allocatable :: ctmp(:,:)
+    real(8),parameter :: one=1.0d0, zero=0.0d0
 
     m = size( a, 1 )
     n = size( a, 2 )
@@ -155,14 +159,14 @@ contains
           else if ( j1 <= i0 ) then
 
              call dgemm &
-                  ('T','N',ni,nj,m,alpha,a(1,i0),m,b(1,j0),m,beta,c(i0,j0),n)
+                  ('T','N',ni,nj,m,one,a(1,i0),m,b(1,j0),m,zero,c(i0,j0),n)
 
           else
 
              if ( ni > nblk1 ) then
-                allocate( ctmp(ni,nj) ); ctmp=0.0d0
+                allocate( ctmp(ni,nj) ); ctmp=zero
                 nblkh=nblk/2
-                call calc_overlap_sd_sub(nblkh,a(:,i0:i1),b(:,j0:j1),ctmp)
+                call d_calc_overlap_sd_sub(nblkh,a(:,i0:i1),b(:,j0:j1),ctmp)
                 c(i0:i1,j0:j1)=ctmp(:,:)
                 deallocate( ctmp )
              else
@@ -172,7 +176,7 @@ contains
 !                end do
 !                end do
                 call dgemm &
-                     ('T','N',ni,nj,m,alpha,a(1,i0),m,b(1,j0),m,beta,c(i0,j0),n)
+                     ('T','N',ni,nj,m,one,a(1,i0),m,b(1,j0),m,zero,c(i0,j0),n)
              end if
 
           end if
@@ -181,7 +185,7 @@ contains
 
     end do ! i0
 
-  end subroutine calc_overlap_sd_sub
+  end subroutine d_calc_overlap_sd_sub
 
 
   subroutine calc_overlap_sd_blk( a, b, dv, c )
@@ -232,7 +236,7 @@ contains
 
     !call watchb( ttmp, tttt(:,2), barrier="on" )
 
-    call rsdft_allreduce_sum( s, comm_grid )
+    call rsdft_allreduce( s, comm_grid )
 
     !call watchb( ttmp, tttt(:,3), barrier="on" )
 
@@ -260,5 +264,117 @@ contains
     z=dv*0.5d0
     call dsyr2k('L','T',n,m,z,a,m,b,m,zero,c,n)
   end subroutine calc_overlap_sd_dsyr2k
+
+
+  subroutine z_calc_overlap_sd( a,b,dv,c )
+    implicit none
+    complex(8),intent(in)    :: a(:,:),b(:,:)
+    real(8),intent(in)       :: dv
+    complex(8),intent(inout) :: c(:,:)
+    integer :: nme,i,j,k,m,n,ierr
+    complex(8),allocatable :: s(:)
+    complex(8),save,allocatable :: c_tmp(:,:), u(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
+    real(8) :: ttmp(2),tttt(2,5)
+
+    call write_border( 1, "z_calc_overlap_sd(start)" )
+    !call watchb( ttmp, barrier="on" ); tttt=0.0d0
+
+    m = size( a, 1 )
+    n = size( a, 2 )
+
+    nblk0 = n
+    nblk1 = nblk_ovlp; if ( nblk1 < 0 ) nblk1=n
+
+    call z_calc_overlap_sd_sub(nblk0,a,b,c)
+
+    !call watchb( ttmp, tttt(:,1), barrier="on" )
+
+    nme = n*(n+1)/2
+    allocate( s(nme) )
+
+    do j=1,n
+    do i=j,n
+       k=(j-1)*n-(j*(j-1))/2+i
+       s(k)=c(i,j)*dv
+    end do
+    end do
+
+    !call watchb( ttmp, tttt(:,2), barrier="on" )
+
+    call rsdft_allreduce( s, comm_grid )
+
+    !call watchb( ttmp, tttt(:,3), barrier="on" )
+
+    do j=1,n
+    do i=j,n
+       k=(j-1)*n-(j*(j-1))/2+i
+       c(i,j)=s(k)
+    end do
+    end do
+
+    deallocate( s )
+
+    !call watchb( ttmp, tttt(:,4), barrier="on" )
+
+    !call write_border( 1, "calc_overlap_sd(end)" )
+
+  end subroutine z_calc_overlap_sd
+
+  recursive subroutine z_calc_overlap_sd_sub(nblk,a,b,c)
+    implicit none
+    integer,intent(in)  :: nblk
+    complex(8),intent(in)  :: a(:,:),b(:,:)
+    complex(8),intent(out) :: c(:,:)
+    complex(8),allocatable :: ctmp(:,:)
+    complex(8),parameter :: one=(1.0d0,0.0d0), zero=(0.0d0,0.0d0)
+    integer :: i,j,i0,i1,j0,j1,m,n,ni,nj,nblkh
+
+    m = size( a, 1 )
+    n = size( a, 2 )
+
+    do i0=1,n,nblk
+       i1=min(i0+nblk-1,n)
+       ni=i1-i0+1
+
+       do j0=1,n,nblk
+          j1=min(j0+nblk-1,n)
+          nj=j1-j0+1
+
+          if ( j0 > i1 ) then
+
+             cycle
+
+          else if ( j1 <= i0 ) then
+
+             call zgemm &
+                  ('C','N',ni,nj,m,one,a(1,i0),m,b(1,j0),m,zero,c(i0,j0),n)
+
+          else
+
+             if ( ni > nblk1 ) then
+                allocate( ctmp(ni,nj) ); ctmp=zero
+                nblkh=nblk/2
+                call z_calc_overlap_sd_sub(nblkh,a(:,i0:i1),b(:,j0:j1),ctmp)
+                c(i0:i1,j0:j1)=ctmp(:,:)
+                deallocate( ctmp )
+             else
+!                do j=j0,j1
+!                do i=j ,i1
+!                    c(i,j)=sum( conjg(a(:,i))*b(:,j) )
+!                end do
+!                end do
+                call zgemm &
+                     ('C','N',ni,nj,m,one,a(1,i0),m,b(1,j0),m,zero,c(i0,j0),n)
+             end if
+
+          end if
+
+       end do ! j0
+
+    end do ! i0
+
+  end subroutine z_calc_overlap_sd_sub
+
 
 end module calc_overlap_sd_module

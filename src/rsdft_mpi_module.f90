@@ -1,14 +1,20 @@
-MODULE rsdft_mpi_module
+module rsdft_mpi_module
 
   implicit none
 
-  PRIVATE
+  private
   public :: init_rsdft_mpi
-  PUBLIC :: rsdft_allreduce_sum
-  PUBLIC :: d_rsdft_allreduce_sum_5, d_rsdft_allreduce_sum_6
-  PUBLIC :: rsdft_bcast
-  PUBLIC :: rsdft_allgather
-  PUBLIC :: rsdft_allgatherv
+  public :: rsdft_allreduce
+  public :: rsdft_allreduce_sum
+  public :: d_rsdft_allreduce_sum_5, d_rsdft_allreduce_sum_6
+  public :: rsdft_bcast
+  public :: rsdft_allgather
+  public :: rsdft_allgatherv
+
+  interface rsdft_allreduce  
+    module procedure d_rsdft_allreduce_1, z_rsdft_allreduce_1, &
+                     d_rsdft_allreduce_2, z_rsdft_allreduce_2
+  end interface
 
   INTERFACE rsdft_allreduce_sum
      MODULE PROCEDURE d_rsdft_allreduce_sum_0, z_rsdft_allreduce_sum_0, &
@@ -53,13 +59,132 @@ CONTAINS
 
   subroutine init_rsdft_mpi
     implicit none
+#ifndef _NOMPI_
     include 'mpif.h'
 #ifdef _NO_MPI_COMPLEX16_
     RSDFT_MPI_COMPLEX16=MPI_DOUBLE_COMPLEX
 #else
     RSDFT_MPI_COMPLEX16=MPI_COMPLEX16
 #endif
+#endif
   end subroutine init_rsdft_mpi
+
+  subroutine d_rsdft_allreduce_1( a, comm_in, op_in )
+    implicit none
+    real(8),intent(inout) :: a(:)
+    integer,optional,intent(in) :: comm_in
+    character(*),optional,intent(in) :: op_in
+    integer :: m, comm, op, ierr
+    real(8),allocatable :: a0(:)
+#ifdef _NOMPI_
+    return
+#else
+    include 'mpif.h'
+    comm=MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
+    op=MPI_SUM; if ( present(op_in) ) op=get_op_id(op_in)
+    m=size(a)
+#ifdef _NO_MPI_INPLACE_
+    allocate( a0(m) ); a0=a
+    call MPI_Allreduce( a0, a, m, MPI_REAL8, op, comm, ierr )
+    deallocate( a0 )
+#else
+    call MPI_Allreduce(MPI_IN_PLACE,a,m,MPI_REAL8,op,comm,ierr)
+#endif
+#endif
+  end subroutine d_rsdft_allreduce_1
+
+  subroutine z_rsdft_allreduce_1( a, comm_in, op_in )
+    implicit none
+    complex(8),intent(inout) :: a(:)
+    integer,optional,intent(in) :: comm_in
+    character(*),optional,intent(in) :: op_in
+    integer :: m, comm, op, ierr
+    complex(8),allocatable :: a0(:)
+#ifdef _NOMPI_
+    return
+#else
+    include 'mpif.h'
+    comm=MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
+    op=MPI_SUM; if ( present(op_in) ) op=get_op_id(op_in)
+    m=size(a)
+#ifdef _NO_MPI_INPLACE_
+    allocate( a0(m) ); a0=a
+    call MPI_Allreduce( a0, a, m, RSDFT_MPI_COMPLEX16, op, comm, ierr )
+    deallocate( a0 )
+#else
+    call MPI_Allreduce(MPI_IN_PLACE,a,m,RSDFT_MPI_COMPLEX16,op,comm,ierr)
+#endif
+#endif
+  end subroutine z_rsdft_allreduce_1
+
+  subroutine d_rsdft_allreduce_2( a, comm_in, op_in )
+    implicit none
+    real(8),intent(inout) :: a(:,:)
+    integer,optional,intent(in) :: comm_in
+    character(*),optional,intent(in) :: op_in
+    integer :: m, n, comm, op, ierr
+    real(8),allocatable :: a0(:,:)
+#ifdef _NOMPI_
+    return
+#else
+    include 'mpif.h'
+    comm=MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
+    op=MPI_SUM; if ( present(op_in) ) op=get_op_id(op_in)
+    m=size(a,1)
+    n=size(a,2)
+#ifdef _NO_MPI_INPLACE_
+    allocate( a0(m,n) ); a0=a
+    call MPI_Allreduce( a0, a, m*n, MPI_REAL8, op, comm, ierr )
+    deallocate( a0 )
+#else
+    call MPI_Allreduce(MPI_IN_PLACE,a,m*n,MPI_REAL8,op,comm,ierr)
+#endif
+#endif
+  end subroutine d_rsdft_allreduce_2
+
+  subroutine z_rsdft_allreduce_2( a, comm_in, op_in )
+    implicit none
+    complex(8),intent(inout) :: a(:,:)
+    integer,optional,intent(in) :: comm_in
+    character(*),optional,intent(in) :: op_in
+    integer :: m, n, comm, op, ierr
+    complex(8),allocatable :: a0(:,:)
+#ifdef _NOMPI_
+    return
+#else
+    include 'mpif.h'
+    comm=MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
+    op=MPI_SUM; if ( present(op_in) ) op=get_op_id(op_in)
+    m=size(a,1)
+    n=size(a,2)
+#ifdef _NO_MPI_INPLACE_
+    allocate( a0(m,n) ); a0=a
+    call MPI_Allreduce(a0,a,m*n,RSDFT_MPI_COMPLEX16,op,comm,ierr)
+    deallocate( a0 )
+#else
+    call MPI_Allreduce(MPI_IN_PLACE,a,m*n,RSDFT_MPI_COMPLEX16,op,comm,ierr)
+#endif
+#endif
+  end subroutine z_rsdft_allreduce_2
+
+
+  function get_op_id( op_keyword )
+    implicit none
+    integer :: get_op_id
+    character(*),intent(in) :: op_keyword
+#ifdef _NOMPI_
+    get_op_id = 0
+    return
+#else
+    include 'mpif.h'
+    select case( op_keyword )
+    case default ; get_op_id=MPI_SUM
+    case( 'min' ); get_op_id=MPI_MIN
+    case( 'max' ); get_op_id=MPI_MAX
+    end select
+#endif
+  end function get_op_id
+
 
   SUBROUTINE d_rsdft_allreduce_sum_0( a, comm )
     implicit none
@@ -687,4 +812,4 @@ CONTAINS
   END SUBROUTINE z_rsdft_allgatherv33
 
 
-END MODULE rsdft_mpi_module
+end module rsdft_mpi_module

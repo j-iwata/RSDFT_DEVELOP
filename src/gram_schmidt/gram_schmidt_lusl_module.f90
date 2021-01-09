@@ -5,7 +5,9 @@ module gram_schmidt_lusl_module
 !  use watch_module, only: timer => watchb, write_timer => write_watchb
   use rgrid_variables, only: dV  
   use parallel_module, only: comm_grid
-  use dsyrk_module, only: calc_dsyrk3, ialgo_dsyrk, nblk_dsyrk
+  use dsyrk_module, only: calc_dsyrk3, ialgo_dsyrk, nblk_dsyrk, calc_zherk3
+  use trmm_module, only: calc_ztrmm3
+  use rsdft_mpi_module, only: rsdft_allreduce
 
   implicit none
 
@@ -26,7 +28,7 @@ module gram_schmidt_lusl_module
   logical :: flag_init = .false.
 
   interface gram_schmidt_lusl
-     module procedure d_gram_schmidt_lusl
+     module procedure d_gram_schmidt_lusl, z_gram_schmidt_lusl
   end interface
 
 !  real(8) :: time(2,0:9),ttmp(2)
@@ -198,7 +200,7 @@ contains
     integer,allocatable :: ipiv(:)
     include 'mpif.h'
 
-!    call write_border( 1, " d_gram_schmidt_lusl(start)" )
+    call write_border( 1, " d_gram_schmidt_lusl(start)" )
     
 !    call timer( ttmp,barrier='on' ); time(:,:)=0.0d0; it=0
 
@@ -275,7 +277,7 @@ contains
 !    call write_timer( time(:,0:it-1), it-1, tlabel(0:it-1) )
 !    end if
 
-!    call write_border( 1, " d_gram_schmidt_lusl(end)" )
+    call write_border( 1, " d_gram_schmidt_lusl(end)" )
 
   end subroutine d_gram_schmidt_lusl
 
@@ -430,6 +432,97 @@ contains
 !    end subroutine dealloc_stmp
 
   end subroutine calc_dtrmm4
+
+
+
+  subroutine z_gram_schmidt_lusl( u )
+    implicit none
+    complex(8),intent(inout)  :: u(:,:)
+    complex(8),allocatable :: S(:,:),Ssub(:,:),utmp(:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0), one=(1.0d0,0.0d0)
+    integer :: m,n,ierr,i,j,it
+    integer,allocatable :: ipiv(:)
+
+    call write_border( 1, " z_gram_schmidt_lusl(start)" )
+    
+!    call timer( ttmp,barrier='on' ); time(:,:)=0.0d0; it=0
+
+    m = size( u, 1 )
+    n = size( u, 2 )
+
+    if ( .not.flag_init ) call init_lusl( n )
+
+    allocate( S(n,n)        ); S=zero
+    allocate( Ssub(LDR,LDC) ); Ssub=zero
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="init"; it=it+1
+
+!    call DSYRK( 'U', 'C', n, m, dV, u, m, zero, S, n )
+!    call DGEMM('T','N',n,n,m,dV,u,m,u,m,zero,S,n)
+!    call calc_dsyrk( u, S )
+!    call calc_dsyrk2( u, S )
+    call calc_zherk3( u, S )
+
+    do j=1,n
+    do i=j+1,n
+       S(i,j)=zero
+    end do
+    end do
+
+!    write(*,*) sum((Ssub-S)**2),count(S/=zero),count(Ssub/=zero)
+
+    !call MPI_Allreduce &
+    !     ( MPI_IN_PLACE, S, size(S), MPI_REAL8, MPI_SUM, comm_grid, ierr )
+    call rsdft_allreduce( S, comm_grid )
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="dsyrnk"; it=it+1
+
+    call distribute_matrix( sl, S, Ssub )
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="dist"; it=it+1
+
+    call PZPOTRF( UPLO, n, Ssub, 1, 1, desca, ierr ) ! Cholesky factorization
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="pzpotrf"; it=it+1
+
+    call PZTRTRI( UPLO, 'N', n, Ssub, 1, 1, desca, ierr )
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="pdtrtri"; it=it+1
+
+    call gather_matrix( sl, Ssub, S, icontxt )
+
+    deallocate( Ssub )
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="gather"; it=it+1
+
+!    allocate( utmp(m,n) ); utmp=u
+!    call DGEMM( 'N', 'N', m, n, n, one, utmp, m, S, n, zero, u, m )
+!    u = utmp
+!    deallocate( utmp )
+!    call timer( ttmp,time(:,it) ); tlabel(it)="dgemm"; it=it+1
+!    if ( UPLO == 'U' .or. UPLO == 'u' ) then
+!       call dtrmm( 'R', 'U', 'N', 'N', m, n, one, S, n, u, m )
+!    else
+!       call dtrmm( 'R', 'L', 'T', 'N', m, n, one, S, n, u, m )
+!    end if
+
+!    call calc_ztrmm( u, S )
+    call calc_ztrmm3( u, S )
+!    call calc_ztrmm4( u, S )
+
+!    call timer( ttmp,time(:,it),'on' ); tlabel(it)="dtrmm"; it=it+1
+
+    deallocate( S )
+
+!    call timer( ttmp,time(:,it) ); tlabel(it)="finalize"; it=it+1
+
+!    if ( myrank == 0 ) then
+!    call write_timer( time(:,0:it-1), it-1, tlabel(0:it-1) )
+!    end if
+
+    call write_border( 1, " z_gram_schmidt_lusl(end)" )
+
+  end subroutine z_gram_schmidt_lusl
 
 
 end module gram_schmidt_lusl_module
