@@ -13,7 +13,8 @@ module rsdft_mpi_module
 
   interface rsdft_allreduce  
     module procedure d_rsdft_allreduce_1, z_rsdft_allreduce_1, &
-                     d_rsdft_allreduce_2, z_rsdft_allreduce_2
+                     d_rsdft_allreduce_2, z_rsdft_allreduce_2, &
+                     i_rsdft_allreduce_2
   end interface
 
   INTERFACE rsdft_allreduce_sum
@@ -116,6 +117,31 @@ CONTAINS
 #endif
 #endif
   end subroutine z_rsdft_allreduce_1
+
+  subroutine i_rsdft_allreduce_2( a, comm_in, op_in )
+    implicit none
+    integer,intent(inout) :: a(:,:)
+    integer,optional,intent(in) :: comm_in
+    character(*),optional,intent(in) :: op_in
+    integer :: m, n, comm, op, ierr
+    integer,allocatable :: a0(:,:)
+#ifdef _NOMPI_
+    return
+#else
+    include 'mpif.h'
+    comm=MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
+    op=MPI_SUM; if ( present(op_in) ) op=get_op_id(op_in)
+    m=size(a,1)
+    n=size(a,2)
+#ifdef _NO_MPI_INPLACE_
+    allocate( a0(m,n) ); a0=a
+    call MPI_Allreduce( a0, a, m*n, MPI_INTEGER, op, comm, ierr )
+    deallocate( a0 )
+#else
+    call MPI_Allreduce(MPI_IN_PLACE,a,m*n,MPI_INTEGER,op,comm,ierr)
+#endif
+#endif
+  end subroutine i_rsdft_allreduce_2
 
   subroutine d_rsdft_allreduce_2( a, comm_in, op_in )
     implicit none

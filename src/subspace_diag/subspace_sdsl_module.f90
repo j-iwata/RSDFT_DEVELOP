@@ -7,6 +7,7 @@ module subspace_sdsl_module
   use parallel_module, only: comm_grid, comm_band, MB_d, id_band, ir_band, id_grid
   use hamiltonian_module, only: hamiltonian
   use calc_overlap_sd_module, only: calc_overlap_sd
+  use rsdft_mpi_module, only: rsdft_allreduce
 
   implicit none
 
@@ -18,7 +19,7 @@ module subspace_sdsl_module
   integer :: icontxt_sys
   integer :: LDR,LDC
   character(1) :: UPLO='L'
-  integer :: myrnk_g, myrnk_b
+  integer :: myrnk_g, myrnk_b, np_grid, np_band
 #ifdef _DRSDFT_
   real(8),allocatable :: Hsub(:,:)
   real(8),allocatable :: Vsub(:,:)
@@ -45,17 +46,22 @@ contains
 
     implicit none
     integer,intent(in) :: n
-    integer :: i,j,k,l,ierr
-    integer,allocatable :: usermap(:,:)
+    integer :: i,j,k,p,c,r,ierr
+    integer :: i_gridmap_group, num_gridmap_groups
+    integer,allocatable :: usermap(:,:,:)
     include 'mpif.h'
     integer,parameter :: unit=90
 
     if ( has_init1_done ) return
 
-!    call write_border( 1, " init1_sdsl(start)" )
+    call write_border( 0, " init1_sdsl(start)" )
 
     call MPI_Comm_size( MPI_COMM_WORLD, nprocs, ierr )
     call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
+    call MPI_Comm_size( comm_grid, np_grid, ierr )
+    call MPI_Comm_rank( comm_grid, myrnk_g, ierr )
+    call MPI_Comm_size( comm_band, np_band, ierr )
+    call MPI_Comm_rank( comm_band, myrnk_b, ierr )
 
     sl%nprow=0
     sl%npcol=0
@@ -69,19 +75,18 @@ contains
 !    call IOTools_readIntegerKeyword( "NBSIZE", sl%nbsize, unit )
 !    call IOTools_readStringKeyword( "UPLO", UPLO, unit )
 !    close( unit )
-
 !    call IOTools_readIntegerKeyword( "SDPARAM", iparam_sdsl )
 !    if ( iparam_sdsl(2) /= 0 ) nblk_ovlp=iparam_sdsl(2)
 
     if( sl%nprow==0 .or. sl%npcol==0 .or. sl%mbsize==0 .or. sl%nbsize==0 )then
-       call restore_param_sl( sl )
+      call restore_param_sl( sl )
     end if
 
     if( myrank == 0 )then
-       write(*,*) "sl%nprow=",sl%nprow
-       write(*,*) "sl%npcol=",sl%npcol
-       write(*,*) "sl%mbsize=",sl%mbsize
-       write(*,*) "sl%nbsize=",sl%nbsize
+      write(*,*) "sl%nprow=",sl%nprow
+      write(*,*) "sl%npcol=",sl%npcol
+      write(*,*) "sl%mbsize=",sl%mbsize
+      write(*,*) "sl%nbsize=",sl%nbsize
     end if
 
 ! ---
@@ -91,33 +96,35 @@ contains
     sl%icontxt_a = icontxt_sys
 
     allocate( sl%map_1to2(2,0:nprocs-1) ); sl%map_1to2=0
+    sl%map_1to2(1,myrank)=myrnk_g+1
+    sl%map_1to2(2,myrank)=myrnk_b+1
+    call rsdft_allreduce( sl%map_1to2 )
 
-    allocate( usermap(0:sl%nprow-1,0:sl%npcol-1) ); usermap=0
-    i=nprocs/(sl%nprow*sl%npcol)
-    do j=0,i-1
-       l=j*sl%nprow*sl%npcol
-       if ( myrank >= l ) k=l
+    num_gridmap_groups = nprocs/(np_grid*np_band)
+
+    allocate( usermap(0:sl%nprow-1,0:sl%npcol-1,num_gridmap_groups) ); usermap=0
+
+    do p = 0, nprocs-1
+      i = sl%map_1to2(1,p)-1
+      j = sl%map_1to2(2,p)-1
+      k = i + j*np_grid
+      r = k/sl%npcol
+      c = k - r*sl%npcol
+      if ( k <= sl%nprow*sl%npcol-1 ) then
+        i_gridmap_group = p/(np_grid*np_band) + 1
+        usermap(r,c,i_gridmap_group)=p
+        !if(myrank==0)write(*,'(i4,2i6,2x,i6,2x,2i6,2x,i6)') p, i, j, k,r,c, c+r*sl%npcol
+      end if
     end do
-    k=k-1
-    do i=0,sl%nprow-1
-    do j=0,sl%npcol-1
-       k=k+1   
-       usermap(i,j) = k
-       if ( k == myrank ) sl%map_1to2(1:2,k)=(/i,j/)
+
+    do i = 1, num_gridmap_groups
+      i_gridmap_group = myrank/(np_grid*np_band) + 1
+      if ( i == i_gridmap_group ) then
+        call blacs_gridmap( sl%icontxt_a, usermap(0,0,i), sl%nprow, sl%nprow, sl%npcol )
+      end if
     end do
-    end do
-    call blacs_gridmap( sl%icontxt_a, usermap, sl%nprow, sl%nprow, sl%npcol )
+
     deallocate( usermap )
-
-    call MPI_Allreduce( MPI_IN_PLACE, sl%map_1to2, size(sl%map_1to2) &
-                      , MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr )
-
-    allocate( sl%map_2to1(0:sl%nprow-1,0:sl%npcol-1) ); sl%map_2to1=0
-    do k=0,sl%nprow*sl%npcol-1
-       i=sl%map_1to2(1,k)
-       j=sl%map_1to2(2,k)
-       sl%map_2to1(i,j)=k
-    end do
 
     call blacs_gridinfo( sl%icontxt_a, sl%nprow, sl%npcol, sl%myrow, sl%mycol )
 
@@ -129,7 +136,7 @@ contains
 
     has_init1_done = .true.
 
-!    call write_border( 1, " init1_sdsl(end)" )
+    call write_border( 0, " init1_sdsl(end)" )
 
   end subroutine init1_sdsl
 
@@ -137,32 +144,35 @@ contains
   subroutine init2_sdsl( n )
     implicit none
     integer,intent(in) :: n
-    integer,allocatable :: usermap(:,:)
-    integer :: i,j,k,mgs,mbs,ierr,npr,npc,myr,myc
+    integer,allocatable :: usermap(:,:,:)
+    integer :: i,j,k,p,mgs,mbs,ierr,npr,npc,myr,myc
     integer :: np_grid, np_band
+    integer :: num_gridmap_groups,i_gridmap_group
     include 'mpif.h'
 
     if ( has_init2_done ) return
 
-!    call write_border( 1, " init2_sdsl(start)" )
+    !call write_border( 1, " init2_sdsl(start)" )
 
-    call MPI_Comm_size( comm_grid, np_grid, ierr )
-    call MPI_Comm_rank( comm_grid, myrnk_g, ierr )
-    call MPI_Comm_size( comm_band, np_band, ierr )
-    call MPI_Comm_rank( comm_band, myrnk_b, ierr )
+    num_gridmap_groups = nprocs/(np_grid*np_band)
 
-    allocate( usermap(np_grid,np_band) ); usermap=0
+    allocate( usermap(0:np_grid-1,0:np_band-1,num_gridmap_groups) ); usermap=0
 
-    k=-1
-    do j=1,np_band
-    do i=1,np_grid
-       k=k+1
-       usermap(i,j)=k
-    end do
+    do p = 0, nprocs-1
+      i = sl%map_1to2(1,p)-1
+      j = sl%map_1to2(2,p)-1
+      i_gridmap_group = p/(np_grid*np_band) + 1
+      usermap(i,j,i_gridmap_group)=p
     end do
 
     sl%icontxt_b = icontxt_sys
-    call blacs_gridmap( sl%icontxt_b, usermap, np_grid, np_grid, np_band )
+    do i = 1, num_gridmap_groups
+      i_gridmap_group = myrank/(np_grid*np_band)
+      call blacs_gridmap( sl%icontxt_b, usermap(0,0,i_gridmap_group), np_grid, np_grid, np_band )
+    end do
+
+    deallocate( usermap )
+
     call blacs_gridinfo( sl%icontxt_b, npr,npc,myr,myc )
 
     mgs = n/npr
@@ -171,13 +181,11 @@ contains
     if ( mgs*npr < n ) mgs=mgs+1
     if ( mbs*npc < n ) mbs=mbs+1
 
-    call descinit( sl%descb,n,n,mgs,mbs,0,0,sl%icontxt_b,mgs,ierr )
-
-    deallocate( usermap )
+    !call descinit( sl%descb,n,n,mgs,mbs,0,0,sl%icontxt_b,mgs,ierr )
 
     has_init2_done = .true.
 
-!    call write_border( 1, " init2_sdsl(end)" )
+    !call write_border( 1, " init2_sdsl(end)" )
 
   end subroutine init2_sdsl
 
@@ -216,7 +224,7 @@ contains
     if ( .not.has_init_done ) then
        call get_nband( nband )
        call init1_sdsl( nband )
-       call init2_sdsl( nband )
+       !call init2_sdsl( nband )
        has_init_done = .true.
     end if
 

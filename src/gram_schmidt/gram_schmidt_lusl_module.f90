@@ -4,7 +4,7 @@ module gram_schmidt_lusl_module
   use sl_tools_module, only: slinfo, distribute_matrix, gather_matrix, restore_param_sl
 !  use watch_module, only: timer => watchb, write_timer => write_watchb
   use rgrid_variables, only: dV  
-  use parallel_module, only: comm_grid
+  use parallel_module, only: comm_grid,comm_band
   use dsyrk_module, only: calc_dsyrk3, ialgo_dsyrk, nblk_dsyrk, calc_zherk3
   use trmm_module, only: calc_ztrmm3
   use rsdft_mpi_module, only: rsdft_allreduce
@@ -15,6 +15,8 @@ module gram_schmidt_lusl_module
   public :: gram_schmidt_lusl
 
   integer :: myrank, nprocs
+  integer :: myrank_g, np_grid
+  integer :: myrank_b, np_band
   integer :: icontxt
   integer :: icontxt_sys
   integer :: desca(9), descz(9)
@@ -42,11 +44,12 @@ contains
 
     implicit none
     integer,intent(in) :: n
-    integer :: i,j,k,l,ierr
-    integer,allocatable :: usermap(:,:)
+    integer :: i,j,k,l,p,r,c,ierr
+    integer,allocatable :: usermap(:,:,:)
     integer,external :: NUMROC
     include 'mpif.h'
     integer,parameter :: unit=90
+    integer :: num_gridmap_groups, i_gridmap_group
 
     if ( flag_init ) return
 
@@ -54,6 +57,10 @@ contains
 
     call MPI_Comm_size( MPI_COMM_WORLD, nprocs, ierr )
     call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
+    call MPI_Comm_size( comm_grid, np_grid , ierr )
+    call MPI_Comm_rank( comm_grid, myrank_g, ierr )
+    call MPI_Comm_size( comm_band, np_band , ierr )
+    call MPI_Comm_rank( comm_band, myrank_b, ierr )
 
     sl%nprow=0
     sl%npcol=0
@@ -69,7 +76,7 @@ contains
 !    close( unit )
 
     if( sl%nprow==0 .or. sl%npcol==0 .or. sl%mbsize==0 .or. sl%nbsize==0 )then
-       call restore_param_sl( sl )
+      call restore_param_sl( sl )
     end if
 
 !    write(*,*) "sl%nprow=",sl%nprow
@@ -79,28 +86,60 @@ contains
 
 ! ---
 
+    allocate( sl%map_1to2(2,0:nprocs-1) ); sl%map_1to2=0
+    sl%map_1to2(1,myrank)=myrank_g+1
+    sl%map_1to2(2,myrank)=myrank_b+1
+    call rsdft_allreduce( sl%map_1to2 )
+
+    num_gridmap_groups = nprocs/(np_grid*np_band)
+
+    allocate( usermap(0:sl%nprow-1,0:sl%npcol-1,num_gridmap_groups) ); usermap=0
+
+    do p = 0, nprocs-1
+      i = sl%map_1to2(1,p)-1
+      j = sl%map_1to2(2,p)-1
+      k = i + j*np_grid
+      r = k/sl%npcol
+      c = k - r*sl%npcol
+      if ( k <= sl%nprow*sl%npcol-1 ) then
+        i_gridmap_group = p/(np_grid*np_band) + 1
+        usermap(r,c,i_gridmap_group)=p
+        !if(myrank==0)write(*,'(i4,2i6,2x,i6,2x,2i6,2x,i6)') p, i, j, k,r,c,
+        !c+r*sl%npcol
+      end if
+    end do
+
     call blacs_get( 0, 0, icontxt_sys )
 
-    icontxt = icontxt_sys
+    sl%icontxt_a = icontxt_sys
 
-    allocate( usermap(0:sl%nprow-1,0:sl%npcol-1) ); usermap=0
-    i=nprocs/(sl%nprow*sl%npcol)
-    k=0
-    do j=0,i-1
-       l=j*sl%nprow*sl%npcol
-       if ( myrank >= l ) k=l
+    do i = 1, num_gridmap_groups
+      i_gridmap_group = myrank/(np_grid*np_band) + 1
+      if ( i == i_gridmap_group ) then
+        call blacs_gridmap( sl%icontxt_a, usermap(0,0,i), sl%nprow, sl%nprow, sl%npcol )
+      end if
     end do
-    k=k-1
-    do i=0,sl%nprow-1
-    do j=0,sl%npcol-1
-       k=k+1   
-       usermap(i,j) = k
-    end do
-    end do
-    call blacs_gridmap( icontxt, usermap, sl%nprow, sl%nprow, sl%npcol )
+
     deallocate( usermap )
 
-    call blacs_gridinfo( icontxt, sl%nprow, sl%npcol, sl%myrow, sl%mycol )
+!    allocate( usermap(0:sl%nprow-1,0:sl%npcol-1) ); usermap=0
+!    i=nprocs/(sl%nprow*sl%npcol)
+!    k=0
+!    do j=0,i-1
+!       l=j*sl%nprow*sl%npcol
+!       if ( myrank >= l ) k=l
+!    end do
+!    k=k-1
+!    do i=0,sl%nprow-1
+!    do j=0,sl%npcol-1
+!       k=k+1   
+!       usermap(i,j) = k
+!    end do
+!    end do
+!    call blacs_gridmap( icontxt, usermap, sl%nprow, sl%nprow, sl%npcol )
+!    deallocate( usermap )
+
+    call blacs_gridinfo( sl%icontxt_a, sl%nprow, sl%npcol, sl%myrow, sl%mycol )
 
     LDR = NUMROC( n, sl%mbsize, sl%myrow, 0, sl%nprow )
     LDC = NUMROC( n, sl%nbsize, sl%mycol, 0, sl%npcol )

@@ -164,7 +164,7 @@ CONTAINS
 
           call gram_schmidt(1,Nband,k,s)
 
-          call subspace_diag(k,s,ML_0,ML_1,unk,esp)
+          call subspace_diag(k,s,ML_0,ML_1,MBZ_0,MSP_0,unk,esp)
 
        end do
 
