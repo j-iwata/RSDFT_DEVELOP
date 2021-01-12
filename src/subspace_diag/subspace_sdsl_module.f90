@@ -39,6 +39,7 @@ module subspace_sdsl_module
   integer,external :: NUMROC
 
   integer :: iparam_sdsl(2)=0
+  integer :: nband_backup=0
 
 contains
 
@@ -52,7 +53,12 @@ contains
     include 'mpif.h'
     integer,parameter :: unit=90
 
-    if ( has_init1_done ) return
+    if ( nband_backup == n ) then
+      return
+    else
+      if ( nband_backup /= 0 ) call blacs_gridexit(sl%icontxt_a)
+      nband_backup=n
+    end if
 
     call write_border( 0, " init1_sdsl(start)" )
 
@@ -125,6 +131,7 @@ contains
     end do
 
     deallocate( usermap )
+    deallocate( sl%map_1to2 )
 
     call blacs_gridinfo( sl%icontxt_a, sl%nprow, sl%npcol, sl%myrow, sl%mycol )
 
@@ -221,12 +228,9 @@ contains
     m = size( u, 1 )
     n = size( u, 2 )
 
-    if ( .not.has_init_done ) then
-       call get_nband( nband )
-       call init1_sdsl( nband )
-       !call init2_sdsl( nband )
-       has_init_done = .true.
-    end if
+    call get_nband( nband )
+    call init1_sdsl( nband )
+    !call init2_sdsl( nband )
 
 ! --- Hamiltonian
 

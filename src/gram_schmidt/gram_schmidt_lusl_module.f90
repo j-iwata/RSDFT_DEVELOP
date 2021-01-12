@@ -38,6 +38,8 @@ module gram_schmidt_lusl_module
 
   type(slinfo) :: sl
 
+  integer :: nband_backup=0
+
 contains
 
   subroutine init_lusl( n )
@@ -48,10 +50,15 @@ contains
     integer,allocatable :: usermap(:,:,:)
     integer,external :: NUMROC
     include 'mpif.h'
-    integer,parameter :: unit=90
+    !integer,parameter :: unit=90
     integer :: num_gridmap_groups, i_gridmap_group
 
-    if ( flag_init ) return
+    if ( nband_backup == n ) then
+      return
+    else
+      if ( nband_backup /= 0 ) call blacs_gridexit(sl%icontxt_a)
+      nband_backup = n
+    end if
 
 !    call write_border( 1, " init_lusl(start)" )
 
@@ -121,6 +128,7 @@ contains
     end do
 
     deallocate( usermap )
+    deallocate( sl%map_1to2 )
 
 !    allocate( usermap(0:sl%nprow-1,0:sl%npcol-1) ); usermap=0
 !    i=nprocs/(sl%nprow*sl%npcol)
@@ -489,7 +497,7 @@ contains
     m = size( u, 1 )
     n = size( u, 2 )
 
-    if ( .not.flag_init ) call init_lusl( n )
+    call init_lusl( n )
 
     allocate( S(n,n)        ); S=zero
     allocate( Ssub(LDR,LDC) ); Ssub=zero

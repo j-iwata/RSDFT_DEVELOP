@@ -13,6 +13,8 @@ module subspace_diag_module
   private
   public :: subspace_diag, init_subspace_diag
 
+  integer :: ialgo_sd=2
+
 contains
 
 
@@ -32,10 +34,16 @@ contains
 #ifdef _LAPACK_
        call subspace_diag_la(k,s)
 #else
-!       call subspace_diag_sl(k,s)
-       k0 = k - MK_0 + 1
-       s0 = s - MS_0 + 1
-       call subspace_sdsl( k, s, unk(:,:,k0,s0), esp(:,k0,s0) )
+       select case( ialgo_sd )
+       case( 0 )
+         call subspace_diag_la(k,s)
+       case( 1 )
+         call subspace_diag_sl(k,s)
+       case default
+         k0 = k - MK_0 + 1
+         s0 = s - MS_0 + 1
+         call subspace_sdsl( k, s, unk(:,:,k0,s0), esp(:,k0,s0) )
+       end select
 #endif
     end if
   end subroutine subspace_diag
@@ -47,6 +55,11 @@ contains
     integer :: i,j,mm,ms,me,nme,ne,nn,MB,num_sq_blocks_per_bp
 
     call write_border( 0, " init_subspace_diag(start)" )
+
+    if( ialgo_sd /= 1 )then
+      call write_border( 0, " init_subspace_diag(return)" )
+      return
+    end if
 
     MB_diag = MB_in
 
