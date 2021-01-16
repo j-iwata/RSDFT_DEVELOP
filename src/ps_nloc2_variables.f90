@@ -1,6 +1,7 @@
 MODULE ps_nloc2_variables
 
   use parallel_module, only: MPI_REAL8,RSDFT_MPI_COMPLEX16,nprocs_g
+  use memory_module, only: check_memory
 
   integer :: Mlma,nzlma
   integer,allocatable :: JJ_MAP(:,:,:),MJJ_MAP(:),MJJ(:)
@@ -55,9 +56,12 @@ MODULE ps_nloc2_variables
 CONTAINS
 
   subroutine allocate_ps_nloc2( MB_d, itype_nl_sendrecv )
+    implicit none
     integer,intent(in) :: MB_d
     integer,optional,intent(in) :: itype_nl_sendrecv
     integer :: n, itype
+    logical :: disp_sw
+    call check_disp_switch( disp_sw, 0 )
     n=maxval( lma_nsend )*4*MB_d
     if ( allocated(rbufnl)  ) deallocate(rbufnl)
     if ( allocated(sbufnl)  ) deallocate(sbufnl)
@@ -74,12 +78,16 @@ CONTAINS
     case( 1 )
       allocate( rbufnl1(n) ) ; rbufnl1=zero
       allocate( sbufnl1(n) ) ; sbufnl1=zero
+      if ( disp_sw ) write(*,*) "(rbufnl1,sbufnl1)"
+      call check_memory( 8.0d0, n, 2 )
     end select
     allocate( uVunk(nzlma,MB_d)  ) ; uVunk=zero
     allocate( uVunk0(nzlma,MB_d) ) ; uVunk0=zero
+    if ( disp_sw ) write(*,*) "(uVunk,uVunk0)"
+    call check_memory( 8.0d0, nzlma, MB_d, 2 )
   end subroutine allocate_ps_nloc2
 
-  SUBROUTINE checkMapsBeforeForce(myrank)
+  subroutine checkMapsBeforeForce(myrank)
     implicit none
     integer,intent(IN) :: myrank
     integer :: i
@@ -93,7 +101,7 @@ CONTAINS
       write(5200+myrank,'(2I7)') nzlma,mmap(i)
       write(5300+myrank,'(2I7)') nzlma,iorbmap(i)
     enddo
-  END SUBROUTINE checkMapsBeforeForce
+  END subroutine checkMapsBeforeForce
 
 
   subroutine prep_backup_uVunk_ps_nloc2( mb0,mb1,mk0,mk1,ms0,ms1 )

@@ -275,8 +275,7 @@ contains
 
 !    write(*,*) sum((Ssub-S)**2),count(S/=zero),count(Ssub/=zero)
 
-    call MPI_Allreduce &
-         ( MPI_IN_PLACE, S, size(S), MPI_REAL8, MPI_SUM, comm_grid, ierr )
+    call rsdft_allreduce( S, comm_grid )
 
 !    call timer( ttmp,time(:,it),'on' ); tlabel(it)="dsyrnk"; it=it+1
 

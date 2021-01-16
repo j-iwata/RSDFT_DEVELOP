@@ -267,8 +267,7 @@ contains
     if ( present(icontxt) ) then
        call dgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
     else
-       call mpi_allreduce( mpi_in_place, H, size(H), mpi_real8 &
-            ,mpi_sum, mpi_comm_world, i )
+       call rsdft_allreduce( H )
     end if
 
   END SUBROUTINE d_gatherA_matrix

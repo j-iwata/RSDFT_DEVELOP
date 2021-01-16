@@ -35,9 +35,9 @@ CONTAINS
        read(unit,*) cbuf,nbk,mb_band,mb2_band,esp_conv_tol,maxiter_band
        allocate( ak(3,nbk+1) ) ; ak=0.0d0
        allocate( nfki(nbk)   ) ; nfki=0
-       read(unit,*) ak(1,1:nbk+1)
-       read(unit,*) ak(2,1:nbk+1)
-       read(unit,*) ak(3,1:nbk+1)
+       read(unit,*) (ak(1,i),i=1,nbk+1)
+       read(unit,*) (ak(2,i),i=1,nbk+1)
+       read(unit,*) (ak(3,i),i=1,nbk+1)
        read(unit,*) nfki(1:nbk)
        write(*,*) "nbk          =",nbk
        write(*,*) "mb_band      =",mb_band

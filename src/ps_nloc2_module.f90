@@ -27,6 +27,7 @@ module ps_nloc2_module
   use polint_module
   use spline_module
   use rsdft_mpi_module
+  use memory_module, only: check_memory
 
   implicit none
 
@@ -710,7 +711,6 @@ contains
 
     call watcha( timer_counter )
 
-
     nzlma = icheck_tmp2(myrank_g)
 
     deallocate( itmp )
@@ -732,6 +732,12 @@ contains
        deallocate( iorbmap )
        deallocate( nl_rank_map )
     end if
+    if ( disp_sw ) write(*,*) "(uV)"
+    call check_memory( 8.0d0, MMJJ, nzlma )
+    if ( disp_sw ) write(*,*) "(JJ_MAP)"
+    call check_memory( 4.0d0, 6, MMJJ, nzlma )
+    if ( disp_sw ) write(*,*) "(MJJ_MAP)"
+    call check_memory( 4.0d0, nzlma )
     allocate( uV(MMJJ,nzlma)       ) ; uV=0.d0
     allocate( JJ_MAP(6,MMJJ,nzlma) ) ; JJ_MAP=0
     allocate( MJJ_MAP(nzlma)       ) ; MJJ_MAP=0
@@ -803,6 +809,8 @@ contains
 
     call watcha( timer_counter )
 
+    MAXMJJ=0
+
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
     do lma=1,nzlma
@@ -819,7 +827,7 @@ contains
        end do
        MJJ(lma)=j
     end do
-    MAXMJJ = maxval( MJJ(1:nzlma) )
+    if ( nzlma > 0 ) MAXMJJ = maxval( MJJ(1:nzlma) )
     deallocate( icheck_tmp4 )
 
 ! ---
@@ -1036,8 +1044,15 @@ contains
     end if
     allocate( JJP(MAXMJJ,nzlma) ) ; JJP=0
     allocate( uVk(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk=0.d0
+    if ( disp_sw ) write(*,*) "(JJP)"
+    call check_memory( 4.0d0,MAXMJJ,nzlma )
+    if ( disp_sw ) write(*,*) "(uVk)"
+    call check_memory( 8.0d0,MAXMJJ,MBZ_1-MBZ_0+1 )
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
+
+    deallocate( JJ_MAP )
+    deallocate( uV )
 
     call sort_index_sub( MJJ, JJP, uVk )
 
