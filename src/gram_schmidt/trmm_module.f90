@@ -3,7 +3,7 @@ module trmm_module
   implicit none
 
   private
-  public :: calc_ztrmm3
+  public :: calc_dtrmm3, calc_ztrmm3
 
   integer :: ialgo_dtrmm=1
   integer :: nblk_dtrmm=1
@@ -35,17 +35,20 @@ contains
   end subroutine calc_dtrmm
 
 
-  subroutine calc_dtrmm3( u, S )
+  subroutine calc_dtrmm3( u, S, b0 )
     implicit none
     real(8),intent(inout) :: u(:,:)
-    real(8),intent(in) :: S(:,:)
+    integer,intent(in) :: b0
+    real(8),intent(in) :: S(:,b0:)
     real(8),parameter :: zero=0.0d0,one=1.0d0
-    integer :: m,n,j0,j1,i0,i1,iblk,jblk
+    integer :: m,n,j0,j1,i0,i1,b1,iblk,jblk
     integer :: nblk,nj,ni
     real(8),allocatable :: utmp(:,:)
 
     m=size(u,1)
     n=size(u,2)
+
+    b1 = b0 + size(S,2) - 1
 
     nblk = max( n/nblk_dtrmm, 1 )
 
@@ -55,6 +58,11 @@ contains
 
        j0 = jblk
        j1 = min( jblk+nblk-1, n )
+
+       if ( b1 < j0 .or. j1 < b0 ) cycle
+       j0 = max( j0, b0 )
+       j1 = min( j1, b1 )
+
        nj = j1 - j0 + 1
 
        do iblk = 1, jblk, nblk
@@ -83,10 +91,10 @@ contains
   contains
     subroutine alloc_utmp
       implicit none
-      allocate( utmp(m,n) ); utmp=zero
+      allocate( utmp(m,b0:b1) ); utmp=zero
     end subroutine alloc_utmp
     subroutine dealloc_utmp
-      u=utmp
+      u(:,b0:b1)=utmp
       deallocate( utmp )
     end subroutine dealloc_utmp
   end subroutine calc_dtrmm3

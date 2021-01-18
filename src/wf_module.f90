@@ -1,10 +1,12 @@
-MODULE wf_module
+module wf_module
 
   use parallel_module
   use wf_sub_module
   use rsdft_mpi_module
+  use rsdft_allgather_module, only: d_rsdft_allgatherv_div
   use io_tools_module
   use watch_module, only: watchb
+  use memory_module, only: check_memory
 
   implicit none
 
@@ -63,6 +65,8 @@ MODULE wf_module
 
   integer :: iwork_wf=0
   integer :: iflag_hunk=0
+  integer :: nblock_gather_wf=0
+  integer :: ndiv_gather_wf=0
 
   type wfrange
      integer :: ML,ML0,ML1
@@ -71,16 +75,18 @@ MODULE wf_module
      integer :: MS,MS0,MS1
   end type wfrange
 
-CONTAINS
+contains
 
 
-  SUBROUTINE read_wf
+  subroutine read_wf
     implicit none
     call IOTools_readIntegerKeyword( "WORKWF", iwork_wf )
-  END SUBROUTINE read_wf
+    call IOTools_readIntegerKeyword( "NBLOCK_GATHER_WF", nblock_gather_wf )
+    call IOTools_readIntegerKeyword( "NDIV_GATHER_WF", ndiv_gather_wf )
+  end subroutine read_wf
 
 
-  SUBROUTINE init_wf( SYStype_in )
+  subroutine init_wf( SYStype_in )
     implicit none
     integer,optional,intent(IN) :: SYStype_in
     integer :: SYStype
@@ -113,6 +119,9 @@ CONTAINS
     if ( allocated(esp) ) deallocate(esp)
     if ( allocated(unk) ) deallocate(unk)
     if ( allocated(referred_orbital) ) deallocate(referred_orbital)
+
+    call check_memory( 'wf',ML_1_WF-ML_0_WF+1, MB_WF &
+                       ,MK_1_WF-MK_0_WF+1, MS_1_WF-MS_0_WF+1 )
 
     allocate( unk(ML_0_WF:ML_1_WF,MB_WF,MK_0_WF:MK_1_WF,MS_0_WF:MS_1_WF) )
     unk=zero
@@ -148,10 +157,10 @@ CONTAINS
 
     call write_border( 0, " init_wf(end)" )
 
-  END SUBROUTINE init_wf
+  end subroutine init_wf
 
 
-  SUBROUTINE random_initial_wf
+  subroutine random_initial_wf
     implicit none
     integer :: s,k,n,i
     integer,allocatable :: ir(:)
@@ -174,7 +183,7 @@ CONTAINS
        end do
     end do
 
-  END SUBROUTINE random_initial_wf
+  end subroutine random_initial_wf
 
 
   subroutine delta_initial_wf
@@ -297,7 +306,7 @@ CONTAINS
   END SUBROUTINE write_wf
 
 
-  SUBROUTINE gather_wf
+  subroutine gather_wf
     implicit none
     integer :: k,s
     call write_border( 1, " gather_wf(start)" )
@@ -307,33 +316,59 @@ CONTAINS
     end do
     end do
     call write_border( 1, " gather_wf(end)" )
-  END SUBROUTINE gather_wf
+  end subroutine gather_wf
 
-  SUBROUTINE gather_b_wf( k, s )
+  subroutine gather_b_wf( k, s )
     implicit none
-    integer,intent(IN) :: k,s
-    integer :: mm,ierr
+    integer,intent(in) :: k,s
+    integer :: mm,nn,mn
     real(8) :: ttmp(2),tttt(2,3)
+
     if ( MB_0_WF == 1 .and. MB_1_WF == MB_WF ) return
     call write_border( 1, " gather_b_wf(start)" )
-    call watchb( ttmp ); tttt=0.0d0
-    mm=ML_1_WF-ML_0_WF+1
+    call watchb( ttmp, barrier='on' ); tttt=0.0d0
+
+    mm=size(unk,1)
     ir_band(:)=ir_band(:)*mm
     id_band(:)=id_band(:)*mm
-    call watchb( ttmp, tttt(:,1) )
-    call rsdft_allgatherv( unk(:,MB_0_WF:MB_1_WF,k,s) &
-         , unk(:,:,k,s), ir_band, id_band, comm_band )
-    call watchb( ttmp, tttt(:,2) )
-    if ( iflag_hunk >= 1 ) then
-       call rsdft_allgatherv( hunk(:,MB_0_WF:MB_1_WF,k,s) &
-            , hunk(:,:,k,s), ir_band, id_band, comm_band )
+
+    nn=size(unk,2)
+    mn=mm*nn
+
+    if ( ndiv_gather_wf > 0 ) nblock_gather_wf = max( mn/ndiv_gather_wf, 1 )
+
+    if ( nblock_gather_wf > 0 ) then
+#ifdef _DRSDFT_
+      call d_rsdft_allgatherv_div( mn, unk(:,:,k,s), ir_band, id_band &
+                                 , comm_band, nblock_gather_wf )
+      if ( iflag_hunk >= 1 ) then
+         call d_rsdft_allgatherv_div( mn, hunk(:,:,k,s), ir_band, id_band &
+                                    , comm_band, nblock_gather_wf )
+      end if
+#else
+      call rsdft_allgatherv( unk(:,MB_0_WF:MB_1_WF,k,s) &
+           , unk(:,:,k,s), ir_band, id_band, comm_band )
+      if ( iflag_hunk >= 1 ) then
+         call rsdft_allgatherv( hunk(:,MB_0_WF:MB_1_WF,k,s) &
+              , hunk(:,:,k,s), ir_band, id_band, comm_band )
+      end if
+#endif
+    else
+      call rsdft_allgatherv( unk(:,MB_0_WF:MB_1_WF,k,s) &
+           , unk(:,:,k,s), ir_band, id_band, comm_band )
+      if ( iflag_hunk >= 1 ) then
+         call rsdft_allgatherv( hunk(:,MB_0_WF:MB_1_WF,k,s) &
+              , hunk(:,:,k,s), ir_band, id_band, comm_band )
+      end if
     end if
+
     ir_band(:)=ir_band(:)/mm
     id_band(:)=id_band(:)/mm
-    call watchb( ttmp, tttt(:,3) )
-    !write(*,'(1x,"gather_b_wf",3(" (",i1,")",2f8.3))') (mm,tttt(:,mm),mm=1,3)
+    call watchb( ttmp, tttt(:,1), barrier='on' )
+    !write(*,'(1x,"gather_b_wf"," (",i1,")",2f8.3)') (mm,tttt(:,mm),mm=1,1)
     call write_border( 1, " gather_b_wf(end)" )
-  END SUBROUTINE gather_b_wf
+
+  end subroutine gather_b_wf
 
 
   SUBROUTINE allocate_work_wf( iflag )
@@ -502,4 +537,4 @@ CONTAINS
     end select
   end subroutine control_work_wf
 
-END MODULE wf_module
+end module wf_module

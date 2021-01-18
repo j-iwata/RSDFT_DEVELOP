@@ -41,7 +41,7 @@ contains
       array_size = array_size*n4
       m4=n4; call rsdft_allreduce( m4, op_in='max' )
     end if
-    if ( indx == 'wf' ) then
+    if ( indx == 'wf' .or. indx == 'dz' ) then
 #ifdef _DRSDFT_
       mem_unit_byte =  8.0d0
 #else

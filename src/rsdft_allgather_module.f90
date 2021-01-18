@@ -3,23 +3,20 @@ module rsdft_allgather_module
   implicit none
 
   private
-  public :: rsdft_allgatherv_div
-
-  interface rsdft_allgatherv_div
-    module procedure d_rsdft_allgatherv_div
-  end interface rsdft_allgatherv_div
+  public :: d_rsdft_allgatherv_div
 
   integer :: nblock_default=4
   integer :: n_opt, n_opt_h
 
 contains
 
-  subroutine d_rsdft_allgatherv_div( n, a, ir, id, comm )
+  subroutine d_rsdft_allgatherv_div( n, a, ir, id, comm, nblk_in )
     implicit none
     integer,intent(in) :: n
     real(8),intent(inout) :: a(n)
     integer,intent(in) :: ir(0:), id(0:)
     integer,intent(in) :: comm
+    integer,intent(in) :: nblk_in
     integer :: nblk
     logical :: disp_sw
     integer :: i0,i1,nprc,mrnk,ierr,p
@@ -28,11 +25,11 @@ contains
     real(8),allocatable :: tmp(:)
     include 'mpif.h'
 
-    !call write_border( 0, " d_rsdft_allgatherv_div(start)" )
+    call write_border( 1, " d_rsdft_allgatherv_div(start)" )
 
     call check_disp_switch( disp_sw, 0 )
 
-    nblk = 500000
+    nblk = nblk_in
     nprc = size(ir)
     call MPI_Comm_rank( comm, mrnk, ierr )
 
@@ -70,7 +67,7 @@ contains
     deallocate( irr )
     deallocate( tmp )
 
-    !call write_border( 0, " d_rsdft_allgatherv_div(end)" )
+    call write_border( 1, " d_rsdft_allgatherv_div(end)" )
   end subroutine d_rsdft_allgatherv_div
 
   subroutine d_rsdft_allgather( a, b, comm, ierr, nblock_in )

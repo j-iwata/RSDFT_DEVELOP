@@ -8,6 +8,7 @@ module subspace_sdsl_module
   use hamiltonian_module, only: hamiltonian
   use calc_overlap_sd_module, only: calc_overlap_sd
   use rsdft_mpi_module, only: rsdft_allreduce
+  use memory_module, only: check_memory
 
   implicit none
 
@@ -221,7 +222,7 @@ contains
     integer,allocatable :: ipiv(:)
     integer :: ib0,ib1,ib2,ig1,ig2,jb1,jb2
 
-!    call write_border( 1, " subspace_sdsl(start)" )
+    call write_border( 1, " subspace_sdsl(start)" )
 
 !    call timer( ttmp ); time(:,:)=0.0d0; it=0
 
@@ -234,6 +235,7 @@ contains
 
 ! --- Hamiltonian
 
+    !call check_memory( 'dz', m, n )
     allocate( utmp(m,n) ); utmp=zero
 
     ig1 = id_grid(myrnk_g) + 1
@@ -249,6 +251,7 @@ contains
 
 !    call timer( ttmp,time(:,it) ); tlabel(it)="ini3"; it=it+1
 
+    !call check_memory( 'dz', nband, nband )
     allocate( H(nband,nband) ); H=zero
 
     select case( iparam_sdsl(1) )
@@ -266,6 +269,7 @@ contains
 
     deallocate( utmp )
 
+    !call check_memory( 'dz', LDR, LDC )
     allocate( Hsub(LDR,LDC) ); Hsub=zero
 
     call distribute_matrix( sl, H, Hsub )
@@ -307,7 +311,7 @@ contains
 
 !    call write_timer( time(:,0:it-1), it-1, tlabel(0:it-1) )
 
-!    call write_border( 1, " subspace_sdsl(end)" )
+    call write_border( 1, " subspace_sdsl(end)" )
 
   end subroutine subspace_sdsl
 

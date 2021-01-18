@@ -719,19 +719,17 @@ contains
     deallocate( lcheck_tmp1 )
     deallocate( icheck_tmp3 )
 
-    if ( allocated(uV) ) then
-       deallocate( uV )
-       deallocate( JJ_MAP )
-       deallocate( MJJ_MAP )
-       deallocate( MJJ )
-       deallocate( iuV )
-       deallocate( iamap )
-       deallocate( amap )
-       deallocate( lmap )
-       deallocate( mmap )
-       deallocate( iorbmap )
-       deallocate( nl_rank_map )
-    end if
+    if ( allocated(uV)          ) deallocate( uV )
+    if ( allocated(JJ_MAP)      ) deallocate( JJ_MAP )
+    if ( allocated(MJJ_MAP)     ) deallocate( MJJ_MAP )
+    if ( allocated(MJJ)         ) deallocate( MJJ )
+    if ( allocated(iuV)         ) deallocate( iuV )
+    if ( allocated(iamap)       ) deallocate( iamap )
+    if ( allocated(amap)        ) deallocate( amap )
+    if ( allocated(lmap)        ) deallocate( lmap )
+    if ( allocated(mmap)        ) deallocate( mmap )
+    if ( allocated(iorbmap)     ) deallocate( iorbmap )
+    if ( allocated(nl_rank_map) ) deallocate( nl_rank_map )
     if ( disp_sw ) write(*,*) "(uV)"
     call check_memory( 8.0d0, MMJJ, nzlma )
     if ( disp_sw ) write(*,*) "(JJ_MAP)"
@@ -1051,7 +1049,7 @@ contains
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
-    deallocate( JJ_MAP )
+    !deallocate( JJ_MAP )
     deallocate( uV )
 
     call sort_index_sub( MJJ, JJP, uVk )
