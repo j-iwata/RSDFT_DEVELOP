@@ -213,7 +213,8 @@ CONTAINS
                 do i1=omplns1(irank,ompmyrank),omplns2(irank,ompmyrank)
                    i2=i2+1
                    !sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
-                   sbufnl1(i2)=uVunk0(sendmap(i1,irank),ib)
+                   !sbufnl1(i2)=uVunk0(sendmap(i1,irank),ib)
+                   sbufnl3(i2,m,i)=uVunk0(sendmap(i1,irank),ib)
                 end do
              end do
 !$omp barrier
@@ -221,7 +222,9 @@ CONTAINS
              nreq=nreq+1
              !call MPI_Isend(sbufnl(1,irank),lma_nsend(irank)*nb &
              !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
-             call MPI_Isend(sbufnl1,lma_nsend(irank)*nb &
+             !call MPI_Isend(sbufnl1,lma_nsend(irank)*nb &
+             !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Isend(sbufnl3(1,m,i),lma_nsend(irank)*nb &
                   ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
 !$omp end master
           end if
@@ -231,7 +234,9 @@ CONTAINS
              nreq=nreq+1
              !call MPI_Irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
              !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
-             call MPI_Irecv(rbufnl1,lma_nsend(jrank)*nb &
+             !call MPI_Irecv(rbufnl1,lma_nsend(jrank)*nb &
+             !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Irecv(rbufnl3(1,m,i),lma_nsend(jrank)*nb &
                   ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
           end if
           !call watchb_omp( ttmp1, time_nlpp(1,5) )
@@ -246,7 +251,8 @@ CONTAINS
                    i2=i2+1
                    i3=recvmap(i1,jrank)
                    !uVunk(i3,ib) = uVunk(i3,ib) + rbufnl(i2,jrank)
-                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl1(i2)
+                   !uVunk(i3,ib) = uVunk(i3,ib) + rbufnl1(i2)
+                   uVunk(i3,ib) = uVunk(i3,ib) + rbufnl3(i2,m,i)
                 end do
              end do
           end if

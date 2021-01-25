@@ -13,7 +13,7 @@ module subspace_diag_module
   private
   public :: subspace_diag, init_subspace_diag
 
-  integer :: ialgo_sd=2
+  integer :: ialgo_sd=1
 
 contains
 
@@ -56,12 +56,12 @@ contains
 
     call write_border( 0, " init_subspace_diag(start)" )
 
+    MB_diag = MB_in
+
     if( ialgo_sd /= 1 )then
       call write_border( 0, " init_subspace_diag(return)" )
       return
     end if
-
-    MB_diag = MB_in
 
     MB  = MB_diag
     nme = (MB*MB+MB)/2

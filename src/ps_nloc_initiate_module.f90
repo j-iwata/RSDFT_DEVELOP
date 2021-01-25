@@ -2,6 +2,7 @@ MODULE ps_nloc_initiate_module
 
   use ps_nloc2_init_module, only: ps_nloc2_init,rcfac,qcfac,etafac
   use ps_nloc2_module, only: prep_ps_nloc2
+  use ps_nloc2_variables, only: read_fmax_conv_ps_nloc2
   use ps_nloc3_module, only: init_ps_nloc3, prep_ps_nloc3
   use ps_nloc_mr_module, only: prep_ps_nloc_mr
   use pseudopot_module, only: pselect
@@ -36,6 +37,8 @@ CONTAINS
        else
           call ps_nloc2_init( Gcut )
        end if
+
+       call read_fmax_conv_ps_nloc2
 
        if ( ps_type == 0 ) then
           call prep_ps_nloc2

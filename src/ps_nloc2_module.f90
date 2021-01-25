@@ -732,7 +732,7 @@ contains
     if ( allocated(nl_rank_map) ) deallocate( nl_rank_map )
     if ( disp_sw ) write(*,*) "(uV)"
     call check_memory( 8.0d0, MMJJ, nzlma )
-    if ( disp_sw ) write(*,*) "(JJ_MAP)"
+    if ( disp_sw ) write(*,*) "(JJ_MAP)(KEEP_FLAG)", FLAG_KEEP_JJ_MAP
     call check_memory( 4.0d0, 6, MMJJ, nzlma )
     if ( disp_sw ) write(*,*) "(MJJ_MAP)"
     call check_memory( 4.0d0, nzlma )
@@ -1034,7 +1034,7 @@ contains
 
     call watcha( timer_counter )
 
-    call allocate_ps_nloc2( MB_d_nl, itype_nl_sendrecv=1 )
+    call allocate_ps_nloc2( MB_d_nl, itype_nl_sendrecv=2 )
 
     if ( allocated(JJP) ) then
        deallocate( JJP )
@@ -1049,7 +1049,7 @@ contains
 
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
-    !deallocate( JJ_MAP )
+    if ( .not.FLAG_KEEP_JJ_MAP ) deallocate( JJ_MAP )
     deallocate( uV )
 
     call sort_index_sub( MJJ, JJP, uVk )

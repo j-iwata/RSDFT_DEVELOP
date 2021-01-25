@@ -1,7 +1,8 @@
-MODULE ps_nloc2_variables
+module ps_nloc2_variables
 
   use parallel_module, only: MPI_REAL8,RSDFT_MPI_COMPLEX16,nprocs_g
   use memory_module, only: check_memory
+  use io_tools_module, only: IOTools_readReal8Keyword
 
   integer :: Mlma,nzlma
   integer,allocatable :: JJ_MAP(:,:,:),MJJ_MAP(:),MJJ(:)
@@ -16,6 +17,7 @@ MODULE ps_nloc2_variables
 #ifdef _DRSDFT_
   real(8),allocatable :: uVk(:,:,:),sbufnl(:,:),rbufnl(:,:)
   real(8),allocatable :: sbufnl1(:),rbufnl1(:)
+  real(8),allocatable :: sbufnl3(:,:,:),rbufnl3(:,:,:)
   real(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   real(8),parameter :: zero=0.d0
@@ -23,6 +25,7 @@ MODULE ps_nloc2_variables
 #else
   complex(8),allocatable :: uVk(:,:,:),sbufnl(:,:),rbufnl(:,:)
   complex(8),allocatable :: sbufnl1(:),rbufnl1(:)
+  complex(8),allocatable :: sbufnl3(:,:,:),rbufnl3(:,:,:)
   complex(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
@@ -53,13 +56,23 @@ MODULE ps_nloc2_variables
   complex(8),allocatable,private :: uVunk_backup(:,:,:,:)
 #endif
 
-CONTAINS
+  logical,public :: FLAG_KEEP_JJ_MAP=.false.
+
+contains
+
+  subroutine read_fmax_conv_ps_nloc2
+    implicit none
+    real(8) :: fmax_conv
+    fmax_conv=0.0d0
+    call IOTools_readReal8Keyword( "FMAXCONV", fmax_conv )
+    if ( fmax_conv > 0.0d0 ) FLAG_KEEP_JJ_MAP=.true.
+  end subroutine read_fmax_conv_ps_nloc2
 
   subroutine allocate_ps_nloc2( MB_d, itype_nl_sendrecv )
     implicit none
     integer,intent(in) :: MB_d
     integer,optional,intent(in) :: itype_nl_sendrecv
-    integer :: n, itype
+    integer :: n, itype, n2,n3
     logical :: disp_sw
     call check_disp_switch( disp_sw, 0 )
     n=maxval( lma_nsend )*4*MB_d
@@ -80,6 +93,13 @@ CONTAINS
       allocate( sbufnl1(n) ) ; sbufnl1=zero
       if ( disp_sw ) write(*,*) "(rbufnl1,sbufnl1)"
       call check_memory( 8.0d0, n, 2 )
+    case( 2 )
+      n2=maxval(nrlma_xyz)
+      n3=6
+      allocate( rbufnl3(n,n2,n3) ) ; rbufnl3=zero
+      allocate( sbufnl3(n,n2,n3) ) ; sbufnl3=zero
+      if ( disp_sw ) write(*,*) "(rbufnl3,sbufnl3)"
+      call check_memory( 8.0d0, n*n2*n3, 2 )
     end select
     allocate( uVunk(nzlma,MB_d)  ) ; uVunk=zero
     allocate( uVunk0(nzlma,MB_d) ) ; uVunk0=zero
@@ -146,4 +166,4 @@ CONTAINS
   end subroutine restore_uVunk_ps_nloc2
 
 
-END MODULE ps_nloc2_variables
+end module ps_nloc2_variables
