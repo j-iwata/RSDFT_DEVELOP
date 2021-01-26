@@ -19,6 +19,7 @@ module subspace_sdsl_module
   integer :: myrank, nprocs
   integer :: icontxt_sys
   integer :: LDR,LDC
+  integer :: NP,NQ,TRILWMIN
   character(1) :: UPLO='L'
   integer :: myrnk_g, myrnk_b, np_grid, np_band
 #ifdef _DRSDFT_
@@ -141,6 +142,10 @@ contains
 
     call descinit( sl%desca,n,n,sl%mbsize,sl%nbsize,0,0,sl%icontxt_a,LDR,ierr )
     call descinit( sl%descz,n,n,sl%mbsize,sl%nbsize,0,0,sl%icontxt_a,LDR,ierr )
+
+    NP = NUMROC( n, sl%mbsize, sl%myrow, 0, sl%nprow )
+    NQ = NUMROC( n, sl%mbsize, sl%mycol, 0, sl%npcol )
+    TRILWMIN = 3*n + max( sl%mbsize*(NP+1), 3*sl%mbsize )
 
     has_init1_done = .true.
 
@@ -372,18 +377,35 @@ contains
     integer :: itmp(1),ierr
     real(8) :: rtmp(1)
     complex(8) :: ztmp(1)
+    logical :: disp_sw
     if ( LRWORK == 0 ) then
-       LIWORK = 7*nband + 8*sl%npcol + 2
+      LRWORK = max( 1+6*nband+2*NP*NQ, TRILWMIN ) + 2*nband
+      LIWORK = 7*nband + 8*sl%npcol + 2
+      call check_disp_switch( disp_sw, 0 )
 #ifdef _DRSDFT_
-       call PDSYEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
+      call PDSYEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
                    ,sl%descz,rtmp,-1,itmp,LIWORK,ierr)
+      if ( disp_sw ) then
+        write(*,'("LRWORK,rtmp(1),LIWORK,itmp(1)",4i10)') LRWORK,nint(rtmp(1)),LIWORK,itmp(1)
+      end if
 #else
-       call PZHEEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
+      call PZHEEVD('V',UPLO,nband,Hsub,1,1,sl%desca,e,Vsub,1,1 &
                    ,sl%descz,ztmp,-1,rtmp,-1,itmp,-1,ierr)
-       LZWORK = nint( real(ztmp(1)) )
+      LZWORK = nint( real(ztmp(1)) )
+      if ( disp_sw ) then
+        write(*,'("LRWORK,rtmp(1),LIWORK,itmp(1)LZWORK,ztmp(1)",6i10)') &
+          LRWORK,nint(rtmp(1)),LIWORK,itmp(1),LZWORK,nint(real(ztmp(1)))
+      end if
 #endif
-       LRWORK = nint( rtmp(1) )
-       LIWORK = max( itmp(1), LIWORK )
+      if ( nint(rtmp(1)) > LRWORK ) then
+        LRWORK=rtmp(1)
+      else
+        ! array size query seems not to work well. 
+        ! The following margin is for avoiding the bug
+        LRWORK = max( nint(rtmp(1))*10, LRWORK )
+        if ( disp_sw ) write(*,'("LRWORK is replaced: LRWORK=",i10)') LRWORK 
+      end if
+      LIWORK = max( itmp(1), LIWORK )
     end if
     allocate( rwork(LRWORK) ); rwork=0.0d0
     allocate( iwork(LIWORK) ); iwork=0
