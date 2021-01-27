@@ -7,6 +7,7 @@ module subspace_diag_module
   use subspace_diag_sl_module
   use subspace_sdsl_module
   use subspace_diag_ncol_module
+  use io_tools_module
 
   implicit none
 
@@ -57,6 +58,8 @@ contains
     call write_border( 0, " init_subspace_diag(start)" )
 
     MB_diag = MB_in
+
+    call IOTools_readIntegerKeyword( 'IALGO_SD', ialgo_sd )
 
     if( ialgo_sd /= 1 )then
       call write_border( 0, " init_subspace_diag(return)" )

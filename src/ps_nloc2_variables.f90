@@ -80,6 +80,8 @@ contains
     if ( allocated(sbufnl)  ) deallocate(sbufnl)
     if ( allocated(rbufnl1) ) deallocate(rbufnl1)
     if ( allocated(sbufnl1) ) deallocate(sbufnl1)
+    if ( allocated(rbufnl3) ) deallocate(rbufnl3)
+    if ( allocated(sbufnl3) ) deallocate(sbufnl3)
     if ( allocated(uVunk)   ) deallocate(uVunk)
     if ( allocated(uVunk0)  ) deallocate(uVunk0)
     itype=0
