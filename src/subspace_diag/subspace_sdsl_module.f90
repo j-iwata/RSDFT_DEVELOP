@@ -400,7 +400,7 @@ contains
       if ( nint(rtmp(1)) > LRWORK ) then
         LRWORK=rtmp(1)
       else
-        ! array size query seems not to work well. 
+        ! array size query seems not to work well in the mkl routine. 
         ! The following margin is for avoiding the bug
         LRWORK = max( nint(rtmp(1))*10, LRWORK )
         if ( disp_sw ) write(*,'("LRWORK is replaced: LRWORK=",i10)') LRWORK 

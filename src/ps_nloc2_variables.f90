@@ -2,7 +2,7 @@ module ps_nloc2_variables
 
   use parallel_module, only: MPI_REAL8,RSDFT_MPI_COMPLEX16,nprocs_g
   use memory_module, only: check_memory
-  use io_tools_module, only: IOTools_readReal8Keyword
+  use io_tools_module, only: IOTools_readReal8Keyword,IOTools_readIntegerKeyword
 
   integer :: Mlma,nzlma
   integer,allocatable :: JJ_MAP(:,:,:),MJJ_MAP(:),MJJ(:)
@@ -57,15 +57,25 @@ module ps_nloc2_variables
 #endif
 
   logical,public :: FLAG_KEEP_JJ_MAP=.false.
+  logical,public :: FLAG_KEEP_uV=.false.
 
 contains
 
   subroutine read_fmax_conv_ps_nloc2
     implicit none
     real(8) :: fmax_conv
+    integer :: swopt, swband
     fmax_conv=0.0d0
+    swopt=0
+    swband=0
     call IOTools_readReal8Keyword( "FMAXCONV", fmax_conv )
-    if ( fmax_conv > 0.0d0 ) FLAG_KEEP_JJ_MAP=.true.
+    call IOTools_readIntegerKeyword( "SWOPT" , swopt )
+    call IOTools_readIntegerKeyword( "SWBAND", swband )
+    if ( fmax_conv > 0.0d0 .or. swopt /= 0 ) FLAG_KEEP_JJ_MAP=.true.
+    if ( swband /= 0 ) then
+      FLAG_KEEP_JJ_MAP=.true.
+      FLAG_KEEP_uV=.true.
+    end if
   end subroutine read_fmax_conv_ps_nloc2
 
   subroutine allocate_ps_nloc2( MB_d, itype_nl_sendrecv )

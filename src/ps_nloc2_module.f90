@@ -1050,7 +1050,7 @@ contains
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
     if ( .not.FLAG_KEEP_JJ_MAP ) deallocate( JJ_MAP )
-    deallocate( uV )
+    if ( .not.FLAG_KEEP_uV ) deallocate( uV )
 
     call sort_index_sub( MJJ, JJP, uVk )
 
