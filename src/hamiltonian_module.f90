@@ -60,16 +60,18 @@ contains
 #ifdef _DRSDFT_
     real(8),intent(in)  :: tpsi(n1:,ib1:)
     real(8),intent(out) :: htpsi(n1:,ib1:)
+    real(8),parameter :: zero=0.0d0
 #else
     complex(8),intent(in)  :: tpsi(n1:,ib1:)
     complex(8),intent(out) :: htpsi(n1:,ib1:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
 #endif
     real(8) :: ttmp(2)
 
 !$omp parallel
 
 !$omp workshare
-    !htpsi=(0.0d0,0.0d0)
+    htpsi=zero
 !$omp end workshare
 
     !call watchb_omp( ttmp )

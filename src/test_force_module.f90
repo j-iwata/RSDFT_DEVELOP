@@ -13,6 +13,9 @@ module test_force_module
   use force_local_mol_module
   use force_ion_mol_module
   use force_nloc2_mol_module
+  use aa_module, only: aa
+  use lattice_module, only: get_inverse_lattice
+  use force_module, only: get_fmax_force
 
   implicit none
 
@@ -52,9 +55,12 @@ contains
 
   subroutine test_force_sol
     implicit none
-    real(8),allocatable :: force(:,:),forcet(:,:)
+    real(8),allocatable :: force(:,:),forcet(:,:),forcea(:,:)
     integer :: i,ii,MBD_org
     real(8) :: ttmp(2),ttt(2,0:9)
+    real(8) :: aa_inv(3,3), fmax, ftmp
+
+    call get_inverse_lattice( aa, aa_inv )
 
     allocate( force(3,Natom)  ) ; force=0.d0
     allocate( forcet(3,Natom) ) ; forcet=0.d0
@@ -70,9 +76,17 @@ contains
     call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
-       write(*,*) "(flocal)"
+       call get_fmax_force( fmax, force )
+       write(*,*) "(flocal-xyz): fmax=",fmax
        do i=1,Natom
-          write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
+          ftmp = sqrt(sum(force(:,i)**2))
+          write(*,'(1x,i6,4g20.10,i6)') i,force(1:3,i),ftmp,myrank
+       end do
+       allocate( forcea(3,Natom) ); forcea=0.0d0
+       forcea(:,:) = matmul( aa_inv, force )
+       write(*,*) "(flocal-aa)"
+       do i=1,Natom
+          write(*,'(1x,i6,3g20.10,i6)') i,forcea(1:3,i),myrank
        end do
     end if
 
@@ -82,9 +96,16 @@ contains
        call watchb( ttmp, ttt(:,4), barrier='on' )
        forcet(:,:)=forcet(:,:)+force(:,:)
        if ( disp_switch ) then
-          write(*,*) "(fpcc)"
+          call get_fmax_force( fmax, force )
+          write(*,*) "(fpcc-xyz): fmax=",fmax
           do i=1,Natom
-             write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
+             ftmp = sqrt(sum(force(:,i)**2))
+             write(*,'(1x,i6,4g20.10,i6)') i,force(1:3,i),ftmp,myrank
+          end do
+          forcea(:,:) = matmul( aa_inv, force )
+          write(*,*) "(fpcc-aa)"
+          do i=1,Natom
+             write(*,'(1x,i6,3g20.10,i6)') i,forcea(1:3,i),myrank
           end do
        end if
     end if
@@ -100,9 +121,16 @@ contains
     call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
-       write(*,*) "(fewald)"
+       call get_fmax_force( fmax, force )
+       write(*,*) "(fewald-xyz): fmax=",fmax
        do i=1,Natom
-          write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
+          ftmp = sqrt(sum(force(:,i)**2))
+          write(*,'(1x,i6,4g20.10,i6)') i,force(1:3,i),ftmp,myrank
+       end do
+       forcea(:,:) = matmul( aa_inv, force )
+       write(*,*) "(fewald-aa)"
+       do i=1,Natom
+          write(*,'(1x,i6,3g20.10,i6)') i,forcea(1:3,i),myrank
        end do
     end if
 
@@ -124,7 +152,7 @@ contains
 
     MB_d_nl = 1
 
-    do ii=0,10
+    do ii=0,0 !10
 
     if ( (ii>0.and.MB_d_nl>=MB) .or. MB_d_nl>MBD_org ) then
        exit
@@ -164,9 +192,16 @@ contains
     call watchb( ttmp, ttt(:,5), barrier='on' )
 
     if ( disp_switch ) then
-       write(*,*) "(fnloc)"
+       call get_fmax_force( fmax, force )
+       write(*,*) "(fnloc-xyz): fmax=",fmax
        do i=1,Natom
-          write(*,'(1x,i6,3g20.10,i6)') i,force(1:3,i),myrank
+          ftmp = sqrt(sum(force(:,i)**2))
+          write(*,'(1x,i6,4g20.10,i6)') i,force(1:3,i),ftmp,myrank
+       end do
+       forcea(:,:) = matmul( aa_inv, force )
+       write(*,*) "(fnloc-aa)"
+       do i=1,Natom
+          write(*,'(1x,i6,3g20.10,i6)') i,forcea(1:3,i),myrank
        end do
     end if
 
@@ -175,9 +210,15 @@ contains
 ! ---
 
     if ( disp_switch ) then
-       write(*,*) "ftot"
+       call get_fmax_force( fmax, forcet )
+       write(*,*) "(ftot-xyz): fmax=",fmax
        do i=1,Natom
-          write(*,'(1x,i6,3g20.10,i6)') i,forcet(1:3,i),myrank
+          write(*,'(1x,i6,4g20.10,i6)') i,forcet(1:3,i),ftmp,myrank
+       end do
+       forcea(:,:) = matmul( aa_inv, forcet )
+       write(*,*) "(ftot-aa)"
+       do i=1,Natom
+          write(*,'(1x,i6,3g20.10,i6)') i,forcea(1:3,i),myrank
        end do
     end if
 
@@ -185,9 +226,11 @@ contains
        write(*,*) "time(loc) =",ttt(:,1)
        write(*,*) "time(ewld)=",ttt(:,2)
        if ( flag_pcc_0 ) write(*,*) "time(pcc) =",ttt(:,4)
+       write(*,*) "time(nloc)=",ttt(:,3)
        write(*,*) "time(othr)=",ttt(:,5)
     end if
 
+    if ( allocated(forcea) ) deallocate( forcea )
     deallocate( forcet )
     deallocate( force  )
 

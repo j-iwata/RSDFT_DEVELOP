@@ -697,6 +697,7 @@ CONTAINS
           !   rmax=max(rmax,r)
           !end if
           !if ( present(qewldr) ) qsum0=qsum0+t
+          if ( t/=0.0d0 .and. present(icheck) ) icheck(i)=icheck(i)+1
        end do
 !$OMP end parallel do
        if ( i1 /= i2 ) sum0=sum0*2.d0
