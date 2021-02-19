@@ -230,7 +230,11 @@ CONTAINS
           if ( disp_switch_loc ) write(*,*) "Etot(har)=",Etot
        end if
        if ( disp_switch_loc ) write(*,'(1x,"# Force (total)")')
-       call calc_force( Natom, Force )
+       if ( forcelog > 0 ) then
+         call calc_force( Natom, Force, unit=unit198 )
+       else       
+         call calc_force( Natom, Force )
+       end if
        ! MIZUHO-IR for cellopt
        if( .not. iswitch_opt >= 1 ) then
           Force(:,1:Natom) = 0.0d0
@@ -239,7 +243,6 @@ CONTAINS
        if( iswitch_latopt >= 1 ) then
           call calc_total_energy( .false., Etot )
           call calc_stress( stress )
-
           Force(:,Natom+1) = Va/M_2PI*matmul( stress(:,:), bb(:,1) )
           Force(:,Natom+2) = Va/M_2PI*matmul( stress(:,:), bb(:,2) )
           Force(:,Natom+3) = Va/M_2PI*matmul( stress(:,:), bb(:,3) )
