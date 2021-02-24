@@ -35,6 +35,7 @@ module rsdft_mpi_module
 
   INTERFACE rsdft_allgather
      MODULE PROCEDURE l_rsdft_allgather12, &
+                      i_rsdft_allgather01, &
                       d_rsdft_allgather12, &
                       d_rsdft_allgather23, &
                       d_rsdft_allgather34, &
@@ -601,6 +602,20 @@ CONTAINS
 #endif
 #endif
   END SUBROUTINE l_rsdft_allgather12
+
+  subroutine i_rsdft_allgather01( f, g, comm )
+    implicit none
+    integer,intent(inout) :: f, g(0:)
+    integer,intent(in) :: comm
+    integer :: i
+#ifdef _NO_MPI_
+    g(0) = f
+    return
+#else
+    include 'mpif.h'
+    call MPI_Allgather( f,1,MPI_INTEGER, g,1,MPI_INTEGER, comm, i )
+#endif
+  end subroutine i_rsdft_allgather01
 
   SUBROUTINE d_rsdft_allgather12( f, g, comm )
     implicit none
