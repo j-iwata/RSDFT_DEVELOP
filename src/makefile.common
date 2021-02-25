@@ -92,6 +92,7 @@ MODS1 = \
        rsdft_fft_module.o\
        fft_module.o\
        ffte_sub_module.o\
+       pzfft3dv_test_module.o\
        var_para_ps_nloc_g.o\
        sqerr_g_module.o\
        sqerr_module.o\
@@ -165,6 +166,8 @@ MODS1 = \
        random_initrho_module.o\
        ps_initrho_module.o\
        ps_local_variables.o\
+       ps_local_1dffte_module.o\
+       ps_local_ffte_module.o\
        ps_local_fftw_module.o\
        ps_local_module.o\
        io_ctrl_parameters.o\

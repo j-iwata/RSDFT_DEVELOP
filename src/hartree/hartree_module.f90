@@ -2,6 +2,7 @@ MODULE hartree_module
 
   use hartree_variables
   use hartree_sol_module
+  use hartree_sol_1dffte_module
   use hartree_sol_ffte_module
   use hartree_mol_module
  !use esm_hartree_module
@@ -20,9 +21,9 @@ MODULE hartree_module
 CONTAINS
 
 
-  SUBROUTINE init_hartree( Igrid, Nspin_in, Md_in, SYStype_in )
+  SUBROUTINE init_hartree( Igrid, Ngrid, Nspin_in, Md_in, SYStype_in )
     implicit none
-    integer,intent(IN) :: Igrid(2,0:3), Nspin_in, Md_in, SYStype_in
+    integer,intent(IN) :: Igrid(2,0:3), Ngrid(0:3), Nspin_in, Md_in, SYStype_in
 
     call write_border( 0, " init_hartree(start)" )
 
@@ -41,6 +42,8 @@ CONTAINS
     !case(2)
     !   call init_esm_hartree(Md)
     end select
+
+    call init_hartree_sol_1dffte( Ngrid(1:3), Igrid(:,1:3) )
 
     call write_border( 0, " init_hartree(end)" )
 

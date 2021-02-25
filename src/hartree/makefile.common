@@ -1,4 +1,5 @@
 OBJS = hartree_variables.o\
+       hartree_sol_1dffte_module.o\
        hartree_sol_ffte_module.o\
        hartree_sol_fftw_module.o\
        hartree_sol_module.o\

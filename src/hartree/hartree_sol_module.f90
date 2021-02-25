@@ -5,6 +5,7 @@ MODULE hartree_sol_module
   use ggrid_module, only: GG,LLG,MGL,NGgrid,construct_ggrid,destruct_ggrid
   use parallel_module, only: comm_grid, mpi_real8, mpi_sum
   use watch_module
+  use hartree_sol_1dffte_module, only: calc_hartree_sol_1dffte
   use hartree_sol_ffte_module, only: calc_hartree_sol_ffte
   use hartree_sol_fftw_module, only: calc_hartree_sol_fftw
   use fft_module
@@ -29,7 +30,8 @@ CONTAINS
     logical :: disp_sw
 
 #ifdef _FFTE_
-    call calc_hartree_sol_ffte(n1,n2,n3,rho)
+    !call calc_hartree_sol_ffte(n1,n2,n3,rho)
+    call calc_hartree_sol_1dffte( rho )
     return
 #elif _FFTW_
     call calc_hartree_sol_fftw(n1,n2,n3,rho)

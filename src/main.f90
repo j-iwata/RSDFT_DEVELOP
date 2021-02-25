@@ -55,6 +55,7 @@ PROGRAM Real_Space_DFT
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword, IOTools_findKeyword
   use lattice_module
   use ffte_sub_module, only: init_ffte_sub
+  use pzfft3dv_test_module, only: init_pzfft3dv_test
   use fftw_module
   use vdw_grimme_module
   use efield_module
@@ -265,8 +266,8 @@ PROGRAM Real_Space_DFT
 
   if ( SYStype == 0 ) then
 
-     itmp(:)=(/Igrid(1,1),Igrid(1,2),Igrid(1,3)/)
-     call init_ffte_sub(itmp,Ngrid(1:3),node_partition(1:3),comm_grid)
+     call init_ffte_sub(Igrid(:,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+     call init_pzfft3dv_test( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
 
      call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
 
@@ -401,7 +402,7 @@ PROGRAM Real_Space_DFT
 
 ! --- Initial Potential ---
 
-  call init_hartree( Igrid, Nspin, Md, SYStype )
+  call init_hartree( Igrid, Ngrid, Nspin, Md, SYStype )
   call calc_hartree( ML_0, ML_1, MSP, rho )
 
   call calc_xc
