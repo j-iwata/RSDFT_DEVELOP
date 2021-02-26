@@ -57,11 +57,11 @@ CONTAINS
        do i=1,3
           rho_tmp=rho_ini
           call derivative_ps_initrho_r( rho_tmp, iatm, d1(:,i) )
-          call calc_hartree( Igrid(1,0),Igrid(2,0),Nsp, rho_tmp, vht1 )
+          call calc_hartree( rho_tmp, vht1 )
           call calc_xc( rho_tmp, vxc1, Edummy )
           rho_tmp=rho_ini
           call derivative_ps_initrho_r( rho_tmp, iatm, d2(:,i) )
-          call calc_hartree( Igrid(1,0),Igrid(2,0),Nsp, rho_tmp, vht2 )
+          call calc_hartree( rho_tmp, vht2 )
           call calc_xc( rho_tmp, vxc2, Edummy )
           vht1(:) = ( vht1(:) - vht2(:) )/( 2.0d0*Hgrid(i) )
           vxc1(:,1) = ( vxc1(:,1) - vxc2(:,1) )/( 2.0d0*Hgrid(i) )

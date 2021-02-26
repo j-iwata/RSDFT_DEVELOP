@@ -267,7 +267,8 @@ PROGRAM Real_Space_DFT
   if ( SYStype == 0 ) then
 
      call init_ffte_sub(Igrid(:,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
-     call init_pzfft3dv_test( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
+
+     !call init_pzfft3dv_test( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
 
      call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
 
@@ -402,8 +403,8 @@ PROGRAM Real_Space_DFT
 
 ! --- Initial Potential ---
 
-  call init_hartree( Igrid, Ngrid, Nspin, Md, SYStype )
-  call calc_hartree( ML_0, ML_1, MSP, rho )
+  call init_hartree( Igrid, Ngrid, Md, SYStype )
+  call calc_hartree( rho )
 
   call calc_xc
 
@@ -470,14 +471,14 @@ PROGRAM Real_Space_DFT
   if ( flag_read_ncol ) then
 
      call calc_xc_noncollinear( unk, occ(:,:,1), rho, Vxc )
-     call calc_hartree( ML_0,ML_1,MSP,rho )
+     call calc_hartree( rho )
 
   else
 
-     call calc_hartree(ML_0,ML_1,MSP,rho)
+     call calc_hartree( rho )
      call calc_xc
      do s=MSP_0,MSP_1
-        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
      end do
 
   end if

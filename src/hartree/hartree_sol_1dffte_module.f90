@@ -26,6 +26,73 @@ module hartree_sol_1dffte_module
 
 contains
 
+  subroutine init_hartree_sol_1dffte( Ngrid, Igrid )
+    implicit none
+    integer,intent(in) :: Ngrid(3)
+    integer,intent(in) :: Igrid(2,3)
+    integer :: n,i,i1,i2,i3,NLG
+    real(8) :: g2,pi4
+
+    call write_border( 0, ' init_hartree_sol_1dffte(start)' )
+
+    a1b  = Igrid(1,1)
+    b1b  = Igrid(2,1)
+    a2b  = Igrid(1,2)
+    b2b  = Igrid(2,2)
+    a3b  = Igrid(1,3)
+    b3b  = Igrid(2,3)
+    ab1  = (b1b-a1b+1)
+    ab12 = (b1b-a1b+1)*(b2b-a2b+1)
+
+    call construct_Ggrid(0) !--> LLG
+
+    pi4 = 4.0d0*acos(-1.0d0)
+    NLG = size( LLG,2 )
+
+    n=0
+    do i=1,NLG
+      if ( all(LLG(1:3,i)==0) ) cycle
+      i1=mod( Ngrid(1)+LLG(1,i), Ngrid(1) )
+      i2=mod( Ngrid(2)+LLG(2,i), Ngrid(2) )
+      i3=mod( Ngrid(3)+LLG(3,i), Ngrid(3) )
+      if ( a1b <= i1 .and. i1 <= b1b .and. &
+           a2b <= i2 .and. i2 <= b2b .and. &
+           a3b <= i3 .and. i3 <= b3b ) n=n+1
+    end do
+    NGHT=n
+
+    allocate( LGHT(3,NGHT) ); LGHT=0
+    allocate( IGHT(3,NGHT) ); IGHT=0
+    allocate( GGHT(NGHT) ); GGHT=0.0d0
+
+    n=0
+    do i=1,NLG
+      if ( all(LLG(1:3,i)==0) ) cycle
+      i1=mod( Ngrid(1)+LLG(1,i), Ngrid(1) )
+      i2=mod( Ngrid(2)+LLG(2,i), Ngrid(2) )
+      i3=mod( Ngrid(3)+LLG(3,i), Ngrid(3) )
+      if ( a1b <= i1 .and. i1 <= b1b .and. &
+           a2b <= i2 .and. i2 <= b2b .and. &
+           a3b <= i3 .and. i3 <= b3b ) then
+        n=n+1
+        LGHT(1,n)=i1
+        LGHT(2,n)=i2
+        LGHT(3,n)=i3
+        g2=( bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i) )**2 &
+          +( bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i) )**2 &
+          +( bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i) )**2
+        GGHT(n)=pi4/g2
+      end if
+    end do
+
+    call destruct_Ggrid
+
+    flag_init_done=.true.
+
+    call write_border( 0, ' init_hartree_sol_1dffte(start)' )
+
+  end subroutine init_hartree_sol_1dffte
+
   subroutine calc_hartree_sol_1dffte( rho )
     implicit none
     real(8),intent(in) :: rho(:,:)
@@ -129,73 +196,5 @@ contains
     call write_border( 1, " calc_hartree_sol_1dffte(end)" )
 
   end subroutine calc_hartree_sol_1dffte
-
-
-  subroutine init_hartree_sol_1dffte( Ngrid, Igrid )
-    implicit none
-    integer,intent(in) :: Ngrid(3)
-    integer,intent(in) :: Igrid(2,3)
-    integer :: n,i,i1,i2,i3,NLG
-    real(8) :: g2,pi4
-
-    call write_border( 0, ' init_hartree_sol_1dffte(start)' )
-
-    a1b  = Igrid(1,1)
-    b1b  = Igrid(2,1)
-    a2b  = Igrid(1,2)
-    b2b  = Igrid(2,2)
-    a3b  = Igrid(1,3)
-    b3b  = Igrid(2,3)
-    ab1  = (b1b-a1b+1)
-    ab12 = (b1b-a1b+1)*(b2b-a2b+1)
-
-    call construct_Ggrid(0) !--> LLG
-
-    pi4 = 4.0d0*acos(-1.0d0)
-    NLG = size( LLG,2 )
-
-    n=0
-    do i=1,NLG
-      if ( all(LLG(1:3,i)==0) ) cycle
-      i1=mod( Ngrid(1)+LLG(1,i), Ngrid(1) )
-      i2=mod( Ngrid(2)+LLG(2,i), Ngrid(2) )
-      i3=mod( Ngrid(3)+LLG(3,i), Ngrid(3) )
-      if ( a1b <= i1 .and. i1 <= b1b .and. &
-           a2b <= i2 .and. i2 <= b2b .and. &
-           a3b <= i3 .and. i3 <= b3b ) n=n+1
-    end do
-    NGHT=n
-
-    allocate( LGHT(3,NGHT) ); LGHT=0
-    allocate( IGHT(3,NGHT) ); IGHT=0
-    allocate( GGHT(NGHT) ); GGHT=0.0d0
-
-    n=0
-    do i=1,NLG
-      if ( all(LLG(1:3,i)==0) ) cycle
-      i1=mod( Ngrid(1)+LLG(1,i), Ngrid(1) )
-      i2=mod( Ngrid(2)+LLG(2,i), Ngrid(2) )
-      i3=mod( Ngrid(3)+LLG(3,i), Ngrid(3) )
-      if ( a1b <= i1 .and. i1 <= b1b .and. &
-           a2b <= i2 .and. i2 <= b2b .and. &
-           a3b <= i3 .and. i3 <= b3b ) then
-        n=n+1
-        LGHT(1,n)=i1
-        LGHT(2,n)=i2
-        LGHT(3,n)=i3
-        g2=( bb(1,1)*LLG(1,i)+bb(1,2)*LLG(2,i)+bb(1,3)*LLG(3,i) )**2 &
-          +( bb(2,1)*LLG(1,i)+bb(2,2)*LLG(2,i)+bb(2,3)*LLG(3,i) )**2 &
-          +( bb(3,1)*LLG(1,i)+bb(3,2)*LLG(2,i)+bb(3,3)*LLG(3,i) )**2
-        GGHT(n)=pi4/g2
-      end if
-    end do
-
-    call destruct_Ggrid
-
-    flag_init_done=.true.
-
-    call write_border( 0, ' init_hartree_sol_1dffte(start)' )
-
-  end subroutine init_hartree_sol_1dffte
 
 end module hartree_sol_1dffte_module

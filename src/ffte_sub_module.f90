@@ -17,12 +17,13 @@ contains
   subroutine init_ffte_sub(ig,ng,np,comm)
     implicit none
     integer,intent(in) :: ig(2,3),ng(3),np(3),comm
-#ifdef _FFTE_
     integer :: ix,iy,iz,icolor,ierr,nprocs,i,j,n
     integer :: myrnk,irnk,icolor_x,icolor_y,icolor_z
     complex(8) :: z1(1),z2(1)
     complex(8) :: z0=(0.0d0,0.0d0)
     include 'mpif.h'
+
+    call write_border( 0, ' init_ffte_sub(start)' )
 
 !------------------------------- parameter check
 
@@ -99,7 +100,11 @@ contains
     allocate( zwork1_ffte(0:ng(1)-1,ig(1,2):ig(2,2),ig(1,3):ig(2,3)) ) ; zwork1_ffte=z0
     allocate( zwork2_ffte(0:ng(1)-1,ig(1,2):ig(2,2),ig(1,3):ig(2,3)) ) ; zwork2_ffte=z0
 
+    call write_border( 0, ' init_ffte_sub(end)' )
+
     return
+
+
 
     ix = ig(1,1)/( ng(1)/np(1) )
     iy = ig(1,2)/( ng(2)/np(2) )
@@ -120,20 +125,17 @@ contains
     allocate( zwork1_ffte(0:ng(1)-1,ig(1,2):iy,ig(1,3):iz) ) ; zwork1_ffte=z0
     allocate( zwork2_ffte(0:ng(1)-1,ig(1,2):iy,ig(1,3):iz) ) ; zwork2_ffte=z0
 
-#endif
   end subroutine init_ffte_sub
 
   subroutine free_ffte_sub
-#ifdef _FFTE_
     implicit none
     integer :: ierr
     include 'mpif.h'
-    call mpi_comm_free(comm_fftz,ierr)
-    call mpi_comm_free(comm_ffty,ierr)
-    call mpi_comm_free(comm_fftx,ierr)
+    call MPI_Comm_free(comm_fftz,ierr)
+    call MPI_Comm_free(comm_ffty,ierr)
+    call MPI_Comm_free(comm_fftx,ierr)
     deallocate( zwork2_ffte )
     deallocate( zwork1_ffte )
-#endif
   end subroutine free_ffte_sub
 
 end module ffte_sub_module

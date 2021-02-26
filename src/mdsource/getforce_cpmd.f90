@@ -92,7 +92,7 @@ SUBROUTINE getforce_cpmd( ltime )
 #ifdef _FFTE_
   call construct_vion_vh_floc_2( rho, Vion, Vh, Force, E_hartree )
 #else
-  call calc_hartree(ML_0,ML_1,MSP_1-MSP_0+1,rho(ML_0,MSP_0))
+  call calc_hartree( rho )
 #endif
 
   if ( ltime ) call watch(ctime_force(5),etime_force(5))

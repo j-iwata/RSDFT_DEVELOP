@@ -617,7 +617,7 @@ contains
               rho=0.0d0
             end where
             call normalize_density( rho )
-            call calc_hartree(lbound(rho,1),ubound(rho,1),size(rho,2),rho)
+            call calc_hartree( rho )
             call calc_xc
           end if
         end if

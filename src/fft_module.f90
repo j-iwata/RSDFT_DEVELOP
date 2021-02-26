@@ -34,9 +34,10 @@ MODULE fft_module
 CONTAINS
 
 
-  SUBROUTINE init_fft( keep_flag )
+  subroutine init_fft( keep_flag, allocarray )
     implicit none
-    logical,optional,intent(IN) :: keep_flag
+    logical,optional,intent(in) :: keep_flag
+    complex(8),allocatable,optional,intent(inout) :: allocarray(:,:,:)
     call get_range_rgrid( rgrid )
     if ( .not.keep_LLL ) call get_map_3d_to_1d_grid( rgrid, LLL )
     ML  = rgrid%g1%size_global
@@ -44,14 +45,19 @@ CONTAINS
     ML2 = rgrid%g3%y%size_global
     ML3 = rgrid%g3%z%size_global
     if ( present(keep_flag) ) then
-       keep_LLL = keep_flag
-       return
+      keep_LLL = keep_flag
+      return
+    end if
+    if ( present(allocarray) ) then
+      if ( allocated(allocarray) ) deallocate(allocarray)
+      allocate( allocarray(0:ML1-1,0:ML2-1,0:ML3-1) )
+      allocarray=zero
     end if
 !    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
 !    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
 !    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
 !               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
-  END SUBROUTINE init_fft
+  end subroutine init_fft
 
 
   SUBROUTINE finalize_fft

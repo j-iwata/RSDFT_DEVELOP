@@ -169,6 +169,7 @@ MODS1 = \
        ps_local_1dffte_module.o\
        ps_local_ffte_module.o\
        ps_local_fftw_module.o\
+       ps_local_fft0_module.o\
        ps_local_module.o\
        io_ctrl_parameters.o\
        io_simple_module.o\
