@@ -67,7 +67,7 @@ contains
 
     call watchb( ttmp, barrier='on' ); ttt=0.0d0
 
-    call calc_force_local_sol( Natom, force )
+    call calc_force_local_sol( force )
 
     call watchb( ttmp, ttt(:,1), barrier='on' )
 
