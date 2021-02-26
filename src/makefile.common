@@ -175,6 +175,7 @@ MODS1 = \
        io_simple_module.o\
        ps_local_mol_gth_module.o\
        ps_local_mol_module.o\
+       force_local_1dffte_module.o\
        force_local_fftw_module.o\
        force_local_sol_module.o\
        force_local_mol_module.o\

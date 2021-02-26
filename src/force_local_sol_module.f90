@@ -12,6 +12,7 @@ module force_local_sol_module
   use watch_module
   use fft_module
   use rsdft_mpi_module
+  use force_local_1dffte_module
   use force_local_fftw_module
 
   implicit none
@@ -37,7 +38,7 @@ contains
     case( 'FFTE', 'FFTE1' )
       call calc_force_local_ffte( force )
     case( 'FFTE2' )
-      call calc_force_local_ffte( force )
+      call calc_force_local_1dffte( force )
     case( 'FFTW', 'FFTW1' )
       call calc_force_local_fftw( force )
     case default
