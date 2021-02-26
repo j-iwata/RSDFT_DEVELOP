@@ -2,8 +2,6 @@ module hartree_module
 
   use hartree_variables
   use hartree_sol_module
-  use hartree_sol_1dffte_module
-  use hartree_sol_ffte_module
   use hartree_mol_module
   use hartree_ene_module
 
@@ -14,40 +12,27 @@ module hartree_module
   public :: calc_hartree
 
   integer :: SYStype=0
-  integer :: Md
-  integer :: n1, n2
-
-  character(5),parameter :: iswitch_fft = 'FFTE1'
+  integer :: n1,n2
 
 contains
 
-  subroutine init_hartree( Igrid, Ngrid, Md_in, SYStype_in )
+  subroutine init_hartree( Ngrid, Igrid, Md, SYStype_in )
     implicit none
-    integer,intent(in) :: Igrid(2,0:3), Ngrid(0:3), Md_in, SYStype_in
+    integer,intent(in) :: Ngrid(0:3), Igrid(1:2,0:3), Md, SYStype_in
 
     call write_border( 0, " init_hartree(start)" )
 
     n1      = Igrid(1,0)
     n2      = Igrid(2,0)
-    Md      = Md_in
     SYStype = SYStype_in
 
     allocate( Vh(n1:n2) ); Vh=0.0d0
 
     select case( SYStype )
     case default
-
-      select case( iswitch_fft )
-      case( 'FFTE1' )
-        call init_hartree_sol_ffte( Ngrid(1:3), Igrid(:,1:3) )
-      case( 'FFTE2' )
-        call init_hartree_sol_1dffte( Ngrid(1:3), Igrid(:,1:3) )
-      end select
-
+      call init_hartree_sol( Ngrid(1:3), Igrid(1:2,1:3) )
     case(1)
-
       call init_hartree_mol(Md)
-
     end select
 
     call write_border( 0, " init_hartree(end)" )
@@ -59,7 +44,7 @@ contains
     implicit none
     real(8),intent(in) :: rho(:,:)
     real(8),optional,intent(inout) :: vout(:)
-    real(8),allocatable :: trho(:),tvh(:)
+    real(8),allocatable :: trho(:),Vh_backup(:)
     integer :: i,s,ng,ns
 
     call write_border( 1, " calc_hartree(start)" )
@@ -68,16 +53,16 @@ contains
     ns = size( rho, 2 )
 
     if ( present(vout) ) then
-      allocate( tvh(ng) )
-      tvh=Vh
+      allocate( Vh_backup(ng) )
+      Vh_backup=Vh
     end if
 
     select case(SYStype)
     case default
 
-      call calc_hartree_sol( rho, iswitch_fft )
+      call calc_hartree_sol( rho )
 
-    case(1)
+    case( 1 )
 
       allocate( trho(ng) )
 
@@ -103,8 +88,8 @@ contains
 
     if ( present(vout) ) then
       vout=Vh
-      Vh=tvh
-      deallocate( tvh )
+      Vh=Vh_backup
+      deallocate( Vh_backup )
     end if
 
     call write_border( 1, " calc_hartree(end)" )

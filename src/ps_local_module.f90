@@ -1,5 +1,6 @@
 module ps_local_module
 
+  use fft_module, only: iswitch_fft
   use rgrid_module, only: Igrid, Ngrid, dV
   use ggrid_module, only: NMGL,GG
   use atom_module, only: ki_atom
@@ -194,7 +195,6 @@ contains
 
   subroutine construct_ps_local
     implicit none
-    character(5),parameter :: iswitch_fft='FFTE1'
 
     call write_border( 0, " construct_ps_local(start)" )
 
@@ -204,7 +204,7 @@ contains
     end if
 
     select case( iswitch_fft )
-    case( 'FFTE1' )
+    case( 'FFTE', 'FFTE1' )
 
       call init_ps_local_ffte( Ngrid, Igrid )
       call construct_ps_local_ffte( vqlg, SGK, Vion )
@@ -214,7 +214,7 @@ contains
       call init_ps_local_1dffte( Ngrid, Igrid )
       call construct_ps_local_1dffte( vqlg, SGK, Vion )
 
-    case( 'FFTW1' )
+    case( 'FFTW', 'FFTW1' )
 
       call construct_ps_local_fftw( vqlg, SGK, Vion )
 

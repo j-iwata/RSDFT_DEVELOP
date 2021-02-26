@@ -1,21 +1,25 @@
-MODULE fft_module
+module fft_module
 
   use grid_module
   use rsdft_fft_module
   use fftw_module
   use bb_module
   use hsort_module
+  use io_tools_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_fft
-  PUBLIC :: finalize_fft
-  PUBLIC :: d1_to_z3_fft, z3_to_d1_fft
-  PUBLIC :: z1_to_z3_fft, z3_to_z1_fft
-  PUBLIC :: forward_fft, backward_fft
-  PUBLIC :: grid_util_fft
-  PUBLIC :: forward_2d_fft
+  private
+  public :: init_0_fft
+  public :: init_fft
+  public :: finalize_fft
+  public :: d1_to_z3_fft, z3_to_d1_fft
+  public :: z1_to_z3_fft, z3_to_z1_fft
+  public :: forward_fft, backward_fft
+  public :: grid_util_fft
+  public :: forward_2d_fft
+
+  character(5),public :: iswitch_fft = 'FFTE2'
 
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3
@@ -31,8 +35,12 @@ MODULE fft_module
   character(9),parameter :: routine_def="fft_rsdft"
 #endif
 
-CONTAINS
+contains
 
+  subroutine init_0_fft
+    implicit none
+    call IOTools_readStringKeyword( 'SWFFT', iswitch_fft )
+  end subroutine init_0_fft
 
   subroutine init_fft( keep_flag, allocarray )
     implicit none
@@ -246,4 +254,4 @@ CONTAINS
   END SUBROUTINE forward_2d_fft
 
 
-END MODULE fft_module
+end module fft_module

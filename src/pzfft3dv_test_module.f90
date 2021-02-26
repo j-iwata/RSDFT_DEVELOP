@@ -1,6 +1,6 @@
 module pzfft3dv_test_module
 
-  use ffte_sub_module, only: comm_fftx, comm_ffty, comm_fftz
+  use ffte_sub_module, only: comm_fftx,comm_ffty,comm_fftz,zwork1_ffte,zwork2_ffte
   use rsdft_mpi_module, only: rsdft_allgather, rsdft_allgatherv
 
   implicit none
@@ -9,8 +9,9 @@ module pzfft3dv_test_module
   public :: init_pzfft3dv_test
   public :: pzfft3dv_test
 
-  complex(8),public,allocatable :: zwork1_ffte(:,:,:)
-  complex(8),public,allocatable :: zwork2_ffte(:,:,:)
+  public :: zwork1_ffte, zwork2_ffte
+  !complex(8),public,allocatable :: zwork1_ffte(:,:,:)
+  !complex(8),public,allocatable :: zwork2_ffte(:,:,:)
 
   integer,allocatable :: ircnx(:), ircny(:), ircnz(:)
   integer,allocatable :: idisx(:), idisy(:), idisz(:)
@@ -100,6 +101,8 @@ contains
     allocate( b(i)      ); b=z0
     allocate( work(2*i) ); work=z0
 
+    if ( allocated(zwork2_ffte) ) deallocate(zwork2_ffte)
+    if ( allocated(zwork1_ffte) ) deallocate(zwork1_ffte)
     allocate( zwork1_ffte(nx_0-1:nx_1-1,ny_0-1:ny_1-1,nz_0-1:nz_1-1) ); zwork1_ffte=z0
     allocate( zwork2_ffte(nx_0-1:nx_1-1,ny_0-1:ny_1-1,nz_0-1:nz_1-1) ); zwork2_ffte=z0
 

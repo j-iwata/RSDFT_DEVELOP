@@ -54,9 +54,12 @@ PROGRAM Real_Space_DFT
   use ps_init_module, only: ps_init
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword, IOTools_findKeyword
   use lattice_module
+
+  use fft_module, only: init_0_fft, iswitch_fft
   use ffte_sub_module, only: init_ffte_sub
   use pzfft3dv_test_module, only: init_pzfft3dv_test
   use fftw_module
+
   use vdw_grimme_module
   use efield_module
   use stress_module, only: test_stress ! MIZUHO-IR for cellopt
@@ -266,11 +269,17 @@ PROGRAM Real_Space_DFT
 
   if ( SYStype == 0 ) then
 
-     call init_ffte_sub(Igrid(:,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+    call init_0_fft
 
-     !call init_pzfft3dv_test( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
-
-     call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
+    select case( iswitch_fft )
+    case( 'FFTE', 'FFTE1' )
+      call init_ffte_sub(Igrid(:,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+    case( 'FFTE2' )
+      call init_ffte_sub(Igrid(:,1:3),Ngrid(1:3),node_partition(1:3),comm_grid)
+      call init_pzfft3dv_test( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
+    case( 'FFTW', 'FFTW1' )
+      call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
+    end select
 
   end if
 
@@ -403,7 +412,7 @@ PROGRAM Real_Space_DFT
 
 ! --- Initial Potential ---
 
-  call init_hartree( Igrid, Ngrid, Md, SYStype )
+  call init_hartree( Ngrid, Igrid, Md, SYStype )
   call calc_hartree( rho )
 
   call calc_xc
