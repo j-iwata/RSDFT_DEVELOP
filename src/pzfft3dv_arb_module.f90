@@ -24,6 +24,7 @@ module pzfft3dv_arb_module
   logical :: flag_z235 = .false.
 
   complex(8) :: wx, wy, wz
+  complex(8),allocatable :: wxa(:),wxb(:),wya(:),wyb(:),wza(:),wzb(:)
 
   complex(8),allocatable :: a(:)
   complex(8),allocatable :: b(:)
@@ -37,7 +38,7 @@ contains
   subroutine init_pzfft3dv_arb( nx_in, ny_in, nz_in )
     implicit none
     integer,intent(in) :: nx_in, ny_in, nz_in
-    integer :: npx,npy,npz,ierr,i,myrnkx,myrnky,myrnkz
+    integer :: npx,npy,npz,ierr,i,j,myrnkx,myrnky,myrnkz
     logical :: disp
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     real(8) :: pi
@@ -104,11 +105,6 @@ contains
       flag_z235 = .true.
     end if
 
-    pi = acos(-1.0d0)
-    wx = dcmplx( cos(pi/nnx), -sin(pi/nnx) )
-    wy = dcmplx( cos(pi/nny), -sin(pi/nny) )
-    wz = dcmplx( cos(pi/nnz), -sin(pi/nnz) )
-
     nx_0 = idisx(myrnkx) + 1
     nx_1 = nx_0 + ircnx(myrnkx) - 1
     ny_0 = idisy(myrnky) + 1
@@ -129,8 +125,47 @@ contains
     i = max( nnx, nny, nnz, mmx, mmy, mmz )
     allocate( a(i)      ); a=z0
     allocate( b(i)      ); b=z0
-    allocate( c(i)      ); c=z0
+    !allocate( c(i)      ); c=z0
     allocate( work(2*i) ); work=z0
+
+    pi = acos(-1.0d0)
+    wx = dcmplx( cos(pi/nnx), -sin(pi/nnx) )
+    wy = dcmplx( cos(pi/nny), -sin(pi/nny) )
+    wz = dcmplx( cos(pi/nnz), -sin(pi/nnz) )
+
+    if ( .not.flag_x235 ) then
+      allocate( wxa(0:mmx-1) ); wxa=z0
+      allocate( wxb(0:nnx-1) ); wxb=z0
+      do i = -nnx+1, nnx-1
+        j = mod( i+mmx, mmx )
+        wxa(j) = wx**(-i*i)
+      end do
+      do i = 0, nnx-1
+        wxb(i) = wx**(i*i)
+      end do
+    end if
+    if ( .not.flag_y235 ) then
+      allocate( wya(0:mmy-1) ); wya=z0
+      allocate( wyb(0:nny-1) ); wyb=z0
+      do i = -nny+1, nny-1
+        j = mod( i+mmy, mmy )
+        wya(j) = wy**(-i*i)
+      end do
+      do i = 0, nny-1
+        wyb(i) = wy**(i*i)
+      end do
+    end if
+    if ( .not.flag_z235 ) then
+      allocate( wza(0:mmz-1) ); wza=z0
+      allocate( wzb(0:nnz-1) ); wzb=z0
+      do i = -nnz+1, nnz-1
+        j = mod( i+mmz, mmz )
+        wza(j) = wz**(-i*i)
+      end do
+      do i = 0, nnz-1
+        wzb(i) = wz**(i*i)
+      end do
+    end if
 
     if ( allocated(zwork2_ffte) ) deallocate(zwork2_ffte)
     if ( allocated(zwork1_ffte) ) deallocate(zwork1_ffte)
@@ -141,6 +176,27 @@ contains
 
     call write_border( 0, 'init_pzfft3dv_arb(end)' )
 
+    contains
+
+      subroutine get_n235( n, n235 )
+        implicit none
+        integer,intent(in) :: n
+        integer,intent(out) :: n235
+        integer :: n2,n3,n5,i2,i3,i5,m
+        n2 = nint( log(dble(n))/log(2.0d0) ) + 1
+        n3 = nint( log(dble(n))/log(3.0d0) ) + 1
+        n5 = nint( log(dble(n))/log(5.0d0) ) + 1
+        n235=10000000
+        do i5 = 0, n5
+        do i3 = 0, n3
+        do i2 = 0, n2
+          m = 2**i2 * 3**i3 * 5**i5
+          if ( m >= n ) n235=min(n235,m)
+        end do
+        end do
+        end do
+      end subroutine get_n235
+
   end subroutine init_pzfft3dv_arb
 
   subroutine pzfft3dv_arb( f, iopt )
@@ -148,9 +204,9 @@ contains
     complex(8),intent(inout) :: f(:,:,:)
     integer,intent(in) :: iopt
     integer :: ix,iy,iz
-    complex(8) :: ww
+    !complex(8) :: ww
 
-    call write_border( 0, 'pzfft3dv_arb(start)' )
+    !call write_border( 0, 'pzfft3dv_arb(start)' )
     if ( .not.flag_init_done ) call stop_program('Call "init_pzfft3dv_arb" first.')
 
 ! ---
@@ -169,17 +225,26 @@ contains
 
     else
 
-      ww=wx ; if ( iopt == 1 ) ww=conjg(ww)
+      !ww=wx ; if ( iopt == 1 ) ww=conjg(ww)
+      if ( iopt == 1 ) then
+        wxa = conjg(wxa)
+        wxb = conjg(wxb)
+      end if
       call ZFFT1D( a, mmx, 0, work ) 
       do iz=1,nz
       do iy=1,ny
         a(1:nx) = f(1:nx,iy,iz)
         call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
-        call ZFFT1D_arb( b(1:mmx),a(1:mmx),c(1:mmx),work(1:2*mmx),ww,mmx,nnx,nx_0-1,nx_1-1 )
+        !call ZFFT1D_arb( b(1:mmx),a(1:mmx),c(1:mmx),work(1:2*mmx),ww,mmx,nnx,nx_0-1,nx_1-1 )
+        call ZFFT1D_arb_test( b(1:mmx),a(1:mmx),work(1:2*mmx),wxa,wxb,nx_0-1,nx_1-1 )
         f(1:nx,iy,iz) = b(nx_0:nx_1)
       end do
       end do
-      if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_nnx
+      if ( iopt == 1 ) then
+        f(:,:,:) = f(:,:,:) * inv_nnx
+        wxa = conjg(wxa)
+        wxb = conjg(wxb)
+      end if
 
     end if
 
@@ -199,17 +264,26 @@ contains
 
     else
 
-      ww=wy ; if ( iopt == 1 ) ww=conjg(ww)
+      !ww=wy ; if ( iopt == 1 ) ww=conjg(ww)
+      if ( iopt == 1 ) then
+        wya = conjg(wya)
+        wyb = conjg(wyb)
+      end if
       call ZFFT1D( a, mmy, 0, work ) 
       do iz=1,nz
       do ix=1,nx
         a(1:ny) = f(ix,1:ny,iz)
         call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
-        call ZFFT1D_arb( b(1:mmy),a(1:mmy),c(1:mmy),work(1:2*mmy),ww,mmy,nny,ny_0-1,ny_1-1 )
+        !call ZFFT1D_arb( b(1:mmy),a(1:mmy),c(1:mmy),work(1:2*mmy),ww,mmy,nny,ny_0-1,ny_1-1 )
+        call ZFFT1D_arb_test( b(1:mmy),a(1:mmy),work(1:2*mmy),wya,wyb,ny_0-1,ny_1-1 )
         f(ix,1:ny,iz) = b(ny_0:ny_1)
       end do
       end do
-      if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_nny
+      if ( iopt == 1 ) then
+        f(:,:,:) = f(:,:,:) * inv_nny
+        wya = conjg(wya)
+        wyb = conjg(wyb)
+      end if
 
     end if
 
@@ -229,23 +303,32 @@ contains
 
     else
 
-      ww=wz ; if ( iopt == 1 ) ww=conjg(ww)
+      !ww=wz ; if ( iopt == 1 ) ww=conjg(ww)
+      if ( iopt == 1 ) then
+        wza = conjg(wza)
+        wzb = conjg(wzb)
+      end if
       call ZFFT1D( a, mmz, 0, work ) 
       do iy=1,ny
       do ix=1,nx
         a(1:nz) = f(ix,iy,1:nz)
         call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
-        call ZFFT1D_arb( b(1:mmz),a(1:mmz),c(1:mmz),work(1:2*mmz),ww,mmz,nnz,nz_0-1,nz_1-1 )
+        !call ZFFT1D_arb( b(1:mmz),a(1:mmz),c(1:mmz),work(1:2*mmz),ww,mmz,nnz,nz_0-1,nz_1-1 )
+        call ZFFT1D_arb_test( b(1:mmz),a(1:mmz),work(1:2*mmz),wza,wzb,nz_0-1,nz_1-1 )
         f(ix,iy,1:nz) = b(nz_0:nz_1)
       end do
       end do
-      if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_nnz
+      if ( iopt == 1 ) then
+        f(:,:,:) = f(:,:,:) * inv_nnz
+        wza = conjg(wza)
+        wzb = conjg(wzb)
+      end if
 
     end if
 
 ! ---
 
-    call write_border( 0, 'pzfft3dv_arb(end)' )
+    !call write_border( 0, 'pzfft3dv_arb(end)' )
 
   contains
 
@@ -302,23 +385,30 @@ contains
     end do
   end subroutine ZFFT1D_arb
 
-  subroutine get_n235( n, n235 )
+  subroutine ZFFT1D_arb_test( b, a, work, wwa, wwb, nn_0, nn_1 )
     implicit none
-    integer,intent(in) :: n
-    integer,intent(out) :: n235
-    integer :: n2,n3,n5,i2,i3,i5,m
-    n2 = nint( log(dble(n))/log(2.0d0) ) + 1
-    n3 = nint( log(dble(n))/log(3.0d0) ) + 1
-    n5 = nint( log(dble(n))/log(5.0d0) ) + 1
-    n235=10000000
-    do i5 = 0, n5
-    do i3 = 0, n3
-    do i2 = 0, n2
-      m = 2**i2 * 3**i3 * 5**i5
-      if ( m >= n ) n235=min(n235,m)
+    complex(8),intent(inout) :: b(0:)
+    complex(8),intent(inout) :: a(0:)
+    complex(8),intent(inout) :: work(0:)
+    complex(8),intent(in) :: wwa(0:), wwb(0:)
+    integer,intent(in) :: nn_0,nn_1
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
+    integer :: i,mm,nn
+    mm = size(wwa)
+    nn = size(wwb)
+    a(:) = wwa(:)
+    do i = 0, nn-1
+      b(i) = b(i) * wwb(i)
     end do
+    if ( size(b) > nn ) b(nn:)=z0
+    call ZFFT1D( a, mm,-1, work ) 
+    call ZFFT1D( b, mm,-1, work ) 
+    a = a*b
+    call ZFFT1D( a, mm, 1, work ) 
+    do i = nn_0, nn_1
+      b(i) = a(i) * wwb(i)
     end do
-    end do
-  end subroutine get_n235
+  end subroutine ZFFT1D_arb_test
+
 
 end module pzfft3dv_arb_module
