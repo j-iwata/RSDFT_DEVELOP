@@ -4,7 +4,7 @@ module force_local_1dffte_module
   use rgrid_variables, only: Ngrid, Igrid, dV
   use ggrid_module, only: construct_Ggrid, destruct_Ggrid, get_Ggrid, LLG, MGL
   use bb_module, only: bb
-  use pzfft3dv_test_module, only: zwork1_ffte,zwork2_ffte,pzfft3dv_test
+  use pzfft3dv_arb_module, only: zwork1_ffte,zwork2_ffte,pzfft3dv_arb
   use density_module, only: rho
   use parallel_module, only: comm_grid
   use atom_module, only: ki_atom, aa_atom
@@ -154,7 +154,7 @@ contains
 
     call watch(ctt(2),ett(2))
 
-    call pzfft3dv_test( zwork1_ffte, -1 )
+    call pzfft3dv_arb( zwork1_ffte, -1 )
 
     call watch(ctt(4),ett(4))
 

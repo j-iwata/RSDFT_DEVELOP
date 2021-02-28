@@ -57,7 +57,7 @@ PROGRAM Real_Space_DFT
 
   use fft_module, only: init_0_fft, iswitch_fft
   use ffte_sub_module, only: init_ffte, init_pzfft3dv_ffte
-  use pzfft3dv_test_module, only: init_pzfft3dv_test
+  use pzfft3dv_arb_module, only: init_pzfft3dv_arb
   use fftw_module
 
   use vdw_grimme_module
@@ -277,7 +277,7 @@ PROGRAM Real_Space_DFT
       call init_pzfft3dv_ffte( Igrid(:,1:3), Ngrid(1:3), node_partition(1:3) )
     case( 'FFTE2' )
       call init_ffte( node_partition(1:3), comm_grid )
-      call init_pzfft3dv_test( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
+      call init_pzfft3dv_arb( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
     case( 'FFTW', 'FFTW1' )
       call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
     end select

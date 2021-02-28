@@ -7,7 +7,7 @@ module hartree_sol_1dffte_module
   use parallel_module, only: comm_grid
   use watch_module
   use rsdft_mpi_module, only: rsdft_allreduce
-  use pzfft3dv_test_module, only: pzfft3dv_test, zwork1_ffte, zwork2_ffte
+  use pzfft3dv_arb_module, only: pzfft3dv_arb, zwork1_ffte, zwork2_ffte
 
   implicit none
 
@@ -137,7 +137,7 @@ contains
 
     call watch(ctt(1),ett(1))
 
-    call pzfft3dv_test( zwork1_ffte, -1 )
+    call pzfft3dv_arb( zwork1_ffte, -1 )
 
     call watch(ctt(2),ett(2))
 
@@ -151,7 +151,7 @@ contains
 
     call watch(ctt(3),ett(3))
 
-    call pzfft3dv_test( zwork2_ffte, 1 )
+    call pzfft3dv_arb( zwork2_ffte, 1 )
 
     call watch(ctt(4),ett(4))
 

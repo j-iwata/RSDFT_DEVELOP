@@ -2,7 +2,7 @@ module ps_local_1dffte_module
 
   use ggrid_module, only: construct_Ggrid,destruct_Ggrid,LLG,MGL,allgatherv_Ggrid
   use ffte_sub_module, only: npux,npuy,npuz,comm_fftx,comm_ffty,comm_fftz
-  use pzfft3dv_test_module, only: zwork1_ffte, pzfft3dv_test
+  use pzfft3dv_arb_module, only: zwork1_ffte, pzfft3dv_arb
   use watch_module
 
   implicit none
@@ -142,8 +142,7 @@ contains
 
     call watch(ctt(1),ett(1))
 
-    call pzfft3dv_test( zwork1_ffte, 1 )
-    !call pzfft3dv(zwork1_ffte,zwork2_ffte,ML1,ML2,ML3,comm_ffty,comm_fftz,npuy,npuz,1)
+    call pzfft3dv_arb( zwork1_ffte, 1 )
 
     call watch(ctt(2),ett(2))
 

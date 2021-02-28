@@ -92,7 +92,7 @@ MODS1 = \
        rsdft_fft_module.o\
        fft_module.o\
        ffte_sub_module.o\
-       pzfft3dv_test_module.o\
+       pzfft3dv_arb_module.o\
        var_para_ps_nloc_g.o\
        sqerr_g_module.o\
        sqerr_module.o\
