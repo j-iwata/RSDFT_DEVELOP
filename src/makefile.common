@@ -41,6 +41,8 @@ MODS2 = localpot_module.o\
         ps_init_sol_module.o\
         ps_init_mol_module.o\
         ps_init_module.o\
+	construct_vion_vh_floc_ffte_module.o\
+	construct_vion_vh_floc_1dffte_module.o\
 	construct_vion_vh_floc_module.o\
 
 MODS1 = \

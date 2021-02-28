@@ -135,9 +135,9 @@ OMPFLAG   =
 ########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx
-#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl,NOFLTLD \
-        -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
-        -X9 -V -Ec -Qa,d,i,p,t,x -Cpp -Ccpp
+#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl \
+#        -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
+#        -X9 -V -Ec -Nlst=a,lst=d,lst=i,lst=p,lst=t,lst=x -Cpp -Ccpp
 #LFLAGS0 = ${FFLAGS0} -Ntl_trt
 #LAPACK_L = -SSL2BLAMP -SCALAPACK
 #INCLUDE_DIR = -I../ -I/home/apps/fftw/3.3.3/include/
