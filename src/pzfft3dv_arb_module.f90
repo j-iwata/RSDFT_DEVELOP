@@ -18,7 +18,10 @@ module pzfft3dv_arb_module
   integer :: nnx, nny, nnz
   integer :: nx, ny, nz
   integer :: nx_0,nx_1,ny_0,ny_1,nz_0,nz_1
-  real(8) :: inv_ngrd
+  real(8) :: inv_nnx, inv_nny, inv_nnz
+  logical :: flag_x235 = .false.
+  logical :: flag_y235 = .false.
+  logical :: flag_z235 = .false.
 
   complex(8) :: wx, wy, wz
 
@@ -80,15 +83,26 @@ contains
     nny = sum(ircny)
     nnz = sum(ircnz)
 
-    inv_ngrd = 1.0d0/(nnx*nny*nnz)
+    inv_nnx = 1.0d0/nnx
+    inv_nny = 1.0d0/nny
+    inv_nnz = 1.0d0/nnz
 
     call get_n235( 2*nnx, mmx )
     call get_n235( 2*nny, mmy )
     call get_n235( 2*nnz, mmz )
 
-    !if ( mod(mmx,nnx) == 0 ) mmx=nnx
-    !if ( mod(mmy,nny) == 0 ) mmy=nny
-    !if ( mod(mmz,nnz) == 0 ) mmz=nnz
+    if ( mod(mmx,nnx) == 0 ) then
+      mmx=nnx
+      flag_x235 = .true.
+    end if
+    if ( mod(mmy,nny) == 0 ) then
+      mmy=nny
+      flag_y235 = .true.
+    end if
+    if ( mod(mmz,nnz) == 0 ) then
+      mmz=nnz
+      flag_z235 = .true.
+    end if
 
     pi = acos(-1.0d0)
     wx = dcmplx( cos(pi/nnx), -sin(pi/nnx) )
@@ -109,6 +123,7 @@ contains
       write(*,'("ircnz",10i4)') ircnz
       write(*,*) "nnx,nny,nnz=",nnx,nny,nnz
       write(*,*) "mmx,mmy,mmz=",mmx,mmy,mmz
+      write(*,*) "flag_x235,y235,z235=",flag_x235,flag_y235,flag_z235
     end if
 
     i = max( nnx, nny, nnz, mmx, mmy, mmz )
@@ -132,10 +147,7 @@ contains
     implicit none
     complex(8),intent(inout) :: f(:,:,:)
     integer,intent(in) :: iopt
-    integer :: ix,iy,iz,i,j
-
-    complex(8),allocatable :: x(:),y(:),z(:),w(:),x1(:),x2(:)
-    complex(8),parameter :: z0=(0.0d0,0.0d0)
+    integer :: ix,iy,iz
     complex(8) :: ww
 
     call write_border( 0, 'pzfft3dv_arb(start)' )
@@ -143,76 +155,95 @@ contains
 
 ! ---
 
-    ww=wx ; if ( iopt == 1 ) ww=conjg(ww)
-    call ZFFT1D( a, mmx, 0, work ) 
-    do iz=1,nz
-    do iy=1,ny
-      a(1:nx) = f(1:nx,iy,iz)
-      call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
-      call ZFFT1D_arb( b(1:mmx),a(1:mmx),c(1:mmx),work(1:2*mmx),ww,mmx,nnx,nx_0-1,nx_1-1 )
-      f(1:nx,iy,iz) = b(nx_0:nx_1)
-    end do
-    end do
+    if ( flag_x235 ) then
 
-    !call ZFFT1D( a, nnx, 0, work ) 
-    !do iz=1,nz
-    !do iy=1,ny
-    !  a(1:nx) = f(1:nx,iy,iz)
-    !  call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
-    !  call ZFFT1D( b, nnx, iopt, work ) 
-    !  f(1:nx,iy,iz) = b(nx_0:nx_1)
-    !end do
-    !end do
+      call ZFFT1D( a, nnx, 0, work ) 
+      do iz=1,nz
+      do iy=1,ny
+        a(1:nx) = f(1:nx,iy,iz)
+        call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
+        call ZFFT1D( b, nnx, iopt, work ) 
+        f(1:nx,iy,iz) = b(nx_0:nx_1)
+      end do
+      end do
 
-! ---
+    else
 
-    ww=wy ; if ( iopt == 1 ) ww=conjg(ww)
-    call ZFFT1D( a, mmy, 0, work ) 
-    do iz=1,nz
-    do ix=1,nx
-      a(1:ny) = f(ix,1:ny,iz)
-      call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
-      call ZFFT1D_arb( b(1:mmy),a(1:mmy),c(1:mmy),work(1:2*mmy),ww,mmy,nny,ny_0-1,ny_1-1 )
-      f(ix,1:ny,iz) = b(ny_0:ny_1)
-    end do
-    end do
+      ww=wx ; if ( iopt == 1 ) ww=conjg(ww)
+      call ZFFT1D( a, mmx, 0, work ) 
+      do iz=1,nz
+      do iy=1,ny
+        a(1:nx) = f(1:nx,iy,iz)
+        call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
+        call ZFFT1D_arb( b(1:mmx),a(1:mmx),c(1:mmx),work(1:2*mmx),ww,mmx,nnx,nx_0-1,nx_1-1 )
+        f(1:nx,iy,iz) = b(nx_0:nx_1)
+      end do
+      end do
+      if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_nnx
 
-    !call ZFFT1D( a, nny, 0, work ) 
-    !do iz=1,nz
-    !do ix=1,nx
-    !  a(1:ny) = f(ix,1:ny,iz)
-    !  call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
-    !  call ZFFT1D( b, nny, iopt, work )
-    !  f(ix,1:ny,iz) = b(ny_0:ny_1)
-    !end do
-    !end do
+    end if
 
 ! ---
 
-    ww=wz ; if ( iopt == 1 ) ww=conjg(ww)
-    call ZFFT1D( a, mmz, 0, work ) 
-    do iy=1,ny
-    do ix=1,nx
-      a(1:nz) = f(ix,iy,1:nz)
-      call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
-      call ZFFT1D_arb( b(1:mmz),a(1:mmz),c(1:mmz),work(1:2*mmz),ww,mmz,nnz,nz_0-1,nz_1-1 )
-      f(ix,iy,1:nz) = b(nz_0:nz_1)
-    end do
-    end do
+    if ( flag_y235 ) then
 
-    !call ZFFT1D( a, nnz, 0, work ) 
-    !do iy=1,ny
-    !do ix=1,nx
-    !  a(1:nz) = f(ix,iy,1:nz)
-    !  call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
-    !  call ZFFT1D( b, nnz, iopt, work )
-    !  f(ix,iy,1:nz) = b(nz_0:nz_1)
-    !end do
-    !end do
+      call ZFFT1D( a, nny, 0, work ) 
+      do iz=1,nz
+      do ix=1,nx
+        a(1:ny) = f(ix,1:ny,iz)
+        call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
+        call ZFFT1D( b, nny, iopt, work )
+        f(ix,1:ny,iz) = b(ny_0:ny_1)
+      end do
+      end do
+
+    else
+
+      ww=wy ; if ( iopt == 1 ) ww=conjg(ww)
+      call ZFFT1D( a, mmy, 0, work ) 
+      do iz=1,nz
+      do ix=1,nx
+        a(1:ny) = f(ix,1:ny,iz)
+        call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
+        call ZFFT1D_arb( b(1:mmy),a(1:mmy),c(1:mmy),work(1:2*mmy),ww,mmy,nny,ny_0-1,ny_1-1 )
+        f(ix,1:ny,iz) = b(ny_0:ny_1)
+      end do
+      end do
+      if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_nny
+
+    end if
 
 ! ---
 
-    if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_ngrd
+    if ( flag_z235 ) then
+
+      call ZFFT1D( a, nnz, 0, work ) 
+      do iy=1,ny
+      do ix=1,nx
+        a(1:nz) = f(ix,iy,1:nz)
+        call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
+        call ZFFT1D( b, nnz, iopt, work )
+        f(ix,iy,1:nz) = b(nz_0:nz_1)
+      end do
+      end do
+
+    else
+
+      ww=wz ; if ( iopt == 1 ) ww=conjg(ww)
+      call ZFFT1D( a, mmz, 0, work ) 
+      do iy=1,ny
+      do ix=1,nx
+        a(1:nz) = f(ix,iy,1:nz)
+        call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
+        call ZFFT1D_arb( b(1:mmz),a(1:mmz),c(1:mmz),work(1:2*mmz),ww,mmz,nnz,nz_0-1,nz_1-1 )
+        f(ix,iy,1:nz) = b(nz_0:nz_1)
+      end do
+      end do
+      if ( iopt == 1 ) f(:,:,:) = f(:,:,:) * inv_nnz
+
+    end if
+
+! ---
 
     call write_border( 0, 'pzfft3dv_arb(end)' )
 
