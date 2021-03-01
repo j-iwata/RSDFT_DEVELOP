@@ -661,8 +661,8 @@ CONTAINS
     sum2=0.d0
     qsum2=0.0_QP
     rmax=0.0d0
-!    ic1=0
-!    ic2=0
+    ic1=0
+    ic2=0
     do i1i2=1,mpair
        i1=ipair(1,i1i2)
        i2=ipair(2,i1i2)
@@ -676,7 +676,7 @@ CONTAINS
        z1=zatom(i1)
        sum0=0.d0
        qsum0=0.0_QP
-!$OMP parallel do private( a1,a2,a3,x,y,z,rr,r,t ) reduction(+:sum0)
+!!$OMP parallel do private( a1,a2,a3,x,y,z,r,t ) reduction(+:sum0)
        do i=1,mr
           a1=LR(1,i)+a1_1-a1_2
           a2=LR(2,i)+a2_1-a2_2
@@ -689,17 +689,16 @@ CONTAINS
           r=sqrt(rr)
           t=bberfc(alpha*r)/r
           sum0=sum0+t
-          !ic1=ic1+1
-          !if ( t == 0.0d0 ) then
-          !   ic2=ic2+1
-          !else
-          !   if ( present(icheck) ) icheck(i)=icheck(i)+1
-          !   rmax=max(rmax,r)
-          !end if
-          !if ( present(qewldr) ) qsum0=qsum0+t
-          if ( t/=0.0d0 .and. present(icheck) ) icheck(i)=icheck(i)+1
+          ic1=ic1+1
+          if ( t == 0.0d0 ) then
+             ic2=ic2+1
+          else
+             if ( present(icheck) ) icheck(i)=icheck(i)+1
+             rmax=max(rmax,r)
+          end if
+          if ( present(qewldr) ) qsum0=qsum0+t
        end do
-!$OMP end parallel do
+!!$OMP end parallel do
        if ( i1 /= i2 ) sum0=sum0*2.d0
        sum2=sum2+z1*z2*sum0
        if ( present(qewldr) ) then
