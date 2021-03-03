@@ -18,11 +18,7 @@ module cpmdio_module
   public :: read_data_cpmdio
   public :: read_data_cpmdio_0
 
-  integer :: IO_ctrl_r=0
-  integer :: IO_ctrl_w=0
   integer :: OC=0
-  logical :: flag_init_r=.true.
-  logical :: flag_init_w=.true.
   integer :: node_partition_old(7)
 
 contains
