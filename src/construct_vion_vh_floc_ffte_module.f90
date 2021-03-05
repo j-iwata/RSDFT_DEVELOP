@@ -67,6 +67,7 @@ contains
     fg(:)=z0
     GGVL(:)=z0
     force_local=0.0d0
+    zwork1_ffte=z0
 !$OMP end parallel workshare
 
     !call watchb( ttmp, ttt(:,2), barrier='on' )

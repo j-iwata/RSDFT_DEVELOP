@@ -201,7 +201,7 @@ contains
     integer,allocatable :: mtmp(:),ntmp(:,:),ireq(:)
     integer,allocatable :: map_grid_2_pinfo(:,:,:,:)
 
-    call write_border( 80, " init_parallel(start)" )
+    call write_border( 0, " init_parallel(start)" )
 
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
@@ -214,7 +214,7 @@ contains
 
     if ( n /= nprocs ) then
        write(*,*) "n,nprocs=",n,nprocs
-       stop
+       call stop_program('stop@init_parallel')
     end if
 
     np1=node_partition(1)
@@ -578,7 +578,7 @@ contains
     allocate( idisp(0:nprocs-1) ) ; idisp=-1
     allocate( ircnt(0:nprocs-1) ) ; ircnt=0
 
-    call write_border( 80, " init_parallel(end)" )
+    call write_border( 0, " init_parallel(end)" )
 
   END SUBROUTINE init_parallel
 
