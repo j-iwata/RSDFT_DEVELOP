@@ -6,7 +6,7 @@ module construct_vion_vh_floc_1dffte_module
   use bb_module, only: bb
   use ggrid_module, only: construct_Ggrid, MGL
   use ps_local_variables, only: vqlg
-  use parallel_module, only: comm_grid
+  use parallel_module, only: comm_grid, myrank
   use rsdft_mpi_module, only: rsdft_allreduce, rsdft_allgatherv
   use watch_module, only: watchb
 
@@ -33,7 +33,7 @@ contains
     real(8),intent(out) :: Eh
     real(8),allocatable :: work(:,:)
     real(8) :: a1,a2,a3,pi2,Gx,Gy,Gz,Gr
-    real(8) :: ttmp(2),ttt(2,13)
+    real(8) :: ttmp(2),ttt(2,12)
     complex(8),parameter :: z0=(0.0d0,0.0d0), zi=(0.0d0,1.0d0)
     complex(8) :: zsum1,zsum2,zsum3,ztmpv,ztmpf
     integer :: i1,i2,i3,is,i,ii,j,ik,a,ierr
@@ -160,10 +160,6 @@ contains
 
     !call watchb( ttmp, ttt(:,8), barrier='on' )
 
-    !call rsdft_allreduce( GGVL, comm_fftx )
-
-    !call watchb( ttmp, ttt(:,9), barrier='on' )
-
 ! ---
 
     Eh=0.0d0
@@ -184,17 +180,17 @@ contains
 !$OMP end do
 !$OMP end parallel
 
-    !call watchb( ttmp, ttt(:,10), barrier='on' )
+    !call watchb( ttmp, ttt(:,9), barrier='on' )
 
     call rsdft_allreduce( Eh, comm_grid )
 
     Eh=-Eh*0.5d0*dV/Ngrid(0)
 
-    !call watchb( ttmp, ttt(:,11), barrier='on' )
+    !call watchb( ttmp, ttt(:,10), barrier='on' )
 
     call pzfft3dv_arb( zwork2_ffte, 1 )
 
-    !call watchb( ttmp, ttt(:,12), barrier='on' )
+    !call watchb( ttmp, ttt(:,11), barrier='on' )
 
 !$OMP parallel do collapse(3) private(i)
     do i3=a3b,b3b
@@ -207,12 +203,12 @@ contains
     end do
 !$OMP end parallel do
 
-    !call watchb( ttmp, ttt(:,13), barrier='on' )
+    !call watchb( ttmp, ttt(:,12), barrier='on' )
 
     !if ( myrank == 0 ) then
-    !   do i=1,size(ttt,2)
-    !      write(*,'(1x,"vvf2(",i2,")",2f10.5)') i,ttt(:,i)
-    !   end do
+    !  do i=1,size(ttt,2)
+    !    write(*,'(1x,"vvf2(",i2,")",2f10.5)') i,ttt(:,i)
+    !  end do
     !end if
 
     !call write_border( 1, " construct_vion_vh_floc_1dffte(end)" )
