@@ -1,6 +1,7 @@
 module pzfft3dv_arb_module
 
-  use ffte_sub_module, only: comm_fftx,comm_ffty,comm_fftz,zwork1_ffte,zwork2_ffte
+  use ffte_sub_module, only: comm_fftx,comm_ffty,comm_fftz,zwork1_ffte,zwork2_ffte &
+                            ,npux,npuy,npuz,me_fftx,me_ffty,me_fftz
   use rsdft_mpi_module, only: rsdft_allgather, rsdft_allgatherv
 
   implicit none
@@ -125,7 +126,7 @@ contains
     i = max( nnx, nny, nnz, mmx, mmy, mmz )
     allocate( a(i)      ); a=z0
     allocate( b(i)      ); b=z0
-    !allocate( c(i)      ); c=z0
+    allocate( c(i)      ); c=z0
     allocate( work(2*i) ); work=z0
 
     pi = acos(-1.0d0)
@@ -213,6 +214,8 @@ contains
 
     if ( flag_x235 ) then
 
+      if ( .false. ) then
+
       call ZFFT1D( a, nnx, 0, work ) 
       do iz=1,nz
       do iy=1,ny
@@ -222,6 +225,19 @@ contains
         f(1:nx,iy,iz) = b(nx_0:nx_1)
       end do
       end do
+
+      else
+
+      call PZFFT1D( a,b,c,nnx,comm_fftx,me_fftx,npux,0 )
+      do iz=1,nz
+      do iy=1,ny
+        a(1:nx) = f(1:nx,iy,iz)
+        call PZFFT1D( a,b,c,nnx,comm_fftx,me_fftx,npux,iopt )
+        f(1:nx,iy,iz) = b(1:nx)
+      end do
+      end do
+
+      end if
 
     else
 
@@ -252,6 +268,8 @@ contains
 
     if ( flag_y235 ) then
 
+      if ( .false. ) then
+
       call ZFFT1D( a, nny, 0, work ) 
       do iz=1,nz
       do ix=1,nx
@@ -261,6 +279,19 @@ contains
         f(ix,1:ny,iz) = b(ny_0:ny_1)
       end do
       end do
+
+      else
+
+      call PZFFT1D( a,b,c,nny,comm_ffty,me_ffty,npuy,0 )
+      do iz=1,nz
+      do ix=1,nx
+        a(1:ny) = f(ix,1:ny,iz)
+        call PZFFT1D( a,b,c,nny,comm_ffty,me_ffty,npuy,iopt )
+        f(ix,1:ny,iz) = b(1:ny)
+      end do
+      end do
+
+      end if
 
     else
 
@@ -291,6 +322,8 @@ contains
 
     if ( flag_z235 ) then
 
+      if ( .false. ) then
+
       call ZFFT1D( a, nnz, 0, work ) 
       do iy=1,ny
       do ix=1,nx
@@ -300,6 +333,19 @@ contains
         f(ix,iy,1:nz) = b(nz_0:nz_1)
       end do
       end do
+
+      else
+
+      call PZFFT1D( a,b,c,nnz,comm_fftz,me_fftz,npuz,0 ) 
+      do iy=1,ny
+      do ix=1,nx
+        a(1:nz) = f(ix,iy,1:nz)
+        call PZFFT1D( a,b,c,nnz,comm_fftz,me_fftz,npuz,iopt )
+        f(ix,iy,1:nz) = b(1:nz)
+      end do
+      end do
+
+      end if
 
     else
 

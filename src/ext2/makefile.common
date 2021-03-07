@@ -1,1 +1,1 @@
-OBJS = kernel.o factor.o pzfft3dv.o fft235.o zfft3d.o pzfft3d.o zfft1d.o
+OBJS = kernel.o factor.o pzfft3dv.o fft235.o zfft3d.o pzfft3d.o zfft1d.o pzfft1d.o pfactor.o

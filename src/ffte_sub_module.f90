@@ -9,6 +9,7 @@ module ffte_sub_module
 
   integer,public :: comm_fftx, comm_ffty, comm_fftz
   integer,public :: npux, npuy, npuz
+  integer,public :: me_fftx, me_ffty, me_fftz
 
   complex(8),public,allocatable :: zwork1_ffte(:,:,:)
   complex(8),public,allocatable :: zwork2_ffte(:,:,:)
@@ -49,6 +50,9 @@ contains
     call MPI_Comm_size(comm_fftx, npux, ierr)
     call MPI_Comm_size(comm_ffty, npuy, ierr)
     call MPI_Comm_size(comm_fftz, npuz, ierr)
+    call MPI_Comm_rank(comm_fftx, me_fftx, ierr)
+    call MPI_Comm_rank(comm_ffty, me_ffty, ierr)
+    call MPI_Comm_rank(comm_fftz, me_fftz, ierr)
 
     call write_border( 0, ' init_ffte(end)' )
 
