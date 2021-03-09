@@ -3,7 +3,7 @@ module pzfft3dv_arb_module
   use ffte_sub_module, only: comm_fftx,comm_ffty,comm_fftz,zwork1_ffte,zwork2_ffte &
                             ,npux,npuy,npuz,me_fftx,me_ffty,me_fftz
   use rsdft_mpi_module, only: rsdft_allgather, rsdft_allgatherv
-  use io_tools_module, only: IOTools_findKeyword
+  !use io_tools_module, only: IOTools_findKeyword
 
   implicit none
 
@@ -44,7 +44,7 @@ contains
     implicit none
     integer,intent(in) :: nx_in, ny_in, nz_in
     integer :: npx,npy,npz,ierr,i,j,myrnkx,myrnky,myrnkz
-    logical :: disp, flag_zfft1d
+    logical :: disp !, flag_zfft1d
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     real(8) :: pi
 
@@ -52,7 +52,7 @@ contains
 
     call write_border( 0, 'init_pzfft3dv_arb(start)' )
 
-    call IOTools_findKeyword( 'USE_ZFFT1D', flag_zfft1d, flag_bcast=.true. )
+    !call IOTools_findKeyword( 'USE_ZFFT1D', flag_zfft1d, flag_bcast=.true. )
 
     nx = nx_in
     ny = ny_in
@@ -101,24 +101,24 @@ contains
     if ( mod(mmx,nnx) == 0 ) then
       mmx=nnx
       flag_x235 = .true.
-      if ( mod(nnx,npx**2) == 0 ) use_zfft1d_x=.false.
+      !if ( mod(nnx,npx**2) == 0 ) use_zfft1d_x=.false.
     end if
     if ( mod(mmy,nny) == 0 ) then
       mmy=nny
       flag_y235 = .true.
-      if ( mod(nny,npy**2) == 0 ) use_zfft1d_y=.false.
+      !if ( mod(nny,npy**2) == 0 ) use_zfft1d_y=.false.
     end if
     if ( mod(mmz,nnz) == 0 ) then
       mmz=nnz
       flag_z235 = .true.
-      if ( mod(nnz,npz**2) == 0 ) use_zfft1d_z=.false.
+      !if ( mod(nnz,npz**2) == 0 ) use_zfft1d_z=.false.
     end if
 
-    if ( flag_zfft1d ) then
-      use_zfft1d_x = .true.
-      use_zfft1d_y = .true.
-      use_zfft1d_z = .true.
-    end if
+    !if ( flag_zfft1d ) then
+    !  use_zfft1d_x = .true.
+    !  use_zfft1d_y = .true.
+    !  use_zfft1d_z = .true.
+    !end if
 
     nx_0 = idisx(myrnkx) + 1
     nx_1 = nx_0 + ircnx(myrnkx) - 1
@@ -235,10 +235,14 @@ contains
       call ZFFT1D( a, nnx, 0, work ) 
       do iz=1,nz
       do iy=1,ny
+!$omp parallel workshare
         a(1:nx) = f(1:nx,iy,iz)
+!$omp end parallel workshare
         call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
         call ZFFT1D( b, nnx, iopt, work ) 
+!$omp parallel workshare
         f(1:nx,iy,iz) = b(nx_0:nx_1)
+!$omp end parallel workshare
       end do
       end do
 
@@ -265,11 +269,15 @@ contains
       call ZFFT1D( a, mmx, 0, work ) 
       do iz=1,nz
       do iy=1,ny
+!$omp parallel workshare
         a(1:nx) = f(1:nx,iy,iz)
+!$omp end parallel workshare
         call rsdft_allgatherv( a(1:nx), b(1:nnx), ircnx, idisx, comm_fftx )
         !call ZFFT1D_arb( b(1:mmx),a(1:mmx),c(1:mmx),work(1:2*mmx),ww,mmx,nnx,nx_0-1,nx_1-1 )
         call ZFFT1D_arb_test( b(1:mmx),a(1:mmx),work(1:2*mmx),wxa,wxb,nx_0-1,nx_1-1 )
+!$omp parallel workshare
         f(1:nx,iy,iz) = b(nx_0:nx_1)
+!$omp end parallel workshare
       end do
       end do
       if ( iopt == 1 ) then
@@ -289,10 +297,14 @@ contains
       call ZFFT1D( a, nny, 0, work ) 
       do iz=1,nz
       do ix=1,nx
+!$omp parallel workshare
         a(1:ny) = f(ix,1:ny,iz)
+!$omp end parallel workshare
         call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
         call ZFFT1D( b, nny, iopt, work )
+!$omp parallel workshare
         f(ix,1:ny,iz) = b(ny_0:ny_1)
+!$omp end parallel workshare
       end do
       end do
 
@@ -319,11 +331,15 @@ contains
       call ZFFT1D( a, mmy, 0, work ) 
       do iz=1,nz
       do ix=1,nx
+!$omp parallel workshare
         a(1:ny) = f(ix,1:ny,iz)
+!$omp end parallel workshare
         call rsdft_allgatherv( a(1:ny), b(1:nny), ircny, idisy, comm_ffty )
         !call ZFFT1D_arb( b(1:mmy),a(1:mmy),c(1:mmy),work(1:2*mmy),ww,mmy,nny,ny_0-1,ny_1-1 )
         call ZFFT1D_arb_test( b(1:mmy),a(1:mmy),work(1:2*mmy),wya,wyb,ny_0-1,ny_1-1 )
+!$omp parallel workshare
         f(ix,1:ny,iz) = b(ny_0:ny_1)
+!$omp end parallel workshare
       end do
       end do
       if ( iopt == 1 ) then
@@ -343,10 +359,14 @@ contains
       call ZFFT1D( a, nnz, 0, work ) 
       do iy=1,ny
       do ix=1,nx
+!$omp parallel workshare
         a(1:nz) = f(ix,iy,1:nz)
+!$omp end parallel workshare
         call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
         call ZFFT1D( b, nnz, iopt, work )
+!$omp parallel workshare
         f(ix,iy,1:nz) = b(nz_0:nz_1)
+!$omp end parallel workshare
       end do
       end do
 
@@ -373,11 +393,15 @@ contains
       call ZFFT1D( a, mmz, 0, work ) 
       do iy=1,ny
       do ix=1,nx
+!$omp parallel workshare
         a(1:nz) = f(ix,iy,1:nz)
+!$omp end parallel workshare
         call rsdft_allgatherv( a(1:nz), b(1:nnz), ircnz, idisz, comm_fftz )
         !call ZFFT1D_arb( b(1:mmz),a(1:mmz),c(1:mmz),work(1:2*mmz),ww,mmz,nnz,nz_0-1,nz_1-1 )
         call ZFFT1D_arb_test( b(1:mmz),a(1:mmz),work(1:2*mmz),wza,wzb,nz_0-1,nz_1-1 )
+!$omp parallel workshare
         f(ix,iy,1:nz) = b(nz_0:nz_1)
+!$omp end parallel workshare
       end do
       end do
       if ( iopt == 1 ) then
@@ -426,25 +450,41 @@ contains
     integer,intent(in) :: mm,nn,nn_0,nn_1
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     integer :: i,j
+!$omp parallel
+!$omp workshare
     a(:) = z0
+!$omp end workshare
+!$omp do provate(j)
     do i = -nn+1, nn-1
       j = mod( i+mm, mm )
       a(j) = ww**(-i*i)
     end do
+!$omp end do
+!$omp do
     do i = 0, nn-1
       b(i) = b(i) * ww**(i*i)
     end do
+!$omp end do
+!$omp end parallel
     if ( size(b) > nn ) b(nn:)=z0
-    call ZFFT1D( a, mm,-1, work ) 
-    call ZFFT1D( b, mm,-1, work ) 
+    call ZFFT1D( a, mm,-1, work )
+    call ZFFT1D( b, mm,-1, work )
+!$omp parallel workshare
     c = a*b
-    call ZFFT1D( c, mm, 1, work ) 
+!$omp end parallel workshare
+    call ZFFT1D( c, mm, 1, work )
+!$omp parallel
+!$omp do 
     do i = 0, nn-1
       c(i) = c(i) * ww**(i*i)
     end do
+!$omp end do
+!$omp do
     do i = nn_0, nn_1
       b(i) = c(i)
     end do
+!$omp end do
+!$omp end parallel
   end subroutine ZFFT1D_arb
 
   subroutine ZFFT1D_arb_test( b, a, work, wwa, wwb, nn_0, nn_1 )
@@ -458,18 +498,28 @@ contains
     integer :: i,mm,nn
     mm = size(wwa)
     nn = size(wwb)
+!$omp parallel
+!$omp workshare
     a(:) = wwa(:)
+!$omp end 
+!$omp do
     do i = 0, nn-1
       b(i) = b(i) * wwb(i)
     end do
+!$omp end do
+!$omp end parallel
     if ( size(b) > nn ) b(nn:)=z0
     call ZFFT1D( a, mm,-1, work ) 
     call ZFFT1D( b, mm,-1, work ) 
+!$omp parallel workshare
     a = a*b
+!$omp end parallel workshare
     call ZFFT1D( a, mm, 1, work ) 
+!$omp parallel do
     do i = nn_0, nn_1
       b(i) = a(i) * wwb(i)
     end do
+!$omp parallel end do
   end subroutine ZFFT1D_arb_test
 
 
