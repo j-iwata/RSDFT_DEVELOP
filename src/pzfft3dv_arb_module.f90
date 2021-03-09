@@ -3,6 +3,7 @@ module pzfft3dv_arb_module
   use ffte_sub_module, only: comm_fftx,comm_ffty,comm_fftz,zwork1_ffte,zwork2_ffte &
                             ,npux,npuy,npuz,me_fftx,me_ffty,me_fftz
   use rsdft_mpi_module, only: rsdft_allgather, rsdft_allgatherv
+  use io_tools_module, only: IOTools_findKeyword
 
   implicit none
 
@@ -23,6 +24,9 @@ module pzfft3dv_arb_module
   logical :: flag_x235 = .false.
   logical :: flag_y235 = .false.
   logical :: flag_z235 = .false.
+  logical :: use_zfft1d_x = .true.
+  logical :: use_zfft1d_y = .true.
+  logical :: use_zfft1d_z = .true.
 
   complex(8) :: wx, wy, wz
   complex(8),allocatable :: wxa(:),wxb(:),wya(:),wyb(:),wza(:),wzb(:)
@@ -40,14 +44,15 @@ contains
     implicit none
     integer,intent(in) :: nx_in, ny_in, nz_in
     integer :: npx,npy,npz,ierr,i,j,myrnkx,myrnky,myrnkz
-    logical :: disp
+    logical :: disp, flag_zfft1d
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     real(8) :: pi
-    include 'mpif.h'
 
     if ( flag_init_done ) return
 
     call write_border( 0, 'init_pzfft3dv_arb(start)' )
+
+    call IOTools_findKeyword( 'USE_ZFFT1D', flag_zfft1d, flag_bcast=.true. )
 
     nx = nx_in
     ny = ny_in
@@ -96,14 +101,23 @@ contains
     if ( mod(mmx,nnx) == 0 ) then
       mmx=nnx
       flag_x235 = .true.
+      if ( mod(nnx,npx**2) == 0 ) use_zfft1d_x=.false.
     end if
     if ( mod(mmy,nny) == 0 ) then
       mmy=nny
       flag_y235 = .true.
+      if ( mod(nny,npy**2) == 0 ) use_zfft1d_y=.false.
     end if
     if ( mod(mmz,nnz) == 0 ) then
       mmz=nnz
       flag_z235 = .true.
+      if ( mod(nnz,npz**2) == 0 ) use_zfft1d_z=.false.
+    end if
+
+    if ( flag_zfft1d ) then
+      use_zfft1d_x = .true.
+      use_zfft1d_y = .true.
+      use_zfft1d_z = .true.
     end if
 
     nx_0 = idisx(myrnkx) + 1
@@ -120,7 +134,9 @@ contains
       write(*,'("ircnz",10i4)') ircnz
       write(*,*) "nnx,nny,nnz=",nnx,nny,nnz
       write(*,*) "mmx,mmy,mmz=",mmx,mmy,mmz
-      write(*,*) "flag_x235,y235,z235=",flag_x235,flag_y235,flag_z235
+      write(*,*) "flag_x235, use_zfft1d_x =",flag_x235, use_zfft1d_x
+      write(*,*) "flag_y235, use_zfft1d_y =",flag_y235, use_zfft1d_y
+      write(*,*) "flag_z235, use_zfft1d_z =",flag_z235, use_zfft1d_z
     end if
 
     i = max( nnx, nny, nnz, mmx, mmy, mmz )
@@ -214,7 +230,7 @@ contains
 
     if ( flag_x235 ) then
 
-      if ( .false. ) then
+      if ( use_zfft1d_x ) then
 
       call ZFFT1D( a, nnx, 0, work ) 
       do iz=1,nz
@@ -268,7 +284,7 @@ contains
 
     if ( flag_y235 ) then
 
-      if ( .false. ) then
+      if ( use_zfft1d_y ) then
 
       call ZFFT1D( a, nny, 0, work ) 
       do iz=1,nz
@@ -322,7 +338,7 @@ contains
 
     if ( flag_z235 ) then
 
-      if ( .false. ) then
+      if ( use_zfft1d_z ) then
 
       call ZFFT1D( a, nnz, 0, work ) 
       do iy=1,ny
