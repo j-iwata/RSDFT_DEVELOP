@@ -454,7 +454,7 @@ contains
 !$omp workshare
     a(:) = z0
 !$omp end workshare
-!$omp do provate(j)
+!$omp do private(j)
     do i = -nn+1, nn-1
       j = mod( i+mm, mm )
       a(j) = ww**(-i*i)
@@ -501,7 +501,7 @@ contains
 !$omp parallel
 !$omp workshare
     a(:) = wwa(:)
-!$omp end 
+!$omp end workshare
 !$omp do
     do i = 0, nn-1
       b(i) = b(i) * wwb(i)
@@ -519,7 +519,7 @@ contains
     do i = nn_0, nn_1
       b(i) = a(i) * wwb(i)
     end do
-!$omp parallel end do
+!$omp end parallel do
   end subroutine ZFFT1D_arb_test
 
 
