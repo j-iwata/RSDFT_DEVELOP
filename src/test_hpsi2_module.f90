@@ -1,4 +1,4 @@
-MODULE test_hpsi2_module
+module test_hpsi2_module
 
   use array_bound_module, only: MB
   use localpot_module, only: Vloc
@@ -9,14 +9,14 @@ MODULE test_hpsi2_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: test_hpsi2
+  private
+  public :: test_hpsi2
 
-CONTAINS
+contains
 
-  SUBROUTINE test_hpsi2(nloop)
+  subroutine test_hpsi2(nloop)
     implicit none
-    integer,intent(IN) :: nloop
+    integer,intent(in) :: nloop
 #ifdef _DRSDFT_
     real(8),parameter :: zero=0.0d0, one=1.0d0
     real(8), allocatable :: tpsi(:,:)
@@ -35,12 +35,12 @@ CONTAINS
     real(8) :: time_kine_min(2,11),time_kine_max(2,11)
     real(8) :: time_nlpp_min(2,3),time_nlpp_max(2,3)
 
-    n1  = idisp(myrank)+1
-    n2  = idisp(myrank)+ircnt(myrank)
+    n1 = idisp(myrank)+1
+    n2 = idisp(myrank)+ircnt(myrank)
 
     if ( .not.allocated(Vloc) ) then
-       allocate( Vloc(n1:n2,1) ) ; Vloc=0.0d0
-       flag_allocate=.true.
+      allocate( Vloc(n1:n2,1) ) ; Vloc=0.0d0
+      flag_allocate=.true.
     end if
 
     nrhs=1
@@ -52,25 +52,24 @@ CONTAINS
     time_nlpp(:,:)=0.0d0
 
     if ( ii > 0.and. MB_d == 1 ) then
-       exit
+      exit
     else if ( (ii>0.and.nrhs>=MB) .or. nrhs>MB_d ) then
-       exit
-    else if ( ii == 0 ) then
-       nrhs=1
-    else if ( mod(MB,nrhs*2) == 0 ) then
-       nrhs=nrhs*2
-    else if ( mod(MB,nrhs*3) == 0 ) then
-       nrhs=nrhs*3
-    else if ( mod(MB,nrhs*5) == 0 ) then
-       nrhs=nrhs*5
-    else if ( mod(MB,nrhs*7) == 0 ) then
-       nrhs=nrhs*7
-    else if ( MB_d >= MB ) then
-       nrhs=MB
+      exit
     end if
 
-!    nrhs = 2**ii
-!    if ( nrhs > MB_d ) exit
+    if ( ii == 0 ) then
+      nrhs=1
+    else if ( mod(MB,nrhs*2) == 0 ) then
+      nrhs=nrhs*2
+    else if ( mod(MB,nrhs*3) == 0 ) then
+      nrhs=nrhs*3
+    else if ( mod(MB,nrhs*5) == 0 ) then
+      nrhs=nrhs*5
+    else if ( mod(MB,nrhs*7) == 0 ) then
+      nrhs=nrhs*7
+    else if ( MB_d >= MB ) then
+      nrhs=MB
+    end if
 
     niter = MB/nrhs
 
@@ -81,16 +80,18 @@ CONTAINS
 !    call myrand(tpsi, n2-n1+1, nrhs)
   
     if ( DISP_SWITCH_PARALLEL ) then
-       write(*,*) '------------ Start test_hpsi2 ------------'
+      write(*,*) '------------ Start test_hpsi2 ------------'
+      write(*,'("MB, nrhs, niter, nrhs*niter, nloop =",4i8)') MB,nrhs,niter,nrhs*niter,nloop
+      write(*,*) "# of routine calls =",nloop*nrhs*niter
     end if
 
     !t0 = mpi_wtime()
     call watchb( ttmp, barrier="on" ); ttt=0.0d0 
 
     do loop=1,nloop
-       do i = 1, niter
-          call hamiltonian(1, 1, tpsi, htpsi, n1, n2, 1, nrhs) 
-       end do
+      do i = 1, niter
+        call hamiltonian(1, 1, tpsi, htpsi, n1, n2, 1, nrhs) 
+      end do
     end do
 
     !t1 = mpi_wtime()
@@ -104,31 +105,31 @@ CONTAINS
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
-       do i=1,niter
-          call op_kinetic( tpsi, htpsi )
-       end do
+      do i=1,niter
+        call op_kinetic( tpsi, htpsi )
+      end do
     end do
 !$OMP end parallel
 
     !t3 = mpi_wtime()
     call watchb( ttmp, ttt(:,1), barrier="on" )
 
-!$OMP parallel private( loop, i )
-    do loop=1,nloop
-       do i=1,niter
-          call op_localpot( tpsi, htpsi )
-       end do
-    end do
-!$OMP end parallel
+!!$OMP parallel private( loop, i )
+!    do loop=1,nloop
+!      do i=1,niter
+!        call op_localpot( tpsi, htpsi )
+!      end do
+!    end do
+!!$OMP end parallel
 
     !t4 = mpi_wtime()
     call watchb( ttmp, ttt(:,2), barrier="on" )
 
 !$OMP parallel private( loop, i )
     do loop=1,nloop
-       do i=1,niter
-          call op_nonlocal( tpsi, htpsi )
-       end do
+      do i=1,niter
+        call op_nonlocal( tpsi, htpsi )
+      end do
     end do
 !$OMP end parallel
 
@@ -137,11 +138,11 @@ CONTAINS
 
     sums(:) = 0d0
     do i = 1, nrhs
-       do j = n1, n2
+      do j = n1, n2
 #ifdef _DRSDFT_
-          sums(i) = sums(i) + htpsi(j, i)*htpsi(j, i)
+        sums(i) = sums(i) + htpsi(j, i)*htpsi(j, i)
 #else
-          sums(i) = sums(i) + conjg(htpsi(j, i))*htpsi(j, i)
+        sums(i) = sums(i) + conjg(htpsi(j, i))*htpsi(j, i)
 #endif
        end do
     end do
@@ -159,34 +160,34 @@ CONTAINS
     call get_time_max(  3, time_nlpp, time_nlpp_max )
 
     if ( DISP_SWITCH_PARALLEL ) then
-       write(*,*) 'nloop =',nloop
-       write(*,*) 'nrhs = ', nrhs
-       write(*,*) 'niter = ', niter
-       write(*,*) 'niter*nrhs =',niter*nrhs,MB
-       write(*,*) 'time(tot) = ', ttt(:,0) !t1 - t0
-       call write_watchb( time_hmlt, 4, time_hmlt_indx )
-       write(*,*) "(min)"
-       call write_watchb( time_hmlt_min, 4, time_hmlt_indx )
-       write(*,*) "(max)"
-       call write_watchb( time_hmlt_max, 4, time_hmlt_indx )
-       write(*,*) 'time(kin) = ', ttt(:,1) !t3 - t2
-       call write_watchb( time_kine, 11, time_kine_indx )
-       write(*,*) "(min)"
-       call write_watchb( time_kine_min, 11, time_kine_indx )
-       write(*,*) "(max)"
-       call write_watchb( time_kine_max, 11, time_kine_indx )
-       write(*,*) 'time(loc) = ', ttt(:,2) !t4 - t3
-       write(*,*) 'time(nlc) = ', ttt(:,3) !t5 - t4
-       write(*,*) 'time(tot) = ', ttt(:,4) !t5 - t2
-       call write_watchb( time_nlpp, 3, time_nlpp_indx )
-       write(*,*) "(min)"
-       call write_watchb( time_nlpp_min, 3, time_nlpp_indx )
-       write(*,*) "(max)"
-       call write_watchb( time_nlpp_max, 3, time_nlpp_indx )
-       !write(*,*) 'check sum'
-       !do i = 1, nrhs
-       !   write(*,*) sums(i),sum(sums)
-       !end do
+      write(*,*) 'nloop =',nloop
+      write(*,*) 'nrhs = ', nrhs
+      write(*,*) 'niter = ', niter
+      write(*,*) 'niter*nrhs =',niter*nrhs,MB
+      write(*,*) 'time(tot) = ', ttt(:,0) !t1 - t0
+      call write_watchb( time_hmlt, 4, time_hmlt_indx )
+      write(*,*) "(min)"
+      call write_watchb( time_hmlt_min, 4, time_hmlt_indx )
+      write(*,*) "(max)"
+      call write_watchb( time_hmlt_max, 4, time_hmlt_indx )
+      write(*,*) 'time(kin) = ', ttt(:,1) !t3 - t2
+      call write_watchb( time_kine, 11, time_kine_indx )
+      write(*,*) "(min)"
+      call write_watchb( time_kine_min, 11, time_kine_indx )
+      write(*,*) "(max)"
+      call write_watchb( time_kine_max, 11, time_kine_indx )
+      write(*,*) 'time(loc) = ', ttt(:,2) !t4 - t3
+      write(*,*) 'time(nlc) = ', ttt(:,3) !t5 - t4
+      write(*,*) 'time(tot) = ', ttt(:,4) !t5 - t2
+      call write_watchb( time_nlpp, 3, time_nlpp_indx )
+      write(*,*) "(min)"
+      call write_watchb( time_nlpp_min, 3, time_nlpp_indx )
+      write(*,*) "(max)"
+      call write_watchb( time_nlpp_max, 3, time_nlpp_indx )
+      !write(*,*) 'check sum'
+      !do i = 1, nrhs
+      !   write(*,*) sums(i),sum(sums)
+      !end do
     end if
 
     deallocate( sums )
@@ -196,11 +197,11 @@ CONTAINS
     end do ! ii
 
     if ( flag_allocate ) then
-       deallocate( Vloc )
-       flag_allocate=.false.
+      deallocate( Vloc )
+      flag_allocate=.false.
     end if
 
-  END SUBROUTINE test_hpsi2
+  end subroutine test_hpsi2
 
   subroutine myrand(V, nrow, ncol)
     implicit none

@@ -19,7 +19,7 @@ module ps_nloc2_module
 
   use minimal_box_module
   use bz_module
-  use watch_module
+  use watch_module, only: watchb
   use wf_module
   use ps_nloc2_op_module, only: init_op_ps_nloc2, init_op_ps_nloc2_hp
   use ylm_module
@@ -77,6 +77,7 @@ contains
     real(8) :: c1,c2,c3,a1,a2,a3,maxerr,err0,err
     real(8) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(8),allocatable :: work(:)
+    real(8) :: ttmp(2),tttt(2,11)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3,timer_counter
     integer :: np1,np2,np3,nrlma
@@ -86,45 +87,44 @@ contains
     integer,allocatable :: lst_local_atom(:)
     integer :: ia
 
+    !call watchb( ttmp, barrier='on' ); tttt=0.0d0
+
     call write_border( 0, " prep_ps_nloc2(start)" )
     call check_disp_switch( disp_sw, 0 )
-
-    timer_counter = -1
-    call watcha( timer_counter )
 
 !------------------------------------------ max atom*orb
     Mlma=0
     do i=1,Natom
-       ik=ki_atom(i)
-       do iorb=1,norb(ik)
-          Mlma=Mlma+2*lo(iorb,ik)+1
-       end do
+      ik=ki_atom(i)
+      do iorb=1,norb(ik)
+        Mlma=Mlma+2*lo(iorb,ik)+1
+      end do
     end do
 
     if ( Mlma <= 0 ) return   ! if no orb return
 !--------------------------------------------------------
 
     if ( .not.allocated(y2a) .and. all(ippform /= 4) ) then
-       NRc=maxval(NRps)
-       n=maxval(norb)
-       allocate( y2a(NRc,n,Nelement) )
-       y2a=0.d0
-       do ik=1,Nelement
-       do iorb=1,norb(ik)
-          d1=0.d0
-          d2=0.d0
-          call spline(rad1(1,ik),viod(1,iorb,ik),NRps(iorb,ik) &
-               ,d1,d2,y2a(1,iorb,ik))
-       end do
-       end do
+      NRc=maxval(NRps)
+      n=maxval(norb)
+      allocate( y2a(NRc,n,Nelement) )
+      y2a=0.0d0
+      do ik=1,Nelement
+      do iorb=1,norb(ik)
+        d1=0.0d0
+        d2=0.0d0
+        call spline(rad1(1,ik),viod(1,iorb,ik),NRps(iorb,ik) &
+             ,d1,d2,y2a(1,iorb,ik))
+      end do
+      end do
     end if
 
     if ( all(ippform == 4) ) call init_ps_nloc_gth(disp_sw)
 
     if ( Mlma < nprocs_g ) then
-       nzlma_0 = Mlma
+      nzlma_0 = Mlma
     else
-       nzlma_0 = min(Mlma*125/nprocs_g,Mlma)
+      nzlma_0 = min(Mlma*125/nprocs_g,Mlma)
     end if
 
 !
@@ -157,7 +157,7 @@ contains
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,1), barrier='on' )
 
 !----- make_minimal_box -----
 ! atom position centered grid
@@ -175,7 +175,7 @@ contains
 !       mcube_grid_ion(1_min:2_max,1:3) - max & min value of map_grid_ion
 !       mm1,mm2,mm3 : max of abs(mcube_grid_ion)
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,2), barrier='on' )
 
     MMJJ_0 = M_grid_ion
 
@@ -279,17 +279,17 @@ contains
     allocate( MJJ_tmp(n,max_num_local_atom)           ); MJJ_tmp=0
     allocate( uV_tmp(MMJJ_0,n,max_num_local_atom)     ); uV_tmp=0.0d0
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,3), barrier='on' )
 
     if ( any( ippform == 4 ) ) then
 
-       call prep_ps_nloc_gth(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion &
-                            ,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
+      call prep_ps_nloc_gth(Natom,n,L,MMJJ_0,M_grid_ion,map_grid_ion &
+                           ,icheck_tmp3,JJ_tmp,MJJ_tmp,uV_tmp,nzlma,MMJJ)
 
-       if ( .not.all( ippform == 4 ) ) then
-          write(*,*) "Mixed use of different pseudopotenial is forbidden"
-          stop "stop@prep_ps_nloc2"
-       end if
+      if ( .not.all( ippform == 4 ) ) then
+        write(*,*) "Mixed use of different pseudopotenial is forbidden"
+        stop "stop@prep_ps_nloc2"
+      end if
 
     else
 
@@ -297,30 +297,30 @@ contains
     allocate( irad(0:3000,Nelement) ) ; irad=0
     M_irad=0
     do ik=1,Nelement
-       NRc=maxval( NRps(:,ik) )
-       NRc=min( 3000, NRc )
-       m=0
-       irad(0,ik)=1
-       do ir=1,NRc
-          m=int(100.d0*rad1(ir,ik))+1
-          irad( m,ik )=ir
-       end do
-       ir=irad(0,ik)
-       do i=1,m
-          if ( irad(i,ik)==0 ) then
-             irad(i,ik)=ir
-             cycle
-          end if
-          ir=irad(i,ik)
-       end do
-       irad(m+1:,ik)=ir
-       M_irad=max(M_irad,m)
+      NRc=maxval( NRps(:,ik) )
+      NRc=min( 3000, NRc )
+      m=0
+      irad(0,ik)=1
+      do ir=1,NRc
+        m=int(100.d0*rad1(ir,ik))+1
+        irad( m,ik )=ir
+      end do
+      ir=irad(0,ik)
+      do i=1,m
+        if ( irad(i,ik)==0 ) then
+          irad(i,ik)=ir
+          cycle
+        end if
+        ir=irad(i,ik)
+      end do
+      irad(m+1:,ik)=ir
+      M_irad=max(M_irad,m)
     end do
 #endif
 
-    c1                 = 1.d0/Ngrid(1)
-    c2                 = 1.d0/Ngrid(2)
-    c3                 = 1.d0/Ngrid(3)
+    c1                 = 1.0d0/Ngrid(1)
+    c2                 = 1.0d0/Ngrid(2)
+    c3                 = 1.0d0/Ngrid(3)
     maxerr             = 0
     icheck_tmp3(:,:,:) = 0
     MMJJ               = 0
@@ -334,145 +334,145 @@ contains
 !$OMP            ,v0,err0,ir0,ir,mm,m1,m2,v,err,ir1,a )
     do ia=1,num_local_atom
 
-       a = lst_local_atom(ia)
+      a = lst_local_atom(ia)
 
 ! Rx,Ry,Rz : atom position in real grid
-       Rx = aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
-       Ry = aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
-       Rz = aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+      Rx = aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
+      Ry = aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
+      Rz = aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
 
 ! ic1,ic2,ic3 : atom position in grid point
-       ic1 = nint( aa_atom(1,a)*Ngrid(1) )
-       ic2 = nint( aa_atom(2,a)*Ngrid(2) )
-       ic3 = nint( aa_atom(3,a)*Ngrid(3) )
+      ic1 = nint( aa_atom(1,a)*Ngrid(1) )
+      ic2 = nint( aa_atom(2,a)*Ngrid(2) )
+      ic3 = nint( aa_atom(3,a)*Ngrid(3) )
 
-       ik = ki_atom(a)
+      ik = ki_atom(a)
 
 ! process for each orbit
-       do iorb=1,norb(ik)
+      do iorb=1,norb(ik)
 
-          Rps2 = Rps(iorb,ik)**2
-          NRc  = NRps(iorb,ik)
-          L    = lo(iorb,ik)
+        Rps2 = Rps(iorb,ik)**2
+        NRc  = NRps(iorb,ik)
+        L    = lo(iorb,ik)
 
 !--------------------------------------------------for minimal box
 ! j : counting the # of grids
 ! matching minimal box and total grid
-          j    = 0
-          do i=1,M_grid_ion
+        j    = 0
+        do i=1,M_grid_ion
 
 ! grid point in minimal box
-             i1 = map_grid_ion(1,i)
-             i2 = map_grid_ion(2,i)
-             i3 = map_grid_ion(3,i)
+          i1 = map_grid_ion(1,i)
+          i2 = map_grid_ion(2,i)
+          i3 = map_grid_ion(3,i)
 
 ! grid point in total grid
-             id1 = ic1 + i1
-             id2 = ic2 + i2
-             id3 = ic3 + i3
+          id1 = ic1 + i1
+          id2 = ic2 + i2
+          id3 = ic3 + i3
 
 ! for parallel computation
 ! if i1,i2,i3 is negative : for P.B.C.
-             k1=id1/ML1 ; if ( id1<0 ) k1=(id1+1)/ML1-1
-             k2=id2/ML2 ; if ( id2<0 ) k2=(id2+1)/ML2-1
-             k3=id3/ML3 ; if ( id3<0 ) k3=(id3+1)/ML3-1
-             i1_0=id1-k1*ML1
-             i2_0=id2-k2*ML2
-             i3_0=id3-k3*ML3
+          k1=id1/ML1 ; if ( id1<0 ) k1=(id1+1)/ML1-1
+          k2=id2/ML2 ; if ( id2<0 ) k2=(id2+1)/ML2-1
+          k3=id3/ML3 ; if ( id3<0 ) k3=(id3+1)/ML3-1
+          i1_0=id1-k1*ML1
+          i2_0=id2-k2*ML2
+          i3_0=id3-k3*ML3
 ! if this point is in this node
 
-             if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
-                  Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
-                  Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
+          if ( Igrid(1,1) <= i1_0 .and. i1_0 <= Igrid(2,1) .and. &
+               Igrid(1,2) <= i2_0 .and. i2_0 <= Igrid(2,2) .and. &
+               Igrid(1,3) <= i3_0 .and. i3_0 <= Igrid(2,3) ) then
 
 ! ratio adjustment
-                d1 = id1*c1
-                d2 = id2*c2
-                d3 = id3*c3
+            d1 = id1*c1
+            d2 = id2*c2
+            d3 = id3*c3
 
 ! get the real grid of this point centered from atom position
-                x  = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3 - Rx
-                y  = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3 - Ry
-                z  = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3 - Rz
-                r2 = x*x+y*y+z*z
+            x  = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3 - Rx
+            y  = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3 - Ry
+            z  = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3 - Rz
+            r2 = x*x+y*y+z*z
 
 ! if this point is out of PS-data then skip
-                if ( r2 > Rps2+1.d-10 ) cycle
+            if ( r2 > Rps2+1.d-10 ) cycle
 
-                r    = sqrt(r2)
-                v0   = 0.d0
-                err0 = 0.d0
+            r    = sqrt(r2)
+            v0   = 0.0d0
+            err0 = 0.0d0
 
 ! if this point is away from atom position or l==0
 ! interpolation is needed
-                if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
-                     abs(z)>1.d-14 .or. L==0 ) then
+            if ( abs(x)>1.d-14 .or. abs(y)>1.d-14 .or. &
+                 abs(z)>1.d-14 .or. L==0 ) then
 #ifdef _SPLINE_
-                   call splint(rad1(1,ik),viod(1,iorb,ik),y2a(1,iorb,ik),NRc,r,v0)
+              call splint(rad1(1,ik),viod(1,iorb,ik),y2a(1,iorb,ik),NRc,r,v0)
 #else
 !                   ir0=irad( int(100.d0*r),ik )
 !                   do ir=ir0,NRc
 !                      if ( r < rad1(ir,ik) ) exit
 !                   end do
-                   ir0 = 1
-                   ir1 = NRc
-111                if ( ir1 - ir0 > 1 ) then
-                      ir = ( ir0 + ir1 )/2
-                      if ( rad1(ir,ik) > r ) then
-                         ir1 = ir
-                      else
-                         ir0 = ir
-                      end if
-                      goto 111
-                   end if
-                   ir = ir0
-                   if ( ir <= 2 ) then
-                      v0=viod(2,iorb,ik)
-                      if ( ir < 1 ) stop "ps_nloc2(0)"
-                   else if ( ir <= NRc ) then
-                      err0=1.d10
-                      do mm=1,20
-                         m1=max(1,ir-mm)
-                         m2=min(ir+mm,NRc)
-                         call polint &
-                              (rad1(m1,ik),viod(m1,iorb,ik),m2-m1+1,r,v,err)
-                         if ( abs(err) < err0 ) then
-                            v0=v
-                            err0=abs(err)
-                            if ( err0 < ep ) exit
-                         end if
-                      end do
-                   else
-                      write(*,*) "ps_nloc2(1)",ir,NRc,viod(NRc,iorb,ik)
-                      write(*,*) viod(NRc+1,iorb,ik),r,rad1(ir,ik)
-                      stop ' ERROR : abnormal end'
-                   end if
-                   maxerr=max(maxerr,err0)
-#endif
+              ir0 = 1
+              ir1 = NRc
+111           if ( ir1 - ir0 > 1 ) then
+                ir = ( ir0 + ir1 )/2
+                if ( rad1(ir,ik) > r ) then
+                  ir1 = ir
+                else
+                  ir0 = ir
                 end if
+                goto 111
+              end if
+              ir = ir0
+              if ( ir <= 2 ) then
+                v0=viod(2,iorb,ik)
+                if ( ir < 1 ) stop "ps_nloc2(0)"
+              else if ( ir <= NRc ) then
+                err0=1.d10
+                do mm=1,20
+                  m1=max(1,ir-mm)
+                  m2=min(ir+mm,NRc)
+                  call polint &
+                       (rad1(m1,ik),viod(m1,iorb,ik),m2-m1+1,r,v,err)
+                  if ( abs(err) < err0 ) then
+                    v0=v
+                    err0=abs(err)
+                    if ( err0 < ep ) exit
+                  end if
+                end do
+              else
+                write(*,*) "ps_nloc2(1)",ir,NRc,viod(NRc,iorb,ik)
+                write(*,*) viod(NRc+1,iorb,ik),r,rad1(ir,ik)
+                stop ' ERROR : abnormal end'
+              end if
+              maxerr=max(maxerr,err0)
+#endif
+            end if
 
 ! j : start from 1
 ! with i1_0,i2_0,i3_0 k1,k2,k3
 !                if (abs(v0) < 1.d-10 ) cycle 
-                j=j+1
-                JJ_tmp(1,j,iorb,ia) = i1_0
-                JJ_tmp(2,j,iorb,ia) = i2_0
-                JJ_tmp(3,j,iorb,ia) = i3_0
-                JJ_tmp(4,j,iorb,ia) = k1
-                JJ_tmp(5,j,iorb,ia) = k2
-                JJ_tmp(6,j,iorb,ia) = k3
-                uV_tmp(j,iorb,ia)   = v0
+            j=j+1
+            JJ_tmp(1,j,iorb,ia) = i1_0
+            JJ_tmp(2,j,iorb,ia) = i2_0
+            JJ_tmp(3,j,iorb,ia) = i3_0
+            JJ_tmp(4,j,iorb,ia) = k1
+            JJ_tmp(5,j,iorb,ia) = k2
+            JJ_tmp(6,j,iorb,ia) = k3
+            uV_tmp(j,iorb,ia)   = v0
 
-             end if
+          end if
 
-          end do ! i ( 1 - M_grid_ion )
+        end do ! i ( 1 - M_grid_ion )
 
 !==================================================for minimal box
 ! if there is not point in this node, j==0
 
-          MJJ_tmp(iorb,ia)=j
+        MJJ_tmp(iorb,ia)=j
 
-       end do ! iorb
+      end do ! iorb
     end do ! ia
 !$OMP end parallel do
 
@@ -491,20 +491,20 @@ contains
 
     lma=0
     do a=1,Natom
-       ia=itmp1(a)
-       if ( ia == 0 ) cycle
-       ik=ki_atom(a)
-       do iorb=1,norb(ik)
-          j=MJJ_tmp(iorb,ia)
-          if ( j > 0 ) then
-             L=lo(iorb,ik)
-             nzlma=nzlma+2*L+1
-             do m=1,2*L+1
-                lma=lma+1
-                icheck_tmp3(ia,iorb,m)=lma
-             end do
-          end if
-       end do
+      ia=itmp1(a)
+      if ( ia == 0 ) cycle
+      ik=ki_atom(a)
+      do iorb=1,norb(ik)
+        j=MJJ_tmp(iorb,ia)
+        if ( j > 0 ) then
+          L=lo(iorb,ik)
+          nzlma=nzlma+2*L+1
+          do m=1,2*L+1
+            lma=lma+1
+            icheck_tmp3(ia,iorb,m)=lma
+          end do
+        end if
+      end do
     end do
     MMJJ = maxval( MJJ_tmp )
 
@@ -512,25 +512,25 @@ contains
     allocate( lcheck_tmp2(0:np_grid-1,Mlma) ) ; lcheck_tmp2(:,:)=.false.
     lma=0
     do a=1,Natom
-       ia=itmp1(a)
-       ik=ki_atom(a)
-       do iorb=1,norb(ik)
-          L=lo(iorb,ik)
-          j=0
-          if ( ia /= 0 ) j=MJJ_tmp(iorb,ia)
-          do m=1,2*L+1
-             lma=lma+1
-             if ( j > 0 ) then
-                lcheck_tmp2(myrank_g,lma)=.true.
-             end if
-          end do
-       end do
+      ia=itmp1(a)
+      ik=ki_atom(a)
+      do iorb=1,norb(ik)
+        L=lo(iorb,ik)
+        j=0
+        if ( ia /= 0 ) j=MJJ_tmp(iorb,ia)
+        do m=1,2*L+1
+          lma=lma+1
+          if ( j > 0 ) then
+            lcheck_tmp2(myrank_g,lma)=.true.
+          end if
+        end do
+      end do
     end do
     call MPI_ALLREDUCE( lcheck_tmp2, lcheck_tmp1, size(lcheck_tmp1), &
                         MPI_LOGICAL, MPI_LOR, comm_grid, ierr )
     deallocate( lcheck_tmp2 )
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,4), barrier='on' )
 
 ! for grid-parallel computation
 
@@ -561,155 +561,155 @@ contains
     nrlma=0
     lma=0
     do a=1,Natom
-       ia=itmp1(a)
-       ik=ki_atom(a)
+      ia=itmp1(a)
+      ik=ki_atom(a)
     do iorb=1,norb(ik)
-       L=lo(iorb,ik)
+      L=lo(iorb,ik)
     do m=-L,L
-       lma=lma+1
+      lma=lma+1
 
-       icheck_tmp1(:)=0
-       do n=0,np_grid-1
-          if ( lcheck_tmp1(n,lma) ) icheck_tmp1(n) = 1
-       end do
-       if ( ia /= 0 ) icheck_tmp1(myrank_g) = icheck_tmp3(ia,iorb,m+L+1)
+      icheck_tmp1(:)=0
+      do n=0,np_grid-1
+        if ( lcheck_tmp1(n,lma) ) icheck_tmp1(n) = 1
+      end do
+      if ( ia /= 0 ) icheck_tmp1(myrank_g) = icheck_tmp3(ia,iorb,m+L+1)
 
-       itmp(:,:)=0
-       n=-1
-       do i3=1,np3
-       do i2=1,np2
-       do i1=1,np1
-          n=n+1
-          if ( icheck_tmp1(n) == 0 ) cycle
-          itmp(i1,1) = i1
-          itmp(i2,2) = i2
-          itmp(i3,3) = i3
-       end do
-       end do
-       end do
-       k1=count( itmp(:,1)>0 )
-       k2=count( itmp(:,2)>0 )
-       k3=count( itmp(:,3)>0 )
-       ic1=0
-       id1=np1
-       do i=1,np1
-          if ( ic1==0 .and. itmp(i,1)/=0 ) then
-             ic1=i
-          else if ( ic1/=0 .and. itmp(i,1)==0 ) then
-             id1=i-1
-             exit
+      itmp(:,:)=0
+      n=-1
+      do i3=1,np3
+      do i2=1,np2
+      do i1=1,np1
+        n=n+1
+        if ( icheck_tmp1(n) == 0 ) cycle
+        itmp(i1,1) = i1
+        itmp(i2,2) = i2
+        itmp(i3,3) = i3
+      end do
+      end do
+      end do
+      k1=count( itmp(:,1)>0 )
+      k2=count( itmp(:,2)>0 )
+      k3=count( itmp(:,3)>0 )
+      ic1=0
+      id1=np1
+      do i=1,np1
+        if ( ic1==0 .and. itmp(i,1)/=0 ) then
+          ic1=i
+        else if ( ic1/=0 .and. itmp(i,1)==0 ) then
+          id1=i-1
+          exit
+        end if
+      end do
+      if ( id1-ic1+1/=k1 ) then
+        i1=0
+        j1=np1
+        do i=id1+1,np1
+          if ( i1==0 .and. itmp(i,1)/=0 ) then
+            i1=i
+          else if ( i1/=0 .and. itmp(i,1)==0 ) then
+            j1=i-1
+            exit
           end if
-       end do
-       if ( id1-ic1+1/=k1 ) then
-          i1=0
-          j1=np1
-          do i=id1+1,np1
-             if ( i1==0 .and. itmp(i,1)/=0 ) then
-                i1=i
-             else if ( i1/=0 .and. itmp(i,1)==0 ) then
-                j1=i-1
-                exit
-             end if
-          end do
-          i1=i1-np1
-          j1=j1-np1
-          ic1=i1
-       end if
-       ic2=0
-       id2=np2
-       do i=1,np2
-          if ( ic2==0 .and. itmp(i,2)/=0 ) then
-             ic2=i
-          else if ( ic2/=0 .and. itmp(i,2)==0 ) then
-             id2=i-1
-             exit
+        end do
+        i1=i1-np1
+        j1=j1-np1
+        ic1=i1
+      end if
+      ic2=0
+      id2=np2
+      do i=1,np2
+        if ( ic2==0 .and. itmp(i,2)/=0 ) then
+          ic2=i
+        else if ( ic2/=0 .and. itmp(i,2)==0 ) then
+          id2=i-1
+          exit
+        end if
+      end do
+      if ( id2-ic2+1/=k2 ) then
+        i2=0
+        j2=np2
+        do i=id2+1,np2
+          if ( i2==0 .and. itmp(i,2)/=0 ) then
+            i2=i
+          else if ( i2/=0 .and. itmp(i,2)==0 ) then
+            j2=i-1
+            exit
           end if
-       end do
-       if ( id2-ic2+1/=k2 ) then
-          i2=0
-          j2=np2
-          do i=id2+1,np2
-             if ( i2==0 .and. itmp(i,2)/=0 ) then
-                i2=i
-             else if ( i2/=0 .and. itmp(i,2)==0 ) then
-                j2=i-1
-                exit
-             end if
-          end do
-          i2=i2-np2
-          j2=j2-np2
-          ic2=i2
-       end if
-       ic3=0
-       id3=np3
-       do i=1,np3
-          if ( ic3==0 .and. itmp(i,3)/=0 ) then
-             ic3=i
-          else if ( ic3/=0 .and. itmp(i,3)==0 ) then
-             id3=i-1
-             exit
+        end do
+        i2=i2-np2
+        j2=j2-np2
+        ic2=i2
+      end if
+      ic3=0
+      id3=np3
+      do i=1,np3
+        if ( ic3==0 .and. itmp(i,3)/=0 ) then
+          ic3=i
+        else if ( ic3/=0 .and. itmp(i,3)==0 ) then
+          id3=i-1
+          exit
+        end if
+      end do
+      if ( id3-ic3+1/=k3 ) then
+        i3=0
+        j3=np3
+        do i=id3+1,np3
+          if ( i3==0 .and. itmp(i,3)/=0 ) then
+            i3=i
+          else if ( i3/=0 .and. itmp(i,3)==0 ) then
+            j3=i-1
+            exit
           end if
-       end do
-       if ( id3-ic3+1/=k3 ) then
-          i3=0
-          j3=np3
-          do i=id3+1,np3
-             if ( i3==0 .and. itmp(i,3)/=0 ) then
-                i3=i
-             else if ( i3/=0 .and. itmp(i,3)==0 ) then
-                j3=i-1
-                exit
-             end if
-          end do
-          i3=i3-np3
-          j3=j3-np3
-          ic3=i3
-       end if
-       do j3=ic3,id3
-       do j2=ic2,id2
-       do j1=ic1,id1
-          k1=mod(j1+np1-1,np1)+1
-          k2=mod(j2+np2-1,np2)+1
-          k3=mod(j3+np3-1,np3)+1
-          k = k1-1 + (k2-1)*np1 + (k3-1)*np1*np2
-          if ( icheck_tmp1(k)==0 ) icheck_tmp1(k)=-1
-       end do
-       end do
-       end do
-       do n=0,nprocs_g-1
-          if ( icheck_tmp1(n)/=0 ) then
-             icheck_tmp2(n)=icheck_tmp2(n)+1
-          end if
-       end do
+        end do
+        i3=i3-np3
+        j3=j3-np3
+        ic3=i3
+      end if
+      do j3=ic3,id3
+      do j2=ic2,id2
+      do j1=ic1,id1
+        k1=mod(j1+np1-1,np1)+1
+        k2=mod(j2+np2-1,np2)+1
+        k3=mod(j3+np3-1,np3)+1
+        k = k1-1 + (k2-1)*np1 + (k3-1)*np1*np2
+        if ( icheck_tmp1(k)==0 ) icheck_tmp1(k)=-1
+      end do
+      end do
+      end do
+      do n=0,nprocs_g-1
+        if ( icheck_tmp1(n)/=0 ) then
+          icheck_tmp2(n)=icheck_tmp2(n)+1
+        end if
+      end do
 
-!       call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
+      !call prepMapsTmp(np1,np2,np3,nprocs_g,itmp,icheck_tmp1,icheck_tmp2)
 
-       if ( icheck_tmp1(myrank_g) /= 0 ) then
-          if ( icheck_tmp1(myrank_g) > 0 ) then
-             maps_tmp(icheck_tmp2(myrank_g),1)=icheck_tmp1(myrank_g)
-          end if
-          maps_tmp(icheck_tmp2(myrank_g),2)=inorm(iorb,ik)
-          maps_tmp(icheck_tmp2(myrank_g),3)=a
-          maps_tmp(icheck_tmp2(myrank_g),4)=L
-          maps_tmp(icheck_tmp2(myrank_g),5)=m
-          maps_tmp(icheck_tmp2(myrank_g),6)=iorb
+      if ( icheck_tmp1(myrank_g) /= 0 ) then
+        if ( icheck_tmp1(myrank_g) > 0 ) then
+          maps_tmp(icheck_tmp2(myrank_g),1)=icheck_tmp1(myrank_g)
+        end if
+        maps_tmp(icheck_tmp2(myrank_g),2)=inorm(iorb,ik)
+        maps_tmp(icheck_tmp2(myrank_g),3)=a
+        maps_tmp(icheck_tmp2(myrank_g),4)=L
+        maps_tmp(icheck_tmp2(myrank_g),5)=m
+        maps_tmp(icheck_tmp2(myrank_g),6)=iorb
 
-          do n=0,nprocs_g-1
-             if ( n == myrank_g .or. icheck_tmp1(n) == 0 ) cycle
-             lma_nsend_tmp(n)=lma_nsend_tmp(n)+1
-             sendmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(myrank_g)
-             recvmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(n)
-             if ( any(nl_rank_map_tmp(0:nrlma)==n) ) cycle
-             nrlma=nrlma+1
-             nl_rank_map_tmp(nrlma)=n
-          end do
-       end if
+        do n=0,nprocs_g-1
+          if ( n == myrank_g .or. icheck_tmp1(n) == 0 ) cycle
+          lma_nsend_tmp(n)=lma_nsend_tmp(n)+1
+          sendmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(myrank_g)
+          recvmap_tmp(lma_nsend_tmp(n),n)=icheck_tmp2(n)
+          if ( any(nl_rank_map_tmp(0:nrlma)==n) ) cycle
+          nrlma=nrlma+1
+          nl_rank_map_tmp(nrlma)=n
+        end do
+      end if
 
     end do ! m
     end do ! iorb
     end do ! a
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,5), barrier='on' )
 
     nzlma = icheck_tmp2(myrank_g)
 
@@ -748,54 +748,56 @@ contains
     allocate( iorbmap(nzlma)       ) ; iorbmap=0
     allocate( nl_rank_map(nrlma)   ) ; nl_rank_map=-1
 
+    !call watchb( ttmp, tttt(:,6), barrier='on' )
+
     do i=1,nrlma
-       nl_rank_map(i)=nl_rank_map_tmp(i)
+      nl_rank_map(i)=nl_rank_map_tmp(i)
     end do
 
     deallocate( nl_rank_map_tmp )
 
     do lma=1,nzlma
-       if ( maps_tmp(lma,1) == 0 ) cycle
-       iuV(lma)     = maps_tmp(lma,2)
-       amap(lma)    = maps_tmp(lma,3)
-       lmap(lma)    = maps_tmp(lma,4)
-       mmap(lma)    = maps_tmp(lma,5)
-       iorbmap(lma) = maps_tmp(lma,6)
-       iamap(lma)   = itmp1(amap(lma))
+      if ( maps_tmp(lma,1) == 0 ) cycle
+      iuV(lma)     = maps_tmp(lma,2)
+      amap(lma)    = maps_tmp(lma,3)
+      lmap(lma)    = maps_tmp(lma,4)
+      mmap(lma)    = maps_tmp(lma,5)
+      iorbmap(lma) = maps_tmp(lma,6)
+      iamap(lma)   = itmp1(amap(lma))
     end do
 
-    c1=1.d0/ML1
-    c2=1.d0/ML2
-    c3=1.d0/ML3
+    c1=1.0d0/ML1
+    c2=1.0d0/ML2
+    c3=1.0d0/ML3
 
 !$OMP parallel do private( ia,a,l,m,iorb,Rx,Ry,Rz,j,i1,i2,i3,k1,k2,k3,d1,d2,d3,x,y,z )
     do lma=1,nzlma
-       if ( maps_tmp(lma,1) == 0 ) cycle
-       ia   = iamap(lma)
-       a    = amap(lma)
-       l    = lmap(lma)
-       m    = mmap(lma)
-       iorb = iorbmap(lma)
-       MJJ_MAP(lma) = MJJ_tmp(iorb,ia)
-       Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
-       Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
-       Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
-       do j=1,MJJ_MAP(lma)
-          i1=JJ_tmp(1,j,iorb,ia)
-          i2=JJ_tmp(2,j,iorb,ia)
-          i3=JJ_tmp(3,j,iorb,ia)
-          k1=JJ_tmp(4,j,iorb,ia)
-          k2=JJ_tmp(5,j,iorb,ia)
-          k3=JJ_tmp(6,j,iorb,ia)
-          d1=c1*i1+k1
-          d2=c2*i2+k2
-          d3=c3*i3+k3
-          x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
-          y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
-          z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
-          uV(j,lma) = uV_tmp(j,iorb,ia)*Ylm(x,y,z,l,m)
-          JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,ia)
-       end do ! j
+      if ( maps_tmp(lma,1) == 0 ) cycle
+      ia   = iamap(lma)
+      a    = amap(lma)
+      l    = lmap(lma)
+      m    = mmap(lma)
+      iorb = iorbmap(lma)
+      MJJ_MAP(lma) = MJJ_tmp(iorb,ia)
+      Rx=aa(1,1)*aa_atom(1,a)+aa(1,2)*aa_atom(2,a)+aa(1,3)*aa_atom(3,a)
+      Ry=aa(2,1)*aa_atom(1,a)+aa(2,2)*aa_atom(2,a)+aa(2,3)*aa_atom(3,a)
+      Rz=aa(3,1)*aa_atom(1,a)+aa(3,2)*aa_atom(2,a)+aa(3,3)*aa_atom(3,a)
+      do j=1,MJJ_MAP(lma)
+        i1=JJ_tmp(1,j,iorb,ia)
+        i2=JJ_tmp(2,j,iorb,ia)
+        i3=JJ_tmp(3,j,iorb,ia)
+        k1=JJ_tmp(4,j,iorb,ia)
+        k2=JJ_tmp(5,j,iorb,ia)
+        k3=JJ_tmp(6,j,iorb,ia)
+        d1=c1*i1+k1
+        d2=c2*i2+k2
+        d3=c3*i3+k3
+        x = aa(1,1)*d1+aa(1,2)*d2+aa(1,3)*d3-Rx
+        y = aa(2,1)*d1+aa(2,2)*d2+aa(2,3)*d3-Ry
+        z = aa(3,1)*d1+aa(3,2)*d2+aa(3,3)*d3-Rz
+        uV(j,lma) = uV_tmp(j,iorb,ia)*Ylm(x,y,z,l,m)
+        JJ_MAP(1:6,j,lma) = JJ_tmp(1:6,j,iorb,ia)
+      end do ! j
     end do ! lma
 !$OMP end parallel do
 
@@ -805,25 +807,25 @@ contains
     deallocate( maps_tmp )
     deallocate( itmp1 )
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,7), barrier='on' )
 
     MAXMJJ=0
 
     allocate( icheck_tmp4(a1b:b1b,a2b:b2b,a3b:b3b) )
     icheck_tmp4=0
     do lma=1,nzlma
-       j=0
-       icheck_tmp4=0
-       do i=1,MJJ_MAP(lma)
-          i1=JJ_MAP(1,i,lma)
-          i2=JJ_MAP(2,i,lma)
-          i3=JJ_MAP(3,i,lma)
-          if ( icheck_tmp4(i1,i2,i3) == 0 .and. abs(uV(i,lma)) > 1.0d-14 ) then
-             j=j+1
-             icheck_tmp4(i1,i2,i3)=j
-          end if
-       end do
-       MJJ(lma)=j
+      j=0
+      icheck_tmp4=0
+      do i=1,MJJ_MAP(lma)
+        i1=JJ_MAP(1,i,lma)
+        i2=JJ_MAP(2,i,lma)
+        i3=JJ_MAP(3,i,lma)
+        if ( icheck_tmp4(i1,i2,i3) == 0 .and. abs(uV(i,lma)) > 1.0d-14 ) then
+          j=j+1
+          icheck_tmp4(i1,i2,i3)=j
+        end if
+      end do
+      MJJ(lma)=j
     end do
     if ( nzlma > 0 ) MAXMJJ = maxval( MJJ(1:nzlma) )
     deallocate( icheck_tmp4 )
@@ -833,9 +835,9 @@ contains
     nl_max_send = maxval( lma_nsend_tmp )
 
     if ( allocated(lma_nsend) ) then
-       deallocate( lma_nsend )
-       deallocate( sendmap )
-       deallocate( recvmap )
+      deallocate( lma_nsend )
+      deallocate( sendmap )
+      deallocate( recvmap )
     end if
     allocate( lma_nsend(0:nprocs_g-1) ) ; lma_nsend=0
     allocate( sendmap(nl_max_send,0:nprocs_g-1) ) ; sendmap=0
@@ -844,8 +846,8 @@ contains
 ! ---
 
     do n=0,nprocs_g-1
-       sendmap(1:nl_max_send,n) = sendmap_tmp(1:nl_max_send,n)
-       lma_nsend(n) = lma_nsend_tmp(n)
+      sendmap(1:nl_max_send,n) = sendmap_tmp(1:nl_max_send,n)
+      lma_nsend(n) = lma_nsend_tmp(n)
     end do
 
 ! ---
@@ -854,15 +856,15 @@ contains
     allocate( istatus(MPI_STATUS_SIZE,2*nprocs_g) )
     nreq=0
     do n=0,nprocs_g-1
-       if ( lma_nsend(n)<=0 .or. n==myrank_g ) cycle
-       nreq=nreq+1
-       call mpi_isend(recvmap_tmp(1,n),lma_nsend(n),mpi_integer,n,1 &
-            ,comm_grid,ireq(nreq),ierr)
-       nreq=nreq+1
-       call mpi_irecv(recvmap(1,n) ,lma_nsend(n),mpi_integer,n,1 &
-            ,comm_grid,ireq(nreq),ierr)
+      if ( lma_nsend(n)<=0 .or. n==myrank_g ) cycle
+      nreq=nreq+1
+      call MPI_Isend(recvmap_tmp(1,n),lma_nsend(n),mpi_integer,n,1 &
+           ,comm_grid,ireq(nreq),ierr)
+      nreq=nreq+1
+      call MPI_Irecv(recvmap(1,n) ,lma_nsend(n),mpi_integer,n,1 &
+           ,comm_grid,ireq(nreq),ierr)
     end do
-    call mpi_waitall(nreq,ireq,istatus,ierr)
+    call MPI_Waitall(nreq,ireq,istatus,ierr)
     deallocate( istatus )
     deallocate( ireq )
 
@@ -873,10 +875,10 @@ contains
     do i3=0,node_partition(3)-1
     do i2=0,node_partition(2)-1
     do i1=0,node_partition(1)-1
-       n=n+1
-       LLp(1,n)=i1
-       LLp(2,n)=i2
-       LLp(3,n)=i3
+      n=n+1
+      LLp(1,n)=i1
+      LLp(2,n)=i2
+      LLp(3,n)=i3
     end do
     end do
     end do
@@ -886,10 +888,10 @@ contains
     allocate( itmp2(nrlma),itmp3(3,nrlma) )
 
     do irlma=1,nrlma
-       n=nl_rank_map(irlma)
-       itmp(1,irlma)=LLp(1,n)-LLp(1,myrank_g)
-       itmp(2,irlma)=LLp(2,n)-LLp(2,myrank_g)
-       itmp(3,irlma)=LLp(3,n)-LLp(3,myrank_g)
+      n=nl_rank_map(irlma)
+      itmp(1,irlma)=LLp(1,n)-LLp(1,myrank_g)
+      itmp(2,irlma)=LLp(2,n)-LLp(2,myrank_g)
+      itmp(3,irlma)=LLp(3,n)-LLp(3,myrank_g)
     end do
 
     nrlma_xyz(1:6)=0
@@ -897,105 +899,105 @@ contains
     m=0
     n=0
     do i=1,nrlma
-       if( itmp(2,i)==0 .and. itmp(3,i)==0 .and. itmp(1,i)>0 )then
-          n=n+1
-          work(n)=itmp(1,i)
-          itmp2(n)=i
-       end if
+      if( itmp(2,i)==0 .and. itmp(3,i)==0 .and. itmp(1,i)>0 )then
+        n=n+1
+        work(n)=itmp(1,i)
+        itmp2(n)=i
+      end if
     end do
     if ( n>0 ) then
-       call indexx(n,work,itmp1)
-       do i=1,n
-          j=itmp2( itmp1(i) )
-          itmp3(:,m+i)=itmp(:,j)
-       end do
+      call indexx(n,work,itmp1)
+      do i=1,n
+        j=itmp2( itmp1(i) )
+        itmp3(:,m+i)=itmp(:,j)
+      end do
     end if
     m=m+n
     nrlma_xyz(1)=nrlma_xyz(1)+n
     n=0
     do i=1,nrlma
-       if( itmp(2,i)==0 .and. itmp(3,i)==0 .and. itmp(1,i)<0 )then
-          n=n+1
-          work(n)=itmp(1,i)
-          itmp2(n)=i
-       end if
+      if( itmp(2,i)==0 .and. itmp(3,i)==0 .and. itmp(1,i)<0 )then
+        n=n+1
+        work(n)=itmp(1,i)
+        itmp2(n)=i
+      end if
     end do
     if ( n>0 ) then
-       call indexx(n,work,itmp1)
-       do i=1,n
-          j=itmp2(itmp1(i))
-          itmp3(:,m+n-i+1)=itmp(:,j)
-       end do
+      call indexx(n,work,itmp1)
+      do i=1,n
+        j=itmp2(itmp1(i))
+        itmp3(:,m+n-i+1)=itmp(:,j)
+      end do
     end if
     m=m+n
     nrlma_xyz(2)=nrlma_xyz(2)+n
 
     n=0
     do i=1,nrlma
-       if( itmp(1,i)==0 .and. itmp(3,i)==0 .and. itmp(2,i)>0 )then
-          n=n+1
-          work(n)=itmp(2,i)
-          itmp2(n)=i
-       end if
+      if( itmp(1,i)==0 .and. itmp(3,i)==0 .and. itmp(2,i)>0 )then
+        n=n+1
+        work(n)=itmp(2,i)
+        itmp2(n)=i
+      end if
     end do
     if ( n>0 ) then
-       call indexx(n,work,itmp1)
-       do i=1,n
-          j=itmp2( itmp1(i) )
-          itmp3(:,m+i)=itmp(:,j)
-       end do
+      call indexx(n,work,itmp1)
+      do i=1,n
+        j=itmp2( itmp1(i) )
+        itmp3(:,m+i)=itmp(:,j)
+      end do
     end if
     m=m+n
     nrlma_xyz(3)=nrlma_xyz(3)+n
     n=0
     do i=1,nrlma
-       if( itmp(1,i)==0 .and. itmp(3,i)==0 .and. itmp(2,i)<0 )then
-          n=n+1
-          work(n)=itmp(2,i)
-          itmp2(n)=i
-       end if
+      if( itmp(1,i)==0 .and. itmp(3,i)==0 .and. itmp(2,i)<0 )then
+        n=n+1
+        work(n)=itmp(2,i)
+        itmp2(n)=i
+      end if
     end do
     if ( n>0 ) then
-       call indexx(n,work,itmp1)
-       do i=1,n
-          j=itmp2(itmp1(i))
-          itmp3(:,m+n-i+1)=itmp(:,j)
-       end do
+      call indexx(n,work,itmp1)
+      do i=1,n
+        j=itmp2(itmp1(i))
+        itmp3(:,m+n-i+1)=itmp(:,j)
+      end do
     end if
     m=m+n
     nrlma_xyz(4)=nrlma_xyz(4)+n
 
     n=0
     do i=1,nrlma
-       if( itmp(1,i)==0 .and. itmp(2,i)==0 .and. itmp(3,i)>0 )then
-          n=n+1
-          work(n)=itmp(3,i)
-          itmp2(n)=i
-       end if
+      if( itmp(1,i)==0 .and. itmp(2,i)==0 .and. itmp(3,i)>0 )then
+        n=n+1
+        work(n)=itmp(3,i)
+        itmp2(n)=i
+      end if
     end do
     if ( n>0 ) then
-       call indexx(n,work,itmp1)
-       do i=1,n
-          j=itmp2( itmp1(i) )
-          itmp3(:,m+i)=itmp(:,j)
-       end do
+      call indexx(n,work,itmp1)
+      do i=1,n
+        j=itmp2( itmp1(i) )
+        itmp3(:,m+i)=itmp(:,j)
+      end do
     end if
     m=m+n
     nrlma_xyz(5)=nrlma_xyz(5)+n
     n=0
     do i=1,nrlma
-       if( itmp(1,i)==0 .and. itmp(2,i)==0 .and. itmp(3,i)<0 )then
-          n=n+1
-          work(n)=itmp(3,i)
-          itmp2(n)=i
-       end if
+      if( itmp(1,i)==0 .and. itmp(2,i)==0 .and. itmp(3,i)<0 )then
+        n=n+1
+        work(n)=itmp(3,i)
+        itmp2(n)=i
+      end if
     end do
     if ( n>0 ) then
-       call indexx(n,work,itmp1)
-       do i=1,n
-          j=itmp2(itmp1(i))
-          itmp3(:,m+n-i+1)=itmp(:,j)
-       end do
+      call indexx(n,work,itmp1)
+      do i=1,n
+        j=itmp2(itmp1(i))
+        itmp3(:,m+n-i+1)=itmp(:,j)
+      end do
     end if
     m=m+n
     nrlma_xyz(6)=nrlma_xyz(6)+n
@@ -1003,7 +1005,7 @@ contains
 
     n=maxval( nrlma_xyz )
     if ( allocated(num_2_rank) ) then
-       deallocate( num_2_rank )
+      deallocate( num_2_rank )
     end if
     allocate( num_2_rank(n,6) )
     num_2_rank(:,:)=MPI_PROC_NULL
@@ -1011,34 +1013,34 @@ contains
 
     m=0
     do i=1,6
-       do j=1,nrlma_xyz(i)
-          m=m+1
-          i1=itmp3(1,m)+LLp(1,myrank_g)
-          i2=itmp3(2,m)+LLp(2,myrank_g)
-          i3=itmp3(3,m)+LLp(3,myrank_g)
-          k = i1 + i2*np1 + i3*np1*np2
-          num_2_rank(j,i)=k
-       end do
+      do j=1,nrlma_xyz(i)
+        m=m+1
+        i1=itmp3(1,m)+LLp(1,myrank_g)
+        i2=itmp3(2,m)+LLp(2,myrank_g)
+        i3=itmp3(3,m)+LLp(3,myrank_g)
+        k = i1 + i2*np1 + i3*np1*np2
+        num_2_rank(j,i)=k
+      end do
     end do
 
     deallocate( itmp,itmp1,itmp2,itmp3,work )
     deallocate( LLp )
 
     do i=1,5,2
-       n=max( nrlma_xyz(i),nrlma_xyz(i+1) )
-       nrlma_xyz(i)=n
-       nrlma_xyz(i+1)=n
+      n=max( nrlma_xyz(i),nrlma_xyz(i+1) )
+      nrlma_xyz(i)=n
+      nrlma_xyz(i+1)=n
     end do
 
-!    call prepThreeWayComm( nrlma,nl_rank_map,nrlma_xyz,num_2_rank )
+    !call prepThreeWayComm( nrlma,nl_rank_map,nrlma_xyz,num_2_rank )
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,8), barrier='on' )
 
     call allocate_ps_nloc2( MB_d_nl, itype_nl_sendrecv=2 )
 
     if ( allocated(JJP) ) then
-       deallocate( JJP )
-       deallocate( uVk )
+      deallocate( JJP )
+      deallocate( uVk )
     end if
     allocate( JJP(MAXMJJ,nzlma) ) ; JJP=0
     allocate( uVk(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk=0.d0
@@ -1047,6 +1049,8 @@ contains
     if ( disp_sw ) write(*,*) "(uVk)"
     call check_memory( 8.0d0,MAXMJJ,MBZ_1-MBZ_0+1 )
 
+    !call watchb( ttmp, tttt(:,9), barrier='on' )
+
     call prep_uvk_ps_nloc2(MBZ_0,MBZ_1,kbb(1,MBZ_0))
 
     if ( .not.FLAG_KEEP_JJ_MAP ) deallocate( JJ_MAP )
@@ -1054,19 +1058,21 @@ contains
 
     call sort_index_sub( MJJ, JJP, uVk )
 
-    call watcha( timer_counter )
+    !call watchb( ttmp, tttt(:,10), barrier='on' )
 
     call init_op_ps_nloc2_hp(.true.)
 
-    call watcha( timer_counter )
+    call write_border( 0, " prep_ps_nloc2(end)" )
+
+    !call watchb( ttmp, tttt(:,11), barrier='on' )
 
 ! ---
 
-!    if ( myrank == 0 ) then
-!       call write_watcha( timer_counter,"prep_ps_nloc2" )
-!    end if
-
-    call write_border( 0, " prep_ps_nloc2(end)" )
+    if ( myrank == 0 ) then
+      do i=1,11
+        write(*,'("time_prep_ps_nloc2(",i2,")",2f10.5)') i, tttt(:,i)
+      end do
+    end if
 
   end subroutine prep_ps_nloc2
 
@@ -1429,7 +1435,7 @@ contains
     real(8) :: a1,a2,a3,c1,c2,c3,d1,d2,d3
     real(8) :: x,y,z,r,kr,pi2,c
     real(8) :: tmp,tmp0,tmp1
-    real(8) :: ttmp(2), tttt(2,12)
+    real(8) :: ttmp(2), tttt(2,11)
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),duVdR(:,:,:)
 #ifdef _DRSDFT_
@@ -1448,7 +1454,7 @@ contains
 
     call check_disp_switch( disp_sw, 0 )
 
-    call watchb( ttmp ); tttt=0.0d0
+    !call watchb( ttmp ); tttt=0.0d0
 
     !flag_init_force = .true. ! MIZUHO-IR for cellopt (comment-out by ji for CPMD performance)
     if ( flag_init_force ) then
@@ -1456,7 +1462,7 @@ contains
        flag_init_force = .false.
     end if
 
-    call watchb( ttmp, tttt(:,1) )
+    !call watchb( ttmp, tttt(:,1) )
 
     if ( pselect == 3 ) then
        call calc_force_ps_nloc3(MI,force2)
@@ -1496,7 +1502,7 @@ contains
     c2=1.d0/ML2
     c3=1.d0/ML3
 
-    call watchb( ttmp, tttt(:,2) )
+    !call watchb( ttmp, tttt(:,2) )
 
     if ( .not.allocated(ilm1) ) then
        L1=maxval(lo)+1
@@ -1532,14 +1538,14 @@ contains
        end do
     end if
 
-    call watchb( ttmp, tttt(:,3) )
+    !call watchb( ttmp, tttt(:,3) )
 
     allocate( wtmp5(0:3,nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
     allocate( vtmp2(0:3,nzlma,MB_d_nl) )
     allocate( a_rank(Natom) )
     allocate( duVdR(3,MMJJ,nzlma) )
 
-    call watchb( ttmp, tttt(:,4) )
+    !call watchb( ttmp, tttt(:,4) )
 
 !$OMP parallel
 
@@ -1567,12 +1573,12 @@ contains
     end do
 !$OMP end do
 
-    call watchb( ttmp, tttt(:,5) )
+    !call watchb( ttmp, tttt(:,5), barrier='on' )
 
     if ( any( ippform == 4 ) ) then
 
 !$OMP master
-       call watchb( ttmp )
+       !call watchb( ttmp, barrier='on' )
 !$OMP end master
 
 !$OMP single
@@ -1581,12 +1587,12 @@ contains
 !$OMP end single
 
 !$OMP master
-       call watchb( ttmp, tttt(:,6) )
+       !call watchb( ttmp, tttt(:,6), barrier='on' )
 !$OMP end master
 
     else
 
-    call watchb( ttmp )
+    !call watchb( ttmp, barrier='on' )
 
 #ifndef _SPLINE_
 !$OMP single
@@ -1617,11 +1623,11 @@ contains
 #endif
 
 !$OMP workshare
-    duVdR=0.d0
+    duVdR=0.0d0
 !$OMP end workshare
 
 !$OMP master
-    call watchb( ttmp, tttt(:,7) )
+    !call watchb( ttmp, tttt(:,7), barrier='on' )
 !$OMP end master
 
 !$OMP do schedule(dynamic) firstprivate( maxerr ) &
@@ -1729,7 +1735,7 @@ contains
 !$OMP end do
 
 !$OMP master
-    call watchb( ttmp, tttt(:,8) )
+    !call watchb( ttmp, tttt(:,8), barrier='on' )
 !$OMP end master
 
 #ifndef _SPLINE_
@@ -1740,7 +1746,7 @@ contains
 
     end if
 
-    call watchb( ttmp )
+    !call watchb( ttmp, barrier='on' )
 
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
@@ -1826,7 +1832,7 @@ contains
     end do ! s
 
 !$OMP master
-    call watchb( ttmp, tttt(:,9) )
+    !call watchb( ttmp, tttt(:,9), barrier='on' )
 !$OMP end master
 
 !$OMP single
@@ -1837,15 +1843,15 @@ contains
 !$OMP end single
 
 !$OMP workshare
-    force2(:,:)=0.d0
+    force2(:,:)=0.0d0
 !$OMP end workshare
 
 !$OMP master
-    call watchb( ttmp, tttt(:,10) )
+    !call watchb( ttmp, tttt(:,10), barrier='on' )
 !$OMP end master
 
 !$OMP single
-    call watchb( ttmp )
+    !call watchb( ttmp, barrier='on' )
     do s=MSP_0,MSP_1
     do k=MBZ_0,MBZ_1
     do n=MB_0,MB_1,MB_d_nl
@@ -1929,11 +1935,11 @@ contains
     deallocate( ireq )
 
     allocate( work2(3,Natom) )
-    call watchb( ttmp, tttt(:,11) )
+    !call watchb( ttmp, tttt(:,11) )
 !$OMP end single
 
 !$OMP master
-    call watchb( ttmp )
+    !call watchb( ttmp )
 !$OMP end master
 
 !$OMP workshare
@@ -1950,7 +1956,7 @@ contains
 !$OMP end single
 
 !$OMP master
-    call watchb( ttmp, tttt(:,12) )
+    !call watchb( ttmp )
 !$OMP end master
 
 !$OMP end parallel
