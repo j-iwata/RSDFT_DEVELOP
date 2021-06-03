@@ -93,7 +93,7 @@ PROGRAM Real_Space_DFT
   integer :: info_level=1
   character(32) :: lattice_index
   character(20) :: systype_in="SOL"
-  integer :: nloop,itmp(3)
+  integer :: nloop,itmp(3),Nsweep
 
 ! --- start MPI ---
 
@@ -518,7 +518,7 @@ PROGRAM Real_Space_DFT
 ! ---
 
   call IOTools_readIntegerKeyword( "NSWEEP", Nsweep )
-  if ( NSWEEP > 0 ) then
+  if ( Nsweep > 0 ) then
     call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
     if ( ierr < 0 ) goto 900
   end if
