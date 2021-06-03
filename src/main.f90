@@ -517,16 +517,19 @@ PROGRAM Real_Space_DFT
 
 ! ---
 
+  call IOTools_readIntegerKeyword( "NSWEEP", Nsweep )
+  if ( NSWEEP > 0 ) then
+    call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
+    if ( ierr < 0 ) goto 900
+  end if
+
+! ---
+
   if ( iswitch_dos == 1 ) then
 
      call control_xc_hybrid(1)
      call calc_dos( ierr )
      goto 900
-
-  else
-
-     call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
-     if ( ierr < 0 ) goto 900
 
   end if
 

@@ -289,14 +289,14 @@ CONTAINS
        end select
 
        pxyz(:,:,:,:)=0.d0
-#ifndef _DRSDFT_
-       do n=1,mb2_band
-       do s=MSP_0,MSP_1
-          call calc_expectval_momentum &
-               (MBZ_0,ML_0,ML_1,1,1,unk(:,n:n,MBZ_0,s),pxyz(:,n:n,myrank_k,s))
-       end do ! s
-       end do ! n
-#endif
+!#ifndef _DRSDFT_
+!       do n=1,mb2_band
+!       do s=MSP_0,MSP_1
+!          call calc_expectval_momentum &
+!               (MBZ_0,ML_0,ML_1,1,1,unk(:,n:n,MBZ_0,s),pxyz(:,n:n,myrank_k,s))
+!       end do ! s
+!       end do ! n
+!#endif
 
        do s=MSP_0,MSP_1
           call rsdft_allgather( pxyz(:,:,myrank_k,s),pxyz(:,:,:,s),comm_bzsm )
