@@ -103,20 +103,20 @@ contains
     case( 1 )
       allocate( rbufnl1(n) ) ; rbufnl1=zero
       allocate( sbufnl1(n) ) ; sbufnl1=zero
-      if ( disp_sw ) write(*,*) "(rbufnl1,sbufnl1)"
-      call check_memory( 8.0d0, n, 2 )
+      !if ( disp_sw ) write(*,*) "(rbufnl1,sbufnl1)"
+      !call check_memory( 8.0d0, n, 2 )
     case( 2 )
       n2=maxval(nrlma_xyz)
       n3=6
       allocate( rbufnl3(n,n2,n3) ) ; rbufnl3=zero
       allocate( sbufnl3(n,n2,n3) ) ; sbufnl3=zero
-      if ( disp_sw ) write(*,*) "(rbufnl3,sbufnl3)"
-      call check_memory( 8.0d0, n*n2*n3, 2 )
+      !if ( disp_sw ) write(*,*) "(rbufnl3,sbufnl3)"
+      !call check_memory( 8.0d0, n*n2*n3, 2 )
     end select
     allocate( uVunk(nzlma,MB_d)  ) ; uVunk=zero
     allocate( uVunk0(nzlma,MB_d) ) ; uVunk0=zero
-    if ( disp_sw ) write(*,*) "(uVunk,uVunk0)"
-    call check_memory( 8.0d0, nzlma, MB_d, 2 )
+    !if ( disp_sw ) write(*,*) "(uVunk,uVunk0)"
+    !call check_memory( 8.0d0, nzlma, MB_d, 2 )
   end subroutine allocate_ps_nloc2
 
   subroutine checkMapsBeforeForce(myrank)

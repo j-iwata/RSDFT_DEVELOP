@@ -646,11 +646,13 @@ PROGRAM cubegen_wf3
   write(cmyrank,'(i5.5)') myrank
   file_wf_split = trim(file_name)//"."//trim(adjustl(cmyrank))
 
+  write(*,*) max(id_band(myrank_b)+1,MB1),min(id_band(myrank_b)+ir_band(myrank_b),MB2)
+write(*,*) "MB1,MB2=",MB1,MB2
   open(u1,file=file_wf_split,status='old',form='unformatted')
 
   do s=id_spin(myrank_s)+1,id_spin(myrank_s)+ir_spin(myrank_s)
   do k=id_bzsm(myrank_k)+1,id_bzsm(myrank_k)+ir_bzsm(myrank_k)
-  do n=id_band(myrank_b)+1,id_band(myrank_b)+ir_band(myrank_b)
+  do n=max(id_band(myrank_b)+1,MB1),min(id_band(myrank_b)+ir_band(myrank_b),MB2)
 
      if ( flag_real8 ) then
         read(u1) urtmp(:,n,k,s)
@@ -672,6 +674,11 @@ PROGRAM cubegen_wf3
      n = idata(1,i)
      k = idata(2,i)
      s = idata(3,i)
+
+     if ( n < MB1 .or. MB2 < n ) then
+       write(*,*) "WARNING!!! band n is not included in [MB1,MB2]"
+       cycle
+     end if
 
      if ( b1 <= n .and. n <= b2 .and. &
           k1 <= k .and. k <= k2 .and. &

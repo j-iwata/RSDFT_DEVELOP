@@ -730,12 +730,12 @@ contains
     if ( allocated(mmap)        ) deallocate( mmap )
     if ( allocated(iorbmap)     ) deallocate( iorbmap )
     if ( allocated(nl_rank_map) ) deallocate( nl_rank_map )
-    if ( disp_sw ) write(*,*) "(uV)"
-    call check_memory( 8.0d0, MMJJ, nzlma )
-    if ( disp_sw ) write(*,*) "(JJ_MAP)(KEEP_FLAG)", FLAG_KEEP_JJ_MAP
-    call check_memory( 4.0d0, 6, MMJJ, nzlma )
-    if ( disp_sw ) write(*,*) "(MJJ_MAP)"
-    call check_memory( 4.0d0, nzlma )
+    !if ( disp_sw ) write(*,*) "(uV)"
+    !call check_memory( 8.0d0, MMJJ, nzlma )
+    !if ( disp_sw ) write(*,*) "(JJ_MAP)(KEEP_FLAG)", FLAG_KEEP_JJ_MAP
+    !call check_memory( 4.0d0, 6, MMJJ, nzlma )
+    !if ( disp_sw ) write(*,*) "(MJJ_MAP)"
+    !call check_memory( 4.0d0, nzlma )
     allocate( uV(MMJJ,nzlma)       ) ; uV=0.d0
     allocate( JJ_MAP(6,MMJJ,nzlma) ) ; JJ_MAP=0
     allocate( MJJ_MAP(nzlma)       ) ; MJJ_MAP=0
@@ -1044,10 +1044,10 @@ contains
     end if
     allocate( JJP(MAXMJJ,nzlma) ) ; JJP=0
     allocate( uVk(MAXMJJ,nzlma,MBZ_0:MBZ_1) ) ; uVk=0.d0
-    if ( disp_sw ) write(*,*) "(JJP)"
-    call check_memory( 4.0d0,MAXMJJ,nzlma )
-    if ( disp_sw ) write(*,*) "(uVk)"
-    call check_memory( 8.0d0,MAXMJJ,MBZ_1-MBZ_0+1 )
+    !if ( disp_sw ) write(*,*) "(JJP)"
+    !call check_memory( 4.0d0,MAXMJJ,nzlma )
+    !if ( disp_sw ) write(*,*) "(uVk)"
+    !call check_memory( 8.0d0,MAXMJJ,MBZ_1-MBZ_0+1 )
 
     !call watchb( ttmp, tttt(:,9), barrier='on' )
 
