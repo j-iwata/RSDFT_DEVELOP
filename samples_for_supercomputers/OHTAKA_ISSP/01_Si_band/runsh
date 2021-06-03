@@ -1,0 +1,9 @@
+#!/bin/sh
+#SBATCH -p F1cpu
+#SBATCH -N 1
+#SBATCH -n 128
+#SBATCH -t "01:00:00"
+
+srun ./rsdft.x > a.log
+
+srun ./band2gp < band2gp.in > b.log

@@ -1,0 +1,11 @@
+1) cd complex16/ or real8/
+
+
+2) Run RSDFT
+
+$ sbatch runsh
+
+'fort.97' or 'fort.197' are the resultant optimized strutures, and they can be converted in CIF format by using 'utility/aa2cif.f90'.
+
+
+3) You can visualize the generated cif file with some viewer (e.g. VESTA)
