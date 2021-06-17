@@ -3,14 +3,72 @@ module rsdft_allgather_module
   implicit none
 
   private
-  public :: d_rsdft_allgather
-  public :: test_allgather
+  public :: d_rsdft_allgatherv_div
 
   integer :: nblock_default=4
   integer :: n_opt, n_opt_h
 
 contains
 
+  subroutine d_rsdft_allgatherv_div( n, a, ir, id, comm, nblk_in )
+    implicit none
+    integer,intent(in) :: n
+    real(8),intent(inout) :: a(n)
+    integer,intent(in) :: ir(0:), id(0:)
+    integer,intent(in) :: comm
+    integer,intent(in) :: nblk_in
+    integer :: nblk
+    logical :: disp_sw
+    integer :: i0,i1,nprc,mrnk,ierr,p
+    integer :: nmax,ndat,i,j
+    integer,allocatable :: irr(:),idd(:),id0(:),id1(:)
+    real(8),allocatable :: tmp(:)
+    include 'mpif.h'
+
+    call write_border( 1, " d_rsdft_allgatherv_div(start)" )
+
+    call check_disp_switch( disp_sw, 0 )
+
+    nblk = nblk_in
+    nprc = size(ir)
+    call MPI_Comm_rank( comm, mrnk, ierr )
+
+    allocate( tmp(nblk*nprc) ); tmp=0.0d0
+    allocate( irr(0:nprc-1)  ); irr=0
+    allocate( idd(0:nprc-1)  ); idd=0
+    allocate( id0(0:nprc-1)  ); id0=0
+    allocate( id1(0:nprc-1)  ); id1=0
+
+    id0(:) = id(:)
+
+    nmax = maxval(ir)
+    do i = 1, nmax, nblk
+      do p=0,nprc-1
+        id1(p) = min( id0(p)+nblk, id(p)+ir(p) ) - 1
+        irr(p) = id1(p) - id0(p) + 1
+        idd(p) = sum(irr(0:p))-irr(p)
+      end do
+      call MPI_Allgatherv( a(id0(mrnk)+1),irr(mrnk),MPI_REAL8 &
+                          ,tmp,irr,idd,MPI_REAL8,comm,ierr )
+      do p=0,nprc-1
+        if ( p /= mrnk ) then
+          do j=1,irr(p)
+            a(id0(p)+j)=tmp(idd(p)+j)
+          end do
+        end if        
+        id0(p) = id1(p) + 1
+      end do
+
+    end do
+
+    deallocate( id1 )
+    deallocate( id0 )
+    deallocate( idd )
+    deallocate( irr )
+    deallocate( tmp )
+
+    call write_border( 1, " d_rsdft_allgatherv_div(end)" )
+  end subroutine d_rsdft_allgatherv_div
 
   subroutine d_rsdft_allgather( a, b, comm, ierr, nblock_in )
     implicit none

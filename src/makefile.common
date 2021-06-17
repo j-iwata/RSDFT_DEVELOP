@@ -32,8 +32,8 @@ MODS2 = localpot_module.o\
         force_sol_module.o\
         force_mol_module.o\
         force_correction_module.o\
-        test_force_module.o\
         force_module.o\
+        test_force_module.o\
         stress_module.o\
         linear_response_module.o\
         current_module.o\
@@ -41,6 +41,8 @@ MODS2 = localpot_module.o\
         ps_init_sol_module.o\
         ps_init_mol_module.o\
         ps_init_module.o\
+	construct_vion_vh_floc_ffte_module.o\
+	construct_vion_vh_floc_1dffte_module.o\
 	construct_vion_vh_floc_module.o\
 
 MODS1 = \
@@ -58,8 +60,10 @@ MODS1 = \
        rsdft_sendrecv_module.o\
        rsdft_allgather_module.o\
        rsdft_mpi_module.o\
+       memory_module.o\
        omp_variables.o\
        io_tools_module.o\
+       sl_tools_module.o\
        lattice_module.o\
        cif_format_module.o\
        atom_module.o\
@@ -90,6 +94,7 @@ MODS1 = \
        rsdft_fft_module.o\
        fft_module.o\
        ffte_sub_module.o\
+       pzfft3dv_arb_module.o\
        var_para_ps_nloc_g.o\
        sqerr_g_module.o\
        sqerr_module.o\
@@ -163,12 +168,16 @@ MODS1 = \
        random_initrho_module.o\
        ps_initrho_module.o\
        ps_local_variables.o\
+       ps_local_1dffte_module.o\
+       ps_local_ffte_module.o\
        ps_local_fftw_module.o\
+       ps_local_fft0_module.o\
        ps_local_module.o\
        io_ctrl_parameters.o\
        io_simple_module.o\
        ps_local_mol_gth_module.o\
        ps_local_mol_module.o\
+       force_local_1dffte_module.o\
        force_local_fftw_module.o\
        force_local_sol_module.o\
        force_local_mol_module.o\

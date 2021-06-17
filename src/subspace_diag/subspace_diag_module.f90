@@ -1,49 +1,70 @@
-MODULE subspace_diag_module
+module subspace_diag_module
 
   use parallel_module, only: np_band, ir_band, id_band, myrank &
                             ,disp_switch_parallel
   use subspace_diag_variables
   use subspace_diag_la_module
   use subspace_diag_sl_module
+  use subspace_sdsl_module
   use subspace_diag_ncol_module
+  use io_tools_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: subspace_diag, init_subspace_diag
+  private
+  public :: subspace_diag, init_subspace_diag
 
-CONTAINS
+  integer :: ialgo_sd=1
+
+contains
 
 
-  SUBROUTINE subspace_diag( k,s,ML_0,ML_1,unk,esp )
+  subroutine subspace_diag( k,s,ML_0,ML_1,MK_0,MS_0,unk,esp )
     implicit none
-    integer,intent(IN) :: k,s,ML_0,ML_1
+    integer,intent(in) :: k,s,ML_0,ML_1,MK_0,MS_0
 #ifdef _DRSDFT_
-    real(8),intent(INOUT) :: unk(:,:,:,:)
+    real(8),intent(inout) :: unk(:,:,:,:)
 #else
-    complex(8),intent(INOUT) :: unk(:,:,:,:)
+    complex(8),intent(inout) :: unk(:,:,:,:)
 #endif
-    real(8),intent(INOUT) :: esp(:,:,:)
+    real(8),intent(inout) :: esp(:,:,:)
+    integer :: k0,s0
     if ( flag_noncollinear ) then
-       call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
+      call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
     else
 #ifdef _LAPACK_
        call subspace_diag_la(k,s)
 #else
-       call subspace_diag_sl(k,s)
+       select case( ialgo_sd )
+       case( 0 )
+         call subspace_diag_la(k,s)
+       case( 1 )
+         call subspace_diag_sl(k,s)
+       case default
+         k0 = k - MK_0 + 1
+         s0 = s - MS_0 + 1
+         call subspace_sdsl( k, s, unk(:,:,k0,s0), esp(:,k0,s0) )
+       end select
 #endif
     end if
-  END SUBROUTINE subspace_diag
+  end subroutine subspace_diag
 
 
-  SUBROUTINE init_subspace_diag( MB_in )
+  subroutine init_subspace_diag( MB_in )
     implicit none
-    integer,intent(IN) :: MB_in
+    integer,intent(in) :: MB_in
     integer :: i,j,mm,ms,me,nme,ne,nn,MB,num_sq_blocks_per_bp
 
     call write_border( 0, " init_subspace_diag(start)" )
 
     MB_diag = MB_in
+
+    call IOTools_readIntegerKeyword( 'IALGO_SD', ialgo_sd )
+
+    if( ialgo_sd /= 1 )then
+      call write_border( 0, " init_subspace_diag(return)" )
+      return
+    end if
 
     MB  = MB_diag
     nme = (MB*MB+MB)/2
@@ -104,11 +125,11 @@ CONTAINS
 
     call write_border( 0, " init_subspace_diag(end)" )
 
-  END SUBROUTINE init_subspace_diag
+  end subroutine init_subspace_diag
 
-  SUBROUTINE parameter_check(nme,MB)
+  subroutine parameter_check(nme,MB)
     implicit none
-    integer,intent(IN) :: nme,MB
+    integer,intent(in) :: nme,MB
     real(8) :: d_nme
     d_nme = ( dble(MB)*dble(MB)+dble(MB) )/2.0d0
     if ( abs(d_nme-nme) > 1.d-10 ) then
@@ -116,7 +137,7 @@ CONTAINS
        write(*,*) "MB may be too large"
        stop "stop@init_subspace_diag"
     end if
-  END SUBROUTINE parameter_check
+  end subroutine parameter_check
 
 
-END MODULE subspace_diag_module
+end module subspace_diag_module

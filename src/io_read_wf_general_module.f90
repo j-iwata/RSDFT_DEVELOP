@@ -89,24 +89,24 @@ contains
        end do
     end do
 
-    irank_g = -1
-    do i3 = 0, pinfo1%np(3)-1
-    do i2 = 0, pinfo1%np(2)-1
-    do i1 = 0, pinfo1%np(1)-1
-       irank_g = irank_g + 1
-       if ( irank_g == myrank_g ) then
-          i1_2 = id_new(i1,1)
-          i1_3 = i1_2 + ir_new(i1,1) - 1
-          i2_2 = id_new(i2,2)
-          i2_3 = i2_2 + ir_new(i2,2) - 1
-          i3_2 = id_new(i3,3)
-          i3_3 = i3_2 + ir_new(i3,3) - 1
-          n11 = i1_3 - i1_2 + 1
-          n12 = n11*(i2_3-i2_2+1)
-       end if
-    end do
-    end do
-    end do
+    loop_i3: do i3 = 0, pinfo1%np(3)-1
+             do i2 = 0, pinfo1%np(2)-1
+             do i1 = 0, pinfo1%np(1)-1
+               irank_g = i1 + i2*pinfo1%np(1) + i3*pinfo1%np(1)*pinfo1%np(2)
+               if ( irank_g == myrank_g ) then
+                 i1_2 = id_new(i1,1)
+                 i1_3 = id_new(i1,1) + ir_new(i1,1) - 1
+                 i2_2 = id_new(i2,2)
+                 i2_3 = id_new(i2,2) + ir_new(i2,2) - 1
+                 i3_2 = id_new(i3,3)
+                 i3_3 = id_new(i3,3) + ir_new(i3,3) - 1
+                 n11 = i1_3 - i1_2 + 1
+                 n12 = n11*(i2_3-i2_2+1)
+                 exit loop_i3
+               end if
+             end do
+             end do
+             end do loop_i3
 
     n=maxval(pinfo0%grid%ir)
     if ( type_wf == 1 ) then ! real-wf

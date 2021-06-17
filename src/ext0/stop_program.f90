@@ -1,11 +1,14 @@
 SUBROUTINE stop_program( indx )
   implicit none
   character(*),intent(IN) :: indx
-  integer :: ierr
+  integer :: ierr, myrank
   include 'mpif.h'
-  write(*,'(/,a30 " stop_program is called !!! ",a30)') &
+  call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
+  if ( myrank == 0 ) then
+    write(*,'(/,a30 " stop_program is called !!! ",a30)') &
        repeat("-",30),repeat("-",30)
-  write(*,*) indx
+    write(*,*) indx
+  end if
   call MPI_FINALIZE( ierr )
   stop "stop@stop_program"
 END SUBROUTINE stop_program

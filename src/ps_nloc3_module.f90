@@ -402,7 +402,7 @@ contains
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork0, zwork1, "fft_rsdft" )
+             call backward_fft( zwork0, zwork1 )
 
 !$OMP parallel private( irank_g,l1,l2,l3,m1,m2,m3,i )
              do i3=1,node_partition(3)
@@ -665,7 +665,7 @@ contains
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1, "fft_rsdft" )
+             call backward_fft( zwork, zwork1 )
 
 !$OMP parallel private( i1,i2,i3,Gy )
 !$OMP do
@@ -688,7 +688,7 @@ contains
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1, "fft_rsdft" )
+             call backward_fft( zwork, zwork1 )
 
 !$OMP parallel private( Gz,i1,i2,i3 )
 !$OMP do
@@ -711,7 +711,7 @@ contains
 !$OMP end do
 !$OMP end parallel
 
-             call backward_fft( zwork, zwork1, "fft_rsdft" )
+             call backward_fft( zwork, zwork1 )
 
 !$OMP parallel do private( i1,i2,i3 )
              do i=1,ML

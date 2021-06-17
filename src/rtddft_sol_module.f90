@@ -240,7 +240,7 @@ CONTAINS
 #endif
 
        call calc_density( Nele(1:MS_WF) )
-       call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
+       call calc_hartree( rho )
        call calc_xc
        call update_localpot
 

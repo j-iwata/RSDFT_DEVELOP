@@ -208,7 +208,7 @@ CONTAINS
        end do ! s
 
        call calc_density
-       call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, rho )
+       call calc_hartree( rho )
        call calc_xc
        call update_localpot
 

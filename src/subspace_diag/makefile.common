@@ -6,5 +6,7 @@ OBJS = subspace_diag_variables.o\
        subspace_rotv_sl_module.o\
        subspace_diag_sl_module.o\
        subspace_diag_ncol_module.o\
+       calc_overlap_sd_module.o\
+       subspace_sdsl_module.o\
        subspace_diag_module.o\
 

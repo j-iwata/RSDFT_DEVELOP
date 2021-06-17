@@ -18,11 +18,7 @@ module cpmdio_module
   public :: read_data_cpmdio
   public :: read_data_cpmdio_0
 
-  integer :: IO_ctrl_r=0
-  integer :: IO_ctrl_w=0
   integer :: OC=0
-  logical :: flag_init_r=.true.
-  logical :: flag_init_w=.true.
   integer :: node_partition_old(7)
 
 contains
@@ -261,7 +257,7 @@ contains
   subroutine read_data_cpmd_k_para_tmp
     implicit none
     integer :: n1,n2,n3,ML0_old(3),n,k,i,j,ispin,ierr
-    integer :: i1,i2,i3
+    integer :: i1,i2,i3,a1,a2,a3,b1,b2,b3
     integer :: a1_old,a2_old,a3_old,b1_old,b2_old,b3_old
     character(len=64) :: filename
     integer :: n1_now, nprocs_old, irank_old
@@ -293,6 +289,10 @@ contains
 
     allocate( w_old(ML0_old(1),ML0_old(2),ML0_old(3)) ); w_old=zero
 
+    a1 = Igrid(1,1) ; b1 = Igrid(2,1)
+    a2 = Igrid(1,2) ; b2 = Igrid(2,2)
+    a3 = Igrid(1,3) ; b3 = Igrid(2,3)
+
     do irank_old=0,nprocs_old-1
 
        a1_old = Igrid_old(1,1,irank_old)
@@ -301,6 +301,10 @@ contains
        b1_old = Igrid_old(2,1,irank_old)
        b2_old = Igrid_old(2,2,irank_old)
        b3_old = Igrid_old(2,3,irank_old)
+
+       if ( b1_old < a1 .or. b1 < a1_old .or. &
+            b2_old < a2 .or. b2 < a2_old .or. &
+            b3_old < a3 .or. b3 < a3_old ) cycle
 
        write(filename,"('restart_',i5.5,'.dat')") irank_old
        open(1,file=filename,form="unformatted")

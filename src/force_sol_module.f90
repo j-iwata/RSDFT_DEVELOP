@@ -27,7 +27,7 @@ CONTAINS
 
     call write_border( 1, " calc_force_sol(start)" )
 
-    force(:,:) = 0.d0
+    force(:,:) = 0.0d0
 
 !    ctt(:)=0.d0
 !    ett(:)=0.d0
@@ -36,7 +36,7 @@ CONTAINS
 
 !    call watch(ctt(0),ett(0))
 
-    call calc_force_local_sol( MI, work )
+    call calc_force_local_sol( work )
     force = force + work
 
     if ( flag_pcc_0 ) then
@@ -46,7 +46,7 @@ CONTAINS
 
 !    call watch(ctt(1),ett(1))
 
-    call calc_force_nonlocal( MI, work )
+    call calc_force_nonlocal( work )
     force = force + work
 
 !    call watch(ctt(2),ett(2))

@@ -19,7 +19,7 @@ contains
 
   subroutine init_allel( Zps, Vcell_in )
     implicit none
-    real(8),intent(out) :: Zps(:)
+    real(8),intent(inout) :: Zps(:)
     real(8),intent(in) ::Vcell_in
     call IOTools_findKeyword( "ALLEL", flag_allel, flag_bcast=.true. )
     if ( flag_allel ) then

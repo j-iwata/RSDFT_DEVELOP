@@ -34,8 +34,6 @@ OMPFLAG   =
 #CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ######################### LAPACK is used ( ScaLAPACK is not used ) #####
 #CPP_FLAGS := -D_LAPACK_ $(CPP_FLAGS)
-##################################################### FFTE is used #####
-#CPP_FLAGS := -D_FFTE_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
 #CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
 #INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
@@ -135,9 +133,9 @@ CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
 ########################################################################
 #####  K computer                                                  #####
 #FC = mpifrtpx
-#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl,NOFLTLD \
-        -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
-        -X9 -V -Ec -Qa,d,i,p,t,x -Cpp -Ccpp
+#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl \
+#        -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
+#        -X9 -V -Ec -Nlst=a,lst=d,lst=i,lst=p,lst=t,lst=x -Cpp -Ccpp
 #LFLAGS0 = ${FFLAGS0} -Ntl_trt
 #LAPACK_L = -SSL2BLAMP -SCALAPACK
 #INCLUDE_DIR = -I../ -I/home/apps/fftw/3.3.3/include/

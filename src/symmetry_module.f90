@@ -1080,7 +1080,7 @@ stop
     real(8) :: atmp(3),c1,c2,c3,r,r0,faa(3),tmp1(3)
     real(8),allocatable :: ftmp(:,:)
 
-    if ( isymmetry /= 1 ) return
+    if ( isymmetry == 0 ) return
 
     call write_border( 1, " sym_force(start)" )
 

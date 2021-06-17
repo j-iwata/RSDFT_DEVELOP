@@ -676,7 +676,7 @@ CONTAINS
        z1=zatom(i1)
        sum0=0.d0
        qsum0=0.0_QP
-!$OMP parallel do private( a1,a2,a3,x,y,z,r,t ) reduction(+:sum0)
+!!$OMP parallel do private( a1,a2,a3,x,y,z,r,t ) reduction(+:sum0)
        do i=1,mr
           a1=LR(1,i)+a1_1-a1_2
           a2=LR(2,i)+a2_1-a2_2
@@ -698,7 +698,7 @@ CONTAINS
           end if
           if ( present(qewldr) ) qsum0=qsum0+t
        end do
-!$OMP end parallel do
+!!$OMP end parallel do
        if ( i1 /= i2 ) sum0=sum0*2.d0
        sum2=sum2+z1*z2*sum0
        if ( present(qewldr) ) then

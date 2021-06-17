@@ -30,10 +30,11 @@ SUBROUTINE getforce_cpmd( ltime )
 
   use wf_module, only: unk, occ
   use rsdft_mpi_module
-  use construct_vion_vh_floc_module, only: construct_vion_vh_floc_2
+  use construct_vion_vh_floc_module, only: construct_vion_vh_floc
   use nonlocal_module, only: calc_force_nonlocal
   use force_ewald_module, only: calc_force_ewald
   use ps_nloc2_variables, only: prep_backup_uVunk_ps_nloc2
+  use fft_module, only: iswitch_fft
 
   implicit none
 
@@ -53,32 +54,33 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(1),etime_force(1))
 
-#ifdef _FFTE_
-  if ( flag_pcc_0 ) then
-     call construct_strfac
-     call construct_ps_pcc
-     call destruct_strfac
-  end if
-#else
-  call construct_strfac
-  call construct_ps_local
-  call construct_ps_pcc
-  call destruct_strfac
-#endif
+  select case( iswitch_fft )
+  case( 'FFT0','FFTW' )
+    call construct_strfac
+    call construct_ps_local
+    call construct_ps_pcc
+    call destruct_strfac
+  case( 'FFTE','FFTE1','FFTE2' )
+    if ( flag_pcc_0 ) then
+      call construct_strfac
+      call construct_ps_pcc
+      call destruct_strfac
+    end if
+  end select
 
   if ( ltime ) call watch(ctime_force(2),etime_force(2))
 
   select case(pselect)
   case(2)
-     call prep_ps_nloc2
+    call prep_ps_nloc2
   case(3)
-     call prep_ps_nloc3
+    call prep_ps_nloc3
   case(5)
-     call prep_ps_nloc_mr
+    call prep_ps_nloc_mr
   case(102)
-     call prep_ps_nloc2
-     call prepNzqr
-     call prepQRijp102
+    call prep_ps_nloc2
+    call prepNzqr
+    call prepQRijp102
   end select
 
   if ( ltime ) call watch(ctime_force(3),etime_force(3))
@@ -89,11 +91,12 @@ SUBROUTINE getforce_cpmd( ltime )
 
   if ( ltime ) call watch(ctime_force(4),etime_force(4))
 
-#ifdef _FFTE_
-  call construct_vion_vh_floc_2( rho, Vion, Vh, Force, E_hartree )
-#else
-  call calc_hartree(ML_0,ML_1,MSP_1-MSP_0+1,rho(ML_0,MSP_0))
-#endif
+  select case( iswitch_fft )
+  case( 'FFT0', 'FFTW' )
+    call calc_hartree( rho )
+  case( 'FFTE','FFTE1','FFTE2' )
+    call construct_vion_vh_floc( rho, Vion, Vh, Force, E_hartree )
+  end select
 
   if ( ltime ) call watch(ctime_force(5),etime_force(5))
 
@@ -102,7 +105,7 @@ SUBROUTINE getforce_cpmd( ltime )
   if ( ltime ) call watch(ctime_force(6),etime_force(6))
 
   do s=MSP_0,MSP_1
-     Vloc(:,s)=Vh(:)+Vxc(:,s)+Vion(:)
+    Vloc(:,s)=Vh(:)+Vxc(:,s)+Vion(:)
   enddo
 
   call getDij
@@ -111,33 +114,33 @@ SUBROUTINE getforce_cpmd( ltime )
 
   call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
 
-#ifdef _FFTE_
-  !call calc_force(Natom,Force)
-  allocate( work2(3,Natom) ); work2=0.0d0
-  !call watchb( ttmp, barrier='on' ); ttt=0.0d0
-  call calc_force_nonlocal( Natom, work2 )
-  !call watchb( ttmp, ttt(:,1), barrier='on' )
-  Force=Force+work2
-  !call watchb( ttmp, barrier='on' )
-  call calc_force_ewald( Natom, work2 )
-  !call watchb( ttmp, ttt(:,2), barrier='on' )
-  Force=Force+work2
-  deallocate( work2 )
-#else
-  call calc_force( Natom, Force )
-#endif
+  select case( iswitch_fft )
+  case( 'FFTE','FFTE1','FFTE2' )
+    allocate( work2(3,Natom) ); work2=0.0d0
+    !call watchb( ttmp, barrier='on' ); ttt=0.0d0
+    call calc_force_nonlocal( work2 )
+    !call watchb( ttmp, ttt(:,1), barrier='on' )
+    Force=Force+work2
+    !call watchb( ttmp, barrier='on' )
+    call calc_force_ewald( Natom, work2 )
+    !call watchb( ttmp, ttt(:,2), barrier='on' )
+    Force=Force+work2
+    deallocate( work2 )
+  case( 'FFT0', 'FFTW' )
+    call calc_force( Natom, Force )
+  end select
 
   if ( ltime ) call watch(ctime_force(8),etime_force(8))
 
   do i=1,Natom
-     Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)
+    Force(:,i)=Force(:,i)/(pmass(zn_atom(ki_atom(i)))*AMU)
   enddo
 
   if ( ltime ) call watch(ctime_force(9),etime_force(9))
 
   if ( ltime .and. myrank==0 ) then
-     write(17,'(9f10.5)') (etime_force(i+1)-etime_force(i),i=0,8)
-     !write(*,'("fnloc,fewld",4f10.5)') ttt
+    write(17,'(9f10.5)') (etime_force(i+1)-etime_force(i),i=0,8)
+    !write(*,'("fnloc,fewld",4f10.5)') ttt
   endif
 
   return

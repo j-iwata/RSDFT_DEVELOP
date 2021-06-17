@@ -34,6 +34,7 @@ MODULE atomopt_module
   use lattice_module, only: lattice, backup_aa_lattice, construct_lattice
   use aa_module, only: init_aa
   !--- end MIZUHO-IR for cellopt
+  use atomopt_rf2_module
   use atomopt_ef_module
   use atomopt_rf_module
   use atomopt_bfgs_module
@@ -82,6 +83,8 @@ CONTAINS
        call atomopt_rf( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case( 7 )
        call atomopt_ef( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
+    case( 8 )
+       call atomopt_rf2( SYStype, feps, ncycl, okatom, most, decr, diter_opt )
     case default
        write(*,*) "Invalid Parameter: iswitch_opt=",iswitch_opt
        call stop_program("atomopt")
@@ -227,7 +230,11 @@ CONTAINS
           if ( disp_switch_loc ) write(*,*) "Etot(har)=",Etot
        end if
        if ( disp_switch_loc ) write(*,'(1x,"# Force (total)")')
-       call calc_force( Natom, Force )
+       if ( forcelog > 0 ) then
+         call calc_force( Natom, Force, unit=unit198 )
+       else       
+         call calc_force( Natom, Force )
+       end if
        ! MIZUHO-IR for cellopt
        if( .not. iswitch_opt >= 1 ) then
           Force(:,1:Natom) = 0.0d0
@@ -236,7 +243,6 @@ CONTAINS
        if( iswitch_latopt >= 1 ) then
           call calc_total_energy( .false., Etot )
           call calc_stress( stress )
-
           Force(:,Natom+1) = Va/M_2PI*matmul( stress(:,:), bb(:,1) )
           Force(:,Natom+2) = Va/M_2PI*matmul( stress(:,:), bb(:,2) )
           Force(:,Natom+3) = Va/M_2PI*matmul( stress(:,:), bb(:,3) )

@@ -212,28 +212,35 @@ CONTAINS
                 do i1=1,lma_nsend(irank)
                    do i3=0,3
                       i2=i2+1
-                      sbufnl(i2,irank)=uuu0(i3,sendmap(i1,irank),ib)
+                      !sbufnl(i2,irank)=uuu0(i3,sendmap(i1,irank),ib)
+                      sbufnl1(i2)=uuu0(i3,sendmap(i1,irank),ib)
                    end do
                 end do
              end do
              nreq=nreq+1
-             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb*4 &
+             !call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb*4 &
+             !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Isend(sbufnl1,lma_nsend(irank)*nb*4 &
                   ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
           end if
           if ( jrank >= 0 ) then
              nreq=nreq+1
-             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb*4 &
+             !call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb*4 &
+             !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Irecv(rbufnl1,lma_nsend(jrank)*nb*4 &
                   ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
           end if
-          call mpi_waitall(nreq,ireq,istatus,ierr)
+          call MPI_Waitall(nreq,ireq,istatus,ierr)
           if ( jrank >= 0 ) then
              i2=0
              do ib=b1,b2
                 do i1=1,lma_nsend(jrank)
                    do i3=0,3
                       i2=i2+1
+                      !uuu(i3,recvmap(i1,jrank),ib) &
+                      !   = uuu(i3,recvmap(i1,jrank),ib) + rbufnl(i2,jrank)
                       uuu(i3,recvmap(i1,jrank),ib) &
-                         = uuu(i3,recvmap(i1,jrank),ib) + rbufnl(i2,jrank)
+                         = uuu(i3,recvmap(i1,jrank),ib) + rbufnl1(i2)
                    end do ! i3
                 end do ! i1
              end do ! ib
@@ -514,28 +521,35 @@ CONTAINS
                 do i1=1,lma_nsend(irank)
                    do i3=0,1
                       i2=i2+1
-                      sbufnl(i2,irank)=uuu0(i3,sendmap(i1,irank),ib)
+                      !sbufnl(i2,irank)=uuu0(i3,sendmap(i1,irank),ib)
+                      sbufnl1(i2)=uuu0(i3,sendmap(i1,irank),ib)
                    end do
                 end do
              end do
              nreq=nreq+1
-             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb*4 &
+             !call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb*4 &
+             !     ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Isend(sbufnl1,lma_nsend(irank)*nb*4 &
                   ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
           end if
           if ( jrank >= 0 ) then
              nreq=nreq+1
-             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb*4 &
+             !call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb*4 &
+             !     ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
+             call MPI_Irecv(rbufnl1,lma_nsend(jrank)*nb*4 &
                   ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
           end if
-          call mpi_waitall(nreq,ireq,istatus,ierr)
+          call MPI_Waitall(nreq,ireq,istatus,ierr)
           if ( jrank >= 0 ) then
              i2=0
              do ib=1,nb
                 do i1=1,lma_nsend(jrank)
                    do i3=0,1
                       i2=i2+1
+                      !uuu(i3,recvmap(i1,jrank),ib) &
+                      !   = uuu(i3,recvmap(i1,jrank),ib) + rbufnl(i2,jrank)
                       uuu(i3,recvmap(i1,jrank),ib) &
-                         = uuu(i3,recvmap(i1,jrank),ib) + rbufnl(i2,jrank)
+                         = uuu(i3,recvmap(i1,jrank),ib) + rbufnl1(i2)
                    end do ! i3
                 end do ! i1
              end do ! ib

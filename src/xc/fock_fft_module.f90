@@ -1,4 +1,4 @@
-MODULE fock_fft_module
+module fock_fft_module
 
   use parallel_module
   use rgrid_module, only: Ngrid, Igrid
@@ -11,15 +11,16 @@ MODULE fock_fft_module
   use fock_ffte_module, only: fock_ffte_double, fock_ffte, init_fock_ffte &
                              ,ct_fock_ffte,et_fock_ffte
   use fock_fftw_module, only: fock_fftw_double, fock_fftw, init_fock_fftw
-  use fft_module
+  use fft_module, only: iswitch_fft,init_fft,forward_fft,backward_fft &
+                       ,finalize_fft,z3_to_z1_fft,z3_to_d1_fft
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: ct_fock_fft, et_focK_fft
-  PUBLIC :: Fock_FFT
-  PUBLIC :: Fock_FFT_Double
-  PUBLIC :: init_fock_fft
+  private
+  public :: ct_fock_fft, et_focK_fft
+  public :: Fock_FFT
+  public :: Fock_FFT_Double
+  public :: init_fock_fft
 
 #ifdef _DRSDFT_
   integer,parameter :: TYPE_MAIN=MPI_REAL8
@@ -29,17 +30,18 @@ MODULE fock_fft_module
 
   real(8) :: ct_fock_fft(10),et_fock_fft(10)
 
-CONTAINS
+contains
 
 
-  SUBROUTINE init_fock_fft
+  subroutine init_fock_fft
     implicit none
-#ifdef _FFTE_
-    call init_fock_ffte
-#elif _FFTW_
-    call init_fock_fftw
-#endif
-  END SUBROUTINE init_fock_fft
+    select case( iswitch_fft )
+    case( 'FFTE','FFTE1' )
+      call init_fock_ffte
+    case( 'FFTW','FFTW1' )
+      call init_fock_fftw
+    end select
+  end subroutine init_fock_fft
 
 
   SUBROUTINE Fock_fft( n1, n2, k, q, trho, tVh, t )
@@ -63,21 +65,22 @@ CONTAINS
 #endif
     real(8) :: ctt(0:5),ett(0:5)
 
-#ifdef _FFTE_
+    select case( iswitch_fft )
+    case( 'FFTE','FFTE1' )
 
-    ct_fock_ffte(:)=0.0d0
-    et_fock_ffte(:)=0.0d0
-    call Fock_FFTE( n1, n2, k, q, trho, tVh, t )
-    ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
-    et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
-    return
+      ct_fock_ffte(:)=0.0d0
+      et_fock_ffte(:)=0.0d0
+      call Fock_FFTE( n1, n2, k, q, trho, tVh, t )
+      ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+      et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
+      return
 
-#elif _FFTW_
+    case( 'FFTW','FFTW1' )
 
-    call FocK_FFTW( n1, n2, k, q, trho, tVh, t )
-    return
+      call FocK_FFTW( n1, n2, k, q, trho, tVh, t )
+      return
 
-#endif
+    end select
 
     pi  = acos(-1.0d0)
     pi4 = 4.0d0*pi
@@ -255,21 +258,22 @@ CONTAINS
     complex(8),allocatable :: work(:)
     real(8) :: ctt(0:5),ett(0:5)
 
-#ifdef _FFTE_
+    select case( iswitch_fft )
+    case( 'FFTE','FFTE1' )
 
-    ct_fock_ffte(:)=0.0d0
-    et_fock_ffte(:)=0.0d0
-    call Fock_FFTE_Double( n1, n2, trho, tVh )
-    ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
-    et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
-    return
+      ct_fock_ffte(:)=0.0d0
+      et_fock_ffte(:)=0.0d0
+      call Fock_FFTE_Double( n1, n2, trho, tVh )
+      ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+      et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
+      return
 
-#elif _FFTW_
+    case( 'FFTW','FFTW1' )
 
-    call Fock_FFTW_Double( n1, n2, trho, tVh )
-    return
+      call Fock_FFTW_Double( n1, n2, trho, tVh )
+      return
 
-#endif
+    end select
 
     pi  = acos(-1.0d0)
     pi4 = 4.0d0*pi
@@ -432,4 +436,4 @@ CONTAINS
   END SUBROUTINE Fock_FFT_Double
 
 
-END MODULE fock_fft_module
+end module fock_fft_module

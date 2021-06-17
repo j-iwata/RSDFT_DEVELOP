@@ -34,6 +34,7 @@ module io_module
   public :: read_data
   public :: GetParam_IO
   public :: Init_IO
+  public :: read_vrho_data
 
   character(30) :: file_wf0   ="wf.dat1"
   character(30) :: file_vrho0 ="vrho.dat1"
@@ -530,6 +531,194 @@ contains
     end if
 
   end subroutine construct_gridmap_sub
+
+
+  subroutine read_vrho_data( file_in, Vh_out, Ves_out )
+    implicit none
+    character(30),intent(in) :: file_in
+    real(8),optional,intent(out) :: Vh_out(:)
+    real(8),optional,intent(out) :: Ves_out(:)
+    integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
+    integer :: ML1_tmp,ML2_tmp,ML3_tmp,ierr,i1,i2,i3,j1,j2,j3,s,i0
+    integer :: ML1,ML2,ML3,mx,my,mz,itmp(7)
+    real(8) :: fs,mem,memax,ct0,et0,ct1,et1
+    real(8),allocatable :: rtmp(:),rtmp3(:,:,:)
+    character(len=64) :: cbuf
+    logical :: flag_versioned
+    type(time) :: tt
+    logical :: disp_switch
+
+    call write_border( 0, " read_vrho_data(start)" )
+    call start_timer( tt )
+    call check_disp_switch( disp_switch, 0 )
+
+    n1  = idisp(myrank)+1
+    n2  = idisp(myrank)+ircnt(myrank)
+    ML0 = ircnt(myrank)
+
+    ML1 = Ngrid(1)
+    ML2 = Ngrid(2)
+    ML3 = Ngrid(3)
+
+    if ( allocated(lat_old) ) deallocate( lat_old )
+    allocate( lat_old(3,ML) ); lat_old=0
+
+    call construct_gridmap_sub( lat_new )
+
+!
+! --- Read VRHO ---
+!
+    if ( myrank == 0 ) then
+       open(80,file=file_in,form='unformatted')
+       read(80) cbuf(1:7)
+       rewind(80)
+       if ( cbuf(1:7) == "version" ) then
+          read(80) cbuf
+          write(*,*) "file format version: "//cbuf
+          flag_versioned=.true.
+       else
+          flag_versioned=.false.
+       end if
+       read(80) ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp
+       itmp=0
+       itmp(1)=ML_tmp
+       itmp(2)=ML1_tmp
+       itmp(3)=ML2_tmp
+       itmp(4)=ML3_tmp
+    end if
+    call mpi_bcast(itmp,4,mpi_integer,0,mpi_comm_world,ierr)
+    ML_tmp=itmp(1)
+    ML1_tmp=itmp(2)
+    ML2_tmp=itmp(3)
+    ML3_tmp=itmp(4)
+
+    if ( ML_tmp/=ML ) then
+       write(*,*) "ML,ML_tmp =",ML,ML_tmp
+       stop
+    end if
+    if ( ML1_tmp/=ML1 .or. ML2_tmp/=ML2 .or. ML3_tmp/=ML3 ) then
+       if ( disp_switch ) then
+          write(*,*) "ML1_tmp,ML2_tmp,ML3_tmp =",ML1_tmp,ML2_tmp,ML3_tmp
+          write(*,*) "ML1,ML2,ML3 =",ML1,ML2,ML3
+       end if
+       stop
+    end if
+
+    if ( myrank == 0 ) then
+       read(80) lat_old(:,:)
+       if ( flag_versioned ) then
+          read(80) cbuf
+          read(80)
+          read(80) cbuf
+          read(80)
+          read(80)
+          read(80)
+          read(80)
+          read(80) cbuf
+          read(80) efermi
+       end if
+    end if
+    call mpi_bcast(lat_old,3*ML,mpi_integer,0,mpi_comm_world,ierr)
+    call mpi_bcast(efermi,1,mpi_real8,0,mpi_comm_world,ierr)
+
+    i=sum(abs(lat_old(:,:)-lat_new(:,:)))
+    if ( i/=0 ) then
+       if ( disp_switch ) then
+          write(*,*) "LL and lat_old is different"
+       end if
+    end if
+
+    if ( SYStype == 0 ) then
+
+       allocate( rtmp3(0:ML1-1,0:ML2-1,0:ML3-1) )
+
+    else if ( SYStype == 1 ) then
+
+       mx = (Ngrid(1)-1)/2
+       my = (Ngrid(2)-1)/2
+       mz = (Ngrid(3)-1)/2
+       allocate( rtmp3(-mx:mx,-my:my,-mz:mz) )
+
+    end if
+
+    allocate( rtmp(ML) )
+
+    rtmp(:)=0.d0
+    rtmp3(:,:,:)=0.d0
+
+    do s=1,1 !MSP
+
+       if ( myrank==0 ) then
+          read(80) rtmp(:)
+       end if
+       !call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
+       !do i=1,ML
+       !   i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
+       !   rtmp3(i1,i2,i3)=rtmp(i)
+       !end do
+       !do i=n1,n2
+       !   i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
+       !   rho(i,s)=rtmp3(i1,i2,i3)
+       !end do
+
+       if ( myrank == 0 ) then
+          read(80) rtmp(:)
+       end if
+       call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
+       do i=1,ML
+          i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
+          rtmp3(i1,i2,i3)=rtmp(i)
+       end do
+       if ( present(Ves_out) ) then
+          do i=n1,n2
+             i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
+             Ves_out(i-n1+1)=rtmp3(i1,i2,i3)
+          end do
+       end if
+
+       if ( s == 1 ) then
+          if ( myrank == 0 ) then
+             read(80) rtmp(:)
+          end if
+          call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
+          do i=1,ML
+             i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
+             rtmp3(i1,i2,i3)=rtmp(i)
+          end do
+          if ( present(Vh_out) ) then
+             do i=n1,n2
+                i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
+                Vh_out(i-n1+1)=rtmp3(i1,i2,i3)
+             end do
+          end if
+       end if
+
+       if ( myrank == 0 ) then
+          read(80) rtmp(:)
+       end if
+       call mpi_bcast(rtmp,ML,mpi_real8,0,mpi_comm_world,ierr)
+       do i=1,ML
+          i1=lat_old(1,i) ; i2=lat_old(2,i) ; i3=lat_old(3,i)
+          rtmp3(i1,i2,i3)=rtmp(i)
+       end do
+       if ( present(Ves_out) ) then
+          do i=n1,n2
+             i1=lat_new(1,i) ; i2=lat_new(2,i) ; i3=lat_new(3,i)
+             Ves_out(i-n1+1)=Ves_out(i-n1+1)-rtmp3(i1,i2,i3)
+          end do
+       end if
+
+    end do ! s
+
+    deallocate( rtmp,rtmp3 )
+
+    if ( myrank==0 ) then
+       close(80)
+    end if
+
+    call write_border( 0, "read_vrho_data(end)" )
+
+  end subroutine read_vrho_data
 
 
 end module io_module

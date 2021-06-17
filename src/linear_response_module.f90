@@ -165,7 +165,7 @@ CONTAINS
           write(*,'(1x,i5,2x,2f20.10)') loop_scf, epsilon, epsilon-epsilon0
        end if
 
-       call calc_hartree( ML_0_WF, ML_1_WF, MS_WF, dlt_rho, dlt_vhxc )
+       call calc_hartree( dlt_rho, dlt_vhxc )
        dlt_vhxc(:) = dlt_vhxc(:) + fxc(:,1)*dlt_rho(:,1)
 
        do s=1,ms

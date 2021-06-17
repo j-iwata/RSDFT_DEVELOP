@@ -64,7 +64,7 @@ CONTAINS
     character(*),intent(IN) :: keyword
     character(*),intent(INOUT) :: variable
     integer,optional,intent(IN) :: unit_in
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -96,7 +96,7 @@ CONTAINS
     character(*),intent(IN) :: keyword
     character(*),intent(INOUT) :: variables(:)
     integer,optional,intent(IN) :: unit_in
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,j,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -132,7 +132,7 @@ CONTAINS
     character(*),intent(IN) :: keyword
     integer,intent(INOUT) :: variable
     integer,optional,intent(IN) :: unit_in
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -165,7 +165,7 @@ CONTAINS
     character(*),intent(IN) :: keyword
     integer,intent(INOUT) :: variables(:)
     integer,optional,intent(IN) :: unit_in
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -197,7 +197,7 @@ CONTAINS
     character(*),intent(IN) :: keyword
     real(8),intent(INOUT) :: variable
     integer,optional,intent(IN) :: unit_in
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -233,7 +233,7 @@ CONTAINS
     character(*),intent(IN) :: keyword
     real(8),intent(INOUT) :: variables(:)
     integer,optional,intent(IN) :: unit_in
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -271,7 +271,7 @@ CONTAINS
     character(*),intent(INOUT) :: variable2
     integer,optional,intent(IN) :: u
     logical,optional,intent(IN) :: norewind
-    character(10) :: cbuf,ckey
+    character(20) :: cbuf,ckey
     integer :: i,unit
 #ifndef _NOMPI_
     include 'mpif.h'
@@ -306,7 +306,7 @@ CONTAINS
     integer,optional,intent(OUT) :: unit_out
     logical,optional,intent(IN) :: flag_bcast
     integer :: i,unit
-    character(16) :: cbuf,ckey
+    character(20) :: cbuf,ckey
 #ifndef _NOMPI_
     include 'mpif.h'
 #endif

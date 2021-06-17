@@ -54,8 +54,12 @@ PROGRAM Real_Space_DFT
   use ps_init_module, only: ps_init
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword, IOTools_findKeyword
   use lattice_module
-  use ffte_sub_module, only: init_ffte_sub
+
+  use fft_module, only: init_0_fft, iswitch_fft
+  use ffte_sub_module, only: init_ffte, init_pzfft3dv_ffte
+  use pzfft3dv_arb_module, only: init_pzfft3dv_arb
   use fftw_module
+
   use vdw_grimme_module
   use efield_module
   use stress_module, only: test_stress ! MIZUHO-IR for cellopt
@@ -72,7 +76,7 @@ PROGRAM Real_Space_DFT
 !  use bcast_module, only: test_bcast
 !  use rsdft_sendrecv_module, only: test_sendrecv
 !  use vector_tools_module, only: set_vinfo_vector_tools
-!  use sl_tools_module, only: backup_param_sl_tools
+  use sl_tools_module, only: prep_param_sl
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -89,7 +93,7 @@ PROGRAM Real_Space_DFT
   integer :: info_level=1
   character(32) :: lattice_index
   character(20) :: systype_in="SOL"
-  integer :: nloop,itmp(3)
+  integer :: nloop,itmp(3),Nsweep
 
 ! --- start MPI ---
 
@@ -242,7 +246,6 @@ PROGRAM Real_Space_DFT
 !  goto 900
 
   call init_scalapack( Nband )
-!  call backup_param_sl_tools( NPROW, NPCOL, MBSIZE, NBSIZE )
 
   call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
 
@@ -266,10 +269,18 @@ PROGRAM Real_Space_DFT
 
   if ( SYStype == 0 ) then
 
-     itmp(:)=(/Igrid(1,1),Igrid(1,2),Igrid(1,3)/)
-     call init_ffte_sub(itmp,Ngrid(1:3),node_partition(1:3),comm_grid)
+    call init_0_fft
 
-     call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
+    select case( iswitch_fft )
+    case( 'FFTE', 'FFTE1' )
+      call init_ffte( node_partition(1:3), comm_grid )
+      call init_pzfft3dv_ffte( Igrid(:,1:3), Ngrid(1:3), node_partition(1:3) )
+    case( 'FFTE2' )
+      call init_ffte( node_partition(1:3), comm_grid )
+      call init_pzfft3dv_arb( Igrid(2,1)-Igrid(1,1)+1,Igrid(2,2)-Igrid(1,2)+1,Igrid(2,3)-Igrid(1,3)+1 )
+    case( 'FFTW', 'FFTW1' )
+      call init_fftw( Ngrid(1:3), node_partition(1:3), comm_grid, myrank_g )
+    end select
 
   end if
 
@@ -352,6 +363,8 @@ PROGRAM Real_Space_DFT
 
   call init_subspace_diag( Nband )
 
+  call prep_param_sl( Nband, np_grid, np_band )
+
 ! --- Initial wave functions ---
 
   call init_wf( SYStype )
@@ -400,8 +413,8 @@ PROGRAM Real_Space_DFT
 
 ! --- Initial Potential ---
 
-  call init_hartree( Igrid, Nspin, Md, SYStype )
-  call calc_hartree( ML_0, ML_1, MSP, rho )
+  call init_hartree( Ngrid, Igrid, Md, SYStype )
+  call calc_hartree( rho )
 
   call calc_xc
 
@@ -468,14 +481,14 @@ PROGRAM Real_Space_DFT
   if ( flag_read_ncol ) then
 
      call calc_xc_noncollinear( unk, occ(:,:,1), rho, Vxc )
-     call calc_hartree( ML_0,ML_1,MSP,rho )
+     call calc_hartree( rho )
 
   else
 
-     call calc_hartree(ML_0,ML_1,MSP,rho)
+     call calc_hartree( rho )
      call calc_xc
      do s=MSP_0,MSP_1
-        Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
+       Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
      end do
 
   end if
@@ -504,16 +517,19 @@ PROGRAM Real_Space_DFT
 
 ! ---
 
+  call IOTools_readIntegerKeyword( "NSWEEP", Nsweep )
+  if ( Nsweep > 0 ) then
+    call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
+    if ( ierr < 0 ) goto 900
+  end if
+
+! ---
+
   if ( iswitch_dos == 1 ) then
 
      call control_xc_hybrid(1)
      call calc_dos( ierr )
      goto 900
-
-  else
-
-     call calc_sweep( ierr, flag_ncol_in=flag_noncollinear )
-     if ( ierr < 0 ) goto 900
 
   end if
 

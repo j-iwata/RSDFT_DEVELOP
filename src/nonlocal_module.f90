@@ -1,7 +1,7 @@
 MODULE nonlocal_module
 
   use pseudopot_module, only: pselect, ps_type, flag_so
-  use ps_nloc2_op_module, only: op_ps_nloc2, op_ps_nloc2_hp
+  use ps_nloc2_op_module, only: op_ps_nloc2_hp
   use ps_nloc2_module, only: calc_force_ps_nloc2, prep_uvk_ps_nloc2 &
                             ,prep_rvk_ps_nloc2
   use force_ps_nloc2_module, only: calc_force_ps_nloc2_hp
@@ -19,7 +19,7 @@ MODULE nonlocal_module
 
 CONTAINS
 
-  SUBROUTINE op_nonlocal( tpsi, htpsi, k_in, s_in, ib1, ib2, htpsi00 )
+  SUBROUTINE op_nonlocal( tpsi,htpsi,k_in,s_in,ib1_in,ib2_in,htpsi00 )
 
     implicit none
 #ifdef _DRSDFT_
@@ -31,10 +31,12 @@ CONTAINS
     complex(8),intent(INOUT) :: htpsi(:,:)
     complex(8),intent(INOUT),optional :: htpsi00(:,:)
 #endif
-    integer,optional,intent(IN) :: k_in, s_in, ib1, ib2
-    integer :: k,s
+    integer,optional,intent(IN) :: k_in,s_in,ib1_in,ib2_in
+    integer :: k,s,ib1,ib2
     k=1 ; if ( present(k_in) ) k=k_in
     s=1 ; if ( present(s_in) ) s=s_in
+    ib1=1; if ( present(ib1_in) ) ib1=ib1_in
+    ib2=1; if ( present(ib2_in) ) ib2=ib2_in
     select case( pselect )
     case( 2 )
        if ( ps_type == 1 ) then
@@ -51,20 +53,21 @@ CONTAINS
   END SUBROUTINE op_nonlocal
 
 
-  SUBROUTINE calc_force_nonlocal( MI, force )
+  subroutine calc_force_nonlocal( force )
     implicit none
-    integer,intent(IN) :: MI
-    real(8),intent(OUT) :: force(3,MI)
+    real(8),intent(out) :: force(:,:)
+    integer :: MI
+    MI=size(force,2)
     select case( pselect )
     case( 2 )
        !call calc_force_ps_nloc2( MI, force )
-       call calc_force_ps_nloc2_hp( MI, force )
+       call calc_force_ps_nloc2_hp( force )
     case( 3 )
        call calc_force_ps_nloc3( MI, force )
     case( 102 )
        call stop_program("stop@force_nonlocal(2)")
     end select
-  END SUBROUTINE calc_force_nonlocal
+  end subroutine calc_force_nonlocal
 
 
   SUBROUTINE update_k_dependence_nonlocal( MBZ_0, MBZ_1, kbb, flag_momentum )

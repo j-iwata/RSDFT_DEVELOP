@@ -34,8 +34,6 @@ OMPFLAG   =
 CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ######################### LAPACK is used ( ScaLAPACK is not used ) #####
 #CPP_FLAGS := -D_LAPACK_ $(CPP_FLAGS)
-##################################################### FFTE is used #####
-#CPP_FLAGS := -D_FFTE_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
 CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
 #INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)

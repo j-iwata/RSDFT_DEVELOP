@@ -607,9 +607,7 @@ contains
           end if
 
           xdiis(:,mrhodiis)=reshape(ion%xyz,ishape)
-do i=1,mrhodiis
-if(disp_sw)write(*,*) i,sum(xdiis(:,i)**2),sum(rhodiis(:,:,i)**2)
-end do
+
           if ( mrhodiis >= 3 ) then
 
             aa_atom(:,:) = matmul( aa_inv, ion%xyz )
@@ -632,7 +630,7 @@ end do
               rho=0.0d0
             end where
             call normalize_density( rho )
-            call calc_hartree(lbound(rho,1),ubound(rho,1),size(rho,2),rho)
+            call calc_hartree( rho )
             call calc_xc
           end if
         end if

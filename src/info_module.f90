@@ -62,11 +62,8 @@ CONTAINS
 #ifdef _SPLINE_
        write(unit,*) "_SPLINE_"," (spline interpolation is use in ps_nloc2)"
 #endif
-#ifdef _FFTE_
-       write(unit,*) "_FFTE_"," (FFTE is used)"
-#endif
 #ifdef _FFTW_
-       write(unit,*) "_FFTW_"," (FFTW is used)"
+       write(unit,*) "_FFTW_"," (FFTW is available)"
 #endif
 #ifdef _LAPACK_
        write(unit,*) "_LAPACK_"," (LAPACK is used instead of ScaLAPACK"

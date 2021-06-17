@@ -79,11 +79,13 @@ CONTAINS
     end if
 
     if ( NBSIZE*NPCOL/=MB ) then
-       write(*,*) "NBSIZE*NPCOL/=MB!"
        n=max( NBSIZE*NPCOL, MB )
        n=min( n, (NBSIZE+1)*NPCOL )
-       write(*,*) "recommended value for MB =",n
-       write(*,*) "replace MB"
+       if ( disp_switch_parallel ) then
+         write(*,*) "NBSIZE*NPCOL/=MB!"
+         write(*,*) "recommended value for MB =",n
+         write(*,*) "replace MB"
+       end if
        MB=n
        MBSIZE=0
        NBSIZE=0

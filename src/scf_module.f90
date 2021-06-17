@@ -224,7 +224,7 @@ CONTAINS
 
           call watchb( t_tmp, t_out(:,1) )
 
-          if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,unk,esp )
+          if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,MBZ_0,MSP_0,unk,esp )
 
           call watchb( t_tmp, t_out(:,2) )
 
@@ -256,7 +256,7 @@ CONTAINS
              call watchb( t_tmp, t_out(:,5) )
 
              if ( second_diag == 1 .or. idiag < Ndiag ) then
-                call subspace_diag( k,s,ML_0,ML_1,unk,esp )
+                call subspace_diag( k,s,ML_0,ML_1,MBZ_0,MSP_0,unk,esp )
                 call watchb( t_tmp, t_out(:,2) )
              else if ( second_diag == 2 .and. idiag == Ndiag ) then
                 call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
@@ -311,11 +311,11 @@ CONTAINS
 !          Vxc=0.0d0
           E_exchange=0.0d0
           E_correlation=0.0d0
-          call calc_hartree(ML_0,ML_1,MSP,rho)
+          call calc_hartree( rho )
           call calc_spin_density( rho, Ntot )
        else
           call calc_density( Ntot )
-          call calc_hartree(ML_0,ML_1,MSP,rho)
+          call calc_hartree( rho )
           call calc_xc
        end if
        call calc_total_energy( flag_recalc_esp, Etot, &
@@ -439,7 +439,7 @@ CONTAINS
                 call normalize_density( rho )
                 m=(ML_1-ML_0+1)*(MSP_1-MSP_0+1)
                 call rsdft_allgather( rho(:,MSP_0:MSP_1), rho, comm_spin )
-                call calc_hartree(ML_0,ML_1,MSP,rho)
+                call calc_hartree( rho )
                 call calc_xc
              end if
              do s=MSP_0,MSP_1

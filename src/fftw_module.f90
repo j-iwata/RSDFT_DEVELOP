@@ -1,21 +1,23 @@
-MODULE fftw_module
+module fftw_module
 
   use,intrinsic :: iso_c_binding
-  use grid_module, only: grid, get_range_rgrid
+  use grid_module, only: grid, get_range_rgrid, mpi_allgatherv_grid, get_map_3d_to_1d_grid
   use rsdft_mpi_module, only: rsdft_allgatherv
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_fftw
-  PUBLIC :: finalize_fftw
-  PUBLIC :: plan_forward, plan_backward
-  PUBLIC :: ML1_c, ML2_c, N_ML3_c, ML3_c0
-  PUBLIC :: zwork3_ptr0, zwork3_ptr1
-  PUBLIC :: z3_to_d1_fftw, z3_to_z1_fftw
-  PUBLIC :: forward_fftw
-  PUBLIC :: backward_fftw
-  PUBLIC :: forward_2d_fftw
+  private
+  public :: init_fftw
+  public :: finalize_fftw
+  public :: plan_forward, plan_backward
+  public :: ML1_c, ML2_c, N_ML3_c, ML3_c0
+  public :: zwork3_ptr0, zwork3_ptr1
+  public :: d1_to_z3_fftw
+  public :: z3_to_d1_fftw
+  public :: z3_to_z1_fftw
+  public :: forward_fftw
+  public :: backward_fftw
+  public :: forward_2d_fftw
 
   integer :: comm_fftw
   type(c_ptr) :: plan_forward,plan_backward
@@ -31,7 +33,7 @@ MODULE fftw_module
 
   logical :: flag_init_fftw=.false.
 
-CONTAINS
+contains
 
 
   SUBROUTINE init_fftw( Ngrid, Np, comm_grid, myrank_g )
@@ -55,15 +57,15 @@ CONTAINS
     np3 = Np(3)
 
     if ( mod(ML3,np3) /= 0 ) then
-       call stop_program( "fftw_init: mod(ML3,np3)/=0 is not supported." )
+      call stop_program( "fftw_init: mod(ML3,np3)/=0 is not supported." )
     end if
 
     irank=-1
     do i3=1,np3
     do i2=1,np2
     do i1=1,np1
-       irank=irank+1
-       if ( irank == myrank_g ) icolor=i1+(i2-1)*np1
+      irank=irank+1
+      if ( irank == myrank_g ) icolor=i1+(i2-1)*np1
     end do
     end do
     end do
@@ -126,10 +128,33 @@ CONTAINS
   END SUBROUTINE finalize_fftw
 
 
-  SUBROUTINE z3_to_d1_fftw( z3, d1 )
+  subroutine d1_to_z3_fftw( d1, z3 )
     implicit none
-    complex(8),intent(IN) :: z3(:,:,:)
-    real(8),intent(OUT) :: d1(:)
+    real(8),intent(in) :: d1(:)
+    complex(8),intent(out) :: z3(:,:,:)
+    integer :: i1,i2,i3
+    type(grid) :: rgrid
+    real(8),allocatable :: work(:)
+    integer,allocatable :: LLL(:,:,:)
+    call get_range_rgrid( rgrid )
+    allocate( work(rgrid%g1%size_global) ); work=0.0d0
+    call mpi_allgatherv_grid( d1, work )
+    call get_map_3d_to_1d_grid( rgrid, LLL )
+    do i3=1,N_ML3_c
+    do i2=1,ML2_c
+    do i1=1,ML1_c
+      z3(i1,i2,i3) = work( LLL(i1-1,i2-1,i3-1+ML3_c0) )
+    end do
+    end do
+    end do
+    deallocate( LLL )
+    deallocate( work )
+  end subroutine d1_to_z3_fftw
+
+  subroutine z3_to_d1_fftw( z3, d1 )
+    implicit none
+    complex(8),intent(in) :: z3(:,:,:)
+    real(8),intent(out) :: d1(:)
     integer :: i1,i2,i3,i
     type(grid) :: rgrid
     call get_range_rgrid( rgrid )
@@ -142,7 +167,7 @@ CONTAINS
     end do
     end do
     end do
-  END SUBROUTINE z3_to_d1_fftw
+  end subroutine z3_to_d1_fftw
 
   SUBROUTINE z3_to_z1_fftw( z3, z1 )
     implicit none

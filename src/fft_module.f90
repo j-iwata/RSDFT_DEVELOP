@@ -1,21 +1,25 @@
-MODULE fft_module
+module fft_module
 
   use grid_module
   use rsdft_fft_module
   use fftw_module
   use bb_module
   use hsort_module
+  use io_tools_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_fft
-  PUBLIC :: finalize_fft
-  PUBLIC :: d1_to_z3_fft, z3_to_d1_fft
-  PUBLIC :: z1_to_z3_fft, z3_to_z1_fft
-  PUBLIC :: forward_fft, backward_fft
-  PUBLIC :: grid_util_fft
-  PUBLIC :: forward_2d_fft
+  private
+  public :: init_0_fft
+  public :: init_fft
+  public :: finalize_fft
+  public :: d1_to_z3_fft, z3_to_d1_fft
+  public :: z1_to_z3_fft, z3_to_z1_fft
+  public :: forward_fft, backward_fft
+  public :: grid_util_fft
+  public :: forward_2d_fft
+
+  character(5),public :: iswitch_fft = 'FFTE2'
 
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3
@@ -25,18 +29,20 @@ MODULE fft_module
 !  complex(8),allocatable :: wsavex(:),wsavey(:),wsavez(:)
   complex(8),parameter :: zero=(0.0d0,0.0d0)
   logical :: keep_LLL=.false.
-#ifdef _FFTW_
-  character(9),parameter :: routine_def="fft_fftw"
-#else
+
   character(9),parameter :: routine_def="fft_rsdft"
-#endif
 
-CONTAINS
+contains
 
-
-  SUBROUTINE init_fft( keep_flag )
+  subroutine init_0_fft
     implicit none
-    logical,optional,intent(IN) :: keep_flag
+    call IOTools_readStringKeyword( 'SWFFT', iswitch_fft )
+  end subroutine init_0_fft
+
+  subroutine init_fft( keep_flag, allocarray )
+    implicit none
+    logical,optional,intent(in) :: keep_flag
+    complex(8),allocatable,optional,intent(inout) :: allocarray(:,:,:)
     call get_range_rgrid( rgrid )
     if ( .not.keep_LLL ) call get_map_3d_to_1d_grid( rgrid, LLL )
     ML  = rgrid%g1%size_global
@@ -44,14 +50,19 @@ CONTAINS
     ML2 = rgrid%g3%y%size_global
     ML3 = rgrid%g3%z%size_global
     if ( present(keep_flag) ) then
-       keep_LLL = keep_flag
-       return
+      keep_LLL = keep_flag
+      return
+    end if
+    if ( present(allocarray) ) then
+      if ( allocated(allocarray) ) deallocate(allocarray)
+      allocate( allocarray(0:ML1-1,0:ML2-1,0:ML3-1) )
+      allocarray=zero
     end if
 !    allocate( lx1(ML),lx2(ML),ly1(ML),ly2(ML),lz1(ML),lz2(ML) )
 !    allocate( wsavex(ML1),wsavey(ML2),wsavez(ML3) )
 !    call prefft(ML1,ML2,ML3,ML,wsavex,wsavey,wsavez &
 !               ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
-  END SUBROUTINE init_fft
+  end subroutine init_fft
 
 
   SUBROUTINE finalize_fft
@@ -144,54 +155,46 @@ CONTAINS
   END SUBROUTINE z3_to_z1_fft
 
 
-  SUBROUTINE forward_fft( z3, w3, key )
+  subroutine forward_fft( z3, w3 )
     implicit none
-    complex(8),intent(INOUT) :: z3(0:,0:,0:)
-    character(*),optional,intent(IN) :: key
+    complex(8),intent(inout) :: z3(:,:,:)
     complex(8),allocatable   :: w3(:,:,:)
-    character(9) :: routine
-    routine=routine_def ; if ( present(key) ) routine=key
-    select case( routine )
+    select case( routine_def )
     case default
-       call forward_fftw( z3 )
+      call forward_fftw( z3 )
     case( "fft_rsdft" )
-       if ( .not.allocated(w3) ) then
-          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-       end if
-       call rsdft_fft3d( z3,  1 )
+      if ( .not.allocated(w3) ) then
+        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+      end if
+      call rsdft_fft3d( z3,  1 )
     case( "fft_tapp" )
-       if ( .not.allocated(w3) ) then
-          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-       end if
-!       call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-!                  ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+      if ( .not.allocated(w3) ) then
+        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
+      end if
+!      call fft3fx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!                 ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
     end select
-  END SUBROUTINE forward_fft
+  end subroutine forward_fft
 
 
-  SUBROUTINE backward_fft( z3, w3, key )
+  subroutine backward_fft( z3, w3 )
     implicit none
-    complex(8),intent(INOUT) :: z3(:,:,:)
-    character(*),optional,intent(IN) :: key
+    complex(8),intent(inout) :: z3(:,:,:)
     complex(8),allocatable   :: w3(:,:,:)
-    character(9) :: routine
-    routine=routine_def ; if ( present(key) ) routine=key
-    select case( routine )
-    case default
-       call backward_fftw( z3 )
+    select case( routine_def )
     case( "fft_rsdft" )
-       if ( .not.allocated(w3) ) then
-          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-       end if
-       call rsdft_fft3d( z3, -1 )
+      if ( .not.allocated(w3) ) then
+        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ); w3=zero
+      end if
+      call rsdft_fft3d( z3, -1 )
     case( "fft_tapp" )
-       if ( .not.allocated(w3) ) then
-          allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ) ; w3=zero
-       end if
-!       call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
-!            ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
+      if ( .not.allocated(w3) ) then
+        allocate( w3(0:ML1-1,0:ML2-1,0:ML3-1) ); w3=zero
+      end if
+!      call fft3bx(ML1,ML2,ML3,ML,z3,w3,wsavex,wsavey,wsavez &
+!           ,ifacx,ifacy,ifacz,lx1,lx2,ly1,ly2,lz1,lz2)
     end select
-  END SUBROUTINE backward_fft
+  end subroutine backward_fft
 
 
   SUBROUTINE grid_util_fft( gg, indx )
@@ -240,4 +243,4 @@ CONTAINS
   END SUBROUTINE forward_2d_fft
 
 
-END MODULE fft_module
+end module fft_module
