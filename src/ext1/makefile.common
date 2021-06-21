@@ -1,1 +1,2 @@
-OBJS = ext_sub_minpac.o
+OBJS = minpack.o
+#OBJS = ext_sub_minpac.o

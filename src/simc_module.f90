@@ -19,8 +19,11 @@ CONTAINS
     integer,intent(IN) :: mesh
     real(8),intent(IN) :: rad(mesh),vin(mesh),zv,rc
     real(8),intent(OUT) :: parloc(4)
-    call simc_0(rad,vin,rc,zv,parloc,mesh)
-    !call simc_1(rad,vin,rc,zv,parloc,mesh)
+    integer :: ierr
+    call simc_0(rad,vin,rc,zv,parloc,mesh,ierr)
+    if ( ierr < 0 ) then
+      call simc_1(rad,vin,rc,zv,parloc,mesh)
+    end if
   END SUBROUTINE simc
 
 
@@ -38,6 +41,8 @@ CONTAINS
     real(8),parameter :: x1ini=1.0d0, x2ini=0.4d0, x3ini=0.6d0
     real(8),parameter :: tol=1.0d-5, smpstp=0.2d0
     real(8),parameter :: rmax=10.0d0, vmax=100.0d0, vrzmin=3.0d-6
+
+    call write_border( 1, 'simc_1(start)' )
 
     allocate( rads(mesh)   ) ; rads=0.0d0
     allocate( vins(mesh)   ) ; vins=0.0d0
@@ -96,6 +101,8 @@ CONTAINS
     deallocate( wgt  )
     deallocate( vins )
     deallocate( rads )
+
+    call write_border( 1, 'simc_1(end)' )
 
     return
   END SUBROUTINE simc_1
@@ -245,11 +252,12 @@ CONTAINS
   END SUBROUTINE levenberg_marquardt
 
 !#ifdef _TEST_
-  SUBROUTINE simc_0(rad,vin,rc,zv,parloc,mesh)
+  SUBROUTINE simc_0(rad,vin,rc,zv,parloc,mesh,ierr)
 
     implicit none
     integer :: mesh
     real(8) :: rad(mesh),vin(mesh),parloc(4),zv,rc
+    integer,intent(out) :: ierr
     integer,parameter :: maxnum = 2000
     integer,parameter :: lwa=5*3+maxnum
     integer :: k,num,info,ipvt(3)
@@ -260,6 +268,10 @@ CONTAINS
     real(8),parameter :: tol=1.0d-5
     real(8),parameter :: rmax=10.0d0, vmax=100.0d0, vrzmin=3.0d-6
     real(8),parameter :: smpstp=0.2d0, nummin=6
+
+    call write_border( 1, 'simc_0(start)' )
+
+    ierr=0
 
     pi = 4.0d0*atan(1.0d0)
 
@@ -296,7 +308,7 @@ CONTAINS
     call lmder1(uscfit,num,3,x,fvec,fjac,maxnum,tol,info,ipvt,wa,lwa)
 
     if ( info==0 .or. info==4 .or. info==5 .or. info==6 .or. info==7 ) then
-       write(*,*) 'simc_0: Not converged.'
+       write(*,*) 'simc_0: Not converged (info=',info,')'
        write(*,*) 'x(1) = ',x(1)
        write(*,*) 'x(2) = ',x(2)
        write(*,*) 'x(3) = ',x(3)
@@ -304,11 +316,15 @@ CONTAINS
        do k=1,num
           write(*,'(I5,3g20.12)')k,rads(k),vins(k),wgt(k)
        end do
-       call stop_program( "simc_0(2)" )
+       !call stop_program( "simc_0(2)" )
+       ierr=-1
+       goto 999
     end if
 
     if ( x(2) < 0.0d0 .or. x(3) < 0.0d0 ) then
-       call stop_program( "simc_0: illegally converged." )
+       !call stop_program( "simc_0: illegally converged." )
+       ierr=-1
+       goto 999
     end if
 
     parloc(1) = x(1)
@@ -316,12 +332,14 @@ CONTAINS
     parloc(3) = 1.0d0 - x(1)
     parloc(4) = x(3)
 
-    deallocate( wgt  )
+999 deallocate( wgt  )
     deallocate( vins )
     deallocate( rads )
     deallocate( wa   )
     deallocate( fjac )
     deallocate( fvec )
+
+    call write_border( 1, 'simc_0(end)' )
 
   END SUBROUTINE simc_0
 !
