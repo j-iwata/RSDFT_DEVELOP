@@ -10,6 +10,7 @@ module fock_fft_module
   use bz_module, only: kbb
   use fock_ffte_module, only: fock_ffte_double, fock_ffte, init_fock_ffte &
                              ,ct_fock_ffte,et_fock_ffte
+  use fock_ffte2_module, only: fock_ffte2_double, fock_ffte2, init_fock_ffte2
   use fock_fftw_module, only: fock_fftw_double, fock_fftw, init_fock_fftw
   use fft_module, only: iswitch_fft,init_fft,forward_fft,backward_fft &
                        ,finalize_fft,z3_to_z1_fft,z3_to_d1_fft
@@ -38,13 +39,15 @@ contains
     select case( iswitch_fft )
     case( 'FFTE','FFTE1' )
       call init_fock_ffte
+    case( 'FFTE2' )
+      call init_fock_ffte2
     case( 'FFTW','FFTW1' )
       call init_fock_fftw
     end select
   end subroutine init_fock_fft
 
 
-  SUBROUTINE Fock_fft( n1, n2, k, q, trho, tVh, t )
+  SUBROUTINE Fock_FFT( n1, n2, k, q, trho, tVh, t )
 
     implicit none
 
@@ -71,6 +74,15 @@ contains
       ct_fock_ffte(:)=0.0d0
       et_fock_ffte(:)=0.0d0
       call Fock_FFTE( n1, n2, k, q, trho, tVh, t )
+      ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+      et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
+      return
+
+    case( 'FFTE2' )
+
+      ct_fock_ffte(:)=0.0d0
+      et_fock_ffte(:)=0.0d0
+      call Fock_FFTE2( n1, n2, k, q, trho, tVh, t )
       ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
       et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
       return
@@ -264,6 +276,15 @@ contains
       ct_fock_ffte(:)=0.0d0
       et_fock_ffte(:)=0.0d0
       call Fock_FFTE_Double( n1, n2, trho, tVh )
+      ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
+      et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
+      return
+
+    case( 'FFTE2' )
+
+      ct_fock_ffte(:)=0.0d0
+      et_fock_ffte(:)=0.0d0
+      call Fock_FFTE2_Double( n1, n2, trho, tVh )
       ct_fock_fft(:)=ct_fock_fft(:)+ct_fock_ffte(:)
       et_fock_fft(:)=et_fock_fft(:)+et_fock_ffte(:)
       return
