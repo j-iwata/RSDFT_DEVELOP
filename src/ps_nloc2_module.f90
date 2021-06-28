@@ -1068,11 +1068,11 @@ contains
 
 ! ---
 
-    if ( myrank == 0 ) then
-      do i=1,11
-        write(*,'("time_prep_ps_nloc2(",i2,")",2f10.5)') i, tttt(:,i)
-      end do
-    end if
+!    if ( myrank == 0 ) then
+!      do i=1,11
+!        write(*,'("time_prep_ps_nloc2(",i2,")",2f10.5)') i, tttt(:,i)
+!      end do
+!    end if
 
   end subroutine prep_ps_nloc2
 
