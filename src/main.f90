@@ -89,7 +89,7 @@ PROGRAM Real_Space_DFT
   logical,parameter :: recalc_esp=.true.
   logical :: flag_read_ncol=.false., DISP_SWITCH
   logical :: skip_read_data=.false.
-  real(8) :: Etot, Ehwf
+  real(8) :: Etot=0.0d0, Ehwf
   integer :: info_level=1
   character(32) :: lattice_index
   character(20) :: systype_in="SOL"

@@ -21,7 +21,7 @@ CONTAINS
     integer :: ML0,n1,n2,m,n,ierr,MB
     complex(8),allocatable :: work(:)
     integer :: WORK1,WORK2
-    integer,save :: LWORK=0,LIWORK,LRWORK
+    integer,save :: LWORK=0,LIWORK=0,LRWORK=0
     character(6) :: idiag0
     integer,allocatable :: iwork(:)
     real(8),allocatable :: rwork(:)
@@ -41,7 +41,7 @@ CONTAINS
     type(time) :: t
 
     call write_border( 1, " subspace_diag_la(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     n1  = ML_0
     n2  = ML_1

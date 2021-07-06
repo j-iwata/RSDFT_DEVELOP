@@ -1,4 +1,4 @@
-MODULE watch_module
+module watch_module
 
   use io_tools_module
 
@@ -14,7 +14,7 @@ MODULE watch_module
   PUBLIC :: time_cgpc_indx, time_hmlt_indx, time_kine_indx, time_nlpp_indx
   PUBLIC :: time
   PUBLIC :: init_time_watch, calc_time_watch
-  PUBLIC :: start_timer, result_timer
+  public :: start_timer, result_timer, end_timer
 
   integer,parameter :: DP=kind(0.0d0)
 
@@ -239,22 +239,26 @@ CONTAINS
   END SUBROUTINE calc_time_watch
 
 
-  SUBROUTINE start_timer( t_out )
+  subroutine start_timer( indx, t_out )
     implicit none
-    type(time),optional,intent(OUT) :: t_out
+    character(*),optional,intent(in) :: indx
+    type(time),optional,intent(out) :: t_out
     type(time) :: t
     include 'mpif.h'
     call cpu_time( t%t0 )
     t%t1 = mpi_wtime()
-    if ( present(t_out) ) t_out=t
-    t_save=t
-  END SUBROUTINE start_timer
+    if ( present(t_out) ) then
+      t_out%t0=t%t0
+      t_out%t1=t%t1
+    end if
+    t_save%t0=t%t0
+    t_save%t1=t%t1
+  end subroutine start_timer
 
-
-  SUBROUTINE result_timer( indx, t_inout )
+  subroutine result_timer( indx, t_inout )
     implicit none
-    character(*),optional,intent(IN) :: indx
-    type(time),optional,intent(INOUT) :: t_inout
+    character(*),optional,intent(in) :: indx
+    type(time),optional,intent(inout) :: t_inout
     type(time) :: tnow,t
     character(64) :: mesg
     include 'mpif.h'
@@ -269,7 +273,31 @@ CONTAINS
        write(mesg,'(1x,"time=",2f10.4)') t%t0, t%t1
     end if
     call write_string_log( mesg )
-  END SUBROUTINE result_timer
+  end subroutine result_timer
+
+  subroutine end_timer( indx, t_inout )
+    implicit none
+    character(*),optional,intent(in) :: indx
+    type(time),optional,intent(inout) :: t_inout
+    type(time) :: t_now, t
+    character(64) :: mesg
+    include 'mpif.h'
+    call cpu_time( t_now%t0 )
+    t_now%t1 = mpi_wtime()
+    if ( present(t_inout) ) then
+      t%t0 = t_now%t0 - t_inout%t0
+      t%t1 = t_now%t1 - t_inout%t1
+    else
+      t%t0 = t_now%t0 - t_save%t0
+      t%t1 = t_now%t1 - t_save%t1
+    end if
+    if ( present(indx) ) then
+      write(mesg,'(1x,"time(",a,")=",2f10.4)') indx, t%t0, t%t1
+    else
+      write(mesg,'(1x,"time=",2f10.4)') t%t0, t%t1
+    end if
+    call write_string_log( mesg )
+  end subroutine end_timer
 
 
-END MODULE watch_module
+end module watch_module
