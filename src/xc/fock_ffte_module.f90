@@ -128,7 +128,7 @@ CONTAINS
     integer,intent(IN) :: n1,n2,k,q,t
     integer :: i,i1,i2,i3,j1,j2,j3,ierr,irank,a1,a2,a3,b1,b2,b3
     integer :: ML1,ML2,ML3,ML,j
-    real(8) :: pi,pi4,g2,const1,const2,k_fock(3)
+    real(8) :: pi,pi4,g2,const1,const2
     complex(8),parameter :: z0=(0.d0,0.d0)
 #ifdef _DRSDFT_
     real(8),allocatable :: work(:)
@@ -151,10 +151,6 @@ CONTAINS
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
-
-    k_fock(1) = bb(1,1)*kbb(1,k) + bb(1,2)*kbb(2,k) + bb(1,3)*kbb(3,k)
-    k_fock(2) = bb(2,1)*kbb(1,k) + bb(2,2)*kbb(2,k) + bb(2,3)*kbb(3,k)
-    k_fock(3) = bb(3,1)*kbb(1,k) + bb(3,2)*kbb(2,k) + bb(3,3)*kbb(3,k)
 
     MG  = NGgrid(0)
     ML_0= Igrid(1,0)

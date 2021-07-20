@@ -29,7 +29,7 @@ CONTAINS
 #ifndef _LAPACK_
 
     call write_border( 1, " subspace_solv_sl(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     MB = MB_diag
 

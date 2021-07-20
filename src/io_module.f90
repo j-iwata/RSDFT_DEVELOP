@@ -77,7 +77,7 @@ contains
     if ( .not.(flag .or. icount==OC2) ) return
 
     call write_border( 0, " write_data(start)" )
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -278,7 +278,7 @@ contains
     if ( IC <= 0 ) return
 
     call write_border( 0, " read_data(start)" )
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -549,7 +549,7 @@ contains
     logical :: disp_switch
 
     call write_border( 0, " read_vrho_data(start)" )
-    call start_timer( tt )
+    call start_timer( t_out=tt )
     call check_disp_switch( disp_switch, 0 )
 
     n1  = idisp(myrank)+1

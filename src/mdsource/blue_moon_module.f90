@@ -675,6 +675,8 @@ CONTAINS
     implicit none
     integer :: i,ispecies
 
+    call write_border( 0, 'read_blue(start)' )
+
     index(:)=0
 
     if ( myrank == 0 ) then
@@ -719,12 +721,16 @@ CONTAINS
 
     call bcast_blue_data
 
+    call write_border( 0, 'read_blue(end)' )
+
   END SUBROUTINE read_blue
 
 
   SUBROUTINE bcast_blue_data 
     implicit none
     integer :: ierr
+
+    call write_border( 0, 'bcast_blue_data(start)' )
 
     call mpi_bcast(ityp  ,1,mpi_integer,0,mpi_comm_world,ierr)
     call mpi_bcast(mcnstr,1,mpi_integer,0,mpi_comm_world,ierr)
@@ -772,6 +778,8 @@ CONTAINS
     nodim=3*Natom
     allocate( anorm(nodim,mcnstr) ) ; anorm=0.0d0
 
+    call write_border( 0, 'bcast_blue_data(end)' )
+
     return
   END SUBROUTINE bcast_blue_data
 
@@ -794,6 +802,7 @@ CONTAINS
     logical,intent(IN) :: flag_io
     integer :: j
     logical,save :: init=.true.
+    call write_border( 0, 'write_blue_data(start)' )
     if ( flag_io ) then
        if ( init ) then
           open(889,file='CONSTRAINT',status="replace")
@@ -806,6 +815,7 @@ CONTAINS
        end do
        close(889)
     end if
+    call write_border( 0, 'write_blue_data(end)' )
     return
   END SUBROUTINE write_blue_data
 

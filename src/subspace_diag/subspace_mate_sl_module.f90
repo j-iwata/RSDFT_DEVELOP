@@ -37,7 +37,7 @@ CONTAINS
     type(time) :: t
 
     call write_border( 1, " subspace_mate_sl(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     UPLO = 'L'
 

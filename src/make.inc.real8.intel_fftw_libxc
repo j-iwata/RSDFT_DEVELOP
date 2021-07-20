@@ -29,29 +29,30 @@ OMPFLAG   =
 ########################### preprocessor options, links and includes ###
 ########################################################################
 ####################### Generate REAL8 code ( RSMOL is supported ) #####
-#CPP_FLAGS := -D_DRSDFT_ $(CPP_FLAGS)
+CPP_FLAGS := -D_DRSDFT_ $(CPP_FLAGS)
 ####################### Spline interpolation is use for nonlocal pp ####
 CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ######################### LAPACK is used ( ScaLAPACK is not used ) #####
 #CPP_FLAGS := -D_LAPACK_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
-#CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
+CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
+INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
+FFTW_L = -L$($MKLROOT)/lib/intel64/ -lfftw3x_cdft_lp64
 #INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
 #FFTW_L = -L/data1/group4/iwata/mklt/fftw3xf_cdft/lib/intel64 -lfftw3x_cdft
 #INCLUDE_DIR := -I$(HOME)/fftw/include/ $(INCLUDE_DIR)
 #FFTW_L = -L$(HOME)/fftw/lib/ -lfftw3_mpi -lfftw3 -lm
 ############################################################ LibXC #####
-#CPP_FLAGS := -D_LIBXC_ $(CPP_FLAGS)
-#INCLUDE_DIR := -I/home/iwata/libxc/include/ $(INCLUDE_DIR)
-#LIBXC_L = /home/iwata/libxc/lib/libxcf90.a \
-#          /home/iwata/libxc/lib/libxc.a
+CPP_FLAGS := -D_LIBXC_ $(CPP_FLAGS)
+INCLUDE_DIR := -I/usr/local/include/ $(INCLUDE_DIR)
+LIBXC_L = -L/usr/local/lib -lxcf90 -lxc
 ################################################## Grimme's DFT-D3 #####
 #CPP_FLAGS := -D_DFTD3_ $(CPP_FLAGS)
 #INCLUDE_DIR := -I/home/iwata/DFT-D3/lib/ $(INCLUDE_DIR)
 #DFTD3_L = /home/iwata/DFT-D3/lib/libdftd3.a
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
-#CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
+CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_MPI_COMPLEX16_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_DIV_ALLREDUCE_ $(CPP_FLAGS)
 #CPP_FLAGS := -D_NO_QPRECISION_ $(CPP_FLAGS)
@@ -76,11 +77,11 @@ CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 #LAPACK_L = -mkl=sequential -lmkl_scalapack_lp64 -lmkl_blacs_sgimpt_lp64 -lmpi
 ########################################################################
 ##### INTEL(2)                                                     #####
-#FC = mpiifort
-#FFLAGS0 = -cpp
+FC = mpiifort
+FFLAGS0 = -cpp
 #FFLAGS0 = -cpp -C -traceback
 #OMPFLAG = -qopenmp
-#LAPACK_L = -L$(MKLROOT) -lmkl_cdft_core -mkl=cluster
+LAPACK_L = -L$(MKLROOT) -lmkl_cdft_core -mkl=cluster
 #LAPACK_L = -mkl=cluster
 ########################################################################
 ##### INTEL(Oakforest-PACS)                                        #####
@@ -132,20 +133,14 @@ CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 #FFTW_L = -laslfftw3_mpi -lasl_mpi_openmp
 ########################################################################
 #####  K computer                                                  #####
-FC = mpifrtpx
-FFLAGS0 = -Kfast -Cpp -Ccpp
-#-Haefosux
-OMPFLAG = -Kopenmp
 #FC = mpifrtpx
-#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl \
-#        -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
-#        -X9 -V -Ec -Nlst=a,lst=d,lst=i,lst=p,lst=t,lst=x -Cpp -Ccpp
+#FFLAGS0 = -Kvisimpact,preex,array_private,auto,ocl,NOFLTLD \
+        -Ksimd=2 -Kopenmp -Ktemparraystack -Koptmsg=2 \
+        -X9 -V -Ec -Qa,d,i,p,t,x -Cpp -Ccpp
 #LFLAGS0 = ${FFLAGS0} -Ntl_trt
-LAPACK_L = -SSL2BLAMP -SCALAPACK
+#LAPACK_L = -SSL2BLAMP -SCALAPACK
 #INCLUDE_DIR = -I../ -I/home/apps/fftw/3.3.3/include/
 #FFTW_L = -L/home/apps/fftw/3.3.3/lib64 -lfftw3_mpi -lfftw3 -lm
-#INCLUDE_DIR := -I/vol0004/apps/oss/spack-v0.16/opt/spack/linux-rhel8-a64fx/fj-4.3.1/fftw-3.3.8-b6z4s4rfp5ju6m6pa3zr5a2xpbws7zum/include $(INCLUDE_DIR)
-#FFTW_L = -L/vol0004/apps/oss/spack-v0.16/opt/spack/linux-rhel8-a64fx/fj-4.3.1/fftw-3.3.8-b6z4s4rfp5ju6m6pa3zr5a2xpbws7zum/lib -lfftw3_mpi -lfftw3 -lm
 ########################################################################
 ########################################################################
 ########################################################################

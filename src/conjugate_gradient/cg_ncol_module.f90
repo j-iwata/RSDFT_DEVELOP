@@ -51,7 +51,7 @@ CONTAINS
 
     call write_border( 1, " conjugate_gradient_ncol(start)" )
 
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     call init_cg
 

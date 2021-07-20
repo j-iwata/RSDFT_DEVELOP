@@ -56,7 +56,6 @@ MODS1 = \
        bb_module.o\
        ggrid_module.o\
        maskf_module.o\
-       rsdft_allreduce_module.o\
        rsdft_sendrecv_module.o\
        rsdft_allgather_module.o\
        rsdft_mpi_module.o\
@@ -69,6 +68,7 @@ MODS1 = \
        atom_module.o\
        rgrid_variables.o\
        parallel_module.o\
+       rsdft_allreduce_module.o\
        info_module.o\
        filtering.o\
        expint_module.o\

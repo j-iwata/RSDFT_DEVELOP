@@ -16,7 +16,7 @@ MODULE fock_module
   implicit none
 
   PRIVATE
-  PUBLIC :: Fock, op_fock, UpdateWF_fock
+  PUBLIC :: op_fock, UpdateWF_fock
 
   integer, public :: current_band_index_fock=0
 
@@ -171,15 +171,15 @@ CONTAINS
   END SUBROUTINE Fock
 
 
-  SUBROUTINE op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
+  subroutine op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
     implicit none
-    integer,intent(IN) :: k,s,n1,n2,ib1,ib2
+    integer,intent(in) :: k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
-    real(8),intent(IN) :: tpsi(n1:,ib1:)
-    real(8),intent(INOUT) :: htpsi(n1:,ib1:)
+    real(8),intent(in) :: tpsi(n1:,ib1:)
+    real(8),intent(inout) :: htpsi(n1:,ib1:)
 #else
-    complex(8),intent(IN) :: tpsi(n1:,ib1:)
-    complex(8),intent(INOUT) :: htpsi(n1:,ib1:)
+    complex(8),intent(in) :: tpsi(n1:,ib1:)
+    complex(8),intent(inout) :: htpsi(n1:,ib1:)
 #endif
     integer :: ib,i
 
@@ -187,21 +187,21 @@ CONTAINS
 
     if ( iflag_hybrid == 2 ) then
 
-       do ib=ib1,ib2
-          do i=n1,n2
-             htpsi(i,ib)=htpsi(i,ib)+hunk(i,ib,k,s)
-          end do
-       end do
+      do ib=ib1,ib2
+        do i=n1,n2
+          htpsi(i,ib)=htpsi(i,ib)+hunk(i,ib,k,s)
+        end do
+      end do
 
     else if ( iflag_hybrid > 0 ) then
 
-       do ib=ib1,ib2
-          call Fock( ib, k, s, n1, n2, tpsi(n1:n2,ib), htpsi(n1:n2,ib) )
-       end do
+      do ib=ib1,ib2
+        call Fock( ib, k, s, n1, n2, tpsi(n1:n2,ib), htpsi(n1:n2,ib) )
+      end do
 
     end if
 
-  END SUBROUTINE op_fock
+  end subroutine op_fock
 
 
   subroutine op_fock_simple( k,s,tpsi,hpsi )
@@ -215,6 +215,8 @@ CONTAINS
     complex(8),intent(inout) :: hpsi(:,:)
 #endif
     integer :: ib,i,n1,n2,ib1,ib2,n
+
+    call stop_program('op_fock_simple is temporary unavailable.')
 
     if ( iflag_hybrid == 0 ) return
 
@@ -247,10 +249,12 @@ CONTAINS
     implicit none
     integer,optional,intent(IN) :: SYStype_in
     integer :: s,k,n,m,i_occ,i_orb,ierr
+    type(time) :: tt
 
     if ( present(SYStype_in) ) SYStype = SYStype_in
 
-    call write_border( 1, " UpdateWF_fock(start)" )
+    call write_border( 0, " UpdateWF_fock(start)" )
+    call start_timer( 'UpdateWF_fock', tt )
 
 ! ---
 
@@ -313,6 +317,8 @@ CONTAINS
        call rsdft_allreduce_sum( occ_hf(:,:,s), comm_bzsm )
     end do ! s
 
+    call end_timer( 'UpdateWF_fock_allreduce' )
+
 ! ---
 
     hunk(:,:,:,:) = zero
@@ -326,6 +332,8 @@ CONTAINS
           call Fock_5( s,ML_0,ML_1 )
        end if
     end do ! s
+
+    call end_timer( 'UpdateWF_fock_whole' )
 
     iflag_hybrid = 2
 
@@ -341,7 +349,7 @@ CONTAINS
 !       write(*,*) "time(fock_fft8)=",ct_fock_fft(8),et_fock_fft(8)
 !    end if
 
-    call write_border( 1, " UpdateWF_fock(end)" )
+    call write_border( 0, " UpdateWF_fock(end)" )
 
   END SUBROUTINE UpdateWF_fock
 

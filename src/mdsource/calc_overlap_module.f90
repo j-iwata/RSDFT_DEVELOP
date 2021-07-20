@@ -125,7 +125,7 @@ CONTAINS
     implicit none
     integer,intent(IN)  :: m,n,nblk
     real(8),intent(IN)  :: a(m,n),b(m,n)
-    real(8),intent(OUT) :: c(n,n)
+    real(8),intent(INOUT) :: c(n,n)
     integer :: i,j,i0,i1,j0,j1,ni,nj,nblkh
     real(8),allocatable :: ctmp(:,:)
 
@@ -149,7 +149,7 @@ CONTAINS
           else
 
              if ( ni > nblk1 ) then
-                allocate( ctmp(ni,ni) ) ; ctmp=0.d0
+                allocate( ctmp(ni,ni) ) ; ctmp=0.0d0
                 nblkh=nblk/2
                 call calc_overlap_sub(m,ni,nblkh,a(1,i0),b(1,j0),ctmp)
                 c(i0:i1,j0:j1)=ctmp(:,:)

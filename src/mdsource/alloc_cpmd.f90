@@ -97,6 +97,7 @@ subroutine read_cpmd_variables
    use cpmd_variables
    use io_tools_module
    implicit none 
+   call write_border( 0, 'read_cpmd_variables(start)' )
    if ( myrank == 0 ) then
       open(2,file='cpmd_var.dat',status='old')
       read(2,*) nstep
@@ -157,6 +158,7 @@ subroutine read_cpmd_variables
       write(*,*) "all_traj=",all_traj
    end if
    call send_cpmd_variables
+   call write_border( 0, 'read_cpmd_variables(end)' )
    return
 end subroutine read_cpmd_variables
 
@@ -167,7 +169,7 @@ subroutine send_cpmd_variables
    use cpmd_variables
    implicit none 
    integer :: ierr
-
+   call write_border( 0, 'send_cpmd_variables(start)' )
    call mpi_bcast(nstep,1,mpi_integer,0,mpi_comm_world,ierr)
    call mpi_bcast(deltat,1,mpi_real8,0,mpi_comm_world,ierr)
    call mpi_bcast(trange,1,mpi_real8,0,mpi_comm_world,ierr)
@@ -195,5 +197,6 @@ subroutine send_cpmd_variables
    call mpi_bcast(linitnose,1,mpi_logical,0,mpi_comm_world,ierr)
    call mpi_bcast(linitnosee,1,mpi_logical,0,mpi_comm_world,ierr)
    call mpi_bcast(lblue,1,mpi_logical,0,mpi_comm_world,ierr)
+   call write_border( 0, 'send_cpmd_variables(end)' )
    return
 end subroutine send_cpmd_variables

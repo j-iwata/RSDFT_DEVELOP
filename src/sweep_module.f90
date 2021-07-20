@@ -151,7 +151,7 @@ CONTAINS
 
        write(chr_iter,'(" sweep_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
-       call start_timer( tt )
+       call start_timer( t_out=tt )
 
        call init_time_watch( etime )
 

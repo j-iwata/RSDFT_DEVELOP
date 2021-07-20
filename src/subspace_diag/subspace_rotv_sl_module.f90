@@ -31,7 +31,7 @@ CONTAINS
     type(time) :: t
 
     call write_border( 1, " subspace_rotv(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     n1  = ML_0
     n2  = ML_1
@@ -154,7 +154,7 @@ CONTAINS
     real(8),parameter :: zero=0.0d0, one=1.0d0
 
     call write_border( 1, " subspace_rotv2(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     n1  = ML_0
     n2  = ML_1

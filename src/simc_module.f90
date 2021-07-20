@@ -305,7 +305,8 @@ CONTAINS
 
     x(1:3) = (/ x1ini, x2ini, x3ini /)
 
-    call lmder1(uscfit,num,3,x,fvec,fjac,maxnum,tol,info,ipvt,wa,lwa)
+    call lmder1(uscfit,num,3,x,fvec,fjac,maxnum,tol,info)
+    !call lmder1(uscfit,num,3,x,fvec,fjac,maxnum,tol,info,ipvt,wa,lwa)
 
     if ( info==0 .or. info==4 .or. info==5 .or. info==6 .or. info==7 ) then
        write(*,*) 'simc_0: Not converged (info=',info,')'

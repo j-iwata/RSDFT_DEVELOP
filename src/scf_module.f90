@@ -180,7 +180,7 @@ CONTAINS
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
-       call start_timer( tt )
+       call start_timer( t_out=tt )
        call init_time_watch( etime )
        call init_time_watch( etime_lap(2) )
        call watchb( t_ini(1) ) ; t_out=0.0d0

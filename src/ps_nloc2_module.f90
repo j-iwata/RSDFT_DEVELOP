@@ -1,32 +1,38 @@
 module ps_nloc2_module
 
-  use aa_module
-  use atom_module
-  use rgrid_module
-  use parallel_module
-  use array_bound_module
-  use pseudopot_module
-  use ps_nloc2_init_module
-  use ps_nloc2_variables
-  use ps_nloc_gth_module
+  use aa_module, only: aa
+  use atom_module, only: aa_atom, ki_atom
+!  use rgrid_module
+!  use parallel_module
+  use array_bound_module, only: ML_0, MB_0, MB_1, MBZ_0, MBZ_1, MSP_0, MSP_1
+  use pseudopot_module, only: lo, norb, NRps, ippform, ps_type, pselect
+  use ps_nloc2_init_module, only: ps_nloc2_init_derivative
+  use var_ps_member, only: viod, rad1, Rps, inorm, dviod
+  use ps_nloc2_variables, only: amap, lmap, mmap, iorbmap, nzlma, recvmap, rbufnl, sbufnl &
+                               ,num_2_rank, lma_nsend, sendmap, nrlma_xyz &
+                               ,JJ_MAP, MJJ_MAP, iuV, uVk, JJP, MJJ, MMJJ, Mlma &
+                               ,uV, MAXMJJ, iamap, nl_rank_map, nl_max_send &
+                               ,FLAG_KEEP_uV, FLAG_KEEP_JJ_MAP, xVk, yVk, zVk &
+                               ,allocate_ps_nloc2, TYPE_MAIN
+  use ps_nloc_gth_module, only: init_ps_nloc_gth, prep_ps_nloc_gth, init_force_ps_nloc_gth
   use ps_nloc_mr_module, only: calc_force_ps_nloc_mr
   use ps_nloc3_module, only: calc_force_ps_nloc3
   use rgrid_mol_module, only: iswitch_eqdiv
   use para_rgrid_comm, only: prepThreeWayComm,do3StepComm,do3StepComm_F
 
-  use force_ps_nloc2
-  use force_sub_sub_module
+  use force_ps_nloc2, only: calcForcePSnonLoc2
+  use force_sub_sub_module, only: gaunt, construct_gaunt_coef_l1
 
-  use minimal_box_module
-  use bz_module
+  use minimal_box_module, only: m_grid_ion, map_grid_ion, mcube_grid_ion, make_minimal_box
+  use bz_module, only: kbb
   use watch_module, only: watchb
-  use wf_module
+  use wf_module, only: unk, occ
   use ps_nloc2_op_module, only: init_op_ps_nloc2, init_op_ps_nloc2_hp
-  use ylm_module
-  use hsort_module
-  use polint_module
-  use spline_module
-  use rsdft_mpi_module
+  use ylm_module, only: Ylm
+  use hsort_module, only: indexx
+  !use polint_module
+  use spline_module, only: splint, spline
+  !use rsdft_mpi_module
   use memory_module, only: check_memory
 
   implicit none
@@ -34,10 +40,8 @@ module ps_nloc2_module
   private
   public :: prep_ps_nloc2
   public :: calc_force_ps_nloc2
-  public :: allocate_ps_nloc2
   public :: prep_uvk_ps_nloc2
   public :: prep_rvk_ps_nloc2
-  public :: prep_ps_nloc2_esm
   public :: prepMapsTmp
   public :: construct_lma_map_ps_nloc2
 
@@ -59,7 +63,11 @@ contains
 
 
   subroutine prep_ps_nloc2
+    use parallel_module, only: MB_d_nl, myrank, node_partition, myrank_g, comm_grid &
+                              ,np_grid
+    use rgrid_variables, only: Ngrid, Igrid, Hgrid
     implicit none
+    include 'mpif.h'
     integer,allocatable :: icheck_tmp1(:),icheck_tmp2(:),itmp(:,:)
     integer,allocatable :: icheck_tmp4(:,:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:),ireq(:)
@@ -71,17 +79,17 @@ contains
     integer :: i1,i2,i3,j1,j2,j3,ik,ir,iorb,mm,ierr,ir0,ir1,irlma
     integer :: ic1,ic2,ic3,id1,id2,id3
     integer :: nzlma_0,NRc,MMJJ_0,lma,lma0,i1_0,i2_0,i3_0
-    integer :: nreq
+    integer :: nreq, nprocs_g
     real(8),parameter :: ep=1.d-8
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2
     real(8) :: c1,c2,c3,a1,a2,a3,maxerr,err0,err
     real(8) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(8),allocatable :: work(:)
-    real(8) :: ttmp(2),tttt(2,11)
+    !real(8) :: ttmp(2),tttt(2,11)
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
-    integer :: ab1,ab2,ab3,timer_counter
-    integer :: np1,np2,np3,nrlma
-    logical,allocatable :: lcheck_tmp1(:,:), lcheck_tmp2(:,:), ltmp(:)
+    integer :: ab1,ab2,ab3
+    integer :: np1,np2,np3,nrlma,Natom,Nelement
+    logical,allocatable :: lcheck_tmp1(:,:), lcheck_tmp2(:,:)
     logical :: disp_sw
     integer :: num_local_atom, max_num_local_atom
     integer,allocatable :: lst_local_atom(:)
@@ -93,6 +101,11 @@ contains
     call check_disp_switch( disp_sw, 0 )
 
 !------------------------------------------ max atom*orb
+
+    nprocs_g = np_grid
+    Natom = size(ki_atom)
+    Nelement = maxval(ki_atom)
+
     Mlma=0
     do i=1,Natom
       ik=ki_atom(i)
@@ -1068,11 +1081,11 @@ contains
 
 ! ---
 
-    if ( myrank == 0 ) then
-      do i=1,11
-        write(*,'("time_prep_ps_nloc2(",i2,")",2f10.5)') i, tttt(:,i)
-      end do
-    end if
+    !if ( myrank == 0 ) then
+    !  do i=1,11
+    !    write(*,'("time_prep_ps_nloc2(",i2,")",2f10.5)') i, tttt(:,i)
+    !  end do
+    !end if
 
   end subroutine prep_ps_nloc2
 
@@ -1264,6 +1277,7 @@ contains
 
 
   SUBROUTINE prep_uvk_ps_nloc2(k0,k1,kbb)
+    use rgrid_variables, only: Ngrid, Igrid
     implicit none
     integer,intent(IN) :: k0,k1
     real(8),intent(IN) :: kbb(3,k0:k1)
@@ -1329,6 +1343,7 @@ contains
 
 
   SUBROUTINE prep_rvk_ps_nloc2(k0,k1,kbb)
+    use rgrid_variables, only: Igrid, Ngrid
     implicit none
     integer,intent(IN) :: k0,k1
     real(8),intent(IN) :: kbb(3,k0:k1)
@@ -1418,36 +1433,44 @@ contains
 
 
   SUBROUTINE calc_force_ps_nloc2(MI,force2)
+    use parallel_module, only: comm_grid, MB_d_nl
+    use rgrid_variables, only: dV, Igrid, Ngrid
     implicit none
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force2(3,MI)
+    include 'mpif.h'
     integer :: i1,i2,i3
     integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq,ib,ib1,ib2,nnn
-    integer :: a,a0,ik,m,lm0,lm1,lma,im,m1,m2
-    integer :: ierr,M_irad,ir0,ir1
-    integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
+    integer :: a,ik,m,lm1,lma,im,m1,m2
+    integer :: ierr,ir0,ir1
+#ifndef _SPLINE_
+    integer :: M_irad
+    integer,allocatable :: irad(:,:)
+#endif
+    integer,allocatable :: ireq(:),istatus(:,:),ilm1(:,:,:)
     real(8),parameter :: ep=1.d-8
     real(8),save :: Y1(0:3,-3:3,0:4,-4:4)
     real(8),save :: Y2(0:3,-3:3,0:4,-4:4)
     real(8),save :: Y3(0:3,-3:3,0:4,-4:4)
     real(8) :: err,err0,maxerr,Rx,Ry,Rz
-    real(8) :: a1,a2,a3,c1,c2,c3,d1,d2,d3
+    real(8) :: c1,c2,c3,d1,d2,d3
     real(8) :: x,y,z,r,kr,pi2,c
-    real(8) :: tmp,tmp0,tmp1
-    real(8) :: ttmp(2), tttt(2,11)
+    real(8) :: tmp0,tmp1
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: work2(:,:),duVdR(:,:,:)
 #ifdef _DRSDFT_
     real(8) :: ztmp
     real(8),allocatable :: wtmp5(:,:,:,:,:),vtmp2(:,:,:)
+    real(8),parameter :: zero=0.0d0
 #else
     complex(8) :: ztmp
     complex(8),allocatable :: wtmp5(:,:,:,:,:),vtmp2(:,:,:)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
 #endif
     logical,save :: flag_Y = .true.
     logical,allocatable :: a_rank(:)
-    integer :: ML1,ML2,ML3,i0,iorb0
+    integer :: ML1,ML2,ML3,Natom,Nelement
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
     logical :: disp_sw
     logical, save :: flag_init_force = .true.
@@ -1482,6 +1505,9 @@ contains
     end if
 
     call construct_gaunt_coef_L1( 3, yyy )
+
+    Natom = size(aa_atom,2)
+    Nelement = maxval(ki_atom)
 
     pi2 = 2.d0*acos(-1.d0)
 
@@ -1969,7 +1995,7 @@ contains
 
   END SUBROUTINE calc_force_ps_nloc2
 
-
+#ifdef TEST
   SUBROUTINE prep_ps_nloc2_esm
     use minimal_box_module
     use bz_module
@@ -1980,15 +2006,19 @@ contains
     integer,allocatable :: icheck_tmp3(:,:,:),icheck_tmp4(:,:,:)
     integer,allocatable :: sendmap_tmp(:,:),recvmap_tmp(:,:),ireq(:)
     integer,allocatable :: lma_nsend_tmp(:),maps_tmp(:,:),itmp1(:)
-    integer,allocatable :: irad(:,:),nl_rank_map_tmp(:),itmp3(:,:)
+    integer,allocatable :: nl_rank_map_tmp(:),itmp3(:,:)
     integer,allocatable :: itmp2(:),LLp(:,:)
     integer,allocatable :: JJ_tmp(:,:,:,:),MJJ_tmp(:,:)
     integer,allocatable :: jtmp3(:,:,:),mtmp3(:),istatus(:,:)
+#ifndef _SPLINE_
+    integer,allocatable :: irad(:,:)
+    integer :: M_irad
+#endif
     integer :: a,i,j,k,L,m,n,mm1,mm2,mm3,m1,m2,ML0,k1,k2,k3
     integer :: i1,i2,i3,j1,j2,j3,ik,ir,m0,iorb,mm,ierr,ir0,irlma
     integer :: ic1,ic2,ic3,id1,id2,id3,ii1,ii2,ii3,iii1,iii2,iii3
     integer :: Nintp_0,nzlma_0,M_irad,NRc,MMJJ_0,lma,lma0,i1_0,i2_0,i3_0
-    integer :: nreq,ibuf(3,3),irank
+    integer :: nreq,ibuf(3,3),irank,Natom
     real(8),parameter :: ep=1.d-8
     real(8) :: x,y,z,r,Rx,Ry,Rz,Rps2,v,v0,d1,d2,d3,r2,kr,pi2
     real(8) :: tmp0,tmp1,tmp2,tmp3,c1,c2,c3,maxerr,err0,err
@@ -1996,6 +2026,8 @@ contains
     integer :: ML1,ML2,ML3,a1b,b1b,a2b,b2b,a3b,b3b
     integer :: ab1,ab2,ab3
     integer :: np1,np2,np3,nrlma
+
+    Natom = size(ki_atom)
 
     Mlma=0
     do i=1,Natom
@@ -2688,6 +2720,8 @@ contains
     complex(8) :: ztmp0
     integer,allocatable :: LLL(:,:,:)
 
+    Natom = size(
+
     a1b = Igrid(1,1)
     b1b = Igrid(2,1)
     a2b = Igrid(1,2)
@@ -2752,12 +2786,13 @@ contains
     deallocate( icheck_tmp4 )
 
   END SUBROUTINE prep_uvk_ps_nloc2_esm
-
+#endif
 
   subroutine construct_lma_map_ps_nloc2( map )
     implicit none
     integer,intent(inout),allocatable :: map(:)
-    integer :: a, ik, iorb, l, m, lma, i
+    integer :: a, ik, iorb, l, m, lma, i, Natom
+    Natom=size(ki_atom)
     allocate( map(nzlma) ); map=0
     lma=0
     do a=1,Natom

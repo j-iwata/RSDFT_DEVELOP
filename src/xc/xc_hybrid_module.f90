@@ -12,7 +12,7 @@ MODULE xc_hybrid_module
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
            ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
-           ,VFunk, unk_hf, occ_hf, occ_factor, npart &
+           ,unk_hf, occ_hf, occ_factor, npart &
            ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
   PUBLIC :: read_xc_hybrid
   PUBLIC :: set_param_xc_hybrid
@@ -27,11 +27,9 @@ MODULE xc_hybrid_module
   integer :: iflag_hybrid = 0
 
 #ifdef _DRSDFT_
-  real(8),allocatable :: VFunk(:,:,:,:)
   real(8),allocatable :: unk_hf(:,:,:,:)
   real(8),parameter :: byte = 8.0d0
 #else
-  complex(8),allocatable :: VFunk(:,:,:,:)
   complex(8),allocatable :: unk_hf(:,:,:,:)
   real(8),parameter :: byte = 16.0d0
 #endif

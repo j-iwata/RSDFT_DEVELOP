@@ -70,7 +70,7 @@ contains
 
     call write_border( 1, " conjugate_gradient(start)" )
 
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     Ncg        = ictrl_cg(1)
     ipc        = ictrl_cg(2)

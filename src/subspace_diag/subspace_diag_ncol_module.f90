@@ -45,7 +45,7 @@ CONTAINS
     include 'mpif.h'
 
     call write_border( 1, " subspace_diag_ncol(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     ML0 = size( psi, 1 )
     MB  = size( psi, 2 )
