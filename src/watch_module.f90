@@ -264,7 +264,12 @@ CONTAINS
     include 'mpif.h'
     call cpu_time( tnow%t0 )
     tnow%t1 = mpi_wtime()
-    t=t_save ; if ( present(t_inout) ) t=t_inout
+    t%t0 = t_save%t0
+    t%t1 = t_save%t1
+    if ( present(t_inout) ) then
+      t%t0 = t_inout%t0
+      t%t1 = t_inout%t1
+    end if
     t%t0 = tnow%t0 - t%t0
     t%t1 = tnow%t1 - t%t1
     if ( present(indx) ) then

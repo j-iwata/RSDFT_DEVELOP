@@ -29,6 +29,8 @@ contains
     logical :: disp_sw
     integer :: i1,i2,i3
 
+    call write_border( 0, 'write_data_cpmdio(start)' )
+
     call IOTools_readIntegerKeyword( "OC", OC )
     if ( OC <= 0 ) return
 
@@ -48,37 +50,60 @@ contains
 
     call write_data_cpmd_k_para
 
+    call write_border( 0, 'write_data_cpmdio(end)' )
+
   end subroutine write_data_cpmdio
 
   subroutine read_data_cpmdio_0
     implicit none
     integer :: ierr,n1,n2,n3,i1,i2,i3,j1,j2,j3
+    real(8),allocatable :: occ_tmp(:,:,:)
+    real(8) :: tmp1,tmp2
     include 'mpif.h'
+    call write_border( 0, 'read_data_cpmdio_0(start)' )
     if ( myrank == 0 ) then
        occ=0.0d0
        open(1,file='restart_.dat',status='old')
        read(1,*) n1,n2,n3
+       write(*,*) "size(occ_old),size(occ)",n1,n2,n3,size(occ,1),size(occ,2),size(occ,3)
+       allocate( occ_tmp(n1,n2,n3) ); occ_tmp=0.0d0
        do i3=1,n3
        do i2=1,n2
        do i1=1,n1
-          read(1,*) j1,j2,j3,occ(i1,i2,i3)
+          read(1,*) j1,j2,j3,occ_tmp(i1,i2,i3)
        end do
        end do
        end do
        read(1,*) node_partition_old(:)
        close(1)
+       write(*,*) "sum,min,max(occ_tmp)=",sum(occ_tmp),minval(occ_tmp),maxval(occ_tmp)
+       do i3=1,min(size(occ,3),n3)
+       do i2=1,min(size(occ,2),n2)
+       do i1=1,min(size(occ,1),n1)
+         occ(i1,i2,i3) = occ_tmp(i1,i2,i3)
+       end do
+       end do
+       end do
+       write(*,*) "sum,min,max(occ)=",sum(occ),minval(occ),maxval(occ)
+       tmp1=sum(occ_tmp)
+       tmp2=sum(occ)
+       if ( abs(tmp1-tmp2) > 1.0d-8 ) occ=-1.0d0
+       deallocate( occ_tmp )
     end if
     call MPI_Bcast( occ,size(occ),MPI_REAL8,0,MPI_COMM_WORLD,ierr )
     call MPI_Bcast( node_partition_old,size(node_partition_old),MPI_INTEGER,0,MPI_COMM_WORLD,ierr )
+    call write_border( 0, 'read_data_cpmdio_0(end)' )
   end subroutine read_data_cpmdio_0
 
   subroutine read_data_cpmdio
     implicit none
+    call write_border( 0, 'read_data_cpmdio(start)' )
     if ( all(node_partition==node_partition_old) ) then
        call read_data_cpmd_k_para
     else
        call read_data_cpmd_k_para_tmp
     end if
+    call write_border( 0, 'read_data_cpmdio(end)' )
   end subroutine read_data_cpmdio
 
 !-------------------------------------------------------------
@@ -92,6 +117,8 @@ contains
 #else
     complex(8),allocatable :: utmp(:)
 #endif
+
+    call write_border( 0, 'write_data_cpmd_k_seri(start)' )
 
     nn=sum(ircnt)
 
@@ -123,6 +150,8 @@ contains
 
     if ( myrank == 0 ) close(1)
 
+    call write_border( 0, 'write_data_cpmd_k_seri(end)' )
+
   END SUBROUTINE write_data_cpmd_k_seri
 
 
@@ -130,6 +159,8 @@ contains
     implicit none
     integer :: n1,n2,ML0,n,k,i,ispin,i1,i2,i3
     character(len=64) :: filename
+
+    call write_border( 0, 'write_data_cpmd_k_para(start)' )
 
     write(filename,"('restart_',i5.5,'.dat')") myrank
 
@@ -160,6 +191,9 @@ contains
     enddo
 
     close(1)
+
+    call write_border( 0, 'write_data_cpmd_k_para(end)' )
+
     return
   end subroutine write_data_cpmd_k_para
 
@@ -171,6 +205,8 @@ contains
     integer :: n1,n2,nn,s,k,n,ierr
     real(8),allocatable :: utmp(:)
     include 'mpif.h'
+
+    call write_border( 0, 'read_data_cpmd_k_seri(start)' )
 
     n1=idisp(myrank)+1
     n2=idisp(myrank)+ircnt(myrank)
@@ -204,13 +240,18 @@ contains
 
     if ( myrank == 0 ) close(1)
 
+    call write_border( 0, 'read_data_cpmd_k_seri(end)' )
+
   END SUBROUTINE read_data_cpmd_k_seri
 
 
   subroutine read_data_cpmd_k_para
     implicit none
     integer :: n1,n2,ML0,n,k,i,ispin,ierr
+    integer,parameter :: u=700
     character(len=64) :: filename
+
+    call write_border( 0, 'read_data_cpmd_k_para(start)' )
 
 !    call read_io2( SYStype, ierr )
 !    if ( ierr == 0 ) then
@@ -223,7 +264,7 @@ contains
 
     write(filename,"('restart_',i5.5,'.dat')") myrank
 
-    open(1,file=filename,form="unformatted")
+    open(u,file=filename,form="unformatted")
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -233,7 +274,7 @@ contains
     do k=MBZ_0,MBZ_1
     do n=MB_0_CPMD,MB_1_CPMD
     do i=n1,n2
-       read(1) unk(i,n,k,ispin)
+       read(u) unk(i,n,k,ispin)
     enddo
     enddo
     enddo
@@ -243,13 +284,16 @@ contains
     do k=MBZ_0,MBZ_1
     do n=MB_0_CPMD,MB_1_CPMD
     do i=n1,n2
-       read(1) psi_v(i,n,k,ispin)
+       read(u) psi_v(i,n,k,ispin)
     enddo
     enddo
     enddo
     enddo
 
-    close(1)
+    close(u)
+
+    call write_border( 0, 'read_data_cpmd_k_para(end)' )
+
     return
   end subroutine read_data_cpmd_k_para
 
@@ -262,8 +306,11 @@ contains
     character(len=64) :: filename
     integer :: n1_now, nprocs_old, irank_old
     integer,allocatable :: Igrid_old(:,:,:)
+    integer,parameter :: u=700
     real(8) :: tmp0,tmp1
     real(8),allocatable :: w_old(:,:,:)
+
+    call write_border( 0, 'read_data_cpmd_k_para_tmp(start)' )
 
     n1_now  = idisp(myrank)+1
 
@@ -307,7 +354,7 @@ contains
             b3_old < a3 .or. b3 < a3_old ) cycle
 
        write(filename,"('restart_',i5.5,'.dat')") irank_old
-       open(1,file=filename,form="unformatted")
+       open(u,file=filename,form="unformatted")
 
        do ispin=MSP_0,MSP_1 
        do k=MBZ_0,MBZ_1
@@ -315,7 +362,7 @@ contains
           do i3=1,ML0_old(3)
           do i2=1,ML0_old(2)
           do i1=1,ML0_old(1)
-             read(1) w_old(i1,i2,i3)
+             read(u) w_old(i1,i2,i3)
           end do
           end do
           end do
@@ -342,7 +389,7 @@ contains
           do i3=1,ML0_old(3)
           do i2=1,ML0_old(2)
           do i1=1,ML0_old(1)
-             read(1) w_old(i1,i2,i3)
+             read(u) w_old(i1,i2,i3)
           end do
           end do
           end do
@@ -363,12 +410,14 @@ contains
        end do
        end do
 
-       close(1)
+       close(u)
 
     end do ! irank_old
 
     deallocate( w_old )
     deallocate( Igrid_old )
+
+    call write_border( 0, 'read_data_cpmd_k_para_tmp(end)' )
 
     return
   end subroutine read_data_cpmd_k_para_tmp

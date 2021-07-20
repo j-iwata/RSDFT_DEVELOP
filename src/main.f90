@@ -38,7 +38,7 @@ PROGRAM Real_Space_DFT
   use eion_module
   use subspace_diag_module
   use gram_schmidt_module
-  use init_occ_electron_module
+  use init_occ_electron_module, only: init_occ_electron
   use hartree_module
   use test_force_module
 
@@ -378,9 +378,9 @@ PROGRAM Real_Space_DFT
 ! --- Initial occupation ---
 
   if ( flag_noncollinear ) then
-     call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+    call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
   else
-     call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+    call init_occ_electron(Nelectron,Ndspin,weight_bz,occ)
   end if
 
   if ( DISP_SWITCH ) then
@@ -564,22 +564,22 @@ PROGRAM Real_Space_DFT
 
   if( iswitch_opt >= 1 .or. iswitch_latopt >= 1 ) then
 
-     if ( iswitch_opt /= 3 ) then
-        call atomopt(iswitch_opt,iswitch_latopt)
-        call calc_total_energy( recalc_esp, Etot, unit_in=6 )
-     else
-        if ( SYStype == 0 ) then
-           !if ( flag_noncollinear ) then
-           !   call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
-           !else
-           !   call init_occ_electron(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
-           !end if
-           call bomd
-        else
-           write(*,*) "MD for SYStype/=0 is not avaiable"
-           goto 900
-        end if
-     end if
+    if ( iswitch_opt /= 3 ) then
+      call atomopt(iswitch_opt,iswitch_latopt)
+      call calc_total_energy( recalc_esp, Etot, unit_in=6 )
+    else
+      if ( SYStype == 0 ) then
+        !if ( flag_noncollinear ) then
+        !  call init_occ_electron_ncol(Nelectron,Ndspin,Nbzsm,weight_bz,occ)
+        !else
+        !  call init_occ_electron(Nelectron,Ndspin,weight_bz,occ)
+        !end if
+        call bomd
+      else
+        write(*,*) "MD for SYStype/=0 is not avaiable"
+        goto 900
+      end if
+    end if
 
   end if
 

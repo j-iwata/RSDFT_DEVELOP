@@ -10,7 +10,7 @@ SUBROUTINE bomd
                            ,Force,lcpmd,lquench,lbere,lbathnew,nstep &
                            ,inivel,dtsuz,lbathnewe &
                            ,lscaleele,Rion,lscale,lblue &
-                           ,AMU,pmass,Etot,trjstep,Ndof,omegan,ekinw,wnose0 &
+                           ,AMU,pmass,Etot,trjstep,omegan,ekinw,wnose0 &
                            ,deltat,FS_TO_AU,temp,MI &
                            ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,batm,itime &
                            ,wrtstep, all_traj, ctrl_cpmdio
@@ -19,6 +19,9 @@ SUBROUTINE bomd
   use wf_module
   use watch_module
   use array_bound_module, only: MB_0,MB_1
+  use electron_module, only: Ndspin,Nelectron
+  use bz_module, only: weight_bz
+  use init_occ_electron_module, only: init_occ_electron
   use cpmdio_module
   use rotorb_module
   use blue_moon_module
@@ -31,22 +34,19 @@ SUBROUTINE bomd
 
   implicit none
 
-  integer :: i,j,k,n,s,ierr,ib1,ib2
+  integer :: i,k,ierr,ib1,ib2
   real(8) :: tott,dif,kine,tote,tote0,dt2,ltemp
   real(8) :: fke,Ebath_ion,Ebath_ele,Ebath
   real(8) :: ctime0,ctime1,etime0,etime1
   real(8) :: ctime_cpmd(0:11),etime_cpmd(0:11)
-  real(8),allocatable :: mu(:),occ_backup(:,:,:)
-  logical :: ltime,flag_etlimit
+  real(8),allocatable :: occ_backup(:,:,:)
+  logical :: ltime,flag_etlimit,ltmp
   integer,parameter :: unit_trjxyz = 90
   logical,external :: exit_program
   type(lattice) :: aa_obj
 
   call write_border( 0, "" )
   call write_border( 0, " CPMD START -----------" )
-
-
-  call check_disp_switch( .false., 1 )
 
   lblue = .false.
 
@@ -62,7 +62,7 @@ SUBROUTINE bomd
 
   if ( lblue ) call read_blue
 
-  tote0       = 0.d0
+  tote0       = 0.0d0
   MI          = Natom
   disp_switch = (myrank==0)
   ltime       = .true.
@@ -137,40 +137,49 @@ SUBROUTINE bomd
   fke = 0.0d0
 
   if ( lcpmd ) then
-     if ( inivel ) then
+    if ( inivel ) then
+      call active_band
+      call alloc_cpmd
+    else
+      if ( lquench ) then
+        call getforce
+        call init_occ_electron(Nelectron,Ndspin,weight_bz,occ)
         call active_band
         call alloc_cpmd
-     else
+        psi_v=0.0d0
+      else
         call read_data_cpmdio_0
         call active_band
         call alloc_cpmd
         call read_data_cpmdio
-     end if
-     MB_0 = MB_0_CPMD
-     MB_1 = MB_1_CPMD
-     ib1  = MB_0_CPMD
-     ib2  = MB_1_CPMD
-     if ( lquench ) then
-        allocate( occ_backup(size(occ,1),size(occ,2),size(occ,3)) )
-        occ_backup=occ
-        call getforce
-        occ=occ_backup
-        deallocate( occ_backup )
-        psi_v=0.0d0
-     else
-        call getforce_cpmd( ltime )
-     end if
-     call wf_force
-     call calc_total_energy( .false., Etot )
-     call calfke( fke )
-     if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
+      end if
+    end if
+    MB_0 = MB_0_CPMD
+    MB_1 = MB_1_CPMD
+    ib1  = MB_0_CPMD
+    ib2  = MB_1_CPMD
+!    if ( lquench ) then
+!      allocate( occ_backup(size(occ,1),size(occ,2),size(occ,3)) )
+!      occ_backup=occ
+!      call getforce
+!      occ=occ_backup
+!      deallocate( occ_backup )
+!      psi_v=0.0d0
+!    else
+!      call getforce_cpmd( ltime )
+!    end if
+    call getforce_cpmd( ltime )
+    call wf_force
+    call calc_total_energy( .false., Etot )
+    call calfke( fke )
+    if ( disp_switch ) write(*,*) "fictitious kinetic energy (init)=",fke
   else ! bomd
-     MB_0_CPMD=MB_0
-     MB_1_CPMD=MB_1
-     ib1=MB_0
-     ib2=MB_1
-     call getforce
-     call calc_total_energy( .false., Free_energy=Etot )
+    MB_0_CPMD=MB_0
+    MB_1_CPMD=MB_1
+    ib1=MB_0
+    ib2=MB_1
+    call getforce
+    call calc_total_energy( .false., Free_energy=Etot )
   end if
 
 ! --- initial bath parameters
@@ -209,6 +218,9 @@ SUBROUTINE bomd
   end if
 
 ! --- loop start
+
+  ltmp=.false.
+  call check_disp_switch( ltmp, 1 )
 
   disp_switch = .false.
 
