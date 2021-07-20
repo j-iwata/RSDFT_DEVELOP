@@ -9,7 +9,7 @@ contains
 
   subroutine init_occ_electron(Nelectron,Ndspin,weight_bz,occ)
     implicit none
-    real(8),intent(in) :: Nelectron,Ndspin,weight_bz(Nbzsm)
+    real(8),intent(in) :: Nelectron,Ndspin,weight_bz(:)
     real(8),intent(out) :: occ(:,:,:)
     integer :: n,k,s,Nspin,Nbzsm,Nband
     real(8) :: sum0,d,Nel
@@ -24,7 +24,7 @@ contains
     occ=0.0d0
 
     Nband = size(occ,1)
-    Nbzsm = size(occ,1)
+    Nbzsm = size(occ,2)
     Nspin = size(occ,3)
 
     d=2.0d0/Nspin
