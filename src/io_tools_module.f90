@@ -1,14 +1,15 @@
-MODULE io_tools_module
+module io_tools_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_io_tools
-  PUBLIC :: IOTools_readStringKeyword
-  PUBLIC :: IOTools_readIntegerKeyword
-  PUBLIC :: IOTools_readReal8Keyword
-  PUBLIC :: IOTools_readIntegerString
-  PUBLIC :: IOTools_findKeyword
+  private
+  public :: init_io_tools
+  public :: IOTools_readStringKeyword
+  public :: IOTools_readIntegerKeyword
+  public :: IOTools_readReal8Keyword
+  public :: IOTools_readIntegerString
+  public :: IOTools_findKeyword
+  public :: IOTools_parseInteger
 
   integer,parameter :: max_trial_read = 10000
   integer :: myrank = 0
@@ -31,7 +32,7 @@ MODULE io_tools_module
                      ,IOTools_readReal8Keyword_vec
   END INTERFACE
 
-CONTAINS
+contains
 
 
   SUBROUTINE init_io_tools( myrank_in, unit_in )
@@ -335,19 +336,114 @@ CONTAINS
   END SUBROUTINE IOTools_findKeyword
 
 
-  SUBROUTINE convertToCapital(cbuf,CKEY)
+  subroutine IOTools_parseInteger( keyword, values, unit_in )
+    use rsdft_bcast_module, only: l_rsdft_bcast, i_rsdft_bcast
     implicit none
-    character(*),intent(IN)  :: cbuf
-    character(*),intent(OUT) :: CKEY
+    character(*),intent(in) :: keyword
+    integer,allocatable,intent(inout) :: values(:)
+    integer,optional,intent(in) :: unit_in
+    integer :: unit,m1,m2,m3,m4,n1,n2,n,i,j,itmp(10)
+    character(127) :: str,ctmp
+    character(7) :: cint
+    logical :: flag
+
+    call write_border( 0, ' IOTools_parseInteger(start)' )
+
+    call check_init
+    unit=unit_default; if ( present(unit_in) ) unit=unit_in
+
+    if ( allocated(values) ) deallocate(values)
+
+    flag = .false.
+    if ( myrank == 0 ) then
+
+      rewind unit
+      do
+        read(unit,'(a)',END=999) str
+        call convertToCapital( str )
+        if ( index(str,keyword) > 0 ) exit
+      end do
+
+      flag = .true.
+
+      m1 = len_trim( keyword )
+      m2 = index( str, keyword(1:m1) )
+      n1 = m1 + m2
+      n2 = len_trim(str)
+      ! write(*,*) str(1:n2)
+
+      itmp=0
+      n=0
+      do
+        ctmp = str(n1:n2)
+        cint = ''
+        read(ctmp,*) cint
+        if ( not_integer(cint) ) exit
+        n = n + 1
+        read(ctmp,*) itmp(n)
+        m1 = len_trim( cint )
+        m2 = index( ctmp, cint(1:m1) )
+        n1 = n1 + m1 + m2 - 1
+        if ( n1 > n2 ) exit
+      end do
+
+      write(*,'(a,10i4)') keyword//": ", itmp(1:n)
+      write(*,*) "(# of Parameters = ",n,")"
+      allocate( values(n) ); values=0
+      values = itmp(1:n)
+
+      999 continue
+    end if
+
+    call l_rsdft_bcast( flag, 1, 0 )
+    if ( flag ) then
+      call i_rsdft_bcast( n, 1, 0 )
+      if ( .not.allocated(values) ) then
+        allocate( values(n) ); values=0
+      end if
+      call i_rsdft_bcast( values, n, 0 )
+    end if
+
+    call write_border( 0, ' IOTools_parseInteger(end)' )
+
+  end subroutine IOTools_parseInteger
+
+  subroutine convertToCapital( cbuf, CKEY )
+    implicit none
+    character(*),intent(inout) :: cbuf
+    character(*),optional,intent(out) :: CKEY
     integer :: j,k,n
     n=len_trim(cbuf)
-    CKEY=""
+    if ( present(CKEY) ) CKEY=cbuf(1:n)
     do j=1,n
       k=iachar( cbuf(j:j) )
-      if ( k >= 97 ) k=k-32
-      CKEY(j:j) = achar(k)
+      if ( 97 <= k .and. k <= 122 ) k=k-32
+      if ( present(CKEY) ) then
+        CKEY(j:j) = achar(k)
+      else
+        cbuf(j:j) = achar(k)
+      end if
     end do
-  END SUBROUTINE convertToCapital
+  end subroutine convertToCapital
 
 
-END MODULE io_tools_module
+  logical function not_integer( c )
+    implicit none
+    character(*),intent(in) :: c
+    integer :: n,i,j
+    n = len_trim(c)
+    if ( n == 0 ) then
+      not_integer = .true.
+      return
+    end if
+    do i = 1, n
+      j = iachar( c(i:i) )
+      if ( .not.(48 <= j .and. j <= 57) ) then
+        not_integer = .true.
+        return
+      end if
+    end do
+    not_integer = .false.
+  end function not_integer
+
+end module io_tools_module

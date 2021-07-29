@@ -46,6 +46,7 @@ MODS2 = localpot_module.o\
 	construct_vion_vh_floc_module.o\
 
 MODS1 = \
+       gcd_lcm_pf_module.o\
        enlarge_array_module.o\
        polint_module.o\
        spline_module.o\
@@ -56,6 +57,7 @@ MODS1 = \
        bb_module.o\
        ggrid_module.o\
        maskf_module.o\
+       rsdft_bcast_module.o\
        rsdft_sendrecv_module.o\
        rsdft_allgather_module.o\
        rsdft_mpi_module.o\
@@ -63,6 +65,7 @@ MODS1 = \
        omp_variables.o\
        io_tools_module.o\
        sl_tools_module.o\
+       pinfo_module.o\
        lattice_module.o\
        cif_format_module.o\
        atom_module.o\
@@ -79,7 +82,6 @@ MODS1 = \
        bz_module.o\
        eigenvalues_module.o\
        ewald_variables.o\
-       bcast_module.o\
        fermi_dirac_module.o\
        fermi_module.o\
        fermi_ncol_module.o\

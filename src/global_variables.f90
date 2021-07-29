@@ -66,7 +66,7 @@ MODULE global_variables
   use ps_gth_module
   use ps_nloc_mr_module
 
-  use bcast_module
+!  use rsdft_bcast_module
 
 !  use localpot2_variables
 !  use localpot2_ion_module
