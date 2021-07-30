@@ -7,7 +7,7 @@ module rsdft_allreduce_module
 
   interface rsdft_allreduce
     module procedure d_rsdft_allreduce_0 &
-                    ,d_rsdft_allreduce_1 &
+                    ,d_rsdft_allreduce_1, z_rsdft_allreduce_1 &
                     ,d_rsdft_allreduce_2, z_rsdft_allreduce_2
   end interface rsdft_allreduce
 
@@ -64,6 +64,24 @@ contains
 #endif
   end subroutine d_rsdft_allreduce_2
 
+  subroutine z_rsdft_allreduce_1( a, comm )
+    implicit none
+    complex(8),intent(inout) :: a(:)
+    character(*),optional,intent(in) :: comm
+    integer :: communicator,n,ierr
+    complex(8),allocatable :: b(:)
+    include 'mpif.h'
+    communicator = MPI_COMM_WORLD
+    if ( present(comm) ) communicator = set_communicator( comm )
+    n=size(a)
+#ifdef _NO_MPI_INPLACE_
+    allocate( b(n) ); b=a
+    call MPI_Allreduce( b,a,n,MPI_COMPLEX16,MPI_SUM,communicator,ierr )
+#else
+    call MPI_Allreduce( MPI_IN_PLACE,a,n,MPI_COMPLEX16,MPI_SUM,communicator,ierr )
+#endif
+  end subroutine z_rsdft_allreduce_1
+
   subroutine z_rsdft_allreduce_2( a, comm )
     implicit none
     complex(8),intent(inout) :: a(:,:)
@@ -83,20 +101,40 @@ contains
   end subroutine z_rsdft_allreduce_2
 
 
-  integer function set_communicator( comm )
+  integer function set_communicator( comm_in )
     implicit none
-    character(*),intent(in) :: comm
+    character(*),intent(in) :: comm_in
+    character(9) :: comm
+    comm=comm_in
+    call convertToLowercase( comm )
     select case( comm )
-    case( 'grid', 'comm_grid' ); set_communicator = comm_grid
-    case( 'band', 'comm_band' ); set_communicator = comm_band
-    case( 'bzsm', 'comm_bzsm' ); set_communicator = comm_bzsm
-    case( 'spin', 'comm_spin' ); set_communicator = comm_spin
+    case( 'g', 'grid', 'comm_grid' ); set_communicator = comm_grid
+    case( 'b', 'band', 'comm_band' ); set_communicator = comm_band
+    case( 'k', 'bzsm', 'comm_bzsm' ); set_communicator = comm_bzsm
+    case( 's', 'spin', 'comm_spin' ); set_communicator = comm_spin
     case default
       write(*,*) "comm= ",comm," is not defined."
       call stop_program('set_communicator@rsdft_allreduce_module')
     end select
   end function set_communicator
 
+  subroutine convertToLowercase( cbuf, ckey )
+    implicit none
+    character(*),intent(inout) :: cbuf
+    character(*),optional,intent(out) :: ckey
+    integer :: j,k,n
+    n=len_trim(cbuf)
+    if ( present(ckey) ) ckey=cbuf(1:n)
+    do j=1,n
+      k=iachar( cbuf(j:j) )
+      if ( 65 <= k .and. k <= 90 ) k=k+32
+      if ( present(ckey) ) then
+        ckey(j:j) = achar(k)
+      else
+        cbuf(j:j) = achar(k)
+      end if
+    end do
+  end subroutine convertToLowercase
 
   subroutine test_allreduce
     implicit none

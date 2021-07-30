@@ -6,3 +6,4 @@ OBJS = convert_capital.o\
        exit_program.o\
        dotp.o\
        mpi_sub.o\
+       flush_barrier.o\

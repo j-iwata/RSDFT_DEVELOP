@@ -9,9 +9,9 @@ SUBROUTINE convert_capital(cbuf,CKEY)
   n=len_trim(cbuf)
   CKEY=""
   do j=1,n
-     k=iachar( cbuf(j:j) )
-     if ( k >= 97 ) k=k-32
-     CKEY(j:j) = achar(k)
+    k=iachar( cbuf(j:j) )
+    if ( 97 <= k .and. k <= 122 ) k=k-32
+    CKEY(j:j) = achar(k)
   end do
 
 END SUBROUTINE convert_capital
