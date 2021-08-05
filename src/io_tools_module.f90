@@ -161,36 +161,34 @@ contains
   END SUBROUTINE IOTools_readIntegerKeyword_sca
 
 
-  SUBROUTINE IOTools_readIntegerKeyword_vec( keyword, variables, unit_in )
+  subroutine IOTools_readIntegerKeyword_vec( keyword, variables, unit_in )
     implicit none
-    character(*),intent(IN) :: keyword
-    integer,intent(INOUT) :: variables(:)
-    integer,optional,intent(IN) :: unit_in
-    character(20) :: cbuf,ckey
-    integer :: i,unit
+    character(*),intent(in) :: keyword
+    integer,intent(inout) :: variables(:)
+    integer,optional,intent(in) :: unit_in
+    character(20) :: cbuf
+    integer :: unit,i
 #ifndef _NOMPI_
     include 'mpif.h'
 #endif
+    call write_border_f( 0, ' IOTools_readIntegerKeyword_vec(start)' )
     call check_init
-    unit=unit_default ; if ( present(unit_in) ) unit=unit_in
+    unit=unit_default; if ( present(unit_in) ) unit=unit_in
     if ( myrank == 0 ) then
-       rewind unit
-       do i=1,max_trial_read
-          read(unit,*,END=999) cbuf
-          call convertToCapital(cbuf,ckey)
-          if ( ckey == keyword ) then
-             backspace(unit)
-             read(unit,*) cbuf,variables(:)
-             write(*,'(1x,A10," : ",7I10)') keyword,variables(:)
-             exit
-          end if
-       end do ! i
-999    continue
+      rewind unit
+      if ( findKey(keyword,unit) ) then
+        backspace(unit)
+        read(unit,*) cbuf, variables(:)
+        write(*,'(1x,A10," : ",7I10)') keyword,variables(:)
+      else
+        write(*,'(1x,A10," : ","not found")') keyword
+      end if
     end if
 #ifndef _NOMPI_
-    call MPI_BCAST(variables,size(variables),MPI_INTEGER,0,MPI_COMM_WORLD,i)
+    call MPI_Bcast(variables,size(variables),MPI_INTEGER,0,MPI_COMM_WORLD,i)
 #endif
-  END SUBROUTINE IOTools_readIntegerKeyword_vec
+    call write_border_f( 0, ' IOTools_readIntegerKeyword_vec(end)' )
+  end subroutine IOTools_readIntegerKeyword_vec
 
 
   SUBROUTINE IOTools_readReal8Keyword_sca( keyword, variable, unit_in )
@@ -347,7 +345,7 @@ contains
     character(7) :: cint
     logical :: flag
 
-    call write_border( 0, ' IOTools_parseInteger(start)' )
+    call write_border_f( 0, ' IOTools_parseInteger(start)' )
 
     call check_init
     unit=unit_default; if ( present(unit_in) ) unit=unit_in
@@ -358,13 +356,20 @@ contains
     if ( myrank == 0 ) then
 
       rewind unit
-      do
-        read(unit,'(a)',END=999) str
-        call convertToCapital( str )
-        if ( index(str,keyword) > 0 ) exit
-      end do
+      ! do
+      !   read(unit,'(a)',END=999) str
+      !   call convertToCapital( str )
+      !   if ( index(str,keyword) > 0 ) exit
+      ! end do
 
-      flag = .true.
+      flag = findKey( keyword, unit )
+      if ( .not.flag ) then
+        write(*,'(1x,a)') keyword//" : not found"
+        goto 999
+      end if
+
+      backspace(unit)
+      read(unit,'(a)') str
 
       m1 = len_trim( keyword )
       m2 = index( str, keyword(1:m1) )
@@ -387,7 +392,7 @@ contains
         if ( n1 > n2 ) exit
       end do
 
-      write(*,'(a,10i4)') keyword//": ", itmp(1:n)
+      write(*,'(1x,a,10i4)') keyword//" : ", itmp(1:n)
       write(*,*) "(# of Parameters = ",n,")"
       allocate( values(n) ); values=0
       values = itmp(1:n)
@@ -404,9 +409,31 @@ contains
       call i_rsdft_bcast( values, n, 0 )
     end if
 
-    call write_border( 0, ' IOTools_parseInteger(end)' )
+    call write_border_f( 0, ' IOTools_parseInteger(end)' )
 
   end subroutine IOTools_parseInteger
+
+
+  logical function findKey( keyword, unit )
+    implicit none
+    character(*),intent(in) :: keyword
+    integer,intent(in) :: unit
+    character(20) :: ckey
+    findKey = .false.
+    if ( myrank == 0 ) then
+      rewind unit
+      do
+        read(unit,*,END=999) ckey
+        call convertToCapital( ckey )
+        if ( ckey == keyword ) then
+          findKey = .true.
+          return
+        end if
+      end do
+      999 continue
+    end if
+  end function findKey
+
 
   subroutine convertToCapital( cbuf, CKEY )
     implicit none

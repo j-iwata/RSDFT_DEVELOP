@@ -27,6 +27,43 @@ SUBROUTINE write_border( n, indx )
 END SUBROUTINE write_border
 
 
+subroutine write_border_f( n, indx )
+
+  implicit none
+  integer,intent(in) :: n
+  character(*),intent(in) :: indx
+  character(80) :: axx
+  logical :: flag
+  integer :: m=80
+  integer,save :: u0=6, u1=60
+  integer :: ierr
+  include 'mpif.h'
+
+  call flush(6)
+  call MPI_Barrier( MPI_COMM_WORLD, ierr )
+
+  write(axx,'(i2)') m-len(indx)
+  axx=adjustl(axx)
+  axx="(a"//axx(1:len_trim(axx))//",a)"
+
+  if ( n /= 1 ) then
+    call check_disp_switch( flag, 0 )
+    if ( flag ) write(u0,axx) repeat("-",m),indx
+  end if
+
+  call check_log_switch( flag, 0 )
+  if ( flag ) then
+    open(u1,file="RSDFT_LOG",position="append")
+    write(u1,axx) repeat("-",m),indx
+    close(u1)
+  end if
+
+  call flush(6)
+  call MPI_Barrier( MPI_COMM_WORLD, ierr )
+
+end subroutine write_border_f
+
+
 SUBROUTINE check_disp_switch( disp_switch, i )
   implicit none
   logical,intent(INOUT) :: disp_switch

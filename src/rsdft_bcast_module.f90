@@ -1,5 +1,7 @@
 module rsdft_bcast_module
 
+  use communicator_module, only: set_communicator
+
   implicit none
 
   private
@@ -87,16 +89,19 @@ contains
 #endif
   end subroutine i_rsdft_bcast_vec
 
-  subroutine d_rsdft_bcast( a, n, root, comm_in )
+  subroutine d_rsdft_bcast( a, n, root, comm_in, comm_label )
     implicit none
     integer,intent(in) :: n, root
     real(8),intent(inout) :: a(n)
     integer,optional,intent(in) :: comm_in
+    character(*),optional,intent(in) :: comm_label
     integer :: m,i,type,comm,ierr
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_REAL8
-    comm = MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
+    comm = MPI_COMM_WORLD
+    if ( present(comm_label) ) comm=set_communicator( comm_label )
+    if ( present(comm_in) ) comm=comm_in
     call MPI_Bcast(a,n,type,root,comm,ierr); return
     do i = 1, n, n_opt
       m = min( n-i+1, n_opt )
