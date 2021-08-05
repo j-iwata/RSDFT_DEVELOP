@@ -32,6 +32,7 @@ contains
 #ifdef _LIBXC_
   subroutine read_libxc
     implicit none
+    func_string=''
     call IOTools_readStringKeyword( "LIBXC", func_string )
     func_id(1) = xc_f90_functional_get_number( func_string(1) )
     func_id(2) = xc_f90_functional_get_number( func_string(2) )

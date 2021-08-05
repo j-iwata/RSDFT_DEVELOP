@@ -63,14 +63,14 @@ CONTAINS
 
   SUBROUTINE read_xc_hybrid
     implicit none
-    real(8) :: tmp(2)
+    !real(8) :: tmp(2)
     call write_border( 0, " read_xc_hybrid(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
     call check_libxc( XCtype )
-    tmp(1:2) = (/ omega, alpha_hf /)
-    call IOTools_readReal8Keyword( "HF", tmp )
-    omega    = tmp(1)
-    alpha_hf = tmp(2)
+    !tmp(1:2) = (/ omega, alpha_hf /)
+    !call IOTools_readReal8Keyword( "HF", tmp )
+    !omega    = tmp(1)
+    !alpha_hf = tmp(2)
     call IOTools_readIntegerKeyword( "IC", IC )
     call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
     call write_border( 0, " read_xc_hybrid(end)" )
@@ -85,6 +85,16 @@ CONTAINS
     call IOTools_readStringKeyword( "LIBXC" , LIBXC )
     if ( index(LIBXC,"HSE") > 0 ) func_type="HSE"
   END SUBROUTINE check_libxc
+
+
+  subroutine read_hybrid_parameters
+    implicit none
+    real(8) :: tmp(2)
+    tmp = (/ omega, alpha_hf /)
+    call IOTools_readReal8Keyword( "HF", tmp )
+    omega = tmp(1)
+    alpha_hf = tmp(2)
+  end subroutine read_hybrid_parameters
 
 
   SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
@@ -138,6 +148,8 @@ CONTAINS
     case default
        goto 99
     end select
+
+    call read_hybrid_parameters
 
     if ( disp_switch ) then
        write(*,*) "XCtype       =",XCtype
