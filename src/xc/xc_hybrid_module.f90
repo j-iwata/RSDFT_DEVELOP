@@ -1,4 +1,4 @@
-MODULE xc_hybrid_module
+module xc_hybrid_module
 
   use io_tools_module
   use wf_module, only: wfrange
@@ -6,16 +6,17 @@ MODULE xc_hybrid_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_xc_hybrid, control_xc_hybrid &
+  private
+  public :: init_xc_hybrid, control_xc_hybrid &
            ,get_flag_xc_hybrid &
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
            ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
            ,unk_hf, occ_hf, occ_factor, npart &
            ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
-  PUBLIC :: read_xc_hybrid
-  PUBLIC :: set_param_xc_hybrid
+  public :: read_xc_hybrid
+  public :: set_param_xc_hybrid
+  public :: get_param_xc_hybrid
 
   integer :: npart
   real(8) :: R_hf
@@ -58,33 +59,28 @@ MODULE xc_hybrid_module
   character(30) :: file_wf2 = "wf.dat1"
   character(8) :: XCtype
 
-CONTAINS
+contains
 
 
-  SUBROUTINE read_xc_hybrid
+  subroutine read_xc_hybrid
     implicit none
-    !real(8) :: tmp(2)
     call write_border( 0, " read_xc_hybrid(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
     call check_libxc( XCtype )
-    !tmp(1:2) = (/ omega, alpha_hf /)
-    !call IOTools_readReal8Keyword( "HF", tmp )
-    !omega    = tmp(1)
-    !alpha_hf = tmp(2)
     call IOTools_readIntegerKeyword( "IC", IC )
     call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
     call write_border( 0, " read_xc_hybrid(end)" )
-  END SUBROUTINE read_xc_hybrid
+  end subroutine read_xc_hybrid
 
 
-  SUBROUTINE check_libxc( func_type )
+  subroutine check_libxc( func_type )
     implicit none
-    character(*),intent(INOUT) :: func_type
+    character(*),intent(inout) :: func_type
     character(64) :: LIBXC
     LIBXC=""
     call IOTools_readStringKeyword( "LIBXC" , LIBXC )
     if ( index(LIBXC,"HSE") > 0 ) func_type="HSE"
-  END SUBROUTINE check_libxc
+  end subroutine check_libxc
 
 
   subroutine read_hybrid_parameters
@@ -97,14 +93,14 @@ CONTAINS
   end subroutine read_hybrid_parameters
 
 
-  SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
+  subroutine init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
        , MBZ,MBZ_0,MBZ_1, MSP,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell &
        , SYStype, np_fkmb, disp_switch )
     implicit none
-    integer,intent(IN) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
-    integer,intent(IN) :: MSP, MSP_0, MSP_1, MB_0, MB_1, np_fkmb
-    real(8),intent(IN) :: Ntot, kbb(:,:), bb(3,3), Vcell
-    logical,intent(IN) :: disp_switch
+    integer,intent(in) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
+    integer,intent(in) :: MSP, MSP_0, MSP_1, MB_0, MB_1, np_fkmb
+    real(8),intent(in) :: Ntot, kbb(:,:), bb(3,3), Vcell
+    logical,intent(in) :: disp_switch
     integer :: ML0,i,s,k,q,init_num,ierr,m,t
     integer,allocatable :: ir(:),id(:)
     real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
@@ -358,7 +354,7 @@ CONTAINS
 
     return 
  
-  END SUBROUTINE init_xc_hybrid
+  end subroutine init_xc_hybrid
 
 
   SUBROUTINE control_xc_hybrid( ictrl )
@@ -517,4 +513,12 @@ CONTAINS
   END SUBROUTINE set_R_hf
 
 
-END MODULE xc_hybrid_module
+  subroutine get_param_xc_hybrid( omega_out, alpha_out )
+    implicit none
+    real(8),intent(out) :: omega_out, alpha_out
+    omega_out = omega
+    alpha_out = alpha_hf
+  end subroutine get_param_xc_hybrid
+
+
+end module xc_hybrid_module
