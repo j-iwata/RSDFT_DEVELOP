@@ -9,7 +9,7 @@ module libxc_module
   use xc_variables, only: xcene, xcpot
   use xc_hybrid_module, only: get_param_xc_hybrid
   use grid_module,only: grid
-  use gradient_module
+  use gradient_module, only: gradient, construct_gradient, calc_xyz_gradient
 
   implicit none
 
@@ -105,11 +105,11 @@ contains
         !write(*,*) "Omega,alpha,beta =",check_omega,check_alpha,check_alpha
         !if ( spin == 2 ) call stop_program( "spin==2 is not implemented")
       case( XC_FAMILY_MGGA )
-        if ( disp_on ) write(s2,'(a)') "MGGA"
+        if ( disp_on ) write(s2,'(a)') "MGGA (unavailable)"
       case( XC_FAMILY_HYB_MGGA )
-        if ( disp_on ) write(s2,'(a)') "Hybrid MGGA"
+        if ( disp_on ) write(s2,'(a)') "Hybrid MGGA (unavailable)"
       case( XC_FAMILY_LCA )
-        if ( disp_on ) write(s2,'(a)') "LCA"
+        if ( disp_on ) write(s2,'(a)') "LCA (unavailable)"
       end select
 
       if ( disp_on ) then
@@ -240,44 +240,32 @@ contains
     real(8),allocatable :: vrho(:,:)
     real(8),allocatable :: sigma(:,:)
     real(8),allocatable :: vsigma(:,:)
-    !real(8),allocatable :: a(:,:), b(:,:)
     real(8),allocatable :: a(:), b(:)
     integer(8) :: np
     integer :: ns,j,s
-    type(gradient) :: grad
+    type(gradient) :: grad(2)
     logical,save :: first_time = .true.
 
     np = size( rho, 1 )
     ns = size( rho, 2 )
 
-    !allocate( a(ns,np) ) ; a=0.0d0
-    !do j=1,np
-    !   a( 1,j) = rho(j, 1)
-    !   a(ns,j) = rho(j,ns)
-    !end do
     allocate( a(ns*np) ); a=0.0d0
     do s=1,ns
       do j=1,np
-        a(j+np*(s-1)) = rho(j, s)
+        a( s + (j-1)*ns ) = rho(j, s)
       end do
     end do
 
     select case( xc_f90_func_info_get_family(xc_info(i)) )
     case( XC_FAMILY_LDA )
 
-      !allocate( b(ns,np) ) ; b=0.0d0
-      allocate( b(ns*np) ) ; b=0.0d0
+      allocate( b(ns*np) ); b=0.0d0
 
-      !call xc_f90_lda_exc_vxc( xc_func(i), np, a(1,1), exc(1), b(1,1) )
       call xc_f90_lda_exc_vxc( xc_func(i), np, a, exc, b )
 
-      !do j=1,np
-      !   vxc(j, 1) = b( 1,j)
-      !   vxc(j,ns) = b(ns,j)
-      !end do
       do s=1,ns
         do j=1,np
-          vxc(j,s) = b(j+np*(s-1))
+          vxc(j,s) = b( s + (j-1)*ns )
         end do
       end do
 
@@ -289,15 +277,23 @@ contains
       allocate( vsigma(2*ns-1,np) ) ; vsigma=0.0d0
       allocate( vrho(ns,np)       ) ; vrho=0.0d0
 
-      call construct_gradient( rgrid, density, grad )
+      if ( ns == 1 ) then
+        call construct_gradient( rgrid, density, grad(1) )
+        sigma(1,:) = grad(1)%gg(:)
+      else
+        do s = 1, ns
+          call construct_gradient( rgrid, density, grad(s), s )
+        end do
+        sigma(1,:) = grad(1)%gg(:)
+        sigma(2,:) = grad(1)%gx(:)*grad(2)%gx(:) &
+                   + grad(1)%gy(:)*grad(2)%gy(:) &
+                   + grad(1)%gz(:)*grad(2)%gz(:)
+        sigma(3,:) = grad(2)%gg(:)
+      end if
 
-      sigma(1,:) = grad%gg(:)
-
-      !call xc_f90_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
-      !                         exc(1), vrho(1,1), vsigma(1,1) )
       call xc_f90_gga_exc_vxc( xc_func(i), np, a, sigma, exc, vrho, vsigma )
 
-      call calc_gga_pot( rgrid, vrho, vsigma, grad%gx, grad%gy, grad%gz, vxc )
+      call calc_gga_pot( rgrid, vrho, vsigma, grad, vxc )
 
       deallocate( vrho   )
       deallocate( vsigma )
@@ -309,13 +305,23 @@ contains
       allocate( vsigma(2*ns-1,np) ) ; vsigma=0.0d0
       allocate( vrho(ns,np)       ) ; vrho=0.0d0
 
-      call construct_gradient( rgrid, density, grad )
+      if ( ns == 1 ) then
+        call construct_gradient( rgrid, density, grad(1) )
+        sigma(1,:) = grad(1)%gg(:)
+      else
+        do s = 1, ns
+          call construct_gradient( rgrid, density, grad(s), s )
+        end do
+        sigma(1,:) = grad(1)%gg(:)
+        sigma(2,:) = grad(1)%gx(:)*grad(2)%gx(:) &
+                   + grad(1)%gy(:)*grad(2)%gy(:) &
+                   + grad(1)%gz(:)*grad(2)%gz(:)
+        sigma(3,:) = grad(2)%gg(:)
+      end if
 
-      !call xc_gga_exc_vxc( xc_func(i), np, a(1,1), sigma(1,1), &
-      !                         exc(1), vrho(1,1), vsigma(1,1) )
       call xc_f90_gga_exc_vxc( xc_func(i), np, a, sigma, exc, vrho, vsigma )
 
-      call calc_gga_pot( rgrid, vrho, vsigma, grad%gx, grad%gy, grad%gz, vxc )
+      call calc_gga_pot( rgrid, vrho, vsigma, grad, vxc )
 
       if ( first_time ) call check_param_hyb( xc_func(i) )
 
@@ -350,39 +356,63 @@ contains
   end subroutine calc_libxc_a
 
 
-  subroutine calc_gga_pot( rgrid, vrho, vsigma, gx, gy, gz, vxc )
+  subroutine calc_gga_pot( rgrid, vrho, vsigma, grad, vxc )
     implicit none
     type(grid),intent(in) :: rgrid
     real(8),intent(in)  :: vrho(:,:), vsigma(:,:)
-    real(8),intent(in)  :: gx(:), gy(:), gz(:)
+    type(gradient),intent(in)  :: grad(2)
     real(8),intent(out) :: vxc(:,:)
     real(8),allocatable :: f(:),g(:),h(:)
-    integer :: m,n,i
+    integer :: m,n,i,j
 
     m = size( vxc, 1 )
     n = size( vxc, 2 )
-
-    do i=1,n
-      vxc(:,i) = vrho(i,:)
-    end do
 
     allocate( f(m) ) ; f=0.0d0
     allocate( g(m) ) ; g=0.0d0
     allocate( h(m) ) ; h=0.0d0
 
-    f(:) = vsigma(1,:)
+    do i = 1, n
 
-    g(:) = f(:)*gx(:)
-    call calc_xyz_gradient( 1, rgrid, g, h )
-    vxc(:,1) = vxc(:,1) - 2.0d0*h(:)
+      vxc(:,i) = vrho(i,:)
 
-    g(:) = f(:)*gy(:)
-    call calc_xyz_gradient( 2, rgrid, g, h )
-    vxc(:,1) = vxc(:,1) - 2.0d0*h(:)
+      f(:) = vsigma(2*i-1,:)
 
-    g(:) = f(:)*gz(:)
-    call calc_xyz_gradient( 3, rgrid, g, h )
-    vxc(:,1) = vxc(:,1) - 2.0d0*h(:)
+      g(:) = f(:)*grad(i)%gx(:)
+      call calc_xyz_gradient( 1, rgrid, g, h )
+      vxc(:,i) = vxc(:,i) - 2.0d0*h(:)
+
+      g(:) = f(:)*grad(i)%gy(:)
+      call calc_xyz_gradient( 2, rgrid, g, h )
+      vxc(:,i) = vxc(:,i) - 2.0d0*h(:)
+
+      g(:) = f(:)*grad(i)%gz(:)
+      call calc_xyz_gradient( 3, rgrid, g, h )
+      vxc(:,i) = vxc(:,i) - 2.0d0*h(:)
+
+      if ( n == 2 ) then
+
+        j=2; if ( i == 2 ) j=1
+
+        f(:) = vsigma(2,:)
+
+        if ( all(f==0.0d0) ) cycle
+
+        g(:) = f(:)*grad(j)%gx(:)
+        call calc_xyz_gradient( 1, rgrid, g, h )
+        vxc(:,i) = vxc(:,i) - h(:)
+
+        g(:) = f(:)*grad(j)%gy(:)
+        call calc_xyz_gradient( 2, rgrid, g, h )
+        vxc(:,i) = vxc(:,i) - h(:)
+
+        g(:) = f(:)*grad(j)%gz(:)
+        call calc_xyz_gradient( 3, rgrid, g, h )
+        vxc(:,i) = vxc(:,i) - h(:)
+
+      end if
+
+    end do !i
 
     deallocate( h, g, f )
 
@@ -419,7 +449,7 @@ contains
       select case( xc_f90_func_info_get_family(xc_info(i)) )
       case( XC_FAMILY_LDA )
 
-        call xc_f90_lda_fxc( xc_func(i), np, a(1,1), b(1,1) )
+        call xc_f90_lda_fxc( xc_func(i), np, a, b )
 
         do s=1,2*ns-1
           do j=1,np
