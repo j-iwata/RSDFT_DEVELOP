@@ -219,11 +219,11 @@ contains
       js = js + jj
     end do
 
-    if ( present(icontxt) ) then
-      call zgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
-    else
-      call rsdft_allreduce( H )
-    end if
+    ! if ( present(icontxt) ) then
+    !   call zgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
+    ! else
+    !   call rsdft_allreduce( H )
+    ! end if
   end subroutine z_gather_matrix
 
 

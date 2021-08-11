@@ -67,6 +67,7 @@ MODS1 = \
        rsdft_allreduce_module.o\
        rsdft_bcast_module.o\
        io_tools_module.o\
+       sl_variables.o\
        sl_tools_module.o\
        pinfo_module.o\
        lattice_module.o\

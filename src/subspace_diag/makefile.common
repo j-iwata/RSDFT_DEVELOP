@@ -2,8 +2,11 @@ OBJS = subspace_diag_variables.o\
        subspace_diag_la_module.o\
        scalapack_module.o\
        subspace_mate_sl_module.o\
+       subspace_mate_sl2_module.o\
        subspace_solv_sl_module.o\
+       subspace_solv_sl2_module.o\
        subspace_rotv_sl_module.o\
+       subspace_rotv_sl2_module.o\
        subspace_diag_sl_module.o\
        subspace_diag_ncol_module.o\
        calc_overlap_sd_module.o\

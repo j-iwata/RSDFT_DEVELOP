@@ -361,7 +361,7 @@ PROGRAM Real_Space_DFT
 
 ! --- Initialization of subspace diagonalization ---
 
-  call init_subspace_diag( Nband )
+  call init_subspace_diag( Nband, np_band )
 
   call prep_param_sl( Nband, np_grid, np_band )
 
