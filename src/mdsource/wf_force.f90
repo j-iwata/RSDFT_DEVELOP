@@ -32,8 +32,7 @@ SUBROUTINE wf_force
          ne=min(ns+MB_d-1,MB_1_CPMD)
          call watch(ct0,et0)
 #ifdef _DRSDFT_
-         call hamiltonian &
-              (k,s,unk(:,ns:ne,k,s),psi_n(:,ns:ne,k,s),ML_0,ML_1,ns,ne)
+         call hamiltonian( unk(:,ns:ne,k,s), psi_n(:,ns:ne,k,s), ns,k,s )
 #endif
          call watch(ct1,et1)
          do n=ns,ne

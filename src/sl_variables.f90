@@ -7,7 +7,7 @@ module sl_variables
   public :: sl0
   public :: sl1
   public :: sl2
-  public :: Hsub
+  public :: Hsub, Dsub
 
   type slinfo2
     integer :: nband
@@ -32,5 +32,6 @@ module sl_variables
   type(slinfo2) :: sl2
 
   complex(8),allocatable :: Hsub(:,:)
+  real(8),allocatable :: Dsub(:,:)
 
 end module sl_variables

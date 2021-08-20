@@ -10,7 +10,7 @@ MODULE ps_nloc2_mol_module
   use ps_nloc2_variables
   use minimal_box_module
   use ps_nloc_mol_gth_module
-  use ps_nloc2_op_module, only: init_op_ps_nloc2_hp
+  use ps_nloc2_op_module, only: reset_init_flag_ps_nloc2_op
   use ylm_module
   use hsort_module
   use polint_module
@@ -910,7 +910,7 @@ CONTAINS
 
     end if ![ iswitch_eqdiv ]
 
-    call init_op_ps_nloc2_hp( .true. )
+    call reset_init_flag_ps_nloc2_op
 
   END SUBROUTINE prep_ps_nloc2_mol
 

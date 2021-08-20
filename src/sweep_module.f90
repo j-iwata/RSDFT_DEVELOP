@@ -115,8 +115,7 @@ CONTAINS
           do k=MBZ_0,MBZ_1
              do m=MB_0,MB_1,MB_d
                 n=min(m+MB_d-1,MB_1)
-                call hamiltonian &
-                     (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
+                call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
              end do
           end do
           end do
@@ -132,8 +131,7 @@ CONTAINS
              do m=MB_0,MB_1,MB_d
                 n=min(m+MB_d-1,MB_1)
                 workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
-                call hamiltonian &
-                     (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
+                call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
                 hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
              end do ! m
           end do ! k
@@ -164,7 +162,7 @@ CONTAINS
 
           call gram_schmidt(1,Nband,k,s)
 
-          call subspace_diag(k,s,ML_0,ML_1,MBZ_0,MSP_0,unk,esp)
+          call subspace_diag( k, s, unk(:,:,k,s), esp(:,k,s) )
 
        end do
 

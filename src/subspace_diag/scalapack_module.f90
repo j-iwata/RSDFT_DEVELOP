@@ -1,17 +1,19 @@
-MODULE scalapack_module
+module scalapack_module
 
-  use parallel_module, only: node_partition, myrank, disp_switch_parallel &
-                            ,np_grid, np_band, myrank_g, myrank_b &
-                            ,myrank_k, myrank_s, id_class
+  use parallel_module, only: node_partition, myrank, disp_switch_parallel, &
+                             np_grid, np_band, myrank_g, myrank_b, &
+                             myrank_k, myrank_s, id_class
   use io_tools_module, only: IOTools_readIntegerKeyword
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: prep_scalapack, init_scalapack, UPLO &
-           ,NPROW,NPCOL,MBSIZE,NBSIZE,LLD_R,LLD_C,DESCA,DESCB,DESCZ &
-           ,NP0,NQ0,NPX,NQX,usermap
-  PUBLIC :: read_scalapack
+  private
+  public :: prep_scalapack
+  public :: init_scalapack
+  public :: NPROW,NPCOL,MBSIZE,NBSIZE,LLD_R,LLD_C,DESCA,DESCB,DESCZ, &
+            NP0,NQ0,NPX,NQX,UPLO,usermap
+  public :: read_scalapack
+  public :: allocated_workarray_scalapack
 
   integer :: NPROW=0
   integer :: NPCOL=0
@@ -25,15 +27,16 @@ MODULE scalapack_module
 
   logical :: iblacs = .false.
   logical :: flag_read = .true.
+  logical :: is_workarray_allocated = .false.
 
   integer :: ialgo_sl2 = 0
 
-CONTAINS
+contains
 
 
-  SUBROUTINE init_scalapack( MB )
+  subroutine init_scalapack( MB )
     implicit none
-    integer,intent(INOUT) :: MB
+    integer,intent(inout) :: MB
     integer :: NPCOL0,i,j,n,loop
 
     if ( ialgo_sl2 /= 0 ) then
@@ -100,9 +103,11 @@ CONTAINS
        NBSIZE=0
     end if
 
+    is_workarray_allocated = .false.
+
     call write_border( 0, " init_scalapack(end)" )
 
-  END SUBROUTINE init_scalapack
+  end subroutine init_scalapack
 
 
   subroutine init_scalapack_2( nband_in, nprocs_band, nprocs_grid )
@@ -264,10 +269,11 @@ CONTAINS
     sl1%mbsize = itmp(3)
     sl1%nbsize = sl1%mbsize
     if ( disp_on ) then
-      write(*,'("ScaLapack parameters from SCL3")')
+      write(*,'("ScaLapack parameters")')
       write(*,'("nprow1 , npcol1 ",2i6)') sl1%nprow , sl1%npcol
       write(*,'("mbsize1, nbsize1",2i6)') sl1%mbsize, sl1%nbsize
     end if
+    if ( allocated(sl1%usermap) ) deallocate( sl1%usermap )
     allocate( sl1%usermap(0:sl1%nprow-1,0:sl1%npcol-1) ); sl1%usermap=-1
     n=-1
     do j = 0, sl1%npcol-1
@@ -307,6 +313,7 @@ CONTAINS
     sl2%nprow  = min( nprocs_grid, sl2%nband )
     sl2%nbsize = ( sl2%nband + sl2%npcol - 1 ) / sl2%npcol
     sl2%mbsize = ( sl2%nband + sl2%nprow - 1 ) / sl2%nprow
+    if ( allocated(sl2%usermap) ) deallocate(sl2%usermap)
     allocate( sl2%usermap(0:sl2%nprow-1,0:sl2%npcol-1) ); sl2%usermap=-1
     do j = 0, sl2%npcol-1
       do i = 0, sl2%nprow-1
@@ -374,9 +381,9 @@ CONTAINS
   end subroutine read_scalapack
 
 
-  SUBROUTINE prep_scalapack( MB )
+  subroutine prep_scalapack( MB )
     implicit none
-    integer,intent(INOUT) :: MB
+    integer,intent(inout) :: MB
     integer :: ierr,NPCOL0,i,j,n,is,ik,m,ib,l,i1,i2,i3,i7
     integer :: MXLLD,MYROW,MYCOL,mm,mchk
     integer,save :: icount_visit=0, ICTXT=0, ICTXT0=0
@@ -518,7 +525,14 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE prep_scalapack
+  end subroutine prep_scalapack
 
 
-END MODULE scalapack_module
+  logical function allocated_workarray_scalapack( flag )
+    implicit none
+    logical,optional,intent(in) :: flag
+    if ( present(flag) ) is_workarray_allocated = flag
+    allocated_workarray_scalapack = is_workarray_allocated
+  end function allocated_workarray_scalapack
+
+end module scalapack_module

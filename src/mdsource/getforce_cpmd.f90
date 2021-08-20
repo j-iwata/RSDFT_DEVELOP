@@ -23,11 +23,6 @@ SUBROUTINE getforce_cpmd( ltime )
   use cpmd_variables, only: Force,Rion,disp_switch,AMU,pmass,ir_band_cpmd,id_band_cpmd
   use watch_module
   use force_module
-
-  use ps_getDij_module
-  use ps_prepNzqr_g_module
-  use ps_qrij_prep_module
-
   use wf_module, only: unk, occ
   use rsdft_mpi_module
   use construct_vion_vh_floc_module, only: construct_vion_vh_floc
@@ -77,10 +72,6 @@ SUBROUTINE getforce_cpmd( ltime )
     call prep_ps_nloc3
   case(5)
     call prep_ps_nloc_mr
-  case(102)
-    call prep_ps_nloc2
-    call prepNzqr
-    call prepQRijp102
   end select
 
   if ( ltime ) call watch(ctime_force(3),etime_force(3))
@@ -107,8 +98,6 @@ SUBROUTINE getforce_cpmd( ltime )
   do s=MSP_0,MSP_1
     Vloc(:,s)=Vh(:)+Vxc(:,s)+Vion(:)
   enddo
-
-  call getDij
 
   if ( ltime ) call watch(ctime_force(7),etime_force(7))
 

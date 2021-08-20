@@ -122,25 +122,19 @@ contains
   end subroutine init_fock_ffte2
 
 
-  subroutine fock_ffte2( n1, n2, k, q, trho, tVh, t )
+  subroutine fock_ffte2( trho, tVh, k,q,t )
 
 !$  use omp_lib
     implicit none
 
-    integer,intent(in) :: n1,n2,k,q,t
+    integer,intent(in) :: k,q,t
+    complex(8),intent(in) :: trho(:)
+    complex(8),intent(inout) :: tVh(:)
     integer :: i,i1,i2,i3,j1,j2,j3,ierr,irank,a1,a2,a3,b1,b2,b3
     integer :: ML1,ML2,ML3,ML,j
     real(8) :: pi,pi4,g2,const1,const2,k_fock(3)
-    complex(8),parameter :: z0=(0.d0,0.d0)
-#ifdef _DRSDFT_
-    real(8),allocatable :: work(:)
-    real(8),intent(in)    :: trho(n1:n2)
-    real(8),intent(inout) :: tVh(n1:n2)
-#else
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
     complex(8),allocatable :: work(:)
-    complex(8),intent(in)    :: trho(n1:n2)
-    complex(8),intent(inout) :: tVh(n1:n2)
-#endif
     integer :: ispin,n,mm
     real(8) :: ctt(0:5),ett(0:5)
     integer :: MG,ML_0,ML_1,a1b,b1b,a2b,b2b,a3b,b3b,ab1,ab12
@@ -184,7 +178,7 @@ contains
     do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
     do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
     do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
-      i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+      i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
       zwork1_ffte(i1,i2,i3) = trho(i)
     end do
     end do
@@ -235,7 +229,7 @@ contains
     do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
     do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
     do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
-      i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+      i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
 #ifdef _DRSDFT_
       tVh(i) = real( zwork2_ffte(i1,i2,i3) )
 #else
@@ -262,12 +256,11 @@ contains
   end subroutine fock_ffte2
 
 
-  subroutine fock_ffte2_double( n1, n2, trho, tVh )
+  subroutine fock_ffte2_double( trho, tVh )
 !$  use omp_lib
     implicit none
-    integer,intent(in)     :: n1,n2
-    complex(8),intent(in)  :: trho(n1:n2)
-    complex(8),intent(out) :: tVh(n1:n2)
+    complex(8),intent(in) :: trho(:)
+    complex(8),intent(inout) :: tVh(:)
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     real(8) :: ctt(0:5),ett(0:5)
     integer :: ML1,ML2,ML3,mm,i,i1,i2,i3,ierr
@@ -302,7 +295,7 @@ contains
     do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
     do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
     do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
-      i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+      i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
       zwork1_ffte(i1,i2,i3) = trho(i)
     end do
     end do
@@ -337,7 +330,7 @@ contains
     do i3=Igrid_omp(1,3,mm),Igrid_omp(2,3,mm)
     do i2=Igrid_omp(1,2,mm),Igrid_omp(2,2,mm)
     do i1=Igrid_omp(1,1,mm),Igrid_omp(2,1,mm)
-      i=ML_0+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
+      i=1+(i1-a1b)+(i2-a2b)*ab1+(i3-a3b)*ab12
       tVh(i) = zwork2_ffte(i1,i2,i3)
     end do
     end do

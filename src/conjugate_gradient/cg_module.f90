@@ -6,14 +6,13 @@ module cg_module
   use parallel_module
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
   use cg_lobpcg_module, only: init_lobpcg, lobpcg
- !use cg_u_module, only: init_cg_u, cg_u
   use cggs_module
   use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_CG
   use kinetic_module, only: SYStype
   use watch_module
-  use conjugate_gradient_g_module, only: conjugate_gradient_g, pp_kind
   use io_tools_module
   use cg_ncol_module, only: conjugate_gradient_ncol, flag_noncollinear
+  use var_sys_parameter, only: pp_kind
 
   implicit none
 
@@ -83,8 +82,7 @@ contains
 
     if ( pp_kind == "USPP" ) then
 
-       call conjugate_gradient_g &
-            ( n1,n2,size(esp,1),k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s),iswitch_gs )
+       call stop_program("USPP is not available")
 
     else
 
@@ -187,7 +185,7 @@ contains
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
        else
-          call hamiltonian(k,s,unk(:,ns:ne),hxk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian( unk(:,ns:ne), hxk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
        end if
 
        call watchb( ttmp, timecg(:,1) )
@@ -281,7 +279,7 @@ contains
 
           call watchb( ttmp, timecg(:,2) )
 
-          call hamiltonian(k,s,pk(:,1:nn),hpk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian( pk(:,1:nn), hpk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
 
           call watchb( ttmp, timecg(:,1) )
 
@@ -509,7 +507,7 @@ contains
           hxk(:,1:nn)=hunk(:,ns:ne,k,s)
 !$OMP end parallel workshare
        else
-          call hamiltonian(k,s,unk(:,ns:ne),hxk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian( unk(:,ns:ne), hxk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
        end if
 
        call watchb( ttmp, timecg(:,1) )
@@ -608,7 +606,7 @@ contains
 
           call watchb( ttmp, timecg(:,2) )
 
-          call hamiltonian(k,s,pk(:,1:nn),hpk(:,1:nn),n1,n2,ns,ne) ; Nhpsi=Nhpsi+1
+          call hamiltonian( pk(:,1:nn), hpk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
 
           call watchb( ttmp, timecg(:,1) )
 

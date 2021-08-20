@@ -150,7 +150,7 @@ contains
              work=zero
              work00=zero
 !$OMP parallel
-             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), nb1,k,s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -166,7 +166,7 @@ contains
 
              work=zero
 !$OMP parallel
-             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), nb1,k,s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -181,7 +181,8 @@ contains
 !---------------------------------------------------- fock
 
           work=zero
-          call op_fock(k,s,n1,n2,n,n,unk(:,nb1:nb2,k,s),work)
+          call op_fock( unk(:,nb1:nb2,k,s), work(:,1:nn), nb1,k,s )
+          
           do i=nb1,nb2
 #ifdef _DRSDFT_
              esp0(i,k,s,4)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV

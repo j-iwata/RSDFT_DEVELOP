@@ -6,7 +6,6 @@ MODULE gram_schmidt_module
   use gram_schmidt_lusl_module
   use gram_schmidt_luslbp_module
  !use gram_schmidt_u_module
-  use gram_schmidt_g_module
   use gram_schmidt_ncol_module, only: gram_schmidt_ncol, flag_noncollinear
   use var_sys_parameter
   use io_tools_module
@@ -54,36 +53,28 @@ CONTAINS
 
     call gather_b_wf( k, s )
 
-    if ( pp_kind == "USPP" ) then
-
-       call gram_schmidt_g( n0,n1,k,s )
-
-    else
-
-       select case( iswitch_algorithm )
-       case default
-          call gram_schmidt_t(n0,n1,k,s)
-       case( 1 )
-          call gram_schmidt_m(n0,n1,k,s)
-      !case( 2 )
-      !   call gram_schmidt_u(n0,n1,k,s)
-      case( 3 )
-         call gram_schmidt_t3( unk(:,:,k,s), comm_grid, comm_band )
-      case( 4 )
-      !   do i=1,4
-      !      if ( iparam_gs(i) /= 0 ) iparam_gs_lusl(i)=iparam_gs(i)
-      !   end do
-         call gram_schmidt_lusl( unk(:,:,k,s) )
-      case( 5 )
+    select case( iswitch_algorithm )
+    case default
+      call gram_schmidt_t(n0,n1,k,s)
+    case( 1 )
+      call gram_schmidt_m(n0,n1,k,s)
+    !case( 2 )
+    !   call gram_schmidt_u(n0,n1,k,s)
+    case( 3 )
+      call gram_schmidt_t3( unk(:,:,k,s), comm_grid, comm_band )
+    case( 4 )
+    !   do i=1,4
+    !      if ( iparam_gs(i) /= 0 ) iparam_gs_lusl(i)=iparam_gs(i)
+    !   end do
+      call gram_schmidt_lusl( unk(:,:,k,s) )
+    case( 5 )
 #ifdef _DRSDFT_
-         call gram_schmidt_luslbp( unk(:,:,k,s) )
+      call gram_schmidt_luslbp( unk(:,:,k,s) )
 #else
-         write(*,*) "z_gram_schmidt_lusl is not implemented yet"
-         call stop_program('gram_schmidt')
+      write(*,*) "z_gram_schmidt_lusl is not implemented yet"
+      call stop_program('gram_schmidt')
 #endif
-      end select
-
-    end if
+    end select
 
 !    call result_timer( "gs", t )
 

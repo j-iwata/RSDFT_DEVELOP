@@ -23,7 +23,6 @@ MODULE parameters_module
   use xc_module
   use sweep_module
   use scf_module
-  use scf_chefsi_module
 
   implicit none
 
@@ -86,10 +85,6 @@ CONTAINS
 
     call read_sweep
     call read_scf
-    select case( iswitch_scf )
-    case( 2 )
-       call read_scf_chefsi( myrank, unit )
-    end select
 
     call read_band
     call read_band_unfold( myrank, unit )

@@ -77,8 +77,7 @@ CONTAINS
        else
           do ib1=ns,ne,MB_d
              ib2=min(ib1+MB_d-1,ne)
-             call hamiltonian &
-                  (k,s,unk(:,ib1:ib2,k,s),hpsi(:,ib1-ns+1:ib2-ns+1),n1,n2,ib1,ib2)
+             call hamiltonian( unk(:,ib1:ib2,k,s), hpsi(:,ib1-ns+1:ib2-ns+1), ib1,k,s )
           end do
        end if
 

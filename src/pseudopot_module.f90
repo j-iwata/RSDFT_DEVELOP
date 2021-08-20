@@ -2,7 +2,6 @@ MODULE pseudopot_module
 
   use var_ps_member
   use ps_read_PSV
-  use var_ps_member_g, only: allocatePSG, sendPSG, npq, ddi, qqr, nl3v, l3v, qrL
   use ps_read_TM_module
   use ps_read_YB_module
   use ps_read_UPF_module
@@ -144,37 +143,9 @@ CONTAINS
 
              if ( norb(ielm) /= 0 ) then
 
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-             nrf(1:norb(ielm),ielm)   = ps(ielm)%nrf(1:norb(ielm))
-
-             if ( pselect == 102 ) then !-----> uspp
-
-                Lrefmax = ps(ielm)%nlf
-                Rrefmax = maxval( ps(ielm)%nrf )
-                npqmax  = (Lrefmax*Rrefmax*(Lrefmax*Rrefmax+1))/2
-                nsmpl   = maxval( ps(ielm)%NRps(:) )
-                call allocatePSG( Lrefmax,Rrefmax,npqmax,nsmpl,Nelement )
-
-                npq(ielm) = ps(ielm)%npq
-
-                ddi(1:Rrefmax,1:Rrefmax,1:Lrefmax,ielm) &
-                     = ps(ielm)%ddi(1:Rrefmax,1:Rrefmax,1:Lrefmax)
-                qqr(1:Rrefmax,1:Rrefmax,1:Lrefmax,ielm) &
-                     = ps(ielm)%qqr(1:Rrefmax,1:Rrefmax,1:Lrefmax)
-                nl3v(1:npqmax,ielm) = ps(ielm)%nl3v(1:npqmax)
-                l3v(1:Lrefmax,1:npqmax,ielm) &
-                     = ps(ielm)%l3v(1:Lrefmax,1:npqmax)
-                qrL(1:nsmpl,1:Lrefmax,1:npqmax,ielm) = &
-                     ps(ielm)%qrL(1:nsmpl,1:Lrefmax,1:npqmax)
-
-             else if (  count( ps(ielm)%anorm /= 0.0d0 ) &
-                      < count( ps(ielm)%Dij /= 0.0d0 )  ) then !--> MultiRef
-
-                ps_type=1
-                anorm(:,ielm)=1.0d0
-
-             end if
+              viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                    = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+              nrf(1:norb(ielm),ielm)   = ps(ielm)%nrf(1:norb(ielm))
 
              end if
 
@@ -368,11 +339,9 @@ CONTAINS
 ! --- bcast pseudopotential data
 
     call send_pseudopot(rank)
-    if ( pselect > 100 ) call sendPSG( rank, Nelement )
 
     do ielm=1,Nelement
-       call ps_send_ps1d( ps(ielm) )
-       if ( pselect > 100 ) call psg_send_ps1d( ps(ielm) )
+      call ps_send_ps1d( ps(ielm) )
     end do
 
 ! ---

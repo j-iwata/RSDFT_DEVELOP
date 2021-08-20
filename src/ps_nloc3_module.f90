@@ -22,7 +22,11 @@ module ps_nloc3_module
   implicit none
 
   private
-  public :: init_ps_nloc3, prep_ps_nloc3, op_ps_nloc3, calc_force_ps_nloc3
+  public :: init_ps_nloc3
+  public :: prep_ps_nloc3
+  public :: d_op_ps_nloc3
+  public :: z_op_ps_nloc3
+  public :: calc_force_ps_nloc3
 
   integer :: m_mapgk, m_norb
   integer,allocatable :: mapgk(:,:)
@@ -471,70 +475,87 @@ contains
   end subroutine prep_ps_nloc3
 
 
-
-  subroutine op_ps_nloc3( tpsi, htpsi, k_in )
+  subroutine d_op_ps_nloc3( tpsi, htpsi, n_in, k_in, s_in )
+    use rsdft_allreduce_module, only: rsdft_allreduce
     implicit none
-#ifdef _DRSDFT_
-    real(8),intent(in)  :: tpsi(:,:)
+    real(8),intent(in) :: tpsi(:,:)
     real(8),intent(inout) :: htpsi(:,:)
-    real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
-    character(1),parameter :: TRANSA='T'
-    character(1),parameter :: TRANSB='N'
-#else
-    character(1),parameter :: TRANSA='C'
-    character(1),parameter :: TRANSB='N'
-    complex(8),intent(in)  :: tpsi(:,:)
-    complex(8),intent(inout) :: htpsi(:,:)
-    complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
-#endif
-    integer,optional,intent(IN) :: k_in
-    integer :: ML0,nb,lma,ib,ierr,k
+    integer,optional,intent(in) :: n_in, k_in, s_in
+    integer :: ng,nb,lma,ib,n,k,s
+    real(8),allocatable :: uVunk(:,:)
+    real(8),parameter :: z0=0.0d0, z1=1.0d0
 
     if ( Mlma <= 0 ) return
 
-    ML0 = size( tpsi, 1 )
-    nb  = size( tpsi, 2 )
-    k   = 1 ; if ( present(k_in) ) k=k_in
+    ng = size( tpsi, 1 )
+    nb = size( tpsi, 2 )
+    n = 1 ; if ( present(n_in) ) n = n_in
+    k = 1 ; if ( present(k_in) ) k = k_in
+    s = 1 ; if ( present(s_in) ) s = s_in
 
-    allocate( uVunk(Mlma,nb),uVunk0(Mlma,nb) )
+    allocate( uVunk(Mlma,nb) ); uVunk=z0
 
-#ifdef _DRSDFT_
-    call dgemm(TRANSA,TRANSB,Mlma,nb,ML0,zdV,uVk(:,:,k),ML0 &
-         ,tpsi,ML0,zero,uVunk0,Mlma)
-#else
-    call zgemm(TRANSA,TRANSB,Mlma,nb,ML0,zdV,uVk(:,:,k),ML0 &
-         ,tpsi,ML0,zero,uVunk0,Mlma)
-#endif
+    call DGEMM('T','N',Mlma,nb,ng,dV,uVk(:,:,k),ng,tpsi,ng,z0,uVunk,Mlma)
 
-    call mpi_allreduce(uVunk0,uVunk,Mlma*nb,TYPE_MAIN,mpi_sum,comm_grid,ierr)
+    call rsdft_allreduce( uVunk, 'g' )
 
-    do ib=1,nb
-!$OMP PARALLEL DO
-       do lma=1,Mlma
-          uVunk(lma,ib)=iuV(lma)*uVunk(lma,ib)
-       end do
-!$OMP END PARALLEL DO
+    do ib = 1, nb
+!$omp parallel do
+      do lma = 1, Mlma
+        uVunk(lma,ib) = iuV(lma)*uVunk(lma,ib)
+      end do
+!$omp end parallel do
     end do
 
-#ifdef _DRSDFT_
-    call dgemm(TRANSB,TRANSB,ML0,nb,Mlma,one,uVk(:,:,k),ML0 &
-         ,uVunk,Mlma,one,htpsi,ML0)
-#else
-    call zgemm(TRANSB,TRANSB,ML0,nb,Mlma,one,uVk(:,:,k),ML0 &
-         ,uVunk,Mlma,one,htpsi,ML0)
-#endif
+    call DGEMM('N','N',ng,nb,Mlma,z1,uVk(:,:,k),ng,uVunk,Mlma,z1,htpsi,ng)
 
-    deallocate( uVunk0,uVunk )
+    deallocate( uVunk0, uVunk )
 
-  end subroutine op_ps_nloc3
+  end subroutine d_op_ps_nloc3
 
-
-  subroutine calc_force_ps_nloc3(MI,force2)
+  subroutine z_op_ps_nloc3( tpsi, htpsi, n_in, k_in, s_in )
+    use rsdft_allreduce_module, only: rsdft_allreduce
     implicit none
-    integer,intent(in)  :: MI
-    real(8),intent(out) :: force2(3,MI)
+    complex(8),intent(in) :: tpsi(:,:)
+    complex(8),intent(inout) :: htpsi(:,:)
+    integer,optional,intent(in) :: n_in, k_in, s_in
+    integer :: ng,nb,lma,ib,n,k,s
+    complex(8),allocatable :: uVunk(:,:)
+    complex(8),parameter :: z0=(0.0d0,0.0d0), z1=(1.0d0,0.0d0)
+
+    if ( Mlma <= 0 ) return
+
+    ng = size( tpsi, 1 )
+    nb = size( tpsi, 2 )
+    n = 1 ; if ( present(n_in) ) n = n_in
+    k = 1 ; if ( present(k_in) ) k = k_in
+    s = 1 ; if ( present(s_in) ) s = s_in
+
+    allocate( uVunk(Mlma,nb)  ); uVunk=z0
+
+    call ZGEMM('C','N',Mlma,nb,ng,zdV,uVk(:,:,k),ng,tpsi,ng,z0,uVunk,Mlma)
+
+    call rsdft_allreduce( uVunk, 'g' )
+
+    do ib = 1, nb
+!$omp parallel do
+      do lma = 1, Mlma
+        uVunk(lma,ib) = iuV(lma)*uVunk(lma,ib)
+      end do
+!$omp end parallel do
+    end do
+
+    call ZGEMM('N','N',ng,nb,Mlma,z1,uVk(:,:,k),ng,uVunk,Mlma,z1,htpsi,ng)
+
+    deallocate( uVunk0, uVunk )
+
+  end subroutine z_op_ps_nloc3
+
+  subroutine calc_force_ps_nloc3( force2 )
+    implicit none
+    real(8),intent(out) :: force2(:,:)
     integer :: ML1,ML2,ML3,nn1,nn2,ML,MG,ierr,ML0,j1,j2,j3,irank
-    integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir,n
+    integer :: i,i1,i2,i3,s,iorb,m,L,a,lma0,ik,j,k,lma,lma1,ir,n,MI
     integer,allocatable :: LL2(:,:),a2lma(:)
     real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,kx,ky,kz,const
     real(8),allocatable :: work2(:,:)
@@ -553,8 +574,6 @@ contains
     complex(8),allocatable :: utmp2(:,:)
 #endif
 
-    force2(:,:) = 0.0d0
-
     if ( Mlma <= 0 ) return
 
     ML0 = ML_1-ML_0+1
@@ -565,6 +584,7 @@ contains
     nn1 = ML_0
     nn2 = ML_1
     MG  = NGgrid(0)
+    MI  = size( force2, 2 )
 
     pi2 = 2.0d0*acos(-1.0d0)
 

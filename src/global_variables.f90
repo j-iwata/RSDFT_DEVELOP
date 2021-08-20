@@ -94,7 +94,6 @@ MODULE global_variables
 
   use sweep_module
   use scf_module
-  use scf_chefsi_module
 
   implicit none
 

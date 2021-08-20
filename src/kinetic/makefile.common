@@ -1,5 +1,7 @@
 OBJS = kinetic_variables.o\
        kinetic_mol_module.o\
+       d_kinetic_sol_module.o\
+       z_kinetic_sol_module.o\
        kinetic_sol_module.o\
        kinetic_sym_module.o\
        kinetic_sym_ini_module.o\

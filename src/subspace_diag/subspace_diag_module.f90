@@ -1,14 +1,12 @@
 module subspace_diag_module
 
-  use subspace_diag_variables
-  use subspace_diag_la_module
-  use subspace_diag_sl_module
-  use subspace_sdsl_module
-  use subspace_diag_ncol_module
-  use io_tools_module, only: IOTools_readIntegerKeyword
+  use subspace_diag_variables, only: MB_diag, mat_block
+  use subspace_diag_la_module, only: subspace_diag_la
+  use subspace_diag_sl_module, only: subspace_diag_sl
+  use subspace_sdsl_module, only: subspace_sdsl
   use subspace_mate_sl2_module, only: subspace_mate_sl2
   use subspace_solv_sl2_module, only: subspace_solv_sl2
-  use subspace_rotv_sl2_module, only: subspace_rotv_sl2
+  use subspace_rotv_sl2_module, only: d_subspace_rotv_sl2, z_subspace_rotv_sl2
 
   implicit none
 
@@ -18,47 +16,64 @@ module subspace_diag_module
 
   integer :: ialgo_sd=1
 
+  interface subspace_diag
+    module procedure d_subspace_diag, z_subspace_diag
+  end interface
+
 contains
 
-
-  subroutine subspace_diag( k,s,ML_0,ML_1,MK_0,MS_0,unk,esp )
+  subroutine d_subspace_diag( k, s, unk, esp )
     use sl_variables, only: sl1
     implicit none
-    integer,intent(in) :: k,s,ML_0,ML_1,MK_0,MS_0
-#ifdef _DRSDFT_
-    real(8),intent(inout) :: unk(:,:,:,:)
-#else
-    complex(8),intent(inout) :: unk(:,:,:,:)
-#endif
-    real(8),intent(inout) :: esp(:,:,:)
-    integer :: k0,s0
-    if ( flag_noncollinear ) then
-      call subspace_diag_ncol( k, ML_0,ML_1, unk, esp )
-    else
+    integer,intent(in) :: k, s
+    real(8),intent(inout) :: unk(:,:)
+    real(8),intent(inout) :: esp(:)
 #ifdef _LAPACK_
-      call subspace_diag_la(k,s)
+    call subspace_diag_la( k, s )
 #else
-      k0 = k - MK_0 + 1
-      s0 = s - MS_0 + 1
-      select case( ialgo_sd )
-      case( 0 )
-        call subspace_diag_la(k,s)
-      case( 1 )
-        call subspace_diag_sl(k,s)
-      case( 2 )
-        call subspace_mate_sl2( k, s, unk(:,:,k0,s0) )
-        call subspace_solv_sl2( sl1, esp(:,k0,s0) )
-        call subspace_rotv_sl2( unk(:,:,k0,s0) )
-      case default
-        call subspace_sdsl( k, s, unk(:,:,k0,s0), esp(:,k0,s0) )
-      end select
+    select case( ialgo_sd )
+    case( 0 )
+      call subspace_diag_la( k, s )
+    case( 1 )
+      call subspace_diag_sl( k, s )
+    case( 2 )
+      call subspace_mate_sl2( k, s, unk )
+      call subspace_solv_sl2( sl1, esp )
+      call d_subspace_rotv_sl2( unk )
+    case default
+      ! call subspace_sdsl( k, s, unk, esp )
+    end select
 #endif
-    end if
-  end subroutine subspace_diag
+  end subroutine d_subspace_diag
+
+  subroutine z_subspace_diag( k, s, unk, esp )
+    use sl_variables, only: sl1
+    implicit none
+    integer,intent(in) :: k, s
+    complex(8),intent(inout) :: unk(:,:)
+    real(8),intent(inout) :: esp(:)
+#ifdef _LAPACK_
+    call subspace_diag_la( k, s )
+#else
+    select case( ialgo_sd )
+    case( 0 )
+      call subspace_diag_la( k, s )
+    case( 1 )
+      call subspace_diag_sl( k, s )
+    case( 2 )
+      call subspace_mate_sl2( k, s, unk )
+      call subspace_solv_sl2( sl1, esp )
+      call z_subspace_rotv_sl2( unk )
+    case default
+      ! call subspace_sdsl( k, s, unk, esp )
+    end select
+#endif
+  end subroutine z_subspace_diag
 
 
   subroutine init_subspace_diag( MB, nprocs_MB )
     use parallel_module, only: load_div_parallel, disp_switch_parallel
+    use io_tools_module, only: IOTools_readIntegerKeyword
     implicit none
     integer,intent(in) :: MB, nprocs_MB
     integer :: i,j,mm,me,tot_num_of_mate

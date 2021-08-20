@@ -1,7 +1,8 @@
 module subspace_solv_sl_module
 
   use wf_module
-  use scalapack_module
+  use scalapack_module, only: allocated_workarray_scalapack, UPLO, DESCA, DESCZ, &
+  NP0,NQ0,NPX,NQX,MBSIZE,NPCOL
   use subspace_diag_variables, only: MB_diag,Hsub,Vsub
   use watch_module
 
@@ -25,7 +26,7 @@ contains
     complex(8),allocatable :: zwork(:)
     character(8) :: idiag
     type(time) :: t
-    logical :: disp_sw
+    logical :: disp_sw, ltmp
 
 #ifndef _LAPACK_
 
@@ -47,7 +48,7 @@ contains
     select case( idiag )
     case( 'PZHEEVD' )
 
-      if ( LWORK==0 ) then
+      if ( .not.allocated_workarray_scalapack() ) then
         call PZHEEVD('V',UPLO,MB,Hsub,1,1,DESCA,esp(1,k,s),Vsub,1,1 &
                     ,DESCZ,ctmp,-1,rtmp,-1,itmp,-1,ierr)
         LWORK =nint(real(ctmp(1)))
@@ -64,6 +65,7 @@ contains
         ! if ( disp_sw ) then
         !   write(*,'("(PZHEEVD) Work-array sizes (allocate)   : LWORK,LRWORK,LIWORK=",3i8)') LWORK,LRWORK,LIWORK
         ! end if
+        ltmp = allocated_workarray_scalapack( .true. )
       end if
 
       allocate( zwork(LWORK),rwork(LRWORK),iwork(LIWORK) )

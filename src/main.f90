@@ -2,7 +2,7 @@ PROGRAM Real_Space_DFT
 
   use parallel_module
   use global_variables, only: iswitch_test,iswitch_scf,iswitch_tddft,iswitch_band,iswitch_opt,iswitch_dos,iswitch_latopt
-  use kinetic_variables, only: SYStype, Md, kin_select
+  use kinetic_variables, only: SYStype, Md, kin_select, read_kinetic
   use grid_module, only: grid_info
   use rgrid_module
   use ggrid_module
@@ -10,7 +10,7 @@ PROGRAM Real_Space_DFT
   use pseudopot_module
   use bb_module
   use electron_module
-  use bz_module
+  use bz_module, only: Nbzsm, kbb, weight_bz, MMBZ, generate_bz, write_info_bz
   use density_module
   use ps_local_module, only: Vion
   use array_bound_module, only: ML_0,ML_1,MSP_0,MSP_1,MBZ_0,MBZ_1,MBZ,MSP,MB_0,MB_1,set_array_bound
@@ -21,7 +21,6 @@ PROGRAM Real_Space_DFT
   use xc_hybrid_module
   use io_module
   use atomopt_module
-  use scf_chefsi_module
   use scf_module
   use total_energy_module
   use sweep_module
@@ -32,7 +31,7 @@ PROGRAM Real_Space_DFT
   use symmetry_module
   use scalapack_module
   use bc_module
-  use kinetic_module
+  use kinetic_module, only: init_kinetic
   use rgrid_mol_module
   use test_hpsi2_module
   use eion_module
@@ -50,7 +49,6 @@ PROGRAM Real_Space_DFT
   use rtddft_mol_module
   use omp_variables, only: init_omp
   use test_rtsol_module
-  use ps_getDij_module, only: getDij
   use ps_init_module, only: ps_init
   use io_tools_module, only: init_io_tools, IOTools_readIntegerKeyword, IOTools_readStringKeyword, IOTools_findKeyword
   use lattice_module
@@ -77,6 +75,7 @@ PROGRAM Real_Space_DFT
 !  use rsdft_sendrecv_module, only: test_sendrecv
 !  use vector_tools_module, only: set_vinfo_vector_tools
   use sl_tools_module, only: prep_param_sl
+  use var_sys_parameter, only: use_real8_wf
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -89,6 +88,7 @@ PROGRAM Real_Space_DFT
   logical,parameter :: recalc_esp=.true.
   logical :: flag_read_ncol=.false., DISP_SWITCH
   logical :: skip_read_data=.false.
+  logical :: ltmp
   real(8) :: Etot=0.0d0, Ehwf
   integer :: info_level=1
   character(32) :: lattice_index
@@ -238,6 +238,17 @@ PROGRAM Real_Space_DFT
   call generate_bz
 
   if ( myrank == 0 ) call write_info_bz( bb )
+
+  ! call IOTools_findKeyword( 'COMPLEX16', ltmp, flag_bcast=.true. )
+  ! if ( ltmp ) then
+  !   ltmp = use_real8_wf( .false. )
+  ! else if ( all(kbb==0.0d0) ) then
+  !   ltmp = use_real8_wf( .true. )
+  !   if ( disp_switch ) write(*,*) "Gamma-only, assume use_real8_wf=",ltmp
+  ! end if
+#ifdef _DRSDFT_
+  ltmp = use_real8_wf( .true. )
+#endif
 
 ! --- initial set up for parallel computation ---
 
@@ -451,8 +462,6 @@ PROGRAM Real_Space_DFT
 
   call io_read_noncollinear( myrank, flag_read_ncol )
 
-  call getDij
-
 ! the following GS should be performed when MB1_tmp is smaller than Nband,
 ! otherwise not necessary
 
@@ -492,10 +501,6 @@ PROGRAM Real_Space_DFT
      end do
 
   end if
-
-! ---
-
-  call getDij
 
 ! --- init_vdW_Grimme ---
 
@@ -538,10 +543,6 @@ PROGRAM Real_Space_DFT
   select case( iswitch_scf )
   case( 1 )
      call calc_scf( ierr, tol_force_in=feps, Etot_out=Etot )
-     if ( ierr < 0 ) goto 900
-     call calc_total_energy( recalc_esp,Etot,unit_in=6,flag_ncol=flag_noncollinear )
-  case( 2 )
-     call calc_scf_chefsi( Diter_scf_chefsi, ierr, disp_switch )
      if ( ierr < 0 ) goto 900
      call calc_total_energy( recalc_esp,Etot,unit_in=6,flag_ncol=flag_noncollinear )
   case( -1 )

@@ -1,66 +1,133 @@
 module esp_calc_module
 
-  use hamiltonian_module
-  use rgrid_module, only: dV
-  use parallel_module
-  use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_ESPCAL
-  use rsdft_mpi_module
-  use esp_calc_ncol_module, only: flag_noncollinear, esp_calc_ncol
-
   implicit none
 
   private
   public :: esp_calc
 
+  interface esp_calc
+    module procedure d_esp_calc, z_esp_calc
+  end interface
+
+  logical :: init_done=.false.
+  real(8) :: dV=1.0d0
+
 contains
 
-  subroutine esp_calc(k,s,n1,n2,ns,ne,wf,e)
+  subroutine d_esp_calc( wf, e, n_in,k,s )
+    use rsdft_allreduce_module, only: rsdft_allreduce
+    ! use parallel_module, only: get_range_parallel
+    use hamiltonian_module, only: hamiltonian
+    use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_ESPCAL
     implicit none
-    integer,intent(in) :: k,s,n1,n2,ns,ne
-#ifdef _DRSDFT_
-    real(8),intent(in) :: wf(:,:,:,:)
+    integer,intent(in) :: n_in, k, s
+    real(8),intent(in) :: wf(:,n_in:)
+    real(8),intent(inout) :: e(n_in:)
     real(8),allocatable :: hwf(:,:)
-#else
-    complex(8),intent(in) :: wf(:,:,:,:)
-    complex(8),allocatable :: hwf(:,:)
-#endif
-    real(8),intent(out) :: e(:,:,:)
-    integer :: n,ierr,k0,s0
+    integer :: m,nn,ns,ne,n
 
-    if ( flag_noncollinear ) then
-       call esp_calc_ncol( k,n1,n2,wf,e )
-       return
+    if ( .not.init_done ) call init( sum(abs(wf(:,n_in))**2) ) 
+
+    ! call get_range_parallel( ns, ne, 'b' )
+
+    nn = size(e)
+    ns = n_in
+    ne = ns + nn - 1
+
+    e(:)=0.0d0
+
+    allocate( hwf(size(wf,1),1) ); hwf=0.0d0
+
+    if ( iflag_hunk >= 1 ) then
+
+      if ( USE_WORKWF_AT_ESPCAL ) then
+        do n = ns, ne
+          e(n) = sum( wf(:,n)*hunk(:,n,k,s) )*dV
+        end do
+      else
+        do n = ns, ne
+          call hamiltonian( wf(:,n:n), hwf, n,k,s )
+          hunk(:,n,k,s)=hwf(:,1)
+          e(n) = sum( wf(:,n)*hwf(:,1) )*dV
+        end do
+      end if
+    
+    else
+
+      do n = ns, ne
+        call hamiltonian( wf(:,n:n), hwf, n,k,s )
+        e(n) = sum( wf(:,n)*hwf(:,1) )*dV
+      end do
+    
     end if
-
-    k0 = k - id_bzsm(myrank_k)
-    s0 = s - id_spin(myrank_s)
-
-    e(:,k,s)=0.0d0
-
-    allocate( hwf(n1:n2,1) ) ; hwf=0.0d0
-
-    do n=ns,ne
-       if ( iflag_hunk >= 1 ) then
-          if ( USE_WORKWF_AT_ESPCAL ) then
-             hwf(:,1)=hunk(:,n,k,s)
-          else
-             call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
-             hunk(:,n,k,s)=hwf(:,1)
-          end if
-       else
-          call hamiltonian(k,s,wf(:,n:n,k0,s0),hwf,n1,n2,n,n)
-       end if
-#ifdef _DRSDFT_
-       e(n,k,s) = sum( wf(:,n,k0,s0)*hwf(:,1) )*dV
-#else
-       e(n,k,s) = sum( conjg(wf(:,n,k0,s0))*hwf(:,1) )*dV
-#endif
-    end do
 
     deallocate( hwf )
 
-    call rsdft_allreduce_sum( e(ns:ne,k,s), comm_grid )
+    call rsdft_allreduce( e, 'g' )
 
-  end subroutine esp_calc
+  end subroutine d_esp_calc
+  
+  
+  subroutine z_esp_calc( wf, e, n_in,k,s )
+    use rsdft_allreduce_module, only: rsdft_allreduce
+    ! use parallel_module, only: get_range_parallel
+    use hamiltonian_module, only: hamiltonian
+    use wf_module, only: hunk, iflag_hunk, USE_WORKWF_AT_ESPCAL
+    implicit none
+    integer,intent(in) :: n_in, k, s
+    complex(8),intent(in) :: wf(:,n_in:)
+    real(8),intent(inout) :: e(n_in:)
+    complex(8),allocatable :: hwf(:,:)
+    integer :: n,m,nn,ns,ne
+
+    if ( .not.init_done ) call init( sum(abs(wf(:,n_in))**2) ) 
+
+    ! call get_range_parallel( ns, ne, 'b' )
+
+    nn = size(e)
+    ns = n_in
+    ne = ns + nn - 1
+
+    e(:)=0.0d0
+
+    allocate( hwf(size(wf,1),1) ); hwf=(0.0d0,0.0d0)
+
+    if ( iflag_hunk >= 1 ) then
+
+      if ( USE_WORKWF_AT_ESPCAL ) then
+        do n = ns, ne
+          e(n) = sum( conjg(wf(:,n))*hunk(:,n,k,s) )*dV
+        end do
+      else
+        do n = ns, ne
+          call hamiltonian( wf(:,n:n), hwf(:,1:1), n,k,s )
+          hunk(:,n,k,s)=hwf(:,1)
+          e(n) = sum( conjg(wf(:,n))*hwf(:,1) )*dV
+        end do
+      end if
+
+    else
+  
+      do n = ns, ne
+        call hamiltonian( wf(:,n:n), hwf(:,1:1), n,k,s )
+        e(n) = sum( conjg(wf(:,n))*hwf(:,1) )*dV
+      end do
+
+    end if
+
+    deallocate( hwf )
+
+    call rsdft_allreduce( e, 'g' )
+      
+  end subroutine z_esp_calc
+
+  subroutine init( c )
+    use rsdft_allreduce_module, only: rsdft_allreduce
+    implicit none
+    real(8),intent(in) :: c
+    dV=c
+    call rsdft_allreduce( dV, 'g' )
+    dV=1.0d0/dV
+  end subroutine init
 
 end module esp_calc_module

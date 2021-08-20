@@ -18,7 +18,6 @@ module ps_nloc2_variables
   real(8),allocatable :: uVk(:,:,:),sbufnl(:,:),rbufnl(:,:)
   real(8),allocatable :: sbufnl1(:),rbufnl1(:)
   real(8),allocatable :: sbufnl3(:,:,:),rbufnl3(:,:,:)
-  real(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   real(8),parameter :: zero=0.d0
   integer,parameter :: TYPE_MAIN=MPI_REAL8
@@ -26,11 +25,22 @@ module ps_nloc2_variables
   complex(8),allocatable :: uVk(:,:,:),sbufnl(:,:),rbufnl(:,:)
   complex(8),allocatable :: sbufnl1(:),rbufnl1(:)
   complex(8),allocatable :: sbufnl3(:,:,:),rbufnl3(:,:,:)
-  complex(8),allocatable :: xVk(:,:,:),yVk(:,:,:),zVk(:,:,:)
   complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
   complex(8),parameter :: zero=(0.d0,0.d0)
   integer,parameter :: TYPE_MAIN=RSDFT_MPI_COMPLEX16
 #endif
+
+  real(8),allocatable :: d_sbufnl(:,:), d_rbufnl(:,:)
+  real(8),allocatable :: d_sbufnl1(:), d_rbufnl1(:)
+  real(8),allocatable :: d_sbufnl3(:,:,:), d_rbufnl3(:,:,:)
+  real(8),allocatable :: d_uVk(:,:,:), d_uVunk(:,:), d_uVunk0(:,:)
+
+  complex(8),allocatable :: z_sbufnl(:,:), z_rbufnl(:,:)
+  complex(8),allocatable :: z_sbufnl1(:), z_rbufnl1(:)
+  complex(8),allocatable :: z_sbufnl3(:,:,:), z_rbufnl3(:,:,:)
+  complex(8),allocatable :: z_uVk(:,:,:), z_uVunk(:,:), z_uVunk0(:,:)
+
+  complex(8),allocatable :: xVk(:,:,:), yVk(:,:,:), zVk(:,:,:)
 
 ! spin-orbit
   real(8),allocatable :: uVso(:,:)
@@ -50,11 +60,17 @@ module ps_nloc2_variables
   public :: restore_uVunk_ps_nloc2
   public :: prep_backup_uVunk_ps_nloc2
   logical,public :: flag_backup_uVunk_ps_nloc2=.false.
-#ifdef _DRSDFT_
-  real(8),allocatable,private :: uVunk_backup(:,:,:,:)
-#else
-  complex(8),allocatable,private :: uVunk_backup(:,:,:,:)
-#endif
+
+  real(8),allocatable,private :: d_uVunk_backup(:,:,:,:)
+  complex(8),allocatable,private :: z_uVunk_backup(:,:,:,:)
+
+  interface backup_uVunk_ps_nloc2
+    module procedure d_backup_uVunk_ps_nloc2, z_backup_uVunk_ps_nloc2
+  end interface
+
+  interface restore_uVunk_ps_nloc2
+    module procedure d_restore_uVunk_ps_nloc2, z_restore_uVunk_ps_nloc2
+  end interface
 
   logical,public :: FLAG_KEEP_JJ_MAP=.false.
   logical,public :: FLAG_KEEP_uV=.false.
@@ -119,6 +135,70 @@ contains
     !call check_memory( 8.0d0, nzlma, MB_d, 2 )
   end subroutine allocate_ps_nloc2
 
+  subroutine d_allocate_ps_nloc2( k0, k1 )
+    use parallel_module, only: MB_d_nl
+    implicit none
+    integer,intent(in) :: k0, k1
+    integer :: n0,n1,n2,n3
+    logical :: disp_on
+    real(8),parameter :: z0=0.0d0
+    if ( allocated(JJP)       ) deallocate(JJP)
+    if ( allocated(d_uVk)     ) deallocate(d_uVk)
+    if ( allocated(d_rbufnl1) ) deallocate(d_rbufnl1)
+    if ( allocated(d_sbufnl1) ) deallocate(d_sbufnl1)
+    if ( allocated(d_rbufnl3) ) deallocate(d_rbufnl3)
+    if ( allocated(d_sbufnl3) ) deallocate(d_sbufnl3)
+    if ( allocated(d_uVunk)   ) deallocate(d_uVunk)
+    if ( allocated(d_uVunk0)  ) deallocate(d_uVunk0)
+    n0=0; if ( nzlma > 0 ) n0=maxval( MJJ(1:nzlma) )
+    n1=maxval( lma_nsend )*4*MB_d_nl
+    n2=maxval(nrlma_xyz)
+    n3=6
+    ! call check_disp_switch( disp_on, 0 )
+    !if ( disp_on ) write(*,*) "(z_rbufnl1,z_sbufnl1)"
+    !call check_memory( 8.0d0, n, 2 )
+    allocate( JJP(n0,nzlma)           ); JJP=0
+    allocate( d_uVk(n0,nzlma,k0:k1)   ); d_uVk=z0
+    allocate( d_rbufnl1(n1)           ); d_rbufnl1=z0
+    allocate( d_sbufnl1(n1)           ); d_sbufnl1=z0
+    allocate( d_rbufnl3(n1,n2,n3)     ); d_rbufnl3=z0
+    allocate( d_sbufnl3(n1,n2,n3)     ); d_sbufnl3=z0
+    allocate( d_uVunk(nzlma,MB_d_nl)  ); d_uVunk=z0
+    allocate( d_uVunk0(nzlma,MB_d_nl) ); d_uVunk0=z0
+  end subroutine d_allocate_ps_nloc2
+
+  subroutine z_allocate_ps_nloc2( k0, k1 )
+    use parallel_module, only: MB_d_nl
+    implicit none
+    integer,intent(in) :: k0, k1
+    integer :: n0,n1,n2,n3
+    logical :: disp_on
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
+    if ( allocated(JJP)       ) deallocate(JJP)
+    if ( allocated(z_uVk)     ) deallocate(z_uVk)
+    if ( allocated(z_rbufnl1) ) deallocate(z_rbufnl1)
+    if ( allocated(z_sbufnl1) ) deallocate(z_sbufnl1)
+    if ( allocated(z_rbufnl3) ) deallocate(z_rbufnl3)
+    if ( allocated(z_sbufnl3) ) deallocate(z_sbufnl3)
+    if ( allocated(z_uVunk)   ) deallocate(z_uVunk)
+    if ( allocated(z_uVunk0)  ) deallocate(z_uVunk0)
+    n0=0; if ( nzlma > 0 ) n0=maxval( MJJ(1:nzlma) )
+    n1=maxval( lma_nsend )*4*MB_d_nl
+    n2=maxval(nrlma_xyz)
+    n3=6
+    ! call check_disp_switch( disp_on, 0 )
+    !if ( disp_sw ) write(*,*) "(z_rbufnl1,z_sbufnl1)"
+    !call check_memory( 16.0d0, n, 2 )
+    allocate( JJP(n0,nzlma)           ); JJP=0
+    allocate( z_uVk(n0,nzlma,k0:k1)   ); z_uVk=z0
+    allocate( z_rbufnl1(n1)           ); z_rbufnl1=z0
+    allocate( z_sbufnl1(n1)           ); z_sbufnl1=z0
+    allocate( z_rbufnl3(n1,n2,n3)     ); z_rbufnl3=z0
+    allocate( z_sbufnl3(n1,n2,n3)     ); z_sbufnl3=z0
+    allocate( z_uVunk(nzlma,MB_d_nl)  ); z_uVunk=z0
+    allocate( z_uVunk0(nzlma,MB_d_nl) ); z_uVunk0=z0
+  end subroutine z_allocate_ps_nloc2
+
   subroutine checkMapsBeforeForce(myrank)
     implicit none
     integer,intent(IN) :: myrank
@@ -140,42 +220,59 @@ contains
     implicit none
     integer,intent(in) :: mb0,mb1,mk0,mk1,ms0,ms1
     flag_backup_uVunk_ps_nloc2=.true.
-    if ( allocated(uVunk_backup) ) then
-       if ( size(uVunk_backup,1) == nzlma ) return
-       deallocate(uVunk_backup)
+    if ( allocated(d_uVunk_backup) ) then
+       if ( size(d_uVunk_backup,1) == nzlma ) return
+       deallocate(d_uVunk_backup)
     end if
-    allocate( uVunk_backup(nzlma,mb0:mb1,mk0:mk1,ms0:ms1) )
-    uVunk_backup =zero
+    allocate( d_uVunk_backup(nzlma,mb0:mb1,mk0:mk1,ms0:ms1) )
+    d_uVunk_backup =0.0d0
   end subroutine prep_backup_uVunk_ps_nloc2
 
 
-  subroutine backup_uVunk_ps_nloc2( wtmp5 )
+  subroutine d_backup_uVunk_ps_nloc2( wtmp5 )
     implicit none
-#ifdef _DRSDFT_
     real(8),intent(in) :: wtmp5(0:,:,:,:,:)
-#else
-    complex(8),intent(in) :: wtmp5(0:,:,:,:,:)
-#endif
     if ( .not.flag_backup_uVunk_ps_nloc2 ) return
-!$OMP workshare
-    uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
-!$OMP end workshare
-  end subroutine backup_uVunk_ps_nloc2
+!$omp workshare
+    d_uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
+!$omp end workshare
+  end subroutine d_backup_uVunk_ps_nloc2
 
-
-  subroutine restore_uVunk_ps_nloc2( uVunk_out, mb0,mb1,k,s )
+  subroutine z_backup_uVunk_ps_nloc2( wtmp5 )
     implicit none
-#ifdef _DRSDFT_
-    real(8),intent(out) :: uVunk_out(:,:)
-#else
-    complex(8),intent(out) :: uVunk_out(:,:)
-#endif
-    integer,intent(in) :: mb0,mb1,k,s
+    complex(8),intent(in) :: wtmp5(0:,:,:,:,:)
     if ( .not.flag_backup_uVunk_ps_nloc2 ) return
-!$OMP workshare
-    uVunk_out(:,:) = uVunk_backup(:,mb0:mb1,k,s)
-!$OMP end workshare
-  end subroutine restore_uVunk_ps_nloc2
+!$omp workshare
+    z_uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
+!$omp end workshare
+  end subroutine z_backup_uVunk_ps_nloc2
+
+
+  subroutine d_restore_uVunk_ps_nloc2( uVunk_out,n,k,s )
+    implicit none
+    real(8),intent(inout) :: uVunk_out(:,:)
+    integer,intent(in) :: n,k,s
+    integer :: n0, n1
+    if ( .not.flag_backup_uVunk_ps_nloc2 ) return
+    n0 = n
+    n1 = n0 + size( uVunk_out, 2 ) - 1
+!$omp workshare
+    uVunk_out(:,:) = d_uVunk_backup(:,n0:n1,k,s)
+!$omp end workshare
+  end subroutine d_restore_uVunk_ps_nloc2
+
+  subroutine z_restore_uVunk_ps_nloc2( uVunk_out,n,k,s )
+    implicit none
+    complex(8),intent(inout) :: uVunk_out(:,:)
+    integer,intent(in) :: n,k,s
+    integer :: n0,n1
+    if ( .not.flag_backup_uVunk_ps_nloc2 ) return
+    n0 = n
+    n1 = n0 + size( uVunk_out, 2 ) - 1
+!$omp workshare
+    uVunk_out(:,:) = z_uVunk_backup(:,n0:n1,k,s)
+!$omp end workshare
+  end subroutine z_restore_uVunk_ps_nloc2
 
 
 end module ps_nloc2_variables

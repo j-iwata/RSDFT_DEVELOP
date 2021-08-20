@@ -15,8 +15,6 @@ MODULE atomopt_module
   use ps_nloc2_mol_module
   use ps_pcc_mol_module
   use eion_mol_module
-  use ps_qrij_prep_module
-  use ps_prepNzqr_g_module, only: prepNzqr
   use vdw_grimme_module
   use efield_module
   !--- begin MIZUHO-IR for cellopt
@@ -194,11 +192,9 @@ CONTAINS
     real(8),allocatable :: Force(:,:),aa_atom_0(:,:)
     real(8),allocatable :: gi(:,:),hi(:,:)
     character(22) :: loop_info
-    !--- begin MIZUHO-IR for cellopt
     real(8) :: stress(3,3)
     integer :: dim_opt
     type(lattice) :: aa_obj
-    !--- end MIZUHO-IR for cellopt
 
     call write_border( 0, " atomopt_cg(start)" )
 
@@ -235,11 +231,9 @@ CONTAINS
        else       
          call calc_force( Natom, Force )
        end if
-       ! MIZUHO-IR for cellopt
        if( .not. iswitch_opt >= 1 ) then
           Force(:,1:Natom) = 0.0d0
        end if
-       ! MIZUHO-IR for cellopt
        if( iswitch_latopt >= 1 ) then
           call calc_total_energy( .false., Etot )
           call calc_stress( stress )
@@ -346,7 +340,6 @@ CONTAINS
 !
 
        aa_atom_0(1:3,1:Natom) = aa_atom(1:3,1:Natom)
-       ! MIZUHO-IR for cellopt
        if( iswitch_latopt >= 1 ) then
           aa_atom_0(1:3,Natom+1:Natom+3) = aa(1:3,1:3)
        end if
@@ -730,7 +723,6 @@ CONTAINS
 
           select case(SYStype)
           case default
-             !--- begin MIZUHO-IR for cellopt
              if( iswitch_latopt >= 1 ) then
                 aa_obj%LatticeVector = aa
                 aa_obj%LatticeConstant = 1.0d0
@@ -751,7 +743,6 @@ CONTAINS
                 ! update cdcg using updated Va.
                 call init_ps_pcc
              end if
-             !--- end begin MIZUHO-IR for cellopt.
 
              call calc_eion
 
@@ -775,10 +766,6 @@ CONTAINS
                 call prep_ps_nloc3
              case(5)
                 call prep_ps_nloc_mr
-             case(102)
-                call prep_ps_nloc2
-                call prepNzqr
-                call prepQRijp102
              end select
 
           case(1)

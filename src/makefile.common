@@ -1,5 +1,4 @@
 MODS0 = scf_module.o\
-        scf_chefsi_module.o\
         sweep_module.o\
         dos_module.o\
         band_module.o\
@@ -9,14 +8,13 @@ MODS3 = global_variables.o\
 
 MODS2 = localpot_module.o\
         hamiltonian_matrix_module.o\
-        ps_getDij_module.o\
-        force_ps_nloc2.o\
+        ps_nloc2_comm_module.o\
+        force_ps_nloc2_hp_module.o\
         force_ps_nloc2_module.o\
         ps_nloc2_module.o\
         nonlocal_module.o\
         momentum_module.o\
         hamiltonian_module.o\
-        ps_qrij_prep.o\
         test_hpsi2_module.o\
         test_rtsol_module.o\
         noncollinear_module.o\
@@ -99,13 +97,11 @@ MODS1 = \
        fft_module.o\
        ffte_sub_module.o\
        pzfft3dv_arb_module.o\
-       var_para_ps_nloc_g.o\
        sqerr_g_module.o\
        sqerr_module.o\
        basic_type_methods.o\
        simc_module.o\
        maxloc_err_module.o\
-       var_ps_member_g.o\
        array_bound_module.o\
        esp_gather_module.o\
        ps_nloc2_variables.o\
@@ -123,15 +119,13 @@ MODS1 = \
        ps_read_psv_g.o\
        ps_read_psv.o\
        physical_type_methods.o\
-       para_rgrid_comm.o\
        rgrid_module.o\
        hpc_module.o\
        force_sub_sub_module.o\
-       force_sub_module.o\
-       ps_q_init_module.o\
-       ps_nloc2_op_g.o\
        construct_matrix_ps_nloc2_module.o\
        wf_sub_module.o\
+       d_ps_nloc2_op_module.o\
+       z_ps_nloc2_op_module.o\
        ps_nloc2_op_module.o\
        minimal_box_module.o\
        virtualH_module.o\
@@ -151,17 +145,14 @@ MODS1 = \
        force_ion_mol_module.o\
        ps_nloc_hgh_module.o\
        ewald_module.o\
-       ps_prepNzqr_g_module.o\
        io_read_wf_general_module.o\
        io_read_wf_simple_module.o\
        band_unfold_module.o\
-       rhonks_g_module.o\
        ps_nloc_mr_module.o\
        ps_spinorbit_module.o\
        io_write_wf_simple_module.o\
        ps_nloc3_gth_module.o\
        ps_nloc3_module.o\
-       inner_product_module.o\
        io1_module.o\
        io2_module.o\
        force_nloc2_mol_module.o\
