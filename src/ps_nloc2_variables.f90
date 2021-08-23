@@ -229,21 +229,21 @@ contains
   end subroutine prep_backup_uVunk_ps_nloc2
 
 
-  subroutine d_backup_uVunk_ps_nloc2( wtmp5 )
+  subroutine d_backup_uVunk_ps_nloc2( wtmp )
     implicit none
-    real(8),intent(in) :: wtmp5(0:,:,:,:,:)
+    real(8),intent(in) :: wtmp(:,:,:,:)
     if ( .not.flag_backup_uVunk_ps_nloc2 ) return
 !$omp workshare
-    d_uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
+    d_uVunk_backup(:,:,:,:)=wtmp(:,:,:,:)
 !$omp end workshare
   end subroutine d_backup_uVunk_ps_nloc2
 
-  subroutine z_backup_uVunk_ps_nloc2( wtmp5 )
+  subroutine z_backup_uVunk_ps_nloc2( wtmp )
     implicit none
-    complex(8),intent(in) :: wtmp5(0:,:,:,:,:)
+    complex(8),intent(in) :: wtmp(:,:,:,:)
     if ( .not.flag_backup_uVunk_ps_nloc2 ) return
 !$omp workshare
-    z_uVunk_backup(:,:,:,:)=wtmp5(0,:,:,:,:)
+    z_uVunk_backup(:,:,:,:)=wtmp(:,:,:,:)
 !$omp end workshare
   end subroutine z_backup_uVunk_ps_nloc2
 

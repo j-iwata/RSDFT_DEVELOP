@@ -18,7 +18,8 @@ contains
     use rgrid_variables, only: dV, Igrid, Ngrid
     use ps_nloc2_variables, only: rbufnl, sbufnl, TYPE_MAIN, Mlma, nzlma, MMJJ, &
     amap,lmap,mmap,iorbmap,MJJ_MAP,JJ_MAP,JJP,nrlma_xyz,MJJ,lma_nsend, &
-    num_2_rank,iuV,sendmap,recvmap,d_uVk,z_uVk
+    num_2_rank,iuV,sendmap,recvmap,d_uVk,z_uVk,flag_backup_uVunk_ps_nloc2, &
+    d_backup_uVunk_ps_nloc2,z_backup_uVunk_ps_nloc2
     use ps_nloc2_init_module, only: ps_nloc2_init_derivative
     use atom_module, only: aa_atom, ki_atom
     use pseudopot_module, only: lo, norb, ippform, NRps
@@ -56,10 +57,10 @@ contains
     real(8) :: tmp0,tmp1
     real(8) :: yy1,yy2,yy3
     real(8),allocatable :: force1(:,:),duVdR(:,:,:)
-    real(8),allocatable :: wd(:,:,:,:,:)
+    real(8),allocatable :: wd(:,:,:,:,:), wd0(:,:,:,:)
     ! real(8),allocatable :: vd(:,:,:)
     complex(8) :: ztmp
-    complex(8),allocatable :: wz(:,:,:,:,:)
+    complex(8),allocatable :: wz(:,:,:,:,:), wz0(:,:,:,:)
     ! complex(8),allocatable :: vz(:,:,:)
     logical,save :: flag_Y = .true.
     logical,allocatable :: a_rank(:)
@@ -542,6 +543,52 @@ contains
 
     !call watchb( ttmp, tttt(:,11) )
     !$omp end single
+
+    ! ---
+
+    if ( flag_backup_uVunk_ps_nloc2 ) then
+      if ( use_real8_wf() ) then
+        !$omp single
+        allocate( wd0(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+        wd0=0.0d0
+        !$omp end single
+        do s = MSP_0, MSP_1
+        do k = MBZ_0, MBZ_1
+        !$omp do schedule(dynamic) private( n, c )
+        do n = MB_0 , MB_1
+          if ( occ(n,k,s) == 0.0d0 ) cycle
+          c = 1.0d0/( -2.0d0*occ(n,k,s)*dV )
+          wd0(:,n,k,s) = c*wd(0,:,n,k,s)
+        end do !n
+        end do !k
+        end do !s
+        call d_backup_uVunk_ps_nloc2( wd0 )
+        !$omp single
+        deallocate( wd0 )
+        !$omp end single
+      else
+        !$omp single
+        allocate( wz0(nzlma,MB_0:MB_1,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+        wz0=(0.0d0,0.0d0)
+        !$omp end single
+        do s = MSP_0, MSP_1
+        do k = MBZ_0, MBZ_1
+        !$omp do schedule(dynamic) private( n, c )
+        do n = MB_0 , MB_1
+          if ( occ(n,k,s) == 0.0d0 ) cycle
+          c = 1.0d0/( -2.0d0*occ(n,k,s)*dV )
+          wz0(:,n,k,s) = c*wz(0,:,n,k,s)
+        end do !n
+        end do !k
+        end do !s
+        call z_backup_uVunk_ps_nloc2( wz0 )
+        !$omp single
+        deallocate( wz0 )
+        !$omp end single
+      end if
+    end if
+
+    ! ---
 
     !$omp master
     !call watchb( ttmp )
