@@ -15,13 +15,14 @@ module wf_module
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
            ,Sunk &
-           ,write_wf &
            ,hunk, iflag_hunk, workwf &
            ,allocate_work_wf, deallocate_work_wf
   PUBLIC :: write_esp_wf
   PUBLIC :: write_info_esp_wf
   PUBLIC :: wfrange
-  PUBLIC :: allocate_b_wf, allocate_b_occ
+  public :: allocate_b_dwf
+  public :: allocate_b_zwf
+  public :: allocate_b_occ
   PUBLIC :: referred_orbital
   PUBLIC :: set_initial_wf
   public :: control_work_wf
@@ -277,35 +278,6 @@ contains
   END SUBROUTINE test_on_wf
 
 
-  SUBROUTINE write_wf(rankIN)
-    implicit none
-    integer,optional :: rankIN
-    integer :: s,k,n,i
-    integer :: rank
-    if (present(rankIN)) then
-      rank=rankIN+myrank
-    else
-      rank=myrank
-    endif
-    write(300+rank,*) 'myrank= ',rank
-    write(300+rank,'(A18,2I5)') 'MS_0_WF, MS_1_WF= ',MS_0_WF,MS_1_WF
-    write(300+rank,'(A18,2I5)') 'MK_0_WF, MK_1_WF= ',MK_0_WF,MK_1_WF
-    write(300+rank,'(A18,2I5)') 'MB_0_WF, MB_1_WF= ',MB_0_WF,MB_1_WF
-    write(300+rank,'(A18,2I5)') 'ML_0_WF, ML_1_WF= ',ML_0_WF,ML_1_WF
-    do s=MS_0_WF,MS_1_WF
-       do k=MK_0_WF,MK_1_WF
-          do n=MB_0_WF,MB_1_WF
-             do i=ML_0_WF,ML_1_WF
-                write(300+rank,'(4I6,2g20.7)') s,k,n,i,unk(i,n,k,s)
-             end do
-          end do
-       end do
-    end do
-    return
-
-  END SUBROUTINE write_wf
-
-
   subroutine gather_wf
     implicit none
     integer :: k,s
@@ -494,25 +466,29 @@ contains
   END SUBROUTINE write_info_esp_wf
 
 
-  SUBROUTINE allocate_b_wf( b, wf )
+  subroutine allocate_b_zwf( b, wf )
     implicit none
-    type(wfrange),intent(INOUT) :: b
-#ifdef _DRSDFT_
-    real(8),allocatable,intent(INOUT) :: wf(:,:,:,:)
-#else
-    complex(8),allocatable,intent(INOUT) :: wf(:,:,:,:)
-#endif
+    type(wfrange),intent(inout) :: b
+    complex(8),allocatable,intent(inout) :: wf(:,:,:,:)
     allocate( wf(b%ML0:b%ML1,b%MB0:b%MB1,b%MK0:b%MK1,b%MS0:b%MS1) )
     wf=(0.0d0,0.0d0)
-  END SUBROUTINE allocate_b_wf
+  end subroutine allocate_b_zwf
 
-  SUBROUTINE allocate_b_occ( b, occup )
+  subroutine allocate_b_dwf( b, wf )
     implicit none
-    type(wfrange),intent(INOUT) :: b
-    real(8),allocatable,intent(INOUT) :: occup(:,:,:)
+    type(wfrange),intent(inout) :: b
+    real(8),allocatable,intent(inout) :: wf(:,:,:,:)
+    allocate( wf(b%ML0:b%ML1,b%MB0:b%MB1,b%MK0:b%MK1,b%MS0:b%MS1) )
+    wf=0.0d0
+  end subroutine allocate_b_dwf
+
+  subroutine allocate_b_occ( b, occup )
+    implicit none
+    type(wfrange),intent(inout) :: b
+    real(8),allocatable,intent(inout) :: occup(:,:,:)
     allocate( occup(b%MB0:b%MB1,b%MK0:b%MK1,b%MS0:b%MS1) )
     occup=0.0d0
-  END SUBROUTINE allocate_b_occ
+  end subroutine allocate_b_occ
 
 
   subroutine control_work_wf( ctrl )

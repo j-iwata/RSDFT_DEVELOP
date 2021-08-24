@@ -77,26 +77,30 @@ CONTAINS
   END SUBROUTINE get_range_rgrid
 
 
-  SUBROUTINE construct_map_3d_to_1d_grid( Ngrid, Igrid, comm, LLL )
+  subroutine construct_map_3d_to_1d_grid( LLL )
+    use parallel_module, only: pinfo_grid
     implicit none
-    integer,intent(IN) :: Ngrid(0:3), Igrid(2,0:3), comm
-    integer,allocatable,intent(INOUT) :: LLL(:,:,:)
-    integer :: i,i1,i2,i3
+    integer,allocatable,intent(inout) :: LLL(:,:,:)
+    integer :: i,i1,i2,i3,irank,n1,n2,n3
     if ( .not.allocated(LLL) ) then
-       allocate( LLL(0:Ngrid(1)-1,0:Ngrid(2)-1,0:Ngrid(3)-1) )
+      n1 = sum( pinfo_grid(2,:) )
+      n2 = sum( pinfo_grid(4,:) )
+      n3 = sum( pinfo_grid(6,:) )
+      allocate( LLL(0:n1-1,0:n2-1,0:n3-1) )
     end if
     LLL=0
-    i=Igrid(1,0)-1
-    do i3=Igrid(1,3),Igrid(2,3)
-    do i2=Igrid(1,2),Igrid(2,2)
-    do i1=Igrid(1,1),Igrid(2,1)
-       i=i+1
-       LLL(i1,i2,i3)=i
+    do irank = 0, size(pinfo_grid,2)-1
+      i = pinfo_grid(7,irank)
+      do i3 = pinfo_grid(5,irank), pinfo_grid(5,irank)+pinfo_grid(6,irank)-1
+      do i2 = pinfo_grid(3,irank), pinfo_grid(3,irank)+pinfo_grid(4,irank)-1
+      do i1 = pinfo_grid(1,irank), pinfo_grid(1,irank)+pinfo_grid(2,irank)-1
+        i=i+1
+        LLL(i1,i2,i3)=i
+      end do
+      end do
+      end do
     end do
-    end do
-    end do
-    call rsdft_allreduce_sum( LLL, comm )
-  END SUBROUTINE construct_map_3d_to_1d_grid
+  end subroutine construct_map_3d_to_1d_grid
 
 
   SUBROUTINE get_map_3d_to_1d_grid( rgrid, LLL )
@@ -127,45 +131,45 @@ CONTAINS
   END SUBROUTINE get_map_3d_to_1d_grid
 
 
-  SUBROUTINE construct_map_1d_to_3d_grid( Ngrid, Igrid, comm, LL )
+  subroutine construct_map_1d_to_3d_grid( LL )
+    use parallel_module, only: pinfo_grid
     implicit none
-    integer,intent(IN) :: Ngrid(0:3), Igrid(2,0:3), comm
-    integer,allocatable,intent(INOUT) :: LL(:,:)
-    integer :: i,i1,i2,i3
+    integer,allocatable,intent(inout) :: LL(:,:)
+    integer :: i,i1,i2,i3,N,irank
     if ( .not.allocated(LL) ) then
-       allocate( LL(3,Ngrid(0)) )
+      N = sum( pinfo_grid(8,:) )
+      allocate( LL(3,N) )
     end if
     LL=0
-    i=Igrid(1,0)-1
-    do i3=Igrid(1,3),Igrid(2,3)
-    do i2=Igrid(1,2),Igrid(2,2)
-    do i1=Igrid(1,1),Igrid(2,1)
-       i=i+1
-       LL(1,i)=i1
-       LL(2,i)=i2
-       LL(3,i)=i3
+    do irank = 0, size(pinfo_grid,2)-1
+      i = pinfo_grid(7,irank)
+      do i3 = pinfo_grid(5,irank), pinfo_grid(5,irank)+pinfo_grid(6,irank)-1
+      do i2 = pinfo_grid(3,irank), pinfo_grid(3,irank)+pinfo_grid(4,irank)-1
+      do i1 = pinfo_grid(1,irank), pinfo_grid(1,irank)+pinfo_grid(2,irank)-1
+        i = i + 1
+        LL(1:3,i) = (/ i1, i2, i3 /)
+      end do
+      end do
+      end do
     end do
-    end do
-    end do
-    call rsdft_allreduce_sum( LL, comm )
-  END SUBROUTINE construct_map_1d_to_3d_grid
+  end subroutine construct_map_1d_to_3d_grid
 
-  SUBROUTINE get_map_3d_to_1d( LLL )
-     implicit none
-     integer,allocatable,intent(OUT) :: LLL(:,:,:)
-     integer :: i,i1,i2,i3,ierr
-     allocate( LLL(0:Ngrid(1)-1,0:Ngrid(2)-1,0:Ngrid(3)-1) ) ; LLL=0
-     i=Igrid(1,0)-1
-     do i3=Igrid(1,3),Igrid(2,3)
-     do i2=Igrid(1,2),Igrid(2,2)
-     do i1=Igrid(1,1),Igrid(2,1)
-        i=i+1
-        LLL(i1,i2,i3)=i
-     end do
-     end do
-     end do
-     call rsdft_allreduce_sum( LLL, comm_grid )
-  END SUBROUTINE get_map_3d_to_1d
+  ! SUBROUTINE get_map_3d_to_1d( LLL )
+  !    implicit none
+  !    integer,allocatable,intent(OUT) :: LLL(:,:,:)
+  !    integer :: i,i1,i2,i3,ierr
+  !    allocate( LLL(0:Ngrid(1)-1,0:Ngrid(2)-1,0:Ngrid(3)-1) ) ; LLL=0
+  !    i=Igrid(1,0)-1
+  !    do i3=Igrid(1,3),Igrid(2,3)
+  !    do i2=Igrid(1,2),Igrid(2,2)
+  !    do i1=Igrid(1,1),Igrid(2,1)
+  !       i=i+1
+  !       LLL(i1,i2,i3)=i
+  !    end do
+  !    end do
+  !    end do
+  !    call rsdft_allreduce_sum( LLL, comm_grid )
+  ! END SUBROUTINE get_map_3d_to_1d
 
   SUBROUTINE mpi_allgatherv_grid( f, g )
     implicit none

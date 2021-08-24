@@ -69,7 +69,7 @@ CONTAINS
     coef_nab(2,:)=nabla%coef(1:Md)
     coef_nab(3,:)=nabla%coef(1:Md)
 
-    call construct_map_3d_to_1d_grid( Ngrid, Igrid, comm_grid, LLL )
+    call construct_map_3d_to_1d_grid( LLL )
 
     allocate( tmp(-2*Md:2*Md,-2*Md:2*Md,-2*Md:2*Md,3)  ) ; tmp=0.0d0
     allocate( tmp0(-2*Md:2*Md,-2*Md:2*Md,-2*Md:2*Md,3) ) ; tmp0=0.0d0
@@ -221,7 +221,7 @@ CONTAINS
 
     call get_range_rgrid( rgrid )
 
-    call construct_map_3d_to_1d_grid( Ngrid, Igrid, comm_grid, LLL )
+    call construct_map_3d_to_1d_grid( LLL )
 
 ! ---
 

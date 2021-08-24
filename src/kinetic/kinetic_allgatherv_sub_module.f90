@@ -45,7 +45,7 @@ contains
     ML3 = Ngrid(3)
     MK  = size( const_k2 ) - 1
 
-    call construct_map_3d_to_1d_grid( Ngrid, Igrid, comm, LLL )
+    call construct_map_3d_to_1d_grid( LLL )
 
     allocate( Hrow(ML) ); Hrow=zero
 

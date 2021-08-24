@@ -264,6 +264,8 @@ contains
 !--------1---------2---------3---------4---------5---------6---------7--
 
   subroutine read_data(disp_switch)
+    use var_sys_parameter, only: use_real8_wf
+    use wf_module, only: unk
     implicit none
     logical,intent(in) :: disp_switch
     integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
@@ -465,7 +467,15 @@ contains
 
     select case( IO_ctrl )
     case( 0, 3 )
-       call read_wf_simple( file_wf2, SYStype, IO_ctrl, disp_switch )
+      if ( use_real8_wf() ) then
+#ifdef _DRSDFT_
+        call read_wf_simple( file_wf2, SYStype, d_wf_out=unk )
+#endif
+      else
+#ifndef _DRSDFT_
+        call read_wf_simple( file_wf2, SYStype, z_wf_out=unk )
+#endif
+      end if
     case( 1 )
        call read_data_io1( file_wf2, SYStype )
     case( 2 )
@@ -518,7 +528,7 @@ contains
 
     if ( SYStype == 0 ) then
 
-       call construct_map_1d_to_3d_grid( Ngrid, Igrid, comm_grid, LL2 )
+       call construct_map_1d_to_3d_grid( LL2 )
 
     else if ( SYStype == 1 ) then
 
