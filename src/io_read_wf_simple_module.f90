@@ -1,12 +1,10 @@
 module io_read_wf_simple_module
 
   use parallel_module
-  use wf_module
   use rgrid_module
   use rgrid_mol_module, only: LL
   use rsdft_mpi_module
   use watch_module, only: watchb
-  use io_read_wf_general_module, only: read_wf_general
 
   implicit none
 
@@ -15,27 +13,30 @@ module io_read_wf_simple_module
 
 contains
 
-  subroutine read_wf_simple( file_wf2, SYStype, b, d_wf_out, z_wf_out, occ_out, kbb_out )
+  subroutine read_wf_simple( b, d_wf_out, z_wf_out, occ_out, kbb_out )
+    use var_sys_parameter, only: systype_query
+    use io_ctrl_parameters, only: file_wf2
+    use io_read_wf_general_module, only: read_wf_general
     use grid_module, only: construct_map_1d_to_3d_grid
     use rgrid_mol_module, only: construct_map_1d_to_3d_rgrid_mol
+    use wf_module, only: wfrange, MB_WF, MB_0_WF, MK_WF, MK_0_WF, MS_WF, MS_0_WF
     implicit none
-    character(*),intent(in) :: file_wf2
-    integer,intent(in) :: SYStype
-    type(wfrange),optional,intent(INOUT) :: b
-    real(8),allocatable,optional,intent(INOUT) :: d_wf_out(:,:,:,:)
-    complex(8),allocatable,optional,intent(INOUT) :: z_wf_out(:,:,:,:)
-    real(8),allocatable,optional,intent(INOUT) :: occ_out(:,:,:)
-    real(8),allocatable,optional,intent(INOUT) :: kbb_out(:,:)
+    type(wfrange),optional,intent(inout) :: b
+    real(8),optional,intent(inout) :: d_wf_out(:,:,:,:)
+    complex(8),optional,intent(inout) :: z_wf_out(:,:,:,:)
+    real(8),optional,intent(inout) :: occ_out(:,:,:)
+    real(8),optional,allocatable,intent(inout) :: kbb_out(:,:)
     include 'mpif.h'
+    integer :: SYStype
     integer :: ierr,istatus(MPI_STATUS_SIZE,123),irank,jrank
     integer :: itmp(21),n,k,s,i,i1,i2,i3,j1,j2,j3,mx,my,mz,m1,m2,m3
     integer :: ML_tmp,ML1_tmp,ML2_tmp,ML3_tmp,MB_tmp,MB1_tmp,MB2_tmp
-    integer :: ML,ML1,ML2,ML3,MB,n1,n2,ML0,MBZ_tmp,MSP_tmp,MMBZ_tmp
-    integer :: MB_0,MB_1,MBZ,MBZ_0,MBZ_1,MSP,MSP_0,MSP_1,nn
+    integer :: ML,ML1,ML2,ML3,MB,ML0,MBZ_tmp,MSP_tmp,MMBZ_tmp
+    integer :: MB_0,MBZ,MBZ_0,MSP,MSP_0,nn,n0,k0,s0
     integer :: IO_ctrl0, OC, TYPE_WF
     integer,allocatable :: LL2(:,:),LL_tmp(:,:),ir(:),id(:)
     real(8) :: aa0(3,3),bb0(3,3)
-    real(8),allocatable :: kbb0(:,:),occ_tmp(:,:,:)
+    real(8),allocatable :: occ_tmp(:,:,:)
     logical :: flag_related, flag_newformat, disp_on
     logical :: read_wf_is_complex, present_wf_is_complex
     character(5) :: cmyrank
@@ -57,19 +58,26 @@ contains
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
-    MB  = MB_WF
-    n1  = ML_0_WF
-    n2  = ML_1_WF
-    ML0 = n2 - n1 + 1
-
+    MB    = MB_WF
     MB_0  = MB_0_WF
-    MB_1  = MB_1_WF
     MBZ   = MK_WF
     MBZ_0 = MK_0_WF
-    MBZ_1 = MK_1_WF
     MSP   = MS_WF
     MSP_0 = MS_0_WF
-    MSP_1 = MS_1_WF
+
+    SYStype = systype_query()
+
+    if ( present(d_wf_out) ) then
+      ML0 = size(d_wf_out,1)
+      if ( size(d_wf_out,2) == MB_WF ) MB_0  = 1
+      if ( size(d_wf_out,3) == MK_WF ) MBZ_0 = 1
+      if ( size(d_wf_out,4) == MS_WF ) MSP_0 = 1
+    else if ( present(z_wf_out) ) then
+      ML0 = size(z_wf_out,1)
+      if ( size(z_wf_out,2) == MB_WF ) MB_0  = 1
+      if ( size(z_wf_out,3) == MK_WF ) MBZ_0 = 1
+      if ( size(z_wf_out,4) == MS_WF ) MSP_0 = 1
+    end if
 
 ! ---
 
@@ -162,9 +170,9 @@ contains
           b%MS0 = 1
           b%MS1 = MSP_tmp
         end if
-        if ( present(d_wf_out) ) call allocate_b_dwf( b, d_wf_out )
-        if ( present(z_wf_out) ) call allocate_b_zwf( b, z_wf_out )
-        if ( present(occ_out) ) call allocate_b_occ( b, occ_out )
+        ! if ( present(d_wf_out) ) call allocate_b_dwf( b, d_wf_out )
+        ! if ( present(z_wf_out) ) call allocate_b_zwf( b, z_wf_out )
+        ! if ( present(occ_out) ) call allocate_b_occ( b, occ_out )
         if ( present(kbb_out) ) then
           allocate( kbb_out(3,b%MK0:b%MK1) ); kbb_out=0.0d0
         end if
@@ -181,17 +189,26 @@ contains
     call MPI_Bcast(occ_tmp,size(occ_tmp),MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     
     if ( present(occ_out) ) then
-      m1 = b%MB0
-      m2 = min( b%MB1, MB_tmp )
-      occ_out = 0.0d0
-      occ_out(m1:m2,b%MK0:b%MK1,b%MS0:b%MS1) = occ_tmp(m1:m2,b%MK0:b%MK1,b%MS0:b%MS1)
-    else
-      m1 = min( MB , MB_tmp  )
-      m2 = min( MBZ, MBZ_tmp )
-      m3 = min( MSP, MSP_tmp )
-      occ = 0.0d0
-      occ(1:m1,1:m2,1:m3) = occ_tmp(1:m1,1:m2,1:m3)
-      if ( myrank == 0 ) write(*,*) "sum(occ)=",sum(occ)
+      if ( present(b) ) then
+        m1 = b%MB0
+        m2 = min( b%MB1, MB_tmp )
+        occ_out = 0.0d0
+        occ_out(m1:m2,b%MK0:b%MK1,b%MS0:b%MS1) = occ_tmp(m1:m2,b%MK0:b%MK1,b%MS0:b%MS1)
+      else
+        m1 = min( MB , MB_tmp  )
+        m2 = min( MBZ, MBZ_tmp )
+        m3 = min( MSP, MSP_tmp )
+        occ_out = 0.0d0
+        if ( size(occ_out,1)<m1 .or. size(occ_out,2)<m2 .or. size(occ_out,3)<m3 ) then
+          m1 = min( m1, size(occ_out,1) )
+          m2 = min( m2, size(occ_out,2) )
+          m3 = min( m3, size(occ_out,3) )
+          occ_out(1:m1,1:m2,1:m3) = occ_tmp(MB_0:MB_0+m1-1,MBZ_0:MBZ_0+m2-1,MSP_0:MSP_0+m3-1)
+        else
+          occ_out(1:m1,1:m2,1:m3) = occ_tmp(1:m1,1:m2,1:m3)
+        end if
+        if ( myrank == 0 ) write(*,*) "sum(occ)=",sum(occ_out)
+      end if
     end if
 
     deallocate( occ_tmp )
@@ -226,12 +243,18 @@ contains
 !
       call get_np_parallel( pinfo1%np )
       call construct_para( ML, MB, MBZ, MSP, pinfo1 )
-!
-! -------------------------------------------
 
     end if !flag_newformat
 
-! ---
+    ! ---
+
+    if ( .not.( present(d_wf_out).or.present(z_wf_out) ) ) then
+      if ( myrank == 0 ) close(3)
+      call write_border( 0, " read_wf_simple(return)" )
+      return
+    end if
+
+    ! ---
 
     read_wf_is_complex = ( type_wf==0 .or. type_wf==2 )
 
@@ -285,7 +308,7 @@ contains
         end if
       end if
 
-      nn = ML; if ( IO_ctrl0 == 3 ) nn = n2-n1+1
+      nn = ML; if ( IO_ctrl0 == 3 ) nn = ML0
       if ( read_wf_is_complex ) then
         allocate( utmp(nn) ); utmp=(0.0d0,0.0d0)
       else
@@ -312,6 +335,10 @@ contains
       do s = 1, MSP_tmp
       do k = 1, MBZ_tmp
       do n = MB1_tmp, MB2_tmp
+
+        n0 = n - MB_0  + 1
+        k0 = k - MBZ_0 + 1
+        s0 = s - MSP_0 + 1
 
         if ( IO_ctrl0 == 0 ) then
 
@@ -388,11 +415,11 @@ contains
             if ( present_wf_is_complex ) then
               if ( .not.read_wf_is_complex ) utmp=dtmp
               call MPI_Scatterv(utmp,ir_grid,id_grid,MPI_COMPLEX16, &
-              z_wf_out(n1,n,k,s),ML0,MPI_COMPLEX16,0,comm_grid,ierr)
+              z_wf_out(1,n0,k0,s0),ML0,MPI_COMPLEX16,0,comm_grid,ierr)
             else
               if ( read_wf_is_complex ) dtmp=real(utmp)
               call MPI_Scatterv(dtmp,ir_grid,id_grid,MPI_REAL8, &
-              d_wf_out(n1,n,k,s),ML0,MPI_REAL8,0,comm_grid,ierr)
+              d_wf_out(1,n0,k0,s0),ML0,MPI_REAL8,0,comm_grid,ierr)
             end if
           end if
 
@@ -411,16 +438,16 @@ contains
               end if
               if ( irank == jrank ) then
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = utmp(:)
+                  z_wf_out(:,n0,k0,s0) = utmp(:)
                 else
-                  d_wf_out(:,n,k,s) = utmp(:)
+                  d_wf_out(:,n0,k0,s0) = utmp(:)
                 end if
               else if ( irank == myrank ) then
                 call MPI_Recv(utmp,nn,MPI_COMPLEX16,jrank,0,MPI_COMM_WORLD,istatus,ierr)
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = utmp(:)
+                  z_wf_out(:,n0,k0,s0) = utmp(:)
                 else
-                  d_wf_out(:,n,k,s) = utmp(:)
+                  d_wf_out(:,n0,k0,s0) = utmp(:)
                 end if
               else if ( jrank == myrank ) then
                 call MPI_Send(utmp,nn,MPI_COMPLEX16,irank,0,MPI_COMM_WORLD,ierr)
@@ -433,16 +460,16 @@ contains
               end if
               if ( irank == jrank ) then ![ irank == jrank == myrank ]
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = dtmp(:)
+                  z_wf_out(:,n0,k0,s0) = dtmp(:)
                 else
-                  d_wf_out(:,n,k,s) = dtmp(:)
+                  d_wf_out(:,n0,k0,s0) = dtmp(:)
                 end if
               else if ( irank == myrank ) then
                 call MPI_Recv(dtmp,nn,MPI_REAL8,jrank,0,MPI_COMM_WORLD,istatus,ierr)
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = dtmp(:)
+                  z_wf_out(:,n0,k0,s0) = dtmp(:)
                 else
-                  d_wf_out(:,n,k,s) = dtmp(:)
+                  d_wf_out(:,n0,k0,s0) = dtmp(:)
                 end if
               else if ( jrank == myrank ) then
                 call MPI_Send(dtmp,nn,MPI_REAL8,irank,0,MPI_COMM_WORLD,ierr)
@@ -455,16 +482,16 @@ contains
               end if
               if ( irank == jrank ) then
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = utmpSP(:)
+                  z_wf_out(:,n0,k0,s0) = utmpSP(:)
                 else
-                  d_wf_out(:,n,k,s) = utmpSP(:)
+                  d_wf_out(:,n0,k0,s0) = utmpSP(:)
                 end if
               else if ( irank == myrank ) then
                 call MPI_Recv(utmpSP,nn,MPI_COMPLEX,jrank,0,MPI_COMM_WORLD,istatus,ierr)
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = utmpSP(:)
+                  z_wf_out(:,n0,k0,s0) = utmpSP(:)
                 else
-                  d_wf_out(:,n,k,s) = utmpSP(:)
+                  d_wf_out(:,n0,k0,s0) = utmpSP(:)
                 end if
               else if ( jrank == myrank ) then
                 call MPI_Send(utmpSP,nn,MPI_COMPLEX,irank,0,MPI_COMM_WORLD,ierr)
@@ -477,16 +504,16 @@ contains
               end if
               if ( irank == jrank ) then
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = dtmpSP(:)
+                  z_wf_out(:,n0,k0,s0) = dtmpSP(:)
                 else
-                  d_wf_out(:,n,k,s) = dtmpSP(:)
+                  d_wf_out(:,n0,k0,s0) = dtmpSP(:)
                 end if
               else if ( irank == myrank ) then
                 call MPI_Recv(dtmpSP,nn,MPI_REAL,jrank,0,MPI_COMM_WORLD,istatus,ierr)
                 if ( present_wf_is_complex ) then
-                  z_wf_out(:,n,k,s) = dtmpSP(:)
+                  z_wf_out(:,n0,k0,s0) = dtmpSP(:)
                 else
-                  d_wf_out(:,n,k,s) = dtmpSP(:)
+                  d_wf_out(:,n0,k0,s0) = dtmpSP(:)
                 end if
               else if ( jrank == myrank ) then
                 call MPI_Send(dtmpSP,nn,MPI_REAL,irank,0,MPI_COMM_WORLD,ierr)
@@ -528,6 +555,7 @@ contains
   end subroutine read_wf_simple
 
   subroutine chk_rank_relevance( n,k,s, irank, flag_related )
+    use wf_module, only: MB_0_WF,MB_1_WF,MK_0_WF,MK_1_WF,MS_0_WF,MS_1_WF
     implicit none
     integer,intent(in) :: n,k,s
     integer,intent(out) :: irank

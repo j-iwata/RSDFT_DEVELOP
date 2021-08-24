@@ -71,11 +71,8 @@ PROGRAM Real_Space_DFT
   use aa_module, only: init_aa
   use rsdft_mpi_module, only: init_rsdft_mpi
   use allel_module, only: init_allel
-!  use bcast_module, only: test_bcast
-!  use rsdft_sendrecv_module, only: test_sendrecv
-!  use vector_tools_module, only: set_vinfo_vector_tools
   use sl_tools_module, only: prep_param_sl
-  use var_sys_parameter, only: use_real8_wf
+  use var_sys_parameter, only: use_real8_wf, systype_query
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -137,10 +134,12 @@ PROGRAM Real_Space_DFT
   SYStype=0
   select case( systype_in(1:3) )
   case( "SOL" )
-     SYStype=0
+    SYStype=0
   case( "MOL" )
-     SYStype=1
+    SYStype=1
   end select
+
+  ierr = systype_query( SYStype )
 
 ! --- input parameters ---
 

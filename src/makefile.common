@@ -145,6 +145,7 @@ MODS1 = \
        force_ion_mol_module.o\
        ps_nloc_hgh_module.o\
        ewald_module.o\
+       io_ctrl_parameters.o\
        io_read_wf_general_module.o\
        io_read_wf_simple_module.o\
        band_unfold_module.o\
@@ -168,7 +169,6 @@ MODS1 = \
        ps_local_fftw_module.o\
        ps_local_fft0_module.o\
        ps_local_module.o\
-       io_ctrl_parameters.o\
        io_simple_module.o\
        ps_local_mol_gth_module.o\
        ps_local_mol_module.o\

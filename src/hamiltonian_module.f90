@@ -3,7 +3,7 @@ module hamiltonian_module
   use kinetic_module, only: op_kinetic
   use localpot_module, only: op_localpot, Vloc
   use nonlocal_module, only: op_nonlocal
-  use fock_module, only: op_fock, current_band_index_fock
+  use fock_module, only: op_fock
   use watch_module, only: watchb, watchb_omp,time_hmlt
 
   implicit none
@@ -241,7 +241,6 @@ contains
 
     !call watchb( ttmp )
 
-    current_band_index_fock = n
     call op_fock( tpsi, hpsi, n,k,s )
 
     !call watchb( ttmp, time_hmlt(1,4) )
@@ -335,7 +334,6 @@ contains
 
     !call watchb( ttmp )
 
-    current_band_index_fock = n
     call op_fock( tpsi, hpsi, n,k,s )
 
     !call watchb( ttmp, time_hmlt(1,4) )

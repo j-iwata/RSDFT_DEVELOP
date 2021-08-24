@@ -21,8 +21,9 @@ module io_module
   use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
   use grid_module, only: construct_map_1d_to_3d_grid
   use fermi_module, only: efermi
-  use io_ctrl_parameters, only: IC, OC, OC2, IO_ctrl, MBwr1, MBwr2, lat_new, lat_old &
-                              , icount, flag_overwrite, read_io_ctrl_parameters
+  use io_ctrl_parameters, only: IC, OC, OC2, IO_ctrl, MBwr1, MBwr2, lat_new, lat_old, &
+  icount, flag_overwrite_io, read_io_ctrl_parameters, file_wf0,file_wf1,file_wf2, &
+  file_vrho0, file_vrho1, file_vrho2
   use watch_module
   use rsdft_mpi_module
 
@@ -36,12 +37,12 @@ module io_module
   public :: Init_IO
   public :: read_vrho_data
 
-  character(30) :: file_wf0   ="wf.dat1"
-  character(30) :: file_vrho0 ="vrho.dat1"
-  character(30) :: file_wf1   ="wf.dat1"
-  character(30) :: file_vrho1 ="vrho.dat1"
-  character(30) :: file_wf2   ="wf.dat1"
-  character(30) :: file_vrho2 ="vrho.dat1"
+  ! character(30) :: file_wf0   ="wf.dat1"
+  ! character(30) :: file_vrho0 ="vrho.dat1"
+  ! character(30) :: file_wf1   ="wf.dat1"
+  ! character(30) :: file_vrho1 ="vrho.dat1"
+  ! character(30) :: file_wf2   ="wf.dat1"
+  ! character(30) :: file_vrho2 ="vrho.dat1"
 
   character(64),parameter :: version="version3.0, comment_length=64"
   character(64) :: comment
@@ -99,7 +100,7 @@ contains
 
 ! ---
 
-    if ( present(suffix) .and. .not.flag_overwrite ) call Init_IO( suffix )
+    if ( present(suffix) .and. .not.flag_overwrite_io ) call Init_IO( suffix )
 
 ! ---
 
@@ -265,7 +266,7 @@ contains
 
   subroutine read_data(disp_switch)
     use var_sys_parameter, only: use_real8_wf
-    use wf_module, only: unk
+    use wf_module, only: unk, occ
     implicit none
     logical,intent(in) :: disp_switch
     integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
@@ -469,11 +470,11 @@ contains
     case( 0, 3 )
       if ( use_real8_wf() ) then
 #ifdef _DRSDFT_
-        call read_wf_simple( file_wf2, SYStype, d_wf_out=unk )
+        call read_wf_simple( d_wf_out=unk, occ_out=occ )
 #endif
       else
 #ifndef _DRSDFT_
-        call read_wf_simple( file_wf2, SYStype, z_wf_out=unk )
+        call read_wf_simple( z_wf_out=unk, occ_out=occ )
 #endif
       end if
     case( 1 )

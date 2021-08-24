@@ -11,14 +11,13 @@ module xc_hybrid_module
            ,get_flag_xc_hybrid &
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
-           ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
-           ,unk_hf, occ_hf, occ_factor, npart &
-           ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
+           ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1, &
+           occ_factor, n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
   public :: read_xc_hybrid
   public :: set_param_xc_hybrid
   public :: get_param_xc_hybrid
 
-  integer :: npart
+  ! integer :: npart
   real(8) :: R_hf
 
   integer :: iflag_hf     = 0
@@ -27,15 +26,15 @@ module xc_hybrid_module
   integer :: iflag_lcwpbe = 0
   integer :: iflag_hybrid = 0
 
-#ifdef _DRSDFT_
-  real(8),allocatable :: unk_hf(:,:,:,:)
-  real(8),parameter :: byte = 8.0d0
-#else
-  complex(8),allocatable :: unk_hf(:,:,:,:)
-  real(8),parameter :: byte = 16.0d0
-#endif
+! #ifdef _DRSDFT_
+!   real(8),allocatable :: unk_hf(:,:,:,:)
+!   real(8),parameter :: byte = 8.0d0
+! #else
+!   complex(8),allocatable :: unk_hf(:,:,:,:)
+!   real(8),parameter :: byte = 16.0d0
+! #endif
 
-  real(8),allocatable :: occ_hf(:,:,:)
+  ! real(8),allocatable :: occ_hf(:,:,:)
   real(8) :: occ_factor
 
   real(8),allocatable :: kbb_hf(:,:)
@@ -196,17 +195,17 @@ contains
 
     if ( IC == 0 ) then
 
-       mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1) &
-            *(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
+      !  mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1) &
+      !       *(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
 
-       if ( disp_switch ) then
-          write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
-       end if
+      !  if ( disp_switch ) then
+      !     write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
+      !  end if
 
-       allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
-       unk_hf=(0.0d0,0.0d0)
-       allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP) )
-       occ_hf=0.0d0
+      !  allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
+      !  unk_hf=(0.0d0,0.0d0)
+      !  allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP) )
+      !  occ_hf=0.0d0
 
     else if ( IC > 0 ) then
 
@@ -227,8 +226,7 @@ contains
        b%MS0 = MSP_0
        b%MS1 = MSP_1
 
-       call read_wf_simple( file_wf2, SYStype, IO_ctrl, disp_switch &
-            , b, unk_hf, occ_hf, kbb_hf )
+       call read_wf_simple( b, kbb_out=kbb_hf )
 
        FKMB   = b%MB
        FKMB_0 = b%MB0
@@ -314,7 +312,7 @@ contains
 ! --- Divided MPI_Allgatherv ---
 !
 
-    npart = 30
+    ! npart = 30
 
 !    call gather_wf
 !    ML0 = n2 - n1 + 1
@@ -337,12 +335,12 @@ contains
 !    end do
 !    call mpi_bcast(npart,1,mpi_integer,0,mpi_comm_world,ierr)
 
-    if ( disp_switch ) then
-       write(*,*) "Division number of mpi_allgatherv =",npart
+    ! if ( disp_switch ) then
+    !    write(*,*) "Division number of mpi_allgatherv =",npart
 !       write(*,*) "Time of divided MPI_Allgatherv (s) =",time
 !       write(*,*) "Optimal division number of mpi_allgatherv =",npart
 !       write(*,*) "Best time of divided MPI_Allgatherv (s) =",best_time
-    end if
+    ! end if
 
 ! ---
 

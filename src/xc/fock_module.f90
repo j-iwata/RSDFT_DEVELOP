@@ -1,6 +1,6 @@
 module fock_module
 
-  use xc_hybrid_module, only: occ_hf, iflag_hybrid, alpha_hf &
+  use xc_hybrid_module, only: iflag_hybrid, alpha_hf &
                              ,FKMB_0,FKMB_1,FKBZ_0,FKBZ_1,FOCK_0,FOCK_1 &
                              ,occ_factor,gamma_hf
   use array_bound_module, only: ML_0,ML_1,MB,MB_0,MB_1,MBZ,MBZ_0,MBZ_1 &
@@ -18,18 +18,41 @@ module fock_module
   public :: op_fock
   public :: UpdateWF_fock
 
-  integer, public :: current_band_index_fock=0
-
   integer :: SYStype=0
+  logical :: init_done = .false.
 
   interface op_fock
     module procedure d_op_fock, z_op_fock
   end interface
 
+  real(8),allocatable :: occ_hf(:,:,:)
   real(8),allocatable :: d_unk_hf(:,:,:,:)
   complex(8),allocatable :: z_unk_hf(:,:,:,:)
 
 contains
+
+  subroutine init_fock
+    use var_sys_parameter, only: use_real8_wf
+    use io_ctrl_parameters, only: wf_available
+    use io_read_wf_simple_module, only: read_wf_simple
+    implicit none
+    integer :: ng0,ng1,ng,ns0,ns1
+    call get_range_parallel( ng0, ng1, 'g' ); ng=ng1-ng0+1
+    call get_range_parallel( ns0, ns1, 's' )
+    allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,ns0:ns1) )
+    occ_hf=0.0d0
+    if ( use_real8_wf() ) then
+      allocate( d_unk_hf(ng,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,ns0:ns1) )
+      d_unk_hf=0.0d0
+      if ( wf_available() ) call read_wf_simple( d_wf_out=d_unk_hf, occ_out=occ_hf )
+    else
+      allocate( z_unk_hf(ng,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,ns0:ns1) )
+      z_unk_hf=(0.0d0,0.0d0)
+      if ( wf_available() ) call read_wf_simple( z_wf_out=z_unk_hf, occ_out=occ_hf )
+    end if
+    init_done = .true.
+  end subroutine init_fock
+
 
   subroutine d_op_fock( tpsi, hpsi, n,k,s )
     implicit none
@@ -39,6 +62,7 @@ contains
     integer :: ib,ib1,ib2
 
     if ( iflag_hybrid == 0 ) return
+    if ( .not.init_done ) call init_fock
 
     ib1 = n
     ib2 = ib1 + size(tpsi,2) - 1
@@ -66,6 +90,7 @@ contains
     integer :: ib,ib1,ib2
 
     if ( iflag_hybrid == 0 ) return
+    if ( .not.init_done ) call init_fock
 
     ib1 = n
     ib2 = ib1 + size(tpsi,2) - 1
@@ -233,40 +258,6 @@ contains
   end subroutine Fock_DoubleComplex
 
 
-!   subroutine op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
-!     implicit none
-!     integer,intent(in) :: k,s,n1,n2,ib1,ib2
-! #ifdef _DRSDFT_
-!     real(8),intent(in) :: tpsi(n1:,ib1:)
-!     real(8),intent(inout) :: htpsi(n1:,ib1:)
-! #else
-!     complex(8),intent(in) :: tpsi(n1:,ib1:)
-!     complex(8),intent(inout) :: htpsi(n1:,ib1:)
-! #endif
-!     integer :: ib,i
-
-!     if ( iflag_hybrid == 0 ) return
-
-!     if ( iflag_hybrid == 2 ) then
-
-!       do ib=ib1,ib2
-!         do i=n1,n2
-!           htpsi(i,ib)=htpsi(i,ib)+hunk(i,ib,k,s)
-!         end do
-!       end do
-
-!     else if ( iflag_hybrid > 0 ) then
-
-!       do ib=ib1,ib2
-!         call Fock( ib, k, s, n1, n2, tpsi(n1:n2,ib), htpsi(n1:n2,ib) )
-!       end do
-
-!     end if
-
-!   end subroutine op_fock
-
-
-
   subroutine UpdateWF_Fock( SYStype_in )
     implicit none
     integer,optional,intent(in) :: SYStype_in
@@ -279,7 +270,7 @@ contains
     call write_border( 0, " UpdateWF_Fock(start)" )
     call start_timer( 'UpdateWF_Fock', tt )
 
-! ---
+    if ( .not.init_done ) call init_fock
 
     if ( allocated(d_unk_hf) ) then
       d_unk_hf(:,:,:,:) = 0.0d0
@@ -349,8 +340,6 @@ contains
 
     call end_timer( 'UpdateWF_Fock_allreduce' )
 
-! ---
-
     hunk(:,:,:,:) = (0.0d0,0.0d0)
     ! ct_fock_fft(:)=0.0d0
     ! et_fock_fft(:)=0.0d0
@@ -367,6 +356,8 @@ contains
           call Fock_5( s )
         end if
       end do !s
+    else
+      call stop_program('Work-array for Hybdir-DFT (?_unk_hf) is not allocated')
     end if
 
     call end_timer( 'UpdateWF_fock_whole' )
