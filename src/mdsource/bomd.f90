@@ -369,19 +369,14 @@ SUBROUTINE bomd
 
      end if !myrnak==0
 
-     if( lcpmd )then
-        if ( mod(itime,wrtstep) == 0 .and. ctrl_cpmdio > 0 ) then
-           if ( myrank == 0 ) call mdio( 1, tote0 )
-           if ( lbathnew ) call write_nose_data
-           if ( lcpmd ) then
-              if ( lbathnewe ) call write_nosee_data
-              call write_data_cpmdio
-           end if
-        end if
-     else
-        if ( myrank == 0 ) call mdio( 1, tote0 )
-        if ( lbathnew ) call write_nose_data
-     end if
+    if ( ctrl_cpmdio > 0 .and. mod(itime,wrtstep) == 0 ) then
+      if ( myrank == 0 ) call mdio( 1, tote0 )
+      if ( lbathnew ) call write_nose_data
+      if ( lcpmd ) then
+        if ( lbathnewe ) call write_nosee_data
+        call write_data_cpmdio
+      end if
+    end if
 
      call global_watch(.false.,flag_etlimit)
      if ( flag_etlimit ) then
@@ -397,6 +392,9 @@ SUBROUTINE bomd
 !
 ! --- loop end
 !
+
+  disp_switch = (myrank == 0)
+  call check_disp_switch( disp_switch, 1 )
 
   if ( ctrl_cpmdio > 0 ) then
      if ( myrank == 0 ) call mdio( 1,tote0 )
