@@ -298,7 +298,7 @@ contains
 
     checK_data_format = flag_new_format
 
-    call write_border( 0, ' check_data_format(start)' )
+    call write_border( 0, ' check_data_format(end)' )
   end function check_data_format
 
 
@@ -374,10 +374,8 @@ contains
     integer,allocatable :: ir(:,:),id(:,:),ndata(:)
     integer,parameter :: u=700
     real(8),allocatable :: w_old(:,:,:), u_old(:)
-    real(8) :: tt(2,0:1)
 
     call write_border( 0, ' read_data_cpmd_k_para_arb(start)' )
-    call watchb( tt(:,0), barrier='on' )
 
     nprocs_old = product( node_partition_old )
 
@@ -578,9 +576,6 @@ contains
     deallocate( w_old )
     deallocate( Ispin_old, Ibzsm_old, Iband_old )
     deallocate( Igrd3_old, Igrd2_old, Igrd1_old )
-
-    call watchb( tt(:,1), barrier='on' )
-    if ( myrank == 0 ) write(*,'(1x,"time(read):",2f10.3)') (tt(i,1)-tt(i,0),i=1,2)
 
     call write_border( 0, ' read_data_cpmd_k_para_arb(end)' )
 

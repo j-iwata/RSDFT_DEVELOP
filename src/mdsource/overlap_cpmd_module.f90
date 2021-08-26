@@ -6,14 +6,15 @@ module overlap_cpmd_module
   use cpmd_variables, only: wrk,tau,sig,MBC,MBT,psi_n,psi_v,ir_band_cpmd,id_band_cpmd
   use watch_module
   use calc_overlap_bp_module
+  use calc_overlap_bp2_module, only: calc_overlap_bp2
   use rsdft_mpi_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: overlap2, overlap4, overlap5
+  private
+  public :: overlap2, overlap4, overlap5
 
-CONTAINS
+contains
 
 
   subroutine overlap2(s,k)
@@ -30,7 +31,8 @@ CONTAINS
 
     !call watchb( ttmp, tttt(:,1), barrier="on" )
 
-    call calc_overlap_bp( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
+    ! call calc_overlap_bp( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
+    call calc_overlap_bp2( MBT, psi_n(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, sig )
 
     !call watchb( ttmp, tttt(:,2), barrier="on" )
 
@@ -67,7 +69,8 @@ CONTAINS
 
     !call watchb( ttmp, tttt(:,1), barrier="on" )
 
-    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
+    ! call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
+    call calc_overlap_bp2( MBT, unk(:,m1:m2,k,s), psi_n(:,m1:m2,k,s), -dV, tau )
 
     !call watchb( ttmp, tttt(:,2), barrier="on" )
 
@@ -104,7 +107,8 @@ CONTAINS
 
     !call watchb( ttmp, tttt(:,1), barrier="on" )
 
-    call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
+    ! call calc_overlap_bp( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
+    call calc_overlap_bp2( MBT, unk(:,m1:m2,k,s), psi_v(:,m1:m2,k,s), dV, wrk )
 
     !call watchb( ttmp, tttt(:,2), barrier="on" )
 

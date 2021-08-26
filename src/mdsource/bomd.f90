@@ -219,10 +219,8 @@ SUBROUTINE bomd
 
 ! --- loop start
 
-  ltmp=.false.
-  call check_disp_switch( ltmp, 1 )
-
-  disp_switch = .false.
+  disp_switch=.false.
+  call check_disp_switch( disp_switch, 1 )
 
   do itime=1,nstep
 
