@@ -17,9 +17,7 @@ MODULE atomopt_module
   use eion_mol_module
   use vdw_grimme_module
   use efield_module
-  !--- begin MIZUHO-IR for cellopt
   use aa_module, only: ax, aa, Va
-  use stress_module, only: calc_stress
   use rgrid_module, only: Ngrid,Hgrid,Igrid,dV,Init_Rgrid,InitParallel_Rgrid
   use ggrid_module, only: Init_Ggrid,InitParallel_Ggrid,Gcut
   use kinetic_variables, only: Md, ggg, SYStype
@@ -31,7 +29,6 @@ MODULE atomopt_module
   use pseudopot_module, only: read_pseudopot, pselect
   use lattice_module, only: lattice, backup_aa_lattice, construct_lattice
   use aa_module, only: init_aa
-  !--- end MIZUHO-IR for cellopt
   use atomopt_rf2_module
   use atomopt_ef_module
   use atomopt_rf_module
@@ -192,7 +189,6 @@ CONTAINS
     real(8),allocatable :: Force(:,:),aa_atom_0(:,:)
     real(8),allocatable :: gi(:,:),hi(:,:)
     character(22) :: loop_info
-    real(8) :: stress(3,3)
     integer :: dim_opt
     type(lattice) :: aa_obj
 
@@ -230,16 +226,6 @@ CONTAINS
          call calc_force( Natom, Force, unit=unit198 )
        else       
          call calc_force( Natom, Force )
-       end if
-       if( .not. iswitch_opt >= 1 ) then
-          Force(:,1:Natom) = 0.0d0
-       end if
-       if( iswitch_latopt >= 1 ) then
-          call calc_total_energy( .false., Etot )
-          call calc_stress( stress )
-          Force(:,Natom+1) = Va/M_2PI*matmul( stress(:,:), bb(:,1) )
-          Force(:,Natom+2) = Va/M_2PI*matmul( stress(:,:), bb(:,2) )
-          Force(:,Natom+3) = Va/M_2PI*matmul( stress(:,:), bb(:,3) )
        end if
 
        Fmax=0.d0
@@ -797,17 +783,6 @@ CONTAINS
           else
              call calc_force( Natom, Force )
           end if
-          ! MIZUHO-IR for cellopt
-          if( .not. iswitch_opt >= 1 ) then
-             Force(:,1:Natom) = 0.0d0
-          end if
-          ! MIZUHO-IR for cellopt
-          if( iswitch_latopt >= 1 ) then
-             call calc_stress( stress )
-             Force(:,Natom+1) = Va/M_2PI*matmul( stress(:,:), bb(:,1) )
-             Force(:,Natom+2) = Va/M_2PI*matmul( stress(:,:), bb(:,2) )
-             Force(:,Natom+3) = Va/M_2PI*matmul( stress(:,:), bb(:,3) )
-          end if
 
           if ( disp_switch_loc ) then
              write(*,'(1x,"# Force (total)")')
@@ -826,7 +801,6 @@ CONTAINS
                    write(*,'(1x,i4,i3,3g21.12)') a,ki_atom(a),force(:,a)
                 end do
              end if
-             ! MIZUHO-IR for cellopt
              if( iswitch_latopt >= 1 ) then
                 write(*,'(1x,a4,3f15.5)') "A",force(:,Natom+1)
                 write(*,'(1x,a4,3f15.5)') "B",force(:,Natom+2)

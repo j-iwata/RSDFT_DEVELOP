@@ -496,6 +496,7 @@ contains
 
 
   subroutine calc_range_omp( nb, nz, nb_0, nb_1, nz_0, nz_1 )
+    !$ use omp_lib
     implicit none
     integer,intent(in)  :: nb, nz
     integer,intent(out) :: nb_0,nb_1,nz_0,nz_1

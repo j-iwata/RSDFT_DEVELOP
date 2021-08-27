@@ -32,7 +32,6 @@ MODS2 = localpot_module.o\
         force_correction_module.o\
         force_module.o\
         test_force_module.o\
-        stress_module.o\
         linear_response_module.o\
         current_module.o\
         rtddft_sol_module.o\

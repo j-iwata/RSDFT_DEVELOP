@@ -60,7 +60,6 @@ PROGRAM Real_Space_DFT
 
   use vdw_grimme_module
   use efield_module
-  use stress_module, only: test_stress ! MIZUHO-IR for cellopt
   use linear_response_module
   use kinetic_sym_ini_module
   use kinetic_allgatherv_module, only: init_kinetic_allgatherv
@@ -556,10 +555,6 @@ PROGRAM Real_Space_DFT
 !
   if( iswitch_opt == -1 ) then
      call test_force( SYStype, DISP_SWITCH )
-  end if
-
-  if( iswitch_latopt == -1 ) then
-     call test_stress(SYStype)
   end if
 
   if( iswitch_opt >= 1 .or. iswitch_latopt >= 1 ) then
