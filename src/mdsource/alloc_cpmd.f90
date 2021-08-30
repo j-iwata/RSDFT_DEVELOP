@@ -5,12 +5,10 @@
 subroutine alloc_md
   use cpmd_variables, only: Rion,Velocity,Force,MI
   implicit none 
-  if ( .not.allocated(Rion) ) then
-     allocate( Rion(3,MI) )
-  end if
+  if ( .not.allocated(Rion) ) allocate( Rion(3,MI) )
   Rion=0.0d0
-  allocate( Velocity(3,MI) ) ; Velocity=0.0d0
-  allocate(    Force(3,MI) ) ; Force   =0.0d0
+  allocate( Velocity(3,MI) ); Velocity=0.0d0
+  allocate(    Force(3,MI) ); Force=0.0d0
   return
 end subroutine alloc_md
 
@@ -26,49 +24,46 @@ end subroutine dealloc_md
 
 
 subroutine alloc_cpmd
-  use array_bound_module, only: MB,MBZ_0,MBZ_1,MSP_0,MSP_1
+  use array_bound_module, only: MB,MBZ_0,MBZ_1,MSP_0,MSP_1,ML_0,ML_1
   use cpmd_variables, only: tau,sig,gam,gamn,scr,wrk,psi_n,psi_v,MBC &
-                           ,ircnt,idisp,myrank,nprocs &
+                           ,nprocs &
                            ,MB_0_CPMD,MB_1_CPMD
   implicit none 
-  integer,allocatable :: ir_i(:),id_i(:)
-  integer ls,le,li,i,k,n,n1,n2
+  ! integer,allocatable :: ir_i(:),id_i(:)
+  ! integer ls,le,li,i,k,n
   logical :: lblas
 
-!  lblas=.false.
   lblas=.true.
 
   if ( lblas ) then
-     allocate( tau(MBC,MBC), sig(MBC,MBC) )
-     allocate( gam(MBC,MBC),gamn(MBC,MBC) )
-     allocate( scr(MBC,MBC), wrk(MBC,MBC) )
+    allocate( tau(MBC,MBC), sig(MBC,MBC) )
+    allocate( gam(MBC,MBC),gamn(MBC,MBC) )
+    allocate( scr(MBC,MBC), wrk(MBC,MBC) )
   else
-     allocate( id_i(0:nprocs-1),ir_i(0:nprocs-1) )
-     ir_i(:)=0
-     do i=1,MBC
-        k=mod(i-1,nprocs)
-        ir_i(k)=ir_i(k)+1
-     end do
-     do k=0,nprocs-1
-        id_i(k)=sum(ir_i(0:k))-ir_i(k)
-     end do
-     ls=id_i(myrank)+1
-     le=id_i(myrank)+ir_i(myrank)
-     li=ir_i(myrank)
-     deallocate( id_i,ir_i )
-     allocate( tau(MBC,ls:le), sig(MBC,ls:le) )
-     allocate( gam(MBC,ls:le),gamn(MBC,ls:le) )
-     allocate( scr(MBC,ls:le), wrk(MBC,MBC)   )
+    ! allocate( id_i(0:nprocs-1),ir_i(0:nprocs-1) )
+    ! ir_i(:)=0
+    ! do i=1,MBC
+    !   k=mod(i-1,nprocs)
+    !   ir_i(k)=ir_i(k)+1
+    ! end do
+    ! do k=0,nprocs-1
+    !   id_i(k)=sum(ir_i(0:k))-ir_i(k)
+    ! end do
+    ! ls=id_i(myrank)+1
+    ! le=id_i(myrank)+ir_i(myrank)
+    ! li=ir_i(myrank)
+    ! deallocate( id_i,ir_i )
+    ! allocate( tau(MBC,ls:le), sig(MBC,ls:le) )
+    ! allocate( gam(MBC,ls:le),gamn(MBC,ls:le) )
+    ! allocate( scr(MBC,ls:le), wrk(MBC,MBC)   )
   endif
   tau=0.0d0 ; sig =0.0d0
   gam=0.0d0 ; gamn=0.0d0
   scr=0.0d0 ; wrk =0.0d0
-  n1=idisp(myrank)+1
-  n2=idisp(myrank)+ircnt(myrank)
-!  allocate( psi_v(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-!  allocate( psi_n(n1:n2,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-  allocate( psi_v(n1:n2,MB_0_CPMD:MB_1_CPMD,MBZ_0:MBZ_1,MSP_0:MSP_1) )
-  allocate( psi_n(n1:n2,MB_0_CPMD:MB_1_CPMD,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+!  allocate( psi_v(ML_0:ML_1,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+!  allocate( psi_n(ML_0:ML_1,MB,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+  allocate( psi_v(ML_0:ML_1,MB_0_CPMD:MB_1_CPMD,MBZ_0:MBZ_1,MSP_0:MSP_1) )
+  allocate( psi_n(ML_0:ML_1,MB_0_CPMD:MB_1_CPMD,MBZ_0:MBZ_1,MSP_0:MSP_1) )
   psi_v=0.0d0
   psi_n=0.0d0
   return

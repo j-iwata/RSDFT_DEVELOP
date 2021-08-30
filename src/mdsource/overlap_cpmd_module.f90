@@ -38,7 +38,7 @@ contains
 
 !$OMP parallel do
     do i=1,MBC
-       sig(i,i) = sig(i,i) + 1.0d0
+      sig(i,i) = sig(i,i) + 1.0d0
     end do
 !$OMP end parallel do
 
@@ -76,7 +76,7 @@ contains
 
 !$OMP parallel do
     do i=1,MBC
-       tau(i,i) = tau(i,i) + 1.0d0
+      tau(i,i) = tau(i,i) + 1.0d0
     end do
 !$OMP end parallel do
 

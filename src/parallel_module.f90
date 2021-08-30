@@ -44,6 +44,7 @@ module parallel_module
   integer :: comm_bzsm, myrank_k, nprocs_k, np_bzsm
   integer :: comm_fkmb, myrank_f, nprocs_f, np_fkmb
   integer :: comm_bks
+  integer :: comm_gb
   integer :: MB_d, MB_d_nl
   integer,allocatable :: id_class(:,:),ircnt(:),idisp(:)
   integer,allocatable :: ir_grid(:),id_grid(:)
@@ -77,6 +78,7 @@ module parallel_module
   end type pinfo
 
   type(pinfo),private :: ParaInfo(6)
+  integer,private :: nprocs_bks, nprocs_gb
 
 contains
 
@@ -545,24 +547,33 @@ contains
     call mpi_comm_rank(comm_fkmb,myrank_f,ierr)
     call mpi_comm_size(comm_fkmb,nprocs_f,ierr)
 
-! ---
+! --- Communicator of band + k + spin
 
     icolor = myrank_g
     call MPI_Comm_split( MPI_COMM_WORLD, icolor, myrank, comm_bks, ierr )
     call construct_ParaInfo( ParaInfo(6), comm_bks )
+    call MPI_Comm_size( comm_bks, nprocs_bks, ierr )
+
+! --- Communicator of grid + band
+
+    icolor = myrank_k + myrank_s*nprocs_k
+    call MPI_Comm_split( MPI_COMM_WORLD, icolor, myrank, comm_gb, ierr )
+    call MPI_Comm_size( comm_gb, nprocs_gb, ierr )
 
     if ( disp_switch_parallel ) then
-       write(*,*) "comm_world, nprocs   =",MPI_COMM_WORLD,nprocs
-       write(*,*) "comm_grid,  nprocs_g =",comm_grid,nprocs_g
-       write(*,*) "comm_band,  nprocs_b =",comm_band,nprocs_b
-       write(*,*) "comm_bzsm,  nprocs_k =",comm_bzsm,nprocs_k
-       write(*,*) "comm_spin,  nprocs_s =",comm_spin,nprocs_s
-       write(*,*) "comm_fkmb,  nprocs_f =",comm_fkmb,nprocs_f
+      write(*,*) "comm_world, nprocs     =",MPI_COMM_WORLD,nprocs
+      write(*,*) "comm_grid,  nprocs_g   =",comm_grid, nprocs_g
+      write(*,*) "comm_band,  nprocs_b   =",comm_band, nprocs_b
+      write(*,*) "comm_bzsm,  nprocs_k   =",comm_bzsm, nprocs_k
+      write(*,*) "comm_spin,  nprocs_s   =",comm_spin, nprocs_s
+      write(*,*) "comm_fkmb,  nprocs_f   =",comm_fkmb, nprocs_f
+      write(*,*) "comm_bks ,  nprocs_bks =",comm_bks , nprocs_bks
+      write(*,*) "comm_gb  ,  nprocs_gb  =",comm_gb  , nprocs_gb
     end if
 
     if ( myrank_g /= id_class(myrank,0) ) then
-       write(*,*) "myrank,myrank_g=",myrank,myrank_g
-       stop
+      write(*,*) "myrank,myrank_g=",myrank,myrank_g
+      stop
     end if
 
 ! --- band bundle ---
