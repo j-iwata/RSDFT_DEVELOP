@@ -34,11 +34,13 @@ contains
     implicit none
     integer :: i,j,k,ompblock,ompblock0,mm
 
+    !$omp single
     call write_border( 0, " z_init_op_ps_nloc2_hp(start)" )
+    !$omp end single
 
     mm = Igrid(2,0) - Igrid(1,0) + 1
 
-!$omp parallel private( i,j,k,ompblock,ompblock0 )
+!!$omp parallel private( i,j,k,ompblock,ompblock0 )
 
     ompnprocs = 1
 !$  ompnprocs = omp_get_num_threads()
@@ -129,11 +131,13 @@ contains
       end do
     end do
 
-!$omp end parallel
+!!$omp end parallel
 
+    !$omp single
     init_done = .true.
   
     call write_border( 0, " z_init_op_ps_nloc2_hp(end)" )
+    !$omp end single
 
   end subroutine z_init_op_ps_nloc2_hp
 
@@ -363,8 +367,8 @@ contains
     use rgrid_module, only: Igrid, dV
     use rgrid_mol_module, only: iswitch_eqdiv
     use ps_nloc2_variables, only: Mlma, MJJ, JJP, z_uVk, z_uVunk, z_uVunk0, iuV, &
-                                  num_2_rank, lma_nsend, sendmap, recvmap, &
-                                  z_sbufnl1, z_rbufnl1, nrlma_xyz
+                                  num_2_rank, lma_nsend, z_sbufnl1, z_rbufnl1, &
+                                  sendmap, recvmap, nrlma_xyz
     use parallel_module, only: comm_grid
     implicit none
     real(8),intent(in) :: tpsi(:,n:)
@@ -440,14 +444,16 @@ contains
 !$omp barrier
 !$omp master
             nreq=nreq+1
-            call MPI_Isend(z_sbufnl1,lmani*nb,MPI_COMPLEX16,irank,1,comm_grid,ireq(nreq),ierr)
+            call MPI_Isend(z_sbufnl1,lmani*nb &
+            ,MPI_COMPLEX16,irank,1,comm_grid,ireq(nreq),ierr)
 !$omp end master
           end if
 !$omp master
           if ( jrank >= 0 ) then
             lmanj = lma_nsend(jrank)
             nreq=nreq+1
-            call MPI_Irecv(z_rbufnl1,lmanj*nb,MPI_COMPLEX16,jrank,1,comm_grid,ireq(nreq),ierr)
+            call MPI_Irecv(z_rbufnl1,lmanj*nb &
+            ,MPI_COMPLEX16,jrank,1,comm_grid,ireq(nreq),ierr)
           end if
           call MPI_Waitall(nreq,ireq,istatus,ierr)
 !$omp end master
@@ -550,8 +556,7 @@ contains
 
 
   subroutine comm_eqdiv_ps_nloc2_mol( uVunk )
-    use ps_nloc2_variables, only: lma_nsend, z_sbufnl, z_rbufnl, sendmap, recvmap, &
-                                  z_uVunk
+    use ps_nloc2_variables, only: lma_nsend, z_sbufnl, z_rbufnl, sendmap, recvmap, z_uVunk
     use parallel_module, only: nprocs_g, myrank_g, comm_grid
     implicit none
     complex(8),intent(inout) :: uVunk(:,:)

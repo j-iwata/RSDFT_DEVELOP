@@ -62,6 +62,7 @@ SUBROUTINE bomd
 
   if ( lblue ) call read_blue
 
+  Etot        = 0.0d0
   tote0       = 0.0d0
   MI          = Natom
   disp_switch = (myrank==0)

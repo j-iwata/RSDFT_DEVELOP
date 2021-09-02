@@ -35,11 +35,13 @@ contains
     implicit none
     integer :: i,j,k,ompblock,ompblock0,mm
 
+    !$omp single
     call write_border( 0, " d_init_op_ps_nloc2_hp(start)" )
+    !$omp end single
 
     mm = Igrid(2,0) - Igrid(1,0) + 1
 
-!$omp parallel private( i,j,k,ompblock,ompblock0 )
+!!$omp parallel private( i,j,k,ompblock,ompblock0 )
 
     ompnprocs = 1
 !$  ompnprocs = omp_get_num_threads()
@@ -130,11 +132,13 @@ contains
       end do
     end do
 
-!$omp end parallel
+!!$omp end parallel
 
+    !$omp single
     init_done = .true.
 
     call write_border( 0, " d_init_op_ps_nloc2_hp(end)" )
+    !$omp end single
 
   end subroutine d_init_op_ps_nloc2_hp
 
@@ -462,7 +466,6 @@ contains
             do i1 = n_0, n_1
               i2 = i1 + (ib-1)*lmanj
               i3 = recvmap(i1,jrank)
-              !d_uVunk(i3,ib) = d_uVunk(i3,ib) + rbufnl(i2,jrank)
               d_uVunk(i3,ib) = d_uVunk(i3,ib) + d_rbufnl1(i2)
             end do
             end do
@@ -603,4 +606,3 @@ contains
 
 
 end module d_ps_nloc2_op_module
-

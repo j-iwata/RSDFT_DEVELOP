@@ -30,6 +30,7 @@ contains
     integer,intent(out) :: indx(n)
     integer,parameter :: m=7,nstck=50
     integer :: i,j,k,ll,jstck,jndx,lndx,ir,istck(nstck),loop0,loop1
+    integer :: ibackup
     real(8) :: arrj,arrl
     do i=1,n
       indx(i)=i
@@ -55,15 +56,27 @@ contains
         jstck=jstck-2
       else
         k=(ll+ir)/2
-        call iswap( indx(k), indx(ll+1) )
+        !call iswap( indx(k), indx(ll+1) )
+        ibackup=indx(k)
+        indx(k)=indx(ll+1)
+        indx(ll+1)=ibackup
         if ( arr(indx(ll+1)) > arr(indx(ir)) ) then
-          call iswap( indx(ll+1), indx(ir) )
+          !call iswap( indx(ll+1), indx(ir) )
+          ibackup=indx(ll+1)
+          indx(ll+1)=indx(ir)
+          indx(ir)=ibackup
         end if
         if ( arr(indx(ll)) > arr(indx(ir)) ) then
-          call iswap( indx(ll), indx(ir) )
+          !call iswap( indx(ll), indx(ir) )
+          ibackup=indx(ll)
+          indx(ll)=indx(ir)
+          indx(ir)=ibackup
         end if
         if ( arr(indx(ll+1)) > arr(indx(ll)) ) then
-          call iswap( indx(ll+1), indx(ll) )
+          !call iswap( indx(ll+1), indx(ll) )
+          ibackup=indx(ll+1)
+          indx(ll+1)=indx(ll)
+          indx(ll)=ibackup
         end if
         i=ll+1
         j=ir
@@ -77,7 +90,10 @@ contains
             j=j-1
           end do
           if ( j < i ) exit
-          call iswap( indx(i), indx(j) )
+          !call iswap( indx(i), indx(j) )
+          ibackup=indx(i)
+          indx(i)=indx(j)
+          indx(j)=ibackup
         end do ! loop1
         indx(ll)=indx(j)
         indx(j )=lndx
@@ -104,6 +120,7 @@ contains
     integer,intent(out) :: indx(ndat)
     integer :: ilayer,iboss,jlayer,jboss,kboss
     integer :: i,i1,i2,max_layer,loop,ndat_max
+    integer :: ibackup
     integer,allocatable :: irslt(:)
     logical :: flag_boss_change
     real(8) :: arry_max
@@ -136,7 +153,10 @@ contains
           if ( i > ndat ) exit loop_boss
 
           if ( arry(indx(i)) < arry(indx(iboss)) ) then
-            call iswap( indx(iboss), indx(i) )
+            !call iswap( indx(iboss), indx(i) )
+            ibackup=indx(iboss)
+            indx(iboss)=indx(i)
+            indx(i)=ibackup
             flag_boss_change = .true.
           end if
 
@@ -145,14 +165,20 @@ contains
             do jlayer=ilayer-1,2,-1
               do jboss=2**(jlayer-2),2**(jlayer-1)-1
                 if ( arry(indx(kboss)) < arry(indx(jboss)) ) then
-                  call iswap( indx(jboss), indx(kboss) )
+                  !call iswap( indx(jboss), indx(kboss) )
+                  ibackup=indx(jboss)
+                  indx(jboss)=indx(kboss)
+                  indx(kboss)=ibackup
                   kboss = jboss
                   exit
                 end if
               end do ! jboss
             end do ! jlayer
             if ( arry(indx(kboss)) < arry(indx(1)) ) then
-              call iswap( indx(1), indx(kboss) )
+              !call iswap( indx(1), indx(kboss) )
+              ibackup=indx(1)
+              indx(1)=indx(kboss)
+              indx(kboss)=ibackup
             end if
           end if
 
@@ -180,23 +206,38 @@ contains
         if ( i1 > ndat ) then
             exit
         else if ( i1 <= ndat .and. i2 > ndat ) then
-            call iswap( indx(jboss), indx(i1) )
+            !call iswap( indx(jboss), indx(i1) )
+            ibackup=indx(jboss)
+            indx(jboss)=indx(i1)
+            indx(i1)=ibackup
             exit
         end if
 
         if ( indx(i1) < 0 .and. indx(i2) < 0 ) then
             exit
         else if ( indx(i1) > 0 .and. indx(i2) < 0 ) then
-            call iswap( indx(jboss), indx(i1) )
+            !call iswap( indx(jboss), indx(i1) )
+            ibackup=indx(jboss)
+            indx(jboss)=indx(i1)
+            indx(i1)=ibackup
             jboss=i1
         else if ( indx(i1) < 0 .and. indx(i2) > 0 ) then
-            call iswap( indx(jboss), indx(i2) )
+            !call iswap( indx(jboss), indx(i2) )
+            ibackup=indx(jboss)
+            indx(jboss)=indx(i2)
+            indx(i2)=ibackup
             jboss=i2
         else if ( arry(indx(i1)) < arry(indx(i2)) ) then
-            call iswap( indx(jboss), indx(i1) )
+            !call iswap( indx(jboss), indx(i1) )
+            ibackup=indx(jboss)
+            indx(jboss)=indx(i1)
+            indx(i1)=ibackup
             jboss=i1
         else
-            call iswap( indx(jboss), indx(i2) )
+            !call iswap( indx(jboss), indx(i2) )
+            ibackup=indx(jboss)
+            indx(jboss)=indx(i2)
+            indx(i2)=ibackup
             jboss=i2
         end if
 
@@ -210,14 +251,14 @@ contains
 
   end subroutine indexx_1
 
-  subroutine iswap( i, j )
-    implicit none
-    integer,intent(inout) :: i,j
-    integer :: k
-    k=i
-    i=j
-    j=k
-  end subroutine iswap
+  !subroutine iswap( i, j )
+  !  implicit none
+  !  integer,intent(inout) :: i,j
+  !  integer :: k
+  !  k=i
+  !  i=j
+  !  j=k
+  !end subroutine iswap
 
 
   subroutine ascending_sort_indexx_2( ndat, arry, indx )
