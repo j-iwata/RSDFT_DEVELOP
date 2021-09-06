@@ -22,6 +22,7 @@ contains
     use parallel_module, only: comm_band, np_band, myrank_b, myrank
     use cpmd_variables, only: id_band_cpmd, ir_band_cpmd
     use rsdft_allreduce_module, only: rsdft_allreduce
+    use calc_overlap_module, only: calc_overlap
     implicit none
     integer,intent(in)  :: nb !フルのバンドサイズ
     real(8),intent(in)  :: a(:,:), b(:,:)
@@ -31,7 +32,7 @@ contains
     integer :: ng
     integer :: nblk0, nblk0_size, nblk1, nblk1_size, iblk1
     integer :: mb0,mb1,nb0,nb1,ib0,ib1,jb0,jb1
-    integer :: m,n,nblk,blk_size
+    integer :: m,n,nblk,blk_size,nib,njb,mib
     integer :: ib,i0,i1,j0,j1,i,j,iblk,k0,k1,b0,b1,l0,l1
     integer :: irank_send, irank_recv, istep, nstep, irank
     integer,allocatable :: ndata_recv(:), ndata_send(:)
@@ -39,11 +40,14 @@ contains
     real(8) :: ttmp(2),tttt(2,0:15)
     real(8),allocatable :: f_send(:,:), f_recv(:,:)
     real(8) :: tmp1,tmp2
+    real(8),parameter :: z0=0.0d0
 
     ! call write_border( 1, ' calc_overlap_bp2(start)' )
     ! tttt=0.0d0; call watchb( tttt(:,0), barrier='on' )
 
     ab(:,:)=0.0d0
+
+    ng = size( a, 1 ) !(並列分割された)グリッドサイズ
 
     nstep = np_band/2 !左隣にsendする回数
 
@@ -60,28 +64,33 @@ contains
     nblk1_size = ( nblk0_size + nblk1 - 1 )/nblk1
 
     if ( nstep == 0 ) then
-      do iblk1 = 1, nblk1
-        jb0 = nb0 + (iblk1-1)*nblk1_size
-        jb1 = min( jb0 + nblk1_size - 1, nb1 )
-        ib0 = jb0
-        ib1 = jb1
-        do j = jb0, jb1
-          j0 = j - nb0 + 1
-          do i = j, ib1
-            i0 = i - nb0 + 1
-            ab(i,j) = sum( a(:,i0)*b(:,j0) )*alpha
-            ab(j,i) = ab(i,j)
-          end do
-        end do
-      end do !iblk1
-      call rsdft_allreduce( ab, 'g' )
-      ! call watchb( tttt(:,1), barrier='on' )
-      ! if ( myrank == 0 ) write(*,'(1x,"time:",2f10.3)') (tttt(i,1)-tttt(i,0),i=1,2)
-      ! call write_border( 0, ' calc_overlap_bp2(return)' )
+      ! do iblk1 = 1, nblk1
+      !   jb0 = nb0 + (iblk1-1)*nblk1_size
+      !   jb1 = min( jb0 + nblk1_size - 1, nb1 )
+      !   ib0 = jb0
+      !   ib1 = jb1
+      !   njb = jb1 - jb0 + 1
+      !   nib = njb
+      !   ! do j = jb0, jb1
+      !   !   j0 = j - nb0 + 1
+      !   !   do i = j, ib1
+      !   !     i0 = i - nb0 + 1
+      !   !     ab(i,j) = sum( a(:,i0)*b(:,j0) )*alpha
+      !   !     ab(j,i) = ab(i,j)
+      !   !   end do
+      !   ! end do
+      !   call DGEMM('T','N',nib,njb,ng,alpha,a(1,ib0),ng,b(1,jb0),ng,z0,ab(ib0,jb0),nb)
+      ! end do !iblk1
+      ! call rsdft_allreduce( ab, 'g' )
+      ! ! call watchb( tttt(:,1), barrier='on' )
+      ! ! if ( myrank == 0 ) write(*,'(1x,"time:",2f10.3)') (tttt(i,1)-tttt(i,0),i=1,2)
+      ! ! call write_border( 0, ' calc_overlap_bp2(return)' )
+      ! return
+      !
+      call calc_overlap( ng, nb, a, b, alpha, ab )
       return
+      !
     end if
-
-    ng = size( a, 1 ) !(並列分割された)グリッドサイズ
 
     n = maxval( ir_band_cpmd )
     allocate( f_send(ng,n) ); f_send=0.0d0
@@ -116,27 +125,36 @@ contains
           jb1 = min( jb0 + nblk1_size - 1, nb1 )
           ib0 = jb0
           ib1 = jb1
-          do j = jb0, jb1
-            j0 = j - nb0 + 1
-            do i = j, ib1
-              i0 = i - nb0 + 1
-              ab(i,j) = sum( a(:,i0)*b(:,j0) )*alpha
-            end do
-          end do
+          njb = jb1 - jb0 + 1
+          nib = njb
+          ! do j = jb0, jb1
+          !   j0 = j - nb0 + 1
+          !   do i = j, ib1
+          !     i0 = i - nb0 + 1
+          !     ab(i,j) = sum( a(:,i0)*b(:,j0) )*alpha
+          !   end do
+          ! end do
+          i0 = ib0 - nb0 + 1
+          j0 = jb0 - nb0 + 1
+          call DGEMM('T','N',nib,njb,ng,alpha,a(1,i0),ng,b(1,j0),ng,z0,ab(ib0,jb0),nb)
         end do !iblk1
 
       else ![ istep > 1 ]
 
         mb0 = mod( mb1 + nb, nb ) + 1
         mb1 = mod( mb0 + ndata_recv(istep-1) - 2 + nb, nb ) + 1
-
-        do j = nb0, nb1
-          j0 = j - nb0 + 1
-          do i = mb0, mb1
-            i0 = i - mb0 + 1
-            ab(i,j) = sum( f_recv(:,i0)*b(:,j0) )*alpha
-          end do
-        end do
+        mib = mb1 - mb0 + 1
+        njb = nb1 - nb0 + 1
+        ! do j = nb0, nb1
+        !   j0 = j - nb0 + 1
+        !   do i = mb0, mb1
+        !     i0 = i - mb0 + 1
+        !     ab(i,j) = sum( f_recv(:,i0)*b(:,j0) )*alpha
+        !   end do
+        ! end do
+        i0 = 1
+        j0 = 1
+        call DGEMM('T','N',mib,njb,ng,alpha,f_recv(1,i0),ng,b(1,j0),ng,z0,ab(mb0,nb0),nb)
 
       end if ![ istep == 1 ]
 
@@ -150,15 +168,20 @@ contains
 
     mb0 = mod( mb1 + nb, nb ) + 1
     mb1 = mod( mb0 + ndata_recv(istep-1) - 2 + nb, nb ) + 1
-    
-    do j = nb0, nb1
-      j0 = j - nb0 + 1
-      do i = mb0, mb1
-        i0 = i - mb0 + 1
-        ab(i,j) = sum( f_recv(:,i0)*b(:,j0) )*alpha
-      end do
-    end do
+    mib = mb1 - mb0 + 1
+    njb = nb1 - nb0 + 1
 
+    ! do j = nb0, nb1
+    !   j0 = j - nb0 + 1
+    !   do i = mb0, mb1
+    !     i0 = i - mb0 + 1
+    !     ab(i,j) = sum( f_recv(:,i0)*b(:,j0) )*alpha
+    !   end do
+    ! end do
+    i0 = 1
+    j0 = 1
+    call DGEMM('T','N',mib,njb,ng,alpha,f_recv(1,i0),ng,b(1,j0),ng,z0,ab(mb0,nb0),nb)
+    
     deallocate( f_recv, f_send )
 
     call rsdft_allreduce( ab, 'b' )
