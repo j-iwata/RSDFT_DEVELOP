@@ -1,1 +1,0 @@
-/home/z42816t/rscpmd.x

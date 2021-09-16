@@ -1,0 +1,17 @@
+1) Compile
+
+$ cd src/
+$ cp make.inc.real8.TSUBAME make.inc
+$ module load intel intel-mpi
+$ make
+
+If you want to treat double-complex wave functions, please use make.complex16.TSUBAME.
+
+
+2) Job submit
+
+$ qsub -g group_name runsh
+
+Your group_name can be confirmed with the following command:
+
+$ groups

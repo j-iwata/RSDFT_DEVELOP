@@ -14,11 +14,14 @@ module calc_overlap_bp2_module
   real(8),allocatable :: ab_blk(:,:), tr_blk(:,:)
   real(8),allocatable :: ab_tmp(:,:)
 
+  interface calc_overlap_bp2
+    module procedure d_calc_overlap_bp2, z_calc_overlap_bp2
+  end interface
 
 contains
 
   !DGEMMを使ってないので要修正
-  subroutine calc_overlap_bp2( nb, a, b, alpha, ab )
+  subroutine d_calc_overlap_bp2( nb, a, b, alpha, ab )
     use parallel_module, only: comm_band, np_band, myrank_b, myrank
     use cpmd_variables, only: id_band_cpmd, ir_band_cpmd
     use rsdft_allreduce_module, only: rsdft_allreduce
@@ -203,7 +206,17 @@ contains
     ! if ( myrank == 0 ) write(*,'(1x,"time:",2f10.3)') (tttt(i,1)-tttt(i,0),i=1,2)
     ! call write_border( 1, ' calc_overlap_bp2(end)' )
 
-  end subroutine calc_overlap_bp2
+  end subroutine d_calc_overlap_bp2
+
+
+  subroutine z_calc_overlap_bp2( nb, a, b, alpha, ab )
+    integer,intent(in) :: nb !フルのバンドサイズ
+    complex(8),intent(in) :: a(:,:)
+    real(8),intent(in) :: b(:,:)
+    real(8),intent(in) :: alpha
+    real(8),intent(inout) :: ab(:,:)
+    call stop_program('z_calc_overlap_bp2 is not implemented yet')
+  end subroutine z_calc_overlap_bp2
 
 
 !   subroutine matrix_permutation( a, nblk )

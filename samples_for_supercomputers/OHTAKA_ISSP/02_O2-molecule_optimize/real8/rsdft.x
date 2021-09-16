@@ -1,1 +1,0 @@
-../../rsdft_real8_ohtaka.x
