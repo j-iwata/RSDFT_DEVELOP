@@ -7,6 +7,7 @@ OBJS = xc_variables.o\
        fock_cg_module.o\
        fock_fftw_module.o\
        fock_ffte_module.o\
+       fock_ffte2_module.o\
        fock_fft_module.o\
        fock_module.o\
        xc_hf_module.o\

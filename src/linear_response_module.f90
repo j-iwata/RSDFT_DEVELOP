@@ -2,7 +2,6 @@ MODULE linear_response_module
 
   use momentum_module
   use wf_module
-  use inner_product_module, only: calc_inner_product
   use rgrid_module
   use hamiltonian_module
   use density_module, only: rho
@@ -18,6 +17,10 @@ MODULE linear_response_module
   PUBLIC :: calc_dielectric_constant
 
   logical :: disp_sw
+
+  INTERFACE calc_inner_product
+    MODULE PROCEDURE z_calc_inner_product, d_calc_inner_product
+  END INTERFACE
 
 CONTAINS
 
@@ -356,9 +359,24 @@ CONTAINS
     integer :: n1,n2
     n1=Igrid(1,0)
     n2=Igrid(2,0)
-    call hamiltonian( k, s, x, Ax, n1, n2, 1, 1 )
+    call hamiltonian( x, Ax, n,k,s )
     Ax = Ax - esp(n,k,s)*x
   END SUBROUTINE op_matrix
 
+  SUBROUTINE z_calc_inner_product( u, v, uv )
+    implicit none
+    complex(8),intent(IN)  :: u(:), v(:)
+    complex(8),intent(OUT) :: uv
+    uv = sum( conjg(u)*v )*dV
+    call rsdft_allreduce_sum( uv, comm_grid )
+  END SUBROUTINE z_calc_inner_product
+
+  SUBROUTINE d_calc_inner_product( u, v, uv )
+    implicit none
+    real(8),intent(IN)  :: u(:), v(:)
+    real(8),intent(OUT) :: uv
+    uv = sum( u*v )*dV
+    call rsdft_allreduce_sum( uv, comm_grid )
+  END SUBROUTINE d_calc_inner_product
 
 END MODULE linear_response_module

@@ -198,7 +198,7 @@ CONTAINS
 
           tpsi(:,1) = unk(:,n,k,s)
           do itaylor=1,tddft%nalg
-             call hamiltonian(k,s,tpsi,hpsi,ML_0_WF,ML_1_WF,1,1)
+             call hamiltonian( tpsi, hpsi, n,k,s )
              unk(:,n,k,s) = unk(:,n,k,s) + zcoef(itaylor)*hpsi(:,1)
              tpsi(:,:) = hpsi(:,:)
           end do

@@ -2,7 +2,6 @@ MODULE parameters_module
 
   use global_variables, only: iswitch_tddft, iswitch_scf, iswitch_opt, iswitch_band, iswitch_dos, iswitch_latopt, iswitch_test
   use io_tools_module
-  use ps_initrho_module, only: read_ps_initrho
   use band_module, only: read_band
   use band_unfold_module, only: read_band_unfold
   use xc_hybrid_module, only: read_xc_hybrid
@@ -23,7 +22,6 @@ MODULE parameters_module
   use xc_module
   use sweep_module
   use scf_module
-  use scf_chefsi_module
 
   implicit none
 
@@ -42,8 +40,6 @@ CONTAINS
     call read_bz
 
     call read_scalapack
-
-    call read_ps_initrho
 
     call read_ps_nloc2_init(myrank,unit)
 
@@ -86,10 +82,6 @@ CONTAINS
 
     call read_sweep
     call read_scf
-    select case( iswitch_scf )
-    case( 2 )
-       call read_scf_chefsi( myrank, unit )
-    end select
 
     call read_band
     call read_band_unfold( myrank, unit )

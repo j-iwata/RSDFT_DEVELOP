@@ -51,7 +51,7 @@ CONTAINS
 
     call write_border( 1, " conjugate_gradient_ncol(start)" )
 
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     call init_cg
 
@@ -135,7 +135,7 @@ CONTAINS
 
        do s=1,MS
 #ifndef _DRSDFT_
-          call hamiltonian(k,s,xk(:,:,s),hxk(:,:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
+          call hamiltonian( xk(:,:,s), hxk(:,:,s), n,k,s ) ; Nhpsi=Nhpsi+1
 #endif
        end do
        call hamiltonian_ncol( k, n1,n2, xk, hxk )
@@ -216,7 +216,7 @@ CONTAINS
 
           do s=1,MS
 #ifndef _DRSDFT_
-             call hamiltonian(k,s,pk(:,:,s),hpk(:,:,s),n1,n2,n,n) ; Nhpsi=Nhpsi+1
+             call hamiltonian( pk(:,:,s), hpk(:,:,s), n,k,s ) ; Nhpsi=Nhpsi+1
 #endif
           end do
           call hamiltonian_ncol( k, n1,n2, pk, hpk )

@@ -51,42 +51,42 @@ contains
     allocate( ir_new(0:n-1,3) ); ir_new=0
     allocate( id_new(0:n-1,3) ); id_new=0
     do i1 = 0, ML1-1
-       n = mod( i1, pinfo1%np(1) )
-       ir_new(n,1) = ir_new(n,1) + 1
+      n = mod( i1, pinfo1%np(1) )
+      ir_new(n,1) = ir_new(n,1) + 1
     end do
     do i2 = 0, ML2-1
-       n = mod( i2, pinfo1%np(2) )
-       ir_new(n,2) = ir_new(n,2) + 1
+      n = mod( i2, pinfo1%np(2) )
+      ir_new(n,2) = ir_new(n,2) + 1
     end do
     do i3 = 0, ML3-1
-       n = mod( i3, pinfo1%np(3) )
-       ir_new(n,3) = ir_new(n,3) + 1
+      n = mod( i3, pinfo1%np(3) )
+      ir_new(n,3) = ir_new(n,3) + 1
     end do
     do i = 1, 3
-       do n = 0, pinfo1%np(i)-1
-          id_new(n,i) = sum( ir_new(0:n,i) ) - ir_new(n,i)
-       end do
+      do n = 0, pinfo1%np(i)-1
+        id_new(n,i) = sum( ir_new(0:n,i) ) - ir_new(n,i)
+      end do
     end do
 
     n = maxval( pinfo0%np(1:3) )
     allocate( ir_old(0:n-1,3) ); ir_old=0
     allocate( id_old(0:n-1,3) ); id_old=0
     do i1 = 0, ML1-1
-       n = mod( i1, pinfo0%np(1) )
-       ir_old(n,1) = ir_old(n,1) + 1
+      n = mod( i1, pinfo0%np(1) )
+      ir_old(n,1) = ir_old(n,1) + 1
     end do
     do i2 = 0, ML2-1
-       n = mod( i2, pinfo0%np(2) )
-       ir_old(n,2) = ir_old(n,2) + 1
+      n = mod( i2, pinfo0%np(2) )
+      ir_old(n,2) = ir_old(n,2) + 1
     end do
     do i3 = 0, ML3-1
-       n = mod( i3, pinfo0%np(3) )
-       ir_old(n,3) = ir_old(n,3) + 1
+      n = mod( i3, pinfo0%np(3) )
+      ir_old(n,3) = ir_old(n,3) + 1
     end do
     do i = 1, 3
-       do n = 0, pinfo0%np(i)-1
-          id_old(n,i) = sum( ir_old(0:n,i) ) - ir_old(n,i)
-       end do
+      do n = 0, pinfo0%np(i)-1
+        id_old(n,i) = sum( ir_old(0:n,i) ) - ir_old(n,i)
+      end do
     end do
 
     loop_i3: do i3 = 0, pinfo1%np(3)-1
@@ -110,117 +110,107 @@ contains
 
     n=maxval(pinfo0%grid%ir)
     if ( type_wf == 1 ) then ! real-wf
-       allocate( dtmp(n) ); dtmp=0.0d0
+      allocate( dtmp(n) ); dtmp=0.0d0
     else ! complex-wf
-       allocate( utmp(n) ); utmp=(0.0d0,0.0d0)
+      allocate( utmp(n) ); utmp=(0.0d0,0.0d0)
     end if
 
     irank_old = -1
 
     do p6 = 0, pinfo0%np(6)-1
-       s0 = pinfo0%spin%id(p6)+1
-       s1 = s0 + pinfo0%spin%ir(p6)-1
+      s0 = pinfo0%spin%id(p6)+1
+      s1 = s0 + pinfo0%spin%ir(p6)-1
     do p5 = 0, pinfo0%np(5)-1
-       k0 = pinfo0%bzsm%id(p5)+1
-       k1 = k0 + pinfo0%bzsm%ir(p5)-1
+      k0 = pinfo0%bzsm%id(p5)+1
+      k1 = k0 + pinfo0%bzsm%ir(p5)-1
     do p4 = 0, pinfo0%np(4)-1
-       b0 = pinfo0%band%id(p4)+1
-       b1 = b0 + pinfo0%band%ir(p4)-1
+      b0 = pinfo0%band%id(p4)+1
+      b1 = b0 + pinfo0%band%ir(p4)-1
 
-       irank_g_old = -1
+      irank_g_old = -1
 
-       do p3 = 0, pinfo0%np(3)-1
-          i3_0 = id_old(p3,3)
-          i3_1 = i3_0 + ir_old(p3,3) - 1
-       do p2 = 0, pinfo0%np(2)-1
-          i2_0 = id_old(p2,2)
-          i2_1 = i2_0 + ir_old(p2,2) - 1
-       do p1 = 0, pinfo0%np(1)-1
-          i1_0 = id_old(p1,1)
-          i1_1 = i1_0 + ir_old(p1,1) - 1
+      do p3 = 0, pinfo0%np(3)-1
+        i3_0 = id_old(p3,3)
+        i3_1 = i3_0 + ir_old(p3,3) - 1
+      do p2 = 0, pinfo0%np(2)-1
+        i2_0 = id_old(p2,2)
+        i2_1 = i2_0 + ir_old(p2,2) - 1
+      do p1 = 0, pinfo0%np(1)-1
+        i1_0 = id_old(p1,1)
+        i1_1 = i1_0 + ir_old(p1,1) - 1
 
-          irank_g_old = irank_g_old + 1
-          g0 = pinfo0%grid%id(irank_g_old)+1
-          g1 = g0 + pinfo0%grid%ir(irank_g_old)-1
+        irank_g_old = irank_g_old + 1
+        g0 = pinfo0%grid%id(irank_g_old)+1
+        g1 = g0 + pinfo0%grid%ir(irank_g_old)-1
 
-          irank_old = irank_old + 1
+        irank_old = irank_old + 1
 
-          write(crank,'(i5.5)') irank_old
-          filename = basename//'.'//crank
-          write(*,*) irank_old, filename
+        write(crank,'(i5.5)') irank_old
+        filename = basename//'.'//crank
 
-          if ( ( (s0 <= s2 .and. s2 <= s1) .or. (s0 <= s3 .and. s3 <= s1) ) .and. &
-               ( (k0 <= k2 .and. k2 <= k1) .or. (k0 <= k3 .and. k3 <= k1) ) .and. &
-               ( (b0 <= b2 .and. b2 <= b1) .or. (b0 <= b3 .and. b3 <= b1) ) .and. &
-               ( (i1_0 <= i1_2 .and. i1_2 <= i1_1) .or. (i1_0 <= i1_3 .and. i1_3 <= i1_1) ) .and. &
-               ( (i2_0 <= i2_2 .and. i2_2 <= i2_1) .or. (i2_0 <= i2_3 .and. i2_3 <= i2_1) ) .and. &
-               ( (i3_0 <= i3_2 .and. i3_2 <= i3_1) .or. (i3_0 <= i3_3 .and. i3_3 <= i3_1) ) ) then
+        if ( (s3<s0 .or. s1<s2) .or. (k3<k0 .or. k1<k2) .or. (b3<b0 .or. b1<b2) .or. &
+              (i1_3<i1_0 .or. i1_1<i1_2) .or. (i2_3<i2_0 .or. i2_1<i2_2) .or. &
+              (i3_3<i3_0 .or. i3_1<i3_2) ) cycle
 
-             open(u,file=filename,status='old',form='unformatted')
+        open(u,file=filename,status='old',form='unformatted')
 
-             ng = g1 - g0 + 1
+        ng = g1 - g0 + 1
+        do s = s0, s1
+        do k = k0, k1
+        do b = b0, b1
 
-             do s = s0, s1
-             do k = k0, k1
-             do b = b0, b1
+          if ( s<s2 .or. s3<s .or. k<k2 .or. k3<k .or. b<b2 .or. b3<b ) then
+            read(u)
+            cycle
+          end if
 
-                if ( type_wf == 1 ) then ! real-wf
+          if ( type_wf == 1 ) then ! real-wf
 
-                   read(u) dtmp(1:ng)
+            read(u) dtmp(1:ng)
 
-                   if ( s < s2 .or. s3 < s .or. &
-                        k < k2 .or. k3 < k .or. &
-                        b < b2 .or. b3 < b ) cycle
+            ! if ( s<s2 .or. s3<s .or. k<k2 .or. k3<k .or. b<b2 .or. b3<b ) cycle
 
-                   ig_old=0
-                   do i3 = i3_0, i3_1
-                   do i2 = i2_0, i2_1
-                   do i1 = i1_0, i1_1
-                      ig_old = ig_old + 1
-                      if ( i1 < i1_2 .or. i1_3 < i1 .or. &
-                           i2 < i2_2 .or. i2_3 < i2 .or. &
-                           i3 < i3_2 .or. i3_3 < i3 ) cycle
-                      ig = g2 + i1-i1_2 + n11*(i2-i2_2) + n12*(i3-i3_2)
-                      unk(ig,b,k,s)=dtmp(ig_old)
-                   end do
-                   end do
-                   end do
+            ig_old=0
+            do i3 = i3_0, i3_1
+            do i2 = i2_0, i2_1
+            do i1 = i1_0, i1_1
+              ig_old = ig_old + 1
+              if ( i1<i1_2 .or. i1_3<i1 .or. i2<i2_2 .or. i2_3<i2 .or. i3<i3_2 .or. i3_3<i3 ) cycle
+              ig = g2 + i1-i1_2 + n11*(i2-i2_2) + n12*(i3-i3_2)
+              unk(ig,b,k,s)=dtmp(ig_old)
+            end do
+            end do
+            end do
 
-                else ! complex-wf
+          else ! complex-wf
 
-                   read(u) utmp(1:ng)
+            read(u) utmp(1:ng)
 
-                   if ( s < s2 .or. s3 < s .or. &
-                        k < k2 .or. k3 < k .or. &
-                        b < b2 .or. b3 < b ) cycle
+            ! if ( s<s2 .or. s3<s .or. k<k2 .or. k3<k .or. b<b2 .or. b3<b ) cycle
 
-                   ig_old=0
-                   do i3 = i3_0, i3_1
-                   do i2 = i2_0, i2_1
-                   do i1 = i1_0, i1_1
-                      ig_old = ig_old + 1
-                      if ( i1 < i1_2 .or. i1_3 < i1 .or. &
-                           i2 < i2_2 .or. i2_3 < i2 .or. &
-                           i3 < i3_2 .or. i3_3 < i3 ) cycle
-                      ig = g2 + i1-i1_2 + n11*(i2-i2_2) + n12*(i3-i3_2)
-                      unk(ig,b,k,s)=utmp(ig_old)
-                   end do
-                   end do
-                   end do
-
-                end if
-
-             end do !b
-             end do !k
-             end do !s
-
-             close(u)
+            ig_old=0
+            do i3 = i3_0, i3_1
+            do i2 = i2_0, i2_1
+            do i1 = i1_0, i1_1
+              ig_old = ig_old + 1
+              if ( i1<i1_2 .or. i1_3<i1 .or. i2<i2_2 .or. i2_3<i2 .or. i3<i3_2 .or. i3_3<i3 ) cycle
+              ig = g2 + i1-i1_2 + n11*(i2-i2_2) + n12*(i3-i3_2)
+              unk(ig,b,k,s)=utmp(ig_old)
+            end do
+            end do
+            end do
 
           end if
 
-       end do !p1
-       end do !p2
-       end do !p3
+        end do !b
+        end do !k
+        end do !s
+
+        close(u)
+
+      end do !p1
+      end do !p2
+      end do !p3
 
     end do !p4
     end do !p5
@@ -235,7 +225,7 @@ contains
 
     call watchb( ttmp, tt, barrier='on' )
     if ( disp ) then
-       write(*,*) "time(read_wf_general)=",tt
+      write(*,*) "time(read_wf_general)=",tt
     end if
     call write_border( 0, " read_wf_general(end)" )
 

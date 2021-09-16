@@ -21,11 +21,14 @@ MODULE ps_nloc_mr_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: prep_ps_nloc_mr &
-           ,op_ps_nloc_mr,calc_force_ps_nloc_mr &
-           ,prep_uvk_ps_nloc_mr,prep_rvk_ps_nloc_mr
-  PUBLIC :: prep_uvkso_ps_nloc_mr
+  private
+  public :: prep_ps_nloc_mr
+  public :: d_op_ps_nloc_mr
+  public :: z_op_ps_nloc_mr
+  public :: calc_force_ps_nloc_mr
+  public :: prep_uvk_ps_nloc_mr
+  public :: prep_rvk_ps_nloc_mr
+  public :: prep_uvkso_ps_nloc_mr
 
   real(8),allocatable :: y2a(:,:,:),y2b(:,:,:)
   integer,allocatable :: ilm1(:,:,:)
@@ -1153,131 +1156,217 @@ CONTAINS
   END SUBROUTINE prep_uvkso_ps_nloc_mr
 
 
-  SUBROUTINE op_ps_nloc_mr( tpsi, htpsi, k_in )
+  subroutine d_op_ps_nloc_mr( tpsi, htpsi, n_in, k_in, s_in )
     implicit none
-#ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(:,:)
-    real(8),intent(INOUT) :: htpsi(:,:)
+    real(8),intent(in) :: tpsi(:,:)
+    real(8),intent(inout) :: htpsi(:,:)
+    integer,optional,intent(in) :: n_in, k_in, s_in
     real(8),allocatable :: uVunk(:,:),uVunk0(:,:)
-#else
-    complex(8),intent(IN)  :: tpsi(:,:)
-    complex(8),intent(INOUT) :: htpsi(:,:)
-    complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
-#endif
-    integer,optional,intent(IN) :: k_in
-    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq,lma1,lma2,i0,k
-    integer :: irank,jrank,istatus(mpi_status_size,512),ireq(512)
-    complex(8) :: zc
+    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq,lma1,lma2,i0,n,k,s
+    include 'mpif.h'
+    integer :: irank,jrank,istatus(MPI_STATUS_SIZE,512),ireq(512)
 
     nb = size( tpsi, 2 )
     i0 = Igrid(1,0)
-    k  = 1 ; if ( present(k_in) ) k=k_in
+
+    n = 1 ; if ( present(n_in) ) n = n_in
+    k = 1 ; if ( present(k_in) ) k = k_in
+    s = 1 ; if ( present(s_in) ) s = s_in
 
     if ( Mlma <= 0 ) return
 
-    allocate( uVunk(nzlma,nb),uVunk0(nzlma,nb) )
+    allocate( uVunk(nzlma,nb)  ); uVunk=0.0d0
+    allocate( uVunk0(nzlma,nb) ); uVunk0=0.0d0
 
-!$OMP parallel
+!$omp parallel
 
-    do ib=1,nb
-!$OMP do
-       do lma=1,nzlma
-          uVunk(lma,ib)=zero
-          do j=1,MJJ(lma)
-             i=JJP(j,lma)-i0+1
-#ifdef _DRSDFT_
-             uVunk(lma,ib)=uVunk(lma,ib)+uVk(j,lma,k)*tpsi(i,ib)
-#else
-             uVunk(lma,ib)=uVunk(lma,ib)+conjg(uVk(j,lma,k))*tpsi(i,ib)
-#endif
+    do ib = 1, nb
+!$omp do
+      do lma = 1, nzlma
+        uVunk(lma,ib)=0.0d0
+        do j = 1, MJJ(lma)
+          i = JJP(j,lma) - i0 + 1
+          uVunk(lma,ib) = uVunk(lma,ib) + d_uVk(j,lma,k)*tpsi(i,ib)
+        end do
+        uVunk(lma,ib) = uVunk(lma,ib)*dV
+      end do
+!$omp end do
+    end do
+
+!$omp single
+    do i = 1, 6
+      select case(i)
+      case(1,3,5)
+        j=i+1
+        uVunk0(:,:)=uVunk(:,:)
+      case(2,4,6)
+        j=i-1
+      end select
+      do m = 1, nrlma_xyz(i)
+        nreq=0
+        irank=num_2_rank(m,i)
+        jrank=num_2_rank(m,j)
+        if( irank >= 0 )then
+          i2=0
+          do ib = 1, nb
+          do i1 = 1, lma_nsend(irank)
+            i2 = i2 + 1
+            d_sbufnl(i2,irank) = uVunk0(sendmap(i1,irank),ib)
           end do
-          uVunk(lma,ib)=uVunk(lma,ib)*dV
-       end do
-!$OMP end do
-    end do
-
-!$OMP single
-    do i=1,6
-       select case(i)
-       case(1,3,5)
-!!$OMP single
-          j=i+1
-!!$OMP end single
-!!$OMP workshare
-          uVunk0(:,:)=uVunk(:,:)
-!!$OMP end workshare
-       case(2,4,6)
-!!$OMP single
-          j=i-1
-!!$OMP end single
-       end select
-!!$OMP single
-       do m=1,nrlma_xyz(i)
-          nreq=0
-          irank=num_2_rank(m,i)
-          jrank=num_2_rank(m,j)
-          if( irank>=0 )then
-             i2=0
-             do ib=1,nb
-                do i1=1,lma_nsend(irank)
-                   i2=i2+1
-                   sbufnl(i2,irank)=uVunk0(sendmap(i1,irank),ib)
-                end do
-             end do
-             nreq=nreq+1
-             call mpi_isend(sbufnl(1,irank),lma_nsend(irank)*nb &
-                  ,TYPE_MAIN,irank,1,comm_grid,ireq(nreq),ierr)
-          end if
-          if( jrank>=0 )then
-             nreq=nreq+1
-             call mpi_irecv(rbufnl(1,jrank),lma_nsend(jrank)*nb &
-                  ,TYPE_MAIN,jrank,1,comm_grid,ireq(nreq),ierr)
-          end if
-          call mpi_waitall(nreq,ireq,istatus,ierr)
-          if( jrank>=0 )then
-             i2=0
-             do ib=1,nb
-                do i1=1,lma_nsend(jrank)
-                   i2=i2+1
-                   uVunk(recvmap(i1,jrank),ib) &
-                        =uVunk(recvmap(i1,jrank),ib)+rbufnl(i2,jrank)
-                end do
-             end do
-          end if
-       end do
-!!$OMP end single
-    end do
-!$OMP end single
-
-    do ib=1,nb
-       do m=1,N_nzqr
-          lma1=nzqr_pair(1,m)
-          lma2=nzqr_pair(2,m)
-!$OMP do
-          do j=1,MJJ(lma1)
-             i=JJP(j,lma1)-i0+1
-             htpsi(i,ib)=htpsi(i,ib)+Dij00(m)*uVk(j,lma1,k)*uVunk(lma2,ib)
           end do
-!$OMP end do
-       end do
+          nreq=nreq+1
+          call MPI_Isend(d_sbufnl(1,irank),lma_nsend(irank)*nb &
+          ,MPI_REAL8,irank,1,comm_grid,ireq(nreq),ierr)
+        end if
+        if( jrank >= 0 )then
+          nreq=nreq+1
+          call MPI_Irecv(d_rbufnl(1,jrank),lma_nsend(jrank)*nb &
+          ,MPI_REAL8,jrank,1,comm_grid,ireq(nreq),ierr)
+        end if
+        call MPI_Waitall(nreq,ireq,istatus,ierr)
+        if( jrank >= 0 )then
+          i2=0
+          do ib=1,nb
+            do i1=1,lma_nsend(jrank)
+              i2=i2+1
+              uVunk(recvmap(i1,jrank),ib) &
+              = uVunk(recvmap(i1,jrank),ib) + d_rbufnl(i2,jrank)
+            end do
+          end do
+        end if
+      end do !m
+    end do !i
+!$omp end single
+
+    do ib = 1, nb
+      do m = 1, N_nzqr
+        lma1=nzqr_pair(1,m)
+        lma2=nzqr_pair(2,m)
+!$omp do
+        do j = 1, MJJ(lma1)
+          i = JJP(j,lma1) - i0 + 1
+          htpsi(i,ib) = htpsi(i,ib) + Dij00(m)*d_uVk(j,lma1,k)*uVunk(lma2,ib)
+        end do
+!$omp end do
+      end do
     end do
 
-!$OMP end parallel
+!$omp end parallel
 
-    deallocate( uVunk0,uVunk )
+    deallocate( uVunk0, uVunk )
 
-  END SUBROUTINE op_ps_nloc_mr
+  end subroutine d_op_ps_nloc_mr
 
-
-  SUBROUTINE calc_force_ps_nloc_mr(MI,force2)
+  subroutine z_op_ps_nloc_mr( tpsi, htpsi, n_in, k_in, s_in )
     implicit none
-    integer,intent(IN) :: MI
-    real(8),intent(OUT) :: force2(3,MI)
+    complex(8),intent(in) :: tpsi(:,:)
+    complex(8),intent(inout) :: htpsi(:,:)
+    integer,optional,intent(in) :: n_in, k_in, s_in
+    complex(8),allocatable :: uVunk(:,:),uVunk0(:,:)
+    integer :: i,ib,j,i1,i2,m,lma,nb,ierr,nreq,lma1,lma2,i0,n,k,s
+    include 'mpif.h'
+    integer :: irank,jrank,istatus(MPI_STATUS_SIZE,512),ireq(512)
+
+    nb = size( tpsi, 2 )
+    i0 = Igrid(1,0)
+
+    n = 1 ; if ( present(n_in) ) n = n_in
+    k = 1 ; if ( present(k_in) ) k = k_in
+    s = 1 ; if ( present(s_in) ) s = s_in
+
+    if ( Mlma <= 0 ) return
+
+    allocate( uVunk(nzlma,nb)  ); uVunk=(0.0d0,0.0d0)
+    allocate( uVunk0(nzlma,nb) ); uVunk0=(0.0d0,0.0d0)
+
+!$omp parallel
+
+    do ib = 1, nb
+!$omp do
+      do lma = 1, nzlma
+        uVunk(lma,ib)=(0.0d0,0.0d0)
+        do j = 1, MJJ(lma)
+          i = JJP(j,lma) - i0 + 1
+          uVunk(lma,ib) = uVunk(lma,ib) + conjg( z_uVk(j,lma,k) )*tpsi(i,ib)
+        end do
+        uVunk(lma,ib) = uVunk(lma,ib)*dV
+      end do
+!$omp end do
+    end do
+
+!$omp single
+    do i = 1, 6
+      select case(i)
+      case(1,3,5)
+        j=i+1
+        uVunk0(:,:)=uVunk(:,:)
+      case(2,4,6)
+        j=i-1
+      end select
+      do m = 1, nrlma_xyz(i)
+        nreq=0
+        irank=num_2_rank(m,i)
+        jrank=num_2_rank(m,j)
+        if( irank >= 0 )then
+          i2=0
+          do ib = 1, nb
+          do i1 = 1, lma_nsend(irank)
+            i2 = i2 + 1
+            z_sbufnl(i2,irank) = uVunk0(sendmap(i1,irank),ib)
+          end do
+          end do
+          nreq=nreq+1
+          call MPI_Isend(z_sbufnl(1,irank),lma_nsend(irank)*nb &
+          ,MPI_COMPLEX16,irank,1,comm_grid,ireq(nreq),ierr)
+        end if
+        if( jrank >= 0 )then
+          nreq=nreq+1
+          call MPI_Irecv(z_rbufnl(1,jrank),lma_nsend(jrank)*nb &
+          ,MPI_COMPLEX16,jrank,1,comm_grid,ireq(nreq),ierr)
+        end if
+        call MPI_Waitall(nreq,ireq,istatus,ierr)
+        if( jrank >= 0 )then
+          i2=0
+          do ib=1,nb
+            do i1=1,lma_nsend(jrank)
+              i2=i2+1
+              uVunk(recvmap(i1,jrank),ib) &
+              = uVunk(recvmap(i1,jrank),ib) + z_rbufnl(i2,jrank)
+            end do
+          end do
+        end if
+      end do !m
+    end do !i
+!$omp end single
+
+    do ib = 1, nb
+      do m = 1, N_nzqr
+        lma1=nzqr_pair(1,m)
+        lma2=nzqr_pair(2,m)
+!$omp do
+        do j = 1, MJJ(lma1)
+          i = JJP(j,lma1) - i0 + 1
+          htpsi(i,ib) = htpsi(i,ib) + Dij00(m)*z_uVk(j,lma1,k)*uVunk(lma2,ib)
+        end do
+!$omp end do
+      end do
+    end do
+
+!$omp end parallel
+
+    deallocate( uVunk0, uVunk )
+
+  end subroutine z_op_ps_nloc_mr
+
+
+  SUBROUTINE calc_force_ps_nloc_mr( force2 )
+    implicit none
+    real(8),intent(inout) :: force2(:,:)
     integer :: i1,i2,i3,lma1,lma2
     integer :: i,j,k,s,n,ir,iorb,L,L1,L1z,NRc,irank,jrank
     integer :: nreq,max_nreq
     integer :: a,a0,ik,m,lm0,lm1,lma,im,m1,m2
-    integer :: ierr,M_irad,ir0
+    integer :: ierr,M_irad,ir0,MI
     integer,allocatable :: ireq(:),istatus(:,:),irad(:,:),ilm1(:,:,:)
     real(8),parameter :: ep=1.d-8
     real(8),save :: Y1(0:3,-3:3,0:4,-4:4)
@@ -1301,8 +1390,6 @@ CONTAINS
     logical,allocatable :: a_rank(:)
     integer :: ML1,ML2,ML3,i0,iorb0
     integer :: k1,k2,k3,a1b,a2b,a3b,ab1,ab2,ab3
-
-    force2(:,:) = 0.0d0
 
     if ( Mlma <= 0 ) return
 
@@ -1386,7 +1473,7 @@ CONTAINS
        Y2( 3,-2, 4, 3) =  0.199471140200716d0
        Y2( 3,-3, 4, 4) = -0.230329432980890d0
        Y3=0.0d0
-        Y3( 0, 0, 1, 0) =  0.282094791773878d0
+       Y3( 0, 0, 1, 0) =  0.282094791773878d0
        Y3( 1,-1, 2,-1) =  0.218509686118416d0
        Y3( 1, 0, 0, 0) =  0.282094791773878d0
        Y3( 1, 0, 2, 0) =  0.252313252202016d0
@@ -1414,11 +1501,13 @@ CONTAINS
        flag_Y = .false.
     end if
 
-    pi2 = 2.d0*acos(-1.d0)
+    pi2 = 2.0d0*acos(-1.0d0)
 
-    maxerr=0.d0
-    ctt(:)=0.d0
-    ett(:)=0.d0
+    MI = size( force2, 2 )
+
+    maxerr=0.0d0
+    ctt(:)=0.0d0
+    ett(:)=0.0d0
 
     a1b=Igrid(1,1)
     a2b=Igrid(1,2)

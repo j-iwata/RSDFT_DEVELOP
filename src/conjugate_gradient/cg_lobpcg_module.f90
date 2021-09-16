@@ -88,7 +88,7 @@ CONTAINS
 
        vv(:,1:nn,1) = unk(:,ns:ne) ! xk
 
-       call hamiltonian( k, s, vv(:,1:nn,1), hv(:,1:nn,1), n1, n2, ns, ne )
+       call hamiltonian( vv(:,1:nn,1), hv(:,1:nn,1), ns,k,s )
 
        do n=1,nn
           sb(n)=sum( vv(:,n,1)*hv(:,n,1) )*dV
@@ -132,7 +132,7 @@ CONTAINS
 
 ! ---
 
-          call hamiltonian(k,s,vv(n1:n2,1:nn,3),hv(n1:n2,1:nn,3),n1,n2,ns,ne)
+          call hamiltonian( vv(n1:n2,1:nn,3), hv(n1:n2,1:nn,3), ns,k,s )
 
           if ( icg == 1 ) then
              mm = 2*nn
@@ -263,7 +263,7 @@ CONTAINS
 
        vv(:,1:nn,1) = unk(:,ns:ne) ! xk
 
-       call hamiltonian( k, s, vv(:,1:nn,1), hv(:,1:nn,1), n1, n2, ns, ne )
+       call hamiltonian( vv(:,1:nn,1), hv(:,1:nn,1), ns,k,s )
 
        do n=1,nn
           sb(n)=sum( conjg(vv(:,n,1))*hv(:,n,1) )*dV
@@ -307,7 +307,7 @@ CONTAINS
 
 ! ---
 
-          call hamiltonian(k,s,vv(n1:n2,1:nn,3),hv(n1:n2,1:nn,3),n1,n2,ns,ne)
+          call hamiltonian( vv(n1:n2,1:nn,3), hv(n1:n2,1:nn,3), ns,k,s )
 
           if ( icg == 1 ) then
              mm = 2*nn

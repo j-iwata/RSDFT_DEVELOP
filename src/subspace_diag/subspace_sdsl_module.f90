@@ -251,7 +251,7 @@ contains
        ib2 = min(ib1+MB_d-1,n)
        jb1 = ib1+ib0
        jb2 = ib2+ib0
-       call hamiltonian( k,s,u(:,ib1:ib2),utmp(:,ib1:ib2),jb1,jb2,ig1,ig2 )
+       call hamiltonian( u(:,ib1:ib2), utmp(:,ib1:ib2), ib1,k,s )
     end do
 
 !    call timer( ttmp,time(:,it) ); tlabel(it)="ini3"; it=it+1

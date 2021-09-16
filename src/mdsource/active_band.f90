@@ -37,7 +37,7 @@ subroutine active_band
   allocate( id_band_cpmd(0:np_band-1) ) ; id_band_cpmd=-1
 
   do n=1,MBC
-     k=mod(n,np_band)
+     k=mod(n-1,np_band)
      ir_band_cpmd(k) = ir_band_cpmd(k) + 1
   end do
   do k=0,np_band-1

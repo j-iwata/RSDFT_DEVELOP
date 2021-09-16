@@ -20,7 +20,7 @@ CONTAINS
     type(time) :: t
 
     call write_border( 1, " subspace_diag_sl(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     call prep_scalapack( MB_diag )
 

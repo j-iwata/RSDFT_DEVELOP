@@ -5,7 +5,7 @@ MODULE subspace_rotv_sl_module
   use parallel_module
   use subspace_diag_variables, only: MB_diag,NBLK2,zero,one,Vsub,TYPE_MAIN
   use array_bound_module, only: ML_0,ML_1,MB_0,MB_1
-  use bcast_module
+  use rsdft_bcast_module, only: d_rsdft_bcast, z_rsdft_bcast
   use watch_module
   use rsdft_mpi_module
 
@@ -31,7 +31,7 @@ CONTAINS
     type(time) :: t
 
     call write_border( 1, " subspace_rotv(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     n1  = ML_0
     n2  = ML_1
@@ -87,9 +87,9 @@ CONTAINS
 
 !             call mpi_bcast(utmp2(ms,ns),mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
 #ifdef _DRSDFT_
-             call d_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+             call d_rsdft_bcast(utmp2,mm*nn,iroot2,comm_grid)
 #else
-             call z_rsdft_bcast(utmp2,mm*nn,TYPE_MAIN,iroot2,comm_grid,ierr)
+             call z_rsdft_bcast(utmp2,mm*nn,iroot2,comm_grid)
 #endif
 
              if ( ii>0 ) then
@@ -154,7 +154,7 @@ CONTAINS
     real(8),parameter :: zero=0.0d0, one=1.0d0
 
     call write_border( 1, " subspace_rotv2(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     n1  = ML_0
     n2  = ML_1

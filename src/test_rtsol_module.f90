@@ -67,7 +67,7 @@ CONTAINS
        do k=MK_0_WF,MK_1_WF
        do n=1,MB_RT
           do itaylor=1,nalg
-             call hamiltonian(k,s,tpsi,hpsi,ML_0_WF,ML_1_WF,1,1)
+             call hamiltonian( tpsi, hpsi, n,k,s )
 !$OMP parallel do
              do i=ML_0_WF,ML_1_WF
                 unk(i,n,k,s) = unk(i,n,k,s) + zcoef(itaylor)*hpsi(i,1)

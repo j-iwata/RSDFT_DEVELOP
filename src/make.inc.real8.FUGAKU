@@ -144,6 +144,8 @@ OMPFLAG = -Kopenmp
 LAPACK_L = -SSL2BLAMP -SCALAPACK
 #INCLUDE_DIR = -I../ -I/home/apps/fftw/3.3.3/include/
 #FFTW_L = -L/home/apps/fftw/3.3.3/lib64 -lfftw3_mpi -lfftw3 -lm
+#INCLUDE_DIR := -I/vol0004/apps/oss/spack-v0.16/opt/spack/linux-rhel8-a64fx/fj-4.3.1/fftw-3.3.8-b6z4s4rfp5ju6m6pa3zr5a2xpbws7zum/include $(INCLUDE_DIR)
+#FFTW_L = -L/vol0004/apps/oss/spack-v0.16/opt/spack/linux-rhel8-a64fx/fj-4.3.1/fftw-3.3.8-b6z4s4rfp5ju6m6pa3zr5a2xpbws7zum/lib -lfftw3_mpi -lfftw3 -lm
 ########################################################################
 ########################################################################
 ########################################################################

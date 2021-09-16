@@ -19,7 +19,11 @@ module fft_module
   public :: grid_util_fft
   public :: forward_2d_fft
 
+#ifdef _FFTW_
+  character(5),public :: iswitch_fft = 'FFTW'
+#else
   character(5),public :: iswitch_fft = 'FFTE2'
+#endif
 
   type(grid) :: rgrid
   integer :: ML,ML1,ML2,ML3

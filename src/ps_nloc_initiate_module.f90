@@ -6,9 +6,6 @@ MODULE ps_nloc_initiate_module
   use ps_nloc3_module, only: init_ps_nloc3, prep_ps_nloc3
   use ps_nloc_mr_module, only: prep_ps_nloc_mr
   use pseudopot_module, only: pselect
-  use ps_q_init_module, only: initKtoKPSQ_ps_q_init, ps_q_init
-  use ps_qrij_prep_module, only: prepQRijp102
-  use ps_prepNzqr_g_module, only: prepNzqr
   use var_sys_parameter, only: pp_kind
   use var_ps_member, only: ps_type
 
@@ -24,7 +21,7 @@ CONTAINS
     implicit none
     real(8),intent(IN) :: Gcut
 
-    call write_border( 80, " ps_nloc_initiate(start)" )
+    call write_border( 0, " ps_nloc_initiate(start)" )
 
     select case( pselect )
     case default
@@ -53,20 +50,9 @@ CONTAINS
        call init_ps_nloc3
        call prep_ps_nloc3
 
-    case( 102 )
-
-       pp_kind="USPP"
-
-       call initKtoKPSQ_ps_q_init
-       call ps_nloc2_init( Gcut )
-       call ps_q_init( Gcut,rcfac,qcfac,etafac )
-       call prep_ps_nloc2
-       call prepNzqr
-       call prepQRijp102
-
     end select
 
-    call write_border( 80, " ps_nloc_initiate(end)" )
+    call write_border( 0, " ps_nloc_initiate(end)" )
 
   END SUBROUTINE ps_nloc_initiate
 

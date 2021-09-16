@@ -2,8 +2,8 @@ module hartree_sol_fftw_module
 
   use hartree_variables, only: E_hartree, Vh
   use bb_module, only: bb
-  use rgrid_module, only: Ngrid, Igrid, dV
-  use ggrid_module, only: NGgrid, LLG, construct_ggrid, destruct_ggrid
+  use rgrid_module, only: dV
+  use ggrid_module, only: LLG, construct_ggrid, destruct_ggrid
   use grid_module, only: inner_product_grid
   use fftw_module, only: ML1_c, ML2_c, ML3_c0, N_ML3_c &
                        , zwork3_ptr0, zwork3_ptr1 &
@@ -28,7 +28,7 @@ contains
 
   subroutine init_hartree_sol_fftw( Ngrid )
     implicit none
-    integer,intent(in) :: Ngrid(3)
+    integer,intent(in) :: Ngrid(:)
     integer :: n,i,i1,i2,i3,NLG,ML
     real(8) :: const, g2
 
@@ -89,7 +89,7 @@ contains
     implicit none
     real(8),intent(in) :: rho(:,:)
 #ifdef _FFTW_
-    integer :: i,i1,i2,i3,j1,j2,j3,n,ng,ns
+    integer :: i,i1,i2,i3,n,ng,ns
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     real(8),allocatable :: work(:)
     include 'fftw3-mpi.f03'

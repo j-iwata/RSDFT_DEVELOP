@@ -45,7 +45,7 @@ CONTAINS
     include 'mpif.h'
 
     call write_border( 1, " subspace_diag_ncol(start)" )
-    call start_timer( t )
+    call start_timer( t_out=t )
 
     ML0 = size( psi, 1 )
     MB  = size( psi, 2 )
@@ -71,7 +71,7 @@ CONTAINS
     do s=1,MS
        do m=1,MB
 #ifndef _DRSDFT_
-          call hamiltonian(k,s,psi(:,m:m,k0,s),psit(:,m:m,s),n1,n2,m,m)
+          call hamiltonian( psi(:,m:m,k0,s), psit(:,m:m,s), m,k,s )
 #endif
        end do
     end do

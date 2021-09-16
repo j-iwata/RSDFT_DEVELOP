@@ -5,7 +5,6 @@ MODULE density_module
   use symmetry_module, only: sym_rho
   use basic_type_factory
   use basic_type_methods
-  use rhonks_g_module, only: get_rhonks
   use var_sys_parameter, only: pp_kind
   use array_bound_module, only: get_grid_range_local, get_grid_range_globl &
                                ,get_spin_range_local, get_spin_range_globl
@@ -141,29 +140,6 @@ CONTAINS
           end do
        end do
        call sym_rho( ML_0_RHO, ML_1_RHO, MS_RHO, MS_0_RHO, MS_1_RHO, rho )
-       call reduce_and_gather
-
-    case ( 'USPP' )
-
-       n1 = ML_0_WF
-       n2 = ML_1_WF
-       n0 = ML_1_WF - ML_0_WF + 1
-
-       allocate( rhonks(n1:n2) ) ; rhonks(:)=0.0d0
-
-       rho(:,:)=0.0d0
-       do s=MS_0_WF,MS_1_WF
-          do k=MK_0_WF,MK_1_WF
-             do n=MB_0_WF,MB_1_WF
-                rhonks(:)=0.d0
-                call get_rhonks( rhonks,n1,n2,n,k,s )
-                rho(:,s) = rho(:,s) + occ(n,k,s)*rhonks(:)
-             end do
-          end do
-       end do
-
-       deallocate( rhonks )
-
        call reduce_and_gather
 
     end select

@@ -33,11 +33,11 @@ MODULE xc_module
   PUBLIC :: read_xc
 
   character(9),PUBLIC :: XCtype = 'LDAPZ81'
-  real(8),PUBLIC :: DCxc     ! double-count ( <u|Vxc|u> )
+  real(8),PUBLIC :: DCxc=0.0d0     ! double-count ( <u|Vxc|u> )
 
   real(8),allocatable :: Vxc(:,:)
   real(8) :: Exc,E_exchange,E_correlation
-  real(8) :: E_exchange_exx
+  real(8) :: E_exchange_exx=0.0d0
 
   real(8),allocatable :: Vx(:,:), Vc(:,:)
 

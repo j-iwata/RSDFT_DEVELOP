@@ -232,7 +232,7 @@ CONTAINS
 
     call write_border( 0, " io_write_noncollinear(start)" )
 
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
 !    call date_and_time( DATE=yyyymmdd, TIME=hhmmsspsss )
 !    label=yyyymmdd(3:8)//hhmmsspsss(1:6)

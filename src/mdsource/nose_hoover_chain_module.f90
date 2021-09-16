@@ -37,10 +37,18 @@ CONTAINS
     real(8) :: c,w,w2,sigma,pi,rnr(3)
     integer :: i, Ndof
 
+    call write_border( 0, 'init_nose_hoover_chain(start)' )
+
     w  = omega * to_au
     w2 = w*w
     pi = 0.0d0
 !    pi = acos(-1.0d0)
+
+    dt_ST=0.0d0
+    Qeta=0.0d0
+    eta=0.0d0
+    etadot=0.0d0
+    Feta=0.0d0
 
     call make_nose_time( dt )
 
@@ -69,6 +77,8 @@ CONTAINS
     end do
 
     if ( present(ene) ) call noseene( ene )
+
+    call write_border( 0, 'init_nose_hoover_chain(end)' )
 
     return
   END SUBROUTINE init_nose_hoover_chain
@@ -205,6 +215,7 @@ CONTAINS
   SUBROUTINE write_nose_data
     implicit none
     integer :: i
+    call write_border( 0, 'write_nose_data(start)' )
     if ( myrank == 0 ) then
        open(999,file="Bathdata.dat1",status="replace")
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
@@ -213,6 +224,7 @@ CONTAINS
        write(999,*)(Feta(i),i=1,nchain)
        close(999)
     end if
+    call write_border( 0, 'write_nose_data(end)' )
     return
   END SUBROUTINE write_nose_data
 
@@ -221,6 +233,7 @@ CONTAINS
     implicit none
     integer :: i,ierr
     include 'mpif.h'
+    call write_border( 0, 'read_nose_data(start)' )
     if ( myrank == 0 ) then
        open(999,file="Bathdata.dat",status="old")
        read(999,*)(eta(i),etadot(i),i=1,nchain) 
@@ -235,6 +248,7 @@ CONTAINS
     call mpi_bcast(gkT,1,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Qeta,nchain,mpi_real8,0,mpi_comm_world,ierr)
     call mpi_bcast(Feta,nchain,mpi_real8,0,mpi_comm_world,ierr)
+    call write_border( 0, 'read_nose_data(end)' )
     return
   END SUBROUTINE read_nose_data
 

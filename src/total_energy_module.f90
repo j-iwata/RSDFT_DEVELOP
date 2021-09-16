@@ -84,9 +84,8 @@ contains
 
     call write_border( 1, " calc_total_energy(start)" )
 
-    if ( present(Etot) ) Etot_1 = Etot
-
-    Etot_0 = Etot_1
+    Etot_0 = 0.0d0
+    if ( present(Etot) ) Etot_0 = Etot
     Etot_1 = 0.0d0
     Ekin = 0.d0
     Eloc = 0.d0
@@ -151,7 +150,7 @@ contains
              work=zero
              work00=zero
 !$OMP parallel
-             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), nb1,k,s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -167,7 +166,7 @@ contains
 
              work=zero
 !$OMP parallel
-             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), k, s )
+             call op_nonlocal( unk(:,nb1:nb2,k,s), work(:,1:nn), nb1,k,s )
 !$OMP end parallel
              do i=nb1,nb2
 #ifdef _DRSDFT_
@@ -182,7 +181,8 @@ contains
 !---------------------------------------------------- fock
 
           work=zero
-          call op_fock(k,s,n1,n2,n,n,unk(:,nb1:nb2,k,s),work)
+          call op_fock( unk(:,nb1:nb2,k,s), work(:,1:nn), nb1,k,s )
+          
           do i=nb1,nb2
 #ifdef _DRSDFT_
              esp0(i,k,s,4)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV
@@ -391,20 +391,23 @@ contains
   END SUBROUTINE calc_total_energy
 
 
-  SUBROUTINE calc_with_rhoIN_total_energy( Etot, flag_ncol )
+  subroutine calc_with_rhoIN_total_energy( Etot, flag_ncol )
+    use xc_module, only: E_exchange_exx, DCxc
+    use parallel_module, only: comm_grid, comm_spin
     implicit none
-    real(8),optional,intent(OUT) :: Etot
-    logical,optional,intent(IN)  :: flag_ncol
+    real(8),optional,intent(out) :: Etot
+    logical,optional,intent(in)  :: flag_ncol
     real(8) :: sb(2),rb(2),Eeig_tmp
     integer :: s,ierr
+    include 'mpif.h'
     call write_border( 1, " calc_with_rhoIN_total_energy(start)" )
-    sb(:)=0.d0
-    do s=MSP_0,MSP_1
-       sb(1) = sb(1) + sum(Vloc(:,s)*rho(:,s))
-       sb(2) = sb(2) + sum(Vion(:)*rho(:,s))
+    sb(:)=0.0d0
+    do s=lbound(Vloc,2),ubound(Vloc,2)
+      sb(1) = sb(1) + sum(Vloc(:,s)*rho(:,s))
+      sb(2) = sb(2) + sum(Vion(:)*rho(:,s))
     end do
-    call mpi_allreduce(sb,rb,2,MPI_REAL8,MPI_SUM,comm_grid,ierr)
-    call mpi_allreduce(rb,sb,2,MPI_REAL8,MPI_SUM,comm_spin,ierr)
+    call MPI_Allreduce(sb,rb,2,MPI_REAL8,MPI_SUM,comm_grid,ierr)
+    call MPI_Allreduce(rb,sb,2,MPI_REAL8,MPI_SUM,comm_spin,ierr)
     Eloc_in = sb(1)*dV
     Eion_in = sb(2)*dV
     Ehat_in = E_hartree
@@ -412,17 +415,17 @@ contains
     Eeig_tmp=sum( occ(:,:,:)*esp(:,:,:) )
     cnst=sum(occ)*const_ps_local
     if ( present(flag_ncol) ) then
-       if ( flag_ncol ) then
-          Eeig_tmp=sum( occ(:,:,1)*esp(:,:,1) )
-          cnst=sum(occ(:,:,1))*const_ps_local
-       end if
+      if ( flag_ncol ) then
+        Eeig_tmp=sum( occ(:,:,1)*esp(:,:,1) )
+        cnst=sum(occ(:,:,1))*const_ps_local
+      end if
     end if
     call get_E_vdw_grimme( Evdw )
     Etot = Eeig_tmp - Eloc_in + Ehat_in + Exc_in + Eion_in + Eewald &
          - 2*E_exchange_exx + cnst + Evdw - DCxc
     Etot_wo_cnst = Etot - cnst
     call write_border( 1, " calc_with_rhoIN_total_energy(end)" )
-  END SUBROUTINE calc_with_rhoIN_total_energy
+  end subroutine calc_with_rhoIN_total_energy
 
 
   SUBROUTINE write_info_total_energy( Etot, flag_write, u )

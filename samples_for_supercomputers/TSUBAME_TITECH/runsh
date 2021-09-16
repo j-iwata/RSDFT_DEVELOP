@@ -1,0 +1,18 @@
+#!/bin/sh
+#$ -cwd
+##$ -l f_node=28
+##$ -l h_node=14
+##$ -l q_node=7
+##$ -l s_core=1
+#$ -l q_core=4
+##$ -l s_gpu=2
+##$ -l h_rt=24:00:00
+#$ -l h_rt=00:10:00
+
+. /etc/profile.d/modules.sh
+module load intel intel-mpi fftw
+
+#export OMP_NUM_THREADS=??
+
+mpiexec.hydra -n 4 ./a.out
+

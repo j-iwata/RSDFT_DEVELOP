@@ -25,10 +25,9 @@ module ps_initrho_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: construct_ps_initrho
-  PUBLIC :: read_ps_initrho
-  PUBLIC :: derivative_ps_initrho_r
+  private
+  public :: construct_ps_initrho
+  public :: derivative_ps_initrho_r
   PUBLIC :: get_ps_initrho
 
   logical :: flag_initrho_0
@@ -39,6 +38,7 @@ module ps_initrho_module
 
   integer :: iswitch_initrho=1
   logical :: analytic=.false.
+  logical :: parameter_read_done=.false.
 
   real(8),allocatable :: rho_ini_backup(:,:)
 
@@ -48,9 +48,10 @@ contains
   subroutine read_ps_initrho
     implicit none
     call IOTools_readIntegerKeyword( "INITRHO", iswitch_initrho )
-    if ( iswitch_initrho == 2 ) then
-       call read_coef_psv_initrho !---> cdd_coef ( pseudopot_module )
+    if ( iswitch_initrho == 2 .or. iswitch_initrho == 12 ) then
+      call read_coef_psv_initrho !---> cdd_coef ( pseudopot_module )
     end if
+    parameter_read_done=.true.
   end subroutine read_ps_initrho
 
 
@@ -66,30 +67,36 @@ contains
     call watchb( tt )
     to=0.0d0
 
+    if ( .not.parameter_read_done ) call read_ps_initrho
+
 ! ---
 
     if ( allocated(cdd_coef) ) then
-       if ( any(cdd_coef/=0.0d0) ) analytic=.true.
+      if ( any(cdd_coef/=0.0d0) ) analytic=.true.
     end if
 
-    if ( all(cdd==0.0d0) .and. iswitch_initrho /= 2 ) iswitch_initrho=3
+    if ( all(cdd==0.0d0) .and. .not.analytic ) iswitch_initrho=3
+
+    if ( any(cdd/=0.0d0) .and. iswitch_initrho >= 10 ) analytic=.false.
+
+    iswitch_initrho = mod( iswitch_initrho, 10 )
 
 ! ---
 
     if ( disp_switch ) then
-       write(*,*) "iswitch_initrho =",iswitch_initrho
-       write(*,*) "analytic        =",analytic
+      write(*,*) "iswitch_initrho =",iswitch_initrho
+      write(*,*) "analytic        =",analytic
     end if
 
     select case( iswitch_initrho )
     case default
-       call construct_ps_initrho_g( rho )
+      call construct_ps_initrho_g( rho )
     case( 1, 2 )
-       call construct_ps_initrho_r_spin( rho )
+      call construct_ps_initrho_r_spin( rho )
     case( 3 )
-       call construct_RandomInitrho( rho )
+      call construct_RandomInitrho( rho )
     case( 4 )
-      call construct_ps_initrho_g_2( rho )
+    call construct_ps_initrho_g_2( rho )
     end select
 
 ! ---
@@ -97,13 +104,13 @@ contains
     call check_initrho( rho )
 
     if ( Nspin == 1 ) then
-       call normalize_initrho( Nelectron, rho(:,1) )
+      call normalize_initrho( Nelectron, rho(:,1) )
     else if ( Nspin == 2 ) then
-       do s=1,Nspin
-          call normalize_initrho( Nelectron_spin(s), rho(:,s) )
-       end do
+      do s=1,Nspin
+        call normalize_initrho( Nelectron_spin(s), rho(:,s) )
+      end do
     else
-       call stop_program( "stop@construct_ps_initrho" )
+      call stop_program( "stop@construct_ps_initrho" )
     end if
 
     call check_initrho( rho )
@@ -111,8 +118,8 @@ contains
 ! ---
 
     if ( .not.allocated(rho_ini_backup) ) then
-       allocate( rho_ini_backup(size(rho,1),size(rho,2)) )
-       rho_ini_backup=0.0d0
+      allocate( rho_ini_backup(size(rho,1),size(rho,2)) )
+      rho_ini_backup=0.0d0
     end if
     rho_ini_backup = rho
 
@@ -120,7 +127,7 @@ contains
 
     call watchb( tt, to )
     if ( disp_switch ) then
-       write(*,'(1x,"time(construct_ps_initrho)=",2f10.3)') to(1),to(2)
+      write(*,'(1x,"time(construct_ps_initrho)=",2f10.3)') to(1),to(2)
     end if
     call write_border( 0, " construct_ps_initrho(end)" )
 

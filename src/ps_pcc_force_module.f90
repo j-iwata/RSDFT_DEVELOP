@@ -23,9 +23,9 @@ CONTAINS
     integer,intent(IN) :: MI
     real(8),intent(OUT) :: force(3,MI)
     integer :: a,ik,i,j,ierr,i1,i2,i3,j1,j2,j3,irank,n,n1,n2
-    integer :: MG,ML,ML1,ML2,ML3,N_MI,MI_0,MI_1,MSP_0,MSP_1
+    integer :: MG,ML,ML1,ML2,ML3,N_MI,MI_0,MI_1,MSP_0,MSP_1,MSP
     integer,allocatable :: icnt(:),idis(:)
-    real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,Vcell
+    real(8) :: pi2,a1,a2,a3,Gx,Gy,Gz,Gr,Vcell,c
     real(8),allocatable :: w1(:)
     complex(8) :: zsum1,zsum2,zsum3,ztmp
     complex(8),allocatable :: z1(:,:,:),zvxc(:),zvxc3(:,:,:)
@@ -70,11 +70,13 @@ CONTAINS
     n2    = Igrid(2,0)
     MSP_0 = id_spin(myrank_s) + 1
     MSP_1 = id_spin(myrank_s) + ir_spin(myrank_s)
+    MSP   = sum(ir_spin)
 
-    allocate( w1(n1:n2) ) ; w1=0.0d0
+    allocate( w1(n1:n2) ); w1=0.0d0
 
+    c=1.0d0/MSP
     do j=MSP_0,MSP_1
-       w1(n1:n2) = w1(n1:n2) + Vxc(n1:n2,j)
+      w1(n1:n2) = w1(n1:n2) + c*Vxc(n1:n2,j)
     end do
     call rsdft_allreduce_sum( w1(n1:n2), comm_spin )
 

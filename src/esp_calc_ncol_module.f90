@@ -46,7 +46,7 @@ CONTAINS
 #ifndef _DRSDFT_
     do n=1,MB
        do s=1,MS
-          call hamiltonian( k,s,wf(:,n:n,k0,s),hwf(:,:,s),n1,n2,n,n)
+          call hamiltonian( wf(:,n:n,k0,s), hwf(:,:,s), n,k,s )
        end do
        zw1(:,1,:)=wf(:,n,k0,:)
        zw2(:,1,:)=hwf(:,1,:)

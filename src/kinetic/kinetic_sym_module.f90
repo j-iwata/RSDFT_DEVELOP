@@ -50,7 +50,7 @@ CONTAINS
 
     call write_border( 0, "init in kinetic_sym_module(start)" )
 
-    call construct_map_3d_to_1d_grid( Ngrid, Igrid, comm_grid, LLL )
+    call construct_map_3d_to_1d_grid( LLL )
 
     allocate( work(Ngrid(0)) ) ; work=(0.0d0,0.0d0)
 

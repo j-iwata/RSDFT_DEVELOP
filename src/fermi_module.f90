@@ -11,7 +11,9 @@ module fermi_module
   public :: calc_fermi
   public :: ekbt, efermi, Eentropy
 
-  real(8) :: ekbt, efermi, Eentropy
+  real(8) :: ekbt=0.0d0
+  real(8) :: efermi=0.0d0
+  real(8) :: Eentropy=0.0d0
   integer :: mb1,mb2,kinteg,mp_version
 
   integer :: nsetocc,isetocc(2)

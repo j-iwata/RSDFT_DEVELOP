@@ -305,7 +305,7 @@ CONTAINS
        if ( abs(occ(n,k,s)) < 1.d-10 ) cycle
        tpsi(:,1)=psi(:,n0,k0,s0)
        do i=1,tddft%nalg
-          call hamiltonian( k,s,tpsi,hpsi,ML_0_WF,ML_1_WF,n,n )
+          call hamiltonian( tpsi, hpsi, n,k,s )
           psi(:,n0,k0,s0)=psi(:,n0,k0,s0)+zc(i)*hpsi(:,1)
           tpsi=hpsi
        end do

@@ -90,7 +90,7 @@ contains
 
     do loop=1,nloop
       do i = 1, niter
-        call hamiltonian(1, 1, tpsi, htpsi, n1, n2, 1, nrhs) 
+        call hamiltonian( tpsi, htpsi, 1,1,1 ) 
       end do
     end do
 

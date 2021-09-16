@@ -1,1 +1,0 @@
-/home/usr8/o70208a/rsdft.x

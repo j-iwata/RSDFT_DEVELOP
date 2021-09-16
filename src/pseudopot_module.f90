@@ -2,7 +2,6 @@ MODULE pseudopot_module
 
   use var_ps_member
   use ps_read_PSV
-  use var_ps_member_g, only: allocatePSG, sendPSG, npq, ddi, qqr, nl3v, l3v, qrL
   use ps_read_TM_module
   use ps_read_YB_module
   use ps_read_UPF_module
@@ -85,294 +84,265 @@ CONTAINS
 
     if ( rank == 0 ) then
 
-       max_psgrd=0
-       max_psorb=0
+      max_psgrd=0
+      max_psorb=0
 
-       do ielm=1,Nelement
+      do ielm=1,Nelement
 
-          unit_ps=33+ielm
-          open(unit_ps,FILE=file_ps(ielm),STATUS='old')
+        unit_ps=33+ielm
+        open(unit_ps,FILE=file_ps(ielm),STATUS='old')
 
-          select case( ippform(ielm) )
-          case( 1 )
-
-             close(unit_ps)
-             open(unit_ps,FILE=file_ps(ielm),form='unformatted',STATUS='old')
-
-             call ps_read_TM( unit_ps, ps(ielm) )
-
-             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
-             Mr(ielm)                 = ps(ielm)%Mr
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
-             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
-             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
-             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
-             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-
-          case( 2, 102 )
-
-             call read_PSV( unit_ps, ielm, ps(ielm) )
-
-             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
-             Mr(ielm)                 = ps(ielm)%Mr
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             if ( norb(ielm) /= 0 ) then
-             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
-             end if
-             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
-             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
-             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
-             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
-             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-             parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
-             nlf(ielm)                = ps(ielm)%nlf
-
-             if ( norb(ielm) /= 0 ) then
-
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-             nrf(1:norb(ielm),ielm)   = ps(ielm)%nrf(1:norb(ielm))
-
-             if ( pselect == 102 ) then !-----> uspp
-
-                Lrefmax = ps(ielm)%nlf
-                Rrefmax = maxval( ps(ielm)%nrf )
-                npqmax  = (Lrefmax*Rrefmax*(Lrefmax*Rrefmax+1))/2
-                nsmpl   = maxval( ps(ielm)%NRps(:) )
-                call allocatePSG( Lrefmax,Rrefmax,npqmax,nsmpl,Nelement )
-
-                npq(ielm) = ps(ielm)%npq
-
-                ddi(1:Rrefmax,1:Rrefmax,1:Lrefmax,ielm) &
-                     = ps(ielm)%ddi(1:Rrefmax,1:Rrefmax,1:Lrefmax)
-                qqr(1:Rrefmax,1:Rrefmax,1:Lrefmax,ielm) &
-                     = ps(ielm)%qqr(1:Rrefmax,1:Rrefmax,1:Lrefmax)
-                nl3v(1:npqmax,ielm) = ps(ielm)%nl3v(1:npqmax)
-                l3v(1:Lrefmax,1:npqmax,ielm) &
-                     = ps(ielm)%l3v(1:Lrefmax,1:npqmax)
-                qrL(1:nsmpl,1:Lrefmax,1:npqmax,ielm) = &
-                     ps(ielm)%qrL(1:nsmpl,1:Lrefmax,1:npqmax)
-
-             else if (  count( ps(ielm)%anorm /= 0.0d0 ) &
-                      < count( ps(ielm)%Dij /= 0.0d0 )  ) then !--> MultiRef
-
-                ps_type=1
-                anorm(:,ielm)=1.0d0
-
-             end if
-
-             end if
-
-          case( 3 )
-
-             call ps_read_YB( unit_ps, ps(ielm) )
-
-             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
-             Mr(ielm)                 = ps(ielm)%Mr
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
-             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
-             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
-             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
-             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-
-          case( 4 )
-
-             call read_ps_gth( unit_ps, ps(ielm) )
-
-             call ps_allocate( 1, ps(ielm)%norb )
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             if ( norb(ielm) /= 0 ) then
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             end if
-             parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
-             Rcloc(ielm)              = ps(ielm)%Rcloc
-             hnl(:,:,ielm)            = ps(ielm)%hnl(:,:)
-             knl(:,:,ielm)            = ps(ielm)%knl(:,:)
-             hnml(:,:,:,ielm)         = ps(ielm)%hnml(:,:,:)
-             knml(:,:,:,ielm)         = ps(ielm)%knml(:,:,:)
-
-             if ( any( hnml /= 0.0d0 ) ) ps_type=1
-
-          case( 5 )
-
-             call ps_read_UPF( unit_ps, ps(ielm) )
-
-             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
-             Mr(ielm)                 = ps(ielm)%Mr
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             if ( ps(ielm)%norb > 0 ) then
-             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                                      = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-             end if
-             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
-             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
-             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
-             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
-             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-
-             if ( allocated(ps(ielm)%Dij) ) then
-                if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
-                   ps_type=1
-                   anorm(:,ielm)=1.0d0
-                end if
-             end if
-
-          case( 6 )
-
-             call ps_read_psp8( unit_ps, ps(ielm) )
-
-             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
-             Mr(ielm)                 = ps(ielm)%Mr
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             if ( ps(ielm)%norb > 0 ) then
-             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                                      = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-             end if
-             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
-             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
-             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
-             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
-             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-
-          case( 7 )
-
-             call ps_read_adpack( unit_ps, ps(ielm) )
-
-             call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
-             Mr(ielm)                 = ps(ielm)%Mr
-             norb(ielm)               = ps(ielm)%norb
-             Zps(ielm)                = ps(ielm)%Zps
-             if ( ps(ielm)%norb > 0 ) then
-             anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
-             inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
-             Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
-             NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
-             lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
-             no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
-             viod(1:Mr(ielm),1:norb(ielm),ielm) &
-                                      = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
-             end if
-             vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
-             cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
-             cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
-             rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
-             rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
-
-          case default
-
-             stop "ippform error"
-
-          end select ! ippform
+        select case( ippform(ielm) )
+        case( 1 )
 
           close(unit_ps)
+          open(unit_ps,FILE=file_ps(ielm),form='unformatted',STATUS='old')
 
-       end do ! ielm
+          call ps_read_TM( unit_ps, ps(ielm) )
 
-       write(*,*) "ps_type = ",ps_type
-       if ( ps_type == 1 ) then
-          write(*,*) "(non-diagonal partrs are in nonlocal pseudopotential)"
-          if ( any(ippform==4) ) then
-          else
-             do ielm=1,Nelement
-                do j=1,ps(ielm)%norb
-                   jo=ps(ielm)%no(j)
-                   lj=ps(ielm)%lo(j)
-                do i=1,ps(ielm)%norb
-                   io=ps(ielm)%no(i)
-                   li=ps(ielm)%lo(i)
-                   if ( li /= lj ) cycle
-                   hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
-                end do
-                end do
-                do j=1,norb(ielm)
-                   viod(:,j,ielm)=viod(:,j,ielm)/sqrt( anorm(j,ielm) )
-                end do
-             end do ! ielm
+          call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+          Mr(ielm)                 = ps(ielm)%Mr
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+          inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+          Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+          NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+          lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+          vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+          cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+          cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+          rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+          rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
+          viod(1:Mr(ielm),1:norb(ielm),ielm) &
+              = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+
+        case( 2, 102 )
+
+          call read_PSV( unit_ps, ielm, ps(ielm) )
+
+          call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+          Mr(ielm)                 = ps(ielm)%Mr
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          if ( norb(ielm) /= 0 ) then
+            anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+            inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+            Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+            NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+            lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+            no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
           end if
-       end if
+          vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+          cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+          cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+          rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+          rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
+          parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
+          nlf(ielm)                = ps(ielm)%nlf
 
-       write(*,*) "# of Gaussian parameters of initial density"
-       max_ngauss=0
-       max_nterms=0
-       do ielm=1,Nelement
-          if ( allocated(ps(ielm)%cdd_coef) ) then
-             max_ngauss = max( max_ngauss, ps(ielm)%ngauss )
-             max_nterms = max( max_nterms, size(ps(ielm)%cdd_coef,1) )
-             write(*,*) ielm, ps(ielm)%ngauss, size(ps(ielm)%cdd_coef,1)
+          if ( norb(ielm) /= 0 ) then
+            viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                  = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+            nrf(1:norb(ielm),ielm)   = ps(ielm)%nrf(1:norb(ielm))
           end if
-       end do
-       write(*,*) "max_ngauss,max_nterms=",max_ngauss,max_nterms
-       if ( max_ngauss > 0 ) then
-          allocate( cdd_coef(max_nterms,max_ngauss,Nelement) ) ; cdd_coef=0.0d0
+
+        case( 3 )
+
+          call ps_read_YB( unit_ps, ps(ielm) )
+
+          call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+          Mr(ielm)                 = ps(ielm)%Mr
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+          inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+          Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+          NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+          lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+          vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+          cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+          cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+          rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+          rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
+          viod(1:Mr(ielm),1:norb(ielm),ielm) &
+              = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+
+        case( 4 )
+
+          call read_ps_gth( unit_ps, ps(ielm) )
+
+          call ps_allocate( 1, ps(ielm)%norb )
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          if ( norb(ielm) /= 0 ) then
+            Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+            lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+            no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+            inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+          end if
+          parloc(1:4,ielm)         = ps(ielm)%parloc(1:4)
+          Rcloc(ielm)              = ps(ielm)%Rcloc
+          hnl(:,:,ielm)            = ps(ielm)%hnl(:,:)
+          knl(:,:,ielm)            = ps(ielm)%knl(:,:)
+          hnml(:,:,:,ielm)         = ps(ielm)%hnml(:,:,:)
+          knml(:,:,:,ielm)         = ps(ielm)%knml(:,:,:)
+
+          if ( any( hnml /= 0.0d0 ) ) ps_type=1
+
+        case( 5 )
+
+          call ps_read_UPF( unit_ps, ps(ielm) )
+
+          call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+          Mr(ielm)                 = ps(ielm)%Mr
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          if ( ps(ielm)%norb > 0 ) then
+            anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+            inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+            Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+            NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+            lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+            no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+            viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                    = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+          end if
+          vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+          cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+          cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+          rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+          rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
+
+          if ( allocated(ps(ielm)%Dij) ) then
+            if ( any( ps(ielm)%Dij /= 0.0d0 ) ) then ! Multireference
+              ps_type=1
+              anorm(:,ielm)=1.0d0
+            end if
+          end if
+
+        case( 6 )
+
+          call ps_read_psp8( unit_ps, ps(ielm) )
+
+          call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+          Mr(ielm)                 = ps(ielm)%Mr
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          if ( ps(ielm)%norb > 0 ) then
+            anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+            inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+            Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+            NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+            lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+            no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+            viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                    = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+          end if
+          vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+          cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+          cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+          rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+          rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
+
+        case( 7 )
+
+          call ps_read_adpack( unit_ps, ps(ielm) )
+
+          call ps_allocate( ps(ielm)%Mr, ps(ielm)%norb )
+          Mr(ielm)                 = ps(ielm)%Mr
+          norb(ielm)               = ps(ielm)%norb
+          Zps(ielm)                = ps(ielm)%Zps
+          if ( ps(ielm)%norb > 0 ) then
+            anorm(1:norb(ielm),ielm) = ps(ielm)%anorm(1:norb(ielm))
+            inorm(1:norb(ielm),ielm) = ps(ielm)%inorm(1:norb(ielm))
+            Rps(1:norb(ielm),ielm)   = ps(ielm)%Rps(1:norb(ielm))
+            NRps(1:norb(ielm),ielm)  = ps(ielm)%NRps(1:norb(ielm))
+            lo(1:norb(ielm),ielm)    = ps(ielm)%lo(1:norb(ielm))
+            no(1:norb(ielm),ielm)    = ps(ielm)%no(1:norb(ielm))
+            viod(1:Mr(ielm),1:norb(ielm),ielm) &
+                                    = ps(ielm)%viod(1:Mr(ielm),1:norb(ielm))
+          end if
+          vql(1:Mr(ielm),ielm)     = ps(ielm)%vql(1:Mr(ielm))
+          cdd(1:Mr(ielm),ielm)     = ps(ielm)%cdd(1:Mr(ielm))
+          cdc(1:Mr(ielm),ielm)     = ps(ielm)%cdc(1:Mr(ielm))
+          rad(1:Mr(ielm),ielm)     = ps(ielm)%rad(1:Mr(ielm))
+          rab(1:Mr(ielm),ielm)     = ps(ielm)%rab(1:Mr(ielm))
+
+        case default
+
+          stop "ippform error"
+
+        end select ! ippform
+
+        close(unit_ps)
+
+      end do ! ielm
+
+      write(*,*) "ps_type = ",ps_type
+      if ( ps_type == 1 ) then
+        write(*,*) "(non-diagonal partrs are in nonlocal pseudopotential)"
+        if ( any(ippform==4) ) then
+        else
           do ielm=1,Nelement
-             do j=1,ps(ielm)%ngauss
-                do i=1,size(ps(ielm)%cdd_coef,1)
-                   cdd_coef(i,j,ielm)=ps(ielm)%cdd_coef(i,j)
-                end do
-             end do
+            do j=1,ps(ielm)%norb
+              jo=ps(ielm)%no(j)
+              lj=ps(ielm)%lo(j)
+            do i=1,ps(ielm)%norb
+              io=ps(ielm)%no(i)
+              li=ps(ielm)%lo(i)
+              if ( li /= lj ) cycle
+              hnml(io,jo,li,ielm) = ps(ielm)%Dij(i,j)
+            end do
+            end do
+            do j=1,norb(ielm)
+                viod(:,j,ielm)=viod(:,j,ielm)/sqrt( anorm(j,ielm) )
+            end do
+          end do ! ielm
+        end if
+      end if
+
+      write(*,*) "Parameters of Gaussian initial density"
+      max_ngauss=0
+      max_nterms=0
+      do ielm=1,Nelement
+        if ( allocated(ps(ielm)%cdd_coef) ) then
+          max_ngauss = max( max_ngauss, ps(ielm)%ngauss )
+          max_nterms = max( max_nterms, size(ps(ielm)%cdd_coef,1) )
+          write(*,*) ielm, ps(ielm)%ngauss, size(ps(ielm)%cdd_coef,1)
+        end if
+      end do
+      write(*,*) "max_ngauss,max_nterms=",max_ngauss,max_nterms
+      if ( max_ngauss > 0 ) then
+        allocate( cdd_coef(max_nterms,max_ngauss,Nelement) ) ; cdd_coef=0.0d0
+        do ielm=1,Nelement
+          do j=1,ps(ielm)%ngauss
+            do i=1,size(ps(ielm)%cdd_coef,1)
+              cdd_coef(i,j,ielm)=ps(ielm)%cdd_coef(i,j)
+            end do
           end do
-       else
-          write(*,*) "Gaussian fit is applied"
-          max_nterms=3
-          max_ngauss=4
-          allocate( cdd_coef(max_nterms,max_ngauss,Nelement) ) ; cdd_coef=0.0d0
-          do ielm=1,Nelement
-             call fit_initrho_simc(rad(:,ielm),cdd(:,ielm),cdd_coef(:,:,ielm))
-          end do
-       end if
+        end do
+      else if ( any(cdd/=0.0d0) ) then
+        write(*,*) "Initial density is given as numerical data"
+        write(*,*) "Gaussian fitting is applied"
+        max_nterms=3
+        max_ngauss=4
+        allocate( cdd_coef(max_nterms,max_ngauss,Nelement) ); cdd_coef=0.0d0
+        do ielm=1,Nelement
+          call fit_initrho_simc(rad(:,ielm),cdd(:,ielm),cdd_coef(:,:,ielm))
+        end do
+      else
+        write(*,*) "No initial density data"
+      end if
 
     end if ! [ rank == 0 ]
 
 ! --- bcast pseudopotential data
 
     call send_pseudopot(rank)
-    if ( pselect > 100 ) call sendPSG( rank, Nelement )
 
     do ielm=1,Nelement
-       call ps_send_ps1d( ps(ielm) )
-       if ( pselect > 100 ) call psg_send_ps1d( ps(ielm) )
+      call ps_send_ps1d( ps(ielm) )
     end do
 
 ! ---

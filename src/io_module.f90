@@ -21,8 +21,9 @@ module io_module
   use atom_module, only: Natom, Nelement, ki_atom, zn_atom, aa_atom
   use grid_module, only: construct_map_1d_to_3d_grid
   use fermi_module, only: efermi
-  use io_ctrl_parameters, only: IC, OC, OC2, IO_ctrl, MBwr1, MBwr2, lat_new, lat_old &
-                              , icount, flag_overwrite, read_io_ctrl_parameters
+  use io_ctrl_parameters, only: IC, OC, OC2, IO_ctrl, MBwr1, MBwr2, lat_new, lat_old, &
+  icount, flag_overwrite_io, read_io_ctrl_parameters, file_wf0,file_wf1,file_wf2, &
+  file_vrho0, file_vrho1, file_vrho2
   use watch_module
   use rsdft_mpi_module
 
@@ -36,12 +37,12 @@ module io_module
   public :: Init_IO
   public :: read_vrho_data
 
-  character(30) :: file_wf0   ="wf.dat1"
-  character(30) :: file_vrho0 ="vrho.dat1"
-  character(30) :: file_wf1   ="wf.dat1"
-  character(30) :: file_vrho1 ="vrho.dat1"
-  character(30) :: file_wf2   ="wf.dat1"
-  character(30) :: file_vrho2 ="vrho.dat1"
+  ! character(30) :: file_wf0   ="wf.dat1"
+  ! character(30) :: file_vrho0 ="vrho.dat1"
+  ! character(30) :: file_wf1   ="wf.dat1"
+  ! character(30) :: file_vrho1 ="vrho.dat1"
+  ! character(30) :: file_wf2   ="wf.dat1"
+  ! character(30) :: file_vrho2 ="vrho.dat1"
 
   character(64),parameter :: version="version3.0, comment_length=64"
   character(64) :: comment
@@ -77,7 +78,7 @@ contains
     if ( .not.(flag .or. icount==OC2) ) return
 
     call write_border( 0, " write_data(start)" )
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     n1  = idisp(myrank)+1
     n2  = idisp(myrank)+ircnt(myrank)
@@ -99,7 +100,7 @@ contains
 
 ! ---
 
-    if ( present(suffix) .and. .not.flag_overwrite ) call Init_IO( suffix )
+    if ( present(suffix) .and. .not.flag_overwrite_io ) call Init_IO( suffix )
 
 ! ---
 
@@ -264,6 +265,8 @@ contains
 !--------1---------2---------3---------4---------5---------6---------7--
 
   subroutine read_data(disp_switch)
+    use var_sys_parameter, only: use_real8_wf
+    use wf_module, only: unk, occ
     implicit none
     logical,intent(in) :: disp_switch
     integer :: k,n,i,j,ML_tmp,n1,n2,ML0,irank
@@ -278,7 +281,7 @@ contains
     if ( IC <= 0 ) return
 
     call write_border( 0, " read_data(start)" )
-    call start_timer( tt )
+    call start_timer( t_out=tt )
 
     n1    = idisp(myrank)+1
     n2    = idisp(myrank)+ircnt(myrank)
@@ -465,7 +468,15 @@ contains
 
     select case( IO_ctrl )
     case( 0, 3 )
-       call read_wf_simple( file_wf2, SYStype, IO_ctrl, disp_switch )
+      if ( use_real8_wf() ) then
+#ifdef _DRSDFT_
+        call read_wf_simple( d_wf_out=unk, occ_out=occ )
+#endif
+      else
+#ifndef _DRSDFT_
+        call read_wf_simple( z_wf_out=unk, occ_out=occ )
+#endif
+      end if
     case( 1 )
        call read_data_io1( file_wf2, SYStype )
     case( 2 )
@@ -518,7 +529,7 @@ contains
 
     if ( SYStype == 0 ) then
 
-       call construct_map_1d_to_3d_grid( Ngrid, Igrid, comm_grid, LL2 )
+       call construct_map_1d_to_3d_grid( LL2 )
 
     else if ( SYStype == 1 ) then
 
@@ -549,7 +560,7 @@ contains
     logical :: disp_switch
 
     call write_border( 0, " read_vrho_data(start)" )
-    call start_timer( tt )
+    call start_timer( t_out=tt )
     call check_disp_switch( disp_switch, 0 )
 
     n1  = idisp(myrank)+1

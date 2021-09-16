@@ -1,16 +1,17 @@
-MODULE rgrid_mol_module
+module rgrid_mol_module
 
   use io_tools_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: LL,KK,Hsize,map_g2p_rgrid_mol,iswitch_eqdiv &
+  private
+  public :: LL,KK,Hsize,iswitch_eqdiv &
            ,Construct_RgridMol, Destruct_RgridMol &
            ,ConstructBoundary_RgridMol, DestructBoundary_RgridMol &
            ,Read_RgridMol, InitParallel_RgridMol &
            ,GetGridSize_RgridMol, GetNumGrids_RgridMol, GetSimBox_RgridMol
-
+  public :: map_g2p_rgrid_mol
+  public :: construct_map_1d_to_3d_rgrid_mol
   integer :: Box_Shape
   real(8) :: Hsize,Rsize,Zsize
   integer :: iswitch_eqdiv
@@ -753,5 +754,43 @@ CONTAINS
     end do
   END SUBROUTINE map_g2p_rgrid_mol
 
+  subroutine construct_map_1d_to_3d_rgrid_mol( LL1to3 )
+    use parallel_module, only: pinfo_grid
+    implicit none
+    integer,allocatable,intent(inout)  :: LL1to3(:,:)
+    integer :: n,i1,i2,i3,np,i
+    real(8) :: r2,Rc2,z
+    Rc2=Rsize*Rsize
+    np=size( pinfo_grid, 2 )
+    if ( .not.allocated(LL1to3) ) then
+      n=sum( pinfo_grid(8,:) )
+      allocate( LL1to3(3,n) )
+    end if
+    LL1to3=0
+    do n=0,np-1
+      i = pinfo_grid(7,n)
+      do i3=pinfo_grid(5,n)+1,pinfo_grid(5,n)+pinfo_grid(6,n)
+      do i2=pinfo_grid(3,n)+1,pinfo_grid(3,n)+pinfo_grid(4,n)
+      do i1=pinfo_grid(1,n)+1,pinfo_grid(1,n)+pinfo_grid(2,n)
+        select case( Box_Shape )
+        case( 1 )
+          r2=Hsize*Hsize*(i1*i1+i2*i2+i3*i3)
+          if ( r2 <= Rc2+eps ) then
+            i=i+1
+            LL1to3(:,i) = (/ i1, i2, i3 /)
+          end if
+        case( 2 )
+          r2=Hsize*Hsize*(i1*i1+i2*i2)
+          z=abs(i3*Hsize)
+          if ( r2 <= Rc2+eps .and. z <= Zsize+eps ) then
+            i=i+1
+            LL1to3(:,i) = (/ i1, i2, i3 /)
+          end if
+        end select
+      end do
+      end do
+      end do
+    end do
+  end subroutine construct_map_1d_to_3d_rgrid_mol
 
 END MODULE rgrid_mol_module

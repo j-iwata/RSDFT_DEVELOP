@@ -1,33 +1,41 @@
-MODULE kinetic_module
+module kinetic_module
 
-  use kinetic_variables
-  use kinetic_sol_module
-  use kinetic_sym_module
-  use kinetic_allgatherv_module
-  use kinetic_mol_module
-  use fd_module
+  use kinetic_variables, only: SYStype, coef_lap, coef_nab, coef_nabk, zcoef_kin &
+                              ,const_k2, coef_kin, flag_nab, Md, kin_select &
+                              ,flag_n12, flag_n23,flag_n31,ggg,coef_lap0, wk
+  use d_kinetic_sol_module, only: d_op_kinetic_sol
+  use z_kinetic_sol_module, only: z_op_kinetic_sol
+  ! use kinetic_sym_module
+  ! use kinetic_allgatherv_module
+  ! use kinetic_mol_module
+  ! use fd_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_kinetic, op_kinetic &
-           ,read_kinetic &
-           ,SYStype
+  private
+  public :: init_kinetic
+  public :: op_kinetic
+  public :: SYStype
 
-CONTAINS
+  interface op_kinetic
+    module procedure d_op_kinetic, z_op_kinetic
+  end interface
+
+contains
 
 
-  SUBROUTINE init_kinetic( aa, bb, MBZ, kbb, Hgrid, Igrid, MBD )
+  subroutine init_kinetic( aa, bb, MBZ, kbb, Hgrid, Igrid, MBD )
+    use fd_module, only: get_coef_lapla_fd, get_coef_nabla_fd
     implicit none
-    real(8),intent(IN) :: aa(3,3),bb(3,3)
-    integer,intent(IN) :: MBZ
-    real(8),intent(IN) :: kbb(3,MBZ)
-    real(8),optional,intent(IN) :: Hgrid(3)
-    integer,optional,intent(IN) :: Igrid(2,0:3),MBD
+    real(8),intent(in) :: aa(3,3),bb(3,3)
+    integer,intent(in) :: MBZ
+    real(8),intent(in) :: kbb(3,MBZ)
+    real(8),optional,intent(in) :: Hgrid(3)
+    integer,optional,intent(in) :: Igrid(2,0:3),MBD
     integer :: m,n,k,is,i
     real(8) :: c1,c2,c3,kx,ky,kz,pi2
     real(8) :: a1,a2,a3,H1,H2,H3
-    complex(8),parameter :: zi=(0.d0,1.d0)
+    complex(8),parameter :: zi=(0.0d0,1.0d0)
     real(8),allocatable :: nab(:),lap(:)
     logical, save :: first_time = .true.
     logical :: disp_sw
@@ -35,7 +43,7 @@ CONTAINS
     call write_border( 0, " init_kinetic(start)" )
     call check_disp_switch( disp_sw, 0 )
 
-    pi2 = 2.d0*acos(-1.d0)
+    pi2 = 2.0d0*acos(-1.0d0)
     a1  = sqrt(sum(aa(1:3,1)**2))/pi2
     a2  = sqrt(sum(aa(1:3,2)**2))/pi2
     a3  = sqrt(sum(aa(1:3,3)**2))/pi2
@@ -157,28 +165,28 @@ CONTAINS
 
     call write_border( 0, " init_kinetic(end)" )
 
-  END SUBROUTINE init_kinetic
+  end subroutine init_kinetic
 
 
-  SUBROUTINE allocate_wk( Igrid, MBD )
+  subroutine allocate_wk( Igrid, MBD )
     implicit none
-    integer,intent(IN) :: Igrid(2,0:3),MBD
+    integer,intent(in) :: Igrid(2,0:3),MBD
     integer :: a1,a2,a3,b1,b2,b3,nb
     a1=Igrid(1,1)-Md ; b1=Igrid(2,1)+Md
     a2=Igrid(1,2)-Md ; b2=Igrid(2,2)+Md
     a3=Igrid(1,3)-Md ; b3=Igrid(2,3)+Md
-    if( allocated(wk) ) deallocate(wk) ! MIZUHO-IR for cellopt
+    if( allocated(wk) ) deallocate(wk)
     allocate( wk(a1:b1,a2:b2,a3:b3,MBD) )
     wk=(0.0d0,0.0d0)
-  END SUBROUTINE allocate_wk
+  end subroutine allocate_wk
 
 
-  SUBROUTINE get_ggg_kinetic(aa,bb,ggg)
+  subroutine get_ggg_kinetic(aa,bb,ggg)
     implicit none
-    real(8),intent(IN)  :: aa(3,3),bb(3,3)
-    real(8),intent(OUT) :: ggg(6)
+    real(8),intent(in)  :: aa(3,3),bb(3,3)
+    real(8),intent(out) :: ggg(6)
     real(8) :: const,a1,a2,a3
-    const=1.d0/(4.d0*acos(-1.d0)**2)
+    const=1.d0/(4.0d0*acos(-1.0d0)**2)
     a1 = sqrt( sum( aa(:,1)**2 ) )
     a2 = sqrt( sum( aa(:,2)**2 ) )
     a3 = sqrt( sum( aa(:,3)**2 ) )
@@ -188,40 +196,70 @@ CONTAINS
     ggg(4) = a1*a2*sum(bb(:,1)*bb(:,2))*const
     ggg(5) = a2*a3*sum(bb(:,2)*bb(:,3))*const
     ggg(6) = a3*a1*sum(bb(:,3)*bb(:,1))*const
-  END SUBROUTINE get_ggg_kinetic
+  end subroutine get_ggg_kinetic
 
 
-  SUBROUTINE op_kinetic( tpsi, htpsi, k_in, vloc )
+  subroutine d_op_kinetic( tpsi, htpsi, k_in, vloc )
     implicit none
-#ifdef _DRSDFT_
-    real(8),intent(IN)  :: tpsi(:,:)
-    real(8),intent(INOUT) :: htpsi(:,:)
-#else
-    complex(8),intent(IN)  :: tpsi(:,:)
-    complex(8),intent(INOUT) :: htpsi(:,:)
-#endif
-    integer,optional,intent(IN) :: k_in
+    real(8),intent(in) :: tpsi(:,:)
+    real(8),intent(inout) :: htpsi(:,:)
+    integer,optional,intent(in) :: k_in
     real(8),optional,intent(in) :: vloc(:)
     integer :: k
     k=1 ; if ( present(k_in) ) k=k_in
-    select case(SYStype)
+    select case( SYStype )
     case default
-       select case( kin_select )
-       case default
-          if( present(vloc) )then
-             call op_kinetic_sol( tpsi, htpsi, k, vloc )
-          else
-             call op_kinetic_sol( tpsi, htpsi, k )
-          end if
-       case(2)
-          call op_kinetic_sym( tpsi, htpsi, k )
-       case(3)
-          call op_kinetic_allgatherv( tpsi, htpsi, k )
-       end select
+
+      select case( kin_select )
+      case default
+        if( present(vloc) )then
+          call d_op_kinetic_sol( tpsi, htpsi, k, vloc )
+        else
+          call d_op_kinetic_sol( tpsi, htpsi, k )
+        end if
+      case(2)
+        ! call op_kinetic_sym( tpsi, htpsi, k )
+      case(3)
+        ! call op_kinetic_allgatherv( tpsi, htpsi, k )
+      end select
+    
     case(1)
-       call op_kinetic_mol( tpsi, htpsi )
+    
+      ! call op_kinetic_mol( tpsi, htpsi )
+    
     end select
-  END SUBROUTINE op_kinetic
+  end subroutine d_op_kinetic
+  
+  subroutine z_op_kinetic( tpsi, htpsi, k_in, vloc )
+    implicit none
+    complex(8),intent(in) :: tpsi(:,:)
+    complex(8),intent(inout) :: htpsi(:,:)
+    integer,optional,intent(in) :: k_in
+    real(8),optional,intent(in) :: vloc(:)
+    integer :: k
+    k=1 ; if ( present(k_in) ) k=k_in
+    select case( SYStype )
+    case default
+
+      select case( kin_select )
+      case default
+        if( present(vloc) )then
+          call z_op_kinetic_sol( tpsi, htpsi, k, vloc )
+        else
+          call z_op_kinetic_sol( tpsi, htpsi, k )
+        end if
+      case(2)
+        ! call op_kinetic_sym( tpsi, htpsi, k )
+      case(3)
+        ! call op_kinetic_allgatherv( tpsi, htpsi, k )
+      end select
+    
+    case(1)
+    
+      ! call op_kinetic_mol( tpsi, htpsi )
+    
+    end select
+  end subroutine z_op_kinetic
 
 
-END MODULE kinetic_module
+end module kinetic_module

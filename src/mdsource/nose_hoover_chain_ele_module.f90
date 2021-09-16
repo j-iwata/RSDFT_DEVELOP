@@ -57,6 +57,14 @@ CONTAINS
     real(8) :: w,w2
     integer :: i
 
+    call write_border( 0, 'init_nose_hoover_chain_ele(start)' )
+
+    dt_ST=0.0d0
+    Qeta=0.0d0
+    eta=0.0d0
+    etadot=0.0d0
+    Feta=0.0d0
+
     call make_nosee_time( dt )
 
     if ( .not.(inivel.or.linitnosee) ) then
@@ -83,6 +91,8 @@ CONTAINS
     end do
 
     if ( present(ene) ) call noseeneele( ene )
+
+    call write_border( 0, 'init_nose_hoover_chain_ele(end)' )
 
     return
   END SUBROUTINE init_nose_hoover_chain_ele
@@ -174,6 +184,8 @@ CONTAINS
     implicit none
     integer :: i
 
+    call write_border( 0, 'write_nosee_data(start)' )
+
     if ( myrank == 0 ) then
        open(999,file="Bathdata_ele.dat1",status="replace")
        write(999,*)(eta(i),etadot(i),i=1,nchain) 
@@ -182,8 +194,10 @@ CONTAINS
        write(999,*) Ndof_e, ekinw
        close(999)
     end if
-    return
 
+    call write_border( 0, 'write_nosee_data(end)' )
+
+    return
   END SUBROUTINE write_nosee_data
 
 
@@ -192,6 +206,8 @@ CONTAINS
     implicit none
     integer :: i, ierr
     include 'mpif.h'
+
+    call write_border( 0, 'read_nosee_data(start)' )
 
     if ( myrank == 0 ) then
        open(999,file="Bathdata_ele.dat",status="old")
@@ -211,8 +227,9 @@ CONTAINS
 
     beta_e = dble(Ndof_e)/(2.0d0*ekinw)
 
-    return
+    call write_border( 0, 'read_nosee_data(end)' )
 
+    return
   END SUBROUTINE read_nosee_data
 
 

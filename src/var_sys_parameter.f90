@@ -1,32 +1,30 @@
-MODULE var_sys_parameter
+module var_sys_parameter
 
   implicit none
 
-  PRIVATE
+  private
+  public :: use_real8_wf
+  public :: systype_query
 
-  character(4),PUBLIC :: pp_kind = "NCPP"
+  character(4), public :: pp_kind = "NCPP"
 
-  logical :: isRootRank
-  logical :: isTestRank
-  integer :: testRank=1 ! this will show testRank status
-#ifdef _ParallelTest_
-  logical :: isParallelTest=.true.
-#else
-  logical :: isParallelTest=.false.
-#endif
+  logical :: flag_real8 = .false.
+  integer :: SYStype = 0
 
-CONTAINS
+contains
 
-  SUBROUTINE setDispSwitch(myrank,nprocs)
+  logical function use_real8_wf( flag )
     implicit none
-    integer,intent(IN) :: myrank
-    integer,intent(IN) :: nprocs
-    isRootRank = (myrank==0)
-    isTestRank = (myrank==testRank)
-    if ( isParallelTest .and. nprocs > 9 ) then
-       stop 'nprocs>9 is not suitable for parallel test'
-    end if
-    return
-  END SUBROUTINE setDispSwitch
+    logical,optional,intent(in) :: flag
+    if ( present(flag) ) flag_real8 = flag
+    use_real8_wf = flag_real8
+  end function use_real8_wf
 
-END MODULE var_sys_parameter
+  integer function systype_query( set_value )
+    implicit none
+    integer,optional,intent(in) :: set_value
+    if ( present(set_value) ) SYStype = set_value
+    systype_query = SYStype
+  end function systype_query
+
+end module var_sys_parameter

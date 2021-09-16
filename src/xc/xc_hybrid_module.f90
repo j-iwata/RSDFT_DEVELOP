@@ -1,4 +1,4 @@
-MODULE xc_hybrid_module
+module xc_hybrid_module
 
   use io_tools_module
   use wf_module, only: wfrange
@@ -6,18 +6,18 @@ MODULE xc_hybrid_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_xc_hybrid, control_xc_hybrid &
+  private
+  public :: init_xc_hybrid, control_xc_hybrid &
            ,get_flag_xc_hybrid &
            ,omega, R_hf, alpha_hf, q_fock, gamma_hf &
            ,iflag_hf, iflag_pbe0, iflag_hse, iflag_lcwpbe, iflag_hybrid &
-           ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1 &
-           ,VFunk, unk_hf, occ_hf, occ_factor, npart &
-           ,n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
-  PUBLIC :: read_xc_hybrid
-  PUBLIC :: set_param_xc_hybrid
+           ,FOCK_0, FOCK_1, FKMB_0, FKMB_1, FKBZ_0, FKBZ_1, &
+           occ_factor, n_kq_fock, i_kq_fock, kq_fock, prep_kq_xc_hybrid
+  public :: read_xc_hybrid
+  public :: set_param_xc_hybrid
+  public :: get_param_xc_hybrid
 
-  integer :: npart
+  ! integer :: npart
   real(8) :: R_hf
 
   integer :: iflag_hf     = 0
@@ -26,17 +26,15 @@ MODULE xc_hybrid_module
   integer :: iflag_lcwpbe = 0
   integer :: iflag_hybrid = 0
 
-#ifdef _DRSDFT_
-  real(8),allocatable :: VFunk(:,:,:,:)
-  real(8),allocatable :: unk_hf(:,:,:,:)
-  real(8),parameter :: byte = 8.0d0
-#else
-  complex(8),allocatable :: VFunk(:,:,:,:)
-  complex(8),allocatable :: unk_hf(:,:,:,:)
-  real(8),parameter :: byte = 16.0d0
-#endif
+! #ifdef _DRSDFT_
+!   real(8),allocatable :: unk_hf(:,:,:,:)
+!   real(8),parameter :: byte = 8.0d0
+! #else
+!   complex(8),allocatable :: unk_hf(:,:,:,:)
+!   real(8),parameter :: byte = 16.0d0
+! #endif
 
-  real(8),allocatable :: occ_hf(:,:,:)
+  ! real(8),allocatable :: occ_hf(:,:,:)
   real(8) :: occ_factor
 
   real(8),allocatable :: kbb_hf(:,:)
@@ -60,43 +58,48 @@ MODULE xc_hybrid_module
   character(30) :: file_wf2 = "wf.dat1"
   character(8) :: XCtype
 
-CONTAINS
+contains
 
 
-  SUBROUTINE read_xc_hybrid
+  subroutine read_xc_hybrid
     implicit none
-    real(8) :: tmp(2)
     call write_border( 0, " read_xc_hybrid(start)" )
     call IOTools_readStringKeyword( "XCTYPE", XCtype )
     call check_libxc( XCtype )
-    tmp(1:2) = (/ omega, alpha_hf /)
-    call IOTools_readReal8Keyword( "HF", tmp )
-    omega    = tmp(1)
-    alpha_hf = tmp(2)
     call IOTools_readIntegerKeyword( "IC", IC )
     call IOTools_readIntegerKeyword( "IOCTRL", IO_ctrl )
     call write_border( 0, " read_xc_hybrid(end)" )
-  END SUBROUTINE read_xc_hybrid
+  end subroutine read_xc_hybrid
 
 
-  SUBROUTINE check_libxc( func_type )
+  subroutine check_libxc( func_type )
     implicit none
-    character(*),intent(INOUT) :: func_type
+    character(*),intent(inout) :: func_type
     character(64) :: LIBXC
     LIBXC=""
     call IOTools_readStringKeyword( "LIBXC" , LIBXC )
     if ( index(LIBXC,"HSE") > 0 ) func_type="HSE"
-  END SUBROUTINE check_libxc
+  end subroutine check_libxc
 
 
-  SUBROUTINE init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
+  subroutine read_hybrid_parameters
+    implicit none
+    real(8) :: tmp(2)
+    tmp = (/ omega, alpha_hf /)
+    call IOTools_readReal8Keyword( "HF", tmp )
+    omega = tmp(1)
+    alpha_hf = tmp(2)
+  end subroutine read_hybrid_parameters
+
+
+  subroutine init_xc_hybrid( n1, n2, Ntot, Nspin, MB, MMBZ &
        , MBZ,MBZ_0,MBZ_1, MSP,MSP_0,MSP_1, MB_0,MB_1, kbb, bb, Vcell &
        , SYStype, np_fkmb, disp_switch )
     implicit none
-    integer,intent(IN) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
-    integer,intent(IN) :: MSP, MSP_0, MSP_1, MB_0, MB_1, np_fkmb
-    real(8),intent(IN) :: Ntot, kbb(:,:), bb(3,3), Vcell
-    logical,intent(IN) :: disp_switch
+    integer,intent(in) :: n1, n2, Nspin, MB, MBZ,MMBZ,MBZ_0,MBZ_1, SYStype
+    integer,intent(in) :: MSP, MSP_0, MSP_1, MB_0, MB_1, np_fkmb
+    real(8),intent(in) :: Ntot, kbb(:,:), bb(3,3), Vcell
+    logical,intent(in) :: disp_switch
     integer :: ML0,i,s,k,q,init_num,ierr,m,t
     integer,allocatable :: ir(:),id(:)
     real(8) :: ctime0,ctime1,etime0,etime1,best_time,time
@@ -140,6 +143,8 @@ CONTAINS
     case default
        goto 99
     end select
+
+    call read_hybrid_parameters
 
     if ( disp_switch ) then
        write(*,*) "XCtype       =",XCtype
@@ -190,17 +195,17 @@ CONTAINS
 
     if ( IC == 0 ) then
 
-       mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1) &
-            *(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
+      !  mem(1)=byte*(n2-n1+1)*(FKMB_1-FKMB_0+1) &
+      !       *(FKBZ_1-FKBZ_0+1)*(MSP_1-MSP_0+1)
 
-       if ( disp_switch ) then
-          write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
-       end if
+      !  if ( disp_switch ) then
+      !     write(*,*) "size(unk_hf)(MB)=",mem(1)/1024.d0**2
+      !  end if
 
-       allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
-       unk_hf=(0.0d0,0.0d0)
-       allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP) )
-       occ_hf=0.0d0
+      !  allocate( unk_hf(n1:n2,FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP_0:MSP_1) )
+      !  unk_hf=(0.0d0,0.0d0)
+      !  allocate( occ_hf(FKMB_0:FKMB_1,FKBZ_0:FKBZ_1,MSP) )
+      !  occ_hf=0.0d0
 
     else if ( IC > 0 ) then
 
@@ -221,8 +226,7 @@ CONTAINS
        b%MS0 = MSP_0
        b%MS1 = MSP_1
 
-       call read_wf_simple( file_wf2, SYStype, IO_ctrl, disp_switch &
-            , b, unk_hf, occ_hf, kbb_hf )
+       call read_wf_simple( b, kbb_out=kbb_hf )
 
        FKMB   = b%MB
        FKMB_0 = b%MB0
@@ -308,7 +312,7 @@ CONTAINS
 ! --- Divided MPI_Allgatherv ---
 !
 
-    npart = 30
+    ! npart = 30
 
 !    call gather_wf
 !    ML0 = n2 - n1 + 1
@@ -331,12 +335,12 @@ CONTAINS
 !    end do
 !    call mpi_bcast(npart,1,mpi_integer,0,mpi_comm_world,ierr)
 
-    if ( disp_switch ) then
-       write(*,*) "Division number of mpi_allgatherv =",npart
+    ! if ( disp_switch ) then
+    !    write(*,*) "Division number of mpi_allgatherv =",npart
 !       write(*,*) "Time of divided MPI_Allgatherv (s) =",time
 !       write(*,*) "Optimal division number of mpi_allgatherv =",npart
 !       write(*,*) "Best time of divided MPI_Allgatherv (s) =",best_time
-    end if
+    ! end if
 
 ! ---
 
@@ -348,7 +352,7 @@ CONTAINS
 
     return 
  
-  END SUBROUTINE init_xc_hybrid
+  end subroutine init_xc_hybrid
 
 
   SUBROUTINE control_xc_hybrid( ictrl )
@@ -507,4 +511,12 @@ CONTAINS
   END SUBROUTINE set_R_hf
 
 
-END MODULE xc_hybrid_module
+  subroutine get_param_xc_hybrid( omega_out, alpha_out )
+    implicit none
+    real(8),intent(out) :: omega_out, alpha_out
+    omega_out = omega
+    alpha_out = alpha_hf
+  end subroutine get_param_xc_hybrid
+
+
+end module xc_hybrid_module

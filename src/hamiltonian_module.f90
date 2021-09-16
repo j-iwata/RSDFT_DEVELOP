@@ -3,7 +3,7 @@ module hamiltonian_module
   use kinetic_module, only: op_kinetic
   use localpot_module, only: op_localpot, Vloc
   use nonlocal_module, only: op_nonlocal
-  use fock_module, only: op_fock, current_band_index_fock
+  use fock_module, only: op_fock
   use watch_module, only: watchb, watchb_omp,time_hmlt
 
   implicit none
@@ -29,15 +29,19 @@ module hamiltonian_module
 #endif
 
   interface op_hamiltonian
-     module procedure d_op_hamiltonian, z_op_hamiltonian
+    module procedure d_op_hamiltonian, z_op_hamiltonian
   end interface
 
   interface backup_op_hamiltonian
-     module procedure d_backup_op_hamiltonian, z_backup_op_hamiltonian
+    module procedure d_backup_op_hamiltonian, z_backup_op_hamiltonian
   end interface
 
   interface rotv_op_hamiltonian
-     module procedure d_rotv_op_hamiltonian, z_rotv_op_hamiltonian
+    module procedure d_rotv_op_hamiltonian, z_rotv_op_hamiltonian
+  end interface
+
+  interface hamiltonian
+    module procedure d_hamiltonian1, z_hamiltonian1
   end interface
 
   logical :: USE_BACKUP_AND_RESTORE=.false.
@@ -54,9 +58,9 @@ module hamiltonian_module
 
 contains
 
-  subroutine hamiltonian(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+  subroutine hamiltonian0(n,k,s,tpsi,htpsi,n1,n2,ib1,ib2)
     implicit none
-    integer,intent(in) :: k,s,n1,n2,ib1,ib2
+    integer,intent(in) :: n,k,s,n1,n2,ib1,ib2
 #ifdef _DRSDFT_
     real(8),intent(in)  :: tpsi(n1:,ib1:)
     real(8),intent(out) :: htpsi(n1:,ib1:)
@@ -94,7 +98,7 @@ contains
 
 ! --- nonlocal potential ---
 
-    call op_nonlocal( tpsi, htpsi, k, s, ib1, ib2 )
+    call op_nonlocal( tpsi, htpsi, n,k,s )
 
 !$omp barrier
 
@@ -104,67 +108,55 @@ contains
 
     !call watchb( ttmp )
 
-    call op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
+    call op_fock( tpsi, htpsi, n,k,s )
 
     !call watchb( ttmp, time_hmlt(1,4) )
 
-  end subroutine hamiltonian
+  end subroutine hamiltonian0
 
-
-  subroutine hamiltonian_test(k,s,tpsi,htpsi,n1,n2,ib1,ib2)
+  subroutine d_hamiltonian1( tpsi, htpsi, n,k,s )
     implicit none
-    integer,intent(in) :: k,s,n1,n2,ib1,ib2
-#ifdef _DRSDFT_
-    real(8),intent(in)  :: tpsi(n1:,ib1:)
-    real(8),intent(out) :: htpsi(n1:,ib1:)
-#else
-    complex(8),intent(in)  :: tpsi(n1:,ib1:)
-    complex(8),intent(out) :: htpsi(n1:,ib1:)
-#endif
-    real(8) :: ttmp(2)
-    integer :: ib
-
+    integer,intent(in) :: n,k,s
+    real(8),intent(in) :: tpsi(:,:)
+    real(8),intent(inout) :: htpsi(:,:)
 !$omp parallel
-
-!$omp workshare
-    htpsi=(0.0d0,0.0d0)
-!$omp end workshare
-
-    call watchb_omp( ttmp )
-
-! --- Kinetic energy ---
-
-    call op_kinetic( tpsi(:,ib1:ib2), htpsi(:,ib1:ib2), k )
-
+    !call watchb_omp( ttmp )
+    call op_kinetic( tpsi, htpsi, k, Vloc(:,s) )
 !$omp barrier
-
-    call watchb_omp( ttmp, time_hmlt(1,1) )
-
-! --- local potential ---
-
-    call op_localpot( tpsi, htpsi, s )
-
+    !call watchb_omp( ttmp, time_hmlt(1,1) )
+    !call op_localpot( tpsi, htpsi, s )
+!!$omp barrier
+    !call watchb_omp( ttmp, time_hmlt(1,2) )
+    call op_nonlocal( tpsi, htpsi, n,k,s )
 !$omp barrier
-
-    call watchb_omp( ttmp, time_hmlt(1,2) )
-
-! --- nonlocal potential ---
-
-    call op_nonlocal( tpsi(:,ib1:ib2), htpsi(:,ib1:ib2), k, s )
-
-!$omp barrier
-
-    call watchb_omp( ttmp, time_hmlt(1,3) )
-
+    !call watchb_omp( ttmp, time_hmlt(1,3) )
 !$omp end parallel
+    !call watchb( ttmp )
+    call op_fock( tpsi, htpsi, n,k,s )
+    !call watchb( ttmp, time_hmlt(1,4) )
+  end subroutine d_hamiltonian1
 
-    call watchb( ttmp )
-
-    call op_fock(k,s,n1,n2,ib1,ib2,tpsi,htpsi)
-
-    call watchb( ttmp, time_hmlt(1,4) )
-
-  end subroutine hamiltonian_test
+  subroutine z_hamiltonian1( tpsi, htpsi, n,k,s )
+    implicit none
+    integer,intent(in) :: n,k,s
+    complex(8),intent(in) :: tpsi(:,:)
+    complex(8),intent(inout) :: htpsi(:,:)
+    !$omp parallel
+    !call watchb_omp( ttmp )
+    call op_kinetic( tpsi, htpsi, k, Vloc(:,s) )
+    !$omp barrier
+    !call watchb_omp( ttmp, time_hmlt(1,1) )
+    !call op_localpot( tpsi, htpsi, s )
+    !!$omp barrier
+    !call watchb_omp( ttmp, time_hmlt(1,2) )
+    call op_nonlocal( tpsi, htpsi, n,k,s )
+    !$omp barrier
+    !call watchb_omp( ttmp, time_hmlt(1,3) )
+    !$omp end parallel
+    !call watchb( ttmp )
+    call op_fock( tpsi, htpsi, n,k,s )
+    !call watchb( ttmp, time_hmlt(1,4) )
+  end subroutine z_hamiltonian1
 
 
   subroutine init_op_hamiltonian( lswitch, ng,nb,nk,ns )
@@ -249,8 +241,7 @@ contains
 
     !call watchb( ttmp )
 
-    current_band_index_fock = n
-    call op_fock( k, s, tpsi, hpsi )
+    call op_fock( tpsi, hpsi, n,k,s )
 
     !call watchb( ttmp, time_hmlt(1,4) )
 
@@ -343,8 +334,7 @@ contains
 
     !call watchb( ttmp )
 
-    current_band_index_fock = n
-    call op_fock( k, s, tpsi, hpsi )
+    call op_fock( tpsi, hpsi, n,k,s )
 
     !call watchb( ttmp, time_hmlt(1,4) )
 

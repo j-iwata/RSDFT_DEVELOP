@@ -25,7 +25,6 @@ MODULE scf_module
   use esp_gather_module
   use density_module
   use watch_module
-  use ps_getDij_module
   use ggrid_module, only: Ecut
   use rgrid_module, only: dV, Ngrid
   use esp_calc_module
@@ -162,8 +161,7 @@ CONTAINS
        do k=MBZ_0,MBZ_1
           do m=MB_0,MB_1,MB_d
              n=min(m+MB_d-1,MB_1)
-             call hamiltonian &
-                  (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
+             call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
           end do
        end do
        end do
@@ -180,7 +178,7 @@ CONTAINS
        write(chr_iter,'(" scf_iter=",i4,1x,a)') iter, add_info
        call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
 
-       call start_timer( tt )
+       call start_timer( t_out=tt )
        call init_time_watch( etime )
        call init_time_watch( etime_lap(2) )
        call watchb( t_ini(1) ) ; t_out=0.0d0
@@ -213,8 +211,7 @@ CONTAINS
                 do m=MB_0,MB_1,MB_d
                    n=min(m+MB_d-1,MB_1)
                    workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
-                   call hamiltonian &
-                        (k,s,unk(:,m:n,k,s),hunk(:,m:n,k,s),ML_0,ML_1,m,n)
+                   call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
                    hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
                 end do
                 deallocate( workwf )
@@ -224,7 +221,7 @@ CONTAINS
 
           call watchb( t_tmp, t_out(:,1) )
 
-          if ( .not.nodiag_scf ) call subspace_diag( k,s,ML_0,ML_1,MBZ_0,MSP_0,unk,esp )
+          if ( .not.nodiag_scf ) call subspace_diag( k, s, unk(:,:,k,s), esp(:,k,s) )
 
           call watchb( t_tmp, t_out(:,2) )
 
@@ -256,10 +253,16 @@ CONTAINS
              call watchb( t_tmp, t_out(:,5) )
 
              if ( second_diag == 1 .or. idiag < Ndiag ) then
-                call subspace_diag( k,s,ML_0,ML_1,MBZ_0,MSP_0,unk,esp )
+                call subspace_diag( k, s, unk(:,:,k,s), esp(:,k,s) )
+                ! if ( flag_noncollinear ) then
+                !   call subspace_diag_ncol
+                ! end if
                 call watchb( t_tmp, t_out(:,2) )
              else if ( second_diag == 2 .and. idiag == Ndiag ) then
-                call esp_calc(k,s,ML_0,ML_1,MB_0,MB_1,unk,esp)
+                call esp_calc( unk(:,MB_0:MB_1,k,s), esp(MB_0:MB_1,k,s), MB_0,k,s )
+                ! if ( flag_noncollinear ) then
+                !   call esp_calc_ncol( k,n1,n2,wf,e )
+                ! end if
                 call watchb( t_tmp, t_out(:,6) )
              end if
 
@@ -446,8 +449,6 @@ CONTAINS
                 Vloc(:,s) = Vion(:) + Vh(:) + Vxc(:,s)
              end do
           end if
-
-          call getDij
 
           rho_in = rho
 

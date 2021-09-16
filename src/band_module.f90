@@ -405,7 +405,7 @@ CONTAINS
     MB_0 = id_band(myrank_b) + 1
     MB_1 = id_band(myrank_b) + ir_band(myrank_b)
 
-    call init_subspace_diag( Nband )
+    call init_subspace_diag( Nband, np_band )
 
   END SUBROUTINE modify_mb
 
