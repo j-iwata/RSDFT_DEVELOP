@@ -252,9 +252,19 @@ contains
        fav(i,3) = sum( f(:,:,i) )*c
     end do
 
-    open(iu,file=file_name)
+    open(iu,file=file_name//"x")
     do i=0,ML1-1
-       write(iu,'(1x,4f20.10)') Haa(1)*i, fav(i,1), fav(i,2), fav(i,3)
+       write(iu,'(1x,4f20.10)') Haa(1)*i, fav(i,1)
+    end do
+    close(iu)
+    open(iu,file=file_name//"y")
+    do i=0,ML2-1
+       write(iu,'(1x,4f20.10)') Haa(2)*i, fav(i,2)
+    end do
+    close(iu)
+    open(iu,file=file_name//"z")
+    do i=0,ML3-1
+       write(iu,'(1x,4f20.10)') Haa(3)*i, fav(i,3)
     end do
     close(iu)
 
