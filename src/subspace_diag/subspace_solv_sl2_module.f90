@@ -15,11 +15,11 @@ contains
     implicit none
     type(slinfo2),intent(inout) :: sl
     real(8),intent(inout) :: esp(:)
-    if ( allocated(Dsub) ) then
+    if ( sl%idiag(1:2) == 'PD' ) then
       call d_subspace_solv_sl2( sl, esp )
     else
       call z_subspace_solv_sl2( sl, esp )
     end if
   end subroutine subspace_solv_sl2
-  
+
 end module subspace_solv_sl2_module

@@ -2,10 +2,11 @@ module kinetic_module
 
   use kinetic_variables, only: SYStype, coef_lap, coef_nab, coef_nabk, zcoef_kin &
                               ,const_k2, coef_kin, flag_nab, Md, kin_select &
-                              ,flag_n12, flag_n23,flag_n31,ggg,coef_lap0, wk
+                              ,flag_n12, flag_n23,flag_n31,ggg,coef_lap0, wk &
+                              ,read_kinetic
   use d_kinetic_sol_module, only: d_op_kinetic_sol
   use z_kinetic_sol_module, only: z_op_kinetic_sol
-  ! use kinetic_sym_module
+  use kinetic_sym_module
   ! use kinetic_allgatherv_module
   ! use kinetic_mol_module
   ! use fd_module
@@ -26,13 +27,15 @@ contains
 
   subroutine init_kinetic( aa, bb, MBZ, kbb, Hgrid, Igrid, MBD )
     use fd_module, only: get_coef_lapla_fd, get_coef_nabla_fd
+    use kinetic_sym_ini_module, only: init_kinetic_sym
+    use kinetic_allgatherv_module, only: init_kinetic_allgatherv
     implicit none
     real(8),intent(in) :: aa(3,3),bb(3,3)
     integer,intent(in) :: MBZ
     real(8),intent(in) :: kbb(3,MBZ)
     real(8),optional,intent(in) :: Hgrid(3)
     integer,optional,intent(in) :: Igrid(2,0:3),MBD
-    integer :: m,n,k,is,i
+    integer :: m,n,k,is,i,ierr
     real(8) :: c1,c2,c3,kx,ky,kz,pi2
     real(8) :: a1,a2,a3,H1,H2,H3
     complex(8),parameter :: zi=(0.0d0,1.0d0)
@@ -42,6 +45,8 @@ contains
 
     call write_border( 0, " init_kinetic(start)" )
     call check_disp_switch( disp_sw, 0 )
+
+    call read_kinetic
 
     pi2 = 2.0d0*acos(-1.0d0)
     a1  = sqrt(sum(aa(1:3,1)**2))/pi2
@@ -161,6 +166,13 @@ contains
        write(*,*) "flag_n23=",flag_n23
        write(*,*) "flag_n31=",flag_n31
        write(*,*) "flag_nab=",flag_nab
+    end if
+
+    if ( kin_select == 2 ) then
+      call init_kinetic_sym( aa, ierr )
+      if ( ierr /= 0 ) kin_select=0
+    else if ( kin_select == 3 ) then
+      call init_kinetic_allgatherv( Igrid )
     end if
 
     call write_border( 0, " init_kinetic(end)" )

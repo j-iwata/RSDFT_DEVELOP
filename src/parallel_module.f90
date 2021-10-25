@@ -5,27 +5,32 @@ module parallel_module
   include 'mpif.h'
 
 !  PRIVATE
-  PRIVATE :: send_parallel
-  PRIVATE :: dr, construct_dr
-  PUBLIC :: para, construct_para
-  PUBLIC :: get_np_parallel
-  PUBLIC :: node_partition &
+  public :: init_parallel
+  public :: start_mpi_parallel
+  public :: end_mpi_parallel
+
+  public :: para, construct_para
+  public :: get_np_parallel
+  public :: node_partition &
            ,comm_grid, comm_band, comm_bzsm, comm_spin &
            ,myrank,myrank_g,myrank_b,myrank_k,myrank_s &
            ,nprocs,nprocs_g,nprocs_k,nprocs_s &
            ,np_band,np_spin,np_bzsm,np_grid &
            ,id_class,ircnt,idisp,ir_spin,id_spin &
            ,ir_band,id_band,ir_grid,id_grid,ir_bzsm,id_bzsm &
-           ,pinfo_grid,MB_d,MB_d_nl &
-           ,read_parallel,init_parallel &
-           ,start_mpi_parallel,end_mpi_parallel &
-           ,disp_switch_parallel
-  PUBLIC :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
+           ,pinfo_grid
+  public :: MB_d, MB_d_nl
+  public :: disp_switch_parallel
+  public :: comm_fkmb, myrank_f, np_fkmb, ir_fkmb, id_fkmb
   public :: get_range_parallel
   public :: construct_id_ir_parallel
   public :: get_ParaInfo
   public :: load_div_parallel
+  public :: load_modify_parallel
 
+  private :: dr, construct_dr
+  private :: read_parallel
+  private :: set_np_parallel
   private :: construct_ParaInfo
 
 #ifdef _NO_MPI_COMPLEX16_
@@ -83,14 +88,14 @@ module parallel_module
 contains
 
 
-  SUBROUTINE get_np_parallel( np )
+  subroutine get_np_parallel( np )
     implicit none
-    integer,intent(OUT) :: np(0:)
+    integer,intent(out) :: np(0:)
     integer :: n
     np(0)=nprocs
     n=size(np)-1
     np(1:n)=node_partition(1:n)
-  END SUBROUTINE get_np_parallel
+  end subroutine get_np_parallel
 
 
   SUBROUTINE construct_para( ng, nb, nk, ns, p )
@@ -122,79 +127,128 @@ contains
   END SUBROUTINE construct_dr
 
 
-  SUBROUTINE start_mpi_parallel
+  subroutine start_mpi_parallel
     integer :: ierr,iprovided
-    call mpi_init(ierr)
-    !call mpi_init_thread( MPI_THREAD_MULTIPLE, iprovided, ierr)
-    call mpi_comm_size(mpi_comm_world,nprocs,ierr)
-    call mpi_comm_rank(mpi_comm_world,myrank,ierr)
-  END SUBROUTINE start_mpi_parallel
+    call MPI_Init(ierr)
+    !call MPI_Init_thread( MPI_THREAD_MULTIPLE, iprovided, ierr)
+    call MPI_Comm_size(MPI_COMM_WORLD,nprocs,ierr)
+    call MPI_Comm_rank(MPI_COMM_WORLD,myrank,ierr)
+  end subroutine start_mpi_parallel
 
 
-  SUBROUTINE end_mpi_parallel
+  subroutine end_mpi_parallel
     integer :: ierr
-    call mpi_finalize(ierr)
-  END SUBROUTINE end_mpi_parallel
+    call MPI_Finalize(ierr)
+  end subroutine end_mpi_parallel
 
 
-  SUBROUTINE read_parallel(rank,unit)
+  subroutine read_parallel( flag_exist )
+    use io_tools_module, only: IOTools_readIntegerKeyword, IOTools_findKeyword
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i
-    character(5) :: cbuf,ckey
+    logical,intent(out) :: flag_exist
+    integer :: itmp(2)
+    call write_border( 0, ' read_parallel(start)' )
     node_partition(:)=1
-    MB_d = 0
-    MB_d_nl = 0
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey(1:5) == "PROCS" ) then
-             backspace(unit)
-             read(unit,*) cbuf,node_partition(1:max_parallel)
-          else if ( ckey(1:3) == "MBD" ) then
-             backspace(unit)
-             read(unit,*) cbuf,MB_d,MB_d_nl
-          end if
-       end do
-999    continue
-       write(*,'(1x,"node_partition(1:6)=",6i4)') node_partition(1:6)
-       write(*,*) "MB_d   =",MB_d
-       if ( MB_d_nl == 0 ) MB_d_nl=MB_d
-       write(*,*) "MB_d_nl=",MB_d_nl
+    MB_d=0
+    MB_d_nl=0
+    itmp(:)=0
+    call IOTools_findKeyword( 'PROCS', flag_exist, flag_bcast=.true. )
+    call IOTools_readIntegerKeyword( 'PROCS', node_partition )
+    call IOTools_readIntegerKeyword( 'MBD', itmp )
+    MB_d = itmp(1)
+    MB_d_nl = itmp(2)
+    if ( MB_d_nl == 0 ) MB_d_nl = MB_d
+    if ( myrank == 0 ) then
+      write(*,'(1x,"node_partition(1:7)=",7i4)') node_partition(1:7)
+      write(*,*) "MB_d   =",MB_d
+      write(*,*) "MB_d_nl=",MB_d_nl
     end if
-    call send_parallel(0)
-  END SUBROUTINE read_parallel
+    call write_border( 0, ' read_parallel(end)' )
+  end subroutine read_parallel
 
 
-  SUBROUTINE read_oldformat_parallel(rank,unit)
-    integer,intent(IN) :: rank,unit
-    node_partition(:)=1
-    if ( rank == 0 ) then
-       read(unit,*) node_partition(1:max_parallel)
-       read(unit,*) MB_d
-       write(*,'(1x,"node_partition(1:6)=",9i4)') &
-            node_partition(1:max_parallel)
-       write(*,*) "MB_d=",MB_d
+  subroutine set_np_parallel(Ngrid,Nband,Nbzsm,Nspin)
+    use gcd_lcm_pf_module, only: gcd,lcm,prime_factorization
+    implicit none
+    integer,intent(in) :: Ngrid(0:3),Nspin,Nbzsm
+    integer,intent(inout) :: Nband
+    integer :: m,n,k,ng(3),i,j,mg(3)
+    integer,allocatable :: ifact(:), plst(:)
+    logical :: disp_on
+
+    call write_border( 0, " set_np_parallel(start)" )
+    call check_disp_switch( disp_on, 0 )
+
+    if ( all(node_partition==1) ) then
+      n = nprocs
+      m = gcd( Nspin, n ); node_partition(6)=m
+      n = n/m
+      m = gcd( Nbzsm, n ); node_partition(5)=m
+
+      n = n/m
+      allocate( ifact(n) ); ifact=0
+      call prime_factorization( n, ifact )
+
+      k = sum( ifact )
+      allocate( plst(k) ); plst=0
+
+      k=0
+      do j = n, 1, -1
+        do i = 1, ifact(j)
+          k=k+1
+          plst(k)=j
+        end do
+      end do
+
+      ng(1:3) = Ngrid(1:3)
+
+      do
+        mg = ng
+        do j = 1, 3
+          i = maxloc( ng, 1 )
+          do k = 1, size(plst)-1
+            if ( plst(k) == 0 ) cycle
+            if ( mod(ng(i),plst(k)) == 0 ) then
+              ng(i) = ng(i)/plst(k)
+              plst(k) = 0
+              exit
+            end if
+          end do !k
+        end do !j
+        if ( all(mg==ng) ) exit
+      end do
+
+      node_partition(1:3) = Ngrid(1:3)/ng(1:3)
+
+      deallocate( plst )
+      deallocate( ifact )
+
+      m = product( node_partition(1:3) )
+
+      n = n/m
+      if ( mod(Nband,n) == 0 ) then
+        node_partition(4) = n
+      else
+        k = (Nband+n-1)/n * n
+        if ( disp_on ) then
+          write(*,*) "Nband =",Nband
+          write(*,*) "Nband is replaced to ",k
+        end if
+        Nband = k
+        node_partition(4) = n
+      end if
     end if
-    call send_parallel(0)
-  END SUBROUTINE read_oldformat_parallel
+    if ( disp_on ) then
+      write(*,'(1x,"node_partition= ",8i6)') node_partition(:)
+    end if
+    call write_border( 0, " set_np_parallel(end)" )
+  end subroutine set_np_parallel
 
 
-  SUBROUTINE send_parallel(rank)
+  subroutine init_parallel( Ngrid, Nband, Nbzsm, Nspin )
     implicit none
-    integer,intent(IN) :: rank
-    integer :: ierr
-    call mpi_bcast(node_partition,max_parallel,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(MB_d,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(MB_d_nl,1,MPI_INTEGER,rank,MPI_COMM_WORLD,ierr)
-  END SUBROUTINE send_parallel
-
-
-  SUBROUTINE init_parallel(Ngrid,Nband,Nbzsm,Nspin)
-    implicit none
-    integer,intent(IN) :: Ngrid(0:3),Nband,Nspin,Nbzsm
+    integer,intent(in) :: Ngrid(0:3),Nspin,Nbzsm
+    integer,intent(inout) :: Nband
     integer :: m,n,ierr,irank,jrank,itags,itagr,nreq
     integer :: istatus(MPI_STATUS_SIZE,123)
     integer :: ip,fp,nc,ns,a1,a2,a3,a4,a5,a6,a7,b1,b2,b3,b4,b5,b6
@@ -202,43 +256,45 @@ contains
     integer :: ML1,ML2,ML3,np1,np2,np3,MLI(2,3),icolor
     integer,allocatable :: mtmp(:),ntmp(:,:),ireq(:)
     integer,allocatable :: map_grid_2_pinfo(:,:,:,:)
+    logical :: exist_procs_parameter
 
     call write_border( 0, " init_parallel(start)" )
+
+    call read_parallel( exist_procs_parameter )
+    if ( .not.exist_procs_parameter ) call set_np_parallel( Ngrid,Nband,Nbzsm,Nspin )
+
+    n = product( node_partition )
+
+    if ( n /= nprocs ) then
+      write(*,'(1x,"myrank,n,nprocs,node_partition=",10i5)') myrank,n,nprocs,node_partition
+      call stop_program('stop@init_parallel')
+    end if
 
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
 
-    n=1
-    do i=1,max_parallel
-       n=n*node_partition(i)
-    end do
+    np1 = node_partition(1)
+    np2 = node_partition(2)
+    np3 = node_partition(3)
 
-    if ( n /= nprocs ) then
-       write(*,*) "n,nprocs=",n,nprocs
-       call stop_program('stop@init_parallel')
-    end if
-
-    np1=node_partition(1)
-    np2=node_partition(2)
-    np3=node_partition(3)
     if ( disp_switch_parallel ) then
-       write(*,*) "np1,np2,np3=",np1,np2,np3
-       write(*,*) "np_grid    =",np1*np2*np3
-       write(*,*) "np_band    =",node_partition(4)
-       write(*,*) "np_bz      =",node_partition(5)
-       write(*,*) "np_spin    =",node_partition(6)
-       write(*,*) "np_fkmb    =",node_partition(7)
-       write(*,*) "nprocs     =",nprocs
+      write(*,*) "np1,np2,np3=",np1,np2,np3
+      write(*,*) "np_grid    =",np1*np2*np3
+      write(*,*) "np_band    =",node_partition(4)
+      write(*,*) "np_bz      =",node_partition(5)
+      write(*,*) "np_spin    =",node_partition(6)
+      write(*,*) "np_fkmb    =",node_partition(7)
+      write(*,*) "nprocs     =",nprocs
     end if
     if ( np1>ML1 .or. np2>ML2 .or. np3>ML3 .or. &
-         node_partition(4)>Nband .or. node_partition(6)>nspin ) then
-       write(*,'(1x,12i6)') node_partition(1:6),ML1,ML2,ML3,Nband,nspin
-       stop "stop@init_parallel"
+         node_partition(4)>Nband .or. node_partition(6)>Nspin ) then
+      write(*,'(1x,12i6)') node_partition(1:6),ML1,ML2,ML3,Nband,nspin
+      call stop_program("stop@init_parallel")
     end if
     if ( node_partition(5)>Nbzsm ) then
-       write(*,'(1x,i6)') Nbzsm
-       stop
+      write(*,'(1x,i6)') Nbzsm
+      call stop_program("stop@init_parallel")
     end if
 
 ! --- class ---
@@ -251,34 +307,34 @@ contains
     do a6=0,node_partition(6)-1
     do a5=0,node_partition(5)-1
     do a4=0,node_partition(4)-1
-       i=-1
-       do a3=0,node_partition(3)-1
-       do a2=0,node_partition(2)-1
-       do a1=0,node_partition(1)-1
-          i=i+1
-          j=j+1
-          id_class(j,0)=i
-          id_class(j,1)=a1
-          id_class(j,2)=a2
-          id_class(j,3)=a3
-          id_class(j,4)=a4
-          id_class(j,5)=a5
-          id_class(j,6)=a6
-          id_class(j,7)=a7
-       end do ! a1
-       end do ! a2
-       end do ! a3
+      i=-1
+      do a3=0,node_partition(3)-1
+      do a2=0,node_partition(2)-1
+      do a1=0,node_partition(1)-1
+        i=i+1
+        j=j+1
+        id_class(j,0)=i
+        id_class(j,1)=a1
+        id_class(j,2)=a2
+        id_class(j,3)=a3
+        id_class(j,4)=a4
+        id_class(j,5)=a5
+        id_class(j,6)=a6
+        id_class(j,7)=a7
+      end do ! a1
+      end do ! a2
+      end do ! a3
     end do ! a4
     end do ! a5
     end do ! a6
     end do ! a7
 
-    if ( disp_switch_parallel ) then
-       write(*,'(1x,5a5)') "irank","grid","band","bz","spin"
-       do i=0,nprocs-1
-          write(*,'(1x,6(2x,i3))') i,id_class(i,0),(id_class(i,j),j=4,7)
-       end do
-    end if
+    ! if ( disp_switch_parallel ) then
+    !   write(*,'(1x,5a5)') "irank","grid","band","bz","spin"
+    !   do i=0,nprocs-1
+    !     write(*,'(1x,6(2x,i3))') i,id_class(i,0),(id_class(i,j),j=4,7)
+    !   end do
+    ! end if
 
 ! --- fock-band parallel ---
 
@@ -287,30 +343,30 @@ contains
     np_fkmb = node_partition(7)
 
     if ( np_fkmb > Nband ) then
-       write(*,*) "np_fkmb is too large!"
-       write(*,*) ",np_fkmb, Nband=",np_fkmb,Nband
-       stop
+      write(*,*) "np_fkmb is too large!"
+      write(*,*) ",np_fkmb, Nband=",np_fkmb,Nband
+      call stop_program( "stop@init_parallel" )
     end if
 
     allocate( id_fkmb(0:np_fkmb-1) ) ; id_fkmb=0
     allocate( ir_fkmb(0:np_fkmb-1) ) ; ir_fkmb=0
 
     do i=0,Nband-1
-       j=mod(i,np_fkmb)
-       ir_fkmb(j)=ir_fkmb(j)+1
+      j=mod(i,np_fkmb)
+      ir_fkmb(j)=ir_fkmb(j)+1
     end do
 
     do i=0,np_fkmb-1
-       id_fkmb(i)=sum( ir_fkmb(0:i) )-ir_fkmb(i)
+      id_fkmb(i)=sum( ir_fkmb(0:i) )-ir_fkmb(i)
     end do
 
     if ( disp_switch_parallel ) then
-       write(*,*) "Nband  =",Nband
-       write(*,*) "np_fkmb=",np_fkmb
-       write(*,'(1x,3a8)') "i","id_fkmb","ir_fkmb"
-       do i=0,np_fkmb-1
-          write(*,'(1x,3i8)') i,id_fkmb(i),ir_fkmb(i)
-       end do
+      write(*,*) "Nband  =",Nband
+      write(*,*) "np_fkmb=",np_fkmb
+      ! write(*,'(1x,3a8)') "i","id_fkmb","ir_fkmb"
+      ! do i=0,np_fkmb-1
+      !   write(*,'(1x,3i8)') i,id_fkmb(i),ir_fkmb(i)
+      ! end do
     end if
 
     nprocs_f = count( id_class(:,7)==id_class(myrank,7) )
@@ -324,30 +380,30 @@ contains
     np_spin = node_partition(6)
 
     if ( np_spin>nspin ) then
-       write(*,*) "np_spin is too large!"
-       write(*,*) ",np_spin,nspin=",np_spin,nspin
-       stop
+      write(*,*) "np_spin is too large!"
+      write(*,*) ",np_spin,nspin=",np_spin,nspin
+      call stop_program('np_spin,parallel')
     end if
 
     allocate( id_spin(0:np_spin-1) ) ; id_spin=0
     allocate( ir_spin(0:np_spin-1) ) ; ir_spin=0
 
     do i=0,nspin-1
-       j=mod(i,np_spin)
-       ir_spin(j)=ir_spin(j)+1
+      j=mod(i,np_spin)
+      ir_spin(j)=ir_spin(j)+1
     end do
 
     do i=0,np_spin-1
-       id_spin(i)=sum( ir_spin(0:i) )-ir_spin(i)
+      id_spin(i)=sum( ir_spin(0:i) )-ir_spin(i)
     end do
 
     if ( disp_switch_parallel ) then
-       write(*,*) "nspin  =",nspin
-       write(*,*) "np_spin=",np_spin
-       write(*,'(1x,3a8)') "i","id_spin","ir_spin"
-       do i=0,np_spin-1
-          write(*,'(1x,3i8)') i,id_spin(i),ir_spin(i)
-       end do
+      write(*,*) "nspin  =",nspin
+      write(*,*) "np_spin=",np_spin
+      ! write(*,'(1x,3a8)') "i","id_spin","ir_spin"
+      ! do i=0,np_spin-1
+      !   write(*,'(1x,3i8)') i,id_spin(i),ir_spin(i)
+      ! end do
     end if
 
     nprocs_s = count( id_class(:,6)==id_class(myrank,6) .and. &
@@ -365,21 +421,21 @@ contains
     allocate( ir_bzsm(0:np_bzsm-1) ) ; ir_bzsm=0
 
     do i=0,max(Nbzsm,np_bzsm)-1
-       j=mod(i,np_bzsm)
-       ir_bzsm(j)=ir_bzsm(j)+1
+      j=mod(i,np_bzsm)
+      ir_bzsm(j)=ir_bzsm(j)+1
     end do
 
     do i=0,np_bzsm-1
-       id_bzsm(i)=sum( ir_bzsm(0:i) )-ir_bzsm(i)
+      id_bzsm(i)=sum( ir_bzsm(0:i) )-ir_bzsm(i)
     end do
 
     if ( disp_switch_parallel ) then
-       write(*,*) "Nbzsm    =",Nbzsm
-       write(*,*) "np_bzsm=",np_bzsm
-       write(*,'(1x,3a8)') "i","id_bzsm","ir_bzsm"
-       do i=0,np_bzsm-1
-          write(*,'(1x,3i8)') i,id_bzsm(i),ir_bzsm(i)
-       end do
+      write(*,*) "Nbzsm    =",Nbzsm
+      write(*,*) "np_bzsm=",np_bzsm
+      ! write(*,'(1x,3a8)') "i","id_bzsm","ir_bzsm"
+      ! do i=0,np_bzsm-1
+      !   write(*,'(1x,3i8)') i,id_bzsm(i),ir_bzsm(i)
+      ! end do
     end if
 
     nprocs_k = count( id_class(:,5)==id_class(myrank,5) .and. &
@@ -398,21 +454,21 @@ contains
     allocate( ir_band(0:np_band-1) ) ; ir_band=0
 
     do i=0,Nband-1
-       j=mod(i,np_band)
-       ir_band(j)=ir_band(j)+1
+      j=mod(i,np_band)
+      ir_band(j)=ir_band(j)+1
     end do
 
     do i=0,np_band-1
-       id_band(i)=sum( ir_band(0:i) )-ir_band(i)
+      id_band(i)=sum( ir_band(0:i) )-ir_band(i)
     end do
 
     if ( disp_switch_parallel ) then
-       write(*,*) "Nband  =",Nband
-       write(*,*) "np_band=",np_band
-       write(*,'(1x,3a8)') "i","id_band","ir_band"
-       do i=0,np_band-1
-          write(*,'(1x,3i8)') i,id_band(i),ir_band(i)
-       end do
+      write(*,*) "Nband  =",Nband
+      write(*,*) "np_band=",np_band
+      ! write(*,'(1x,3a8)') "i","id_band","ir_band"
+      ! do i=0,np_band-1
+      !   write(*,'(1x,3i8)') i,id_band(i),ir_band(i)
+      ! end do
     end if
 
     nprocs_b = count( id_class(:,4)==id_class(myrank,4) .and.  &
@@ -427,7 +483,7 @@ contains
     if ( disp_switch_parallel ) write(*,'("--- grid-parallel ---")')
 
     np_grid = node_partition(1)*node_partition(2)*node_partition(3)
-    if ( np_spin*np_bzsm*np_band*np_grid*np_fkmb /= nprocs ) stop "init_parallel"
+    if ( np_spin*np_bzsm*np_band*np_grid*np_fkmb /= nprocs ) call stop_program("@init_parallel")
 
     allocate( id_grid(0:np_grid-1)      ) ; id_grid=0
     allocate( ir_grid(0:np_grid-1)      ) ; ir_grid=0
@@ -442,12 +498,12 @@ contains
 ! ---
 
     if ( disp_switch_parallel ) then
-       write(*,*) "nprocs_g =",nprocs_g
-       write(*,*) "nprocs_b =",nprocs_b
-       write(*,*) "nprocs_k =",nprocs_k
-       write(*,*) "nprocs_s =",nprocs_s
-       write(*,*) "nprocs_f =",nprocs_f
-       write(*,*) "nprocs   =",nprocs
+      write(*,*) "nprocs_g =",nprocs_g
+      write(*,*) "nprocs_b =",nprocs_b
+      write(*,*) "nprocs_k =",nprocs_k
+      write(*,*) "nprocs_s =",nprocs_s
+      write(*,*) "nprocs_f =",nprocs_f
+      write(*,*) "nprocs   =",nprocs
     end if
 
 ! --- communicators ---
@@ -458,11 +514,11 @@ contains
     do i3=0,np_spin-1
     do i2=0,np_bzsm-1
     do i1=0,np_band-1
-       i=i+1
-       if ( id_class(myrank,4)==i1 .and. &
-            id_class(myrank,5)==i2 .and. &
-            id_class(myrank,6)==i3 .and. &
-            id_class(myrank,7)==i4       ) m=i
+      i=i+1
+      if ( id_class(myrank,4)==i1 .and. &
+           id_class(myrank,5)==i2 .and. &
+           id_class(myrank,6)==i3 .and. &
+           id_class(myrank,7)==i4       ) m=i
     end do
     end do
     end do
@@ -477,11 +533,11 @@ contains
     do i3=0,np_spin-1
     do i2=0,np_bzsm-1
     do i1=0,np_grid-1
-       i=i+1
-       if ( id_class(myrank,0)==i1 .and. &
-            id_class(myrank,5)==i2 .and. &
-            id_class(myrank,6)==i3 .and. &
-            id_class(myrank,7)==i4       ) m=i
+      i=i+1
+      if ( id_class(myrank,0)==i1 .and. &
+           id_class(myrank,5)==i2 .and. &
+           id_class(myrank,6)==i3 .and. &
+           id_class(myrank,7)==i4       ) m=i
     end do
     end do
     end do
@@ -496,11 +552,11 @@ contains
     do i3=0,np_spin-1
     do i2=0,np_band-1
     do i1=0,np_grid-1
-       i=i+1
-       if ( id_class(myrank,0)==i1 .and. &
-            id_class(myrank,4)==i2 .and. &
-            id_class(myrank,6)==i3 .and. &
-            id_class(myrank,7)==i4 ) m=i
+      i=i+1
+      if ( id_class(myrank,0)==i1 .and. &
+           id_class(myrank,4)==i2 .and. &
+           id_class(myrank,6)==i3 .and. &
+           id_class(myrank,7)==i4 ) m=i
     end do
     end do
     end do
@@ -515,11 +571,11 @@ contains
     do i3=0,np_bzsm-1
     do i2=0,np_band-1
     do i1=0,np_grid-1
-       i=i+1
-       if ( id_class(myrank,0)==i1 .and. &
-            id_class(myrank,4)==i2 .and. &
-            id_class(myrank,5)==i3 .and. &
-            id_class(myrank,7)==i4 ) m=i
+      i=i+1
+      if ( id_class(myrank,0)==i1 .and. &
+           id_class(myrank,4)==i2 .and. &
+           id_class(myrank,5)==i3 .and. &
+           id_class(myrank,7)==i4 ) m=i
     end do
     end do
     end do
@@ -534,11 +590,11 @@ contains
     do i3=0,np_bzsm-1
     do i2=0,np_band-1
     do i1=0,np_grid-1
-       i=i+1
-       if ( id_class(myrank,0)==i1 .and. &
-            id_class(myrank,4)==i2 .and. &
-            id_class(myrank,5)==i3 .and. &
-            id_class(myrank,6)==i4 ) m=i
+      i=i+1
+      if ( id_class(myrank,0)==i1 .and. &
+           id_class(myrank,4)==i2 .and. &
+           id_class(myrank,5)==i3 .and. &
+           id_class(myrank,6)==i4 ) m=i
     end do
     end do
     end do
@@ -573,7 +629,7 @@ contains
 
     if ( myrank_g /= id_class(myrank,0) ) then
       write(*,*) "myrank,myrank_g=",myrank,myrank_g
-      stop
+      call stop_program('@parallel')
     end if
 
 ! --- band bundle ---
@@ -591,7 +647,7 @@ contains
 
     call write_border( 0, " init_parallel(end)" )
 
-  END SUBROUTINE init_parallel
+  end subroutine init_parallel
 
 
   subroutine get_range_parallel( n1, n2, indx )
@@ -694,5 +750,14 @@ contains
     end do
   end subroutine load_div_parallel
 
+
+  subroutine load_modify_parallel( ng, nb, nk, ns )
+    implicit none
+    integer,optional,intent(in) :: ng,nb,nk,ns
+    if ( present(ng) ) call load_div_parallel( ir_grid, id_grid, ng )
+    if ( present(nb) ) call load_div_parallel( ir_band, id_band, nb )
+    if ( present(nk) ) call load_div_parallel( ir_bzsm, id_bzsm, nk )
+    if ( present(ns) ) call load_div_parallel( ir_spin, id_spin, ns )
+  end subroutine load_modify_parallel
 
 end module parallel_module

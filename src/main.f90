@@ -2,7 +2,6 @@ PROGRAM Real_Space_DFT
 
   use parallel_module
   use global_variables, only: iswitch_test,iswitch_scf,iswitch_tddft,iswitch_band,iswitch_opt,iswitch_dos,iswitch_latopt
-  use kinetic_variables, only: SYStype, Md, kin_select, read_kinetic
   use grid_module, only: grid_info
   use rgrid_module
   use ggrid_module
@@ -27,11 +26,12 @@ PROGRAM Real_Space_DFT
 
   use watch_module
   use info_module
-  use force_module
+  ! use force_module
   use symmetry_module
-  use scalapack_module
+  use scalapack_module, only: init_scalapack
   use bc_module
   use kinetic_module, only: init_kinetic
+  use kinetic_variables, only: SYStype, Md
   use rgrid_mol_module
   use test_hpsi2_module
   use eion_module
@@ -61,8 +61,8 @@ PROGRAM Real_Space_DFT
   use vdw_grimme_module
   use efield_module
   use linear_response_module
-  use kinetic_sym_ini_module
-  use kinetic_allgatherv_module, only: init_kinetic_allgatherv
+  ! use kinetic_sym_ini_module
+  ! use kinetic_allgatherv_module, only: init_kinetic_allgatherv
   use noncollinear_module, only: flag_noncollinear, io_read_noncollinear &
                                 ,init_noncollinear, calc_xc_noncollinear
   use init_occ_electron_ncol_module
@@ -70,8 +70,7 @@ PROGRAM Real_Space_DFT
   use aa_module, only: init_aa
   use rsdft_mpi_module, only: init_rsdft_mpi
   use allel_module, only: init_allel
-  use sl_tools_module, only: prep_param_sl
-  use var_sys_parameter, only: use_real8_wf, systype_query
+  use var_sys_parameter, only: use_real8_wf, systype_query, xctype_query
 
   implicit none
   integer,parameter :: unit_input_parameters = 1
@@ -87,8 +86,9 @@ PROGRAM Real_Space_DFT
   logical :: ltmp
   real(8) :: Etot=0.0d0, Ehwf
   integer :: info_level=1
-  character(32) :: lattice_index
+  character(32) :: cbuf
   character(20) :: systype_in="SOL"
+  character(255) :: file_i, file_a
   integer :: nloop,itmp(3),Nsweep
 
 ! --- start MPI ---
@@ -105,15 +105,6 @@ PROGRAM Real_Space_DFT
 
   call open_info(myrank)
 
-! --- init_io_tools ---
-
-  if ( myrank == 0 ) then
-     open(unit_input_parameters  ,file="fort.1" ,status="old")
-     open(unit_atomic_coordinates,file="fort.970",status="old")
-  end if
-
-  call init_io_tools( myrank, unit_input_parameters )
-
 ! --- STDOUT and LOG control (ext0/write_info.f90) ---
 
   DISP_SWITCH = (myrank==0)
@@ -121,6 +112,20 @@ PROGRAM Real_Space_DFT
 
   call check_disp_switch( DISP_SWITCH, 1 )
   call check_log_switch( DISP_SWITCH, 1 )
+
+! --- command-line arguments ---
+
+  file_i = 'fort.1'
+  file_a = 'fort.970'
+
+! --- init_io_tools ---
+
+  if ( myrank == 0 ) then
+    open(unit_input_parameters  ,file=file_i,status="old")
+    open(unit_atomic_coordinates,file=file_a,status="old")
+  end if
+
+  call init_io_tools( myrank, unit_input_parameters )
 
   call IOTools_readIntegerKeyword( "INFOLEVEL", info_level )
 
@@ -138,8 +143,6 @@ PROGRAM Real_Space_DFT
     SYStype=1
   end select
 
-  ierr = systype_query( SYStype )
-
 ! --- input parameters ---
 
   call read_parameters
@@ -154,22 +157,22 @@ PROGRAM Real_Space_DFT
 ! --- coordinate transformation of atomic positions ---
 
   if ( SYStype == 0 ) then
-     call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
-     if ( myrank == 0 ) then
-        call write_coordinates_atom( 96, 3, "atomic_coordinates_aa_ini" )
-     end if
+    call convert_to_aa_coordinates_atom( aa_obj, aa_atom )
+    if ( myrank == 0 ) then
+      call write_coordinates_atom( 96, 3, "atomic_coordinates_aa_ini" )
+    end if
   else if ( SYStype == 1 ) then
-     call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
-     if ( myrank == 0 ) then
-        call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
-     end if
+    call convert_to_xyz_coordinates_atom( aa_obj, aa_atom )
+    if ( myrank == 0 ) then
+      call write_coordinates_atom( 96, 3, "atomic_coordinates_xyz_ini" )
+    end if
   end if
 
 ! --- Real-Space Grid (MOL) ( lattice is defiend by MOLGRID ) ---
 
   if ( SYStype /= 0 ) then
-     call Init_Rgrid( SYStype, Md, aa_obj )
-     call construct_lattice( aa_obj )
+    call Init_Rgrid( SYStype, aa_obj )
+    call construct_lattice( aa_obj )
   end if
 
 ! --- Lattice ---
@@ -178,12 +181,11 @@ PROGRAM Real_Space_DFT
 
   call init_aa( aa_obj )
 
-  call check_lattice( aa_obj%LatticeVector, lattice_index )
-  if ( disp_switch ) write(*,*) "lattice_index: ",lattice_index
+  call check_lattice( aa_obj%LatticeVector )
 
 ! --- Real-Space Grid (SOL) ( lattice is used to define the grid ) ---
 
-  if ( SYStype == 0 ) call Init_Rgrid( SYStype, Md, aa_obj )
+  if ( SYStype == 0 ) call Init_Rgrid( SYStype, aa_obj )
 
 ! --- Reciprocal Lattice ---
 
@@ -211,25 +213,25 @@ PROGRAM Real_Space_DFT
 
   call check_Nband_electron
 
-! --- init_force ---
+! ! --- init_force ---
 
-  call init_force( SYStype )
+!   call init_force( SYStype )
 
 ! --- Test ( Egg-Box Effect ) ---
 
   if ( iswitch_test == 10 ) then
-     aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/aa_obj%LatticeConstant
-     if ( disp_switch ) then
-        write(*,*) "--- EGG BOX TEST !!! ---"
-        do i=1,size(aa_atom,2)
-           write(*,*) aa_atom(1,i),aa_atom(1,i)*aa_obj%LatticeConstant,Hgrid(1)*0.5d0
-        end do
-     end if
+    aa_atom(1,:) = aa_atom(1,:) + Hgrid(1)*0.5d0/aa_obj%LatticeConstant
+    if ( disp_switch ) then
+      write(*,*) "--- EGG BOX TEST !!! ---"
+      do i=1,size(aa_atom,2)
+        write(*,*) aa_atom(1,i),aa_atom(1,i)*aa_obj%LatticeConstant,Hgrid(1)*0.5d0
+      end do
+    end if
   end if
 
 ! --- Symmetry ---
 
-  call init_symmetry( Ngrid,dV,aa_obj%LatticeVector,bb, Natom,ki_atom,aa_atom )
+  call init_symmetry( Ngrid,dV,aa_obj%LatticeVector,bb,ki_atom,aa_atom )
 
 ! --- Brillouin Zone sampling ---
 
@@ -244,9 +246,16 @@ PROGRAM Real_Space_DFT
   !   ltmp = use_real8_wf( .true. )
   !   if ( disp_switch ) write(*,*) "Gamma-only, assume use_real8_wf=",ltmp
   ! end if
+
+  ! --- Set System Parameters ---
+
 #ifdef _DRSDFT_
   ltmp = use_real8_wf( .true. )
 #endif
+
+  ierr = systype_query( SYStype )
+
+  cbuf = xctype_query( XCtype )
 
 ! --- initial set up for parallel computation ---
 
@@ -254,9 +263,9 @@ PROGRAM Real_Space_DFT
 !  call test_sendrecv( node_partition )
 !  goto 900
 
-  call init_scalapack( Nband )
-
   call init_parallel( Ngrid, Nband, Nbzsm, Nspin )
+
+  call init_scalapack( Nband )
 
   call InitParallel_Rgrid
 
@@ -295,30 +304,32 @@ PROGRAM Real_Space_DFT
 
 !- FD boundary set -
 
-  call IOTools_readIntegerKeyword( "MD", Md )
+  ! call IOTools_readIntegerKeyword( "MD", Md )
 
-  call init_bcset( Md, SYStype )
+  ! call init_bcset( Md, SYStype )
 
 ! --- kinetic energy oprator coefficients ---
 
-  call read_kinetic ! Md & kin_select
+  ! call read_kinetic ! Md & kin_select
 
   call init_kinetic( aa_obj%LatticeVector, bb, Nbzsm, kbb, Hgrid, Igrid, MB_d )
 
-  if ( kin_select == 2 ) then
-     call init_kinetic_sym( lattice_index, aa_obj%LatticeVector, ierr )
-     if ( ierr /= 0 ) kin_select=0
-  else if ( kin_select == 3 ) then
-     call init_kinetic_allgatherv( Igrid, comm_grid )
-  end if
+  ! if ( kin_select == 2 ) then
+  !    call init_kinetic_sym( lattice_index, aa_obj%LatticeVector, ierr )
+  !    if ( ierr /= 0 ) kin_select=0
+  ! else if ( kin_select == 3 ) then
+  !    call init_kinetic_allgatherv( Igrid, comm_grid )
+  ! end if
+
+  call init_bcset( Md, SYStype )
 
 ! --- ??? ---
 
   call set_array_bound
 
   if ( SYStype == 1 ) then ! MOL mol
-     call Construct_RgridMol(Igrid)
-     call ConstructBoundary_RgridMol(Md,Igrid)
+    call Construct_RgridMol(Igrid)
+    call ConstructBoundary_RgridMol(Md,Igrid)
   end if
 
 ! --- vector info ---
@@ -346,20 +357,20 @@ PROGRAM Real_Space_DFT
 
   flag_noncollinear = flag_so
   if ( flag_noncollinear ) then
-     if ( Nspin /= 2 .or. np_spin == 2 ) then
-        write(*,*) "Nspin, np_spin=",Nspin,np_spin
-        write(*,*) "Nspin==2 and np_spin==1 is only available"
-        goto 900
-     end if
+    if ( Nspin /= 2 .or. np_spin == 2 ) then
+      write(*,*) "Nspin, np_spin=",Nspin,np_spin
+      write(*,*) "Nspin==2 and np_spin==1 is only available"
+      goto 900
+    end if
   end if
 
 !-------------------- Hamiltonian Test
 
   if ( iswitch_test == 1 ) then
-     nloop=10
-     call IOTools_readIntegerKeyword( "NLOOP", nloop )
-     call test_hpsi2( nloop )
-     goto 900
+    nloop=10
+    call IOTools_readIntegerKeyword( "NLOOP", nloop )
+    call test_hpsi2( nloop )
+    goto 900
   end if
 
 !--------------------
@@ -371,8 +382,6 @@ PROGRAM Real_Space_DFT
 ! --- Initialization of subspace diagonalization ---
 
   call init_subspace_diag( Nband, np_band )
-
-  call prep_param_sl( Nband, np_grid, np_band )
 
 ! --- Initial wave functions ---
 

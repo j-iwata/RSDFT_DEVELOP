@@ -1,57 +1,57 @@
-MODULE cif_format_module
+module cif_format_module
 
   use lattice_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: check_cif_format
-  PUBLIC :: read_atom_cif
+  private
+  public :: check_cif_format
+  public :: read_atom_cif
 
-  character(30),parameter :: keyword(11)=(/ &
-       "_cell_length_a            ", &
-       "_cell_length_b            ", &
-       "_cell_length_c            ", &
-       "_cell_angle_alpha         ", &
-       "_cell_angle_beta          ", &
-       "_cell_angle_gamma         ", &
-       "_symmetry_equiv_pos_as_xyz", &
-       "_atom_site_label          ", &
-       "_atom_site_fract_x        ", &
-       "_atom_site_fract_y        ", &
-       "_atom_site_fract_z        " /)
+  character(30),parameter :: keyword(12)=(/ &
+       "_cell_length_a"             , &
+       "_cell_length_b"             , &
+       "_cell_length_c"             , &
+       "_cell_angle_alpha"          , &
+       "_cell_angle_beta"           , &
+       "_cell_angle_gamma"          , &
+       "_symmetry_equiv_pos_site_id", &
+       "_symmetry_equiv_pos_as_xyz" , &
+       "_atom_site_label"           , &
+       "_atom_site_fract_x"         , &
+       "_atom_site_fract_y"         , &
+       "_atom_site_fract_z"              /)
 
-CONTAINS
+contains
 
 
-  SUBROUTINE check_cif_format( unit, ierr )
+  subroutine check_cif_format( unit, ierr )
     implicit none
-    integer,intent(IN)  :: unit
-    integer,intent(OUT) :: ierr
+    integer,intent(in)  :: unit
+    integer,intent(out) :: ierr
     character(30) :: cbuf
-    call write_border( 1, " check_cif_format(start)" )
+    call write_border( 0, " check_cif_format(start)" )
     ierr = -1
     rewind unit
-10  continue
-    read(unit,*,END=90) cbuf
-    if ( any(cbuf==keyword) ) then
-       ierr = 0
-    else
-       goto 10
-    end if
-90 continue
-    call write_border( 1, " check_cif_format(end)" )
-  END SUBROUTINE check_cif_format
+    do
+      read(unit,*,END=90) cbuf
+      if ( any(keyword==cbuf) ) ierr = 0
+    end do
+    90 continue
+    call write_border( 0, " check_cif_format(end)" )
+  end subroutine check_cif_format
 
 
-  SUBROUTINE read_atom_cif &
+  subroutine read_atom_cif &
        ( rank, unit, aa_obj, aa_atom, ki_atom, md_atom, zn_atom)
+    use rsdft_bcast_module, only: i_rsdft_bcast, d_rsdft_bcast, d_rsdft_bcast_tmp
+    use symmetry_module, only: check_cif_symmetry
     implicit none
-    integer,intent(IN) :: rank, unit
-    type(lattice),intent(INOUT) :: aa_obj
-    real(8),intent(OUT),allocatable :: aa_atom(:,:)
-    integer,intent(OUT),allocatable :: ki_atom(:),md_atom(:),zn_atom(:)
-    logical :: flag
+    integer,intent(in) :: rank, unit
+    type(lattice),intent(inout) :: aa_obj
+    real(8),intent(out),allocatable :: aa_atom(:,:)
+    integer,intent(out),allocatable :: ki_atom(:),md_atom(:),zn_atom(:)
+    logical :: flag, flag1
     integer,parameter :: u1=10,u2=20
     integer :: i,j,m,n,i0,i1,i2,i3,z,nsym,itmp(0:3)
     integer :: nbas,isym,natm
@@ -62,32 +62,29 @@ CONTAINS
     real(8) :: alatl(3),angle(3),deg2rad,rr
     real(8) :: R(3,4),asi(3),rsi(3),rtm(3),Rasi(3)
     real(8),allocatable :: rot(:,:,:),atm(:,:)
-    include 'mpif.h'
 
-    call write_border( 1, " read_atom_cif(start)" )
+    call write_border( 0, " read_atom_cif(start)" )
 
     if ( rank == 0 ) then
 
-       do i=1,3
-          call find_key( keyword(i), unit, flag )
-          if ( flag ) read(unit,*) cbuf, cbuf2
-          n=index(cbuf2,"(")-1
-          if ( n == -1 ) n=len_trim(cbuf2)
-          if ( n > 0 ) read(cbuf2(1:n),*) alatl(i)
-          write(*,'(1x,3f15.10)') alatl(i)
-       end do
-       do i=1,3
-          call find_key( keyword(i+3), unit, flag )
-          if ( flag ) read(unit,*) cbuf, angle(i)
-          write(*,'(1x,3f15.10)') angle(i)
-       end do
+      do i=1,3
+        call find_key( keyword(i), unit, flag )
+        if ( flag ) read(unit,*) cbuf, cbuf2
+        n=index(cbuf2,"(")-1
+        if ( n == -1 ) n=len_trim(cbuf2)
+        if ( n > 0 ) read(cbuf2(1:n),*) alatl(i)
+        write(*,'(1x,3f15.10)') alatl(i)
+      end do
+      do i=1,3
+        call find_key( keyword(i+3), unit, flag )
+        if ( flag ) read(unit,*) cbuf, angle(i)
+        write(*,'(1x,3f15.10)') angle(i)
+      end do
 
     end if
 
-#ifndef _NO_MPI_
-    call MPI_BCAST( alatl,3,MPI_REAL8,0,MPI_COMM_WORLD,i )
-    call MPI_BCAST( angle,3,MPI_REAL8,0,MPI_COMM_WORLD,i )
-#endif
+    call d_rsdft_bcast( alatl )
+    call d_rsdft_bcast( angle )
 
     deg2rad = acos(-1.0d0)/180.0d0
 
@@ -123,210 +120,212 @@ CONTAINS
     aa_obj%LatticeVector(:,:) = aa_obj%LatticeVector(:,:)/bohr
 
     where( abs(aa_obj%LatticeVector) < 1.d-5 )
-       aa_obj%LatticeVector=0.0d0
+      aa_obj%LatticeVector=0.0d0
     end where
 
     aa_obj%LatticeConstant = 1.0d0
 
     if ( rank == 0 ) then
-       do i=1,3
-          write(*,'(1x,3f15.10)') aa_obj%LatticeVector(:,i)
-       end do
+      do i=1,3
+        write(*,'(1x,3f15.10)') aa_obj%LatticeVector(:,i)
+      end do
     end if
 
     if ( rank == 0 ) then
 
-       call find_key( keyword(7), unit, flag )
+      nsym=0
 
-       nsym=0
+      call find_key( keyword(7), unit, flag1 )
+      call find_key( keyword(8), unit, flag )
 
-       if ( flag ) then
+      if ( flag ) then
 
-          read(unit,*) cbuf
+        read(unit,*) cbuf
 
-          open(u1,file="cif_sym.dat")
+        open( u1, file="cif_sym.dat" )
 
-          i=0
-20        read(unit,'(a)') cbuf
+        i=0
 
-! There may be two types of format
-!   a)  1 'x, y, z'
-!   b)  'x, y, z'
-! The following treatment absorbs the both types
-!
-          read(cbuf,*,END=22) cbuf1,cbuf2
-          cbuf1=cbuf2
-22        continue
-          cbuf=cbuf1
-
-          if ( cbuf /= "loop_" ) then
-             i=i+1
-             call chr_to_matrix( cbuf, R )
-             write(u1,'(1x,3f20.15,2x,f20.15)') (R(1,j),j=1,4)
-             write(u1,'(1x,3f20.15,2x,f20.15)') (R(2,j),j=1,4)
-             write(u1,'(1x,3f20.15,2x,f20.15)') (R(3,j),j=1,4)
-             goto 20
+        do
+          if ( flag1 ) then
+            read(unit,*,END=22) cbuf1, cbuf2
+            cbuf = cbuf2
+          else
+            read(unit,*,END=22) cbuf
+          end if
+          if ( cbuf == "loop_" .or. cbuf(1:1) == "_" ) then
+            write(*,*) cbuf
+            exit
+          else
+            i=i+1
+            call chr_to_matrix( cbuf, R )
+            write(u1,'(1x,3f20.15,2x,f20.15)') (R(1,j),j=1,4)
+            write(u1,'(1x,3f20.15,2x,f20.15)') (R(2,j),j=1,4)
+            write(u1,'(1x,3f20.15,2x,f20.15)') (R(3,j),j=1,4)
+            cycle
           endif
-          nsym=i
+        end do
+        22 continue
 
-          close(u1)
+        nsym=i
 
-       end if
+        close(u1)
 
-       if ( nsym == 0 ) then
-          nsym=1
-          allocate( rot(3,4,nsym) ) ; rot=0.0d0
-          rot(1,1,1)=1.0d0
-          rot(2,2,1)=1.0d0
-          rot(3,3,1)=1.0d0
-       else if ( nsym > 0 ) then
-          allocate( rot(3,4,nsym) ) ; rot=0.0d0
-          open(u1,file="cif_sym.dat",status="old")
-          do i=1,nsym
-             read(u1,*) (rot(1,j,i),j=1,4)
-             read(u1,*) (rot(2,j,i),j=1,4)
-             read(u1,*) (rot(3,j,i),j=1,4)
-          end do
-          close(u1)
-       end if
+      end if !flag
 
-       itmp=0
-       i=0
-30     read(unit,*,END=92) cbuf
-       i=i+1
-       if ( cbuf == keyword( 8) ) itmp(0)=i
-       if ( cbuf == keyword( 9) ) itmp(1)=i
-       if ( cbuf == keyword(10) ) itmp(2)=i
-       if ( cbuf == keyword(11) ) itmp(3)=i
-       if ( cbuf(1:5) /= "_atom" ) then
-          backspace(unit)
-       else
-          goto 30
-       end if
-92     continue
+      if ( nsym == 0 ) then
+        nsym=1
+        allocate( rot(3,4,nsym) ); rot=0.0d0
+        rot(1,1,1)=1.0d0
+        rot(2,2,1)=1.0d0
+        rot(3,3,1)=1.0d0
+      else if ( nsym > 0 ) then
+        allocate( rot(3,4,nsym) ); rot=0.0d0
+        open( u1, file="cif_sym.dat", status="old" )
+        do i=1,nsym
+          read(u1,*) (rot(1,j,i),j=1,4)
+          read(u1,*) (rot(2,j,i),j=1,4)
+          read(u1,*) (rot(3,j,i),j=1,4)
+        end do
+        close(u1)
+      end if
 
-       n=maxval(itmp)
-       allocate( cdummy(n) ) ; cdummy=""
+      itmp=0
+      i=0
+30    read(unit,*,END=92) cbuf
+      i=i+1
+      if ( cbuf == keyword( 9) ) itmp(0)=i
+      if ( cbuf == keyword(10) ) itmp(1)=i
+      if ( cbuf == keyword(11) ) itmp(2)=i
+      if ( cbuf == keyword(12) ) itmp(3)=i
+      if ( cbuf(1:5) /= "_atom" ) then
+        backspace(unit)
+      else
+        goto 30
+      end if
+92    continue
 
-       open(u2,file="cif_bas.dat")
+      n=maxval(itmp)
+      allocate( cdummy(n) ) ; cdummy=""
 
-       nbas=0
+      open(u2,file="cif_bas.dat")
 
-40     read(unit,*,END=94) cdummy(1:n)
+      nbas=0
 
-       call get_atomic_number( cdummy(itmp(0)), z )
-       if ( z > 0 ) then
+      do
+        read(unit,*,END=94) cdummy(1:n)
+        call get_atomic_number( cdummy(itmp(0)), z )
+        if ( z > 0 ) then
           do i=1,3
-             cbuf=cdummy(itmp(i))
-             m=index(cbuf,"(")-1
-             if ( m == -1 ) m=len_trim(cbuf)
-             read(cbuf(1:m),*) asi(i)
+            cbuf=cdummy(itmp(i))
+            m=index(cbuf,"(")-1
+            if ( m == -1 ) m=len_trim(cbuf)
+            read(cbuf(1:m),*) asi(i)
           end do
           nbas=nbas+1
-          write(*,'(1x,i3,2x,a2,2x,i3,2x,3f15.10)') &
-               nbas,cdummy(itmp(0)),z,(asi(i),i=1,3)
+          write(*,'(1x,i3,2x,a2,2x,i3,2x,3f15.10)') nbas,cdummy(itmp(0)),z,(asi(i),i=1,3)
           do isym=1,nsym
-             Rasi(:) = matmul( rot(:,1:3,isym), asi(:) )
-             Rasi(:) = Rasi(:) + rot(:,4,isym)
-             write(u2,'(1x,a3,2x,i3,2x,3f20.15)') cdummy(itmp(0)),z,Rasi(:)
+            Rasi(:) = matmul( rot(:,1:3,isym), asi(:) )
+            Rasi(:) = Rasi(:) + rot(:,4,isym)
+            write(u2,'(1x,a3,2x,i3,2x,3f20.15)') cdummy(itmp(0)),z,Rasi(:)
           end do
-          goto 40
-       end if  
-94     continue
+        end if
+      end do
+      94 continue
 
-       close(u2)
+      close(u2)
 
-       deallocate( cdummy )
-       deallocate( rot )
+      deallocate( cdummy )
+      deallocate( rot )
 
-       natm = nbas*nsym
+      natm = nbas*nsym
 
-       allocate( atm(3,natm) ) ; atm=0.0d0
-       allocate( katm(natm)  ) ; katm=0
-       allocate( iatm(118)   ) ; iatm=0
+      allocate( atm(3,natm) ); atm=0.0d0
+      allocate( katm(natm)  ); katm=0
+      allocate( iatm(118)   ); iatm=0
 
-       open(u2,file="cif_bas.dat",status="old")
+      open(u2,file="cif_bas.dat",status="old")
 
-       n=0
-       loop_i : do i=1,natm
-          read(u2,*) cbuf,z,asi(:)
-          call shift_aa_coordinates_atom( asi )
-          rsi=matmul( aa_obj%LatticeVector, asi )
-          do j=1,n
-             rtm=matmul( aa_obj%LatticeVector, atm(:,j) )
-             rr=sum( (rsi-rtm)**2 )
-             if ( rr < 1.d-3 ) cycle loop_i
-          end do
-          if ( iatm(z) == 0 ) iatm(z)=maxval(iatm)+1
-          n=n+1
-          atm(:,n)=asi(:)
-          katm(n)=iatm(z)
-          write(*,'(1x,2(i3,2x),3f10.5)') n,katm(n),(asi(j),j=1,3)
-       end do loop_i
+      n=0
+      loop_i : do i=1,natm
+        read(u2,*) cbuf,z,asi(:)
+        call shift_aa_coordinates_atom( asi )
+        rsi=matmul( aa_obj%LatticeVector, asi )
+        do j=1,n
+          rtm=matmul( aa_obj%LatticeVector, atm(:,j) )
+          rr=sum( (rsi-rtm)**2 )
+          if ( rr < 1.d-3 ) cycle loop_i
+        end do
+        if ( iatm(z) == 0 ) iatm(z)=maxval(iatm)+1
+        n=n+1
+        atm(:,n)=asi(:)
+        katm(n)=iatm(z)
+        write(*,'(1x,2(i3,2x),3f10.5)') n,katm(n),(asi(j),j=1,3)
+      end do loop_i
 
-       close(u2)
+      close(u2)
 
+      allocate( aa_atom(3,n) ); aa_atom=0.0d0
+      allocate( ki_atom(n)   ); ki_atom=0
+      allocate( md_atom(n)   ); md_atom=1
 
-       allocate( aa_atom(3,n) ) ; aa_atom=0.0d0
-       allocate( ki_atom(n)   ) ; ki_atom=0
-       allocate( md_atom(n)   ) ; md_atom=1
+      aa_atom(:,:) = atm(:,1:n)
+      ki_atom(:)   = katm(1:n)
 
-       aa_atom(:,:) = atm(:,1:n)
-       ki_atom(:)   = katm(1:n)
+      m=maxval( iatm )
+      allocate( zn_atom(m) ) ; zn_atom=1
 
-       m=maxval( iatm )
-       allocate( zn_atom(m) ) ; zn_atom=1
+      do z=1,size(iatm)
+        i=iatm(z)
+        if ( i > 0 ) zn_atom(i)=z
+      end do
 
-       do z=1,size(iatm)
-          i=iatm(z)
-          if ( i > 0 ) zn_atom(i)=z
-       end do
+      deallocate( iatm )
+      deallocate( katm )
+      deallocate( atm  )
 
-       deallocate( iatm )
-       deallocate( katm )
-       deallocate( atm  )
+    end if ! rank == 0
 
-    end if
+    call i_rsdft_bcast( n )
+    call i_rsdft_bcast( m )
 
-#ifndef _NO_MPI_
-    call MPI_BCAST( n, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, i )
-#endif
     if ( .not.allocated(aa_atom) ) then
-       allocate( aa_atom(3,n) ) ; aa_atom=0.0d0
-       allocate( ki_atom(n)   ) ; ki_atom=0
-       allocate( md_atom(n)   ) ; md_atom=0
-       allocate( zn_atom(n)   ) ; zn_atom=0
+      allocate( aa_atom(3,n) ); aa_atom=0.0d0
+      allocate( ki_atom(n)   ); ki_atom=0
+      allocate( md_atom(n)   ); md_atom=0
+      allocate( zn_atom(m)   ); zn_atom=0
     end if
-#ifndef _NO_MPI_
-    call MPI_BCAST(aa_atom,3*n,MPI_REAL8,0,MPI_COMM_WORLD,i)
-    call MPI_BCAST(ki_atom,n,MPI_INTEGER,0,MPI_COMM_WORLD,i)
-    call MPI_BCAST(md_atom,n,MPI_INTEGER,0,MPI_COMM_WORLD,i)
-    call MPI_BCAST(zn_atom,n,MPI_INTEGER,0,MPI_COMM_WORLD,i)
-#endif
+    call d_rsdft_bcast_tmp( aa_atom, 3*n )
+    call i_rsdft_bcast( ki_atom )
+    call i_rsdft_bcast( md_atom )
+    call i_rsdft_bcast( zn_atom )
 
-    call write_border( 1, " read_atom_cif(end)" )
+    call i_rsdft_bcast( nsym )
+    if ( nsym > 1 ) call check_cif_symmetry( .true. )
 
-  END SUBROUTINE read_atom_cif
+    call write_border( 0, " read_atom_cif(end)" )
 
-  SUBROUTINE find_key( key, unit, flag )
+  end subroutine read_atom_cif
+
+  subroutine find_key( key, unit, flag )
     implicit none
-    character(*),intent(IN) :: key
-    integer,intent(IN) :: unit
-    logical,intent(OUT) :: flag
+    character(*),intent(in) :: key
+    integer,intent(in) :: unit
+    logical,intent(out) :: flag
     character(30) :: cbuf
     flag=.false.
     rewind unit
-10  read(unit,*,END=90) cbuf
-    if ( cbuf == key ) then
-       backspace(unit)
-       flag=.true.
-       return
-    else
-       goto 10
-    end if
-90  continue
+    do
+      read(unit,*,END=90) cbuf
+      if ( cbuf == key ) then
+        backspace(unit)
+        flag=.true.
+        return
+      end if
+    end do
+    90  continue
     call stop_program_f( "stop@find_key(cif_format_module)" )
-  END SUBROUTINE find_key
+  end subroutine find_key
 
   SUBROUTINE chr_to_matrix( cbuf, R )
     implicit none

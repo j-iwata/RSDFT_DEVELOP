@@ -1,19 +1,17 @@
 module scalapack_module
 
-  use parallel_module, only: node_partition, myrank, disp_switch_parallel, &
-                             np_grid, np_band, myrank_g, myrank_b, &
-                             myrank_k, myrank_s, id_class
+  use parallel_module, only: myrank,np_grid,np_band,node_partition, &
+  myrank_g,myrank_b,myrank_k,myrank_s,id_class
   use io_tools_module, only: IOTools_readIntegerKeyword
 
   implicit none
 
   private
-  public :: prep_scalapack
   public :: init_scalapack
+  public :: prep_scalapack
+  public :: allocated_workarray_scalapack
   public :: NPROW,NPCOL,MBSIZE,NBSIZE,LLD_R,LLD_C,DESCA,DESCB,DESCZ, &
             NP0,NQ0,NPX,NQX,UPLO,usermap
-  public :: read_scalapack
-  public :: allocated_workarray_scalapack
 
   integer :: NPROW=0
   integer :: NPCOL=0
@@ -26,115 +24,161 @@ module scalapack_module
   character(1) :: UPLO
 
   logical :: iblacs = .false.
-  logical :: flag_read = .true.
   logical :: is_workarray_allocated = .false.
-
-  integer :: ialgo_sl2 = 0
 
 contains
 
-
   subroutine init_scalapack( MB )
+    use subspace_diag_variables, only: algo_sd
     implicit none
     integer,intent(inout) :: MB
-    integer :: NPCOL0,i,j,n,loop
-
-    if ( ialgo_sl2 /= 0 ) then
-      call init_scalapack_2( MB, node_partition(4), product(node_partition(1:3)) )
-      return
-    end if
-
+    integer :: np123
     call write_border( 0, " init_scalapack(start)" )
+    np123 = product( node_partition(1:3) )
+    select case( algo_sd() )
+    case( 1 )
+      call init_scalapack_1( MB )
+    case( 2 )
+      call init_scalapack_2( MB, node_partition(4), np123 )
+    case default
+      call init_scalapack_2( MB, node_partition(4), np123, .true. )
+    end select
+    call write_border( 0, " init_scalapack(end)" )
+  end subroutine init_scalapack
+
+  subroutine init_scalapack_1( MB )
+    use sl_tools_module, only: backup_param_sl
+    use parallel_module, only: load_modify_parallel
+    implicit none
+    integer,intent(inout) :: MB
+    integer :: NPCOL0,i,j,n,loop,itmp(2)
+    logical :: disp_on
+
+    call write_border( 0, " init_scalapack_1(start)" )
+
+    call check_disp_switch( disp_on, 0 )
+
+    call IOTools_readIntegerKeyword( "SCLSD", itmp )
+    if ( itmp(1) > -1 ) NPROW=itmp(1)
+    if ( itmp(2) > -1 ) NPCOL=itmp(2)
 
     MBSIZE = 0
     NBSIZE = 0
     iblacs = .false.
 
-    if ( NPROW<1 .or. NPCOL<1 ) then
-       NPCOL0 = node_partition(1)*node_partition(2) &
-               *node_partition(3)*node_partition(4)
-       NPCOL  = NPCOL0
-       NPROW  = 1
-       do i=2,node_partition(1)*node_partition(2)*node_partition(3)
-          j=NPCOL0/i
-          if ( i*j==NPCOL0 .and. i<=j .and. j-i<NPCOL-NPROW ) then
-             NPCOL=j
-             NPROW=i
-          end if
-       end do
+    if ( NPROW < 1 .or. NPCOL < 1 ) then
+      NPCOL0 = product( node_partition(1:4) )
+      NPCOL  = NPCOL0
+      NPROW  = 1
+      do i = 2, product( node_partition(1:3) )
+        j=NPCOL0/i
+        if ( i*j==NPCOL0 .and. i<=j .and. j-i<NPCOL-NPROW ) then
+          NPCOL=j
+          NPROW=i
+        end if
+      end do
     else
-       n=node_partition(1)*node_partition(2)*node_partition(3)*node_partition(4)
-       if ( NPROW*NPCOL > n ) then
-          write(*,*) "NPROW,NPCOL,np_band,np_grid=",NPROW,NPCOL &
-               ,node_partition(4) &
-               ,node_partition(1)*node_partition(2)*node_partition(3),myrank
-          stop
-       end if
+      n = product( node_partition(1:4) )
+      if ( NPROW*NPCOL > n ) then
+        write(*,*) "NPROW,NPCOL,np_band,np_grid=",NPROW,NPCOL, &
+        node_partition(4),product( node_partition(1:3) ),myrank
+        stop
+      end if
     end if
 
-    if ( MBSIZE<1 .or. NBSIZE<1 ) then
-       i=(MB+NPROW-1)/NPROW
-       j=(MB+NPCOL-1)/NPCOL
-       MBSIZE=min(i,j)
-       NBSIZE=MBSIZE
+    if ( MBSIZE < 1 .or. NBSIZE < 1 ) then
+      i=(MB+NPROW-1)/NPROW
+      j=(MB+NPCOL-1)/NPCOL
+      MBSIZE=min(i,j)
+      NBSIZE=MBSIZE
     else
-       if ( MBSIZE/=NBSIZE ) then
-          write(*,*) "MBSIZE,NBSIZE=",MBSIZE,NBSIZE,myrank
-          write(*,*) "MBSIZE /= NBSIZE may not work well"
-          stop "stop@init_scalapack"
-       end if
+      if ( MBSIZE /= NBSIZE ) then
+        write(*,*) "MBSIZE,NBSIZE=",MBSIZE,NBSIZE,myrank
+        write(*,*) "MBSIZE /= NBSIZE may not work well"
+        stop "stop@init_scalapack"
+      end if
     end if
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
-       write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
+    if ( disp_on ) then
+      write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
+      write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
     end if
 
     if ( NBSIZE*NPCOL/=MB ) then
-       n=max( NBSIZE*NPCOL, MB )
-       n=min( n, (NBSIZE+1)*NPCOL )
-       if ( disp_switch_parallel ) then
-         write(*,*) "NBSIZE*NPCOL/=MB!"
-         write(*,*) "recommended value for MB =",n
-         write(*,*) "replace MB"
-       end if
-       MB=n
-       MBSIZE=0
-       NBSIZE=0
+      n=max( NBSIZE*NPCOL, MB )
+      n=min( n, (NBSIZE+1)*NPCOL )
+      if ( disp_on ) then
+        write(*,*) "NBSIZE*NPCOL/=MB!"
+        write(*,*) "recommended value for MB =",n
+        write(*,*) "replace MB"
+      end if
+      call load_modify_parallel( nb=n )
+      MB=n
+      i=(MB+NPROW-1)/NPROW
+      j=(MB+NPCOL-1)/NPCOL
+      MBSIZE=min(i,j)
+      NBSIZE=MBSIZE
     end if
+
+    call backup_param_sl( NPROW, NPCOL, MBSIZE, NBSIZE )
 
     is_workarray_allocated = .false.
 
-    call write_border( 0, " init_scalapack(end)" )
+    call write_border( 0, " init_scalapack_1(end)" )
 
-  end subroutine init_scalapack
+  end subroutine init_scalapack_1
 
 
-  subroutine init_scalapack_2( nband_in, nprocs_band, nprocs_grid )
+  subroutine init_scalapack_2( nband, nprocs_band, nprocs_grid, get_only_scl_params )
     use gcd_lcm_pf_module, only: prime_factorization, lcm
     use sl_variables, only: sl0, sl1, sl2
+    use sl_tools_module, only: backup_param_sl
     use pinfo_module, only: get_world_rank_pinfo
+    use var_sys_parameter, only: use_real8_wf
+    use parallel_module, only: load_modify_parallel
     implicit none
-    integer,intent(in) :: nband_in
+    integer,intent(inout) :: nband
     integer,intent(in) :: nprocs_band, nprocs_grid
+    logical,optional,intent(in) :: get_only_scl_params
     integer,allocatable :: ifact(:), lst(:)
-    integer :: i,j,n,m,grp(2),grp_r(2),sqrt_nprocs_band,itmp(4)
-    integer :: num_blocks,block_size,nband,idiv_switch,LDR,LDC
+    integer :: i,j,n,m,grp(2),grp_r(2),sqrt_nprocs_band
+    integer :: sqrt_nprocs_bg,itmp(4),n1,n2,m1,m2
+    integer :: num_blocks,block_size,idiv_switch,LDR,LDC
     integer,external :: NUMROC
     logical :: disp_on
+    integer :: scl_row_col(2,3)
 
     call flush_barrier(6)
     call write_border( 0, ' init_scalapack_2(start)' )
     call check_disp_switch( disp_on, 0 )
 
-    nband = nband_in
+    if ( present(get_only_scl_params) .and. get_only_scl_params ) then
+      if ( disp_on ) then
+        write(*,*) "Only ScaLAPACK parameters preparation is performed."
+        write(*,*) "(Maybe used in the gram_schmidt_luslbp routine)"
+      end if
+    end if
+
+    ! --- check nband & np_band ---
+    !
+    n = ( nband + nprocs_band - 1 )/nprocs_band
+    n = n*nprocs_band
 
     if ( disp_on ) then
       write(*,*) "nband=",nband
       write(*,*) "nprocs_band=",nprocs_band
       write(*,*) "nprocs_grid=",nprocs_grid
+      if ( n /= nband ) write(*,*) "nband is replaced: nband(new)=",n
     end if
 
+    if ( n /= nband ) call load_modify_parallel( nb=n )
+
+    nband = n
+    !
+    ! ----------
+    ! --- 3 patterns of process grid for ScaLAPACK eigensolver ---
+    !
+    !np_band分で作る最大の正方なプロセスグリッド
     do n = 1, nprocs_band
       if ( n*n <= nprocs_band ) then
         m = n
@@ -147,6 +191,74 @@ contains
       write(*,'("The largest n*n process grid (within nprocs_band): " &
                 ,i3," x ",i3," = ",i4)') m,m,m*m
     end if
+    scl_row_col(:,1)=(/m,m/)
+
+    !np_band*np_grid分で作る最大の正方なプロセスグリッド
+    do n = 1, nprocs_band*nprocs_grid
+      if ( n*n <= nprocs_band*nprocs_grid ) then
+        m = n
+      else
+        exit
+      end if
+    end do
+    sqrt_nprocs_bg = m
+    if ( disp_on ) then
+      write(*,'("The largest n*n process grid (within nprocs_band*nprocs_grid): " &
+                ,i3," x ",i3," = ",i4)') m,m,m*m
+    end if
+    scl_row_col(:,2)=(/m,m/)
+
+    !np_band*np_gridをフルに使うプロセスグリッド
+    !ただし列方向はnp_bandの倍数にとる
+    m=nprocs_band*nprocs_grid
+    m1=0
+    m2=0
+    do n1 = nprocs_grid,1,-1 !なるべくrowの方が大きくなるようにこの順で
+      n2 = nprocs_grid/n1
+      if ( n1*n2 /= nprocs_grid ) cycle
+      n = n1 - n2*nprocs_band
+      if ( abs(n) < m ) then
+        m = abs(n)
+        m1 = n1
+        m2 = n2*nprocs_band
+      end if
+    end do
+    if ( disp_on ) then
+      write(*,'("np_grid1 x np_grid2*np_band:",i3," x ",i3)') m1, m2
+    end if
+    if ( m1 > nband .or. m2 > nband ) then
+      m1 = min( m1, nband )
+      m2 = min( m2, nband )
+      if ( disp_on ) write(*,*) "m1,m2 are replaced:",m1,m2
+    end if
+    scl_row_col(:,3)=(/m1,m2/)
+    !
+    ! ---
+    !
+    if ( present(get_only_scl_params) .and. get_only_scl_params ) then
+      sl1%nband  = nband
+      sl1%nprow  = scl_row_col(1,3)
+      sl1%npcol  = scl_row_col(2,3)
+      sl1%mbsize = nband / max( sl1%nprow, sl1%npcol )
+      sl1%nbsize = sl1%mbsize
+      itmp(1:4)  = (/ sl1%nprow, sl1%npcol, sl1%mbsize, sl1%nbsize /)
+      call IOTools_readIntegerKeyword( 'SCLSD', itmp )
+      !
+      sl1%nprow  = itmp(1)
+      sl1%npcol  = itmp(2)
+      sl1%mbsize = itmp(3)
+      ! sl1%nbsize = itmp(4)
+      sl1%nbsize = sl1%mbsize
+      if ( disp_on ) then
+        write(*,'("ScaLapack parameters")')
+        write(*,'("nprow1 , npcol1 ",2i6)') sl1%nprow , sl1%npcol
+        write(*,'("mbsize1, nbsize1",2i6)') sl1%mbsize, sl1%nbsize
+      end if
+      call backup_param_sl( sl1%nprow, sl1%npcol, sl1%mbsize, sl1%nbsize )
+      call write_border( 0, ' init_scalapack_2(return)' )
+    end if
+    !
+    ! ---
 
     allocate( ifact(nprocs_band) ); ifact=0
     call prime_factorization( nprocs_band, ifact )
@@ -177,9 +289,12 @@ contains
       write(*,*) "Number of blocks:",num_blocks
       write(*,*) "Block size:",block_size,mod(nband,num_blocks)
     end if
+    deallocate( lst )
+    deallocate( ifact )
+    !
     !
     if ( allocated(sl0%usermap) ) deallocate(sl0%usermap)
-    sl0%distribution_method = ialgo_sl2
+    sl0%distribution_method = 4
     !
     select case( sl0%distribution_method )
     case( 1 )
@@ -225,94 +340,97 @@ contains
         end do
       end do
     case( 4 )
-      sl0%nprow  = min( nprocs_grid, nband )
+      sl0%nband  = nband
       sl0%npcol  = min( nprocs_band, nband )
-      num_blocks = lcm( sl0%nprow, sl0%npcol )
-      ! sl0%mbsize = nband / max( sl0%nprow, sl0%npcol )
-      sl0%mbsize = nband / num_blocks
-      sl0%nbsize = sl0%mbsize
+      sl0%nprow  = min( nprocs_grid, nband )
+      num_blocks = nprocs_band !lcm( sl0%nprow, sl0%npcol )
+      sl0%nbsize = nband / num_blocks
+      sl0%mbsize = sl0%nbsize
+      !
+      itmp(1:2) = (/ sl0%mbsize, sl0%nbsize /)
+      call IOTools_readIntegerKeyword( "SCL0", itmp(1:2) )
+      sl0%mbsize = itmp(1)
+      sl0%nbsize = itmp(2)
+      !
+      num_blocks = ( nband + sl0%nbsize - 1 )/sl0%nbsize
       allocate( sl0%usermap(0:sl0%nprow-1,0:sl0%npcol-1) ); sl0%usermap=-1
-      n=-1
       do j = 0, sl0%npcol-1
         do i = 0, sl0%nprow-1
-          n=n+1
           sl0%usermap(i,j) = get_world_rank_pinfo( i, j, myrank_k, myrank_s )
-          ! write(*,*) n,i,j,sl0%usermap(i,j)
         end do
       end do
     end select
 
-    sl0%nband = nband
-
     if ( disp_on ) then
       write(*,'("distribution method id =",i6)') sl0%distribution_method
-      write(*,'("nprow , npcol ",2i6)') sl0%nprow , sl0%npcol
-      write(*,'("mbsize, nbsize",2i6)') sl0%mbsize, sl0%nbsize
+      write(*,'("nband ",i6)') nband
+      write(*,'("nprow0 , npcol0 ",2i6)') sl0%nprow , sl0%npcol
+      write(*,'("num_blocks ",i6)') num_blocks
+      write(*,'("mbsize0, nbsize0",2i6)') sl0%mbsize, sl0%nbsize
     end if
-
-    deallocate( lst )
-    deallocate( ifact )
 
     call blacs_get( 0, 0, sl0%icontxt_sys )
     sl0%icontxt_a = sl0%icontxt_sys
     call blacs_gridmap(sl0%icontxt_a,sl0%usermap,sl0%nprow,sl0%nprow,sl0%npcol)
     call blacs_gridinfo(sl0%icontxt_a,m,n,sl0%myrow,sl0%mycol)
-    write(*,*) "myrow, mycol",sl0%myrow, sl0%mycol, myrank
     !
-    ! ----------
+    ! ---------- Process grid for ScaLAPACK eigensolver
     !
-    sl1%nband = sl0%nband
-    itmp(1:4) = (/ sl0%nprow, sl0%npcol, sl0%mbsize, sl0%nbsize /)
-    call IOTools_readIntegerKeyword( 'SCL3', itmp )
-    sl1%nprow = itmp(1)
-    sl1%npcol = itmp(2)
+    sl1%nband  = nband
+    sl1%nprow  = scl_row_col(1,3)
+    sl1%npcol  = scl_row_col(2,3)
+    sl1%mbsize = nband / max( sl1%nprow, sl1%npcol )
+    sl1%nbsize = sl1%mbsize
+    itmp(1:4)  = (/ sl1%nprow, sl1%npcol, sl1%mbsize, sl1%nbsize /)
+    call IOTools_readIntegerKeyword( 'SCLSD', itmp )
+    !
+    sl1%nprow  = itmp(1)
+    sl1%npcol  = itmp(2)
     sl1%mbsize = itmp(3)
+    ! sl1%nbsize = itmp(4)
     sl1%nbsize = sl1%mbsize
     if ( disp_on ) then
       write(*,'("ScaLapack parameters")')
       write(*,'("nprow1 , npcol1 ",2i6)') sl1%nprow , sl1%npcol
       write(*,'("mbsize1, nbsize1",2i6)') sl1%mbsize, sl1%nbsize
     end if
+    call backup_param_sl( sl1%nprow, sl1%npcol, sl1%mbsize, sl1%nbsize )
     if ( allocated(sl1%usermap) ) deallocate( sl1%usermap )
     allocate( sl1%usermap(0:sl1%nprow-1,0:sl1%npcol-1) ); sl1%usermap=-1
-    n=-1
+    n = get_world_rank_pinfo(0,0,myrank_k,myrank_s)-1
     do j = 0, sl1%npcol-1
       do i = 0, sl1%nprow-1
-        n=n+1
+        n = n + 1
         sl1%usermap(i,j) = n
-        ! sl1%usermap(i,j) = get_world_rank_pinfo( i, j, myrank_k, myrank_s )
-        ! write(*,*) n,i,j,sl1%usermap(i,j)
       end do
     end do
     call blacs_get( 0, 0, sl1%icontxt_sys )
     sl1%icontxt_a = sl1%icontxt_sys
     call blacs_gridmap(sl1%icontxt_a,sl1%usermap,sl1%nprow,sl1%nprow,sl1%npcol)
-    sl1%lwork=0
-    sl1%lrwork=0
-    sl1%liwork=0
-    sl1%idiag = ''
-    sl1%uplo = ''
+    sl1%lwork  = 0
+    sl1%lrwork = 0
+    sl1%liwork = 0
+    sl1%idiag  = 'PZHEEVD'; if ( use_real8_wf() ) sl1%idiag = 'PDSYEVD'
+    sl1%uplo   = ''
     call flush_barrier(6)
     if ( any(sl1%usermap == myrank) ) then
       call blacs_gridinfo(sl1%icontxt_a,m,n,sl1%myrow,sl1%mycol)
-      write(*,*) "myrow1, mycol1",sl1%myrow, sl1%mycol, m,n,myrank
       LDR = NUMROC( nband, sl1%mbsize, sl1%myrow, 0, sl1%nprow )
       LDC = NUMROC( nband, sl1%nbsize, sl1%mycol, 0, sl1%npcol )
       call descinit( sl1%desca,nband,nband,sl1%mbsize,sl1%nbsize,0,0,sl1%icontxt_a,LDR,i )
       call descinit( sl1%descz,nband,nband,sl1%mbsize,sl1%nbsize,0,0,sl1%icontxt_a,LDR,i )
-      sl1%ldr = LDR
-      sl1%ldc = LDC
-      sl1%idiag = 'PZHEEVD'
+      sl1%ldr  = LDR
+      sl1%ldc  = LDC
       sl1%uplo = 'L'
     end if
     !
     ! ----------
     !
-    sl2%nband  = sl0%nband
-    sl2%npcol  = nprocs_band
-    sl2%nprow  = min( nprocs_grid, sl2%nband )
-    sl2%nbsize = ( sl2%nband + sl2%npcol - 1 ) / sl2%npcol
-    sl2%mbsize = ( sl2%nband + sl2%nprow - 1 ) / sl2%nprow
+    sl2%nband  = nband
+    sl2%npcol  = min( nprocs_band, nband )
+    sl2%nprow  = min( nprocs_grid, nband )
+    sl2%nbsize = ( nband + sl2%npcol - 1 ) / sl2%npcol
+    sl2%mbsize = ( nband + sl2%nprow - 1 ) / sl2%nprow
     if ( allocated(sl2%usermap) ) deallocate(sl2%usermap)
     allocate( sl2%usermap(0:sl2%nprow-1,0:sl2%npcol-1) ); sl2%usermap=-1
     do j = 0, sl2%npcol-1
@@ -323,15 +441,13 @@ contains
     call blacs_get( 0, 0, sl2%icontxt_sys )
     sl2%icontxt_a = sl2%icontxt_sys
     call blacs_gridmap(sl2%icontxt_a,sl2%usermap,sl2%nprow,sl2%nprow,sl2%npcol)
-    sl2%lwork=0
+    sl2%lwork =0
     sl2%lrwork=0
     sl2%liwork=0
-    sl2%idiag = ''
-    sl2%uplo = ''
-    call flush_barrier(6)
+    sl2%idiag =''
+    sl2%uplo  =''
     if ( any(sl2%usermap == myrank) ) then
       call blacs_gridinfo(sl2%icontxt_a,m,n,sl2%myrow,sl2%mycol)
-      write(*,*) "myrow2, mycol2",sl2%myrow, sl2%mycol, m,n,myrank
       LDR = NUMROC( nband, sl2%mbsize, sl2%myrow, 0, sl2%nprow )
       LDC = NUMROC( nband, sl2%nbsize, sl2%mycol, 0, sl2%npcol )
       sl2%ldr = LDR
@@ -339,6 +455,8 @@ contains
     else
       sl2%myrow = -1
       sl2%mycol = -1
+      sl2%ldr = 0
+      sl2%ldc = 0
     end if
 
     call flush_barrier(6)
@@ -368,19 +486,6 @@ contains
   end subroutine init_scalapack_2
 
 
-  subroutine read_scalapack
-    implicit none
-    integer :: itmp(2)
-    itmp(:)=-1
-    call IOTools_readIntegerKeyword( "SCL", itmp )
-    if ( itmp(1) > -1 ) NPROW=itmp(1)
-    if ( itmp(2) > -1 ) NPCOL=itmp(2)
-    itmp(1)=-1
-    call IOTools_readIntegerKeyword( "SCL2", itmp(1) )
-    if ( itmp(1) > -1 ) ialgo_sl2 = itmp(1)
-  end subroutine read_scalapack
-
-
   subroutine prep_scalapack( MB )
     implicit none
     integer,intent(inout) :: MB
@@ -388,6 +493,7 @@ contains
     integer :: MXLLD,MYROW,MYCOL,mm,mchk
     integer,save :: icount_visit=0, ICTXT=0, ICTXT0=0
     integer :: NUMROC
+    logical :: disp_on
     include 'mpif.h'
 
 #ifndef _LAPACK_
@@ -395,10 +501,9 @@ contains
     if ( iblacs ) return
 
     call write_border( 0, " prep_scalapack(start)" )
+    call check_disp_switch( disp_on, 0 )
 
-    if ( icount_visit>0 ) then
-       call blacs_gridexit(ICTXT)
-    end if
+    if ( icount_visit>0 ) call blacs_gridexit(ICTXT)
     icount_visit=icount_visit+1
 
     iblacs = .true.
@@ -406,87 +511,87 @@ contains
 ! --- NPROW,NPCOL,MBSIZE,NBSIZE ---
 
     if ( NPROW<1 .or. NPCOL<1 ) then
-       NPCOL0 = np_band*np_grid
-       NPCOL  = np_band*np_grid
-       NPROW  = 1
-       do i=2,np_grid
-          j=NPCOL0/i
-          if ( i*j==NPCOL0 .and. i<=j .and. j-i<NPCOL-NPROW ) then
-             NPCOL=j
-             NPROW=i
-          end if
-       end do
+      NPCOL0 = np_band*np_grid
+      NPCOL  = np_band*np_grid
+      NPROW  = 1
+      do i=2,np_grid
+        j=NPCOL0/i
+        if ( i*j==NPCOL0 .and. i<=j .and. j-i<NPCOL-NPROW ) then
+          NPCOL=j
+          NPROW=i
+        end if
+      end do
     else
-       if ( NPROW*NPCOL > np_band*np_grid ) then
-          write(*,*) "NPROW,NPCOL,np_band,np_grid=",NPROW,NPCOL,np_band,np_grid,myrank
-          stop
-       end if
+      if ( NPROW*NPCOL > np_band*np_grid ) then
+        write(*,*) "NPROW,NPCOL,np_band,np_grid=",NPROW,NPCOL,np_band,np_grid,myrank
+        stop
+      end if
     end if
 
     if ( MBSIZE<1 .or. NBSIZE<1 ) then
-       i=(MB+NPROW-1)/NPROW
-       j=(MB+NPCOL-1)/NPCOL
-       MBSIZE=min(i,j)
-       NBSIZE=MBSIZE
+      i=(MB+NPROW-1)/NPROW
+      j=(MB+NPCOL-1)/NPCOL
+      MBSIZE=min(i,j)
+      NBSIZE=MBSIZE
     else
-       if ( MBSIZE/=NBSIZE ) then
-          write(*,*) "MBSIZE,NBSIZE=",MBSIZE,NBSIZE,myrank
-          stop
-       end if
+      if ( MBSIZE/=NBSIZE ) then
+        write(*,*) "MBSIZE,NBSIZE=",MBSIZE,NBSIZE,myrank
+        stop
+      end if
     end if
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
-       write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
+    if ( disp_on ) then
+      write(*,*) "NPROW,NPCOL,MBSIZE,NBSIZE"
+      write(*,*) NPROW,NPCOL,MBSIZE,NBSIZE
     end if
 
     if ( NBSIZE*NPCOL/=MB ) then
-       n=max( NBSIZE*NPCOL, MB )
-       n=min( n, (NBSIZE+1)*NPCOL )
-       if ( disp_switch_parallel ) then
-          write(*,*) "NBSIZE*NPCOL/=MB!"
-          write(*,*) "recommended value for MB =",n
-          write(*,*) "MB is replaced"
-       end  if
-       MB=n
+      n=max( NBSIZE*NPCOL, MB )
+      n=min( n, (NBSIZE+1)*NPCOL )
+      if ( disp_on ) then
+        write(*,*) "NBSIZE*NPCOL/=MB!"
+        write(*,*) "recommended value for MB =",n
+        write(*,*) "MB is replaced"
+      end  if
+      MB=n
     end if
 
 ! --- preparation for ScaLAPACK ---
 
     if ( .not.allocated(usermap) ) then
 
-       allocate( usermap(0:NPROW-1,0:NPCOL-1,2) )
-       usermap(:,:,:)=MPI_PROC_NULL
+      allocate( usermap(0:NPROW-1,0:NPCOL-1,2) )
+      usermap(:,:,:)=MPI_PROC_NULL
 
-       n=-1
-       do i7=0,node_partition(7)-1
-       do is=0,node_partition(6)-1
-       do ik=0,node_partition(5)-1
-          m=-1 ; mchk=-NPROW*NPCOL
-          do ib=0,node_partition(4)-1
-             l=-1
-             do i3=0,node_partition(3)-1
-             do i2=0,node_partition(2)-1
-             do i1=0,node_partition(1)-1
-                n=n+1
-                m=m+1 ; if ( mod(m,NPROW*NPCOL) == 0 ) mchk=mchk+NPROW*NPCOL
-                l=l+1
-                i=mod(m+NPROW,NPROW)
-                j=m/NPROW
-                mm=myrank_g+np_grid*myrank_b+1
-                if ( id_class(myrank,5)==ik .and. &
-                     id_class(myrank,6)==is .and. &
-                     id_class(myrank,7)==i7 .and. mm > mchk ) then
-                   usermap(i,j,1)=n
-                   usermap(i,j,2)=l
-                end if
-             end do ! i1
-             end do ! i2
-             end do ! i3
-          end do ! ib
-       end do ! ik
-       end do ! is
-       end do ! i7
+      n=-1
+      do i7=0,node_partition(7)-1
+      do is=0,node_partition(6)-1
+      do ik=0,node_partition(5)-1
+        m=-1 ; mchk=-NPROW*NPCOL
+        do ib=0,node_partition(4)-1
+            l=-1
+            do i3=0,node_partition(3)-1
+            do i2=0,node_partition(2)-1
+            do i1=0,node_partition(1)-1
+              n=n+1
+              m=m+1 ; if ( mod(m,NPROW*NPCOL) == 0 ) mchk=mchk+NPROW*NPCOL
+              l=l+1
+              i=mod(m+NPROW,NPROW)
+              j=m/NPROW
+              mm=myrank_g+np_grid*myrank_b+1
+              if ( id_class(myrank,5)==ik .and. &
+                   id_class(myrank,6)==is .and. &
+                   id_class(myrank,7)==i7 .and. mm > mchk ) then
+                usermap(i,j,1)=n
+                usermap(i,j,2)=l
+              end if
+            end do ! i1
+            end do ! i2
+            end do ! i3
+        end do ! ib
+      end do ! ik
+      end do ! is
+      end do ! i7
 
     end if
 
@@ -510,15 +615,15 @@ contains
     NPX=NUMROC(MB,MBSIZE,MYROW,0,NPROW)
     NQX=NUMROC(MB,NBSIZE,MYCOL,0,NPCOL)
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "ICTXTX,ICTXT0    =",ICTXT,ICTXT0
-       write(*,*) "NPROW,NPCOL      =",NPROW,NPCOL
-       write(*,*) "MBSIZE,NBSIZE    =",MBSIZE,NBSIZE
-       write(*,*) "MYROW,MYCOL      =",MYROW,MYCOL
-       write(*,*) "LLD_R,LLD_C,MXLLD=",LLD_R,LLD_C,MXLLD
-       write(*,*) "NP0,NQ0          =",NP0,NQ0
-       write(*,*) "NPX,NQX          =",NPX,NQX
-       write(*,*) "iblacs           =",iblacs
+    if ( disp_on ) then
+      write(*,*) "ICTXTX,ICTXT0    =",ICTXT,ICTXT0
+      write(*,*) "NPROW,NPCOL      =",NPROW,NPCOL
+      write(*,*) "MBSIZE,NBSIZE    =",MBSIZE,NBSIZE
+      write(*,*) "MYROW,MYCOL      =",MYROW,MYCOL
+      write(*,*) "LLD_R,LLD_C,MXLLD=",LLD_R,LLD_C,MXLLD
+      write(*,*) "NP0,NQ0          =",NP0,NQ0
+      write(*,*) "NPX,NQX          =",NPX,NQX
+      write(*,*) "iblacs           =",iblacs
     end if
 
     call write_border( 0, " prep_scalapack(end)" )

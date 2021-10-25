@@ -1,6 +1,6 @@
 module subspace_diag_module
 
-  use subspace_diag_variables, only: MB_diag, mat_block
+  use subspace_diag_variables, only: MB_diag, mat_block, algo_sd
   use subspace_diag_la_module, only: subspace_diag_la
   use subspace_diag_sl_module, only: subspace_diag_sl
   use subspace_sdsl_module, only: subspace_sdsl
@@ -14,20 +14,26 @@ module subspace_diag_module
   public :: subspace_diag
   public :: init_subspace_diag
 
-  integer :: ialgo_sd=1
-
   interface subspace_diag
     module procedure d_subspace_diag, z_subspace_diag
   end interface
+
+  integer :: ialgo_sd
 
 contains
 
   subroutine d_subspace_diag( k, s, unk, esp )
     use sl_variables, only: sl1
+    use watch_module, only: watchb
+    use wf_module, only: gather_b_wf
     implicit none
     integer,intent(in) :: k, s
     real(8),intent(inout) :: unk(:,:)
     real(8),intent(inout) :: esp(:)
+    real(8) :: ttmp(2),tt(2,4)
+    logical :: disp_on
+    integer :: i
+    character(3),parameter :: ON_OFF='off'
 #ifdef _LAPACK_
     call subspace_diag_la( k, s )
 #else
@@ -37,9 +43,21 @@ contains
     case( 1 )
       call subspace_diag_sl( k, s )
     case( 2 )
+      !tt=0.0d0; call watchb( ttmp, barrier=ON_OFF )
+      call gather_b_wf( k, s )
+      !call watchb( ttmp, tt(:,1), barrier=ON_OFF )
       call subspace_mate_sl2( k, s, unk )
+      !call watchb( ttmp, tt(:,2), barrier=ON_OFF )
       call subspace_solv_sl2( sl1, esp )
+      !call watchb( ttmp, tt(:,3), barrier=ON_OFF )
       call d_subspace_rotv_sl2( unk )
+      !call watchb( ttmp, tt(:,4), barrier=ON_OFF )
+      !call check_disp_switch( disp_on, 0 )
+      ! if ( disp_on ) then
+      !   do i = 1, 4
+      !     write(*,'(1x,"time_sd(",i1,")=",2f12.5)') i, tt(:,i)
+      !   end do
+      ! end if
     case default
       ! call subspace_sdsl( k, s, unk, esp )
     end select
@@ -48,10 +66,16 @@ contains
 
   subroutine z_subspace_diag( k, s, unk, esp )
     use sl_variables, only: sl1
+    use watch_module, only: watchb
+    use wf_module, only: gather_b_wf
     implicit none
     integer,intent(in) :: k, s
     complex(8),intent(inout) :: unk(:,:)
     real(8),intent(inout) :: esp(:)
+    real(8) :: ttmp(2),tt(2,4)
+    logical :: disp_on
+    integer :: i
+    character(3),parameter :: ON_OFF='off'
 #ifdef _LAPACK_
     call subspace_diag_la( k, s )
 #else
@@ -61,9 +85,21 @@ contains
     case( 1 )
       call subspace_diag_sl( k, s )
     case( 2 )
+      !tt=0.0d0; call watchb( ttmp, barrier=ON_OFF )
+      call gather_b_wf( k, s )
+      !call watchb( ttmp, tt(:,1), barrier=ON_OFF )
       call subspace_mate_sl2( k, s, unk )
+      !call watchb( ttmp, tt(:,2), barrier=ON_OFF )
       call subspace_solv_sl2( sl1, esp )
+      !call watchb( ttmp, tt(:,3), barrier=ON_OFF )
       call z_subspace_rotv_sl2( unk )
+      !call watchb( ttmp, tt(:,4), barrier=ON_OFF )
+      !call check_disp_switch( disp_on, 0 )
+      ! if ( disp_on ) then
+      !   do i = 1, 4
+      !     write(*,'(1x,"time_sd(",i1,")=",2f12.5)') i, tt(:,i)
+      !   end do
+      ! end if
     case default
       ! call subspace_sdsl( k, s, unk, esp )
     end select
@@ -72,22 +108,21 @@ contains
 
 
   subroutine init_subspace_diag( MB, nprocs_MB )
-    use parallel_module, only: load_div_parallel, disp_switch_parallel
-    use io_tools_module, only: IOTools_readIntegerKeyword
+    use parallel_module, only: load_div_parallel
     implicit none
     integer,intent(in) :: MB, nprocs_MB
     integer :: i,j,mm,me,tot_num_of_mate
     integer,allocatable :: ircnt_MB(:), idisp_MB(:)
+    logical :: disp_on
 
     call write_border( 0, " init_subspace_diag(start)" )
+    call check_disp_switch( disp_on, 0 )
 
 ! ---
 
     MB_diag = MB
 
-    call IOTools_readIntegerKeyword( 'IALGO_SD', ialgo_sd )
-    i=0; call IOTools_readIntegerKeyword( 'SCL2', i )
-    if ( i /= 0 ) ialgo_sd = 2
+    ialgo_sd = algo_sd()
 
     if ( ialgo_sd /= 1 ) then
       call write_border( 0, " init_subspace_diag(return)" )
@@ -151,7 +186,7 @@ contains
       mat_block(i,4)=sum( mat_block(0:i,3) )-mat_block(i,3)
     end do
 
-    if ( disp_switch_parallel ) then
+    if ( disp_on ) then
       write(*,'(1x,6a10)') "rank_b","tri","m","n","nme","idis"
       do i=0,nprocs_MB-1
         write(*,'(1x,6i10)') i,(mat_block(i,j),j=0,4)

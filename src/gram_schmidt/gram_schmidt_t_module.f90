@@ -92,7 +92,7 @@ CONTAINS
     ML0   = ML_1-ML_0+1
     mrnk  = id_class(myrank,4)
 
-    if ( NBLK  == 0 ) NBLK =MB
+    if ( NBLK  == 0 ) NBLK =MB/np_band
     if ( NBLK1 == 0 ) NBLK1=4
 
     allocate( ir(0:np_band-1),id(0:np_band-1) )

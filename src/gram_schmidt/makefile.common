@@ -2,7 +2,7 @@ OBJS = gram_schmidt_m_module.o gram_schmidt_t_module.o\
        gram_schmidt_ncol_module.o\
        gram_schmidt_t3_module.o\
        dsyrk_module.o\
-       overlap_bp_module.o\
+       calc_overlap_gs_module.o\
        trmm_module.o\
        dtrmm_bp_module.o\
        gram_schmidt_lusl_module.o\

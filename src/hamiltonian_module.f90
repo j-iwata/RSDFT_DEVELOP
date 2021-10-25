@@ -1,5 +1,6 @@
 module hamiltonian_module
 
+  use kinetic_variables, only: kin_select
   use kinetic_module, only: op_kinetic
   use localpot_module, only: op_localpot, Vloc
   use nonlocal_module, only: op_nonlocal
@@ -119,14 +120,20 @@ contains
     integer,intent(in) :: n,k,s
     real(8),intent(in) :: tpsi(:,:)
     real(8),intent(inout) :: htpsi(:,:)
-!$omp parallel
-    !call watchb_omp( ttmp )
-    call op_kinetic( tpsi, htpsi, k, Vloc(:,s) )
-!$omp barrier
-    !call watchb_omp( ttmp, time_hmlt(1,1) )
-    !call op_localpot( tpsi, htpsi, s )
-!!$omp barrier
-    !call watchb_omp( ttmp, time_hmlt(1,2) )
+    !$omp parallel
+    if ( kin_select == 0 ) then
+      !call watchb_omp( ttmp )
+      call op_kinetic( tpsi, htpsi, k, Vloc(:,s) )
+      !$omp barrier
+      !call watchb_omp( ttmp, time_hmlt(1,1) )
+    else
+      !call watchb_omp( ttmp )
+      call op_kinetic( tpsi, htpsi, k )
+      !call watchb_omp( ttmp, time_hmlt(1,1) )
+      call op_localpot( tpsi, htpsi, s )
+      !$omp barrier
+      !call watchb_omp( ttmp, time_hmlt(1,2) )
+    end if
     call op_nonlocal( tpsi, htpsi, n,k,s )
 !$omp barrier
     !call watchb_omp( ttmp, time_hmlt(1,3) )
@@ -142,13 +149,19 @@ contains
     complex(8),intent(in) :: tpsi(:,:)
     complex(8),intent(inout) :: htpsi(:,:)
     !$omp parallel
-    !call watchb_omp( ttmp )
-    call op_kinetic( tpsi, htpsi, k, Vloc(:,s) )
-    !$omp barrier
-    !call watchb_omp( ttmp, time_hmlt(1,1) )
-    !call op_localpot( tpsi, htpsi, s )
-    !!$omp barrier
-    !call watchb_omp( ttmp, time_hmlt(1,2) )
+    if ( kin_select == 0 ) then
+      !call watchb_omp( ttmp )
+      call op_kinetic( tpsi, htpsi, k, Vloc(:,s) )
+      !$omp barrier
+      !call watchb_omp( ttmp, time_hmlt(1,1) )
+    else
+      !call watchb_omp( ttmp )
+      call op_kinetic( tpsi, htpsi, k )
+      !call watchb_omp( ttmp, time_hmlt(1,1) )
+      call op_localpot( tpsi, htpsi, s )
+      !$omp barrier
+      !call watchb_omp( ttmp, time_hmlt(1,2) )
+    end if
     call op_nonlocal( tpsi, htpsi, n,k,s )
     !$omp barrier
     !call watchb_omp( ttmp, time_hmlt(1,3) )

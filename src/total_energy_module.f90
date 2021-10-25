@@ -132,9 +132,9 @@ contains
 !---------------------------------------------------- local
 
           work=zero
-!$OMP parallel
+          !$omp parallel
           call op_localpot( unk(:,nb1:nb2,k,s), work(:,1:nn), s )
-!$OMP end parallel
+          !$omp end parallel
           do i=nb1,nb2
 #ifdef _DRSDFT_
           esp0(i,k,s,2)=sum( unk(:,i,k,s)*work(:,i-nb1+1) )*dV

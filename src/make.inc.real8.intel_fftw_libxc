@@ -37,7 +37,7 @@ CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
 CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
 INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
-FFTW_L = -L$($MKLROOT)/lib/intel64/ -lfftw3x_cdft_lp64
+FFTW_L = -L$(MKLROOT)/lib/intel64/ -lfftw3x_cdft_lp64
 #INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
 #FFTW_L = -L/data1/group4/iwata/mklt/fftw3xf_cdft/lib/intel64 -lfftw3x_cdft
 #INCLUDE_DIR := -I$(HOME)/fftw/include/ $(INCLUDE_DIR)

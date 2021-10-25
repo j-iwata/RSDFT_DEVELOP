@@ -141,81 +141,84 @@ CONTAINS
   END SUBROUTINE get_aa_lattice
 
 
-  SUBROUTINE check_lattice( a, indx )
+  subroutine check_lattice( a, indx_out )
     implicit none
-    real(8),intent(IN) :: a(3,3)
-    character(*),optional,intent(OUT) :: indx
+    real(8),intent(in) :: a(3,3)
+    character(*),optional,intent(out) :: indx_out
+    character(10) :: indx
     real(8) :: al(3), theta23, theta31, theta12, cos23, cos31, cos12
     real(8) :: cosines(3)
     logical :: disp
+    call write_border( 0, " check_lattice(start)" )
     al(1) = sqrt( sum(a(:,1)**2) )
     al(2) = sqrt( sum(a(:,2)**2) )
     al(3) = sqrt( sum(a(:,3)**2) )
-    cos23 = sum( a(:,2)*a(:,3) )/(al(2)*al(3))
-    cos31 = sum( a(:,3)*a(:,1) )/(al(3)*al(1))
-    cos12 = sum( a(:,1)*a(:,2) )/(al(1)*al(2))
+    cos23 = sum( a(:,2)*a(:,3) )/(al(2)*al(3)) !alpha
+    cos31 = sum( a(:,3)*a(:,1) )/(al(3)*al(1)) !beta
+    cos12 = sum( a(:,1)*a(:,2) )/(al(1)*al(2)) !gamma
     theta23 = acos( cos23 )*180.0d0/acos(-1.0d0)
     theta31 = acos( cos31 )*180.0d0/acos(-1.0d0)
     theta12 = acos( cos12 )*180.0d0/acos(-1.0d0)
     call check_disp_switch( disp, 0 )
     if ( disp ) then
-       write(*,'(1x,"V1",3f12.5,2x,f12.5)') a(:,1), al(1)
-       write(*,'(1x,"V2",3f12.5,2x,f12.5)') a(:,2), al(2)
-       write(*,'(1x,"V3",3f12.5,2x,f12.5)') a(:,3), al(3)
-       write(*,'(1x,"cos23  ,cos31  ,cos12  :",3f10.5)') cos23,cos31,cos12
-       write(*,'(1x,"theta23,theta31,theta12:",3f10.5)') theta23,theta31,theta12
+      write(*,'(1x,"V1",3f12.5,2x,f12.5)') a(:,1), al(1)
+      write(*,'(1x,"V2",3f12.5,2x,f12.5)') a(:,2), al(2)
+      write(*,'(1x,"V3",3f12.5,2x,f12.5)') a(:,3), al(3)
+      write(*,'(1x,"cos23  ,cos31  ,cos12  :",3f10.5)') cos23,cos31,cos12
+      write(*,'(1x,"theta23,theta31,theta12:",3f10.5)') theta23,theta31,theta12
     end if
-    if ( present(indx) ) then
-       indx=""
-       cosines=(/cos23,cos31,cos12/)
-       call check_cubic( al, cosines, indx )
-       call check_hexagonal( al, cosines, indx )
-       call check_fcc( al, cosines, indx )
-    end if
-  END SUBROUTINE check_lattice
+    indx=""
+    cosines=(/cos23,cos31,cos12/)
+    call check_cubic( al, cosines, indx )
+    call check_hexagonal( al, cosines, indx )
+    call check_fcc( al, cosines, indx )
+    if ( indx /= "" .and. disp ) write(*,*) "Lattice type: ",indx
+    if ( present(indx_out) ) indx_out=indx
+    call write_border( 0, " check_lattice(end)" )
+  end subroutine check_lattice
 
-  SUBROUTINE check_cubic( al, cosines, indx )
+  subroutine check_cubic( al, cosines, indx )
     implicit none
-    real(8),intent(IN) :: al(3), cosines(3)
-    character(*),intent(INOUT) :: indx
-    real(8),parameter :: eps=1.d-3
+    real(8),intent(in) :: al(3), cosines(3)
+    character(*),intent(inout) :: indx
+    real(8),parameter :: eps=1.0d-3
     if ( abs(al(1)-al(2)) < eps ) then
-       if ( abs(al(2)-al(3)) < eps ) then
-          if ( all( abs(cosines) < eps ) ) indx = "CUBIC"
-       end if
+      if ( abs(al(2)-al(3)) < eps ) then
+        if ( all( abs(cosines) < eps ) ) indx = "CUBIC"
+      end if
     end if
-  END SUBROUTINE check_cubic
+  end subroutine check_cubic
 
-  SUBROUTINE check_hexagonal( al, cosines, indx )
+  subroutine check_hexagonal( al, cosines, indx )
     implicit none
-    real(8),intent(IN) :: al(3), cosines(3)
-    character(*),intent(INOUT) :: indx
-    real(8),parameter :: eps=1.d-3
+    real(8),intent(in) :: al(3), cosines(3)
+    character(*),intent(inout) :: indx
+    real(8),parameter :: eps=1.0d-3
     if ( abs(al(1)-al(2)) < eps ) then
-       if ( abs(cosines(3)-0.5d0)<eps .or. abs(cosines(3)+0.5d0)<eps ) then
-          if ( abs(cosines(1))<eps .and. abs(cosines(2))<eps ) indx="HEXAGONAL"
-       end if
+      if ( abs(cosines(3)-0.5d0)<eps .or. abs(cosines(3)+0.5d0)<eps ) then
+        if ( abs(cosines(1))<eps .and. abs(cosines(2))<eps ) indx="HEXAGONAL"
+      end if
     else if ( abs(al(2)-al(3)) < eps ) then
-       if ( abs(cosines(1)-0.5d0)<eps .or. abs(cosines(1)+0.5d0)<eps ) then
-          if ( abs(cosines(2))<eps .and. abs(cosines(3))<eps ) indx="HEXAGONAL"
-       end if
+      if ( abs(cosines(1)-0.5d0)<eps .or. abs(cosines(1)+0.5d0)<eps ) then
+        if ( abs(cosines(2))<eps .and. abs(cosines(3))<eps ) indx="HEXAGONAL"
+      end if
     else if ( abs(al(3)-al(1)) < eps ) then
-       if ( abs(cosines(2)-0.5d0)<eps .or. abs(cosines(2)+0.5d0)<eps ) then
-          if ( abs(cosines(3))<eps .and. abs(cosines(1))<eps ) indx="HEXAGONAL"
-       end if
+      if ( abs(cosines(2)-0.5d0)<eps .or. abs(cosines(2)+0.5d0)<eps ) then
+        if ( abs(cosines(3))<eps .and. abs(cosines(1))<eps ) indx="HEXAGONAL"
+      end if
     end if
-  END SUBROUTINE check_hexagonal
+  end subroutine check_hexagonal
 
-  SUBROUTINE check_fcc( al, cosines, indx )
+  subroutine check_fcc( al, cosines, indx )
     implicit none
-    real(8),intent(IN) :: al(3), cosines(3)
-    character(*),intent(INOUT) :: indx
-    real(8),parameter :: eps=1.d-3
+    real(8),intent(in) :: al(3), cosines(3)
+    character(*),intent(inout) :: indx
+    real(8),parameter :: eps=1.0d-3
     if ( abs(al(1)-al(2)) < eps ) then
        if ( abs(al(2)-al(3)) < eps ) then
           if ( all( abs(cosines-0.5d0) < eps ) ) indx = "FCC"
        end if
     end if
-  END SUBROUTINE check_fcc
+  end subroutine check_fcc
 
-END MODULE lattice_module
+end module lattice_module

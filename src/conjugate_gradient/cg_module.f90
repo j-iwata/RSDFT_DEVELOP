@@ -63,8 +63,8 @@ contains
     type(time) :: tt
 
     if ( flag_noncollinear ) then
-       call conjugate_gradient_ncol( n1,n2,size(esp,1),k,unk,esp(:,k,s),res(:,k,s) )
-       return
+      call conjugate_gradient_ncol( n1,n2,size(esp,1),k,unk,esp(:,k,s),res(:,k,s) )
+      return
     end if
 
     call write_border( 1, " conjugate_gradient(start)" )
@@ -82,23 +82,23 @@ contains
 
     if ( pp_kind == "USPP" ) then
 
-       call stop_program("USPP is not available")
+      call stop_program("USPP is not available")
 
     else
 
-       select case( iswitch_cg )
-       case default
-       case( 1 )
+      select case( iswitch_cg )
+      case default
+      case( 1 )
 
-          call conjugate_gradient_1 &
-               (n1,n2,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s))
+        call conjugate_gradient_1 &
+              (n1,n2,k,s,Ncg,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s))
 
-       case( 2 )
+      case( 2 )
 
-          call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
-          call lobpcg( k,s,Ncg,iswitch_gs,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s) )
+        call init_lobpcg( n1,n2,MB_0,MB_1,dV,MB_d,comm_grid )
+        call lobpcg( k,s,Ncg,iswitch_gs,unk(:,:,kk,ss),esp(:,k,s),res(:,k,s) )
 
-       end select
+      end select
 
     end if
 
@@ -116,12 +116,12 @@ contains
     real(8),intent(inout) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i,TYPE_MAIN,timer_counter
-    real(8),parameter :: ep0=0.d0
-    real(8),parameter :: ep1=1.d-15
+    real(8),parameter :: ep0=0.0d0
+    real(8),parameter :: ep1=1.0d-15
     real(8) :: rwork(9),W(2),c,d,r,c1,ct0,ct1,et0,et1,ctt(4),ett(4)
     real(8),allocatable :: sb(:),rb(:),E(:),E1(:),gkgk(:),bk(:)
     complex(8) :: work(9),zphase,ztmp
-    real(8),parameter :: zero=0.d0
+    real(8),parameter :: zero=0.0d0
     real(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     real(8),allocatable :: pk(:,:),pko(:,:)
     real(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
@@ -173,210 +173,213 @@ contains
     call watchb( ttmp, timecg(:,5) )
 
     do ns=MB_0,MB_1,MB_d
-       ne=min(ns+MB_d-1,MB_1)
-       nn=ne-ns+1
+      ne=min(ns+MB_d-1,MB_1)
+      nn=ne-ns+1
 
-       E1(:)=1.d10
+      E1(:)=1.0d10
 
-       call watchb( ttmp )
+      call watchb( ttmp )
 
-       if ( USE_WORKWF_AT_CG .and. iflag_hunk >= 1 ) then
-!$OMP parallel workshare
-          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
-!$OMP end parallel workshare
-       else
-          call hamiltonian( unk(:,ns:ne), hxk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
-       end if
+      if ( USE_WORKWF_AT_CG .and. iflag_hunk >= 1 ) then
+        !$omp parallel workshare
+        hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+        !$omp end parallel workshare
+      else
+        hxk=zero
+        call hamiltonian( unk(:,ns:ne), hxk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
+      end if
 
-       call watchb( ttmp, timecg(:,1) )
+      call watchb( ttmp, timecg(:,1) )
 
-       do n=1,nn
-          call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
-       end do
+      do n=1,nn
+        call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
+      end do
 
-       call watchb( ttmp, timecg(:,2) )
+      call watchb( ttmp, timecg(:,2) )
 
-       call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+      call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watchb( ttmp, timecg(:,3) )
+      call watchb( ttmp, timecg(:,3) )
 
-       do n=1,nn
-!$OMP parallel do
-          do i=n1,n2
-             gk(i,n) = -2.0d0*( hxk(i,n) - E(n)*unk(i,n+ns-1) )
-          end do
-!$OMP end parallel do
-          call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
-       end do
+      do n=1,nn
+        !$omp parallel do
+        do i=n1,n2
+            gk(i,n) = -2.0d0*( hxk(i,n) - E(n)*unk(i,n+ns-1) )
+        end do
+        !$omp end parallel do
+        call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+      end do
 
-       call watchb( ttmp, timecg(:,2) )
+      call watchb( ttmp, timecg(:,2) )
 
-       call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+      call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-       call watchb( ttmp, timecg(:,3) )
+      call watchb( ttmp, timecg(:,3) )
 
-       do icg=1,Mcg+1
+      do icg=1,Mcg+1
 
-          call watchb( ttmp )
+        call watchb( ttmp )
 
-          Ncgtot=Ncgtot+1
+        Ncgtot=Ncgtot+1
 
-          do n=1,nn
-!$OMP parallel workshare
-             Pgk(n1:n2,n)=gk(n1:n2,n)
-!$OMP end parallel workshare
-          end do
+        do n=1,nn
+          !$omp parallel workshare
+          Pgk(n1:n2,n)=gk(n1:n2,n)
+          !$omp end parallel workshare
+        end do
 
-          res(ns:ne)=rb(1:nn)/c1**2
+        res(ns:ne)=rb(1:nn)/c1**2
 
 ! --- Convergence check ---
 
-          if ( all(rb(1:nn)<ep0) ) exit
-          if ( all(abs(E(1:nn)-E1(1:nn))<ep1) ) exit
-          if ( icg==Mcg+1 ) exit
+        if ( all(rb(1:nn)<ep0) ) exit
+        if ( all(abs(E(1:nn)-E1(1:nn))<ep1) ) exit
+        if ( icg==Mcg+1 ) exit
 
-          call watchb( ttmp, timecg(:,2) )
+        call watchb( ttmp, timecg(:,2) )
 
 ! --- Preconditioning ---
 
-          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk(:,1:nn),Pgk(:,1:nn))
+        call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk(:,1:nn),Pgk(:,1:nn))
 
-          call watchb( ttmp, timecg(:,4) )
+        call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
-          do n=ns,ne
-             call cggs( iswitch_gs, ML0, size(unk,2), n, dV, unk, Pgk(n1,n-ns+1) )
-          end do
+        do n=ns,ne
+          call cggs( iswitch_gs, ML0, size(unk,2), n, dV, unk, Pgk(n1,n-ns+1) )
+        end do
 
 ! ---
 
-          do n=1,nn
-             call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
-          end do
+        do n=1,nn
+          call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+        end do
 
-          call watchb( ttmp, timecg(:,2) )
+        call watchb( ttmp, timecg(:,2) )
 
-          call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
 
-          call watchb( ttmp, timecg(:,3) )
+        call watchb( ttmp, timecg(:,3) )
 
-          if ( icg==1 ) then
+        if ( icg==1 ) then
 !$OMP parallel workshare
-             pk(n1:n2,1:nn) = Pgk(n1:n2,1:nn)
+          pk(n1:n2,1:nn) = Pgk(n1:n2,1:nn)
 !$OMP end parallel workshare
-          else
-             do n=1,nn
-                bk(n)=rb(n)/gkgk(n)
+        else
+          do n=1,nn
+            bk(n)=rb(n)/gkgk(n)
 !$OMP parallel do
-                do i=n1,n2
-                   pk(i,n)=Pgk(i,n)+bk(n)*pk(i,n)
-                end do
+            do i=n1,n2
+              pk(i,n)=Pgk(i,n)+bk(n)*pk(i,n)
+            end do
 !$OMP end parallel do
-             end do
+          end do
+        end if
+        gkgk(1:nn)=rb(1:nn)
+
+        call watchb( ttmp, timecg(:,2) )
+
+        hpk(:,1:nn)=zero
+        call hamiltonian( pk(:,1:nn), hpk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
+
+        call watchb( ttmp, timecg(:,1) )
+
+        do n=1,nn
+          vtmp2(1:6,n)=zero
+          m=n+ns-1
+          call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
+          call dot_product( pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
+          call dot_product( pk(n1,n), pk(n1,n),vtmp2(3,n),dV,mm,1)
+          call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
+          call dot_product( pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
+          call dot_product( pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+        end do
+
+        call watchb( ttmp, timecg(:,2) )
+
+        call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
+
+        call watchb( ttmp, timecg(:,3) )
+
+        do n=1,nn
+
+          m=n+ns-1
+          btmp2(1,1)=wtmp2(1,n)
+          btmp2(2,1)=wtmp2(2,n)
+          btmp2(1,2)=wtmp2(2,n)
+          btmp2(2,2)=wtmp2(3,n)
+          utmp2(1,1)=wtmp2(4,n)
+          utmp2(2,1)=wtmp2(5,n)
+          utmp2(1,2)=wtmp2(5,n)
+          utmp2(2,2)=wtmp2(6,n)
+          call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
+          if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
+            utmp2(1,1)=utmp2(1,2)
+            utmp2(2,1)=utmp2(2,2)
+            W(1)=W(2)
           end if
-          gkgk(1:nn)=rb(1:nn)
+          !- Fix the phase -
+          c=utmp2(1,1)
+          if( c<0.0d0 ) then
+            utmp2(1,1)=-utmp2(1,1)
+            utmp2(2,1)=-utmp2(2,1)
+          end if
 
-          call watchb( ttmp, timecg(:,2) )
+          utmp3(1:2,n) = utmp2(1:2,1)
 
-          call hamiltonian( pk(:,1:nn), hpk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
+          E1(n)=E(n)
+          E(n) =W(1)
 
-          call watchb( ttmp, timecg(:,1) )
-
-          do n=1,nn
-             vtmp2(1:6,n)=zero
-             m=n+ns-1
-             call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
-             call dot_product( pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
-             call dot_product( pk(n1,n), pk(n1,n),vtmp2(3,n),dV,mm,1)
-             call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
-             call dot_product( pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
-             call dot_product( pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+          !$omp parallel
+          !$omp do
+          do i=n1,n2
+            hxk(i,n)=utmp2(1,1)*hxk(i,n)+utmp2(2,1)*hpk(i,n)
           end do
-
-          call watchb( ttmp, timecg(:,2) )
-
-          call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
-
-          call watchb( ttmp, timecg(:,3) )
-
-          do n=1,nn
-             m=n+ns-1
-             btmp2(1,1)=wtmp2(1,n)
-             btmp2(2,1)=wtmp2(2,n)
-             btmp2(1,2)=wtmp2(2,n)
-             btmp2(2,2)=wtmp2(3,n)
-             utmp2(1,1)=wtmp2(4,n)
-             utmp2(2,1)=wtmp2(5,n)
-             utmp2(1,2)=wtmp2(5,n)
-             utmp2(2,2)=wtmp2(6,n)
-             call dsygv(1,'V','U',2,utmp2,2,btmp2,2,W,rwork,9,ierr)
-             if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                utmp2(1,1)=utmp2(1,2)
-                utmp2(2,1)=utmp2(2,2)
-                W(1)=W(2)
-             end if
-!- Fix the phase -
-             c=utmp2(1,1)
-             if( c<0.0d0 ) then
-                utmp2(1,1)=-utmp2(1,1)
-                utmp2(2,1)=-utmp2(2,1)
-             end if
-
-             utmp3(1:2,n) = utmp2(1:2,1)
-
-             E1(n)=E(n)
-             E(n) =W(1)
-
-!$OMP parallel
-!$OMP do
-             do i=n1,n2
-                hxk(i,n)=utmp2(1,1)*hxk(i,n)+utmp2(2,1)*hpk(i,n)
-             end do
-!$OMP end do
-!$OMP do
-             do i=n1,n2
-                gk(i,n) = -2.0d0*( hxk(i,n) &
-                     -W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)) )
-             end do
-!$OMP end do
-!$OMP end parallel
-
-             call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
-
-          end do ! n
-
-          call watchb( ttmp, timecg(:,2) )
-
-          call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
-          call watchb( ttmp, timecg(:,3) )
-
-          do n=1,nn
-             m=n+ns-1
-             if ( rb(n)/res(m)>1.d8 ) then
-                E(n)=E1(n)
-                cycle
-             end if
-!$OMP parallel do
-             do i=n1,n2
-                unk(i,m)=utmp3(1,n)*unk(i,m)+utmp3(2,n)*pk(i,n)
-             end do
-!$OMP end parallel do
-             if ( iflag_hunk >= 1 ) then
-!$OMP parallel do
-                do i=n1,n2
-                   hunk(i,m,k,s)=hxk(i,n)
-                end do
-!$OMP end parallel do
-             end if
+          !$omp end do
+          !$omp do
+          do i=n1,n2
+            gk(i,n) = -2.0d0*( hxk(i,n) &
+                  -W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n)) )
           end do
+          !$omp end do
+          !$omp end parallel
 
-          call watchb( ttmp, timecg(:,2) )
+          call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
 
-       end do ! icg
+        end do ! n
 
-       esp(ns:ne)=E(1:nn)
+        call watchb( ttmp, timecg(:,2) )
+
+        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+        call watchb( ttmp, timecg(:,3) )
+
+        do n=1,nn
+          m=n+ns-1
+          if ( rb(n)/res(m)>1.0d8 ) then
+            E(n)=E1(n)
+            cycle
+          end if
+          !$omp parallel do
+          do i=n1,n2
+            unk(i,m)=utmp3(1,n)*unk(i,m)+utmp3(2,n)*pk(i,n)
+          end do
+          !$omp end parallel do
+          if ( iflag_hunk >= 1 ) then
+            !$omp parallel do
+            do i=n1,n2
+              hunk(i,m,k,s)=hxk(i,n)
+            end do
+            !$omp end parallel do
+          end if
+        end do ! n
+
+        call watchb( ttmp, timecg(:,2) )
+
+      end do ! icg
+
+      esp(ns:ne)=E(1:nn)
 
     end do  ! band-loop
 
@@ -435,12 +438,12 @@ contains
     real(8),intent(inout) :: esp(:),res(:)
     integer :: ns,ne,nn,n,m,icg,ML0,Nhpsi,Npc,Ncgtot,ierr
     integer :: mm,icmp,i,TYPE_MAIN
-    real(8),parameter :: ep0=0.d0
-    real(8),parameter :: ep1=1.d-15
+    real(8),parameter :: ep0=0.0d0
+    real(8),parameter :: ep1=1.0d-15
     real(8) :: rwork(9),W(2),c,d,r,ct0,ct1,et0,et1,ctt(4),ett(4)
     real(8),allocatable :: sb(:),rb(:),E(:),E1(:),gkgk(:),bk(:)
     complex(8) :: work(9),zphase,ztmp
-    complex(8),parameter :: zero=(0.d0,0.d0)
+    complex(8),parameter :: zero=(0.0d0,0.0d0)
     complex(8),allocatable :: hxk(:,:),hpk(:,:),gk(:,:),Pgk(:,:)
     complex(8),allocatable :: pk(:,:),pko(:,:)
     complex(8),allocatable :: vtmp2(:,:),wtmp2(:,:)
@@ -495,223 +498,225 @@ contains
     call watchb( ttmp, timecg(:,6) )
 
     do ns=MB_0,MB_1,MB_d
-       ne=min(ns+MB_d-1,MB_1)
-       nn=ne-ns+1
+      ne=min(ns+MB_d-1,MB_1)
+      nn=ne-ns+1
 
-       E1(1:nn)=1.d10
+      E1(1:nn)=1.0d10
 
-       call watchb( ttmp )
+      call watchb( ttmp )
 
-       if ( USE_WORKWF_AT_CG .and. iflag_hunk >= 1 ) then
+      if ( USE_WORKWF_AT_CG .and. iflag_hunk >= 1 ) then
+        !$omp parallel workshare
+        hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+        !$omp end parallel workshare
+      else
+        hxk(:,1:nn)=zero
+        call hamiltonian( unk(:,ns:ne), hxk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
+      end if
+
+      call watchb( ttmp, timecg(:,1) )
+
+      do n=1,nn
+        call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
+      end do
+
+      call watchb( ttmp, timecg(:,2) )
+
+      call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+      call watchb( ttmp, timecg(:,3) )
+
+      do n=1,nn
+        !$omp parallel do
+        do i=n1,n2
+          gk(i,n) = -hxk(i,n) + E(n)*unk(i,n+ns-1)
+        end do
+        !$omp end parallel do
+        call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+      end do
+
+      call watchb( ttmp, timecg(:,2) )
+
+      call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+      call watchb( ttmp, timecg(:,3) )
+
+      do icg=1,Mcg+1
+
+        call watchb( ttmp )
+
+        Ncgtot=Ncgtot+1
+
+        do n=1,nn
 !$OMP parallel workshare
-          hxk(:,1:nn)=hunk(:,ns:ne,k,s)
+          Pgk(n1:n2,n)=gk(n1:n2,n)
 !$OMP end parallel workshare
-       else
-          call hamiltonian( unk(:,ns:ne), hxk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
-       end if
+        end do
 
-       call watchb( ttmp, timecg(:,1) )
+        res(ns:ne)=rb(1:nn)
 
-       do n=1,nn
-          call dot_product(unk(n1,n+ns-1),hxk(n1,n),sb(n),dV,mm,1)
-       end do
-
-       call watchb( ttmp, timecg(:,2) )
-
-       call mpi_allreduce(sb,E,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
-       call watchb( ttmp, timecg(:,3) )
-
-       do n=1,nn
-!$OMP parallel do
-          do i=n1,n2
-             gk(i,n) = -hxk(i,n) + E(n)*unk(i,n+ns-1)
-          end do
-!$OMP end parallel do
-          call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
-       end do
-
-       call watchb( ttmp, timecg(:,2) )
-
-       call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
-       call watchb( ttmp, timecg(:,3) )
-
-       do icg=1,Mcg+1
-
-          call watchb( ttmp )
-
-          Ncgtot=Ncgtot+1
-
-          do n=1,nn
-!$OMP parallel workshare
-             Pgk(n1:n2,n)=gk(n1:n2,n)
-!$OMP end parallel workshare
-          end do
-
-          res(ns:ne)=rb(1:nn)
-
-          call watchb( ttmp, timecg(:,2) )
+        call watchb( ttmp, timecg(:,2) )
 
 ! --- Convergence check ---
 
-          if ( all(rb(1:nn)<ep0) ) exit
-          if ( all(abs(E(1:nn)-E1(1:nn))<ep1) ) exit
-          if ( icg==Mcg+1 ) exit
+        if ( all(rb(1:nn)<ep0) ) exit
+        if ( all(abs(E(1:nn)-E1(1:nn))<ep1) ) exit
+        if ( icg==Mcg+1 ) exit
 
 ! --- Preconditioning ---
 
-          call watchb( ttmp, timecg(:,6) )
+        call watchb( ttmp, timecg(:,6) )
 
-          call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk(:,1:nn),Pgk(:,1:nn))
+        call preconditioning(E,k,s,nn,ML0,unk(:,ns:ne),gk(:,1:nn),Pgk(:,1:nn))
 
-          call watchb( ttmp, timecg(:,4) )
+        call watchb( ttmp, timecg(:,4) )
 
 ! --- orthogonalization
 
-          do n=ns,ne
-             call cggs( iswitch_gs, ML0, size(unk,2), n, dV, unk, Pgk(n1,n-ns+1) )
-          end do
+        do n=ns,ne
+          call cggs( iswitch_gs, ML0, size(unk,2), n, dV, unk, Pgk(n1,n-ns+1) )
+        end do
 
-          call watchb( ttmp, timecg(:,5) )
+        call watchb( ttmp, timecg(:,5) )
 
 ! ---
 
+        do n=1,nn
+          call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+        end do
+
+        call watchb( ttmp, timecg(:,2) )
+
+        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+        call watchb( ttmp, timecg(:,3) )
+
+        if ( icg==1 ) then
+          !$omp parallel workshare
+          pk(n1:n2,1:nn) = Pgk(n1:n2,1:nn)
+          !$omp end parallel workshare
+        else
           do n=1,nn
-             call dot_product(Pgk(n1,n),gk(n1,n),sb(n),dV,mm,1)
+            bk(n)=rb(n)/gkgk(n)
+            !$omp parallel do
+            do i=n1,n2
+              pk(i,n)=Pgk(i,n)+bk(n)*pk(i,n)
+            end do
+            !$omp end parallel do
           end do
+        end if
 
-          call watchb( ttmp, timecg(:,2) )
+        gkgk(1:nn)=rb(1:nn)
 
-          call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+        call watchb( ttmp, timecg(:,2) )
 
-          call watchb( ttmp, timecg(:,3) )
+        hpk(:,1:nn)=zero
+        call hamiltonian( pk(:,1:nn), hpk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
 
-          if ( icg==1 ) then
-!$OMP parallel workshare
-             pk(n1:n2,1:nn) = Pgk(n1:n2,1:nn)
-!$OMP end parallel workshare
-          else
-             do n=1,nn
-                bk(n)=rb(n)/gkgk(n)
-!$OMP parallel do
-                do i=n1,n2
-                   pk(i,n)=Pgk(i,n)+bk(n)*pk(i,n)
-                end do
-!$OMP end parallel do
-             end do
+        call watchb( ttmp, timecg(:,1) )
+
+        do n=1,nn
+          vtmp2(1:6,n)=zero
+          m=n+ns-1
+          call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
+          call dot_product(pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
+          call dot_product(pk(n1,n),pk(n1,n),vtmp2(3,n),dV,mm,1)
+          call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
+          call dot_product(pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
+          call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+        end do
+
+        call watchb( ttmp, timecg(:,2) )
+
+        call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
+
+        call watchb( ttmp, timecg(:,3) )
+
+        do n=1,nn
+          m=n+ns-1
+          btmp2(1,1)=wtmp2(1,n)
+          btmp2(2,1)=wtmp2(2,n)
+          btmp2(1,2)=wtmp2(2,n)
+          btmp2(2,2)=wtmp2(3,n)
+          utmp2(1,1)=wtmp2(4,n)
+          utmp2(2,1)=wtmp2(5,n)
+          utmp2(1,2)=wtmp2(5,n)
+          utmp2(2,2)=wtmp2(6,n)
+          ztmp=btmp2(1,2)
+          ztmp=conjg(ztmp)
+          btmp2(1,2)=ztmp
+          ztmp=utmp2(1,2)
+          ztmp=conjg(ztmp)
+          utmp2(1,2)=ztmp
+          call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
+          if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
+            utmp2(1,1)=utmp2(1,2)
+            utmp2(2,1)=utmp2(2,2)
+            W(1)=W(2)
           end if
+          !- Fix the phase -
+          ztmp=utmp2(1,1)
+          r=abs(ztmp)
+          c=real(ztmp)/r
+          d=aimag(ztmp)/r
+          zphase=dcmplx(c,-d)
+          utmp2(1,1)=utmp2(1,1)*zphase
+          utmp2(2,1)=utmp2(2,1)*zphase
 
-          gkgk(1:nn)=rb(1:nn)
+          utmp3(1:2,n) = utmp2(1:2,1)
 
-          call watchb( ttmp, timecg(:,2) )
+          E1(n)=E(n)
+          E(n) =W(1)
 
-          call hamiltonian( pk(:,1:nn), hpk(:,1:nn), ns,k,s ) ; Nhpsi=Nhpsi+1
-
-          call watchb( ttmp, timecg(:,1) )
-
-          do n=1,nn
-             vtmp2(1:6,n)=zero
-             m=n+ns-1
-             call dot_product(unk(n1,m),unk(n1,m),vtmp2(1,n),dV,mm,1)
-             call dot_product(pk(n1,n),unk(n1,m),vtmp2(2,n),dV,mm,icmp)
-             call dot_product(pk(n1,n),pk(n1,n),vtmp2(3,n),dV,mm,1)
-             call dot_product(unk(n1,m),hxk(n1,n),vtmp2(4,n),dV,mm,1)
-             call dot_product(pk(n1,n),hxk(n1,n),vtmp2(5,n),dV,mm,icmp)
-             call dot_product(pk(n1,n),hpk(n1,n),vtmp2(6,n),dV,mm,1)
+          !$omp parallel
+          !$omp do
+          do i=n1,n2
+            hxk(i,n) = utmp2(1,1)*hxk(i,n) + utmp2(2,1)*hpk(i,n)
           end do
-
-          call watchb( ttmp, timecg(:,2) )
-
-          call mpi_allreduce(vtmp2,wtmp2,6*nn,TYPE_MAIN,mpi_sum,comm_grid,ierr)
-
-          call watchb( ttmp, timecg(:,3) )
-
-          do n=1,nn
-             m=n+ns-1
-             btmp2(1,1)=wtmp2(1,n)
-             btmp2(2,1)=wtmp2(2,n)
-             btmp2(1,2)=wtmp2(2,n)
-             btmp2(2,2)=wtmp2(3,n)
-             utmp2(1,1)=wtmp2(4,n)
-             utmp2(2,1)=wtmp2(5,n)
-             utmp2(1,2)=wtmp2(5,n)
-             utmp2(2,2)=wtmp2(6,n)
-             ztmp=btmp2(1,2)
-             ztmp=conjg(ztmp)
-             btmp2(1,2)=ztmp
-             ztmp=utmp2(1,2)
-             ztmp=conjg(ztmp)
-             utmp2(1,2)=ztmp
-             call zhegv(1,'V','U',2,utmp2,2,btmp2,2,W,work,9,rwork,ierr)
-             if ( abs(W(1)-E(n))>1.d-1 .and. abs(W(2)-E(n))<=1.d-1 ) then
-                utmp2(1,1)=utmp2(1,2)
-                utmp2(2,1)=utmp2(2,2)
-                W(1)=W(2)
-             end if
-!- Fix the phase -
-             ztmp=utmp2(1,1)
-             r=abs(ztmp)
-             c=real(ztmp)/r
-             d=aimag(ztmp)/r
-             zphase=dcmplx(c,-d)
-             utmp2(1,1)=utmp2(1,1)*zphase
-             utmp2(2,1)=utmp2(2,1)*zphase
-
-             utmp3(1:2,n) = utmp2(1:2,1)
-
-             E1(n)=E(n)
-             E(n) =W(1)
-
-!$OMP parallel
-!$OMP do
-             do i=n1,n2
-                hxk(i,n) = utmp2(1,1)*hxk(i,n) + utmp2(2,1)*hpk(i,n)
-             end do
-!$OMP end do
-!$OMP do
-             do i=n1,n2
-                gk(i,n) = -hxk(i,n) &
-                     +W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n))
-             end do
-!$OMP end do
-!$OMP end parallel
-
-             call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
-
-          end do ! n
-
-          call watchb( ttmp, timecg(:,7) )
-
-          call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
-
-          call watchb( ttmp, timecg(:,3) )
-
-          do n=1,nn
-             m=n+ns-1
-             if ( rb(n)/res(m)>1.d8 ) then
-                E(n)=E1(n)
-                cycle
-             end if
-!$OMP parallel do
-             do i=n1,n2
-                unk(i,m)=utmp3(1,n)*unk(i,m)+utmp3(2,n)*pk(i,n)
-             end do
-!$OMP end parallel do
-             if ( iflag_hunk >= 1 ) then
-!$OMP parallel do
-                do i=n1,n2
-                   hunk(i,m,k,s)=hxk(i,n)
-                end do
-!$OMP end parallel do
-             end if
+          !$omp end do
+          !$omp do
+          do i=n1,n2
+            gk(i,n) = -hxk(i,n) &
+                  +W(1)*(utmp2(1,1)*unk(i,m)+utmp2(2,1)*pk(i,n))
           end do
+          !$omp end do
+          !$omp end parallel
 
-          call watchb( ttmp, timecg(:,2) )
+          call dot_product(gk(n1,n),gk(n1,n),sb(n),dV,mm,1)
 
-       end do ! icg
+        end do ! n
 
-       esp(ns:ne)=E(1:nn)
+        call watchb( ttmp, timecg(:,7) )
+
+        call mpi_allreduce(sb,rb,nn,mpi_real8,mpi_sum,comm_grid,ierr)
+
+        call watchb( ttmp, timecg(:,3) )
+
+        do n=1,nn
+          m=n+ns-1
+          if ( rb(n)/res(m)>1.d8 ) then
+            E(n)=E1(n)
+            cycle
+          end if
+          !$omp parallel do
+          do i=n1,n2
+            unk(i,m)=utmp3(1,n)*unk(i,m)+utmp3(2,n)*pk(i,n)
+          end do
+          !$omp end parallel do
+          if ( iflag_hunk >= 1 ) then
+            !$omp parallel do
+            do i=n1,n2
+              hunk(i,m,k,s)=hxk(i,n)
+            end do
+            !$omp end parallel do
+          end if
+        end do ! n
+
+        call watchb( ttmp, timecg(:,2) )
+
+      end do ! icg
+
+      esp(ns:ne)=E(1:nn)
 
     end do  ! band-loop
 

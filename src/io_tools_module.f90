@@ -323,7 +323,7 @@ contains
              exit
           end if
        end do ! i
-       if ( hasKeyword ) write(*,'(1x,A10)') keyword
+       if ( hasKeyword ) write(*,'(1x,"Keyword ",a," is found.")') keyword
 999    continue
     end if
     if ( present(flag_bcast) ) then
@@ -335,7 +335,6 @@ contains
 
 
   subroutine IOTools_parseInteger( keyword, values, unit_in )
-    use rsdft_bcast_module, only: l_rsdft_bcast, i_rsdft_bcast
     implicit none
     character(*),intent(in) :: keyword
     integer,allocatable,intent(inout) :: values(:)
@@ -344,6 +343,7 @@ contains
     character(127) :: str,ctmp
     character(7) :: cint
     logical :: flag
+    include 'mpif.h'
 
     call write_border_f( 0, ' IOTools_parseInteger(start)' )
 
@@ -400,13 +400,13 @@ contains
       999 continue
     end if
 
-    call l_rsdft_bcast( flag, 1, 0 )
+    call MPI_Bcast( flag, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, i )
     if ( flag ) then
-      call i_rsdft_bcast( n, 1, 0 )
+      call MPI_Bcast( n, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, i )
       if ( .not.allocated(values) ) then
         allocate( values(n) ); values=0
       end if
-      call i_rsdft_bcast( values, n, 0 )
+      call MPI_Bcast( values, n, MPI_INTEGER, 0, MPI_COMM_WORLD, i )
     end if
 
     call write_border_f( 0, ' IOTools_parseInteger(end)' )

@@ -145,40 +145,40 @@ CONTAINS
   END SUBROUTINE init_nabla_sym
 
 
-  SUBROUTINE init2( n, k, tmp )
+  subroutine init2( n, k, tmp )
     implicit none
-    integer,intent(IN) :: n, k
-    real(8),intent(IN) :: tmp(-n:n,-n:n,-n:n)
+    integer,intent(in) :: n, k
+    real(8),intent(in) :: tmp(-n:n,-n:n,-n:n)
     integer :: i1,i2,i3,m
     call write_border( 0, " init2(in nabla_sym, start)" )
     m = count( abs(tmp) > 1.d-10 )
     if ( n_fd_points == 0 ) then
-       n_fd_points=m
-       allocate( n_fd_pt(3)                      ) ; n_fd_pt=0
-       allocate( fd_neighbor_pt(3,n_fd_points,3) ) ; fd_neighbor_pt=0
-       allocate( fd_coef(n_fd_points,3)          ) ; fd_coef=0.0d0
+      n_fd_points=m
+      allocate( n_fd_pt(3)                      ) ; n_fd_pt=0
+      allocate( fd_neighbor_pt(3,n_fd_points,3) ) ; fd_neighbor_pt=0
+      allocate( fd_coef(n_fd_points,3)          ) ; fd_coef=0.0d0
     else if ( n_fd_points < m ) then
-       n_fd_points=m
-       call enlarge_array( fd_neighbor_pt, 3, m, 3 )
-       call enlarge_array( fd_coef, m, 3 )
+      n_fd_points=m
+      call enlarge_array( fd_neighbor_pt, 3, m, 3 )
+      call enlarge_array( fd_coef, m, 3 )
     end if
     m=0
     do i3=-n,n
     do i2=-n,n
     do i1=-n,n
-       if ( abs(tmp(i1,i2,i3)) > 1.d-10 ) then
-          m=m+1
-          fd_neighbor_pt(1,m,k) = i1
-          fd_neighbor_pt(2,m,k) = i2
-          fd_neighbor_pt(3,m,k) = i3
-          fd_coef(m,k) = tmp(i1,i2,i3)
-       end if
+      if ( abs(tmp(i1,i2,i3)) > 1.d-10 ) then
+        m=m+1
+        fd_neighbor_pt(1,m,k) = i1
+        fd_neighbor_pt(2,m,k) = i2
+        fd_neighbor_pt(3,m,k) = i3
+        fd_coef(m,k) = tmp(i1,i2,i3)
+      end if
     end do
     end do
     end do
     n_fd_pt(k)=m
     call write_border( 0, " init2(in nabla_sym, end)" )
-  END SUBROUTINE init2
+  end subroutine init2
 
 
   SUBROUTINE construct_matrix_nabla( k, f, Df )

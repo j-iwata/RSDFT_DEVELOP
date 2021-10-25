@@ -21,9 +21,9 @@ MODULE rgrid_module
 CONTAINS
 
 
-  SUBROUTINE Init_Rgrid( SYStype_in, Md, aa )
+  SUBROUTINE Init_Rgrid( SYStype_in, aa )
     implicit none
-    integer,intent(IN) :: SYStype_in, Md
+    integer,intent(IN) :: SYStype_in
     type(lattice),intent(INOUT) :: aa
     logical :: disp
 

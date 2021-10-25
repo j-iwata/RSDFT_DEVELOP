@@ -1,9 +1,10 @@
-MODULE subspace_diag_variables
+module subspace_diag_variables
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: MB_diag, Hsub, Vsub, mat_block &
+  private
+  public :: algo_sd
+  public :: MB_diag, Hsub, Vsub, mat_block &
            ,NBLK1, NBLK2, zero, one, TYPE_MAIN
 
   include 'mpif.h'
@@ -25,4 +26,15 @@ MODULE subspace_diag_variables
 #endif
   integer :: MB_diag,NBLK1,NBLK2
 
-END MODULE subspace_diag_variables
+  integer :: ialgo_sd = 1
+
+contains
+
+  integer function algo_sd()
+    use io_tools_module, only: IOTools_readIntegerKeyword
+    implicit none
+    call IOTools_readIntegerKeyword( 'IALGO_SD', ialgo_sd )
+    algo_sd = ialgo_sd
+  end function algo_sd
+
+end module subspace_diag_variables

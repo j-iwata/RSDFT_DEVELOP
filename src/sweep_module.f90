@@ -33,7 +33,7 @@ MODULE sweep_module
   real(8) :: tol_esp=1.d-7
   real(8) :: max_esperr
   integer :: mb_ref
-  integer :: Nsweep
+  integer :: Nsweep=0
 
 CONTAINS
 
@@ -110,36 +110,36 @@ CONTAINS
     select case( iflag_hybrid )
     case(0,1,3)
 
-       if ( iflag_hunk >= 1 ) then
-          do s=MSP_0,MSP_1
-          do k=MBZ_0,MBZ_1
-             do m=MB_0,MB_1,MB_d
-                n=min(m+MB_d-1,MB_1)
-                call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
-             end do
+      if ( iflag_hunk >= 1 ) then
+        do s=MSP_0,MSP_1
+        do k=MBZ_0,MBZ_1
+          do m=MB_0,MB_1,MB_d
+            n=min(m+MB_d-1,MB_1)
+            call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
           end do
-          end do
-       end if
+        end do
+        end do
+      end if
 
     case( 2 )
 
-       if ( iflag_hunk >= 1 ) then
-          call control_xc_hybrid(0)
-          allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
-          do s=MSP_0,MSP_1
-          do k=MBZ_0,MBZ_1
-             do m=MB_0,MB_1,MB_d
-                n=min(m+MB_d-1,MB_1)
-                workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
-                call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
-                hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
-             end do ! m
-          end do ! k
-          end do ! s
-          deallocate( workwf )
-       end if
+      if ( iflag_hunk >= 1 ) then
+        call control_xc_hybrid(0)
+        allocate( workwf(ML_0:ML_1,MB_d) ) ; workwf=0.0d0
+        do s=MSP_0,MSP_1
+        do k=MBZ_0,MBZ_1
+          do m=MB_0,MB_1,MB_d
+            n=min(m+MB_d-1,MB_1)
+            workwf(:,1:n-m+1)=hunk(:,m:n,k,s)
+            call hamiltonian( unk(:,m:n,k,s), hunk(:,m:n,k,s), m,k,s )
+            hunk(:,m:n,k,s)=hunk(:,m:n,k,s)+workwf(:,1:n-m+1)
+          end do ! m
+        end do ! k
+        end do ! s
+        deallocate( workwf )
+      end if
 
-       call control_xc_hybrid(1)
+      call control_xc_hybrid(1)
 
     end select
 
@@ -147,70 +147,70 @@ CONTAINS
 
     do iter=1,Diter
 
-       write(chr_iter,'(" sweep_iter=",i4,1x,a)') iter, add_info
-       call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
-       call start_timer( t_out=tt )
+      write(chr_iter,'(" sweep_iter=",i4,1x,a)') iter, add_info
+      call write_border( 0, chr_iter(1:len_trim(chr_iter)) )
+      call start_timer( t_out=tt )
 
-       call init_time_watch( etime )
+      call init_time_watch( etime )
 
-       Echk0=Echk
-       esp0 =esp
-       do s=MSP_0,MSP_1
-       do k=MBZ_0,MBZ_1
+      Echk0=Echk
+      esp0 =esp
+      do s=MSP_0,MSP_1
+      do k=MBZ_0,MBZ_1
 
-          call conjugate_gradient( ML_0,ML_1, k,s, unk, esp, res )
+        call conjugate_gradient( ML_0,ML_1, k,s, unk, esp, res )
 
-          call gram_schmidt(1,Nband,k,s)
+        call gram_schmidt(1,Nband,k,s)
 
-          call subspace_diag( k, s, unk(:,:,k,s), esp(:,k,s) )
+        call subspace_diag( k, s, unk(:,:,k,s), esp(:,k,s) )
 
-       end do
+      end do
 
-       if ( flag_noncollinear ) exit
+      if ( flag_noncollinear ) exit
 
-       end do
+      end do
 
-       call esp_gather(Nband,Nbzsm,Nspin,esp)
+      call esp_gather(Nband,Nbzsm,Nspin,esp)
 
 #ifdef _DRSDFT_
-       call mpi_bcast( unk, size(unk), MPI_REAL8, 0, comm_fkmb, ierr )
+      call mpi_bcast( unk, size(unk), MPI_REAL8, 0, comm_fkmb, ierr )
 #else
-       call mpi_bcast( unk, size(unk), RSDFT_MPI_COMPLEX16, 0, comm_fkmb, ierr )
+      call mpi_bcast( unk, size(unk), RSDFT_MPI_COMPLEX16, 0, comm_fkmb, ierr )
 #endif
-       call mpi_bcast( esp, size(esp), MPI_REAL8, 0, comm_fkmb, ierr )
+      call mpi_bcast( esp, size(esp), MPI_REAL8, 0, comm_fkmb, ierr )
 
-       if ( flag_noncollinear ) then
-          call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
-                              ,esp,weight_bz,occ)
-       else
-          call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
-       end if
+      if ( flag_noncollinear ) then
+        call calc_fermi_ncol(iter,Nfixed,Nband,Nbzsm,Nspin,Nelectron,Ndspin &
+                            ,esp,weight_bz,occ)
+      else
+        call calc_fermi(iter,Nfixed,Nelectron,Ndspin,esp,weight_bz,occ)
+      end if
 
-       call calc_with_rhoIN_total_energy( Echk, flag_ncol=flag_noncollinear )
+      call calc_with_rhoIN_total_energy( Echk, flag_ncol=flag_noncollinear )
 
-       call conv_check( iter, res, flag_conv )
-       call global_watch( .false., flag_end1 )
-       flag_end2 = exit_program()
-       flag_end  = ( flag_end1 .or. flag_end2 )
-       flag_exit = (flag_end.or.flag_conv.or.(iter==Diter))
+      call conv_check( iter, res, flag_conv )
+      call global_watch( .false., flag_end1 )
+      flag_end2 = exit_program()
+      flag_end  = ( flag_end1 .or. flag_end2 )
+      flag_exit = (flag_end.or.flag_conv.or.(iter==Diter))
 
-       if ( disp_switch ) call write_info_sweep
-       call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
-       if ( myrank == 0 ) call write_eigenvalues( eval )
+      if ( disp_switch ) call write_info_sweep
+      call construct_eigenvalues( Nband, Nbzsm, Nspin, esp, eval )
+      if ( myrank == 0 ) call write_eigenvalues( eval )
 
-       call calc_time_watch( etime )
-       if ( disp_switch ) then
-          write(*,*)
-          write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
-          etime%t0, etime%tmin, etime%tmax
-          write(*,*)
-       end if
+      call calc_time_watch( etime )
+      if ( disp_switch ) then
+        write(*,*)
+        write(*,'(1x,"time(sweep)=",f10.3,"(rank0)",f10.3,"(min)",f10.3,"(max)")') &
+        etime%t0, etime%tmin, etime%tmax
+        write(*,*)
+      end if
 
-       call write_data( disp_switch, flag_exit, "wf", suffix )
+      call write_data( disp_switch, flag_exit, "wf", suffix )
 
-       call result_timer( "sweep", tt )
+      call result_timer( "sweep", tt )
 
-       if ( flag_exit ) exit
+      if ( flag_exit ) exit
 
     end do ! iter
 
@@ -223,20 +223,20 @@ CONTAINS
     ierr_out = iter
 
     if ( flag_end1 ) then
-       ierr_out = -1
-       if ( myrank == 0 ) write(*,*) "Time limit exceeded"
-       return
+      ierr_out = -1
+      if ( myrank == 0 ) write(*,*) "Time limit exceeded"
+      return
     end if
 
     if ( flag_end2 ) then
-       ierr_out = -3
-       if ( myrank == 0 ) write(*,*) "'EXIT' file was found"
-       return
+      ierr_out = -3
+      if ( myrank == 0 ) write(*,*) "'EXIT' file was found"
+      return
     end if
 
     if ( iter > Diter ) then
-       ierr_out = -2
-       if ( myrank == 0 ) write(*,*) "sweep not converged"
+      ierr_out = -2
+      if ( myrank == 0 ) write(*,*) "sweep not converged"
     end if
 
     call gather_wf

@@ -11,7 +11,7 @@ module sl_tools_module
   public :: distribute_matrix
   public :: slinfo
   public :: sl_block_map
-  public :: prep_param_sl
+  public :: backup_param_sl
   public :: restore_param_sl
 
   type slinfo
@@ -141,12 +141,13 @@ contains
   end subroutine z_distribute_matrix
 
 
-  subroutine d_gather_matrix( sl, Hsub, H, icontxt )
+  subroutine d_gather_matrix( sl, Hsub, H, icontxt, mpicomm )
     implicit none
     type(slinfo) :: sl
     real(8),intent(in)  :: Hsub(:,:)
     real(8),intent(out) :: H(:,:)
     integer,optional,intent(in) :: icontxt
+    integer,optional,intent(in) :: mpicomm
     integer :: m,n,i0,j0,i1,j1,ip,jp,is,js,i,j,ii,jj
 
     H(:,:) = 0.0d0
@@ -176,20 +177,18 @@ contains
       js = js + jj
     end do
 
-    if ( present(icontxt) ) then
-      call dgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
-    else
-      call rsdft_allreduce( H )
-    end if
+    if ( present(icontxt) ) call dgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
+    if ( present(mpicomm) ) call rsdft_allreduce( H, mpicomm )
 
-  END SUBROUTINE d_gather_matrix
+  end subroutine d_gather_matrix
 
-  subroutine z_gather_matrix( sl, Hsub, H, icontxt )
+  subroutine z_gather_matrix( sl, Hsub, H, icontxt, mpicomm )
     implicit none
     type(slinfo) :: sl
     complex(8),intent(in) :: Hsub(:,:)
     complex(8),intent(out) :: H(:,:)
     integer,optional,intent(in) :: icontxt
+    integer,optional,intent(in) :: mpicomm
     integer :: m,n,m0,n0,i0,j0,i1,j1,ip,jp,is,js,i,j,ii,jj
 
     H(:,:) = (0.0d0,0.0d0)
@@ -219,11 +218,9 @@ contains
       js = js + jj
     end do
 
-    ! if ( present(icontxt) ) then
-    !   call zgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
-    ! else
-    !   call rsdft_allreduce( H )
-    ! end if
+    if ( present(icontxt) ) call zgsum2d( icontxt, 'All', ' ', m, n, H, m, -1, -1 )
+    if ( present(mpicomm) ) call rsdft_allreduce( H, mpicomm )
+
   end subroutine z_gather_matrix
 
 
@@ -409,7 +406,7 @@ contains
 
     call backup_param_sl( NPCOL, NPROW, MBSIZE, NBSIZE )
 
-    call write_border( 0, " prep_scalapack(end)" )
+    call write_border( 0, " prep_param_sl(end)" )
 
   end subroutine prep_param_sl
 

@@ -715,7 +715,7 @@ CONTAINS
                 call construct_lattice( aa_obj )
                 call backup_aa_lattice( aa_obj )
                 call init_aa( aa_obj )
-                call Init_Rgrid( SYStype, Md, aa_obj )
+                call Init_Rgrid( SYStype, aa_obj )
                 call construct_bb( aa_obj%LatticeVector )
                 call Init_Ggrid( Ngrid, bb )
 

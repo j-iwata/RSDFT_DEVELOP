@@ -18,10 +18,11 @@ contains
 
   subroutine calc_Ndof ! Degree of freedom
     use atom_module, only: md_atom
-    use force_module, only: tim
+    use force_module, only: tim, init_force
     implicit none
     real(8) :: v(3),u(3)
     integer :: i,m,natom,Ndof
+    call init_force
     call random_number( v )
     natom=size(md_atom)
     Ndof=0

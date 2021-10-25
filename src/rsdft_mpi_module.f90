@@ -7,7 +7,7 @@ module rsdft_mpi_module
   public :: rsdft_allreduce
   public :: rsdft_allreduce_sum
   public :: d_rsdft_allreduce_sum_5, d_rsdft_allreduce_sum_6
-  public :: rsdft_bcast
+  ! public :: rsdft_bcast
   public :: rsdft_allgather
   public :: rsdft_allgatherv
 
@@ -30,9 +30,9 @@ module rsdft_mpi_module
                       d_rsdft_allreduce_sum_3, z_rsdft_allreduce_sum_3
   END INTERFACE
 
-  INTERFACE rsdft_bcast
-     MODULE PROCEDURE d_rsdft_bcast2, z_rsdft_bcast2
-  END INTERFACE
+  ! INTERFACE rsdft_bcast
+  !    MODULE PROCEDURE d_rsdft_bcast2, z_rsdft_bcast2
+  ! END INTERFACE
 
   INTERFACE rsdft_allgather
      MODULE PROCEDURE l_rsdft_allgather12, &
@@ -585,33 +585,33 @@ CONTAINS
 #endif
   END SUBROUTINE d_rsdft_allreduce_sum_6
 
-!-------------------------------------------------- rsdft_bcast
-
-  SUBROUTINE d_rsdft_bcast2( a, src, comm )
-    implicit none
-    real(8),intent(INOUT) :: a(:,:)
-    integer,intent(IN) :: src, comm
-    integer :: ierr
-#ifdef _NOMPI_
-    return
-#else
-    include 'mpif.h'
-    call MPI_BCAST( a, size(a), MPI_REAL8, src, comm, ierr )
-#endif
-  END SUBROUTINE d_rsdft_bcast2
-
-  SUBROUTINE z_rsdft_bcast2( a, src, comm )
-    implicit none
-    complex(8),intent(INOUT) :: a(:,:)
-    integer,intent(IN) :: src, comm
-    integer :: ierr
-#ifdef _NOMPI_
-    return
-#else
-    include 'mpif.h'
-    call MPI_BCAST( a, size(a), RSDFT_MPI_COMPLEX16, src, comm, ierr )
-#endif
-  END SUBROUTINE z_rsdft_bcast2
+! !-------------------------------------------------- rsdft_bcast
+!
+!   SUBROUTINE d_rsdft_bcast2( a, src, comm )
+!     implicit none
+!     real(8),intent(INOUT) :: a(:,:)
+!     integer,intent(IN) :: src, comm
+!     integer :: ierr
+! #ifdef _NOMPI_
+!     return
+! #else
+!     include 'mpif.h'
+!     call MPI_BCAST( a, size(a), MPI_REAL8, src, comm, ierr )
+! #endif
+!   END SUBROUTINE d_rsdft_bcast2
+!
+!   SUBROUTINE z_rsdft_bcast2( a, src, comm )
+!     implicit none
+!     complex(8),intent(INOUT) :: a(:,:)
+!     integer,intent(IN) :: src, comm
+!     integer :: ierr
+! #ifdef _NOMPI_
+!     return
+! #else
+!     include 'mpif.h'
+!     call MPI_BCAST( a, size(a), RSDFT_MPI_COMPLEX16, src, comm, ierr )
+! #endif
+!   END SUBROUTINE z_rsdft_bcast2
 
 !-------------------------------------------------- rsdft_allgather
 

@@ -1,4 +1,4 @@
-MODULE parameters_module
+module parameters_module
 
   use global_variables, only: iswitch_tddft, iswitch_scf, iswitch_opt, iswitch_band, iswitch_dos, iswitch_latopt, iswitch_test
   use io_tools_module
@@ -6,10 +6,7 @@ MODULE parameters_module
   use band_unfold_module, only: read_band_unfold
   use xc_hybrid_module, only: read_xc_hybrid
   use vdw_grimme_module, only: read_vdw_grimme
-
-  use parallel_module, only: myrank, read_parallel
   use bz_module
-  use scalapack_module
   use ps_nloc2_init_module
   use gram_schmidt_t_module
   use cg_module
@@ -18,32 +15,31 @@ MODULE parameters_module
   use io_module
   use watch_module
   use atomopt_module
-  use symmetry_module
   use xc_module
   use sweep_module
   use scf_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: read_parameters
+  private
+  public :: read_parameters
 
   integer,parameter :: unit=1
 
-CONTAINS
+contains
 
-  SUBROUTINE read_parameters
+  subroutine read_parameters
     implicit none
+    integer :: ierr,myrank
+    include 'mpif.h'
 
     call write_border( 0, " read_parameters(start)" )
 
+    call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
+
     call read_bz
 
-    call read_scalapack
-
     call read_ps_nloc2_init(myrank,unit)
-
-    call read_parallel(myrank,unit)
 
     call read_gram_schmidt_t(myrank,unit)
 
@@ -74,8 +70,6 @@ CONTAINS
 
     call read_atomopt(myrank,unit)
 
-    call read_symmetry( myrank, unit )
-
     call read_xc
     call read_xc_hybrid
     call read_vdw_grimme
@@ -88,6 +82,6 @@ CONTAINS
 
     call write_border( 0," read_parameters(end)" )
 
-  END SUBROUTINE read_parameters
+  end subroutine read_parameters
 
-END MODULE parameters_module
+end module parameters_module
