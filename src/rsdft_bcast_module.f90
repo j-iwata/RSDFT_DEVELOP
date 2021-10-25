@@ -22,6 +22,10 @@ module rsdft_bcast_module
     module procedure i_rsdft_bcast_0, i_rsdft_bcast_1
   end interface i_rsdft_bcast
 
+  interface d_rsdft_bcast
+    module procedure d_rsdft_bcast_0, d_rsdft_bcast_1
+  end interface d_rsdft_bcast
+
 contains
 
   subroutine l_rsdft_bcast_0( a, root, comm_chr, comm_int )
@@ -163,7 +167,27 @@ contains
   end subroutine i_rsdft_bcast_tmp
 
 
-  subroutine d_rsdft_bcast( a, root, comm_chr, comm_int )
+  subroutine d_rsdft_bcast_0( a, root, comm_chr, comm_int )
+    implicit none
+    real(8),intent(inout) :: a
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,n,i,type,comm,ierr,rt
+#ifndef _NOMPI_
+    include 'mpif.h'
+    type = MPI_REAL8
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = 1
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
+#endif
+  end subroutine d_rsdft_bcast_0
+
+  subroutine d_rsdft_bcast_1( a, root, comm_chr, comm_int )
     implicit none
     real(8),intent(inout) :: a(:)
     integer,optional,intent(in) :: root
@@ -185,7 +209,7 @@ contains
       call MPI_Bcast(a(i),m,type,rt,comm,ierr)
     end do
 #endif
-  end subroutine d_rsdft_bcast
+  end subroutine d_rsdft_bcast_1
 
   subroutine d_rsdft_bcast_tmp( a, n, root, comm_chr, comm_int )
     implicit none
