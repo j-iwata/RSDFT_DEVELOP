@@ -131,7 +131,7 @@ contains
     end select
 
     iformat_org = iformat
- 
+
     call write_border( 0, " read_atom(end)" )
 
   end subroutine read_atom

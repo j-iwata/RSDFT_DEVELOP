@@ -2,7 +2,6 @@ module parameters_module
 
   use global_variables, only: iswitch_tddft, iswitch_scf, iswitch_opt, iswitch_band, iswitch_dos, iswitch_latopt, iswitch_test
   use io_tools_module
-  use band_module, only: read_band
   use band_unfold_module, only: read_band_unfold
   use xc_hybrid_module, only: read_xc_hybrid
   use vdw_grimme_module, only: read_vdw_grimme
@@ -77,7 +76,6 @@ contains
     call read_sweep
     call read_scf
 
-    call read_band
     call read_band_unfold( myrank, unit )
 
     call write_border( 0," read_parameters(end)" )
