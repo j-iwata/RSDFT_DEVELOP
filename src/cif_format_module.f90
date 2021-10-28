@@ -152,9 +152,12 @@ contains
             cbuf = cbuf2
           else
             read(unit,*,END=22) cbuf
+            cbuf1 = ""
           end if
-          if ( cbuf == "loop_" .or. cbuf(1:1) == "_" ) then
-            write(*,*) cbuf
+          if ( cbuf == "loop_" ) then
+            exit
+          else if ( cbuf == "_" ) then
+            backspace(unit)
             exit
           else
             i=i+1
