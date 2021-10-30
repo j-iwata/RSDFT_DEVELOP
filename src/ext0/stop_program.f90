@@ -8,18 +8,19 @@ subroutine stop_program( indx )
     write(*,'(/,a25,"  stop_program is called !!!  ",a25)') repeat("-",25),repeat("-",25)
     write(*,*) indx
   end if
-  call MPI_Finalize( ierr )
-  stop "stop@stop_program"
+  call MPI_Abort( MPI_COMM_WORLD, 7, ierr )
+  ! call MPI_Finalize( ierr )
+  ! stop "stop@stop_program"
 end subroutine stop_program
 
 
 subroutine stop_program_f( indx )
   implicit none
   character(*),intent(in) :: indx
-  integer :: errcode, ierr
+  integer :: ierr, myrank
   include 'mpif.h'
+  call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
   write(*,'(/,a25," stop_program_f is called !!! ",a25)') repeat("-",25),repeat("-",25)
-  write(*,*) indx
-  call MPI_Abort( MPI_COMM_WORLD, errcode, ierr )
-  stop "stop@stop_program_f"
+  write(*,*) indx, myrank
+  call MPI_Abort( MPI_COMM_WORLD, 7, ierr )
 end subroutine stop_program_f
