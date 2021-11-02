@@ -8,19 +8,20 @@ module cif_format_module
   public :: check_cif_format
   public :: read_atom_cif
 
-  character(30),parameter :: keyword(12)=(/ &
-       "_cell_length_a"             , &
-       "_cell_length_b"             , &
-       "_cell_length_c"             , &
-       "_cell_angle_alpha"          , &
-       "_cell_angle_beta"           , &
-       "_cell_angle_gamma"          , &
-       "_symmetry_equiv_pos_site_id", &
-       "_symmetry_equiv_pos_as_xyz" , &
-       "_atom_site_label"           , &
-       "_atom_site_fract_x"         , &
-       "_atom_site_fract_y"         , &
-       "_atom_site_fract_z"              /)
+  character(30),parameter :: keyword(13)=(/ &
+       "_cell_length_a"             , &     !1
+       "_cell_length_b"             , &     !2
+       "_cell_length_c"             , &     !3
+       "_cell_angle_alpha"          , &     !4
+       "_cell_angle_beta"           , &     !5
+       "_cell_angle_gamma"          , &     !6
+       "_symmetry_equiv_pos_site_id", &     !7
+       "_symmetry_equiv_pos_as_xyz" , &     !8
+       "_atom_site_label"           , &     !9
+       "_atom_site_type_symbol"     , &     !10
+       "_atom_site_fract_x"         , &     !11
+       "_atom_site_fract_y"         , &     !12
+       "_atom_site_fract_z"              /) !13
 
 contains
 
@@ -53,7 +54,7 @@ contains
     integer,intent(out),allocatable :: ki_atom(:),md_atom(:),zn_atom(:)
     logical :: flag, flag1
     integer,parameter :: u1=10,u2=20
-    integer :: i,j,m,n,i0,i1,i2,i3,z,nsym,itmp(0:3)
+    integer :: i,j,m,n,i0,i1,i2,i3,z,nsym,itmp(0:4)
     integer :: nbas,isym,natm
     integer,allocatable :: iatm(:),katm(:)
     character(40) :: cbuf, cbuf1, cbuf2
@@ -77,7 +78,10 @@ contains
       end do
       do i=1,3
         call find_key( keyword(i+3), unit, flag )
-        if ( flag ) read(unit,*) cbuf, angle(i)
+        if ( flag ) read(unit,*) cbuf, cbuf2
+        n=index(cbuf2,"(")-1
+        if ( n == -1 ) n=len_trim(cbuf2)
+        if ( n > 0 ) read(cbuf2(1:n),*) angle(i)
         write(*,'(1x,3f15.10)') angle(i)
       end do
 
@@ -201,6 +205,7 @@ contains
       if ( cbuf == keyword(10) ) itmp(1)=i
       if ( cbuf == keyword(11) ) itmp(2)=i
       if ( cbuf == keyword(12) ) itmp(3)=i
+      if ( cbuf == keyword(13) ) itmp(4)=i
       if ( cbuf(1:5) /= "_atom" ) then
         backspace(unit)
       else
@@ -217,20 +222,20 @@ contains
 
       do
         read(unit,*,END=94) cdummy(1:n)
-        call get_atomic_number( cdummy(itmp(0)), z )
+        call get_atomic_number( cdummy(itmp(1)), z )
         if ( z > 0 ) then
           do i=1,3
-            cbuf=cdummy(itmp(i))
+            cbuf=cdummy(itmp(i+1))
             m=index(cbuf,"(")-1
             if ( m == -1 ) m=len_trim(cbuf)
             read(cbuf(1:m),*) asi(i)
           end do
           nbas=nbas+1
-          write(*,'(1x,i3,2x,a2,2x,i3,2x,3f15.10)') nbas,cdummy(itmp(0)),z,(asi(i),i=1,3)
+          write(*,'(1x,i3,2x,a2,2x,i3,2x,3f15.10)') nbas,cdummy(itmp(1)),z,(asi(i),i=1,3)
           do isym=1,nsym
             Rasi(:) = matmul( rot(:,1:3,isym), asi(:) )
             Rasi(:) = Rasi(:) + rot(:,4,isym)
-            write(u2,'(1x,a3,2x,i3,2x,3f20.15)') cdummy(itmp(0)),z,Rasi(:)
+            write(u2,'(1x,a3,2x,i3,2x,3f20.15)') cdummy(itmp(1)),z,Rasi(:)
           end do
         end if
       end do
@@ -327,7 +332,7 @@ contains
       end if
     end do
     90  continue
-    call stop_program_f( "stop@find_key(cif_format_module)" )
+    ! call stop_program_f( "stop@find_key(cif_format_module)" )
   end subroutine find_key
 
   SUBROUTINE chr_to_matrix( cbuf, R )
