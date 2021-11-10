@@ -160,7 +160,7 @@ contains
           end if
           if ( cbuf == "loop_" ) then
             exit
-          else if ( cbuf == "_" ) then
+          else if ( cbuf(1:1) == "_" ) then
             backspace(unit)
             exit
           else
