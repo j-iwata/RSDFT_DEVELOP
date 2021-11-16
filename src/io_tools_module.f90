@@ -111,7 +111,7 @@ contains
           call convertToCapital(cbuf,ckey)
           if ( ckey == keyword ) then
              backspace(unit)
-             read(unit,*) cbuf, variables(:)
+             read(unit,*) cbuf, (variables(j),j=1,size(variables))
              write(*,'(1x,A10," : ",A10)') keyword, variables(1)
              do j=2,size(variables)
                 write(*,'(1x,10x,"   ",A10)') variables(j)

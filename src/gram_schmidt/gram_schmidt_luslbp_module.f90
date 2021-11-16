@@ -12,6 +12,7 @@ module gram_schmidt_luslbp_module
   character(1) :: UPLO='U'
 
   logical :: has_init_done = .false.
+  integer :: nb_backup = 0
 
   interface gram_schmidt_luslbp
     module procedure d_gram_schmidt_luslbp, z_gram_schmidt_luslbp
@@ -114,7 +115,11 @@ contains
 
     call get_range_parallel( n0, n1, 'b' )
 
-    if ( .not.has_init_done ) call init_luslbp( nb )
+    if ( .not.has_init_done .or. nb /= nb_backup ) then
+      has_init_done = .false.
+      nb_backup = nb
+      call init_luslbp( nb )
+    end if
 
     allocate( Ssub(LDR,LDC) ); Ssub=z0
     allocate( S(nb,nb) ); S=z0
@@ -237,7 +242,11 @@ contains
 
     call get_range_parallel( n0, n1, 'b' )
 
-    if ( .not.has_init_done ) call init_luslbp( nb )
+    if ( .not.has_init_done .or. nb /= nb_backup ) then
+      has_init_done = .false.
+      nb_backup = nb
+      call init_luslbp( nb )
+    end if
 
     allocate( Ssub(LDR,LDC) ); Ssub=z0
     allocate( S(nb,nb) ); S=z0
