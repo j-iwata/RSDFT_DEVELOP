@@ -1,4 +1,4 @@
-MODULE pseudopot_module
+module pseudopot_module
 
   use var_ps_member
   use ps_read_PSV
@@ -14,59 +14,62 @@ MODULE pseudopot_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: ippform,file_ps,inorm,NRps,norb,Mr,lo,no,vql,cdd,cdc,rad &
+  private
+  public :: ippform,file_ps,inorm,NRps,norb,Mr,lo,no,vql,cdd,cdc,rad &
            ,anorm,viod,Rps,Zps,parloc,rab,cdd_coef,ps_type,Rcloc &
            ,hnml,knml,hnl,knl
 
-  PUBLIC :: read_pseudopot
+  public :: read_pseudopot
 
-  integer,PUBLIC :: pselect = 2
-  logical,PUBLIC :: flag_so = .false.
+  integer,public :: pselect = 2
+  logical,public :: flag_so = .false.
 
   integer :: Nelement
   integer :: unit_ps,ielm
 
-CONTAINS
+contains
 
 
-  SUBROUTINE read_ppname_pseudopot
+  subroutine read_ppname_pseudopot
     implicit none
     integer :: i
     call IOTools_readIntegerString( "PP", ippform(1), file_ps(1) )
     do i=2,Nelement
-       call IOTools_readIntegerString( "PP", ippform(i), file_ps(i), norewind=.true. )
+      call IOTools_readIntegerString( "PP", ippform(i), file_ps(i), norewind=.true. )
     end do
-  END SUBROUTINE read_ppname_pseudopot
+  end subroutine read_ppname_pseudopot
 
 
-  SUBROUTINE read_param_pseudopot
+  subroutine read_param_pseudopot
     implicit none
     call IOTools_readIntegerKeyword( "PSELECT", pselect )
     call IOTools_findKeyword( "SPINORBIT", flag_so, flag_bcast=.true. )
-  END SUBROUTINE read_param_pseudopot
+  end subroutine read_param_pseudopot
 
 
-  SUBROUTINE read_pseudopot( Nelement_in, rank )
-
+  subroutine read_pseudopot( Nelement_in, rank )
     implicit none
-    integer,intent(IN) :: Nelement_in, rank
+    integer,intent(in) :: Nelement_in, rank
     real(8),allocatable :: psi_(:,:,:),phi_(:,:,:),bet_(:,:,:)
     real(8),allocatable :: ddi_(:,:,:),qqr_(:,:,:)
     integer :: i,j,io,jo,li,lj
     integer :: Lrefmax,Rrefmax,npqmax,nsmpl
     integer :: max_nterms
+    character(2),external :: get_element_name
+    logical :: disp_on
 
     call write_border( 0, " read_pseudopot(start)" )
+    call check_disp_switch( disp_on, 0 )
 
     Nelement = Nelement_in
 
     Nelement_PP = Nelement
     Nelement_   = Nelement
 
-    if( allocated(ippform) ) deallocate(ippform)  ! MIZUHO-IR for cellopt
+    if ( allocated(ippform) ) deallocate(ippform)
     allocate( ippform(Nelement) ) ; ippform=0
-    if( allocated(file_ps) ) deallocate(file_ps)  ! MIZUHO-IR for cellopt
+
+    if ( allocated(file_ps) ) deallocate(file_ps)
     allocate( file_ps(Nelement) ) ; file_ps=""
 
     call read_ppname_pseudopot
@@ -76,10 +79,10 @@ CONTAINS
     if ( any(ippform>100) ) pselect=102
 
     if ( .not.( pselect==1 .or. pselect==2 .or. pselect==3 .or. pselect==102 ) ) then
-       stop "invalid pselect(stop@read_param_pseudopot)"
+      call stop_program( "invalid pselect(stop@read_param_pseudopot)" )
     end if
 
-    if( allocated(ps) ) deallocate(ps)  ! MIZUHO-IR for cellopt
+    if ( allocated(ps) ) deallocate(ps)
     allocate( ps(Nelement) )
 
     if ( rank == 0 ) then
@@ -353,30 +356,30 @@ CONTAINS
 
     call write_border( 0, " read_pseudopot(end)" )
 
-  END SUBROUTINE read_pseudopot
+  end subroutine read_pseudopot
 
 
-  SUBROUTINE chk_pot(iflag,rank)
+  subroutine chk_pot(iflag,rank)
     implicit none
-    integer,intent(IN) :: iflag,rank
+    integer,intent(in) :: iflag,rank
     integer :: u,ielm,i,j
     if ( rank == 0 ) then
-       do ielm=1,Nelement
-          u=9+ielm
-          rewind u
-          do i=1,Mr(ielm)
-             if ( iflag == 2 ) then
-                write(u,'(1x,5f20.10)') rad(i,ielm),cdd(i,ielm),cdc(i,ielm)
-             else
-                write(u,'(1x,5f20.10)') &
-                     rad(i,ielm),vql(i,ielm),(viod(i,j,ielm),j=1,norb(ielm))
-             end if
-          end do
-          write(*,'(1x,"chk_pot(",i1,"): fort.",i2)') iflag,u
-       end do
+      do ielm=1,Nelement
+        u=9+ielm
+        rewind u
+        do i=1,Mr(ielm)
+          if ( iflag == 2 ) then
+            write(u,'(1x,5f20.10)') rad(i,ielm),cdd(i,ielm),cdc(i,ielm)
+          else
+            write(u,'(1x,5f20.10)') &
+                  rad(i,ielm),vql(i,ielm),(viod(i,j,ielm),j=1,norb(ielm))
+          end if
+        end do
+        write(*,'(1x,"chk_pot(",i1,"): fort.",i2)') iflag,u
+      end do
     end if
-    stop "stop@chk_pot"
-  END SUBROUTINE chk_pot
+    call stop_program( "stop@chk_pot" )
+  end subroutine chk_pot
 
 
-END MODULE pseudopot_module
+end module pseudopot_module

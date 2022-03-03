@@ -3,6 +3,7 @@ module atom_module
   use lattice_module, only: lattice, read_lattice, get_inverse_lattice &
                            ,get_aa_lattice
   use cif_format_module
+  use vasp_format_module
 
   implicit none
 
@@ -16,6 +17,7 @@ module atom_module
   public :: write_coordinates_atom
   public :: shift_aa_coordinates_atom
   public :: write_xyz_atom
+  public :: set_constraint_atom
 
   integer,parameter :: DP=kind(0.0d0)
 
@@ -27,26 +29,28 @@ module atom_module
   real(DP),allocatable,PUBLIC :: aa_atom(:,:)
 
   type atom
-     integer :: natom, nelement
-     integer,allocatable :: k(:)
-     integer,allocatable :: z(:)
-     real(DP),allocatable :: aaa(:,:)
-     real(DP),allocatable :: xyz(:,:)
-     real(DP),allocatable :: force(:,:)
+    integer :: natom, nelement
+    integer,allocatable :: k(:)
+    integer,allocatable :: z(:)
+    real(DP),allocatable :: aaa(:,:)
+    real(DP),allocatable :: xyz(:,:)
+    real(DP),allocatable :: force(:,:)
   end type atom
 
   integer :: iformat=0
   integer :: iformat_org=0
   real(DP),parameter :: bohr=0.529177d0
 
-CONTAINS
+  logical,allocatable :: md_flags(:,:)
+
+contains
 
 
-  SUBROUTINE read_atom( rank, unit, aa_obj )
+  subroutine read_atom( rank, unit, aa_obj )
 
     implicit none
-    integer,intent(IN) :: rank, unit
-    type(lattice),intent(OUT) :: aa_obj
+    integer,intent(in) :: rank, unit
+    type(lattice),intent(out) :: aa_obj
     character(8) :: cbuf, ckey, cdummy(2)
     character(80) :: line
     integer :: idummy(2),ierr
@@ -58,67 +62,79 @@ CONTAINS
 
     if ( rank == 0 ) then
 
-       iformat=0
+      iformat=0
 
-       rewind unit
-1      read(unit,*,END=10) cbuf
-       call convert_capital(cbuf,ckey)
-       if ( cbuf == "AA" ) then
+      rewind unit
+      do
+        read(unit,*,END=10) cbuf
+        call convert_capital(cbuf,ckey)
+        if ( cbuf == "AA" ) then
           iformat=1
           write(*,*) "AA format",iformat
-       else if ( cbuf == "XYZ" ) then
+          exit
+        else if ( cbuf == "XYZ" ) then
           iformat=2
           write(*,*) "rsdft-XYZ format",iformat
-       else
-          goto 1
-       end if
-10     continue
+          exit
+        end if
+      end do
+      10 continue
 
-       if ( iformat == 0 ) then
-          call check_cif_format( unit, ierr )
-          if ( ierr == 0 ) iformat=4
-       end if
+      if ( iformat == 0 ) then
+        call check_cif_format( unit, ierr )
+        if ( ierr == 0 ) iformat=4
+      end if
 
-       if ( iformat == 0 ) then
-          rewind unit
-          idummy(:)=0
-          read(unit,'(a)') line            ! Couting the number of
-          read(line,*,END=11) idummy(1:2)  ! integer data in the first line.
-11        backspace( unit )
-          if ( all(idummy/=0) ) then
-             iformat=1
-             write(*,*) "AA format is assumed",iformat
-          else if ( idummy(1) /= 0 ) then
-             iformat=3
-             write(*,*) "XYZ format is assumed",iformat
-          else
-             write(*,*) "unknown format"
-             stop "stop@check_format_atom"
-          end if
-       end if
+      if ( iformat == 0 ) then
+        call check_vasp_format( unit, ierr )
+        if ( ierr == 0 ) iformat=5
+      end if
 
-    end if
+      if ( iformat == 0 ) then
+        rewind unit
+        idummy(:)=0
+        read(unit,'(a)') line            ! Couting the number of
+        read(line,*,END=11) idummy(1:2)  ! integer data in the first line.
+        11 continue
+        backspace( unit )
+        if ( all(idummy/=0) ) then
+          iformat=1
+          write(*,*) "AA format is assumed",iformat
+        else if ( idummy(1) /= 0 ) then
+          iformat=3
+          write(*,*) "XYZ format is assumed",iformat
+        else
+          write(*,*) "unknown format"
+          call stop_program( "stop@check_format_atom" )
+        end if
+      end if
 
-    call mpi_bcast(iformat,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+    end if ! rank == 0
+
+    call MPI_Bcast(iformat,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 
     select case( iformat )
     case( 1,2 )
-       call read_atom_rsdft( rank, unit )
+      call read_atom_rsdft( rank, unit )
     case( 3 )
-       call read_atom_xyz( rank, unit )
+      call read_atom_xyz( rank, unit )
     case( 4 )
-       call read_atom_cif &
-            ( rank, unit, aa_obj, aa_atom, ki_atom, md_atom, zn_atom )
-       iformat=1
-       Natom=size(ki_atom)
-       Nelement=maxval(ki_atom)
+      call read_atom_cif( rank, unit, aa_obj, aa_atom, ki_atom, md_atom, zn_atom )
+      iformat=1
+      Natom=size(ki_atom)
+      Nelement=maxval(ki_atom)
+    case( 5 )
+      call read_atom_vasp( rank,unit,aa_obj,aa_atom,ki_atom,md_atom,zn_atom,md_flags )
+      iformat=1
+      Natom=size(ki_atom)
+      Nelement=maxval(ki_atom)
     end select
 
     iformat_org = iformat
- 
+
     call write_border( 0, " read_atom(end)" )
 
-  END SUBROUTINE read_atom
+  end subroutine read_atom
 
 
   SUBROUTINE read_atom_rsdft( rank, unit )
@@ -411,5 +427,27 @@ CONTAINS
     end do
   end subroutine write_xyz_atom
 
+
+  subroutine set_constraint_atom( tim, ierr )
+    implicit none
+    real(8),intent(inout) :: tim(:,:,:)
+    integer,intent(out) :: ierr
+    integer :: i_md,i
+    call write_border( 0, ' set_constraint_atom(start)' )
+    ierr = 0
+    if ( .not.allocated(md_flags) ) then
+      ierr = -1
+      call write_border( 0, ' set_constraint_atom(return)' )
+      return
+    end if
+    if ( size(tim,3) /= size(md_flags,2) ) call stop_program('@set_constraint_atom')
+    do i_md = 1, size(tim,3)
+      tim(:,:,i_md)=0.0d0
+      do i = 1, 3
+        if ( md_flags(i,i_md) ) tim(i,i,i_md)=1.0d0
+      end do
+    end do
+    call write_border( 0, ' set_constraint_atom(end)' )
+  end subroutine set_constraint_atom
 
 end module atom_module

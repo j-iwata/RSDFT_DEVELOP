@@ -688,8 +688,10 @@ write(*,*) "MB1,MB2=",MB1,MB2
            call mpi_allgatherv( urtmp(n1,n,k,s),ir_grid(myrank_g) &
            ,mpi_real8,rtmp,ir_grid,id_grid,mpi_real8,comm_grid,ierr)
         else
-           call mpi_allgatherv( uztmp(n1,n,k,s),ir_grid(myrank_g) &
-          ,ztmp,mpi_complex16,ir_grid,id_grid,mpi_complex16,comm_grid,ierr)
+          !call mpi_allgatherv( uztmp(n1,n,k,s),ir_grid(myrank_g) &
+          !,mpi_complex16,ztmp,ir_grid,id_grid,mpi_complex16,comm_grid,ierr)
+          call mpi_allgatherv( uztmp(n1,n,k,s),ir_grid(myrank_g) &
+          ,MPI_DOUBLE_COMPLEX,ztmp,ir_grid,id_grid,MPI_DOUBLE_COMPLEX,comm_grid,ierr)
         end if
 
         call gen_cube(n,k,s)

@@ -1,20 +1,23 @@
-MODULE symmetry_module
+module symmetry_module
 
   use parallel_module, np_2d => node_partition
   use lattice_module, only: get_inverse_lattice
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_symmetry, read_symmetry, prep_symmetry, sym_rho, sym_force &
+  private
+  public :: init_symmetry
+  public :: prep_symmetry, sym_rho, sym_force &
            ,nsym,isymmetry,rgb,construct_matrix_symmetry
-  PUBLIC :: basis_conversion_symmetry
-  PUBLIC :: get_mat_symmetry
-  PUBLIC :: calc_mat_bb_symmetry
-  PUBLIC :: sym_vector_xyz
+  public :: basis_conversion_symmetry
+  public :: get_mat_symmetry
+  public :: calc_mat_bb_symmetry
+  public :: sym_vector_xyz
+  public :: check_cif_symmetry
 
-  integer :: isymmetry
-  character(30) :: file_symdat
+  integer :: iformat_symmetry=0
+  integer :: isymmetry=0
+  character(30) :: file_symdat=''
 
   integer :: nsym, nnp
   integer,allocatable :: rga(:,:,:), pga(:,:)
@@ -25,86 +28,102 @@ MODULE symmetry_module
   real(8) :: dV
   real(8) :: aa(3,3), bb(3,3)
 
-CONTAINS
+  logical :: exist_cif_symdat=.false.
 
+contains
 
-  SUBROUTINE read_symmetry( rank, unit )
+  subroutine read_symmetry
+    use io_tools_module, only: IOTools_readIntegerString
     implicit none
-    integer,intent(IN) :: rank,unit
-    integer :: i,ierr
-    character(4) :: cbuf,ckey
-
-    isymmetry   = 0
+    call write_border( 0, " read_symmetry(start)" )
+    isymmetry = 0
     file_symdat = ""
-
-    if ( rank == 0 ) then
-       rewind unit
-       do i=1,10000
-          read(unit,*,END=999) cbuf
-          call convert_capital(cbuf,ckey)
-          if ( ckey == "ISYM" ) then
-             backspace(unit)
-             read(unit,*) cbuf, isymmetry, file_symdat
-             exit
-          end if
-       end do
-999    continue
-       write(*,*) "isymmetry=",isymmetry
-       write(*,*) "file_symdat=",file_symdat
-    end if
-
-    call MPI_BCAST(isymmetry,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-    call MPI_BCAST(file_symdat,30,MPI_CHARACTER,0,MPI_COMM_WORLD,ierr)
-
-  END SUBROUTINE read_symmetry
+    call IOTools_readIntegerString( 'ISYM', isymmetry, file_symdat )
+    call write_border( 0, " read_symmetry(end)" )
+  end subroutine read_symmetry
 
 
-  SUBROUTINE init_symmetry(Ngrid,dV_in,aa_in,bb_in,MI,Kion,asi)
+  subroutine check_cif_symmetry( flag )
     implicit none
-    integer,intent(IN) :: Ngrid(0:3)
-    real(8),intent(IN) :: dV_in,aa_in(3,3),bb_in(3,3)
-    integer,intent(IN) :: MI,Kion(MI)
-    real(8),intent(IN) :: asi(3,MI)
+    logical,intent(in) :: flag
+    call write_border( 0, " check_cif_symmetry(start)" )
+    exist_cif_symdat = flag
+    call write_border( 0, " check_cif_symmetry(end)" )
+  end subroutine check_cif_symmetry
+
+
+  subroutine init_symmetry(Ngrid,dV_in,aa_in,bb_in,Kion,asi)
+    implicit none
+    integer,intent(in) :: Ngrid(0:3)
+    real(8),intent(in) :: dV_in,aa_in(3,3),bb_in(3,3)
+    integer,intent(in) :: Kion(:)
+    real(8),intent(in) :: asi(:,:)
+    logical :: disp_on
 
     call write_border( 0," init_symmetry(start)")
+    call check_disp_switch( disp_on, 0 )
+
+    aa  = aa_in
+    bb  = bb_in
+
+    call read_symmetry
+
+    iformat_symmetry = isymmetry
+
+    if ( exist_cif_symdat ) then
+      iformat_symmetry = 4
+      file_symdat = 'cif_sym.dat'
+    end if
+
+    if ( isymmetry /= 0 ) then
+      if ( disp_on ) then
+        write(*,*) "isymmetry         = ",isymmetry
+        write(*,*) "iformat_symmetry  = ",iformat_symmetry
+        write(*,*) "file_symdat       = ",file_symdat
+      end if
+    else
+      if ( disp_on ) write(*,*) "Symmetry is not used"
+      call write_border( 0, " init_symmetry(return)" )
+      return
+    end if
+
+    if ( file_symdat == "" ) call stop_program('symdat file is not specified')
 
     ML  = Ngrid(0)
     ML1 = Ngrid(1)
     ML2 = Ngrid(2)
     ML3 = Ngrid(3)
     dV  = dV_in
-    aa  = aa_in
-    bb  = bb_in
 
     if ( isymmetry /= 0 ) then
-       call input_symdat( MI, Kion, asi )
-       call input_symdat_2( MI, Kion, asi )
-       !call input_symdat_3( MI, Kion, asi )
-       !call input_symdat_4( MI, Kion, asi )
+      call input_symdat( Kion, asi )
+      call input_symdat_2( Kion, asi )
+      ! call input_symdat_3( Kion, asi )
+      ! call input_symdat_4( Kion, asi )
     end if
 
     call write_border( 0," init_symmetry(end)")
 
-  END SUBROUTINE init_symmetry
+  end subroutine init_symmetry
 
 !--------1---------2---------3---------4---------5---------6---------7--
 !
 ! "isymmetry>0" assume the atomic coordinates are given within [0,1]
 ! "isymmetry<0" assume the atomic coordinates are given within [-0.5,0.5]
 
-  SUBROUTINE input_symdat( MI, Kion, asi )
+  subroutine input_symdat( Kion, asi )
+    use rsdft_bcast_module, only: i_rsdft_bcast, d_rsdft_bcast, i_rsdft_bcast_tmp, d_rsdft_bcast_tmp
     implicit none
-    integer,intent(IN) :: MI
-    integer,intent(IN) :: Kion(MI)
-    real(8),intent(IN) :: asi(3,MI)
+    integer,intent(in) :: Kion(:)
+    real(8),intent(in) :: asi(:,:)
     integer,parameter :: u=2
     integer :: i,i1,i2,j,k,n,ierr,flag,isym
     integer :: A11,A12,A13,A21,A22,A23,A31,A32,A33,gcounter
-    integer :: AAA(9,19683)
+    integer :: AAA(9,19683),MI
     real(8) :: RR0(3),RR1(3),RR2(3),RRR
     real(8) :: R1q,R2q,R3q,R1p,R2p,R3p,R1s,R2s,R3s
-    real(8) :: tmp2(3,3,2), aa0(3,3),tmp(4)
-    real(8) :: c1
+    real(8) :: tmp2(3,3,2), aa0(3,3),tmp(4),pi2
+    real(8) :: c1,aa_inv(3,3)
     real(8),allocatable :: XX(:,:), pga_tmp(:,:)
     character(12) :: label_sym, cbuf
 
@@ -113,292 +132,305 @@ CONTAINS
 
     call write_border( 0, " input_symdat(start)" )
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "isymmetry=",isymmetry
-    end if
-
     nnp  = 1
     nsym = 0
     aa0  = 0.0d0
-
+    MI   = size( Kion )
 !
 ! --- Read symmetry operation matrix ---
 !
     if ( myrank == 0 ) then
 
-       if ( abs(isymmetry) /= 3 ) open(u,file=file_symdat,status='old')
+      if ( abs(isymmetry) /= 3 ) open(u,file=file_symdat,status='old')
 
-       select case( isymmetry )
+      select case( iformat_symmetry )
 !(1)
-       case( 1, -1 )
+      case( 1, -1 )
 
-          read(u,*) nsym, nnp
-          allocate( rga(3,3,nsym),pga(3,nsym) ) ; rga=0 ; pga=0
-          allocate( rgb(3,3,nsym),pgb(3,nsym) ) ; rgb=0 ; pgb=0
-          do n=1,nsym
-             read(u,*) ( (rga(i,j,n),j=1,3),i=1,3 ),pga(:,n)
-          end do
-          read(u,*,END=10) cbuf
-          backspace(u)
-          read(u,*) cbuf, aa0(:,1)
-          read(u,*) cbuf, aa0(:,2)
-          read(u,*) cbuf, aa0(:,3)
-          if ( disp_switch_parallel ) then
-             write(*,'(1x,"A1-Base",3f20.15)') aa0(:,1)
-             write(*,'(1x,"A2-Base",3f20.15)') aa0(:,2)
-             write(*,'(1x,"A3-Base",3f20.15)') aa0(:,3)
-          end if
-10        continue
+        read(u,*) nsym, nnp
+        allocate( rga(3,3,nsym),pga(3,nsym) ) ; rga=0 ; pga=0
+        allocate( rgb(3,3,nsym),pgb(3,nsym) ) ; rgb=0 ; pgb=0
+        do n=1,nsym
+          read(u,*) ( (rga(i,j,n),j=1,3),i=1,3 ),pga(:,n)
+        end do
+        read(u,*,END=10) cbuf
+        backspace(u)
+        read(u,*) cbuf, aa0(:,1)
+        read(u,*) cbuf, aa0(:,2)
+        read(u,*) cbuf, aa0(:,3)
+        if ( disp_switch_parallel ) then
+          write(*,'(1x,"A1-Base",3f20.15)') aa0(:,1)
+          write(*,'(1x,"A2-Base",3f20.15)') aa0(:,2)
+          write(*,'(1x,"A3-Base",3f20.15)') aa0(:,3)
+        end if
+        10 continue
 !(2)
-       case( 2, -2 )
+      case( 2, -2 )
 
-          read(u,*) label_sym, nsym
-          write(*,*) "label_sym= ",label_sym
-          write(*,*) "nsym     = ",nsym
-          allocate( rga(3,3,nsym),pga(3,nsym) ) ; rga=0 ; pga=0
-          allocate( rgb(3,3,nsym),pgb(3,nsym) ) ; rgb=0 ; pgb=0
-          do i=1,nsym,2
-             j=min(i+1,nsym)
-             n=j-i+1
-             read(u,*) (((tmp2(i2,i1,j),i1=1,3),i2=1,3),j=1,n)
-             do j=1,n
-                rga(1:3,1:3,i+j-1)=nint( tmp2(1:3,1:3,j) )
-             end do
+        read(u,*) label_sym, nsym
+        write(*,*) "label_sym= ",label_sym
+        write(*,*) "nsym     = ",nsym
+        allocate( rga(3,3,nsym),pga(3,nsym) ) ; rga=0 ; pga=0
+        allocate( rgb(3,3,nsym),pgb(3,nsym) ) ; rgb=0 ; pgb=0
+        do i=1,nsym,2
+          j=min(i+1,nsym)
+          n=j-i+1
+          read(u,*) (((tmp2(i2,i1,j),i1=1,3),i2=1,3),j=1,n)
+          do j=1,n
+            rga(1:3,1:3,i+j-1)=nint( tmp2(1:3,1:3,j) )
           end do
+        end do
 
-          allocate( pga_tmp(3,nsym) ) ; pga_tmp=0.d0
-          do i=1,nsym,3
-             j=min(i+2,nsym)
-             read(u,*) pga_tmp(1:3,i:j)
+        allocate( pga_tmp(3,nsym) ) ; pga_tmp=0.0d0
+        do i=1,nsym,3
+          j=min(i+2,nsym)
+          read(u,*) pga_tmp(1:3,i:j)
+        end do
+        c1=1.0d10
+        do i=1,nsym
+          do j=1,3
+            if ( abs(pga_tmp(j,i)) > 1.0d-10 ) then
+              c1=min( c1, abs(pga_tmp(j,i)) )
+            end if
           end do
-          c1=1.0d10
-          do i=1,nsym
-             do j=1,3
-                if ( abs(pga_tmp(j,i)) > 1.0d-10 ) then
-                   c1=min( c1, abs(pga_tmp(j,i)) )
-                end if
-             end do
-          end do
-          pga(1:3,1:nsym)=nint( pga_tmp(1:3,1:nsym)/c1 )
-          nnp=nint( 1.0d0/c1 )
-          deallocate( pga_tmp )
+        end do
+        pga(1:3,1:nsym)=nint( pga_tmp(1:3,1:nsym)/c1 )
+        nnp=nint( 1.0d0/c1 )
+        deallocate( pga_tmp )
 !(3)
-       case( 3, -3 )
+      case( 3, -3 )
 
-          allocate( XX(3,MI) ) ; XX=0.0d0
+        allocate( XX(3,MI) ) ; XX=0.0d0
+
+        do i=1,MI
+          XX(1:3,i)=asi(1:3,i)
+          do j=1,3
+            do  while ( XX(j,i) >  0.5d0 )
+              XX(j,i)=XX(j,i)-1.0d0
+            end do
+            do while ( XX(j,i) <= -0.5d0 )
+              XX(j,i)=XX(j,i)+1.0d0
+            end do
+          end do
+        end do ! i
+ 
+        do A11=-1,1
+        do A12=-1,1
+        do A13=-1,1
+        do A21=-1,1
+        do A22=-1,1
+        do A23=-1,1
+        do A31=-1,1
+        do A32=-1,1
+        do A33=-1,1
+
+          gcounter=0
 
           do i=1,MI
-             XX(1:3,i)=asi(1:3,i)
-             do j=1,3
-                do  while ( XX(j,i) >  0.5d0 )
-                   XX(j,i)=XX(j,i)-1.0d0
+
+            RR0(1:3) = XX(1:3,i)
+
+            flag = 0
+
+            do j=1,MI
+
+              if ( Kion(i) /= Kion(j) ) cycle
+
+              RR1(1:3) = XX(1:3,j)
+
+              RR2(1) = A11*RR1(1) + A12*RR1(2) + A13*RR1(3)
+              RR2(2) = A21*RR1(1) + A22*RR1(2) + A23*RR1(3)
+              RR2(3) = A31*RR1(1) + A32*RR1(2) + A33*RR1(3)
+
+              do k=1,3
+                do  while ( RR2(k) >  0.5d0 ) 
+                  RR2(k)=RR2(k)-1.0d0
                 end do
-                do  while ( XX(j,i) <= -0.5d0 )
-                   XX(j,i)=XX(j,i)+1.0d0
+                do while ( RR2(k) <= -0.5d0 ) 
+                  RR2(k)=RR2(k)+1.0d0
                 end do
-             end do
+              end do ! k
+
+              RRR = sqrt( (RR2(1)-RR0(1))**2 &
+                        + (RR2(2)-RR0(2))**2 + (RR2(3)-RR0(3))**2 )
+              if ( RRR < 1.d-6 ) then
+                flag=1
+              end if
+
+            end do ! j
+
+            gcounter = gcounter + flag
+
           end do ! i
- 
-          do A11=-1,1
-          do A12=-1,1
-          do A13=-1,1
-          do A21=-1,1
-          do A22=-1,1
-          do A23=-1,1
-          do A31=-1,1
-          do A32=-1,1
-          do A33=-1,1
-
-             gcounter=0
-
-             do i=1,MI
-
-                RR0(1:3) = XX(1:3,i)
-
-                flag = 0
-
-                do j=1,MI
-
-                   if ( Kion(i) /= Kion(j) ) cycle
-
-                   RR1(1:3) = XX(1:3,j)
-
-                   RR2(1) = A11*RR1(1) + A12*RR1(2) + A13*RR1(3)
-                   RR2(2) = A21*RR1(1) + A22*RR1(2) + A23*RR1(3)
-                   RR2(3) = A31*RR1(1) + A32*RR1(2) + A33*RR1(3)
-
-                   do k=1,3
-                      do  while ( RR2(k) >  0.5d0 ) 
-                         RR2(k)=RR2(k)-1.0d0
-                      end do
-                      do while ( RR2(k) <= -0.5d0 ) 
-                         RR2(k)=RR2(k)+1.0d0
-                      end do
-                   end do ! k
-
-                   RRR = sqrt( (RR2(1)-RR0(1))**2 &
-                             + (RR2(2)-RR0(2))**2 + (RR2(3)-RR0(3))**2 )
-                   if ( RRR < 1.d-6 ) then
-                      flag=1
-                   end if
-
-                end do ! j
-
-                gcounter = gcounter + flag
-
-             end do ! i
            
 
-             if ( gcounter == MI ) then
+          if ( gcounter == MI ) then
 
-                R1q = sqrt( AA(1,1)**2 + AA(2,1)**2 + AA(3,1)**2 )
-                R2q = sqrt( AA(1,2)**2 + AA(2,2)**2 + AA(3,2)**2 )
-                R3q = sqrt( AA(1,3)**2 + AA(2,3)**2 + AA(3,3)**2 )
+            R1q = sqrt( AA(1,1)**2 + AA(2,1)**2 + AA(3,1)**2 )
+            R2q = sqrt( AA(1,2)**2 + AA(2,2)**2 + AA(3,2)**2 )
+            R3q = sqrt( AA(1,3)**2 + AA(2,3)**2 + AA(3,3)**2 )
 
-                R1s = real(A11)*1 + real(A12)*0 + real(A13)*0
-                R2s = real(A21)*1 + real(A22)*0 + real(A23)*0
-                R3s = real(A31)*1 + real(A32)*0 + real(A33)*0
-                R1p = sqrt( (AA(1,1)*R1s + AA(1,2)*R2s + AA(1,3)*R3s)**2 &
-                          + (AA(2,1)*R1s + AA(2,2)*R2s + AA(2,3)*R3s)**2 &
-                          + (AA(3,1)*R1s + AA(3,2)*R2s + AA(3,3)*R3s)**2   )
+            R1s = real(A11)*1 + real(A12)*0 + real(A13)*0
+            R2s = real(A21)*1 + real(A22)*0 + real(A23)*0
+            R3s = real(A31)*1 + real(A32)*0 + real(A33)*0
+            R1p = sqrt( (AA(1,1)*R1s + AA(1,2)*R2s + AA(1,3)*R3s)**2 &
+                      + (AA(2,1)*R1s + AA(2,2)*R2s + AA(2,3)*R3s)**2 &
+                      + (AA(3,1)*R1s + AA(3,2)*R2s + AA(3,3)*R3s)**2   )
 
-                R1s = real(A11)*0 + real(A12)*1 + real(A13)*0
-                R2s = real(A21)*0 + real(A22)*1 + real(A23)*0
-                R3s = real(A31)*0 + real(A32)*1 + real(A33)*0
-                R2p = sqrt( (AA(1,1)*R1s + AA(1,2)*R2s + AA(1,3)*R3s)**2 &
-                          + (AA(2,1)*R1s + AA(2,2)*R2s + AA(2,3)*R3s)**2 &
-                          + (AA(3,1)*R1s + AA(3,2)*R2s + AA(3,3)*R3s)**2   )
+            R1s = real(A11)*0 + real(A12)*1 + real(A13)*0
+            R2s = real(A21)*0 + real(A22)*1 + real(A23)*0
+            R3s = real(A31)*0 + real(A32)*1 + real(A33)*0
+            R2p = sqrt( (AA(1,1)*R1s + AA(1,2)*R2s + AA(1,3)*R3s)**2 &
+                      + (AA(2,1)*R1s + AA(2,2)*R2s + AA(2,3)*R3s)**2 &
+                      + (AA(3,1)*R1s + AA(3,2)*R2s + AA(3,3)*R3s)**2   )
 
-                R1s = real(A11)*0 + real(A12)*0 + real(A13)*1
-                R2s = real(A21)*0 + real(A22)*0 + real(A23)*1
-                R3s = real(A31)*0 + real(A32)*0 + real(A33)*1
-                R3p = sqrt( (AA(1,1)*R1s + AA(1,2)*R2s + AA(1,3)*R3s)**2 &
-                          + (AA(2,1)*R1s + AA(2,2)*R2s + AA(2,3)*R3s)**2 &
-                          + (AA(3,1)*R1s + AA(3,2)*R2s + AA(3,3)*R3s)**2   )
+            R1s = real(A11)*0 + real(A12)*0 + real(A13)*1
+            R2s = real(A21)*0 + real(A22)*0 + real(A23)*1
+            R3s = real(A31)*0 + real(A32)*0 + real(A33)*1
+            R3p = sqrt( (AA(1,1)*R1s + AA(1,2)*R2s + AA(1,3)*R3s)**2 &
+                      + (AA(2,1)*R1s + AA(2,2)*R2s + AA(2,3)*R3s)**2 &
+                      + (AA(3,1)*R1s + AA(3,2)*R2s + AA(3,3)*R3s)**2   )
 
-                if ( abs(R1q-R1p) <= 1.d-6 .and. &
-                     abs(R2q-R2p) <= 1.d-6 .and. &
-                     abs(R3q-R3p) <= 1.d-6        ) then
-                   nsym=nsym+1
-                   AAA(1,nsym)=A11
-                   AAA(2,nsym)=A12
-                   AAA(3,nsym)=A13
-                   AAA(4,nsym)=A21
-                   AAA(5,nsym)=A22
-                   AAA(6,nsym)=A23
-                   AAA(7,nsym)=A31
-                   AAA(8,nsym)=A32
-                   AAA(9,nsym)=A33
-                end if
+            if ( abs(R1q-R1p) <= 1.d-6 .and. &
+                 abs(R2q-R2p) <= 1.d-6 .and. &
+                 abs(R3q-R3p) <= 1.d-6        ) then
+                nsym=nsym+1
+              AAA(1,nsym)=A11
+              AAA(2,nsym)=A12
+              AAA(3,nsym)=A13
+              AAA(4,nsym)=A21
+              AAA(5,nsym)=A22
+              AAA(6,nsym)=A23
+              AAA(7,nsym)=A31
+              AAA(8,nsym)=A32
+              AAA(9,nsym)=A33
+            end if
 
-             end if
+          end if
 
-          end do
-          end do
-          end do
-          end do
-          end do
-          end do
-          end do
-          end do
-          end do
+        end do
+        end do
+        end do
+        end do
+        end do
+        end do
+        end do
+        end do
+        end do
 
-          deallocate( XX )
+        deallocate( XX )
 
-          write(*,*) "------------------------------------------------------"
-          write(*,'(I0,42X,I0)')  nsym, 1
-          do i=1,nsym
-             write(*,'(3(3I3,3X),6X,3I3)')  AAA(1:9,i),0,0,0
-          end do !i
-          write(*,*) "------------------------------------------------------"
-          write(*,*) "BE CAREFUL!! Bubun heishin & Rasen are NOT considered."
-          write(*,*) 'Intentional STOP, isymmetry=', isymmetry
-          stop "stop@input_symdat"
+        write(*,*) "------------------------------------------------------"
+        write(*,'(I0,42X,I0)')  nsym, 1
+        do i=1,nsym
+          write(*,'(3(3I3,3X),6X,3I3)')  AAA(1:9,i),0,0,0
+        end do !i
+        write(*,*) "------------------------------------------------------"
+        write(*,*) "BE CAREFUL!! Bubun heishin & Rasen are NOT considered."
+        write(*,*) 'Intentional STOP, isymmetry=', isymmetry
+        call stop_program( "stop@input_symdat" )
 !
 !---
 !
-       case( 4, -4 )
+      case( 4, -4 )
 
-          nsym=0
-          do
-             read(u,*,END=40) tmp(1:4)
-             nsym=nsym+1
-             if (tmp(4) /= 0.0d0) nnp=max( nnp, nint(1.0d0/tmp(4)) )
-          end do
-40        nsym=nsym/3
+        nsym=0
+        do
+          read(u,*,END=40) tmp(1:4)
+          nsym=nsym+1
+          if (tmp(4) /= 0.0d0) nnp=max( nnp, nint(1.0d0/tmp(4)) )
+        end do
+        40 continue
+        nsym=nsym/3
           
-          write(*,*) "nsym, nnp=",nsym, nnp
+        write(*,*) "nsym, nnp=",nsym, nnp
 
-          allocate( rga(3,3,nsym) ); rga=0
-          allocate( rgb(3,3,nsym) ); rgb=0.0d0
-          allocate( pga(3,nsym) ); pga=0
-          allocate( pgb(3,nsym) ); pgb=0
+        allocate( rga(3,3,nsym) ); rga=0
+        allocate( rgb(3,3,nsym) ); rgb=0.0d0
+        allocate( pga(3,nsym) ); pga=0
+        allocate( pgb(3,nsym) ); pgb=0
 
-          rewind u
-          do isym = 1, nsym
-             do i=1,3
-                read(u,*) tmp(1:4)
-                do j=1,3
-                   rga(i,j,isym)=nint(tmp(j))
-                end do
-                pga(i,isym)=nint(nnp*tmp(4))
-             end do
+        rewind u
+        do isym = 1, nsym
+          do i=1,3
+            read(u,*) tmp(1:4)
+            do j=1,3
+              rga(i,j,isym)=nint(tmp(j))
+            end do
+            pga(i,isym)=nint(nnp*tmp(4))
           end do
+        end do
 
-       end select
+        pi2 = 2.0d0*acos(-1.0d0)
+        aa_inv = transpose( bb )/pi2
 
-       close(u)
+        do isym = 1, nsym
+          rgb(:,:,isym) = matmul( aa_inv, matmul( rga(:,:,isym), aa ) )
+          rga(:,:,isym) = nint( rgb(:,:,isym) )
+          ! write(*,*) "isym=",isym
+          ! do i=1,3
+          !   write(*,'(1x,3i4)') rga(:,i,isym)
+          ! end do
+        end do
+        rgb=0.0d0
 
-    end if
+      end select
 
-    call mpi_bcast(nsym,1,mpi_integer,0,mpi_comm_world,ierr)
-    call mpi_bcast(nnp ,1,mpi_integer,0,mpi_comm_world,ierr)
+      close(u)
+
+      write(*,*) "nsym,nnp=",nsym,nnp
+
+    end if !myrnak == 0
+
+    call i_rsdft_bcast( nsym )
+    call i_rsdft_bcast( nnp  )
 
     if ( myrank /= 0 ) then
-       allocate( rga(3,3,nsym),pga(3,nsym) ) ; rga=0 ; pga=0
-       allocate( rgb(3,3,nsym),pgb(3,nsym) ) ; rgb=0 ; pgb=0
+      allocate( rga(3,3,nsym),pga(3,nsym) ) ; rga=0 ; pga=0
+      allocate( rgb(3,3,nsym),pgb(3,nsym) ) ; rgb=0 ; pgb=0
     end if
 
-    call mpi_bcast(rga,9*nsym,mpi_integer,0,mpi_comm_world,ierr)
-    call mpi_bcast(pga,3*nsym,mpi_integer,0,mpi_comm_world,ierr)
-    call mpi_bcast(aa0,9     ,mpi_real8  ,0,mpi_comm_world,ierr)
+    call i_rsdft_bcast_tmp( rga, size(rga) )
+    call i_rsdft_bcast_tmp( pga, size(pga) )
+    call d_rsdft_bcast_tmp( aa0, 3*3 )
 
-    if ( disp_switch_parallel ) then
-       write(*,*) "nsym,nnp=",nsym,nnp
+    if ( any(aa0/=0.0d0) ) then
+      write(*,*) "aa0",aa0
+      call basis_conversion_symmetry( aa0, aa, rga )
     end if
-
-    if ( any(aa0/=0.0d0) ) call basis_conversion_symmetry( aa0, aa, rga )
 
     call write_border( 0, " input_symdat(end)" )
 
-  END SUBROUTINE input_symdat
+  end subroutine input_symdat
 
 
-  SUBROUTINE basis_conversion_symmetry( aa0, aa1, mat )
+  subroutine basis_conversion_symmetry( aa0, aa1, mat )
     implicit none
-    real(8),intent(INOUT) :: aa0(3,3)
-    real(8),intent(IN)    :: aa1(3,3)
-    integer,intent(INOUT) :: mat(:,:,:)
+    real(8),intent(inout) :: aa0(3,3)
+    real(8),intent(in)    :: aa1(3,3)
+    integer,intent(inout) :: mat(:,:,:)
     integer :: i
     real(8) :: aa0inv(3,3), aa1inv(3,3), x(3,3), y(3,3)
+    call write_border( 0, ' basis_conversion_symmetry(start)' )
     call get_inverse_lattice( aa0, aa0inv )
     call get_inverse_lattice( aa1, aa1inv )
     do i=1,size(mat,3)
-       x(:,:) = mat(:,:,i)
-       y(:,:) = matmul( x, aa0inv )
-       x(:,:) = matmul( aa0, y )
-       y(:,:) = matmul( x, aa1 )
-       x(:,:) = matmul( aa1inv, y )
-       mat(:,:,i) = nint( x(:,:) )
+      x(:,:) = mat(:,:,i)
+      y(:,:) = matmul( x, aa0inv )
+      x(:,:) = matmul( aa0, y )
+      y(:,:) = matmul( x, aa1 )
+      x(:,:) = matmul( aa1inv, y )
+      mat(:,:,i) = nint( x(:,:) )
     end do
     aa0=aa1
-  END SUBROUTINE basis_conversion_symmetry
+    call write_border( 0, ' basis_conversion_symmetry(end)' )
+  end subroutine basis_conversion_symmetry
 
 
-  SUBROUTINE chk_grp( rga, aa, bb )
+  subroutine chk_grp( rga, aa, bb )
     implicit none
-    integer,intent(IN) :: rga(:,:,:)
-    real(8),intent(IN) :: aa(3,3), bb(3,3)
+    integer,intent(in) :: rga(:,:,:)
+    real(8),intent(in) :: aa(3,3), bb(3,3)
     real(8) :: aa_inv(3,3),tmp0(3,3),tmp1(3,3)
     real(8),allocatable :: rtmp(:,:,:)
     integer :: n,ns
@@ -406,35 +438,36 @@ CONTAINS
     allocate( rtmp(3,3,ns) ) ; rtmp=0.0d0
     aa_inv(:,:) = transpose( bb )/(2.0d0*acos(-1.0d0))
     do n=1,ns
-       tmp0(:,:) = rga(:,:,n)
-       tmp1(:,:) = matmul( tmp0, aa_inv )
-       rtmp(:,:,n) = matmul( aa, tmp1 )
+      tmp0(:,:) = rga(:,:,n)
+      tmp1(:,:) = matmul( tmp0, aa_inv )
+      rtmp(:,:,n) = matmul( aa, tmp1 )
     end do
     do n=1,ns
-       tmp0(:,:) = transpose( rtmp(:,:,n) )
-       tmp1(:,:) = matmul( rtmp(:,:,n), tmp0 )
-       write(*,*) n,sum(abs(tmp1))
+      tmp0(:,:) = transpose( rtmp(:,:,n) )
+      tmp1(:,:) = matmul( rtmp(:,:,n), tmp0 )
+      write(*,*) n,sum(abs(tmp1))
     end do
     deallocate( rtmp )
-    stop "stop@chk_grp"
-  END SUBROUTINE chk_grp
+    call stop_program( "stop@chk_grp" )
+  end subroutine chk_grp
 
 
-  SUBROUTINE input_symdat_2( MI, Kion, asi )
+  subroutine input_symdat_2( Kion, asi )
     implicit none
-    integer,intent(IN) :: MI, Kion(MI)
-    real(8),intent(IN) :: asi(3,MI)
+    integer,intent(in) :: Kion(:)
+    real(8),intent(in) :: asi(:,:)
     real(8) :: pi2,c1,r0
     real(8) :: tmp(3,3),tmp1(3,3),tmp2(3,3,2),tmp0(3,3),tmp4(3)
     real(8) :: bb_inv(3,3),aa_inv(3,3)
     real(8),allocatable :: Rra(:,:)
     integer :: mtmp1(3,3),mtmp2(3,3),itmp1(3),itmp2(3)
-    integer :: i,i1,i2,i3,isym,j,loop,m,m1,m2,n
+    integer :: i,i1,i2,i3,isym,j,loop,m,m1,m2,n,MI
     integer,allocatable :: itmp(:)
 
     call write_border( 0, " input_symdat_2(start)" )
 
     pi2 = 2.0d0*acos(-1.0d0)
+    MI = size( Kion )
 
 ! --- make rgb (symmetry operation matrix in bb-representation) ---
 !
@@ -456,43 +489,47 @@ CONTAINS
 ! tr(rgb)=(rga)^-1
 !
     do n=1,nsym
-       tmp0(1:3,1:3) = transpose( rgb(1:3,1:3,n) )
-       tmp1(1:3,1:3) = matmul( tmp0(1:3,1:3), rga(1:3,1:3,n) )
-       itmp1(1)=nint( tmp1(1,1) )
-       itmp1(2)=nint( tmp1(2,2) )
-       itmp1(3)=nint( tmp1(3,3) )
-       i1=sum(abs(nint(tmp1)))
-       if ( .not.( all(itmp1==1) .and. i1==3 ) ) then
-          write(*,*) "tr(rgb) is not the inverse of rga!"
-          write(*,*) n,i1
-          write(*,*) tmp1
-          goto 900
-       end if
+      ! write(*,*) rgb(:,:,n)
+      ! write(*,*) rga(:,:,n)
+      tmp0(1:3,1:3) = transpose( rgb(1:3,1:3,n) )
+      tmp1(1:3,1:3) = matmul( tmp0(1:3,1:3), rga(1:3,1:3,n) )
+      itmp1(1)=nint( tmp1(1,1) )
+      itmp1(2)=nint( tmp1(2,2) )
+      itmp1(3)=nint( tmp1(3,3) )
+      i1=sum(abs(nint(tmp1)))
+      if ( .not.( all(itmp1==1) .and. i1==3 ) ) then
+        write(*,*) "tr(rgb) is not the inverse of rga!"
+        write(*,*) n,i1
+        write(*,*) tmp1
+        write(*,*) rgb(:,:,n)
+        write(*,*) rga(:,:,n)
+        goto 900
+      end if
     end do
 
 ! check duplication
 !
     allocate( itmp(nsym) )
     do n=1,nsym
-       j=0
-       itmp=0
-       do m=1,nsym
-          mtmp1(1:3,1:3)=rga(1:3,1:3,n)-rga(1:3,1:3,m)
-          itmp1(1:3)=pga(1:3,n)-pga(1:3,m)
-          if ( all(mtmp1==0) .and. all(itmp1==0) ) then
-             j=j+1
-             itmp(j)=m
-          end if
-       end do
-       if ( j /= 1 ) then
-          write(*,*) "symmetry error (duplication)",j,n
-          write(*,'(1x,i5,3x,9i3,3x,3i3)') n,rga(1:3,1:3,n),pga(1:3,n)
-          do i=1,j
-             write(*,'(1x,i5,3x,9i3,3x,3i3)') &
-                  itmp(i),rga(1:3,1:3,itmp(i)),pga(1:3,itmp(i))
-          end do
-          goto 900
-       end if
+      j=0
+      itmp=0
+      do m=1,nsym
+        mtmp1(1:3,1:3)=rga(1:3,1:3,n)-rga(1:3,1:3,m)
+        itmp1(1:3)=pga(1:3,n)-pga(1:3,m)
+        if ( all(mtmp1==0) .and. all(itmp1==0) ) then
+          j=j+1
+          itmp(j)=m
+        end if
+      end do
+      if ( j /= 1 ) then
+        write(*,*) "symmetry error (duplication)",j,n
+        write(*,'(1x,i5,3x,9i3,3x,3i3)') n,rga(1:3,1:3,n),pga(1:3,n)
+        do i=1,j
+          write(*,'(1x,i5,3x,9i3,3x,3i3)') &
+              itmp(i),rga(1:3,1:3,itmp(i)),pga(1:3,itmp(i))
+        end do
+        goto 900
+      end if
     end do
     deallocate( itmp )
 
@@ -500,50 +537,50 @@ CONTAINS
 !
     m1=0
     do n=1,nsym
-       itmp1(1)=rga(1,1,n)
-       itmp1(2)=rga(2,2,n)
-       itmp1(3)=rga(3,3,n)
-       i=sum(abs(rga(1:3,1:3,n)))
-       if ( i==3 .and. all(itmp1==1) .and. all(pga(1:3,n)==0) ) then
-          m1=m1+1
-       end if
+      itmp1(1)=rga(1,1,n)
+      itmp1(2)=rga(2,2,n)
+      itmp1(3)=rga(3,3,n)
+      i=sum(abs(rga(1:3,1:3,n)))
+      if ( i==3 .and. all(itmp1==1) .and. all(pga(1:3,n)==0) ) then
+        m1=m1+1
+      end if
     end do
     if ( m1 /= 1 ) then
-       write(*,*) "symmetry error (no unit operator)",m1
-       goto 900
+      write(*,*) "symmetry error (no unit operator)",m1
+      goto 900
     end if
 
 ! (rga_1)(rga_2)=(rga)
 !
     do n=1,nsym
-       do m=1,nsym
-          mtmp1(1:3,1:3)=matmul( rga(1:3,1:3,m),rga(1:3,1:3,n) )
-          itmp1(1:3)=matmul( rga(1:3,1:3,m),pga(1:3,n) )+pga(1:3,m)
-          do j=1,3
-             do loop=1,10000
-                if ( itmp1(j)<0 ) then
-                   itmp1(j)=itmp1(j)+nnp
-                else if ( itmp1(j)>=nnp ) then
-                   itmp1(j)=itmp1(j)-nnp
-                else
-                   exit
-                end if
-             end do
+      do m=1,nsym
+        mtmp1(1:3,1:3)=matmul( rga(1:3,1:3,m),rga(1:3,1:3,n) )
+        itmp1(1:3)=matmul( rga(1:3,1:3,m),pga(1:3,n) )+pga(1:3,m)
+        do j=1,3
+          do loop=1,10000
+            if ( itmp1(j)<0 ) then
+              itmp1(j)=itmp1(j)+nnp
+            else if ( itmp1(j)>=nnp ) then
+              itmp1(j)=itmp1(j)-nnp
+            else
+              exit
+            end if
           end do
-          m2=0
-          do i=1,nsym
-             mtmp2(1:3,1:3)=mtmp1(1:3,1:3)-rga(1:3,1:3,i)
-             itmp2(1:3)=itmp1(1:3)-pga(1:3,i)
-             if ( all(mtmp2==0) .and. all(itmp2==0) ) then
-                m2=m2+1
-             end if
-          end do ! i
-          if ( m2 /= 1 ) then
-             write(*,*) "symmetry error (this is not group)",m2,m,n
-             write(*,'(1x,3(3i3,1x),2x,3i3)') mtmp1,itmp1
-             goto 900
+        end do
+        m2=0
+        do i=1,nsym
+          mtmp2(1:3,1:3)=mtmp1(1:3,1:3)-rga(1:3,1:3,i)
+          itmp2(1:3)=itmp1(1:3)-pga(1:3,i)
+          if ( all(mtmp2==0) .and. all(itmp2==0) ) then
+            m2=m2+1
           end if
-       end do ! m
+        end do ! i
+        if ( m2 /= 1 ) then
+          write(*,*) "symmetry error (this is not group)",m2,m,n
+          write(*,'(1x,3(3i3,1x),2x,3i3)') mtmp1,itmp1
+          goto 900
+        end if
+      end do ! m
     end do ! n
 
 !
@@ -558,41 +595,41 @@ CONTAINS
 
     do isym=1,nsym
 
-       do i=m1,m2
+      do i=m1,m2
 
-          Rra(1:3,i)=matmul( rga(1:3,1:3,isym),asi(1:3,i) )+c1*pga(1:3,isym)
+        Rra(1:3,i)=matmul( rga(1:3,1:3,isym),asi(1:3,i) )+c1*pga(1:3,isym)
 
-          do j=1,3
-             if ( abs(Rra(j,i)) >= 1.0d0 ) then
-                n=int(Rra(j,i))
-                Rra(j,i)=Rra(j,i)-n
-             end if
-          end do
-
-          loop_j : do j=1,MI
-             if( Kion(i) == Kion(j) )then
-                do i3=-1,1
-                do i2=-1,1
-                do i1=-1,1
-                   tmp4(1)=Rra(1,i)+i1
-                   tmp4(2)=Rra(2,i)+i2
-                   tmp4(3)=Rra(3,i)+i3
-                   r0=sum( (tmp4(1:3)-asi(1:3,j))**2 )
-                   if ( r0 < 1.d-10 ) then
-                      Rra(1:3,i)=tmp4(1:3)
-                      exit loop_j
-                   end if
-                end do
-                end do
-                end do
-             end if
-          end do loop_j
-          if ( j > MI ) then
-             write(*,*) "symmetry error (atomic coordinates)",isym,i
-             goto 900
+        do j=1,3
+          if ( abs(Rra(j,i)) >= 1.0d0 ) then
+            n=int(Rra(j,i))
+            Rra(j,i)=Rra(j,i)-n
           end if
+        end do
 
-       end do ! i
+        loop_j : do j=1,MI
+          if( Kion(i) == Kion(j) )then
+            do i3=-1,1
+            do i2=-1,1
+            do i1=-1,1
+              tmp4(1)=Rra(1,i)+i1
+              tmp4(2)=Rra(2,i)+i2
+              tmp4(3)=Rra(3,i)+i3
+              r0=sum( (tmp4(1:3)-asi(1:3,j))**2 )
+              if ( r0 < 1.d-10 ) then
+                Rra(1:3,i)=tmp4(1:3)
+                exit loop_j
+              end if
+            end do
+            end do
+            end do
+          end if
+        end do loop_j
+        if ( j > MI ) then
+          write(*,*) "symmetry error (atomic coordinates)",isym,i
+          goto 900
+        end if
+
+      end do ! i
 
     end do ! isym
 
@@ -602,10 +639,28 @@ CONTAINS
 
     return
 
-900 stop "stop@input_symdat_2"
+900 call stop_program( "stop@input_symdat_2" )
 
-  END SUBROUTINE input_symdat_2
+  end subroutine input_symdat_2
 
+  subroutine calc_mat_bb_symmetry( mata, matb )
+    implicit none
+    integer,intent(in)  :: mata(:,:,:)
+    real(8),intent(out) :: matb(:,:,:)
+    real(8) :: aa_inv(3,3), bb_inv(3,3), pi2
+    real(8) :: tmp0(3,3), tmp1(3,3), tmp2(3,3,2)
+    integer :: i
+    pi2=2.0d0*acos(-1.0d0)
+    bb_inv(1:3,1:3) = transpose( aa(1:3,1:3) )/pi2
+    aa_inv(1:3,1:3) = transpose( bb(1:3,1:3) )/pi2
+    tmp2(1:3,1:3,1) = matmul( bb_inv(1:3,1:3), aa(1:3,1:3) )
+    tmp2(1:3,1:3,2) = matmul( aa_inv(1:3,1:3), bb(1:3,1:3) )
+    do i=1,size(mata,3)
+      tmp0(1:3,1:3)   = matmul( tmp2(1:3,1:3,1), mata(1:3,1:3,i) )
+      tmp1(1:3,1:3)   = matmul( tmp0(1:3,1:3), tmp2(1:3,1:3,2) )
+      matb(1:3,1:3,i) = tmp1(1:3,1:3)
+    end do
+  end subroutine calc_mat_bb_symmetry
 
   SUBROUTINE check_duplication(rga,pga)
     implicit none
@@ -1335,47 +1390,29 @@ stop
   END SUBROUTINE construct_matrix_symmetry
 
 
-  SUBROUTINE get_mat_symmetry( mata, matb )
+  subroutine get_mat_symmetry( mata, matb )
     implicit none
-    integer,optional,allocatable,intent(INOUT) :: mata(:,:,:)
-    real(8),optional,allocatable,intent(INOUT) :: matb(:,:,:)
+    integer,optional,allocatable,intent(inout) :: mata(:,:,:)
+    real(8),optional,allocatable,intent(inout) :: matb(:,:,:)
     if ( isymmetry == 0 ) return
     if ( present(mata) ) then
-       if ( .not.allocated(mata) ) allocate( mata(3,3,nsym) )
-       mata=0
-       mata=rga
+      if ( .not.allocated(mata) ) allocate( mata(3,3,nsym) )
+      mata=0
+      mata=rga
     end if
     if ( present(matb) ) then
-       if ( .not.allocated(matb) ) allocate( matb(3,3,nsym) )
-       matb=0.0d0
-       matb=rgb
+      if ( .not.allocated(matb) ) allocate( matb(3,3,nsym) )
+      matb=0.0d0
+      matb=rgb
     end if
-  END SUBROUTINE get_mat_symmetry
+  end subroutine get_mat_symmetry
 
 
-  SUBROUTINE calc_mat_bb_symmetry( mata, matb )
+
+
+  subroutine sym_vector_xyz( vxyz )
     implicit none
-    integer,intent(IN)  :: mata(:,:,:)
-    real(8),intent(OUT) :: matb(:,:,:)
-    real(8) :: aa_inv(3,3), bb_inv(3,3), pi2
-    real(8) :: tmp0(3,3), tmp1(3,3), tmp2(3,3,2)
-    integer :: i
-    pi2=2.0d0*acos(-1.0d0)
-    bb_inv(1:3,1:3) = transpose( aa(1:3,1:3) )/pi2
-    aa_inv(1:3,1:3) = transpose( bb(1:3,1:3) )/pi2
-    tmp2(1:3,1:3,1) = matmul( bb_inv(1:3,1:3), aa(1:3,1:3) )
-    tmp2(1:3,1:3,2) = matmul( aa_inv(1:3,1:3), bb(1:3,1:3) )
-    do i=1,size(mata,3)
-       tmp0(1:3,1:3)   = matmul( tmp2(1:3,1:3,1), mata(1:3,1:3,i) )
-       tmp1(1:3,1:3)   = matmul( tmp0(1:3,1:3), tmp2(1:3,1:3,2) )
-       matb(1:3,1:3,i) = tmp1(1:3,1:3)
-    end do
-  END SUBROUTINE calc_mat_bb_symmetry
-
-
-  SUBROUTINE sym_vector_xyz( vxyz )
-    implicit none
-    real(8),intent(INOUT) :: vxyz(3)
+    real(8),intent(inout) :: vxyz(3)
     real(8) :: aa_inv(3,3), vtmp(3), Rvtmp(3)
     integer :: isym
     if ( isymmetry == 0 ) return
@@ -1383,12 +1420,12 @@ stop
     vtmp = matmul( aa_inv, vxyz )
     vxyz = 0.0d0
     do isym=1,nsym
-       Rvtmp = matmul( rgb(:,:,isym), vtmp )
-       vxyz = vxyz + Rvtmp
+      Rvtmp = matmul( rgb(:,:,isym), vtmp )
+      vxyz = vxyz + Rvtmp
     end do
     vtmp = vxyz/nsym
     vxyz = matmul( aa, vtmp )
-  END SUBROUTINE sym_vector_xyz
+  end subroutine sym_vector_xyz
 
 
-END MODULE symmetry_module
+end module symmetry_module

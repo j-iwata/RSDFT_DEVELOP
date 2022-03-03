@@ -38,7 +38,6 @@ MODULE band_module
 
   PRIVATE
   PUBLIC :: band
-  PUBLIC :: read_band
 
   character(64),parameter :: version="version2.1"
 
@@ -73,6 +72,8 @@ CONTAINS
 
     call write_border( 0, "" )
     call write_border( 0, " BAND Calc. START -----------" )
+
+    call read_band
 
     disp_switch_parallel_bak = disp_switch_parallel
 

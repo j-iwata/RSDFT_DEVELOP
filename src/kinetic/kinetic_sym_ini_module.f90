@@ -1,17 +1,17 @@
-MODULE kinetic_sym_ini_module
+module kinetic_sym_ini_module
 
   use symmetry_module, only: basis_conversion_symmetry, calc_mat_bb_symmetry
   use kinetic_variables, only: Md,coef_lap0,coef_lap,ggg,coef_nab,zcoef_kin,const_k2
   use kinetic_sym_module, only: init2
   use bz_module, only: Nbzsm, kbb
-  use lattice_module, only: get_inverse_lattice
+  use lattice_module, only: get_inverse_lattice, check_lattice
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: init_kinetic_sym
-  PUBLIC :: construct_kinetic_sym
-  PUBLIC :: get_mat_kinetic_sym_ini
+  private
+  public :: init_kinetic_sym
+  public :: construct_kinetic_sym
+  public :: get_mat_kinetic_sym_ini
 
   integer,allocatable :: sym_mat(:,:,:)
   real(8) :: basis(3,3)
@@ -19,77 +19,76 @@ MODULE kinetic_sym_ini_module
   integer,allocatable :: kgroup_mat(:,:,:,:)
   integer,allocatable :: kgroup_g(:)
 
-CONTAINS
+contains
 
 
-  SUBROUTINE init_kinetic_sym( indx, aa, ierr )
-
+  subroutine init_kinetic_sym( aa, ierr )
     implicit none
-    character(*),intent(IN) :: indx
-    real(8),intent(IN) :: aa(3,3)
-    integer,optional,intent(OUT) :: ierr 
+    real(8),intent(in) :: aa(3,3)
+    integer,optional,intent(out) :: ierr
     integer :: i,k
+    character(10) :: indx
+    logical :: disp_on
 
     call write_border( 0, " init_kinetic_sym(start)" )
+    call check_disp_switch( disp_on, 0 )
+
+    call check_lattice( aa, indx )
 
     select case( indx )
     case( "HEXAGONAL" )
-       call set_hexagonal_sym( sym_mat, basis )
+      call set_hexagonal_sym( sym_mat, basis )
     case( "FCC" )
-       call set_fcc_sym( sym_mat, basis )
-!   case( "BCC" )
-!   case( "CUBIC" )
+      call set_fcc_sym( sym_mat, basis )
+    case( "BCC" )
+      call stop_program('Kinetic sym is unavailable for BCC')
+    ! case( "CUBIC" )
     case default
-       write(*,*) "indx= ",indx
-       call write_string( "this lattice is undefined(init_kinetic_sym)" )
-       if ( present(ierr) ) ierr=1
-       return
+      write(*,*) "indx= ",indx
+      call write_string( "this lattice is undefined(init_kinetic_sym)" )
+      if ( present(ierr) ) ierr=1
+      return
     end select
 
     call basis_conversion_symmetry( basis, aa, sym_mat )
 
     call construct_kgroup
     do k=1,Nbzsm
-       call construct_kinetic_sym( kgroup_mat(:,:,1:kgroup_g(k),k), k )
+      call construct_kinetic_sym( kgroup_mat(:,:,1:kgroup_g(k),k), k )
     end do
 
     if ( present(ierr) ) ierr=0
 
     call write_border( 0, " init_kinetic_sym(end)" )
 
-  END SUBROUTINE init_kinetic_sym
+  end subroutine init_kinetic_sym
 
 
-  SUBROUTINE construct_kgroup
-
+  subroutine construct_kgroup
     implicit none
     integer :: k,j,i
     real(8) :: tmp(3),err
     logical :: disp
-
     call check_disp_switch( disp, 0 )
-
-    allocate( kgroup_mat(3,3,size(sym_mat,3),Nbzsm) ) ; kgroup_mat=0
-    allocate( kgroup_g(Nbzsm) ) ; kgroup_g=0
-
+    allocate( kgroup_mat(3,3,size(sym_mat,3),Nbzsm) ); kgroup_mat=0
+    allocate( kgroup_g(Nbzsm) ); kgroup_g=0
     do k=1,Nbzsm
-       j=0
-       do i=1,size(sym_mat,3)
-          tmp(:) = matmul( kbb(:,k), sym_mat(:,:,i) )
-          if ( any(abs(tmp)>0.5d0+1.d-10) ) write(*,*) i,k,tmp
-          err = abs(sum((tmp-kbb(:,k))**2))
-          if ( err < 1.d-8 ) then
-             if ( disp ) write(*,'(1x,2i4,3f10.5,2x,3f10.5)') k,i,kbb(:,k),tmp(:)
-             j=j+1
-             kgroup_mat(:,:,j,k)=sym_mat(:,:,i)
-          end if
-       end do ! i
-       kgroup_g(k)=j
-       if ( disp ) write(*,*) "# of kgroup elements =",j,k
-       call chk_grp( kgroup_mat(:,:,1:j,k), basis )
+      j=0
+      do i=1,size(sym_mat,3)
+        tmp(:) = matmul( kbb(:,k), sym_mat(:,:,i) )
+        if ( any(abs(tmp)>0.5d0+1.d-10) ) write(*,*) i,k,tmp
+        err = abs(sum((tmp-kbb(:,k))**2))
+        if ( err < 1.d-8 ) then
+          if ( disp ) write(*,'(1x,2i4,3f10.5,2x,3f10.5)') k,i,kbb(:,k),tmp(:)
+          j=j+1
+          kgroup_mat(:,:,j,k)=sym_mat(:,:,i)
+        end if
+      end do ! i
+      kgroup_g(k)=j
+      if ( disp ) write(*,*) "# of kgroup elements =",j,k
+      call chk_grp( kgroup_mat(:,:,1:j,k), basis )
     end do ! k
-
-  END SUBROUTINE construct_kgroup
+  end subroutine construct_kgroup
 
 
   SUBROUTINE chk_grp( rga, aa )
@@ -121,13 +120,12 @@ CONTAINS
   END SUBROUTINE chk_grp
 
 
-
-  SUBROUTINE set_fcc_sym( mat, vec )
+  subroutine set_fcc_sym( mat, vec )
     implicit none
     integer,allocatable :: mat(:,:,:)
-    real(8),intent(OUT) :: vec(3,3)
+    real(8),intent(out) :: vec(3,3)
     integer :: tmp(3,3),i,j
-    allocate( mat(3,3,48) ) ; mat=0
+    allocate( mat(3,3,48) ); mat=0
     mat(:,:, 1)=reshape( (/   1,  0,  0,   0,  1,  0,   0,  0,  1 /),(/3,3/) ) 
     mat(:,:, 2)=reshape( (/  -1, -1, -1,   0,  0,  1,   0,  1,  0 /),(/3,3/) ) 
     mat(:,:, 3)=reshape( (/   0,  0,  1,  -1, -1, -1,   1,  0,  0 /),(/3,3/) ) 
@@ -177,24 +175,20 @@ CONTAINS
     mat(:,:,47)=reshape( (/   1,  0,  0,  -1, -1, -1,   0,  0,  1 /),(/3,3/) )
     mat(:,:,48)=reshape( (/   0,  1,  0,   0,  0,  1,  -1, -1, -1 /),(/3,3/) )
     do i=1,size(mat,3)
-       tmp(:,:)=mat(:,:,i)
-       mat(:,:,i)=transpose( tmp(:,:) )
+      tmp(:,:)=mat(:,:,i)
+      mat(:,:,i)=transpose( tmp(:,:) )
     end do
     vec(:,1)=(/ 0.0d0,  0.5d0,  0.5d0 /)
     vec(:,2)=(/ 0.5d0,  0.0d0,  0.5d0 /)
     vec(:,3)=(/ 0.5d0,  0.5d0,  0.0d0 /)
-!    write(20,*) size(mat,3),1
-!    do i=1,size(mat,3)
-!       write(20,'(3(1x,3i3),2x,3i3)') (mat(j,:,i),j=1,3),0,0,0
-!    end do
-  END SUBROUTINE set_fcc_sym
+  end subroutine set_fcc_sym
 
-  SUBROUTINE set_hexagonal_sym( mat, vec )
+  subroutine set_hexagonal_sym( mat, vec )
     implicit none
     integer,allocatable :: mat(:,:,:)
-    real(8),intent(OUT) :: vec(3,3)
+    real(8),intent(out) :: vec(3,3)
     integer :: tmp(3,3),i
-    allocate( mat(3,3,24) ) ; mat=0
+    allocate( mat(3,3,24) ); mat=0
     mat(:,:, 1)=reshape( (/ 1, 0, 0,  0, 1, 0,  0, 0, 1 /),(/3,3/) ) ! (+a,+b,+c)
     mat(:,:, 2)=reshape( (/-1,-1, 0,  0, 1, 0,  0, 0, 1 /),(/3,3/) ) ! (-a-b,+b,+c)
     mat(:,:, 3)=reshape( (/-1, 0, 0,  1, 1, 0,  0, 0, 1 /),(/3,3/) ) ! (-a,+a+b,+c)
@@ -220,13 +214,13 @@ CONTAINS
     mat(:,:,23)=reshape( (/ 1, 0, 0, -1,-1, 0,  0, 0,-1 /),(/3,3/) ) ! (+a,-a-b,-c)
     mat(:,:,24)=reshape( (/ 0, 1, 0, -1,-1, 0,  0, 0,-1 /),(/3,3/) ) ! (+b,-a-b,-c)
     do i=1,size(mat,3)
-       tmp(:,:)=mat(:,:,i)
-       mat(:,:,i)=transpose( tmp(:,:) )
+      tmp(:,:)=mat(:,:,i)
+      mat(:,:,i)=transpose( tmp(:,:) )
     end do
     vec(:,1)=(/ sqrt(3.0d0)*0.5d0,  0.5d0, 0.0d0 /)
     vec(:,2)=(/ sqrt(3.0d0)*0.5d0, -0.5d0, 0.0d0 /)
     vec(:,3)=(/ 0.0d0            ,  0.0d0, 1.0d0 /)
-  END SUBROUTINE set_hexagonal_sym
+  end subroutine set_hexagonal_sym
 
 
   SUBROUTINE construct_kinetic_sym( sym_mat, k )
@@ -494,4 +488,4 @@ CONTAINS
   END SUBROUTINE get_mat_kinetic_sym_ini
 
 
-END MODULE kinetic_sym_ini_module
+end module kinetic_sym_ini_module

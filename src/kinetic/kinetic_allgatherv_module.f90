@@ -28,16 +28,16 @@ module kinetic_allgatherv_module
 contains
 
 
-  subroutine init_kinetic_allgatherv( Igrid_in, comm_in )
-
+  subroutine init_kinetic_allgatherv( Igrid_in )
+    use parallel_module, only: comm_grid
     implicit none
-    integer,intent(in) :: Igrid_in(1:2,0:3),comm_in
+    integer,intent(in) :: Igrid_in(1:2,0:3)
     integer :: n, i, ierr
     include 'mpif.h'
 
     call write_border( 0, "init_kinetic_allgatherv(start)" )
 
-    comm = comm_in 
+    comm = comm_grid
     call MPI_Comm_size( comm, n, ierr )
     allocate( ir_grid(0:n-1) ); ir_grid=0
     allocate( id_grid(0:n-1) ); id_grid=0

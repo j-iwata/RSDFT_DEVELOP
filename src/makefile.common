@@ -59,16 +59,19 @@ MODS1 = \
        rsdft_mpi_module.o\
        memory_module.o\
        omp_variables.o\
+       io_tools_module.o\
        parallel_module.o\
        communicator_module.o\
        rsdft_allreduce_module.o\
        rsdft_bcast_module.o\
-       io_tools_module.o\
        sl_variables.o\
        sl_tools_module.o\
        pinfo_module.o\
        lattice_module.o\
+       aa_module.o\
+       symmetry_module.o\
        cif_format_module.o\
+       vasp_format_module.o\
        atom_module.o\
        rgrid_variables.o\
        info_module.o\
@@ -76,8 +79,6 @@ MODS1 = \
        expint_module.o\
        watch_module.o\
        fd_module.o\
-       aa_module.o\
-       symmetry_module.o\
        bz_module.o\
        eigenvalues_module.o\
        ewald_variables.o\

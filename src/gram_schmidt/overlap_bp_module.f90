@@ -9,7 +9,7 @@ module overlap_bp_module
   public :: calc_overlap_bp
 
   interface calc_overlap_bp
-     module procedure d_calc_overlap_bp
+    module procedure d_calc_overlap_bp, z_calc_overlap_bp
   end interface
 
   integer :: comm_g, nprocs_g, myrank_g
@@ -68,7 +68,7 @@ contains
     integer,allocatable :: icheck_s(:,:,:,:),icheck_r(:,:,:,:),irank(:,:)
     integer,allocatable :: ir_gp(:),id_gp(:)
 
-!    call write_border( 1, "d_calc_overlap_bp(start)" )
+    ! call write_border( 1, "d_calc_overlap_bp(start)" )
 
     m     = size( u, 1 )    ! grid size ( local )
     n     = size( u, 2 )    ! band size ( local )
@@ -81,26 +81,24 @@ contains
     allocate( w(m,n) ); w=zero
     allocate( b(m,n) ); b=zero
 
-! ---
-
+    ! ---
+    !
     allocate( irank_s(nstep) ); irank_s=0
     allocate( irank_r(nstep) ); irank_r=0
-
+    !
     if ( UPLO == "L" .or. UPLO == "l" ) then
-       do istep=1,nstep
-          irank_s(istep) = mod( myrank_b-istep+np, np )
-          irank_r(istep) = mod( myrank_b+istep   , np )
-       end do
+      do istep=1,nstep
+        irank_s(istep) = mod( myrank_b-istep+np, np )
+        irank_r(istep) = mod( myrank_b+istep   , np )
+      end do
     else if ( UPLO == "U" .or. UPLO == "u" ) then
-       do istep=1,nstep
-          irank_r(istep) = mod( myrank_b-istep+np, np )
-          irank_s(istep) = mod( myrank_b+istep   , np )
-       end do
+      do istep=1,nstep
+        irank_r(istep) = mod( myrank_b-istep+np, np )
+        irank_s(istep) = mod( myrank_b+istep   , np )
+      end do
     end if
-!    write(*,'(1x,"s",i2,2x,10i2)') myrank_b,irank_s
-!    write(*,'(1x,"r",i2,2x,10i2)') myrank_b,irank_r
-
-! ---
+    !
+    ! ---
 
     nb0 = id_bp(myrank_b) + 1
     nb1 = nb0 + ir_bp(myrank_b) - 1
@@ -115,12 +113,9 @@ contains
 
     call MPI_Comm_size( MPI_COMM_WORLD, nprocs, ierr )
     call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
-!    write(*,*) "mb0_0,mb0_1",mb0_0,mb1_0,myrank
-!    write(*,*) "size(Ssub)",size(Ssub,1),size(Ssub,2)
-!    call stop_program("")
 
-    allocate( Stmp(n,n) ); Stmp=0.0d0
-    allocate( Sgp(mb0_0:mb1_0,nb0:nb1) ); Sgp=0.0d0
+    allocate( Stmp(n,n) ); Stmp=zero
+    allocate( Sgp(mb0_0:mb1_0,nb0:nb1) ); Sgp=zero
 
 ! ---
 
@@ -133,36 +128,36 @@ contains
 
     do istep=0,nstep
 
-       w(:,:) = b(:,:)  ! --> same size as u(:,:) the wave function
+      w(:,:) = b(:,:)  ! --> same size as u(:,:) the wave function
 
-       if ( istep < nstep ) then
-          call MPI_Irecv( b,size(b),MPI_REAL8,irank_r(1),itag,comm2,ireq(1),ierr )
-          call MPI_Isend( w,size(w),MPI_REAL8,irank_s(1),itag,comm2,ireq(2),ierr )
-       end if
+      if ( istep < nstep ) then
+        call MPI_Irecv( b,size(b),MPI_REAL8,irank_r(1),itag,comm2,ireq(1),ierr )
+        call MPI_Isend( w,size(w),MPI_REAL8,irank_s(1),itag,comm2,ireq(2),ierr )
+      end if
 
-       if ( istep == 0 ) then
-          call DSYRK( UPLO, 'T', n, m, dV, u, m, zero, Stmp, size(Stmp,1) )
-       else
-          call DGEMM( 'T', 'N', n, n, m, dV, w, m, u, m, zero, Stmp, size(Stmp,1) )
-       end if
+      if ( istep == 0 ) then
+        call DSYRK( UPLO, 'T', n, m, dV, u, m, zero, Stmp, size(Stmp,1) )
+      else
+        call DGEMM( 'T', 'N', n, n, m, dV, w, m, u, m, zero, Stmp, size(Stmp,1) )
+      end if
 
-       call MPI_Allreduce(MPI_IN_PLACE,Stmp,size(Stmp),MPI_REAL8,MPI_SUM,comm1,ierr) 
+      call MPI_Allreduce(MPI_IN_PLACE,Stmp,size(Stmp),MPI_REAL8,MPI_SUM,comm1,ierr) 
 
-       do j=1,n
-       do i=1,n
-          i0=ir +i-1
-          j0=nb0+j-1
-          if ( mb0_0 <= i0 .and. i0 <= mb1_0 ) Sgp(i0,j0)=Stmp(i,j)
-       end do
-       end do
+      do j=1,n
+      do i=1,n
+        i0=ir +i-1
+        j0=nb0+j-1
+        if ( mb0_0 <= i0 .and. i0 <= mb1_0 ) Sgp(i0,j0)=Stmp(i,j)
+      end do
+      end do
 
-       if ( UPLO == "L" .or. UPLO == "l" ) then
-          ir=ir+n ; if ( ir > nband ) ir=ir-nband
-       else if ( UPLO == "U" .or. UPLO == "u" ) then
-          ir=ir-n ; if ( ir < 1 ) ir=ir+nband
-       end if
+      if ( UPLO == "L" .or. UPLO == "l" ) then
+        ir=ir+n ; if ( ir > nband ) ir=ir-nband
+      else if ( UPLO == "U" .or. UPLO == "u" ) then
+        ir=ir-n ; if ( ir < 1 ) ir=ir+nband
+      end if
 
-       if ( istep < nstep ) call mpi_waitall( 2, ireq, istatus, ierr )
+      if ( istep < nstep ) call mpi_waitall( 2, ireq, istatus, ierr )
 
     end do ! istep
 
@@ -192,85 +187,61 @@ contains
     is_min=nband
     is_max=1
     do i=mb0_0,mb1_0
-       if ( i < nb0 ) then
-          if ( any(Sgp(i,:)==0.0d0) ) then
-             ir=ir+1
-             ir_min=min(ir_min,i)
-             ir_max=max(ir_max,i)
-          end if
-       end if
-       if ( i > nb1 ) then
-          if ( any(Sgp(i,:)/=0.0d0) ) then
-             is=is+1
-             is_min=min(is_min,i)
-             is_max=max(is_max,i)
-          end if
-       end if
+      if ( i < nb0 ) then
+        if ( any(Sgp(i,:)==0.0d0) ) then
+            ir=ir+1
+            ir_min=min(ir_min,i)
+            ir_max=max(ir_max,i)
+        end if
+      end if
+      if ( i > nb1 ) then
+        if ( any(Sgp(i,:)/=0.0d0) ) then
+            is=is+1
+            is_min=min(is_min,i)
+            is_max=max(is_max,i)
+        end if
+      end if
     end do
 
     if ( ir == 0 ) then
-       ir_min=0
-       ir_max=0
+      ir_min=0
+      ir_max=0
     end if
     if ( is == 0 ) then
-       is_min=0
-       is_max=0
+      is_min=0
+      is_max=0
     end if
-
-!    write(*,'(1x,i4,3x,"(ir)",3i6,3x,"(is)",3i6)') &
-!         myrank,ir,ir_min,ir_max,is,is_min,is_max
 
     allocate( icheck_s(0:np1-1,0:np-1,4,0:nprocs-1) ); icheck_s=0
     allocate( icheck_r(0:np1-1,0:np-1,4,0:nprocs-1) ); icheck_r=0
 
     if ( is_min > 1 ) then
-       do jp=0,nprocs_b-1
-          j0=id_bp(jp)+1
-          j1=id_bp(jp)+ir_bp(jp)-1
-       do ip=0,nprocs_g-1
-          i0=id_gp(ip)+1
-          i1=id_gp(ip)+ir_gp(ip)-1
-          do is=is_min,is_max
-             if ( j0 <= is .and. is <= j1 ) then
-                do js=nb0,nb1
-                   if ( i0 <= js .and. js <= i1 ) then
-!                      write(*,'(1x,2i4,2x,3i4,2x,3i4,2x,i4)') &
-!                           is,js,ip,i0,i1,jp,j0,j1,myrank
-                      if ( icheck_s(ip,jp,1,myrank) == 0 ) then
-                         icheck_s(ip,jp,1,myrank)=is
-                         icheck_s(ip,jp,3,myrank)=js
-                      end if
-                      icheck_s(ip,jp,2,myrank)=is
-                      icheck_s(ip,jp,4,myrank)=js
-                   end if
-                end do
-             end if
-          end do
-       end do
-       end do
+      do jp=0,nprocs_b-1
+        j0=id_bp(jp)+1
+        j1=id_bp(jp)+ir_bp(jp)-1
+      do ip=0,nprocs_g-1
+        i0=id_gp(ip)+1
+        i1=id_gp(ip)+ir_gp(ip)-1
+        do is=is_min,is_max
+          if ( j0 <= is .and. is <= j1 ) then
+            do js=nb0,nb1
+              if ( i0 <= js .and. js <= i1 ) then
+                if ( icheck_s(ip,jp,1,myrank) == 0 ) then
+                  icheck_s(ip,jp,1,myrank)=is
+                  icheck_s(ip,jp,3,myrank)=js
+                end if
+                icheck_s(ip,jp,2,myrank)=is
+                icheck_s(ip,jp,4,myrank)=js
+              end if
+            end do !js
+          end if
+        end do !is
+      end do !ip
+      end do !jp
     end if
 
     call MPI_Allreduce( icheck_s, icheck_r, size(icheck_r), MPI_INTEGER &
          , MPI_SUM, MPI_COMM_WORLD, ierr )
-
-!    do jp=0,np-1
-!       do ip=0,np1-1
-!          if ( icheck_s(ip,jp,1,myrank) /= 0 ) then
-!             write(*,'(1x,"s",9i4)') ip,jp,icheck_s(ip,jp,:,myrank),myrank
-!          end if
-!       end do
-!    end do
-
-!    ip=myrank_g
-!    jp=myrank_b
-!    do i=0,nprocs-1
-!       if ( icheck_r(ip,jp,1,i) /= 0 ) then
-!          write(*,'(1x,"r",9i4)') ip,jp,icheck_r(ip,jp,:,i),i,myrank
-!       end if
-!    end do
-
-!    write(*,*) count(Sgp/=0.0d0),myrank
-!    call stop_program("")
 
     me1=myrank_g
     me2=myrank_b
@@ -284,59 +255,47 @@ contains
 
     do jp=0,np-1
     do ip=0,np1-1
-       do inp=0,nprocs-1
+      do inp=0,nprocs-1
+        k=0
+        if ( inp==myrank .and. icheck_s(ip,jp,1,inp)/=0 ) then
+          i0=icheck_s(ip,jp,1,inp)
+          i1=icheck_s(ip,jp,2,inp)
+          j0=icheck_s(ip,jp,3,inp)
+          j1=icheck_s(ip,jp,4,inp)
           k=0
-          if ( inp==myrank .and. icheck_s(ip,jp,1,inp)/=0 ) then
-             i0=icheck_s(ip,jp,1,inp)
-             i1=icheck_s(ip,jp,2,inp)
-             j0=icheck_s(ip,jp,3,inp)
-             j1=icheck_s(ip,jp,4,inp)
-             k=0
-             do j=j0,j1
-             do i=i0,i1
-                k=k+1
-                buff(k)=Sgp(i,j)
-             end do
-             end do
-             call MPI_Isend(buff,k,MPI_REAL8,irank(ip,jp),1,MPI_COMM_WORLD,ireq(1),ierr)
-!             write(*,*) "isend",ip,jp,myrank,irank(ip,jp)
-          end if
-          if ( ip==me1 .and. jp==me2 .and. icheck_r(ip,jp,1,inp)/=0 ) then
-             i0=icheck_r(ip,jp,1,inp)
-             i1=icheck_r(ip,jp,2,inp)
-             j0=icheck_r(ip,jp,3,inp)
-             j1=icheck_r(ip,jp,4,inp)
-             k=(i1-i0+1)*(j1-j0+1)
-             call MPI_Irecv(buff,k,MPI_REAL8,inp,1,MPI_COMM_WORLD,ireq(1),ierr)
-!             write(*,*) "irecv",ip,jp,inp,myrank
-          end if
-          if ( k > 0 ) call MPI_Wait(ireq(1),istatus,ierr)
-          if ( ip==me1 .and. jp==me2 .and. icheck_r(ip,jp,1,inp)/=0 ) then
-             i0=icheck_r(ip,jp,1,inp)
-             i1=icheck_r(ip,jp,2,inp)
-             j0=icheck_r(ip,jp,3,inp)
-             j1=icheck_r(ip,jp,4,inp)
-!             write(*,'("aaa",16i4)') j0,j1,i0,i1,myrank,count(Sgp(j0:j1,i0:i1)/=0.0d0),count(b(j0:j1,i0:i1)/=0.0d0),count(b/=0.0d0),mb0_0,mb1_0,nb0,nb1
-!             do i=i0,i1
-!             do j=j0,j1
-!                k=1+(i-i0)+(i1-i0+1)*(j-j0)
-!                Sgp(j,i)=buff(k)
-!             end do
-!             end do
-             k=0
-             do j=j0,j1
-             do i=i0,i1
-                k=k+1
-                Sgp(j,i)=buff(k)
-             end do
-             end do
-          end if
-       end do
-    end do
-    end do
-
-!    write(*,*) count(Sgp/=0.0d0),myrank
-!    call stop_program("")
+          do j=j0,j1
+          do i=i0,i1
+            k=k+1
+            buff(k)=Sgp(i,j)
+          end do
+          end do
+          call MPI_Isend(buff,k,MPI_REAL8,irank(ip,jp),1,MPI_COMM_WORLD,ireq(1),ierr)
+        end if
+        if ( ip==me1 .and. jp==me2 .and. icheck_r(ip,jp,1,inp)/=0 ) then
+          i0=icheck_r(ip,jp,1,inp)
+          i1=icheck_r(ip,jp,2,inp)
+          j0=icheck_r(ip,jp,3,inp)
+          j1=icheck_r(ip,jp,4,inp)
+          k=(i1-i0+1)*(j1-j0+1)
+          call MPI_Irecv(buff,k,MPI_REAL8,inp,1,MPI_COMM_WORLD,ireq(1),ierr)
+        end if
+        if ( k > 0 ) call MPI_Wait(ireq(1),istatus,ierr)
+        if ( ip==me1 .and. jp==me2 .and. icheck_r(ip,jp,1,inp)/=0 ) then
+          i0=icheck_r(ip,jp,1,inp)
+          i1=icheck_r(ip,jp,2,inp)
+          j0=icheck_r(ip,jp,3,inp)
+          j1=icheck_r(ip,jp,4,inp)
+          k=0
+          do j=j0,j1
+          do i=i0,i1
+            k=k+1
+            Sgp(j,i)=buff(k)
+          end do
+          end do
+        end if
+      end do
+    end do !ip
+    end do !jp
 
     deallocate( buff )
     deallocate( irank )
@@ -345,23 +304,16 @@ contains
 
 ! ---
 
-#ifdef test
-
-    allocate( S(nband,nband) ) ; S=zero
-    call mochikae( UPLO,comm1,comm2,nband,mb0_0,mb1_0,nb0,nb1,Sgp,S )
-    call d_distribute_matrix( sl, S, Ssub )
-    deallocate( S )
-
-#else
-
-!    allocate( S(nband,nband) ) ; S=zero
-!    call mochikae( UPLO,comm1,comm2,nband,mb0_0,mb1_0,nb0,nb1,Sgp,S )
-!    deallocate( S )
-
-    !call d_distribute_matrix_2( sl, nband,nband, mb0_0,mb1_0,nb0,nb1, Sgp, Ssub )
+    ! --- (1)
+    ! allocate( S(nband,nband) ) ; S=zero
+    ! call mochikae( UPLO,comm1,comm2,nband,mb0_0,mb1_0,nb0,nb1,Sgp,S )
+    ! deallocate( S )
+    !
+    ! --- (2)
+    ! call d_distribute_matrix_2( sl, nband,nband, mb0_0,mb1_0,nb0,nb1, Sgp, Ssub )
+    !
+    ! --- (3)
     call d_distribute_matrix_3( sl, nband,nband, mb0_0,mb1_0,nb0,nb1, Sgp, Ssub )
-
-#endif
 
     deallocate( Sgp )
 
@@ -377,11 +329,11 @@ contains
     integer :: i,ip
     ir_out=0.0d0
     do i=1,m
-       ip=mod(i-1,np)
-       ir_out(ip)=ir_out(ip)+1
+      ip=mod(i-1,np)
+      ir_out(ip)=ir_out(ip)+1
     end do
     do ip=0,np-1
-       id_out(ip)=sum(ir_out(0:ip))-ir_out(ip)
+      id_out(ip)=sum(ir_out(0:ip))-ir_out(ip)
     end do
   end subroutine load_div
 
@@ -553,5 +505,13 @@ contains
 !    call write_border( 1, "mochikae(end)" )
   END SUBROUTINE mochikae
 
+  subroutine z_calc_overlap_bp( Ssub, u, sl, UPLO )
+    implicit none
+    complex(8),intent(inout) :: Ssub(:,:)
+    complex(8),intent(inout) :: u(:,:)
+    type(slinfo),intent(in)  :: sl
+    character(1),intent(in)  :: UPLO
+    call stop_program('z_calc_overlap_bp is not implemented')
+  end subroutine z_calc_overlap_bp
 
 end module overlap_bp_module

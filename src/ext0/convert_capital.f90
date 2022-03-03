@@ -32,3 +32,24 @@ SUBROUTINE convert_to_capital( CKEY )
   end do
 
 END SUBROUTINE convert_to_capital
+
+
+subroutine convert_to_capital_array( ndata, CKEY )
+
+  implicit none
+  integer,intent(in) :: ndata
+  character(*),intent(inout) :: CKEY(ndata)
+  integer :: j,k,n,idata
+
+  do idata = 1, ndata
+
+    n = len_trim( CKEY(idata) )
+    do j = 1, n
+      k = iachar( CKEY(idata)(j:j) )
+      if ( k >= 97 ) k=k-32
+      CKEY(idata)(j:j) = achar(k)
+    end do
+
+  end do
+
+end subroutine convert_to_capital_array

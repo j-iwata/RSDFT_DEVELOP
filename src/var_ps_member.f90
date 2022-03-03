@@ -18,7 +18,7 @@ MODULE var_ps_member
   integer,PUBLIC :: Nelement_PP
   integer,PUBLIC :: Nelement_
   integer,allocatable,PUBLIC :: ippform(:)
-  character(30),allocatable,PUBLIC :: file_ps(:)
+  character(100),allocatable,PUBLIC :: file_ps(:)
   real(8),allocatable,PUBLIC :: rad(:,:),rab(:,:),rad1(:,:)
   real(8),allocatable,PUBLIC :: rabr2(:,:)
   real(8),allocatable,PUBLIC :: vql(:,:),viod(:,:,:)

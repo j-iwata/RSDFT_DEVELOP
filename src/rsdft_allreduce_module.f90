@@ -8,13 +8,50 @@ module rsdft_allreduce_module
   interface rsdft_allreduce
     module procedure d_rsdft_allreduce_0 &
                     ,d_rsdft_allreduce_1, z_rsdft_allreduce_1 &
-                    ,d_rsdft_allreduce_2, z_rsdft_allreduce_2
+                    ,d_rsdft_allreduce_2, z_rsdft_allreduce_2 &
+                    ,i_rsdft_allreduce_1, i_rsdft_allreduce_2
   end interface rsdft_allreduce
 
   integer :: n_opt, n_opt_h
 
 contains
 
+  subroutine i_rsdft_allreduce_1( a, comm )
+    implicit none
+    integer,intent(inout) :: a(:)
+    character(*),optional,intent(in) :: comm
+    integer :: communicator,n,ierr
+    integer,allocatable :: b(:)
+    include 'mpif.h'
+    communicator = MPI_COMM_WORLD
+    if ( present(comm) ) communicator = set_communicator( comm )
+    n=size(a)
+#ifdef _NO_MPI_INPLACE_
+    allocate( b(n) ); b=a
+    call MPI_Allreduce( b, a, n, MPI_INTEGER, MPI_SUM, communicator, ierr )
+#else
+    call MPI_Allreduce( MPI_IN_PLACE,a,n,MPI_INTEGER,MPI_SUM,communicator,ierr )
+#endif
+  end subroutine i_rsdft_allreduce_1
+
+  subroutine i_rsdft_allreduce_2( a, comm )
+    implicit none
+    integer,intent(inout) :: a(:,:)
+    character(*),optional,intent(in) :: comm
+    integer :: communicator,n,ierr
+    integer,allocatable :: b(:,:)
+    include 'mpif.h'
+    communicator = MPI_COMM_WORLD
+    if ( present(comm) ) communicator = set_communicator( comm )
+    n=size(a)
+#ifdef _NO_MPI_INPLACE_
+    allocate( b(size(a,1),size(a,2)) ); b=a
+    call MPI_Allreduce( b, a, n, MPI_INTEGER, MPI_SUM, communicator, ierr )
+#else
+    call MPI_Allreduce( MPI_IN_PLACE,a,n,MPI_INTEGER,MPI_SUM,communicator,ierr )
+#endif
+  end subroutine i_rsdft_allreduce_2
+  
   subroutine d_rsdft_allreduce_0( a, comm )
     implicit none
     real(8),intent(inout) :: a

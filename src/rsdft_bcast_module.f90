@@ -5,141 +5,263 @@ module rsdft_bcast_module
   implicit none
 
   private
-  public :: l_rsdft_bcast
-  public :: i_rsdft_bcast
-  public :: d_rsdft_bcast
-  public :: z_rsdft_bcast
+  public :: l_rsdft_bcast, l_rsdft_bcast_tmp
+  public :: i_rsdft_bcast, i_rsdft_bcast_tmp
+  public :: d_rsdft_bcast, d_rsdft_bcast_tmp
+  public :: z_rsdft_bcast_tmp
   public :: test_bcast
 
   integer :: n_opt = 1024
   integer :: n_opt_h = 1024
 
   interface l_rsdft_bcast
-    module procedure l_rsdft_bcast_sca, l_rsdft_bcast_vec
+    module procedure l_rsdft_bcast_0, l_rsdft_bcast_1
   end interface l_rsdft_bcast
 
   interface i_rsdft_bcast
-    module procedure i_rsdft_bcast_sca, i_rsdft_bcast_vec
+    module procedure i_rsdft_bcast_0, i_rsdft_bcast_1
   end interface i_rsdft_bcast
-  
+
+  interface d_rsdft_bcast
+    module procedure d_rsdft_bcast_0, d_rsdft_bcast_1
+  end interface d_rsdft_bcast
 
 contains
 
-  subroutine l_rsdft_bcast_sca( a, n, root, comm_in )
+  subroutine l_rsdft_bcast_0( a, root, comm_chr, comm_int )
     implicit none
-    integer,intent(in) :: n, root
     logical,intent(inout) :: a
-    integer,optional,intent(in) :: comm_in
-    integer :: m,i,type,comm,ierr
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: n,type,comm,ierr,rt
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_LOGICAL
-    comm = MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
-    call MPI_Bcast(a,1,type,root,comm,ierr); return
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = 1
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
 #endif
-  end subroutine l_rsdft_bcast_sca
+  end subroutine l_rsdft_bcast_0
 
-  subroutine l_rsdft_bcast_vec( a, n, root, comm_in )
+  subroutine l_rsdft_bcast_1( a, root, comm_chr, comm_int )
     implicit none
-    integer,intent(in) :: n, root
+    logical,intent(inout) :: a(:)
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,n,i,type,comm,ierr,rt
+#ifndef _NOMPI_
+    include 'mpif.h'
+    type = MPI_LOGICAL
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
+    do i = 1, n, n_opt
+      m = min( n-i+1, n_opt )
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
+    end do
+#endif
+  end subroutine l_rsdft_bcast_1
+
+  subroutine l_rsdft_bcast_tmp( a, n, root, comm_chr, comm_int )
+    implicit none
+    integer,intent(in) :: n
     logical,intent(inout) :: a(n)
-    integer,optional,intent(in) :: comm_in
-    integer :: m,i,type,comm,ierr
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,i,type,comm,ierr,rt
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_LOGICAL
-    comm = MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
-    call MPI_Bcast(a,n,type,root,comm,ierr); return
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    ! n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
     do i = 1, n, n_opt
       m = min( n-i+1, n_opt )
-      call MPI_Bcast(a(i),m,type,root,comm,ierr)
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
     end do
 #endif
-  end subroutine l_rsdft_bcast_vec
+  end subroutine l_rsdft_bcast_tmp
 
-  subroutine i_rsdft_bcast_sca( a, n, root, comm_in )
+  subroutine i_rsdft_bcast_0( a, root, comm_chr, comm_int )
     implicit none
-    integer,intent(in) :: n, root
     integer,intent(inout) :: a
-    integer,optional,intent(in) :: comm_in
-    integer :: m,i,type,comm,ierr
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,n,i,type,comm,ierr,rt
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_INTEGER
-    comm = MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
-    call MPI_Bcast(a,1,type,root,comm,ierr); return
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = 1
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
 #endif
-  end subroutine i_rsdft_bcast_sca
+  end subroutine i_rsdft_bcast_0
 
-  subroutine i_rsdft_bcast_vec( a, n, root, comm_in )
+  subroutine i_rsdft_bcast_1( a, root, comm_chr, comm_int )
     implicit none
-    integer,intent(in) :: n, root
-    integer,intent(inout) :: a(n)
-    integer,optional,intent(in) :: comm_in
-    integer :: m,i,type,comm,ierr
+    integer,intent(inout) :: a(:)
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,n,i,type,comm,ierr,rt
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_INTEGER
-    comm = MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
-    call MPI_Bcast(a,n,type,root,comm,ierr); return
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
     do i = 1, n, n_opt
       m = min( n-i+1, n_opt )
-      call MPI_Bcast(a(i),m,type,root,comm,ierr)
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
     end do
 #endif
-  end subroutine i_rsdft_bcast_vec
-
-  subroutine d_rsdft_bcast( a, n, root, comm_in, comm_label )
+  end subroutine i_rsdft_bcast_1
+  
+  subroutine i_rsdft_bcast_tmp( a, n, root, comm_chr, comm_int )
     implicit none
-    integer,intent(in) :: n, root
-    real(8),intent(inout) :: a(n)
-    integer,optional,intent(in) :: comm_in
-    character(*),optional,intent(in) :: comm_label
-    integer :: m,i,type,comm,ierr
+    integer,intent(in) :: n
+    integer,intent(inout) :: a(n)
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,i,type,comm,ierr,rt
+#ifndef _NOMPI_
+    include 'mpif.h'
+    type = MPI_INTEGER
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    ! n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
+    do i = 1, n, n_opt
+      m = min( n-i+1, n_opt )
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
+    end do
+#endif
+  end subroutine i_rsdft_bcast_tmp
+
+
+  subroutine d_rsdft_bcast_0( a, root, comm_chr, comm_int )
+    implicit none
+    real(8),intent(inout) :: a
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,n,i,type,comm,ierr,rt
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_REAL8
     comm = MPI_COMM_WORLD
-    if ( present(comm_label) ) comm=set_communicator( comm_label )
-    if ( present(comm_in) ) comm=comm_in
-    call MPI_Bcast(a,n,type,root,comm,ierr); return
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = 1
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
+#endif
+  end subroutine d_rsdft_bcast_0
+
+  subroutine d_rsdft_bcast_1( a, root, comm_chr, comm_int )
+    implicit none
+    real(8),intent(inout) :: a(:)
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,n,i,type,comm,ierr,rt
+#ifndef _NOMPI_
+    include 'mpif.h'
+    type = MPI_REAL8
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
     do i = 1, n, n_opt
       m = min( n-i+1, n_opt )
-      call MPI_Bcast(a(i),m,type,root,comm,ierr)
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
     end do
 #endif
-  end subroutine d_rsdft_bcast
+  end subroutine d_rsdft_bcast_1
 
-  subroutine z_rsdft_bcast( a, n, root, comm_in )
+  subroutine d_rsdft_bcast_tmp( a, n, root, comm_chr, comm_int )
     implicit none
-    integer,intent(in) :: n, root
+    integer,intent(in) :: n
+    real(8),intent(inout) :: a(n)
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,i,type,comm,ierr,rt
+#ifndef _NOMPI_
+    include 'mpif.h'
+    type = MPI_REAL8
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    ! n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
+    do i = 1, n, n_opt
+      m = min( n-i+1, n_opt )
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
+    end do
+#endif
+  end subroutine d_rsdft_bcast_tmp
+
+
+  subroutine z_rsdft_bcast_tmp( a, n, root, comm_chr, comm_int )
+    implicit none
+    integer,intent(in) :: n
     complex(8),intent(inout) :: a(n)
-    integer,optional,intent(in) :: comm_in
-    integer :: m,i,type,comm,ierr
+    integer,optional,intent(in) :: root
+    character(*),optional,intent(in) :: comm_chr
+    integer,optional,intent(in) :: comm_int
+    integer :: m,i,type,comm,ierr,rt
 #ifndef _NOMPI_
     include 'mpif.h'
     type = MPI_COMPLEX16
-    comm = MPI_COMM_WORLD; if ( present(comm_in) ) comm=comm_in
-    call MPI_Bcast(a,n,type,root,comm,ierr); return
+    comm = MPI_COMM_WORLD
+    rt = 0
+    if ( present(comm_chr) ) comm = set_communicator( comm_chr )
+    if ( present(comm_int) ) comm = comm_int
+    if ( present(root) ) rt = root
+    ! n = size(a)
+    call MPI_Bcast(a,n,type,rt,comm,ierr); return
     do i = 1, n, n_opt
       m = min( n-i+1, n_opt )
-      call MPI_Bcast(a(i),m,type,root,comm,ierr)
+      call MPI_Bcast(a(i),m,type,rt,comm,ierr)
     end do
 #endif
-  end subroutine z_rsdft_bcast
+  end subroutine z_rsdft_bcast_tmp
 
-  ! subroutine z_rsdft_bcast(a,n,type,root,comm,ierr)
-  !   implicit none
-  !   integer,intent(in) :: n,type,root,comm
-  !   complex(8),intent(in) :: a(n)
-  !   integer,intent(out) :: ierr
-  !   integer :: m,i
-  !   call MPI_Bcast(a,n,type,root,comm,ierr) ; return
-  !   do i=1,n,n_opt_h
-  !     m=min(n-i+1,n_opt_h)
-  !     call MPI_Bcast(a(i),m,type,root,comm,ierr)
-  !   end do
-  ! end subroutine z_rsdft_bcast
 
   subroutine test_bcast
     implicit none

@@ -4,7 +4,7 @@
 SUBROUTINE setv( temp, Velocity )
 
   use atom_module, only: Natom, md_atom
-  use force_module, only: tim
+  use force_module, only: tim, init_force
   use calc_kine_temp_module, only: calc_temp
 
   implicit none
@@ -14,6 +14,7 @@ SUBROUTINE setv( temp, Velocity )
   real(8) :: temp_now,rescale,pi2,vtmp(3)
   real(8),allocatable :: r(:)
 
+  call init_force
   pi2=2.d0*acos(-1.d0)
   allocate( r(6*Natom) )
   call rnum(6*Natom,r)

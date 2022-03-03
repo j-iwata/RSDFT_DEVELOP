@@ -270,8 +270,10 @@ contains
 
     if ( .not.(all(pinfo0%np==1).or.all(pinfo1%np==pinfo0%np)) ) then
 
-       call read_wf_general &
-       ( pinfo0,pinfo1,ML1,ML2,ML3,MB_tmp,MBZ_tmp,MSP_tmp,MB,MBZ,MSP,type_wf )
+      if ( myrank == 0 ) close(3)
+
+      call read_wf_general &
+      ( pinfo0,pinfo1,ML1,ML2,ML3,MB_tmp,MBZ_tmp,MSP_tmp,MB,MBZ,MSP,type_wf )
 
     else
 

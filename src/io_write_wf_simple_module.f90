@@ -33,7 +33,7 @@ contains
 !    complex(8),optional,intent(in) :: wf_in(:,:,:,:)
 !#endif
     integer,optional,intent(in) :: MB_in, MB_0_in, MB_1_in
-    integer,parameter :: unit = 1
+    integer,parameter :: unit = 2
     integer :: i,i1,i2,i3,j1,j2,j3,k,n,s,n1,n2,n0,k0,s0
     integer :: istatus(MPI_STATUS_SIZE,123),irank,ierr
     integer,allocatable :: irc(:),ids(:)

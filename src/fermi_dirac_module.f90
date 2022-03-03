@@ -33,6 +33,8 @@ contains
     MB = size( occ, 1 )
     MBZ = size( occ, 2 )
     nspin = size( occ, 3 )
+    mb1 = 1
+    mb2 = MB
 
     flag=.false.
     if ( present(dspn) ) then
@@ -46,7 +48,6 @@ contains
        goto 100
     end if
 
-    mb2=MB
     loop_mb1: do mb1 = 1, MB
 
 ! Set upper & lower boundarires of Fermi energy

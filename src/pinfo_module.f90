@@ -13,8 +13,12 @@ contains
 
   subroutine init
     use io_tools_module, only: IOTools_parseInteger
+    use parallel_module, only: np=>node_partition
     implicit none
-    call IOTools_parseInteger( 'PROCS', node_partition )
+    if ( .not.allocated(node_partition) ) then
+      allocate( node_partition(size(np)) ); node_partition=1
+    end if
+    node_partition=np
     init_done = .true.
   end subroutine init
   

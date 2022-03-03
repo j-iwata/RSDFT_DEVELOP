@@ -1,363 +1,340 @@
 module gram_schmidt_luslbp_module
 
-  use io_tools_module
-  use sl_tools_module
-  use watch_module, only: timer => watchb, write_timer => write_watchb
-  use overlap_bp_module, only: init_overlap_bp, calc_overlap_bp
-  use dtrmm_bp_module, only: init_dtrmm_bp, dtrmm_bp
-  use rgrid_variables, only: dV
-  use parallel_module, only: comm_grid, comm_band
+  use sl_tools_module, only: slinfo
 
   implicit none
 
   private
   public :: gram_schmidt_luslbp
 
-  integer :: nband
-  integer :: myrank, nprocs
   integer :: icontxt_sys
   integer :: LDR,LDC
   character(1) :: UPLO='U'
 
-  logical :: has_init_done  = .false.
-  logical :: has_init1_done = .false.
-  logical :: has_init2_done = .false.
+  logical :: has_init_done = .false.
+  integer :: nb_backup = 0
 
   interface gram_schmidt_luslbp
-     module procedure d_gram_schmidt_luslbp
+    module procedure d_gram_schmidt_luslbp, z_gram_schmidt_luslbp
   end interface
-
-  real(8) :: time(2,0:9),ttmp(2)
-  character(10) :: tlabel(0:9)
 
   type(slinfo) :: sl
 
-  integer,external :: NUMROC
-
 contains
 
-  subroutine init1_lusl( n )
-
+  subroutine init_luslbp( n )
+    use sl_tools_module, only: restore_param_sl
+    use pinfo_module, only: get_world_rank_pinfo
+    use parallel_module, only: myrank_k, myrank_s, myrank
+    use io_tools_module, only: IOTools_readIntegerKeyword
     implicit none
     integer,intent(in) :: n
-    integer :: i,j,k,l,ierr
+    integer :: i,j,k,l,ierr,itmp(4)
     integer,allocatable :: usermap(:,:)
-    include 'mpif.h'
-    integer,parameter :: unit=90
+    integer,external :: NUMROC
 
-    if ( has_init1_done ) return
+    if ( has_init_done ) return
 
-!    call write_border( 1, " init1_lusl(start)" )
+    call write_border( 0, " init_luslbp(start)" )
 
-    call MPI_Comm_size( MPI_COMM_WORLD, nprocs, ierr )
-    call MPI_Comm_rank( MPI_COMM_WORLD, myrank, ierr )
-
-    sl%nprow=0
-    sl%npcol=0
+    sl%nprow =0
+    sl%npcol =0
     sl%mbsize=0
     sl%nbsize=0
 
-!    open( unit, file='lusl.in', status='old' )
-!    call IOTools_readIntegerKeyword( "NPROW" , sl%nprow, unit )
-!    call IOTools_readIntegerKeyword( "NPCOL" , sl%npcol, unit )
-!    call IOTools_readIntegerKeyword( "MBSIZE", sl%mbsize, unit )
-!    call IOTools_readIntegerKeyword( "NBSIZE", sl%nbsize, unit )
-!    call IOTools_readStringKeyword( "UPLO", UPLO, unit )
-!    close( unit )
+    call restore_param_sl( sl )
 
-    if( sl%nprow==0 .or. sl%npcol==0 .or. sl%mbsize==0 .or. sl%nbsize==0 )then
-       call restore_param_sl( sl )
-    end if
+    itmp = (/ sl%nprow, sl%npcol, sl%mbsize, sl%nbsize /)
+    call IOTools_readIntegerKeyword( "SCLGS", itmp )
 
     if( myrank == 0 )then
-       write(*,*) "sl%nprow=",sl%nprow
-       write(*,*) "sl%npcol=",sl%npcol
-       write(*,*) "sl%mbsize=",sl%mbsize
-       write(*,*) "sl%nbsize=",sl%nbsize
+      write(*,*) "sl%nprow =",sl%nprow
+      write(*,*) "sl%npcol =",sl%npcol
+      write(*,*) "sl%mbsize=",sl%mbsize
+      write(*,*) "sl%nbsize=",sl%nbsize
     end if
 
 ! ---
-
-    call blacs_get( 0, 0, icontxt_sys )
-
-    sl%icontxt_a = icontxt_sys
-
-    allocate( sl%map_1to2(2,0:nprocs-1) ); sl%map_1to2=0
 
     allocate( usermap(0:sl%nprow-1,0:sl%npcol-1) ); usermap=0
-    i=nprocs/(sl%nprow*sl%npcol)
-    do j=0,i-1
-       l=j*sl%nprow*sl%npcol
-       if ( myrank >= l ) k=l
+
+    k = get_world_rank_pinfo( 0,0,myrank_k,myrank_s ) - 1
+    do j = 0, sl%npcol-1
+      do i = 0, sl%nprow-1
+        k = k + 1
+        usermap(i,j) = k
+      end do
     end do
-    k=k-1
-    do i=0,sl%nprow-1
-    do j=0,sl%npcol-1
-       k=k+1   
-       usermap(i,j) = k
-       if ( k == myrank ) sl%map_1to2(1:2,k)=(/i,j/)
-    end do
-    end do
+
+    call blacs_get( 0, 0, icontxt_sys )
+    sl%icontxt_a = icontxt_sys
     call blacs_gridmap( sl%icontxt_a, usermap, sl%nprow, sl%nprow, sl%npcol )
-    deallocate( usermap )
 
-    call MPI_Allreduce( MPI_IN_PLACE, sl%map_1to2, size(sl%map_1to2) &
-                      , MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr )
-
-    allocate( sl%map_2to1(0:sl%nprow-1,0:sl%npcol-1) ); sl%map_2to1=0
-    do k=0,sl%nprow*sl%npcol-1
-       i=sl%map_1to2(1,k)
-       j=sl%map_1to2(2,k)
-       sl%map_2to1(i,j)=k
-    end do
-
-    call blacs_gridinfo( sl%icontxt_a, sl%nprow, sl%npcol, sl%myrow, sl%mycol )
-
-    LDR = NUMROC( n, sl%mbsize, sl%myrow, 0, sl%nprow )
-    LDC = NUMROC( n, sl%nbsize, sl%mycol, 0, sl%npcol )
-
-    call descinit( sl%desca,n,n,sl%mbsize,sl%nbsize,0,0,sl%icontxt_a,LDR,ierr )
-    call descinit( sl%descz,n,n,sl%mbsize,sl%nbsize,0,0,sl%icontxt_a,LDR,ierr )
-
-    has_init1_done = .true.
-
-!    call write_border( 1, " init1_lusl(end)" )
-
-  end subroutine init1_lusl
-
-
-  subroutine init2_lusl( n )
-    implicit none
-    integer,intent(in) :: n
-    integer,allocatable :: usermap(:,:)
-    integer :: i,j,k,mgs,mbs,ierr,npr,npc,myr,myc
-    integer :: np_grid, np_band
-    include 'mpif.h'
-
-    if ( has_init2_done ) return
-
-!    call write_border( 1, " init2_lusl(start)" )
-
-    call MPI_Comm_size( comm_grid, np_grid, ierr )
-    call MPI_Comm_size( comm_band, np_band, ierr )
-
-    allocate( usermap(np_grid,np_band) ); usermap=0
-
-    k=-1
-    do j=1,np_band
-    do i=1,np_grid
-       k=k+1
-       usermap(i,j)=k
-    end do
-    end do
-
-    sl%icontxt_b = icontxt_sys
-    call blacs_gridmap( sl%icontxt_b, usermap, np_grid, np_grid, np_band )
-    call blacs_gridinfo( sl%icontxt_b, npr,npc,myr,myc )
-
-    mgs = n/npr
-    mbs = n/npc
-
-    call descinit( sl%descb,n,n,mgs,mbs,0,0,sl%icontxt_b,mgs,ierr )
+    if( any(usermap==myrank) )then
+      call blacs_gridinfo( sl%icontxt_a, sl%nprow, sl%npcol, sl%myrow, sl%mycol )
+      LDR = NUMROC( n, sl%mbsize, sl%myrow, 0, sl%nprow )
+      LDC = NUMROC( n, sl%nbsize, sl%mycol, 0, sl%npcol )
+      call descinit( sl%desca,n,n,sl%mbsize,sl%nbsize,0,0,sl%icontxt_a,LDR,ierr )
+      call descinit( sl%descz,n,n,sl%mbsize,sl%nbsize,0,0,sl%icontxt_a,LDR,ierr )
+    end if
 
     deallocate( usermap )
 
-    has_init2_done = .true.
+    has_init_done = .true.
 
-!    call write_border( 1, " init2_lusl(end)" )
+    call write_border( 0, " init_luslbp(end)" )
 
-  end subroutine init2_lusl
+  end subroutine init_luslbp
 
 
-  subroutine get_nband( n, nb )
+  subroutine d_gram_schmidt_luslbp( u, dV )
+    use rsdft_allreduce_module, only: rsdft_allreduce
+    use sl_tools_module, only: distribute_matrix, gather_matrix
+    use parallel_module, only: get_range_parallel
+    use watch_module, only: watchb
+    use calc_overlap_gs_module, only: calc_overlap_gs
     implicit none
-    integer,intent(in) :: n
-    integer,intent(out) :: nb
-    integer :: ierr
-    include 'mpif.h'
-    call MPI_Allreduce(n,nb,1,MPI_INTEGER,MPI_SUM,comm_band,ierr)
-  end subroutine get_nband
-
-
-  subroutine d_gram_schmidt_luslbp( u )
-    implicit none
-    real(8),intent(inout)  :: u(:,:)
+    real(8),intent(inout) :: u(:,:)
+    real(8),intent(in) :: dV
     real(8),allocatable :: Ssub(:,:)
-    real(8),allocatable :: S(:,:),utmp(:,:)
-    real(8),parameter :: zero=0.0d0, one=1.0d0
-    integer :: m,n,ierr,i,j,k,it,n0,n1
-    integer,allocatable :: ipiv(:)
-!    real(8),allocatable :: T1(:,:),T2(:,:),T3(:,:),TT(:,:)
-!    real(8) :: check(3,3)
+    real(8),allocatable :: S(:,:),utmp(:,:),S1(:,:)
+    real(8),parameter :: z0=0.0d0, z1=1.0d0
+    integer :: ng,nb,i,n0,n1
+    character(3),parameter :: ON_OFF='off'
+    real(8) :: ttmp(2),tt(2,14),tini(2)
+    logical :: disp_on
+    integer :: j,i0,j0
 
-!    call write_border( 1, " d_gram_schmidt_luslbp(start)" )
+    call write_border( 1, " d_gram_schmidt_luslbp(start)" )
+    call check_disp_switch( disp_on, 0 )
 
-!    call timer( ttmp ); time(:,:)=0.0d0; it=0
+    tt=0.0d0; call watchb( ttmp, barrier=ON_OFF ); tini=ttmp
 
-    m = size( u, 1 )
-    n = size( u, 2 )
+    ng = size( u, 1 )
+    nb = size( u, 2 ) ! assuming nb is the whole band size
 
-    if ( .not.has_init_done ) then
-!       call get_nband( n, nband )
-       nband = n
-       call init1_lusl( nband )
-       call init2_lusl( nband )
-       call init_overlap_bp( m, n, dV, comm_grid, comm_band )
-       call init_dtrmm_bp( m, n, comm_grid, comm_band )
-       has_init_done = .true.
+    call get_range_parallel( n0, n1, 'b' )
+
+    if ( .not.has_init_done .or. nb /= nb_backup ) then
+      has_init_done = .false.
+      nb_backup = nb
+      call init_luslbp( nb )
     end if
-write(*,*) "nband",nband,n
-    call sl_block_map( n, n, sl )
 
-    allocate( S(nband,nband) ); S=zero
-    allocate( Ssub(LDR,LDC) ); Ssub=zero
+    allocate( Ssub(LDR,LDC) ); Ssub=z0
+    allocate( S(nb,nb) ); S=z0
 
-!    call timer( ttmp,time(:,it) ); tlabel(it)="ini3"; it=it+1
+    call watchb( ttmp, tt(:,1), barrier=ON_OFF )
 
-    call dsyrk( UPLO, 'C', n, m, one, u, m, zero, S, n )
-!    call calc_overlap( u, u, 1.0d0, S )
-!    call mpi_allreduce( mpi_in_place, S, size(S), mpi_real8, &
-!                        mpi_sum, v(1)%pinfo%comm, ierr )
+    ! --- (1)
+    ! call DSYRK( UPLO, 'C', nb, ng, dV, u, ng, z0, S, nb )
+    ! call watchb( ttmp, tt(:,2), barrier=ON_OFF )
+    ! call rsdft_allreduce( S, 'g' )
+    ! call watchb( ttmp, tt(:,3), barrier=ON_OFF )
+    ! call distribute_matrix( sl, S, Ssub )
+    ! call watchb( ttmp, tt(:,4), barrier=ON_OFF )
+    !
+    ! --- (2)
+    call calc_overlap_gs( nb, u(:,n0:n1), dV, S )
+    call watchb( ttmp, tt(:,2), barrier=ON_OFF )
+    call distribute_matrix( sl, S, Ssub )
+    call watchb( ttmp, tt(:,4), barrier=ON_OFF )
+    ! ---
 
-write(*,*) "S1",sum(S**2),count(S/=zero),size(S,2),nband
-    call calc_overlap_bp( Ssub, u, sl, UPLO )
-!write(*,'("Ssub",3i4,3f10.5)') myrank,LDR,LDC,Ssub
-S=zero
-call gather_matrix( sl, Ssub, S, sl%icontxt_a )
-write(*,*) "S2",sum(S**2),count(S/=zero),size(S,2),nband
-!do i=1,size(Ssub,1)
-!write(*,'("Ssub",2i3,2x,8f10.5)') myrank,i, (Ssub(i,j),j=1,size(Ssub,2))
-!end do
-!do i=1,size(S,1)
-!write(*,'("S   ",2i3,2x,8f10.5)') myrank,i, (S(i,j),j=1,size(S,2))
-!end do
-!call stop_program("aaa")
-
-!    call timer( ttmp,time(:,it) ); tlabel(it)="ovlp"; it=it+1
-
-!    call distribute_matrix( sl, S, Ssub )
-!    it=it+1 ; call timer( ttmp, time(:,it) ) ; tlabel(it)="dist"
-
-! ---
-!    allocate( T1(n,n) ) ; T1=0.0d0
-!    allocate( T2(n,n) ) ; T2=0.0d0
-!    allocate( T3(n,n) ) ; T3=0.0d0
-!    call gather_matrix( sl, Ssub, T1, sl%icontxt_a )
-! ---
-
-    call pdpotrf( UPLO, n, Ssub, 1, 1, sl%desca, ierr ) ! Cholesky factorization
-
-!    call gather_matrix( sl, Ssub, T2, sl%icontxt_a )
-
-!    call timer( ttmp,time(:,it) ); tlabel(it)="pdpotrf"; it=it+1
-
-    call pdtrtri( UPLO, 'N', n, Ssub, 1, 1, sl%desca, ierr )
-
-!    call gather_matrix( sl, Ssub, T3, sl%icontxt_a )
-
-!    call timer( ttmp,time(:,it) ); tlabel(it)="pdtrtri"; it=it+1
-
-! ---
-!    call clear_lu( "U", T2 )
-!    call clear_lu( "U", T3 )
-!    call check_lu( check(:,1), T1 )
-!    call check_lu( check(:,2), T2 )
-!    call check_lu( check(:,3), T3 )
-!    write(*,*) "S",check(:,1)
-!    write(*,*) "C",check(:,2)
-!    write(*,*) "B",check(:,3)
-!    allocate( TT(n,n) ) ; TT=0.0d0
-!    TT = matmul( T2, T3 )
-!    write(*,*) sum(TT)
-!    TT = transpose( T2 )
-!    T3 = matmul( TT, T2 )
-!    write(*,*) sum((T1-T3)**2)
-! ---
-
-#ifdef _TEST_
-    allocate( S(n,n) ) ; S=zero     !(a1)
-    call gather_matrix( sl, Ssub, S, sl%icontxt_a )
-    call timer( ttmp,time(:,it) ); tlabel(it)="gather"; it=it+1
-#ifdef _TEST_OLD_
-    allocate( utmp(m,size(u,2)) ); utmp=u
-    call reconstruct_allgatherv( utmp, v )
-    call timer( ttmp,time(:,it) ); tlabel(it)="gathe2"; it=it+1
-    if ( UPLO == 'U' .or. UPLO == 'u' ) then
-       call dtrmm( 'R', 'U', 'N', 'N', m, n, one, S, n, utmp, m )
-    else
-       call dtrmm( 'R', 'L', 'T', 'N', m, n, one, S, n, utmp, m )
-    end if
-    call timer( ttmp,time(:,it) ); tlabel(it)="dtrmm"; it=it+1
-    u(:,1:n1-n0+1) = utmp(:,n0:n1)
-    deallocate( utmp )
-#else
-    !call dtrmm_bp( UPLO, u, v, S )
-    call dtrmm_bp( UPLO, sl, u, v, Ssub, S )
-    call timer( ttmp, time(:,it) ); tlabel(it)="adtrmmbp"; it=it+1
-#endif
     deallocate( S )
-# else
 
-!write(*,*) "before dtrmm_bp",sum(Ssub**2),count(Ssub/=zero),sum(u**2)
-    call dtrmm_bp( UPLO, sl, u, Ssub )
-!write(*,*) "after dtrmm_bp",sum(Ssub**2),count(Ssub/=zero),sum(u**2)
-!call stop_program("bbb")
-!    call timer( ttmp,time(:,it) ); tlabel(it)="dtrmmbp"; it=it+1
+    call watchb( ttmp, tt(:,5), barrier=ON_OFF )
 
-#endif
+    call PDPOTRF( UPLO, nb, Ssub, 1, 1, sl%desca, i ) ! Cholesky factorization
 
-! ---
+    call watchb( ttmp, tt(:,6), barrier=ON_OFF )
 
-    !deallocate( sl%map_1to2 )
-    !deallocate( sl%map_2to1 )
+    call PDTRTRI( UPLO, 'N', nb, Ssub, 1, 1, sl%desca, i )
+
+    call watchb( ttmp, tt(:,7), barrier=ON_OFF )
+
+    ! ----- (1)
+    !
+    allocate( S(nb,nb) ); S=z0
+    call watchb( ttmp, tt(:,8), barrier=ON_OFF )
+    call gather_matrix( sl, Ssub, S, sl%icontxt_a )
+    call watchb( ttmp, tt(:,9), barrier=ON_OFF )
+    ! --- (1-1)
+    !
+    !(1)
+    !call DTRMM( 'R', 'U', 'N', 'N', ng, nb, z1, S, nb, u, ng )
+    !call watchb( ttmp, tt(:,11), barrier=ON_OFF )
+    !
+    !(2)
+    !allocate( utmp(ng,nb) ); utmp=u
+    !call watchb( ttmp, tt(:,10), barrier=ON_OFF )
+    !do i = n0, n1
+    !  u(:,i) = matmul( utmp(:,1:i), S(1:i,i) )
+    !end do
+    !call watchb( ttmp, tt(:,11), barrier=ON_OFF )
+    !deallocate( utmp )
+    !call watchb( ttmp, tt(:,12), barrier=ON_OFF )
+    !
+    !(3)
+    allocate( utmp(ng,n0:n1) ); utmp=z0
+    call watchb( ttmp, tt(:,10), barrier=ON_OFF )
+    call DGEMM('N','N',ng,n1-n0+1,nb,z1,u,ng,S(1,n0),nb,z0,utmp,ng)
+    call watchb( ttmp, tt(:,11), barrier=ON_OFF )
+    u(:,n0:n1)=utmp
+    deallocate( utmp )
+    call watchb( ttmp, tt(:,12), barrier=ON_OFF )
+    !
+    ! --- (1-2)
+    ! call dtrmm_bp( UPLO, sl, u, v, Ssub, S )
+    ! ---
+    deallocate( S )
+    !
+    ! ----- (2)
+    ! call dtrmm_bp( UPLO, sl, u, Ssub )
+    !
+    ! -----
+
     deallocate( Ssub )
 
-!    call blacs_gridexit( sl%icontxt_a )
+    call watchb( ttmp, tt(:,13), barrier=ON_OFF )
+    tt(:,14) = ttmp - tini
 
-!    call timer( ttmp, time(:,it) ); tlabel(it)="finalize"; it=it+1
+    ! if ( disp_on ) then
+    !   do i = 1, 13
+    !     write(*,'(1x,"time_d_gs_luslbp(",i3.3,")=",2f12.5)') i,tt(:,i)
+    !   end do
+    !   write(*,'(1x,"time_d_gs_luslbp(tot)=",2f12.5)') tt(:,14)
+    ! end if
 
-!    call write_timer( time(:,0:it-1), it-1, tlabel(0:it-1) )
-write(*,*) sum(u**2)*dv,myrank
     call write_border( 1, " d_gram_schmidt_luslbp(end)" )
 
   end subroutine d_gram_schmidt_luslbp
 
 
-  subroutine check_lu( check, T )
+  subroutine z_gram_schmidt_luslbp( u, dV )
+    use rsdft_allreduce_module, only: rsdft_allreduce
+    use sl_tools_module, only: distribute_matrix, gather_matrix
+    use parallel_module, only: get_range_parallel
+    use watch_module, only: watchb
+    use calc_overlap_gs_module, only: calc_overlap_gs
     implicit none
-    real(8),intent(out) :: check(3)
-    real(8),intent(in)  :: T(:,:)
-    integer :: i,j
-    do j=1,size(T,2)
-    do i=1,size(T,1)
-       if ( i <  j ) check(1)=check(1)+abs( T(i,j) )
-       if ( j <  i ) check(2)=check(2)+abs( T(i,j) )
-       if ( i == j ) check(3)=check(3)+abs( T(i,j) )
-    end do
-    end do
-  end subroutine check_lu
+    complex(8),intent(inout) :: u(:,:)
+    real(8),intent(in) :: dV
+    complex(8),allocatable :: Ssub(:,:)
+    complex(8),allocatable :: S(:,:),utmp(:,:),S1(:,:)
+    complex(8),parameter :: z0=(0.0d0,0.0d0), z1=(1.0d0,0.0d0)
+    complex(8) :: zdV
+    integer :: ng,nb,i,n0,n1
+    character(3),parameter :: ON_OFF='off'
+    real(8) :: ttmp(2),tt(2,14),tini(2)
+    logical :: disp_on
+    integer :: j,i0,j0
 
+    call write_border( 1, " z_gram_schmidt_luslbp(start)" )
+    call check_disp_switch( disp_on, 0 )
 
-  subroutine clear_lu( indx, T )
-    implicit none
-    character(1),intent(in) :: indx
-    real(8),intent(inout)  :: T(:,:)
-    integer :: i,j
-    select case( indx )
-    case( "u", "U" )
-       do j=1,size(T,2)
-       do i=1,size(T,1)
-          if ( j < i ) T(i,j)=0.0d0
-       end do
-       end do
-    case( "l", "L" )
-       do j=1,size(T,2)
-       do i=1,size(T,1)
-          if ( i < j ) T(i,j)=0.0d0
-       end do
-       end do
-    end select
-  end subroutine clear_lu
+    tt=0.0d0; call watchb( ttmp, barrier=ON_OFF ); tini=ttmp
 
+    ng = size( u, 1 )
+    nb = size( u, 2 ) ! assuming nb is the whole band size
+
+    zdV = dV
+
+    call get_range_parallel( n0, n1, 'b' )
+
+    if ( .not.has_init_done .or. nb /= nb_backup ) then
+      has_init_done = .false.
+      nb_backup = nb
+      call init_luslbp( nb )
+    end if
+
+    allocate( Ssub(LDR,LDC) ); Ssub=z0
+    allocate( S(nb,nb) ); S=z0
+
+    call watchb( ttmp, tt(:,1), barrier=ON_OFF )
+
+    ! --- (1)
+    call ZHERK( UPLO, 'C', nb, ng, zdV, u, ng, z0, S, nb )
+    call watchb( ttmp, tt(:,2), barrier=ON_OFF )
+    call rsdft_allreduce( S, 'g' )
+    call watchb( ttmp, tt(:,3), barrier=ON_OFF )
+    call distribute_matrix( sl, S, Ssub )
+    call watchb( ttmp, tt(:,4), barrier=ON_OFF )
+    !
+    ! --- (2)
+    ! call calc_overlap_gs( nb, u(:,n0:n1), dV, S )
+    ! call watchb( ttmp, tt(:,2), barrier=ON_OFF )
+    ! call distribute_matrix( sl, S, Ssub )
+    ! call watchb( ttmp, tt(:,4), barrier=ON_OFF )
+    ! ---
+
+    deallocate( S )
+
+    call watchb( ttmp, tt(:,5), barrier=ON_OFF )
+
+    call PZPOTRF( UPLO, nb, Ssub, 1, 1, sl%desca, i ) ! Cholesky factorization
+
+    call watchb( ttmp, tt(:,6), barrier=ON_OFF )
+
+    call PZTRTRI( UPLO, 'N', nb, Ssub, 1, 1, sl%desca, i )
+
+    call watchb( ttmp, tt(:,7), barrier=ON_OFF )
+
+    ! ----- (1)
+    !
+    allocate( S(nb,nb) ); S=z0
+    call watchb( ttmp, tt(:,8), barrier=ON_OFF )
+    call gather_matrix( sl, Ssub, S, sl%icontxt_a )
+    call watchb( ttmp, tt(:,9), barrier=ON_OFF )
+    ! --- (1-1)
+    !
+    !(1)
+    !call ZTRMM( 'R', 'U', 'N', 'N', ng, nb, z1, S, nb, u, ng )
+    !call watchb( ttmp, tt(:,11), barrier=ON_OFF )
+    !
+    !(2)
+    !allocate( utmp(ng,nb) ); utmp=u
+    !call watchb( ttmp, tt(:,10), barrier=ON_OFF )
+    !do i = n0, n1
+    !  u(:,i) = matmul( utmp(:,1:i), S(1:i,i) )
+    !end do
+    !call watchb( ttmp, tt(:,11), barrier=ON_OFF )
+    !deallocate( utmp )
+    !call watchb( ttmp, tt(:,12), barrier=ON_OFF )
+    !
+    !(3)
+    allocate( utmp(ng,n0:n1) ); utmp=z0
+    call watchb( ttmp, tt(:,10), barrier=ON_OFF )
+    call ZGEMM('N','N',ng,n1-n0+1,nb,z1,u,ng,S(1,n0),nb,z0,utmp,ng)
+    call watchb( ttmp, tt(:,11), barrier=ON_OFF )
+    u(:,n0:n1)=utmp
+    deallocate( utmp )
+    call watchb( ttmp, tt(:,12), barrier=ON_OFF )
+    !
+    ! --- (1-2)
+    ! call ztrmm_bp( UPLO, sl, u, v, Ssub, S )
+    ! ---
+    deallocate( S )
+    !
+    ! ----- (2)
+    ! call ztrmm_bp( UPLO, sl, u, Ssub )
+    !
+    ! -----
+
+    deallocate( Ssub )
+
+    call watchb( ttmp, tt(:,13), barrier=ON_OFF )
+    tt(:,14) = ttmp - tini
+
+    ! if ( disp_on ) then
+    !   do i = 1, 13
+    !     write(*,'(1x,"time_z_gs_luslbp(",i3.3,")=",2f12.5)') i,tt(:,i)
+    !   end do
+    !   write(*,'(1x,"time_z_gs_luslbp(tot)=",2f12.5)') tt(:,14)
+    ! end if
+
+    call write_border( 1, " z_gram_schmidt_luslbp(end)" )
+
+  end subroutine z_gram_schmidt_luslbp
 
 end module gram_schmidt_luslbp_module

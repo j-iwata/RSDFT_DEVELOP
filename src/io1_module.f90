@@ -8,7 +8,7 @@ module io1_module
   use wf_module, only: wfrange, MB_WF,MB_0_WF,MB_1_WF,ML_0_WF,ML_1_WF &
                       ,MS_0_WF, MS_1_WF, MS_WF, MK_0_WF, MK_1_WF, MK_WF &
                       , occ, unk, allocate_b_occ &
-                      , gather_wf, test_on_wf
+                      , gather_wf
   use rgrid_module, only: Ngrid, Igrid, dV
   use rgrid_mol_module, only: LL
   use rsdft_mpi_module !, only: rsdft_allgatherv

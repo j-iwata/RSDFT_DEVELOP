@@ -22,8 +22,7 @@ contains
     real(8) :: rtmp(1)
     real(8),allocatable :: rwork(:)
     complex(8) :: ztmp(1)
-    complex(8),allocatable :: zwork(:)
-    complex(8),allocatable :: Vsub(:,:)
+    complex(8),allocatable :: Vsub(:,:), zwork(:)
     complex(8),parameter :: z0=(0.0d0,0.0d0)
     character(100) :: msg
     character(1) :: ul
@@ -39,57 +38,61 @@ contains
     nb = sl%nband
     ul = sl%uplo
 
-    select case( sl%idiag )
-    case( 'PZHEEVD' )
+    if ( sl%uplo /= '' ) then
 
-      allocate( Vsub(size(Hsub,1),size(Hsub,2)) ); Vsub=z0
+      select case( sl%idiag )
+      case( 'PZHEEVD' )
 
-      if ( sl%LWORK == 0 ) then
+        allocate( Vsub(size(Hsub,1),size(Hsub,2)) ); Vsub=z0
+
+        if ( sl%LWORK == 0 ) then
+          call PZHEEVD('V',ul,nb,Hsub,1,1,sl%desca,eig,Vsub,1,1 &
+                      ,sl%descz,ztmp,-1,rtmp,-1,itmp,-1,ierr)
+          LZWORK = nint( real(ztmp(1)) )
+          LRWORK = nint( rtmp(1) )
+          LIWORK = itmp(1)
+          NP0 = NUMROC(nb,sl%mbsize,0,0,sl%nprow)
+          NQ0 = NUMROC(nb,sl%nbsize,0,0,sl%npcol)
+          NPX = NUMROC(nb,sl%mbsize,sl%myrow,0,sl%nprow)
+          NQX = NUMROC(nb,sl%nbsize,sl%mycol,0,sl%npcol)
+          if ( disp_on ) then
+            write(*,'("(PZHEEVD) Work-array sizes (by query)   : LWORK,LRWORK,LIWORK=",3i8)') LZWORK,LRWORK,LIWORK
+            write(*,'("(PZHEEVD) Work-array sizes (in document): LWORK,LRWORK,LIWORK=",3i8)') &
+              nb+(NP0+NQ0+sl%mbsize)*sl%mbsize, 1+9*nb+3*NPX*NQX, 7*nb+8*sl%npcol+2
+          end if
+          LZWORK = max( LZWORK, nb+(NP0+NQ0+sl%mbsize)*sl%mbsize )
+          LRWORK = max( LRWORK, (1+9*nb+3*NPX*NQX) )
+          LIWORK = max( LIWORK, 7*nb+8*sl%npcol+2 )
+          if ( disp_on ) then
+            write(*,'("(PZHEEVD) Work-array sizes (allocate)   : LWORK,LRWORK,LIWORK=",3i8)') LZWORK,LRWORK,LIWORK
+          end if
+          sl%lwork = LZWORK
+          sl%lrwork = LRWORK
+          sl%liwork = LIWORK
+        else
+          LZWORK = sl%lwork
+          LRWORK = sl%lrwork
+          LIWORK = sl%liwork
+        end if
+
+        allocate( zwork(LZWORK) ); zwork=z0
+        allocate( rwork(LRWORK) ); rwork=z0
+        allocate( iwork(LIWORK) ); iwork=0
+
         call PZHEEVD('V',ul,nb,Hsub,1,1,sl%desca,eig,Vsub,1,1 &
-                    ,sl%descz,ztmp,-1,rtmp,-1,itmp,-1,ierr)
-        LZWORK = nint( real(ztmp(1)) )
-        LRWORK = nint( rtmp(1) )
-        LIWORK = itmp(1)
-        NP0 = NUMROC(nb,sl%mbsize,0,0,sl%nprow)
-        NQ0 = NUMROC(nb,sl%nbsize,0,0,sl%npcol)
-        NPX = NUMROC(nb,sl%mbsize,sl%myrow,0,sl%nprow)
-        NQX = NUMROC(nb,sl%nbsize,sl%mycol,0,sl%npcol)
-        if ( disp_on ) then
-          write(*,'("(PZHEEVD) Work-array sizes (by query)   : LWORK,LRWORK,LIWORK=",3i8)') LZWORK,LRWORK,LIWORK
-          write(*,'("(PZHEEVD) Work-array sizes (in document): LWORK,LRWORK,LIWORK=",3i8)') &
-            nb+(NP0+NQ0+sl%mbsize)*sl%mbsize, 1+9*nb+3*NPX*NQX, 7*nb+8*sl%npcol+2
-        end if
-        LZWORK = max( LZWORK, nb+(NP0+NQ0+sl%mbsize)*sl%mbsize )
-        LRWORK = max( LRWORK, (1+9*nb+3*NPX*NQX) )
-        LIWORK = max( LIWORK, 7*nb+8*sl%npcol+2 )
-        if ( disp_on ) then
-          write(*,'("(PZHEEVD) Work-array sizes (allocate)   : LWORK,LRWORK,LIWORK=",3i8)') LZWORK,LRWORK,LIWORK
-        end if
-        sl%lwork = LZWORK
-        sl%lrwork = LRWORK
-        sl%liwork = LIWORK
-      else
-        LZWORK = sl%lwork
-        LRWORK = sl%lrwork
-        LIWORK = sl%liwork
-      end if
+                    ,sl%descz,zwork,LZWORK,rwork,LRWORK,iwork,LIWORK,ierr)
 
-      allocate( zwork(LZWORK) ); zwork=z0
-      allocate( rwork(LRWORK) ); rwork=z0
-      allocate( iwork(LIWORK) ); iwork=0
+        deallocate( iwork )
+        deallocate( rwork )
+        deallocate( zwork )
 
-      call PZHEEVD('V',ul,nb,Hsub,1,1,sl%desca,eig,Vsub,1,1 &
-                  ,sl%descz,zwork,LZWORK,rwork,LRWORK,iwork,LIWORK,ierr)
+        Hsub = Vsub
 
-      deallocate( iwork )
-      deallocate( rwork )
-      deallocate( zwork )
+        deallocate( Vsub )
 
-      Hsub = Vsub
+      end select
 
-      deallocate( Vsub )
-
-    end select
+    end if
 
     if ( ierr /= 0 ) then
       write(msg,'("ierr=",i4,"(stop@z_subspace_solv_sl2)")') ierr
@@ -98,8 +101,8 @@ contains
 
     ! ---
     !
-    call d_rsdft_bcast( eig, size(eig), 0, comm_label='grid' )
-    call d_rsdft_bcast( eig, size(eig), 0, comm_label='band' )
+    call d_rsdft_bcast( eig, comm_chr='grid' )
+    call d_rsdft_bcast( eig, comm_chr='band' )
     !
     ! ---
     !

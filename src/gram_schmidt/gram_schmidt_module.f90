@@ -1,22 +1,20 @@
-MODULE gram_schmidt_module
+module gram_schmidt_module
 
   use gram_schmidt_m_module
   use gram_schmidt_t_module
   use gram_schmidt_t3_module
   use gram_schmidt_lusl_module
   use gram_schmidt_luslbp_module
- !use gram_schmidt_u_module
   use gram_schmidt_ncol_module, only: gram_schmidt_ncol, flag_noncollinear
   use var_sys_parameter
   use io_tools_module
-  use wf_module, only: gather_b_wf, unk
   use watch_module
   use parallel_module, only: comm_grid, comm_band
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: gram_schmidt
+  private
+  public :: gram_schmidt
 
   integer :: iswitch_algorithm = 0
   include 'mpif.h'
@@ -25,19 +23,20 @@ MODULE gram_schmidt_module
 
   integer :: iparam_gs(9)=1
 
-CONTAINS
+contains
 
-  SUBROUTINE read_gram_schmidt
+  subroutine read_gram_schmidt
     implicit none
     call IOTools_readIntegerKeyword( "GS", iswitch_algorithm )
     call IOTools_readIntegerKeyword( "GSPARAM", iparam_gs )
     flag_init_read = .false.
-  END SUBROUTINE read_gram_schmidt
+  end subroutine read_gram_schmidt
 
-  SUBROUTINE gram_schmidt(n0,n1,k,s)
-
+  subroutine gram_schmidt(n0,n1,k,s)
+    use rgrid_variables, only: dV
+    use wf_module, only: gather_b_wf, unk
     implicit none
-    integer,intent(IN) :: n0,n1,k,s
+    integer,intent(in) :: n0,n1,k,s
     type(time) :: t
 
     if ( flag_noncollinear ) then
@@ -68,18 +67,15 @@ CONTAINS
     !   end do
       call gram_schmidt_lusl( unk(:,:,k,s) )
     case( 5 )
-#ifdef _DRSDFT_
-      call gram_schmidt_luslbp( unk(:,:,k,s) )
-#else
-      write(*,*) "z_gram_schmidt_lusl is not implemented yet"
-      call stop_program('gram_schmidt')
-#endif
+      call gram_schmidt_luslbp( unk(:,:,k,s), dV )
     end select
 
-!    call result_timer( "gs", t )
+    ! call gather_b_wf( k, s )
+
+    ! call result_timer( "gs", t )
 
 !    call write_border( 1, " gram_schmidt(end)" )
 
-  END SUBROUTINE gram_schmidt
+  end subroutine gram_schmidt
 
-END MODULE gram_schmidt_module
+end module gram_schmidt_module

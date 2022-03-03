@@ -37,49 +37,53 @@ contains
     nb = sl%nband
     ul = sl%uplo
 
-    select case( sl%idiag )
-    case( 'PDSYEVD' )
+    if ( sl%uplo /= '' ) then
 
-      allocate( Vsub(size(Dsub,1),size(Dsub,2)) ); Vsub=z0
+      select case( sl%idiag )
+      case( 'PDSYEVD' )
 
-      if ( sl%LWORK == 0 ) then
-        call PDSYEVD('V',ul,nb,Dsub,1,1,sl%desca,eig,Vsub,1,1,sl%descz,rtmp,-1,itmp,-1,ierr)
-        LRWORK = nint( rtmp(1) )
-        LIWORK = itmp(1)
-        NP = NUMROC(nb,sl%mbsize,sl%myrow,0,sl%nprow)
-        NQ = NUMROC(nb,sl%nbsize,sl%mycol,0,sl%npcol)
-        TRILWMIN = 3*nb + max( sl%mbsize*(NP+1), 3*sl%mbsize )
-        if ( disp_on ) then
-          write(*,'("(PDSYEVD) Work-array sizes (by query)   : LRWORK,LIWORK=",3i8)') LRWORK,LIWORK
-          write(*,'("(PDSYEVD) Work-array sizes (in document): LRWORK,LIWORK=",3i8)') &
-          max( 1+6*nb+2*NP*NQ, TRILWMIN ) + 2*nb, 7*nb + 8*sl%npcol + 2
+        allocate( Vsub(size(Dsub,1),size(Dsub,2)) ); Vsub=z0
+
+        if ( sl%LWORK == 0 ) then
+          call PDSYEVD('V',ul,nb,Dsub,1,1,sl%desca,eig,Vsub,1,1,sl%descz,rtmp,-1,itmp,-1,ierr)
+          LRWORK = nint( rtmp(1) )
+          LIWORK = itmp(1)
+          NP = NUMROC(nb,sl%mbsize,sl%myrow,0,sl%nprow)
+          NQ = NUMROC(nb,sl%nbsize,sl%mycol,0,sl%npcol)
+          TRILWMIN = 3*nb + max( sl%mbsize*(NP+1), 3*sl%mbsize )
+          if ( disp_on ) then
+            write(*,'("(PDSYEVD) Work-array sizes (by query)   : LRWORK,LIWORK=",3i8)') LRWORK,LIWORK
+            write(*,'("(PDSYEVD) Work-array sizes (in document): LRWORK,LIWORK=",3i8)') &
+            max( 1+6*nb+2*NP*NQ, TRILWMIN ) + 2*nb, 7*nb + 8*sl%npcol + 2
+          end if
+          LRWORK = max( LRWORK, max(1+6*nb+2*NP*NQ,TRILWMIN)+2*nb )*2
+          LIWORK = max( LIWORK, 7*nb+8*sl%npcol+2 )
+          if ( disp_on ) then
+            write(*,'("(PDSYEVD) Work-array sizes (allocate)   : LRWORK,LIWORK=",3i8)') LRWORK,LIWORK
+          end if
+          sl%lwork = LRWORK
+          sl%lrwork = LRWORK
+          sl%liwork = LIWORK
+        else
+          LRWORK = sl%lrwork
+          LIWORK = sl%liwork
         end if
-        LRWORK = max( LRWORK, max(1+6*nb+2*NP*NQ,TRILWMIN)+2*nb )
-        LIWORK = max( LIWORK, 7*nb+8*sl%npcol+2 )
-        if ( disp_on ) then
-          write(*,'("(PDSYEVD) Work-array sizes (allocate)   : LRWORK,LIWORK=",3i8)') LRWORK,LIWORK
-        end if
-        sl%lwork = LRWORK
-        sl%lrwork = LRWORK
-        sl%liwork = LIWORK
-      else
-        LRWORK = sl%lrwork
-        LIWORK = sl%liwork
-      end if
 
-      allocate( rwork(LRWORK) ); rwork=z0
-      allocate( iwork(LIWORK) ); iwork=0
+        allocate( rwork(LRWORK) ); rwork=z0
+        allocate( iwork(LIWORK) ); iwork=0
 
-      call PDSYEVD('V',ul,nb,Dsub,1,1,sl%desca,eig,Vsub,1,1,sl%descz,rwork,LRWORK,iwork,LIWORK,ierr)
+        call PDSYEVD('V',ul,nb,Dsub,1,1,sl%desca,eig,Vsub,1,1,sl%descz,rwork,LRWORK,iwork,LIWORK,ierr)
 
-      deallocate( iwork )
-      deallocate( rwork )
+        deallocate( iwork )
+        deallocate( rwork )
 
-      Dsub = Vsub
+        Dsub = Vsub
 
-      deallocate( Vsub )
+        deallocate( Vsub )
 
-    end select
+      end select
+
+    end if
 
     if ( ierr /= 0 ) then
       write(msg,'("ierr=",i4,"(stop@d_subspace_solv_sl2)")') ierr
@@ -88,8 +92,8 @@ contains
 
     ! ---
     !
-    call d_rsdft_bcast( eig, size(eig), 0, comm_label='grid' )
-    call d_rsdft_bcast( eig, size(eig), 0, comm_label='band' )
+    call d_rsdft_bcast( eig, comm_chr='grid' )
+    call d_rsdft_bcast( eig, comm_chr='band' )
     !
     ! ---
     !

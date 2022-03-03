@@ -61,6 +61,7 @@ CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
 ##### INTEL                                                        #####
 #FC = mpif90
 #FFLAGS0 = -cpp
+#FFLAGS0 = -cpp -O3 -axCORE-AVX512
 #FFLAGS0 = -cpp -fast -xHost
 #FFLAGS0 = -cpp -C
 #OMPFLAG = -openmp

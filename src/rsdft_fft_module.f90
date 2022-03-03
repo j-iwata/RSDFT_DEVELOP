@@ -123,7 +123,7 @@ CONTAINS
     mm=0
     call fft_1_sub( n, lst_fact, a, b, c )
 
-    c(:)=b(:)
+    c(:)=b(:n-1)
     do i=0,n-1
        j=indx(i)
        b(j)=c(i)

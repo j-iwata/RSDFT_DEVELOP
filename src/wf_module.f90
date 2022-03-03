@@ -10,13 +10,17 @@ module wf_module
 
   implicit none
 
-  PRIVATE
-  PUBLIC :: unk,esp,esp0,occ,res,init_wf,test_on_wf,gather_wf,gather_b_wf &
+  private
+  public :: unk,esp,esp0,occ,res &
            ,ML_WF, ML_0_WF, ML_1_WF, MB_WF, MB_0_WF, MB_1_WF &
            ,MK_WF, MK_0_WF, MK_1_WF, MS_WF, MS_0_WF, MS_1_WF &
-           ,Sunk &
-           ,hunk, iflag_hunk, workwf &
-           ,allocate_work_wf, deallocate_work_wf
+           ,Sunk, hunk, iflag_hunk, workwf
+  public :: init_wf
+  public :: test_on_wf
+  public :: gather_wf
+  public :: gather_b_wf
+  public :: allocate_work_wf
+  public :: deallocate_work_wf
   PUBLIC :: write_esp_wf
   PUBLIC :: write_info_esp_wf
   PUBLIC :: wfrange
@@ -235,47 +239,73 @@ contains
   END SUBROUTINE set_initial_wf
 
 
-  SUBROUTINE test_on_wf(dV,disp_switch)
+  subroutine test_on_wf( dV )
     implicit none
-    real(8),intent(IN) :: dV          ! volume element
-    logical,intent(IN) :: disp_switch ! diplay switch
+    real(8),intent(in) :: dV  !volume element
     integer :: s,k,m,n,mm
+    integer,parameter :: unit=320
+    real(8) :: ttmp(2), tt(2,4), tini(2)
 #ifdef _DRSDFT_
     real(8),allocatable :: uu(:,:)
+    real(8),parameter :: z0=0.0d0
 #else
     complex(8),allocatable :: uu(:,:)
+    complex(8),parameter :: z0=(0.0d0,0.0d0)
 #endif
 
-    allocate( uu(MB_WF,MB_WF) ) ; uu=zero
+    call write_border( 0, ' test_on_wf(start)' )
+    call watchb( tini, barrier='on' ); tt=0.0d0
+
+    call gather_wf
+
+    if ( myrank == 0 ) open( unit, file='test_on_wf.dat' )
+
+    allocate( uu(MB_WF,MB_WF) ); uu=z0
 
     mm = size(uu)
 
-    do s=MS_0_WF,MS_1_WF
-    do k=MK_0_WF,MK_1_WF
-       uu(:,:)=zero
-       do n=1,MB_WF
-       do m=1,n
+    do s = MS_0_WF, MS_1_WF
+    do k = MK_0_WF, MK_1_WF
+      if ( myrank == 0 ) write(unit,*) "s,k=",s,k
+      call watchb( ttmp, barrier='on' )
+      uu(:,:)=zero
+      do n = 1, MB_WF
+      do m = 1, n
 #ifdef _DRSDFT_
-          uu(m,n)=sum( unk(:,m,k,s)*unk(:,n,k,s) )*dV
+        uu(m,n) = sum( unk(:,m,k,s)*unk(:,n,k,s) )*dV
 #else
-          uu(m,n)=sum( conjg(unk(:,m,k,s))*unk(:,n,k,s) )*dV
+        uu(m,n) = sum( conjg(unk(:,m,k,s))*unk(:,n,k,s) )*dV
 #endif
-       end do ! m
-       end do ! n
-       call rsdft_allreduce_sum( uu, comm_grid )
-       do n=1,MB_WF
-       do m=1,n
-          if ( disp_switch ) then
-             write(320,'(1x,i2,i5,2i7,2g25.16)') s,k,m,n,uu(m,n)
-          end if
-       end do ! m
-       end do ! n
-    end do ! k
-    end do ! s
+      end do !m
+      end do !n
+      call watchb( ttmp, tt(:,1), barrier='on' )
+      call rsdft_allreduce_sum( uu, comm_grid )
+      call watchb( ttmp, tt(:,2), barrier='on' )
+      do n = 1, MB_WF
+      do m = 1, n
+        if ( myrank == 0 ) write(unit,*) m, n, uu(m,n)
+      end do !m
+      end do !n
+      call watchb( ttmp, tt(:,3), barrier='on' )
+    end do !k
+    end do !s
 
     deallocate( uu )
 
-  END SUBROUTINE test_on_wf
+    if ( myrank == 0 ) close(unit)
+
+    call watchb( tini, tt(:,4), barrier='on' )
+
+    if ( myrank == 0 ) then
+      do m = 1, 3
+        write(*,'(1x,"time(",i1,")=",2f10.5)') m, tt(:,m)
+      end do
+      write(*,'(1x,"time(test_on_wf)=",2f10.5)') tt(:,4)
+    end if
+
+    call write_border( 0, ' test_on_wf(end)' )
+
+  end subroutine test_on_wf
 
 
   subroutine gather_wf
@@ -396,18 +426,19 @@ contains
     logical,optional,intent(in) :: full_info
     integer,optional,intent(in) :: index_vbm
     integer :: k,n,s,i,n1,n2,nn,fi(2)
-    real(8) :: f(6),evbm,ecbm
+    real(8) :: f(6),evbm,ecbm,index_cbm
     character(57) :: header_string, format_string
     call check_disp_length( i, 0 ) ; if ( i < 1 ) return
 
     if( present(index_vbm) )then
-       evbm=maxval( esp(1:index_vbm,:,:) )
-       ecbm=minval( esp(index_vbm+1:,:,:) )
-       f(1)=ecbm-evbm
-       f(2)=(ecbm-evbm)*27.2116d0
-       format_string='(/,1x,"index_vbm, Band gap(ht,eV) :",i6,2f15.5)'
-       fi(1)=index_vbm
-       call write_int_and_real( format_string,1,fi(1:1),2,f ) 
+      index_cbm = min( index_vbm+1, ubound(esp,1) )
+      evbm=maxval( esp(1:index_vbm,:,:) )
+      ecbm=minval( esp(index_cbm:,:,:) )
+      f(1)=ecbm-evbm
+      f(2)=(ecbm-evbm)*27.2116d0
+      format_string='(/,1x,"index_vbm, Band gap(ht,eV) :",i6,2f15.5)'
+      fi(1)=index_vbm
+      call write_int_and_real( format_string,1,fi(1:1),2,f )
     end if
 
     write(header_string,'(a4,a6,a20,2a13,1x)') &
@@ -418,52 +449,52 @@ contains
     n1=max( 1, nn/2-5 )
     n2=min( nn/2+5, size(esp,1) )
     if ( present(full_info) ) then
-       if ( full_info ) then
-          n1=1
-          n2=size(esp,1)
-       end if
+      if ( full_info ) then
+        n1=1
+        n2=size(esp,1)
+      end if
     end if
-    if ( i > 1 ) then
-       n1=1
-       n2=size(esp,1)
+    if ( i >= 1 ) then
+      n1=1
+      n2=size(esp,1)
     end if
     format_string='(i4,i6,2(f20.15,2g13.5,1x))'
     do k=1,size(esp,2)
     do n=n1,n2
-       if ( all(.not.referred_orbital(n,k,:)) ) cycle
-       i=0
-       do s=1,size(esp,3)
-          i=i+1 ; f(i)=esp(n,k,s)
-          i=i+1 ; f(i)=esp(n,k,s)-esp0(n,k,s)
-          i=i+1 ; f(i)=occ(n,k,s)
-       end do
-       fi(1:2)=(/ k, n /)
-       call write_int_and_real( format_string, 2, fi, i, f ) 
+      if ( all(.not.referred_orbital(n,k,:)) ) cycle
+      i=0
+      do s=1,size(esp,3)
+        i=i+1 ; f(i)=esp(n,k,s)
+        i=i+1 ; f(i)=esp(n,k,s)-esp0(n,k,s)
+        i=i+1 ; f(i)=occ(n,k,s)
+      end do
+      fi(1:2)=(/ k, n /)
+      call write_int_and_real( format_string, 2, fi, i, f )
     end do
     end do
-  END SUBROUTINE write_esp_wf
+  end subroutine write_esp_wf
 
 
-  SUBROUTINE write_info_esp_wf( control )
+  subroutine write_info_esp_wf( control )
     implicit none
-    integer,intent(IN) :: control
+    integer,intent(in) :: control
     integer :: s,k,n
     integer,parameter :: u=99
     call write_border( 1, " write_info_esp_wf(start)" )
     if ( control > 0 ) then
-       if ( control == 2 ) rewind u
-       write(u,*) "Eigenvalues"
-       write(u,'(a4,a6,a20,2a13,1x)') &
-            "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
-       do k=1,MK_WF
-       do n=1,MB_WF
-          write(u,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
-               ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,MS_WF)
-       end do
-       end do
+      if ( control == 2 ) rewind u
+      write(u,*) "Eigenvalues"
+      write(u,'(a4,a6,a20,2a13,1x)') &
+          "k","n","esp(n,k,s)","esp_err  ","occ(n,k,s)  "
+      do k=1,MK_WF
+      do n=1,MB_WF
+        write(u,'(i4,i6,2(f20.15,2g13.5,1x))') k,n &
+              ,(esp(n,k,s),esp(n,k,s)-esp0(n,k,s),occ(n,k,s),s=1,MS_WF)
+      end do
+      end do
     end if
     call write_border( 1, " write_info_esp_wf(end)" )
-  END SUBROUTINE write_info_esp_wf
+  end subroutine write_info_esp_wf
 
 
   subroutine allocate_b_zwf( b, wf )
