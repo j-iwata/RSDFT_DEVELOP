@@ -221,14 +221,12 @@ contains
 
 ! --- LAPACK
 
-    if ( LWORK == 0 ) then
-      allocate( w(n) ); w=0.0d0
-      allocate( work(1) )
-      call dsyev('V','U',n+1,Htmp,n+1,w,work,-1,ierr)
-      LWORK=nint( work(1) )
-      deallocate( work )
-      allocate( work(LWORK) ); work=0.0d0
-    end if
+    allocate( w(n) ); w=0.0d0
+    allocate( work(1) )
+    call dsyev('V','U',n,Htmp,n,w,work,-1,ierr)
+    LWORK=nint( work(1) )
+    deallocate( work )
+    allocate( work(LWORK) ); work=0.0d0
 
 ! ----------------------------------- loop
 
