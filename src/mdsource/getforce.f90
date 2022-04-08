@@ -14,7 +14,7 @@ SUBROUTINE getforce
   use eion_module, only: calc_eion
   use force_module
   use cpmd_variables, only: Rion,Force,pmass,AMU,disp_switch &
-       ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF
+       ,MB_0_CPMD,MB_1_CPMD,MB_0_SCF,MB_1_SCF,lcpmd
   use scf_module
   use array_bound_module, only: MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1
   use parallel_module, only: end_mpi_parallel, disp_switch_parallel
@@ -23,10 +23,13 @@ SUBROUTINE getforce
 
   implicit none
   real(8) :: c
-  integer :: a,Diter1,ierr
+  integer :: a,ierr
+  integer,save :: Diter1=0
 
-  !Diter1       = 100
-  call IOTools_readIntegerKeyword( "DITER", Diter1 )
+  if ( Diter1 == 0 ) then
+    Diter1 = 100
+    call IOTools_readIntegerKeyword( "DITER", Diter1 )
+  end if
   c            = 1.d0/(2.d0*acos(-1.d0))
   aa_atom(:,:) = matmul(transpose(bb),Rion)*c
   call shift_aa_coordinates_atom( aa_atom )
@@ -63,7 +66,7 @@ SUBROUTINE getforce
   MB_0=MB_0_CPMD
   MB_1=MB_1_CPMD
 
-  call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
+  if ( lcpmd ) call prep_backup_uVunk_ps_nloc2( MB_0,MB_1,MBZ_0,MBZ_1,MSP_0,MSP_1 )
 
   Force(:,:)=0.0d0
   call calc_force(Natom,Force)
