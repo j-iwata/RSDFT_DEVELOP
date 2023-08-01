@@ -58,6 +58,42 @@ Please see *samples_for_supercomputers/ITO_KYUSHU-U/* .
 
 
 
+## OHTAKA (System B, ISSP)
+
+### Preparation of MKL's FFTW
+
+First we need to prepare the wrapper of FFTW for MPI-Fortran. Execute following commands:
+
+```
+mkdir -p $HOME/intel/mkl
+cp -r $MKLROOT/interfaces/fftw3x_cdft/ $HOME/intel/mkl/
+cp -r $MKLROOT/include $HOME/intel/
+cd intel/mkl/fftw3x_cdft
+make libintel64
+```
+
+Then you can find *libfftw3x_cdft_lp64.a* in $HOME/intel/lib/intel64/.
+
+### Compile
+
+The complex16 version of *rsdft.x* can be compiled as follows:
+
+```
+cd RSDFT/src
+cp make.inc.complex16.OHTAKA make.inc
+make
+```
+
+and the real8 version is
+
+```
+cd RSDFT/src
+cp make.inc.real8.OHTAKA make.inc
+make
+```
+
+
+
 ## FUGAKU (RIKEN)
 
 
