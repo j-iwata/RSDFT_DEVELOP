@@ -35,20 +35,19 @@ CPP_FLAGS := -D_SPLINE_ $(CPP_FLAGS)
 ######################### LAPACK is used ( ScaLAPACK is not used ) #####
 #CPP_FLAGS := -D_LAPACK_ $(CPP_FLAGS)
 ##################################################### FFTW is used #####
-#CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
-#INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
-#FFTW_L = -L/data1/group4/iwata/mklt/fftw3xf_cdft/lib/intel64 -lfftw3x_cdft
+CPP_FLAGS := -D_FFTW_ $(CPP_FLAGS)
+INCLUDE_DIR := -I$(MKLROOT)/include/fftw $(INCLUDE_DIR)
+FFTW_L = -L$(HOME)/intel/lib/intel64 -lfftw3x_cdft_lp64
 #INCLUDE_DIR := -I$(HOME)/fftw/include/ $(INCLUDE_DIR)
 #FFTW_L = -L$(HOME)/fftw/lib/ -lfftw3_mpi -lfftw3 -lm
 ############################################################ LibXC #####
 #CPP_FLAGS := -D_LIBXC_ $(CPP_FLAGS)
-#INCLUDE_DIR := -I/home/iwata/libxc/include/ $(INCLUDE_DIR)
-#LIBXC_L = /home/iwata/libxc/lib/libxcf90.a \
-#          /home/iwata/libxc/lib/libxc.a
+#INCLUDE_DIR := -I/usr/local/include/ $(INCLUDE_DIR)
+#LIBXC_L = -L/usr/local/lib -lxcf90 -lxc
 ################################################## Grimme's DFT-D3 #####
 #CPP_FLAGS := -D_DFTD3_ $(CPP_FLAGS)
-#INCLUDE_DIR := -I/home/iwata/DFT-D3/lib/ $(INCLUDE_DIR)
-#DFTD3_L = /home/iwata/DFT-D3/lib/libdftd3.a
+#INCLUDE_DIR := -I../lib/dftd3-lib-0.9/lib  $(INCLUDE_DIR)
+#DFTD3_L = ../lib/dftd3-lib-0.9/lib/libdftd3.a
 ########################################################### Others #####
 #CPP_FLAGS := -D_NO_ERF_ $(CPP_FLAGS)
 CPP_FLAGS := -D_NO_MPI_INPLACE_ $(CPP_FLAGS)
@@ -80,8 +79,8 @@ FC = mpiifort
 FFLAGS0 = -cpp -O3
 #FFLAGS0 = -cpp -C -traceback
 #OMPFLAG = -qopenmp
-#LAPACK_L = -L$(MKLROOT) -lmkl_cdft_core -mkl=cluster
-LAPACK_L = -mkl=cluster
+LAPACK_L = -L$(MKLROOT) -lmkl_cdft_core -mkl=cluster
+#LAPACK_L = -mkl=cluster
 ########################################################################
 ##### INTEL(Oakforest-PACS)                                        #####
 #FC = mpiifort
